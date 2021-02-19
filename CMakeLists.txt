@@ -16,12 +16,6 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
-set(PADDLE_EXTENSION_INCLUDE_DIR
-        ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include
-        ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
-        ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex64.h
-        ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex128.h)
 
 include(system)
 

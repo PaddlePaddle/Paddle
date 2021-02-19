@@ -84,7 +84,7 @@ class Tensor {
   const PlaceType& place() const;
 
   /// \brief Cast datatype from one to another
-  Tensor cast(const DataType& target_type);
+  Tensor cast(const DataType& target_type) const;
 
  private:
   friend class framework::CustomTensorUtils;
