@@ -27,6 +27,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/operators/collective/c_broadcast_op.h"
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
+#endif
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
