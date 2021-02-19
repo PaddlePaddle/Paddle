@@ -64,5 +64,62 @@ class TestJITLoad(unittest.TestCase):
                             x_grad, pd_x_grad))
 
 
+class TestMultiOutputDtypes(unittest.TestCase):
+    def setUp(self):
+        self.custom_op = custom_module.relu2
+        self.dtypes = ['float32', 'float64']
+        self.devices = ['cpu', 'gpu']
+
+    def test_static(self):
+        paddle.enable_static()
+        for device in self.devices:
+            for dtype in self.dtypes:
+                res = self.run_static(device, dtype)
+                self.check_multi_outputs(res)
+        paddle.disable_static()
+
+    def test_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                paddle.set_device(device)
+                x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+                x = paddle.to_tensor(x_data)
+                outs = self.custom_op(x)
+
+                self.assertTrue(len(outs) == 3)
+                self.check_multi_outputs(outs, True)
+
+    def check_multi_outputs(self, outs, is_dynamic=False):
+        out, zero_float64, one_int32 = outs
+        if is_dynamic:
+            zero_float64 = zero_float64.numpy()
+            one_int32 = one_int32.numpy()
+        # Fake_float64
+        self.assertTrue('float64' in str(zero_float64.dtype))
+        self.assertTrue(
+            np.array_equal(zero_float64, np.zeros([4, 8]).astype('float64')))
+        # ZFake_int32
+        self.assertTrue('int32' in str(one_int32.dtype))
+        self.assertTrue(
+            np.array_equal(one_int32, np.ones([4, 8]).astype('int32')))
+
+    def run_static(self, device, dtype):
+        paddle.set_device(device)
+        x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
+                outs = self.custom_op(x)
+
+                exe = paddle.static.Executor()
+                exe.run(paddle.static.default_startup_program())
+                res = exe.run(paddle.static.default_main_program(),
+                              feed={'X': x_data},
+                              fetch_list=outs)
+
+                return res
+
+
 if __name__ == '__main__':
     unittest.main()
