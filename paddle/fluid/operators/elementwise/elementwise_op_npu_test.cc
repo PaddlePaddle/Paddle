@@ -49,12 +49,12 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
-    init.push_back(static_cast<T>(1.0));
+    init_x.push_back(static_cast<T>(1.0));
   }
 
   std::vector<T> init_y;
   for (int64_t i = 0; i < 10 * 10; ++i) {
-    init.push_back(static_cast<T>(2.0));
+    init_y.push_back(static_cast<T>(2.0));
   }
 
   TensorFromVector(init_x, ctx, tensor_x);
@@ -85,7 +85,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   } else if (op_type == "elementwise_sub") {
     expected = -1.0;
   }
-  EXPECT_EQ(out_vec.size(), init.size());
+  EXPECT_EQ(out_vec.size(), init_x.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], static_cast<T>(expected));
   }
