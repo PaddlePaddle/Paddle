@@ -50,6 +50,7 @@ class PRChecker(object):
             print('PREC No PR ID')
             exit(0)
         suffix = os.getenv('PREC_SUFFIX')
+        print("suffix: %s" %suffix)
         if suffix:
             self.suffix = suffix
         self.pr = self.repo.get_pull(int(pr_id))
@@ -68,6 +69,7 @@ class PRChecker(object):
 
     #todo: exception
     def __wget_with_retry(self, url):
+        print("wget url: %s" %url)
         ix = 1
         proxy = '--no-proxy'
         while ix < 6:
@@ -98,6 +100,7 @@ class PRChecker(object):
             for f in files:
                 file_list.append(PADDLE_ROOT + f.filename)
             page += 1
+        print("pr_file_list: %s" %file_list)
         return file_list
 
     def __get_comment_by_filetype(self, content, filetype):
@@ -209,6 +212,8 @@ class PRChecker(object):
             exit(1)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
+        print("file_ut_map: ")
+        print(file_ut_map)
         for f in self.get_pr_files():
             if f not in file_ut_map:
                 if f.endswith('.md'):
@@ -242,7 +247,7 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
-
+        print(ut_list)
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
                 for ut in utfile:
@@ -260,7 +265,8 @@ class PRChecker(object):
             else:
                 print('PREC download prec_delta failed')
                 exit(1)
-
+        print("final: ")
+        print(ut_list)
         return '\n'.join(ut_list)
 
 

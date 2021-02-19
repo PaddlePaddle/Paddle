@@ -1069,6 +1069,9 @@ EOF
 
 set -x
         precison_cases=""
+        echo 'PREC_SUFFIX: ' 
+        echo ${PREC_SUFFIX}
+        
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
