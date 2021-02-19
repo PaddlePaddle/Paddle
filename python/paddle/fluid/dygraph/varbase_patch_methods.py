@@ -170,7 +170,8 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
-            if paddle.distributed.get_world_size() > 1:
+            if paddle.is_compiled_with_xpu():
+                # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 scaled_loss._run_backward(framework._dygraph_tracer(),
                                           retain_graph)
