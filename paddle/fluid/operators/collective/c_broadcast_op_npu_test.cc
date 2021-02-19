@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
+#include "paddle/fluid/operators/collective/c_comm_init.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -38,9 +39,30 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
+USE_OP(c_comm_init);
 USE_OP(c_broadcast);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
+USE_OP_DEVICE_KERNEL(c_comm_init, NPU);
 
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
+
+  std::string rank_table_file = getenv("RANK_TABLE_FILE");
+  int rank_id = atoi(getenv("RANK_ID"));
+  int device_id = atoi(getenv("DEVICE_ID"));
+  
+  f::AttributeMap attrs;
+  attrs["rank_table_file"]=rank_table_file;
+  attrs["rank_id"]=rank_id;
+  attrs["device_id"]=device_id;
+  
+  auto op =
+      f::OpRegistry::CreateOp("c_comm_init", {}, {}, attrs);
+
+  auto place = ctx.GetPlace();
+  op->Run(*scope, place);
+
+  ctx.Wait();
+}
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
@@ -84,5 +106,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 TEST(c_broadcast, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Prepare(&scope, ctx);
   Compare(&scope, ctx);
 }
