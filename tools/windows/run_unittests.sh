@@ -208,7 +208,6 @@ export FLAGS_call_stack_level=2
 export FLAGS_fraction_of_gpu_memory_to_use=0.92
 export CUDA_VISIBLE_DEVICES=0
 
-
 UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
 num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
 echo "Windows 1 card TestCases count is $num"
@@ -247,9 +246,6 @@ non_parallel_job=$(echo $output | cut -d ";" -f 3)
 
 non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
 non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
-
-
-
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
