@@ -665,7 +665,7 @@ EOF
         export https_proxy=$my_proxy
         set -x
         if [ "$mactest_error" != 0 ];then
-            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
             if [ -z "${retry_unittests_record_judge}" ];then
                 echo "========================================"
                 echo "There are failed tests, which have been successful after re-run:"
@@ -1272,7 +1272,7 @@ set +x
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
-            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n'| sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n'| sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
             if [ -z "${retry_unittests_record_judge}" ];then
                 echo "========================================"
                 echo "There are failed tests, which have been successful after re-run:"
