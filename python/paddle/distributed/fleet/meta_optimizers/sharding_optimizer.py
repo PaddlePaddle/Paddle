@@ -351,9 +351,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
-            insert_allreduce_ops(block, self._segments[-1]._end_idx,
+            # allreduce --> reduce 
+            insert_reduce_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
-                                 self._segments[-1]._allreduce_vars)
+                                 self._segments[-1]._allreduce_vars, self._shard)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -432,8 +433,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_comm_ops(block, segment._start_idx,
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
-            insert_allreduce_ops(block, segment._start_idx,
-                                 self.sharding_ring_id, allreduce_vars)
+            # allreduce --> reduce 
+            insert_reduce_ops(block, segment._start_idx,
+                                 self.sharding_ring_id, allreduce_vars, self._shard)
 
             block._sync_with_cpp()
 
