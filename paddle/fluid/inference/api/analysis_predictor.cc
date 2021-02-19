@@ -658,6 +658,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         process_level_allocator_enabled = true;
       }
 
+// TODO(wilber): jetson tx2 may fail to run the model due to insufficient memory
+// under the native_best_fit strategy. Modify the default allocation strategy to
+// auto_growth. todo, find a more appropriate way to solve the problem.
+#ifdef WITH_NV_JETSON
+      gflags.push_back("--allocator_strategy=auto_growth");
+#endif
+
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
@@ -1149,6 +1156,8 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(transpose);
+USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);

@@ -77,17 +77,20 @@ struct BoxDecodeAndClipFunctor {
   const T *var;
   const int *index;
   const T *im_info;
+  const bool pixel_offset;
 
   T *proposals;
 
   BoxDecodeAndClipFunctor(const T *anchor, const T *deltas, const T *var,
-                          const int *index, const T *im_info, T *proposals)
+                          const int *index, const T *im_info, T *proposals,
+                          bool pixel_offset = true)
       : anchor(anchor),
         deltas(deltas),
         var(var),
         index(index),
         im_info(im_info),
-        proposals(proposals) {}
+        proposals(proposals),
+        pixel_offset(pixel_offset) {}
 
   T bbox_clip_default{static_cast<T>(kBBoxClipDefault)};
 
@@ -98,8 +101,9 @@ struct BoxDecodeAndClipFunctor {
     T axmax = anchor[k + 2];
     T aymax = anchor[k + 3];
 
-    T w = axmax - axmin + 1.0;
-    T h = aymax - aymin + 1.0;
+    T offset = pixel_offset ? static_cast<T>(1.0) : 0;
+    T w = axmax - axmin + offset;
+    T h = aymax - aymin + offset;
     T cx = axmin + 0.5 * w;
     T cy = aymin + 0.5 * h;
 
@@ -123,13 +127,13 @@ struct BoxDecodeAndClipFunctor {
 
     T oxmin = d_cx - d_w * 0.5;
     T oymin = d_cy - d_h * 0.5;
-    T oxmax = d_cx + d_w * 0.5 - 1.;
-    T oymax = d_cy + d_h * 0.5 - 1.;
+    T oxmax = d_cx + d_w * 0.5 - offset;
+    T oymax = d_cy + d_h * 0.5 - offset;
 
-    proposals[i * 4] = Max(Min(oxmin, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 1] = Max(Min(oymin, im_info[0] - 1.), 0.);
-    proposals[i * 4 + 2] = Max(Min(oxmax, im_info[1] - 1.), 0.);
-    proposals[i * 4 + 3] = Max(Min(oymax, im_info[0] - 1.), 0.);
+    proposals[i * 4] = Max(Min(oxmin, im_info[1] - offset), 0.);
+    proposals[i * 4 + 1] = Max(Min(oymin, im_info[0] - offset), 0.);
+    proposals[i * 4 + 2] = Max(Min(oxmax, im_info[1] - offset), 0.);
+    proposals[i * 4 + 3] = Max(Min(oymax, im_info[0] - offset), 0.);
   }
 
   __device__ __forceinline__ T Min(T a, T b) const { return a > b ? b : a; }
@@ -141,7 +145,8 @@ template <typename T, int BlockSize>
 static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
                                     const T min_size, const int num,
                                     int *keep_num, int *keep,
-                                    bool is_scale = true) {
+                                    bool is_scale = true,
+                                    bool pixel_offset = true) {
   T im_h = im_info[0];
   T im_w = im_info[1];
 
@@ -157,19 +162,25 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
     T ymin = bboxes[k + 1];
     T xmax = bboxes[k + 2];
     T ymax = bboxes[k + 3];
+    T offset = pixel_offset ? static_cast<T>(1.0) : 0;
+    T w = xmax - xmin + offset;
+    T h = ymax - ymin + offset;
+    if (pixel_offset) {
+      T cx = xmin + w / 2.;
+      T cy = ymin + h / 2.;
 
-    T w = xmax - xmin + 1.0;
-    T h = ymax - ymin + 1.0;
-    T cx = xmin + w / 2.;
-    T cy = ymin + h / 2.;
+      if (is_scale) {
+        w = (xmax - xmin) / im_info[2] + 1.;
+        h = (ymax - ymin) / im_info[2] + 1.;
+      }
 
-    if (is_scale) {
-      w = (xmax - xmin) / im_info[2] + 1.;
-      h = (ymax - ymin) / im_info[2] + 1.;
-    }
-
-    if (w >= min_size && h >= min_size && cx <= im_w && cy <= im_h) {
-      keep_index[threadIdx.x] = i;
+      if (w >= min_size && h >= min_size && cx <= im_w && cy <= im_h) {
+        keep_index[threadIdx.x] = i;
+      }
+    } else {
+      if (w >= min_size && h >= min_size) {
+        keep_index[threadIdx.x] = i;
+      }
     }
     __syncthreads();
     if (threadIdx.x == 0) {
@@ -187,19 +198,23 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   }
 }
 
-static __device__ float IoU(const float *a, const float *b) {
+static __device__ float IoU(const float *a, const float *b,
+                            const bool pixel_offset = true) {
+  float offset = pixel_offset ? static_cast<float>(1.0) : 0;
   float left = max(a[0], b[0]), right = min(a[2], b[2]);
   float top = max(a[1], b[1]), bottom = min(a[3], b[3]);
-  float width = max(right - left + 1, 0.f), height = max(bottom - top + 1, 0.f);
+  float width = max(right - left + offset, 0.f),
+        height = max(bottom - top + offset, 0.f);
   float inter_s = width * height;
-  float s_a = (a[2] - a[0] + 1) * (a[3] - a[1] + 1);
-  float s_b = (b[2] - b[0] + 1) * (b[3] - b[1] + 1);
+  float s_a = (a[2] - a[0] + offset) * (a[3] - a[1] + offset);
+  float s_b = (b[2] - b[0] + offset) * (b[3] - b[1] + offset);
   return inter_s / (s_a + s_b - inter_s);
 }
 
 static __global__ void NMSKernel(const int n_boxes,
                                  const float nms_overlap_thresh,
-                                 const float *dev_boxes, uint64_t *dev_mask) {
+                                 const float *dev_boxes, uint64_t *dev_mask,
+                                 bool pixel_offset = true) {
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
 
@@ -231,7 +246,8 @@ static __global__ void NMSKernel(const int n_boxes,
       start = threadIdx.x + 1;
     }
     for (i = start; i < col_size; i++) {
-      if (IoU(cur_box, block_boxes + i * 4) > nms_overlap_thresh) {
+      if (IoU(cur_box, block_boxes + i * 4, pixel_offset) >
+          nms_overlap_thresh) {
         t |= 1ULL << i;
       }
     }
@@ -243,7 +259,7 @@ static __global__ void NMSKernel(const int n_boxes,
 template <typename T>
 static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
                 const Tensor &sorted_indices, const T nms_threshold,
-                Tensor *keep_out) {
+                Tensor *keep_out, bool pixel_offset = true) {
   int boxes_num = proposals.dims()[0];
   const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
   dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
@@ -255,7 +271,8 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   framework::Vector<uint64_t> mask(boxes_num * col_blocks);
   NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes,
                                  mask.CUDAMutableData(BOOST_GET_CONST(
-                                     platform::CUDAPlace, ctx.GetPlace())));
+                                     platform::CUDAPlace, ctx.GetPlace())),
+                                 pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);

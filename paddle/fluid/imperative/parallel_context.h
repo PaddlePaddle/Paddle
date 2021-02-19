@@ -66,6 +66,8 @@ class ParallelContext {
 
   inline int GetNRings() const { return strategy_.nrings_; }
 
+  inline int64_t GetNRanks() const { return strategy_.nranks_; }
+
  protected:
   ParallelStrategy strategy_;
   platform::Place place_;

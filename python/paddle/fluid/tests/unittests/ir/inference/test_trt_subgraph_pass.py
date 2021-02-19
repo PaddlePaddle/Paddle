@@ -287,6 +287,59 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TensorRTSubgraphPassTransposeTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            transpose_out = self.append_transpose(data)
+            out = fluid.layers.batch_norm(transpose_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassTransposeTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_transpose(self, data):
+        return fluid.layers.transpose(data, [0, 3, 1, 2])
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassFlattenTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            flatten_out = self.append_flatten(data)
+            reshape_out = fluid.layers.reshape(flatten_out, [-1, 0, 1, 1])
+            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassFlattenTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
