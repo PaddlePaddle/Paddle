@@ -58,4 +58,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     matmul_v2,
     ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>);
+//    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
 #endif
