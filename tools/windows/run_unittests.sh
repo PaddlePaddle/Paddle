@@ -228,8 +228,11 @@ if [ ${PRECISION_TEST:-OFF} == "ON"] && [[ "$precision_cases" != ""]];then
     re=^$(cat ut_list| awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}')$
     for case in $UT_list; do
         flag=$(echo $case|grep -oE $re)
-        if [ -z "$flag" ];then
-            UT_list_prec=$UT_list_prec'\n'$case
+        if [ -n "$flag" ];then
+            if [ -z "$UT_list_prec" ];then
+                UT_list_prec=$case
+            else
+                UT_list_prec=$UT_list_prec'\n'$case
         else
             echo $case "won't run in PRECISION_TEST mode."
         fi
