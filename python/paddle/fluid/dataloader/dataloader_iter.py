@@ -440,11 +440,16 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 if use_shared_memory:
                     # FIXME(dkp): _convert_to_tensor_list only support np.array
                     #             list now, should support paddle.Tensor list
-                    if isinstance(batch[0][0], paddle.Tensor):
-                        np_batch = []
-                        for sample in batch:
-                            np_batch.append([s.numpy() for s in sample])
-                        batch = np_batch
+                    new_batch = []
+                    for sample in batch:
+                        new_sample = []
+                        for s in sample:
+                            if isinstance(s, paddle.Tensor):
+                                new_sample.append(s.numpy())
+                            else:
+                                new_sample.append(s)
+                        new_batch.append(new_sample)
+                    batch = new_batch
 
                     tensor_list = core._convert_to_tensor_list(batch)
                     out_queue.put((idx, tensor_list))
