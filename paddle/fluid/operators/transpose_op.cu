@@ -207,60 +207,64 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
 }
 
 // Reference to https://www.cs.colostate.edu/~cs675/MatrixTranspose.pdf
-template <typename T, int BlockDimX, int BlockDimY, int TileDim, int PadSize>
+// Row refer to dimension Y, colum refer to dimension X
+template <typename T, int BlockDimX, int BlockDimY, int TileX, int TileY,
+          int PadSize>
 __global__ void TilingSwapDim1And2Diagonal(const T* __restrict__ input,
                                            Dim3 input_dims,
                                            T* __restrict__ output) {
-  static_assert(BlockDimX == TileDim);
+  static_assert(BlockDimX == TileX);
+  static_assert(TileY >= 32);
+  static_assert(BlockDimY <= TileY);
   static_assert(PadSize >= 0);
-  assert(BlockDimX == blockDim.x);
-  assert(BlockDimY == blockDim.y);
 
-  __shared__ T tile_sm[TileDim][TileDim + PadSize];
+  __shared__ T tile_sm[TileY][TileX + PadSize];
 
   const int width = input_dims[2], height = input_dims[1];
-  const int tile_num = (input_dims[1] + TileDim - 1) / TileDim;
 
-  int dim0_id = blockIdx.x / tile_num;
-  int block_y = blockIdx.x % tile_num;
-  int base = dim0_id * width * height;
+  // Matrix is divided into input_dims[0]'s sub-matrix
+  // Each sub-matrix are range by dimension Y
+  const int grid_x = gridDim.x;
+  const int grid_y = gridDim.y / input_dims[0];
+  // Sub-matrix start address
+  const int base = (blockIdx.y / grid_y) * width * height;
+  // For sub-matrix, real block id
+  const int block_y = blockIdx.y % grid_y, block_x = blockIdx.x;
 
-  int bidx, bidy;
-  if (height == width) {
-    bidy = blockIdx.y;
-    bidx = (blockIdx.y + block_y) % gridDim.y;
-  } else {
-    int bid = blockIdx.y + gridDim.y * block_y;
-    bidy = bid % tile_num;
-    bidx = ((bid / tile_num) + bidy) % gridDim.y;
-  }
+  // Tile are arranged by diagonal
+  // Reference to https://www.cs.colostate.edu/~cs675/MatrixTranspose.pdf P17
+  const int bid = block_x + grid_x * block_y;
+  const int bidy = bid % grid_y;
+  const int bidx = ((bid / grid_y) + bidy) % grid_x;
 
+  // Check whether or not full tile
   bool full_tile = true;
-  int real_width = width < TileDim ? width : width - bidx * TileDim;
-  int real_height = height < TileDim ? height : height - bidy * TileDim;
+  int real_width = width < TileX ? width : width - bidx * TileX;
+  int real_height = height < TileY ? height : height - bidy * TileY;
 
-  if (real_width < TileDim)
+  if (real_width < TileX)
     full_tile = false;
   else
-    real_width = TileDim;
-  if (real_height < TileDim)
+    real_width = TileX;
+  if (real_height < TileY)
     full_tile = false;
   else
-    real_height = TileDim;
+    real_height = TileY;
 
-  int xi = bidx * TileDim + threadIdx.x;
-  int yi = bidy * TileDim + threadIdx.y;
+  // Read input tile to shared memory
+  // Ensure coalescing and no bank-conflict
+  int xi = bidx * TileX + threadIdx.x;
+  int yi = bidy * TileY + threadIdx.y;
   int ini = xi + yi * width + base;
-
-  if (xi > width && yi > height) return;
 
   if (full_tile) {
 #pragma unroll
-    for (int i = 0; i < TileDim; i += BlockDimY) {
+    for (int i = 0; i < TileY; i += BlockDimY) {
       tile_sm[threadIdx.y + i][threadIdx.x] = input[ini + i * width];
     }
   } else {
     if (threadIdx.x < real_width && threadIdx.y < real_height) {
+#pragma unroll
       for (int i = 0; i < real_height; i += BlockDimY) {
         tile_sm[threadIdx.y + i][threadIdx.x] = input[ini + i * width];
       }
@@ -269,20 +273,24 @@ __global__ void TilingSwapDim1And2Diagonal(const T* __restrict__ input,
 
   __syncthreads();
 
-  xi = bidy * TileDim + threadIdx.x;
-  yi = bidx * TileDim + threadIdx.y;
-  int outi = xi + yi * height + base;
+  // threadIdx.x should less than TileY
+  if (threadIdx.x >= real_height) return;
 
-  if (xi > height && yi > width) return;
+  // Write shared memory tile to output
+  // Ensure coalescing and no bank-conflict
+  xi = bidy * TileY + threadIdx.x;
+  yi = bidx * TileX + threadIdx.y;
+  int outi = xi + yi * height + base;
 
   if (full_tile) {
 #pragma unroll
-    for (int i = 0; i < TileDim; i += BlockDimY) {
+    for (int i = 0; i < TileX; i += BlockDimY) {
       output[outi + i * height] = tile_sm[threadIdx.x][threadIdx.y + i];
     }
   } else {
-    if (threadIdx.x < real_height && threadIdx.y < real_width) {
+    if (threadIdx.y < real_width) {
       const int width_bound = real_width - threadIdx.y;
+#pragma unroll
       for (int i = 0; i < width_bound; i += BlockDimY) {
         output[outi + i * height] = tile_sm[threadIdx.x][threadIdx.y + i];
       }
@@ -321,22 +329,22 @@ void LaunchTransposeDim1And2<paddle::platform::float16>(
     paddle::platform::float16* output) {
   // Kernel "TilingSwapDim1And2" exist bank conflict for fp16 type
   // New Kernel avoid this problem by using tile size 64 with padding 2
-  constexpr int kTileSize = 64;
+  constexpr int kTileX = 64;
+  constexpr int kTileY = 32;
   constexpr int kBlockDimX = 64;
   constexpr int kBlockDimY = 4;
   constexpr int kPaddingSize = 2;
 
   dim3 threads(kBlockDimX, kBlockDimY);
   Dim3 input_dims_aligned = {
-      input_dims[0],
-      framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
-      framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
+      input_dims[0], framework::CeilOrFloor<int, true>(input_dims[1], kTileY),
+      framework::CeilOrFloor<int, true>(input_dims[2], kTileX),
   };
-  dim3 grids(input_dims_aligned[0] * input_dims_aligned[1],
-             input_dims_aligned[2]);
+  dim3 grids(input_dims_aligned[2],
+             input_dims_aligned[0] * input_dims_aligned[1]);
 
   TilingSwapDim1And2Diagonal<paddle::platform::float16, kBlockDimX, kBlockDimY,
-                             kTileSize,
+                             kTileX, kTileY,
                              kPaddingSize><<<grids, threads, 0, d.stream()>>>(
       input, input_dims, output);
 }
