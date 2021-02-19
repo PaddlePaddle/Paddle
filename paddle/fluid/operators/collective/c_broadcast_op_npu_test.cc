@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
-#include "paddle/fluid/operators/collective/c_comm_init.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -39,10 +38,9 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(c_comm_init);
 USE_OP(c_broadcast);
+USE_NO_KERNEL_OP(c_comm_init);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
-USE_OP_DEVICE_KERNEL(c_comm_init, NPU);
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 
