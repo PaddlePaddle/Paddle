@@ -255,15 +255,21 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, op_dequant_pattern);
 
     if (dequant_in->outputs.size() == 1) {
-      auto output_name = "Out";
       if (any_op->Op()->Type() == "conv2d" ||
           any_op->Op()->Type() == "conv2d_transpose") {
         // do not squash if fuse residual connection is true
         // because residual fusion does not support force output with fp32
         if (any_op->Op()->GetAttrIfExists<bool>("fuse_residual_connection"))
           return;
-        output_name = "Output";
       }
+      // Find the name of the output linking any_op to dequant_in
+      std::string output_name;
+      for (auto name : any_op->Op()->OutputNames())
+        for (auto out_name : any_op->Op()->Output(name))
+          if (out_name == dequant_in->Name()) output_name = name;
+
+      if (output_name.empty()) return;
+
       any_op->Op()->SetAttr("force_fp32_output", true);
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));
