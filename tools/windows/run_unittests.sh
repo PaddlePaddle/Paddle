@@ -208,7 +208,6 @@ export FLAGS_call_stack_level=2
 export FLAGS_fraction_of_gpu_memory_to_use=0.92
 export CUDA_VISIBLE_DEVICES=0
 
-
 UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
 num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
 echo "Windows 1 card TestCases count is $num"
@@ -228,8 +227,11 @@ if [ ${PRECISION_TEST:-OFF} == "ON"] && [[ "$precision_cases" != ""]];then
     re=^$(cat ut_list| awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}')$
     for case in $UT_list; do
         flag=$(echo $case|grep -oE $re)
-        if [ -z "$flag" ];then
-            UT_list_prec=$UT_list_prec'\n'$case
+        if [ -n "$flag" ];then
+            if [ -z "$UT_list_prec" ];then
+                UT_list_prec=$case
+            else
+                UT_list_prec=$UT_list_prec'\n'$case
         else
             echo $case "won't run in PRECISION_TEST mode."
         fi
@@ -244,9 +246,6 @@ non_parallel_job=$(echo $output | cut -d ";" -f 3)
 
 non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
 non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
-
-
-
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
