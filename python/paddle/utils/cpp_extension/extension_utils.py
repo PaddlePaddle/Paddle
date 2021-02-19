@@ -109,7 +109,6 @@ def load_op_meta_info_and_register_op(lib_filename):
     if USING_NEW_CUSTOM_OP_LOAD_METHOD:
         core.load_op_meta_info_and_register_op(lib_filename)
     else:
-        print("old branch")
         core.load_op_library(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
@@ -152,7 +151,7 @@ def custom_write_stub(resource, pyfile):
 
     # Parse registerring op information
     _, op_info = CustomOpInfo.instance().last()
-    so_path = op_info.build_directory
+    so_path = op_info.so_path
 
     new_custom_ops = load_op_meta_info_and_register_op(so_path)
     assert len(
@@ -175,8 +174,7 @@ def custom_write_stub(resource, pyfile):
                 resource=resource, custom_api='\n\n'.join(api_content)))
 
 
-OpInfo = collections.namedtuple('OpInfo',
-                                ['so_name', 'build_directory', 'out_dtypes'])
+OpInfo = collections.namedtuple('OpInfo', ['so_name', 'so_path'])
 
 
 class CustomOpInfo:
@@ -197,8 +195,8 @@ class CustomOpInfo:
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
-    def add(self, op_name, so_name, build_directory=None, out_dtypes=None):
-        self.op_info_map[op_name] = OpInfo(so_name, build_directory, out_dtypes)
+    def add(self, op_name, so_name, so_path=None):
+        self.op_info_map[op_name] = OpInfo(so_name, so_path)
 
     def last(self):
         """
@@ -266,7 +264,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append link flags
     extra_link_args = kwargs.get('extra_link_args', [])
-    extra_link_args.extend(['-lpaddle_framework', '-lcudart'])
+    extra_link_args.append('-lpaddle_framework')
+    if use_cuda:
+        extra_link_args.append('-lcudart')
+
     kwargs['extra_link_args'] = extra_link_args
 
     kwargs['language'] = 'c++'
@@ -533,7 +534,6 @@ def _write_setup_file(name,
         name='{name}',
         ext_modules=[
             {prefix}Extension(
-                name='{name}',
                 sources={sources},
                 include_dirs={include_dirs},
                 extra_compile_args={extra_compile_args},
