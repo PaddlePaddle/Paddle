@@ -131,8 +131,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     // void* recvbuff = out->mutable_data<T>(place);
 
 
-    int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::HCCLCommContext::Instance().Get(rid, place);
+    //int rid = ctx.Attr<int>("ring_id");
+    auto comm = platform::HCCLCommContext::Instance().Get();
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

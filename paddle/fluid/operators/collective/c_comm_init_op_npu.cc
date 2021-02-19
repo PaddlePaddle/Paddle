@@ -40,7 +40,7 @@ class CCommInitOpNPU : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    string rank_table_file = Attr<string>("rank_table_file");
+    std::string rank_table_file = Attr<std::string>("rank_table_file");
     int rank_id = Attr<int>("rank_id");
     int device_id = Attr<int>("device_id");
     platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file,
@@ -56,7 +56,7 @@ CCommInit operator on NPU
 
 Initialize collective communication context within this trainer
 )DOC");
-    AddAttr<string>("rank_table_file",
+    AddAttr<std::string>("rank_table_file",
         "(string) path to rank_table_file");
     AddAttr<int>("rank_id", "(int) world rank id of the process");
     AddAttr<int>("device_id", "(int) device id of the process/thread");

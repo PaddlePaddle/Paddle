@@ -32,9 +32,9 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
-    int rid = ctx.Attr<int>("ring_id");
+    //int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get(rid, place);
+    auto comm = platform::HCCLCommContext::Instance().Get();
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
