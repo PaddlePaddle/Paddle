@@ -373,9 +373,17 @@ def load(name,
     file_path = os.path.join(build_directory, "setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
-    # TODO(Aurelius84): split cflags and cuda_flags
     if extra_cflags is None: extra_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
+    assert isinstance(
+        extra_cflags, list
+    ), "Required type(extra_cflags) == list[str], but received {}".format(
+        extra_cflags)
+    assert isinstance(
+        extra_cuda_cflags, list
+    ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
+        extra_cuda_cflags)
+
     log_v("additional extra_cflags: [{}], extra_cuda_cflags: [{}]".format(
         ' '.join(extra_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
