@@ -62,9 +62,10 @@ class GroupNormOpConverter : public OpConverter {
 
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
                                          static_cast<void*>(scale_data),
-                                         scale_numel};
-    TensorRTEngine::Weight bias_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_data), bias_numel};
+                                         static_cast<size_t>(scale_numel)};
+    TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
+                                        static_cast<void*>(bias_data),
+                                        static_cast<size_t>(bias_numel)};
 
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;
@@ -75,10 +76,10 @@ class GroupNormOpConverter : public OpConverter {
       bias_nv_dims.d[i] = bias_dims.at(i);
     }
 
-    auto* scale_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_nv_dims, scale_weights);
-    auto* bias_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, bias_nv_dims, bias_weights);
+    auto* scale_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_nv_dims,
+                                             scale_weights.get());
+    auto* bias_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, bias_nv_dims,
+                                            bias_weights.get());
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(input_itensor);
