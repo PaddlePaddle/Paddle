@@ -313,6 +313,7 @@ __global__ void KeBilinearInterpBw2(
   int cnt = 0;
   const int block_per_threads = blockDim.x;
   __shared__ T s_data[share_size];
+  __shared__ int max_index_s_data;
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -361,7 +362,7 @@ __global__ void KeBilinearInterpBw2(
            s_idx += block_per_threads) {
         s_data[s_idx] = 0;
       }
-      __syncthreads();
+      int max_s_index = (input_index + h_id * in_img_w + w_id) % share_size;
       platform::CudaAtomicAdd(&s_data[input_index % share_size],
                               h2lambda * w2lambda * out_pos);
       platform::CudaAtomicAdd(&s_data[(input_index + w_id) % share_size],
@@ -369,47 +370,21 @@ __global__ void KeBilinearInterpBw2(
       platform::CudaAtomicAdd(
           &s_data[(input_index + h_id * in_img_w) % share_size],
           h1lambda * w2lambda * out_pos);
-      platform::CudaAtomicAdd(
-          &s_data[(input_index + h_id * in_img_w + w_id) % share_size],
-          h1lambda * w1lambda * out_pos);
+      platform::CudaAtomicAdd(&s_data[max_s_index],
+                              h1lambda * w1lambda * out_pos);
       __syncthreads();
 
-      // cnt += 1;
-      // printf(
-      //     "[loop Count] : %d\n"
-      //     "[idx_1]: %d\t[s_data]: %f\n"
-      //     "[idx_2]: %d\t[s_data]: %f\n"
-      //     "[idx_3]: %d\t[s_data]: %f\n"
-      //     "[idx_4]: %d\t[s_data]: %f\n\n",
-      //     cnt, input_index % share_size,
-      //     ((double)s_data[input_index % share_size]),
-      //     (input_index + w_id) % share_size,
-      //     ((double)s_data[(input_index + w_id) % share_size]),
-      //     ((input_index + h_id * in_img_w) % share_size),
-      //     ((double)s_data[(input_index + h_id * in_img_w) % share_size]),
-      //     ((input_index + h_id * in_img_w + w_id) % share_size),
-      //     ((double)
-      //          s_data[(input_index + h_id * in_img_w + w_id) % share_size]));
-      if ((threadIdx.x % share_size) < (in_img_w * in_img_h * 3)) {
-        in[input_index] += s_data[input_index % share_size];
-        // in[input_index + w_id] += s_data[(input_index + w_id) % share_size];
-        // in[input_index + h_id * in_img_w] += s_data[(input_index + h_id *
-        // in_img_w) % share_size];
-        // in[input_index + h_id * in_img_w + w_id] += s_data[(input_index +
-        // h_id * in_img_w + w_id) % share_size];
+      max_index_s_data = max_s_index;
+      // printf("[max_s_index]: %d\n", max_index_s_data);
+
+      if (threadIdx.x < max_index_s_data) {
+        in[input_index + threadIdx.x] += s_data[threadIdx.x];
+        // __syncthreads();
+        // printf("[input_index]: %d, [input_index + threadIdx.x]: %d, [in_val]:
+        // %f\t[s_idx]: %d, [s_data]: %f\n", input_index,
+        //         (input_index + threadIdx.x), ((double)in[input_index]),
+        //         threadIdx.x, ((double)s_data[threadIdx.x]) );
       }
-      __syncthreads();
-      // printf(
-      //     "[loop Count] : %d\n"
-      //     "[idx_1]: %d\t[in_data]: %f\n"
-      //     "[idx_2]: %d\t[in_data]: %f\n"
-      //     "[idx_3]: %d\t[in_data]: %f\n"
-      //     "[idx_4]: %d\t[in_data]: %f\n\n",
-      //     cnt, input_index, ((double)in[input_index]), (input_index + w_id),
-      //     ((double)in[input_index + w_id]), (input_index + h_id * in_img_w),
-      //     ((double)in[input_index + h_id * in_img_w]),
-      //     (input_index + h_id * in_img_w + w_id),
-      //     ((double)in[input_index + h_id * in_img_w + w_id]));
     } else {
       T* in_pos;
       in_pos = &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
@@ -1323,6 +1298,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+  std::cout << "n :" << n << std::endl;
+  std::cout << "c :" << c << std::endl;
+  std::cout << "in_d :" << in_d << std::endl;
+  std::cout << "in_h :" << in_h << std::endl;
+  std::cout << "in_w :" << in_w << std::endl;
 
   auto interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
@@ -1413,6 +1393,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
                               : static_cast<float>(new_scale_w);
   }
+
+  std::cout << "out_h :" << out_h << std::endl;
+  std::cout << "out_w :" << out_w << std::endl;
 
   int in_hw = in_h * in_w;
   int out_hw = out_h * out_w;
