@@ -638,11 +638,8 @@ class _BatchNormBase(layers.Layer):
         raise NotImplementedError("BatchNorm Base data format error")
 
     def forward(self, input):
-
         self._check_data_format(self._data_format)
-
         self._check_input_dim(input)
-
         if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
