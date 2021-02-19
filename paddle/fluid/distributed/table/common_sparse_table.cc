@@ -30,7 +30,61 @@ class ValueBlock;
 namespace paddle {
 namespace distributed {
 
-// enum SaveMode { all, base, delta };
+void nondecay_func(const uint64_t* keys,
+                  float* update_values,
+                  const std::vector<uint64_t>& offsets,
+                  ValueBlock* block,
+                  const float coeff,
+                  const int param_offset,
+                  const int param_dim) {
+  return;
+}
+
+void l1decay_func(const uint64_t* keys,
+                  float* update_values,
+                  const std::vector<uint64_t>& offsets,
+                  ValueBlock* block,
+                  const float coeff,
+                  const int param_offset,
+                  const int param_dim) {
+  for (auto x : offsets) {
+    auto id = keys[x];
+    if (!block->GetEntry(id)) continue;
+    auto* value = block->Get(id);
+    float* param = value + param_offset;
+    float* grad = update_values + x * param_dim;
+
+    for(auto i = 0; i < param_dim; ++i) {
+      auto tmp = *(param + i);
+      *(grad + i) += coeff * ((fabs(tmp) < 1.0) ? tmp : ((tmp > 0.0) ? 1.0 : -1.0));
+    }
+  }
+}
+
+void l2decay_func(const uint64_t* keys, 
+                  float* update_values,
+                  const std::vector<uint64_t>& offsets,
+                  ValueBlock* block,
+                  const float coeff,
+                  const int param_offset,
+                  const int param_dim) {
+  auto blas = GetBlas<float>();
+  for (auto x : offsets) {
+    auto id = keys[x];
+    if (!block->GetEntry(id)) continue;
+    auto* value = block->Get(id);
+    float* param = value + param_offset;
+
+    std::vector<float> tmp;
+    tmp.resize(param_dim);
+
+    blas.VCOPY(param_dim, param, tmp.data());
+    blas.SCAL(param_dim, coeff, tmp.data());
+
+    float* grad = update_values + x * param_dim;
+    blas.VADD(param_dim, grad, tmp.data(), grad);
+  }
+}
 
 struct Meta {
   std::string param;
@@ -325,6 +379,36 @@ int32_t CommonSparseTable::initialize() {
     optimizer_attrs_[pairs[0]] = std::stof(pairs[1]);
   }
 
+  auto regularizer = string::split_string<std::string>(common.regularizer(), "&");
+  if (regularizer[0] == "l1decay") {
+    regularizer_func_ = std::bind(l1decay_func, 
+                                  std::placeholders::_1,
+                                  std::placeholders::_2,
+                                  std::placeholders::_3,
+                                  std::placeholders::_4,
+                                  std::stof(regularizer[1]),
+                                  param_offset_,
+                                  param_dim_);
+  } else if (regularizer[0] == "l2decay") {
+    regularizer_func_ = std::bind(l2decay_func,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2,
+                                  std::placeholders::_3,
+                                  std::placeholders::_4,
+                                  std::stof(regularizer[1]),
+                                  param_offset_,
+                                  param_dim_);
+  } else {
+    regularizer_func_ = std::bind(nondecay_func,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2,
+                                  std::placeholders::_3,
+                                  std::placeholders::_4,
+                                  0.0,
+                                  param_offset_,
+                                  param_dim_);
+  }
+
   initialize_value();
   initialize_optimizer();
   initialize_recorder();
@@ -584,6 +668,7 @@ int32_t CommonSparseTable::_push_sparse(const uint64_t* keys,
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
         [this, shard_id, &keys, &values, num, &offset_bucket]() -> int {
           auto& offsets = offset_bucket[shard_id];
+          regularizer_func_(keys, const_cast<float*>(values), offsets, shard_values_[shard_id].get());
           optimizer_->update(keys, values, num, offsets,
                              shard_values_[shard_id].get());
           return 0;

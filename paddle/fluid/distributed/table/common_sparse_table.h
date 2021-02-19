@@ -101,6 +101,11 @@ class CommonSparseTable : public SparseTable {
   std::vector<std::shared_ptr<ValueBlock>> shard_values_;
   std::unordered_map<uint64_t, ReservoirValue<float>> pull_reservoir_;
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
+
+  std::function<void(const uint64_t* keys, 
+                     float* update_values,
+                     const std::vector<uint64_t>& offsets, 
+                     ValueBlock* block)> regularizer_func_;
 };
 
 }  // namespace distributed

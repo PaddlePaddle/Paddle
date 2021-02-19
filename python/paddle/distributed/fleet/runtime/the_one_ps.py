@@ -68,6 +68,7 @@ class CommonAccessor:
         self.initializers = []
         self.entry_attr = None
         self.optimizer_attrs = []
+        self.regularizer = None
         self.opt_input_map = {}
         self.opt_attr_map = {}
         self.opt_init_map = {}
@@ -210,6 +211,8 @@ class CommonAccessor:
    
         if is_sparse:
             self.entry_attr = self.get_entry_attr(param_name, main_program)
+            regularizer = main_program.global_block().var(param_name).regularizer
+            self.regularizer = regularizer if regularizer is not None else "none"
 
         self.params = params
         self.dims = dims
@@ -228,6 +231,9 @@ class CommonAccessor:
             attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
+
+        if self.regularizer:
+            attrs += "regularizer:  \"{}\" ".format(self.regularizer)
 
         for attr in self.optimizer_attrs:
             attrs += "optimizer_attrs:  \"{}\" ".format(attr)

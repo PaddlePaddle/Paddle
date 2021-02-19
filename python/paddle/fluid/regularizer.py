@@ -238,7 +238,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             return decay
 
     def __str__(self):
-        return "L2Decay, regularization_coeff=%f" % self._regularization_coeff
+        return "l2decay&%f" % self._regularization_coeff
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
@@ -346,7 +346,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         return decay
 
     def __str__(self):
-        return "L1Decay, regularization_coeff=%f" % self._regularization_coeff
+        return "l1decay&%f" % self._regularization_coeff
 
 
 # We short the class name, since users will use the regulaizer with the package

@@ -144,6 +144,7 @@ message CommonAccessorParameter {
   optional int32 trainer_num = 8;
   optional bool sync = 9;
   optional string entry_attr = 10;
+  optional string regularizer = 11;
 }
 
 message TableAccessorSaveParameter {
