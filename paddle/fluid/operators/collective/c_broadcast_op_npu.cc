@@ -28,13 +28,14 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(x->type());
+    hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
+    
+    auto out = ctx.Output<framework::LoDTensor>("Out");
 
-    //int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get();
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get();
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -45,15 +46,16 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
+    std::string tag = ctx.Attr<std::string>("tag");
+    std::string group = ctx.Attr<std::string>("group");
+
     if (root == comm->rank()) {
       // PADDLE_ENFORCE_ASCEND_SUCCESS(platform::dynload::HcclBroadcast(
       //     reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
       //     root, comm->comm(), stream));
 
-      platform::dynload::HcclBroadcast(
-          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
-          root, comm->comm(), stream);
-
+      platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                   dtype, root, group.c_str(), (void*)stream);
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
@@ -64,14 +66,10 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
             static_cast<framework::Tensor*>(out));
       }
     } else {
-      
-          platform::dynload::HcclBroadcast(out->mutable_data<T>(place), numel,
-                                       dtype, root, comm->comm(), stream);
-      // PADDLE_ENFORCE_ASCEND_SUCCESS(
-      //     platform::dynload::HcclBroadcast(out->mutable_data<T>(place), numel,
-      //                                  dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
+        platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                     dtype, root, group.c_str(), (void*)stream);
+        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+                << framework::product(out->dims());
     }
 
     out->Resize(x->dims());
@@ -89,7 +87,8 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_broadcast, ops::CBroadcastOpASCENDKernel<float>,
+REGISTER_OP_NPU_KERNEL(c_broadcast, 
+                        ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<int>,
-                        ops::CBroadcastOpASCENDKernel<int64_t>,
+                        ops::CBroadcastOpASCENDKernel<int8_t>,
                         ops::CBroadcastOpASCENDKernel<plat::float16>);

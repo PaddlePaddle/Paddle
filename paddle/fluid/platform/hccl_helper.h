@@ -46,25 +46,16 @@
 
 namespace paddle {
 namespace platform {
-  
-// HcclDataType description
-// HCCL_DATA_TYPE_INT8 = 0,   /**< int8 */
-// HCCL_DATA_TYPE_INT16 = 1,  /**< int16 */
-// HCCL_DATA_TYPE_INT32 = 2,  /**< int32 */
-// HCCL_DATA_TYPE_FP16 = 3,   /**< fp16 */
-// HCCL_DATA_TYPE_FP32 = 4,   /**< fp32 */
-// HCCL_DATA_TYPE_INT64 = 5,  /**< int64 */
-// HCCL_DATA_TYPE_UINT64 = 6, /**< uint64 */
 
-inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
+inline hcclDataType_t ToHCCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
-    return HCCL_DATA_TYPE_FP32;
+    return HCCL_DATA_TYPE_FLOAT;
   } else if (type == framework::proto::VarType::FP16) {
-    return HCCL_DATA_TYPE_FP16;
+    return HCCL_DATA_TYPE_HALF;
   }else if (type == framework::proto::VarType::INT32) {
-    return HCCL_DATA_TYPE_INT32;
-  } else if (type == framework::proto::VarType::INT64) {
-    return HCCL_DATA_TYPE_INT64;
+    return HCCL_DATA_TYPE_INT;
+  } else if (type == framework::proto::VarType::INT8) {
+    return HCCL_DATA_TYPE_INT8;
   // } 
   // } else if (type == framework::proto::VarType::FP64) {
   //   return HCCL_DATA_TYPE_FP32;

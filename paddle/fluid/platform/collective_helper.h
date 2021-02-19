@@ -20,10 +20,10 @@
 #include <vector>
 
 #include "boost/variant.hpp"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/dynload/hccl.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace platform {
@@ -152,7 +152,6 @@ class HCCLComm {
   virtual std::string rank_table_file() const = 0;
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
-  virtual HcclComm comm() const = 0;
   virtual aclrtStream stream() const = 0;
   virtual NPUDeviceContext* dev_context() const = 0;
   virtual ~HCCLComm() = default;

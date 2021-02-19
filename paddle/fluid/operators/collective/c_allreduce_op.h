@@ -119,20 +119,19 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
     auto place = ctx.GetPlace();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
 
     int64_t numel = in->numel();
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
 
-    // void* sendbuff = in->data<void>();
-
     out->Resize(in->dims());
     void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
-    // void* recvbuff = out->mutable_data<T>(place);
 
+    std::string tag = ctx.Attr<std::string>("tag");
+    std::string group = ctx.Attr<std::string>("group");
 
     //int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::HCCLCommContext::Instance().Get();
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get();
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -142,30 +141,31 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
+    hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
     switch (red_type) {
       case kRedSum:
-        hccl_red_type = HCCL_REDUCE_SUM;
+        hccl_red_type = HCCL_REP_OP_SUM;
         break;
 
       case kRedMax:
-        hccl_red_type = HCCL_REDUCE_MAX;
+        hccl_red_type = HCCL_REP_OP_MAX;
         break;
 
       case kRedMin:
-        hccl_red_type = HCCL_REDUCE_MIN;
+        hccl_red_type = HCCL_REP_OP_MIN;
         break;
 
       case kRedProd:
-        hccl_red_type = HCCL_REDUCE_PROD;
+        hccl_red_type = HCCL_REP_OP_PROD;
         break;
 
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Invalid reduce type: %d", red_type));
     }
-    platform::dynload::HcclAllReduce(
-        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(), stream);
+
+    platform::dynload::hcom_all_reduce(
+        tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream);
 
     // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::HcclAllReduce(
     //     sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(), stream));
