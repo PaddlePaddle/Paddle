@@ -232,6 +232,7 @@ if [ ${PRECISION_TEST:-OFF} == "ON"] && [[ "$precision_cases" != ""]];then
                 UT_list_prec=$case
             else
                 UT_list_prec=$UT_list_prec'\n'$case
+            fi
         else
             echo $case "won't run in PRECISION_TEST mode."
         fi
