@@ -52,7 +52,6 @@ constexpr int NPY_COMPLEX128 = 15;
 // Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
-
 template <>
 struct npy_format_descriptor<paddle::platform::float16> {
   static py::dtype dtype() {
