@@ -150,8 +150,8 @@ class NPUDeviceContext;
 class HCCLComm {
  public:
   virtual std::string rank_table_file() const = 0;
-  virtual int rank() const = 0;
-  virtual int device_id() const = 0;
+  virtual uint32_t rank() const = 0;
+  virtual uint32_t device_id() const = 0;
   virtual aclrtStream stream() const = 0;
   virtual NPUDeviceContext* dev_context() const = 0;
   virtual ~HCCLComm() = default;
@@ -165,9 +165,9 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(const std::string& config_file, int rank, int dev_id);
+  HCCLComm* CreateHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id) const;
 
-  void CreateHCCLGroup(const std::string& group_name, int nranks, const std::vector<int>& rank_ids);
+  void CreateHCCLGroup(const std::string& group_name, uint32_t nranks, const std::vector<uint32_t>& rank_ids);
 
   // retrieve a communicator by the ring id and place
   HCCLComm* Get() const {
@@ -178,7 +178,7 @@ class HCCLCommContext {
   std::mutex comm_map_mutex_;
   std::unique_ptr<HCCLComm> comm_;
 
-  void ReleaseHCCLComms();
+  HCCLComm* AssignHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id) const;
 
   HCCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
