@@ -44,7 +44,7 @@ void l1decay_func(const uint64_t* keys,
                   float* update_values,
                   const std::vector<uint64_t>& offsets,
                   ValueBlock* block,
-                  const float coeff,
+                  float coeff,
                   const int param_offset,
                   const int param_dim) {
   for (auto x : offsets) {
@@ -65,7 +65,7 @@ void l2decay_func(const uint64_t* keys,
                   float* update_values,
                   const std::vector<uint64_t>& offsets,
                   ValueBlock* block,
-                  const float coeff,
+                  float coeff,
                   const int param_offset,
                   const int param_dim) {
   auto blas = GetBlas<float>();
@@ -78,6 +78,34 @@ void l2decay_func(const uint64_t* keys,
     std::vector<float> tmp;
     tmp.resize(param_dim);
 
+    blas.VCOPY(param_dim, param, tmp.data());
+    blas.SCAL(param_dim, coeff, tmp.data());
+
+    float* grad = update_values + x * param_dim;
+    blas.VADD(param_dim, grad, tmp.data(), grad);
+  }
+}
+
+void dynamic_l2decay_func(const uint64_t* keys,
+                          float* update_values,
+                          const std::vector<uint64_t>& offsets,
+                          ValueBlock* block,
+                          float coeff,
+                          const int param_offset,
+                          const int param_dim) {
+  auto blas = GetBlas<float>();
+  for (auto x : offsets) {
+    auto id = keys[x];
+    if (!block->GetEntry(id)) continue;
+    auto val = block->GetValue(id);
+    auto* value = val->data_.data();
+    auto count = val->count_;
+    float* param = value + param_offset;
+
+    std::vector<float> tmp;
+    tmp.resize(param_dim);
+ 
+    coeff = coeff / count;
     blas.VCOPY(param_dim, param, tmp.data());
     blas.SCAL(param_dim, coeff, tmp.data());
 
@@ -391,6 +419,15 @@ int32_t CommonSparseTable::initialize() {
                                   param_dim_);
   } else if (regularizer[0] == "l2decay") {
     regularizer_func_ = std::bind(l2decay_func,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2,
+                                  std::placeholders::_3,
+                                  std::placeholders::_4,
+                                  std::stof(regularizer[1]),
+                                  param_offset_,
+                                  param_dim_);
+  } else if (regularizer[0] == "dynamic_l2decay") {
+    regularizer_func_ = std::bind(dynamic_l2decay_func,
                                   std::placeholders::_1,
                                   std::placeholders::_2,
                                   std::placeholders::_3,

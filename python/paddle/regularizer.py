@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['L1Decay', 'L2Decay']
+__all__ = ['L1Decay', 'L2Decay', 'DynamicL2Decay']
 
 import paddle.fluid as fluid
 
@@ -139,3 +139,7 @@ class L2Decay(fluid.regularizer.L2Decay):
 
     def __init__(self, coeff=0.0):
         super(L2Decay, self).__init__(coeff)
+
+class DynamicL2Decay(fluid.regularizer.DynamicL2Decay):
+    def __init__(self, coeff=0.0):
+        super(DynamicL2Decay, self).__init__(coeff)

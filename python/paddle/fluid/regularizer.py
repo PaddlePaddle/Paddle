@@ -19,7 +19,7 @@ from . import framework
 from .framework import in_dygraph_mode, _varbase_creator
 from . import core
 
-__all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
+__all__ = ['L1Decay', 'L2Decay', 'DynamicL2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer', 'DynamicL2DecayRegularizer']
 
 
 def _create_regularization_of_grad(param, grad, regularization=None):
@@ -241,6 +241,21 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         return "l2decay&%f" % self._regularization_coeff
 
 
+class DynamicL2DecayRegularizer(WeightDecayRegularizer):
+    def __init__(self, regularization_coeff=0.0):
+        assert regularization_coeff is not None
+        super(DynamicL2DecayRegularizer, self).__init__()
+        self._regularization_coeff = regularization_coeff
+
+    def __call__(self, param, grad, block):
+        assert isinstance(param, framework.Parameter)
+        assert isinstance(block, framework.Block)
+        assert isinstance(grad.type, core.VarDesc.VarType.SELECTED_ROWS)
+
+    def __str__(self):
+        return "dynamic_l2decay&%f" % self._regularization_coeff
+
+
 class L1DecayRegularizer(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
@@ -360,3 +375,4 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 # It is no need to add a `Regularizer` as the class suffix
 L1Decay = L1DecayRegularizer
 L2Decay = L2DecayRegularizer
+DynamicL2Decay = DynamicL2DecayRegularizer
