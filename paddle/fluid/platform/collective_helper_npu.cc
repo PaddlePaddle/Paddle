@@ -48,7 +48,7 @@ class HCCLCommImpl : public HCCLComm {
   std::unique_ptr<DeviceContext> dev_ctx_;
 };
 
-NCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
+HCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
                                           int rank, int dev_id) {
   PADDLE_ENFORCE_NOT_NULL(rank_table_file,
                           platform::errors::InvalidArgument(
@@ -61,12 +61,12 @@ NCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
       platform::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
 
-  HcclComm comm = nullptr;
+  // HcclComm comm = nullptr;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      platform::dynload::HcclCommInitClusterInfo(rank_table_file, rank, &comm));
+  // PADDLE_ENFORCE_NPU_SUCCESS(
+  //     platform::dynload::HcclCommInitClusterInfo(rank_table_file, rank, &comm));
 
-  auto* comm_wrapper = AssignHCCLComm(comm, nranks, rank, dev_id, ring_id);
+  auto* comm_wrapper = AssignHCCLComm(nranks, rank, dev_id, ring_id);
 
   VLOG(1) << "hccl communicator of rank " << rank << " has been created on device " << dev_id;
 
@@ -77,7 +77,7 @@ NCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
   return comm_wrapper;
 }
 
-NCCLComm* HCCLCommContext::AssignHCCLComm(ncclComm_t comm, string rank_table_file, int rank, int dev_id) {
+HCCLComm* HCCLCommContext::AssignHCCLComm(string rank_table_file, int rank, int dev_id) {
   std::unique_ptr<NPUDeviceContext> dev_ctx(
       new NPUDeviceContext(NPUPlace(dev_id)));
 
@@ -85,7 +85,7 @@ NCCLComm* HCCLCommContext::AssignHCCLComm(ncclComm_t comm, string rank_table_fil
   c->set_rank_table_file(rank_table_file);
   c->set_rank(rank);
   c->set_device_id(dev_id);
-  c->set_comm(comm);
+  // c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
 
   // comm_map_mutex_.lock();
@@ -99,7 +99,7 @@ NCCLComm* HCCLCommContext::AssignHCCLComm(ncclComm_t comm, string rank_table_fil
 
   auto* dev_ctx = static_cast<platform::NPUDeviceContext*>(
       platform::DeviceContextPool::Instance().Get(platform::NPUPlace(dev_id)));
-  dev_ctx->set_hccl_comm(comm);
+  // dev_ctx->set_hccl_comm(comm);
 
   // return comm_map_[ring_id][dev_id].get();
   return c;
@@ -117,10 +117,10 @@ void HCCLCommContext::CreateHCCLGroup(const std::string& group_name, int nranks,
                           platform::errors::InvalidArgument(
                               "The rank ids should not be null."));
 
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      platform::dynload::HcclCommInitClusterInfo(rank_table_file, rank, &comm));
+  // PADDLE_ENFORCE_NPU_SUCCESS(
+  //     platform::dynload::HcclCommInitClusterInfo(rank_table_file, rank, &comm));
 
-  VLOG(1) << "hccl group with name " << group_name << " has been created;
+  VLOG(1) << "hccl group with name " << group_name << " has been created";
 }
 
 void HCCLCommContext::ReleaseHCCLComms() {

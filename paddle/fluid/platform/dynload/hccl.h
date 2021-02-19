@@ -13,18 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <hccl/hccl.h>
-#include <hccl/hccl_types.h>
+// #include <hccl/hccl.h>
+// #include <hccl/hccl_types.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
-
-HcclResult HcomCreateGroup(const char *group, uint32_t rankNum, uint32_t *rankIds);
-HcclResult HcomSend(const char *tag, void *inputPtr, uint64_t count, HcclDataType dataType,
-    uint32_t destRank, uint32_t srTag, const char *group, void* stream);
-HcclResult HcomReceive(const char *tag, void *outputPtr, uint64_t count, HcclDataType dataType,
-    uint32_t srcRank, uint32_t srTag, const char *group, void* stream);
+#include "paddle/fluid/platform/dynload/hcom.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {
@@ -47,18 +42,25 @@ extern void* hccl_dso_handle;
   };                                                                     \
   extern DynLoad__##__name __name
 
-#define HCCL_RAND_ROUTINE_EACH(__macro) \
-  __macro(HcclCommInitClusterInfo);     \
-  __macro(HcclGetRootInfo);             \
-  __macro(HcclCommInitRootInfo);        \
-  __macro(HcclAllReduce);               \
-  __macro(HcclBroadcast);               \
-  __macro(HcomCreateGroup);             \
-  __macro(HcomSend);                    \
-  __macro(HcomReceive);                 \
-  __macro(HcclAllGather);               \
-  __macro(HcclReduceScatter);           \
-  __macro(HcclCommDestroy); 
+#define HCCL_RAND_ROUTINE_EACH(__macro)         \
+  __macro(hcom_init);                           \
+  __macro(hcom_destroy);                        \
+  __macro(hcom_send);                           \
+  __macro(hcom_receive);                        \
+  __macro(hcom_broadcast);                      \
+  __macro(hcom_all_gather);                     \
+  __macro(hcom_all_reduce);                     \
+  __macro(hcom_reduce_scatter);                 \
+  __macro(hcom_create_group);                   \
+  __macro(hcom_destroy_group);                  \
+  __macro(hcom_get_rank_id);                    \
+  __macro(hcom_get_local_rank_id);              \
+  __macro(hcom_get_local_rank_size);            \
+  __macro(hcom_get_split_strategy);             \
+  __macro(hcom_set_split_strategy_by_size);     \
+  __macro(hcom_set_split_strategy_by_index);    \
+  __macro(hcom_get_group_rank_from_world_rank); \
+  __macro(hcom_get_world_rank_from_group_rank); 
 
 HCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)
 
