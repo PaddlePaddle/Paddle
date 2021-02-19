@@ -678,7 +678,7 @@ EOF
                     echo "There are failed tests, which have been successful after re-run,but success rate is less than 50%:"
                     echo "========================================"
                     echo "The following tests have been re-ran:"
-                    echo "${retry_unittests_record_judge}" | tr ' ' '\n' 
+                    echo "${retry_unittests_record_judge}" 
                     exit 8;
                 fi
             fi
