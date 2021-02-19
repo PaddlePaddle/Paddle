@@ -22,7 +22,9 @@ setup(
     ext_modules=[
         CUDAExtension(
             name='simple_setup_relu2',
-            sources=['relu_op_simple.cc', 'relu_op_simple.cu'],
+            sources=[
+                'relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'
+            ],  # test for multi ops
             include_dirs=paddle_includes,
             extra_compile_args=extra_compile_args)
     ])

@@ -109,7 +109,18 @@ class OpConverter {
           it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
     }
-
+    if (op_desc.Type() == "transpose2") {
+      it = Registry<OpConverter>::Global().Lookup("transpose");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
+    if (op_desc.Type() == "flatten2") {
+      it = Registry<OpConverter>::Global().Lookup("flatten");
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+    }
     if (!it) {
       it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
