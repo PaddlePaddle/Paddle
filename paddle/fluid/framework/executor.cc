@@ -467,6 +467,13 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
       PADDLE_THROW(
           platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
+    } else if (platform::is_npu_place(place_)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "No NPU gc found in CPU/GPU/XPU paddle"));
+#endif
     }
   }
 
