@@ -125,8 +125,6 @@ T *Tensor::mutable_data() {
 #ifdef PADDLE_WITH_CUDA
     case static_cast<int>(PlaceType::kGPU): {
       int device_num = platform::GetCurrentDeviceId();
-      VLOG(1) << "Custom Operator: mutable data cuda device id - "
-              << device_num;
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
     }
 #endif

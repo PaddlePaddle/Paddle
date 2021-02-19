@@ -290,12 +290,12 @@ class OpMetaInfoBuilder {
 /////////////////////// Op register API /////////////////////////
 
 // For inference: compile directly with framework
-// Call after PD_BUILD_OPERATOR(...)
+// Call after PD_BUILD_OP(...)
 void RegisterAllCustomOperator();
 
 /////////////////////// Op register Macro /////////////////////////
 
-#define PD_BUILD_OPERATOR(op_name)                                      \
+#define PD_BUILD_OP(op_name)                                            \
   static ::paddle::OpMetaInfoBuilder __op_meta_info_##__COUNTER__##__ = \
       ::paddle::OpMetaInfoBuilder(op_name)
 

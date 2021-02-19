@@ -612,7 +612,7 @@ def parse_op_name_from(sources):
 
     def regex(content):
         if USING_NEW_CUSTOM_OP_LOAD_METHOD:
-            pattern = re.compile(r'BUILD_OPERATOR\(([^,]+),')
+            pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         else:
             pattern = re.compile(r'REGISTER_OPERATOR\(([^,]+),')
 
