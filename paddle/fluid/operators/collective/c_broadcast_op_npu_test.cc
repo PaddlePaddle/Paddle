@@ -39,7 +39,7 @@ namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
-USE_NO_KERNEL_OP(c_comm_init);
+USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
@@ -54,7 +54,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   attrs["device_id"]=device_id;
   
   auto op =
-      f::OpRegistry::CreateOp("c_comm_init", {}, {}, attrs);
+      f::OpRegistry::CreateOp("c_comm_init_hccl", {}, {}, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
