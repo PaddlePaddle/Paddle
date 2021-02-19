@@ -38,9 +38,19 @@ logger = logging.getLogger("utils.cpp_extension")
 
 OS_NAME = sys.platform
 IS_WINDOWS = OS_NAME.startswith('win')
-NVCC_COMPILE_FLAGS = [
-    '-ccbin', 'cc', '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO',
-    '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr', '-O3', '-DNVCC'
+
+MSVC_COMPILE_FLAGS = [
+    '/MT', '/wd4819', '/wd4251', '/wd4244', '/wd4267', '/wd4275', '/wd4018',
+    '/wd4190', '/EHsc', '/w', '/DPADDLE_WITH_CUDA', '/DEIGEN_USE_GPU',
+    '/DNDEBUG'
+]
+
+MSVC_LINK_FLAGS = [
+    '/MACHINE:X64', 'paddle_framework.lib', 'cudadevrt.lib', 'cudart_static.lib'
+]
+
+COMMON_NVCC_FLAGS = [
+    '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO', '-O3'
 ]
 
 GCC_MINI_VERSION = (5, 4, 0)
@@ -81,8 +91,8 @@ information
 USING_NEW_CUSTOM_OP_LOAD_METHOD = True
 
 
-# NOTE(chenweihang): In order to be compatible with 
-# the two custom op define method, after removing 
+# NOTE(chenweihang): In order to be compatible with
+# the two custom op define method, after removing
 # old method, we can remove them together
 def use_new_custom_op_load_method(*args):
     global USING_NEW_CUSTOM_OP_LOAD_METHOD
@@ -210,7 +220,21 @@ def prepare_unix_cflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = NVCC_COMPILE_FLAGS + cflags + get_cuda_arch_flags(cflags)
+    cflags = COMMON_NVCC_FLAGS + [
+        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr',
+        '-DNVCC'
+    ] + cflags + get_cuda_arch_flags(cflags)
+
+    return cflags
+
+
+def prepare_win_cflags(cflags):
+    """
+    Prepare all necessary compiled flags for nvcc compiling CUDA files.
+    """
+    cflags = COMMON_NVCC_FLAGS + [
+        '-DGOOGLE_GLOG_DLL_DECL', '-DBOOST_HAS_STATIC_ASSERT', '-w'
+    ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -238,7 +262,7 @@ def get_cuda_arch_flags(cflags):
 
 
 def normalize_extension_kwargs(kwargs, use_cuda=False):
-    """ 
+    """
     Normalize include_dirs, library_dir and other attributes in kwargs.
     """
     assert isinstance(kwargs, dict)
@@ -252,23 +276,31 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
 
-    # add runtime library dirs
-    runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
-    runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
-    kwargs['runtime_library_dirs'] = runtime_library_dirs
+    if IS_WINDOWS:
+        # TODO(zhouwei): may append compile flags in future
+        pass
+        # append link flags
+        extra_link_args = kwargs.get('extra_link_args', [])
+        extra_link_args.extend(MSVC_LINK_FLAGS)
+        kwargs['extra_link_args'] = extra_link_args
+    else:
+        # append compile flags
+        extra_compile_args = kwargs.get('extra_compile_args', [])
+        extra_compile_args.extend(['-g', '-w'])  # diable warnings
+        kwargs['extra_compile_args'] = extra_compile_args
 
-    # append compile flags
-    extra_compile_args = kwargs.get('extra_compile_args', [])
-    extra_compile_args.extend(['-g', '-w'])  # diable warnings
-    kwargs['extra_compile_args'] = extra_compile_args
+        # append link flags
+        extra_link_args = kwargs.get('extra_link_args', [])
+        extra_link_args.extend('-lpaddle_framework')
+        if use_cuda:
+            extra_link_args.append('-lcudart')
 
-    # append link flags
-    extra_link_args = kwargs.get('extra_link_args', [])
-    extra_link_args.append('-lpaddle_framework')
-    if use_cuda:
-        extra_link_args.append('-lcudart')
+        kwargs['extra_link_args'] = extra_link_args
 
-    kwargs['extra_link_args'] = extra_link_args
+        # add runtime library dirs
+        runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
+        runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
+        kwargs['runtime_library_dirs'] = runtime_library_dirs
 
     kwargs['language'] = 'c++'
     return kwargs
@@ -281,21 +313,42 @@ def find_paddle_includes(use_cuda=False):
     # pythonXX/site-packages/paddle/include
     paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
+    cuda_include_dir = find_cuda_includes()
 
-    include_dirs = [paddle_include_dir, third_party_dir]
+    include_dirs = [paddle_include_dir, third_party_dir, cuda_include_dir]
+    print(include_dirs)
 
     return include_dirs
 
 
 def find_cuda_includes():
-
+    """
+    Use heuristic method to find cuda include path
+    """
     cuda_home = find_cuda_home()
     if cuda_home is None:
         raise ValueError(
             "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
         )
 
-    return [os.path.join(cuda_home, 'lib64')]
+    return os.path.join(cuda_home, 'include')
+
+
+def find_cuda_libraries():
+    """
+    Use heuristic method to find cuda static lib path
+    """
+    cuda_home = find_cuda_home()
+    if cuda_home is None:
+        raise ValueError(
+            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+        )
+    if IS_WINDOWS:
+        cuda_lib_dir = [os.path.join(cuda_home, 'lib', 'x64')]
+    else:
+        cuda_lib_dir = [os.path.join(cuda_home, 'lib64')]
+
+    return cuda_lib_dir
 
 
 def find_cuda_home():
@@ -343,8 +396,9 @@ def find_paddle_libraries(use_cuda=False):
     # pythonXX/site-packages/paddle/libs
     paddle_lib_dirs = [get_lib()]
     if use_cuda:
-        cuda_dirs = find_cuda_includes()
-        paddle_lib_dirs.extend(cuda_dirs)
+        cuda_lib_dirs = find_cuda_libraries()
+        print(cuda_lib_dirs)
+        paddle_lib_dirs.extend(cuda_lib_dirs)
     return paddle_lib_dirs
 
 
@@ -377,9 +431,12 @@ def get_build_directory(verbose=False):
         if OS_NAME.startswith('linux'):
             root_extensions_directory = os.path.join(
                 os.path.expanduser('~/.cache'), dir_name)
+        elif IS_WINDOWS:
+            root_extensions_directory = os.path.join(
+                os.path.expanduser('~\\.cache'), dir_name)
         else:
-            # TODO(Aurelius84): consider wind32/macOs
-            raise NotImplementedError("Only support Linux now.")
+            # TODO(Aurelius84): consider macOs
+            raise NotImplementedError("Not support Mac now.")
 
         log_v("$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
               format(root_extensions_directory), verbose)
@@ -410,10 +467,13 @@ def parse_op_info(op_name):
 
 def _import_module_from_library(module_name, build_directory, verbose=False):
     """
-    Load .so shared library and import it as callable python module.
+    Load shared library and import it as callable python module.
     """
-    # TODO(Aurelius84): Consider file suffix is .dll on Windows Platform.
-    ext_path = os.path.join(build_directory, module_name + '.so')
+    if IS_WINDOWS:
+        dynamic_suffix = '.pyd'
+    else:
+        dynamic_suffix = '.so'
+    ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
     if not os.path.exists(ext_path):
         raise FileNotFoundError("Extension path: {} does not exist.".format(
             ext_path))
@@ -565,12 +625,12 @@ def _write_setup_file(name,
 
 def list2str(args):
     """
-    Convert list[str] into string. For example: [x, y] -> "['x', 'y']"
+    Convert list[str] into string. For example: ['x', 'y'] -> "['x', 'y']"
     """
     if args is None: return '[]'
     assert isinstance(args, (list, tuple))
-    args = ["'{}'".format(arg) for arg in args]
-    return '[' + ','.join(args) + ']'
+    args = ["{}".format(arg) for arg in args]
+    return repr(args)
 
 
 def _jit_compile(file_path, interpreter=None, verbose=False):
@@ -583,7 +643,8 @@ def _jit_compile(file_path, interpreter=None, verbose=False):
     if interpreter is None:
         interpreter = 'python'
     try:
-        py_path = subprocess.check_output(['which', interpreter])
+        which = 'where' if IS_WINDOWS else 'which'
+        py_path = subprocess.check_output([which, interpreter])
         py_version = subprocess.check_output([interpreter, '-V'])
         if six.PY3:
             py_path = py_path.decode()
@@ -596,8 +657,13 @@ def _jit_compile(file_path, interpreter=None, verbose=False):
             'Failed to check Python interpreter with `{}`, errors: {}'.format(
                 interpreter, error))
 
-    compile_cmd = 'cd {} && {} {} build'.format(ext_dir, interpreter,
-                                                setup_file)
+    if IS_WINDOWS:
+        compile_cmd = 'cd /d {} && {} {} build'.format(ext_dir, interpreter,
+                                                       setup_file)
+    else:
+        compile_cmd = 'cd {} && {} {} build'.format(ext_dir, interpreter,
+                                                    setup_file)
+
     print("Compiling user custom op, it will cost a few seconds.....")
     run_cmd(compile_cmd, verbose)
 

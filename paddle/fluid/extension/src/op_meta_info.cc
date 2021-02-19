@@ -78,17 +78,17 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
   info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
   info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }
@@ -110,11 +110,3 @@ void RegisterAllCustomOperator() {
 }
 
 }  // namespace paddle
-
-extern "C" {
-
-paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
-  return paddle::OpMetaInfoMap::Instance();
-}
-
-}  // end extern "C"

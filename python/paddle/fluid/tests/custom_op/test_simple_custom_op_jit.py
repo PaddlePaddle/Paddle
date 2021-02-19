@@ -13,12 +13,23 @@
 # limitations under the License.
 
 import os
+import subprocess
 import unittest
 import paddle
 import numpy as np
-from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
 from test_simple_custom_op_setup import relu2_dynamic, relu2_static
+
+# Because the shared lib already exists in the cache dir,
+# it will not be compiled again unless the cache dir is cleared.
+if os.name == 'nt':
+    cmd = 'rmdir {} /s/q'.format(get_build_directory())
+else:
+    cmd = 'rm -rf {}'.format(get_build_directory())
+
+run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
 custom_module = load(

@@ -1,3 +1,22 @@
+# New custom OP can support Windows, that is test_simple_custom_op_jit/test_simple_custom_op_setup
+py_test(test_simple_custom_op_setup SRCS test_simple_custom_op_setup.py)
+py_test(test_simple_custom_op_jit SRCS test_simple_custom_op_jit.py)
+# Compiling shared library will cost some time, but running process is very fast.
+set_tests_properties(test_simple_custom_op_setup PROPERTIES TIMEOUT 250)
+set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
+
+# Old custom OP will be removed and only support Linux
+if(NOT Linux)
+    return()
+endif()
+
+py_test(test_jit_load SRCS test_jit_load.py)
+py_test(test_setup_install SRCS test_setup_install.py)
+py_test(test_setup_build SRCS test_setup_build.py)
+set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
+
 if(WITH_ROCM)
     hip_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
 elseif(WITH_GPU)
@@ -18,18 +37,3 @@ get_target_property(TARGET_LIBRARIES relu_op_shared LINK_LIBRARIES)
 LIST(REMOVE_ITEM TARGET_LIBRARIES glog)
 LIST(REMOVE_ITEM TARGET_LIBRARIES gflags)
 set_property(TARGET relu_op_shared PROPERTY LINK_LIBRARIES  ${TARGET_LIBRARIES} )
-
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
-string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
-foreach(src ${TEST_OPS})
-    py_test(${src} SRCS ${src}.py)
-endforeach()
-
-# Compiling .so will cost some time, but running process is very fast.
-set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
-set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
-set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
-
-set_tests_properties(test_simple_custom_op_setup PROPERTIES TIMEOUT 250)
-set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include <boost/any.hpp>
 
+#include "paddle/fluid/extension/include/paddle_dll_decl.h"
 #include "paddle/fluid/extension/include/tensor.h"
 
 /**
@@ -31,7 +32,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class OpMetaInfoHelper;
+class PD_DLL_DECL OpMetaInfoHelper;
 }  // namespace framework
 
 using Tensor = paddle::Tensor;
@@ -42,6 +43,26 @@ using Tensor = paddle::Tensor;
   classname(classname&&) = delete;                 \
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
+
+#if defined _WIN32
+#define HANDLE_THE_ERROR try {
+#define END_HANDLE_THE_ERROR            \
+  }                                     \
+  catch (const std::exception& e) {     \
+    std::cerr << e.what() << std::endl; \
+    throw e;                            \
+  }
+#else
+#define HANDLE_THE_ERROR
+#define END_HANDLE_THE_ERROR
+#endif
+
+#define THROW_ERROR(err_msg)           \
+  do {                                 \
+    HANDLE_THE_ERROR                   \
+    throw std::runtime_error(err_msg); \
+    END_HANDLE_THE_ERROR               \
+  } while (0)
 
 ///////////////// Util Define and Function ////////////////
 
@@ -106,7 +127,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                                                             attr_idx + 1>(
             inputs, attrs, pargs..., arg);
       } catch (boost::bad_any_cast&) {
-        throw std::runtime_error(
+        THROW_ERROR(
             "Attribute cast error in custom operator. Expected int value.");
       }
     }
@@ -220,7 +241,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
-class OpMetaInfo {
+class PD_DLL_DECL OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
@@ -246,7 +267,7 @@ class OpMetaInfo {
 
 //////////////// Op Meta Info Map /////////////////
 
-class OpMetaInfoMap {
+class PD_DLL_DECL OpMetaInfoMap {
  public:
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
@@ -270,14 +291,14 @@ class OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
-class OpMetaInfoBuilder {
+class PD_DLL_DECL OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
-  OpMetaInfoBuilder& SetKernelFn(KernelFunc&& func);
-  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc&& func);
-  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc&& func);
+  OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
+  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
+  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
   OpMetaInfoBuilder& SetBackwardOp(const std::string& bwd_op_name);
 
  private:
@@ -307,8 +328,16 @@ void RegisterAllCustomOperator();
 extern "C" {
 #endif
 
+#if defined(_WIN32)
+#define C_DLL_DECL __declspec(dllexport)
+#else
+#define C_DLL_DECL
+#endif  // _WIN32
+
 // C-API to get global OpMetaInfoMap.
-paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap();
+C_DLL_DECL inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+  return paddle::OpMetaInfoMap::Instance();
+}
 
 #ifdef __cplusplus
 }
