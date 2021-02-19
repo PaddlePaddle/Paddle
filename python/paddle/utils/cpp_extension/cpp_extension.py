@@ -147,14 +147,6 @@ class BuildExtension(build_ext, object):
 
     def build_extensions(self):
         self._check_abi()
-        for extension in self.extensions:
-            # check settings of compiler
-            if isinstance(extension.extra_compile_args, dict):
-                for compiler in ['cxx', 'nvcc']:
-                    if compiler not in extension.extra_compile_args:
-                        extension.extra_compile_args[compiler] = []
-            # add determine compile flags
-            add_compile_flag(extension, '-std=c++11')
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -384,13 +376,12 @@ def load(name,
     # TODO(Aurelius84): split cflags and cuda_flags
     if extra_cflags is None: extra_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
-    compile_flags = extra_cflags + extra_cuda_cflags
-    log_v("additonal compile_flags: [{}]".format(' '.join(compile_flags)),
-          verbose)
+    log_v("additional extra_cflags: [{}], extra_cuda_cflags: [{}]".format(
+        ' '.join(extra_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
     # write setup.py file and compile it 
     _write_setup_file(name, sources, file_path, extra_include_paths,
-                      compile_flags, extra_ldflags, verbose)
+                      extra_cflags, extra_cuda_cflags, extra_ldflags, verbose)
     _jit_compile(file_path, interpreter, verbose)
 
     # import as callable python api
