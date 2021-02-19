@@ -28,6 +28,12 @@
 namespace paddle {
 namespace distributed {
 
+class PSEnvironment;
+class PsRequestMessage;
+class PsResponseMessage;
+class ValueAccessor;
+struct Region;
+
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;
 

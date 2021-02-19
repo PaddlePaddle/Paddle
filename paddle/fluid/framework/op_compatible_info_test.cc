@@ -14,15 +14,13 @@
 
 #include "paddle/fluid/framework/op_compatible_info.h"
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include "gtest/gtest_pred_impl.h"
 
 namespace paddle {
 namespace framework {
-
-namespace proto {
-class OpCompatibleMap;
-}  // namespace proto
 
 TEST(test_op_compatible_info, test_op_compatible) {
   auto comp_map = OpCompatibleMap();

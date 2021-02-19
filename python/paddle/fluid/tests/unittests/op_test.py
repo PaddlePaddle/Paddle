@@ -221,12 +221,18 @@ def copy_bits_from_float_to_uint16(f):
     return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
 
 
-def convert_float_to_uint16(float_list):
+def convert_float_to_uint16(float_list, data_format="NCHW"):
+    if data_format == "NHWC":
+        float_list = np.transpose(float_list, [0, 3, 1, 2])
+
     new_output = []
     for x in np.nditer(float_list):
         new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+    new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
 
-    return np.reshape(new_output, float_list.shape).view(np.uint16)
+    if data_format == "NHWC":
+        new_output = np.transpose(new_output, [0, 2, 3, 1])
+    return new_output
 
 
 class OpTest(unittest.TestCase):

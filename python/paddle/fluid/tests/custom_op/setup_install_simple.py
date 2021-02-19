@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,18 @@
 # limitations under the License.
 
 import os
-import unittest
 
-from test_custom_op import CustomOpTest, load_so
+from utils import paddle_includes, extra_compile_args
+from paddle.utils.cpp_extension import CUDAExtension, setup
 
-
-def compile_so():
-    """
-    Compile .so file by running setup.py config.
-    """
-    # build .so with setup.py
-    file_dir = os.path.dirname(os.path.abspath(__file__))
-    os.system('cd {} && python setup.py build'.format(file_dir))
-
-
-if __name__ == '__main__':
-    compile_so()
-    load_so(so_name='librelu2_op_from_setup.so')
-    unittest.main()
+setup(
+    name='simple_setup_relu2',
+    ext_modules=[
+        CUDAExtension(
+            name='simple_setup_relu2',
+            sources=[
+                'relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'
+            ],  # test for multi ops
+            include_dirs=paddle_includes,
+            extra_compile_args=extra_compile_args)
+    ])

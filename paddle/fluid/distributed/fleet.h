@@ -23,7 +23,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include <ThreadPool.h>
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/service/service.h"
 #include "paddle/fluid/framework/archive.h"
@@ -36,7 +35,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+class SelectedRows;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace distributed {
+
+class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;
