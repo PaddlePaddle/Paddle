@@ -625,7 +625,6 @@ EOF
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
-                        #read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -1211,7 +1210,6 @@ set +x
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                        #read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -1266,7 +1264,6 @@ set +x
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry=''
-                        retry_unittests=''
                     done
             else 
                 echo "========================================="
@@ -1277,7 +1274,6 @@ set +x
 
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
-                echo "${retry_unittests_record}"
                 retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n'| sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
                 if [ -z "${retry_unittests_record_judge}" ];then 
                     echo "========================================"
