@@ -43,15 +43,15 @@ __global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
-    int* target_lvls) {
+    int* target_lvls, bool pixel_offset = true) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = RoIArea(offset_roi, false);
+    T roi_area = RoIArea(offset_roi, pixel_offset);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
-        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-6) + refer_level);
+        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
@@ -73,6 +73,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int max_level = ctx.Attr<int>("max_level");
     const int refer_level = ctx.Attr<int>("refer_level");
     const int refer_scale = ctx.Attr<int>("refer_scale");
+    const bool pixel_offset = ctx.Attr<bool>("pixel_offset");
     int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
@@ -126,7 +127,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     GPUDistFpnProposalsHelper<T><<<dist_blocks, threads>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
-        sub_lod_list_data, target_lvls_data);
+        sub_lod_list_data, target_lvls_data, pixel_offset);
     dev_ctx.Wait();
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
