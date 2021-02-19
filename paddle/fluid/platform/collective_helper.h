@@ -145,17 +145,16 @@ class NCCLCommContext {
 //
 // The HCCLComm instance is created and reversed in the HCCLCommContext
 // singleton with a global user specified group id.
-class ASCENDDeviceContext;
+class NPUDeviceContext;
 
 class HCCLComm {
  public:
-  virtual int ring_id() const = 0;
-  virtual int nranks() const = 0;
+  virtual string rank_table_file() const = "";
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
   virtual HcclComm comm() const = 0;
   virtual aclrtStream stream() const = 0;
-  virtual ASCENDDeviceContext* dev_context() const = 0;
+  virtual NPUDeviceContext* dev_context() const = 0;
   virtual ~HCCLComm() = default;
 };
 
@@ -167,11 +166,10 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(std::string config_file, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  HCCLComm* CreateHCCLComm(const std::string& config_file, int rank, int dev_id);
 
-  void CreateAllHCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
-
+  void CreateHCCLGroup(const std::string& group_name, int nranks, const vector<int>& rank_ids);
+/*
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
   HCCLComm* AssignHCCLComm(HcclComm comm, int nranks, int rank, int dev_id,
@@ -208,12 +206,12 @@ class HCCLCommContext {
   HCCLComm* Get(int ring_id, Place place) const {
     return Get(ring_id, BOOST_GET_CONST(CUDAPlace, place).device);
   }
-
+*/
  private:
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
-  // ring id to dev-HCCLComm
-  std::map<int, std::map<int, std::unique_ptr<HCCLComm>>> comm_map_;
+  // rank id to dev-HCCLComm
+  // std::map<int, std::map<int, std::unique_ptr<HCCLComm>>> comm_map_;
 
   void ReleaseHCCLComms();
 
