@@ -41,8 +41,8 @@ class CCreateGroupOpNPU : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     string group_name = Attr<string>("group_name");
-    int nranks = Attr<int>("nranks");
-    vector<int> rank_ids = Attr<vector<int>>("rank_ids");
+    uint32_t nranks = Attr<uint32_t>("nranks");
+    vector<uint32_t> rank_ids = Attr<vector<uint32_t>>("rank_ids");
     platform::HCCLCommContext::Instance().CreateHCCLGroup(
         group_name, nranks, rank_ids);
   }
@@ -58,8 +58,8 @@ Create collective communication group on NPU
 )DOC");
     AddAttr<string>("group_name",
         "(string) name of the collective communication group");
-    AddAttr<int>("nranks", "(int) number of the group");
-    AddAttr<int>("rank_ids",
+    AddAttr<uint32_t>("nranks", "(int) number of the group");
+    AddAttr<uint32_t>("rank_ids",
                  "(list of int) The world rank id of the group members");
   }
 };

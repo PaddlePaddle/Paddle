@@ -45,7 +45,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    int root = ctx.Attr<int>("root");
+    uint32_t root = ctx.Attr<uint32_t>("root");
     std::string tag = ctx.Attr<std::string>("tag");
     std::string group = ctx.Attr<std::string>("group");
 
