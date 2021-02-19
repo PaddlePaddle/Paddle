@@ -48,12 +48,14 @@ namespace distributed {
 enum Mode { training, infer };
 
 struct VALUE {
-  explicit VALUE(size_t length, bool is_entry = true)
-      : length_(length), count_(0), unseen_days_(0) {
+  explicit VALUE(size_t length)
+      : length_(length),
+        count_(0),
+        unseen_days_(0),
+        need_save_(false),
+        is_entry_(false) {
     data_.resize(length);
     memset(data_.data(), 0, sizeof(float) * length);
-    is_entry_ = is_entry;
-    need_save_ = false;
   }
 
   size_t length_;
@@ -91,25 +93,21 @@ class ValueBlock {
 
     // for Entry
     {
-      if (entry_attr == "none") {
-        has_entry_ = false;
+      auto slices = string::split_string<std::string>(entry_attr, "&");
+      if (slices[0] == "none") {
+        entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
+      } else if (slices[0] == "count_filter") {
+        int threshold = std::stoi(slices[1]);
+        entry_func_ = std::bind(&count_entry, std::placeholders::_1, threshold);
+      } else if (slices[0] == "probability") {
+        float threshold = std::stof(slices[1]);
+        entry_func_ =
+            std::bind(&probility_entry, std::placeholders::_1, threshold);
       } else {
-        has_entry_ = true;
-        auto slices = string::split_string<std::string>(entry_attr, "&");
-        if (slices[0] == "count_filter") {
-          int threshold = std::stoi(slices[1]);
-          entry_func_ =
-              std::bind(&count_entry, std::placeholders::_1, threshold);
-        } else if (slices[0] == "probability") {
-          float threshold = std::stof(slices[1]);
-          entry_func_ =
-              std::bind(&probility_entry, std::placeholders::_1, threshold);
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Not supported Entry Type : %s, Only support [count_filter, "
-              "probability]",
-              slices[0]));
-        }
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Not supported Entry Type : %s, Only support [count_filter, "
+            "probability]",
+            slices[0]));
       }
     }
 
@@ -159,18 +157,20 @@ class ValueBlock {
   // pull
   float *Init(const uint64_t &id, const bool with_update = true) {
     if (!Has(id)) {
-      values_[id] = std::make_shared<VALUE>(value_length_, !has_entry_);
+      values_[id] = std::make_shared<VALUE>(value_length_);
     }
+
+    auto &value = values_.at(id);
+
     if (with_update) {
-      PullUpdate(id);
+      AttrUpdate(value);
     }
-    auto &value = values_[id];
+
     return value->data_.data();
   }
 
-  void PullUpdate(const uint64_t &id) {
+  void AttrUpdate(std::shared_ptr<VALUE> value) {
     // update state
-    auto &value = values_[id];
     value->unseen_days_ = 0;
     ++value->count_;
 
@@ -182,11 +182,10 @@ class ValueBlock {
           initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
                                      value_dims_[x]);
         }
-        value->need_save_ = true;
       }
-    } else {
-      value->need_save_ = true;
     }
+
+    value->need_save_ = true;
     return;
   }
 
@@ -242,7 +241,6 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
-  bool has_entry_ = false;
   std::function<bool(std::shared_ptr<VALUE>)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
 };
