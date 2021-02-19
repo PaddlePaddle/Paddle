@@ -32,8 +32,8 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(matmul_v2);
-USE_OP_DEVICE_KERNEL(matmul_v2, NPU);
+USE_OP(mul);
+USE_OP_DEVICE_KERNEL(mul, NPU);
 
 void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   // init
@@ -66,11 +66,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   //tensor_out->mutable_data<paddle::platform::float16>(place);  // allocate
   tensor_out->mutable_data<float>(place);  // allocate
 
+  f::AttributeMap attrs;
   // run
-  f::AttributeMap attrs = {{"transpose_X", false}, {"transpose_Y", false}};
-  //f::AttributeMap attrs = {};
   auto op =
-      f::OpRegistry::CreateOp("matmul_v2", {{"X", {"X"}}, {"Y", {"Y"}}},
+      f::OpRegistry::CreateOp("mul", {{"X", {"X"}}, {"Y", {"Y"}}},
                               {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
@@ -99,67 +98,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   }
 }
 
-void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
-  // init
-  auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
 
-  auto y = scope->Var("Y");
-  auto tensor_y = y->GetMutable<f::LoDTensor>();
-  int dim1=1024;
-  int dim2=size;
-
-//  std::vector<paddle::platform::float16> init;
-  std::vector<float> init;
-  for (int64_t i = 0; i < dim1 * dim2; ++i) {
-    //init.push_back(paddle::platform::float16(1.0));
-    init.push_back(1.0);
-  }
-
-  TensorFromVector(init, ctx, tensor_x);
-  tensor_x->Resize({dim1, dim2});
-  TensorFromVector(init, ctx, tensor_y);
-  tensor_y->Resize({dim1, dim2});
-
-  ctx.Wait();
-
-  auto place = ctx.GetPlace();
-  auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({dim1, dim1});
-  //tensor_out->mutable_data<paddle::platform::float16>(place);  // allocate
-  tensor_out->mutable_data<float>(place);  // allocate
-
-  // run
-  f::AttributeMap attrs = {{"transpose_X", false}, {"transpose_Y", true}};
-  //f::AttributeMap attrs = {};
-  auto op =
-      f::OpRegistry::CreateOp("matmul_v2", {{"X", {"X"}}, {"Y", {"Y"}}},
-                              {{"Out", {"Out"}}}, attrs);
-
-  op->Run(*scope, place);
-  ctx.Wait();
-
-  std::vector<float> out_vec;
-  //std::vector<paddle::platform::float16> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
-
-  ctx.Wait();
-
-  EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)(dim1 * dim1));
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], size);
-  }
-  printf("test_transpose pass\n");
-}
-
-TEST(matmul_v2, NPU) {
+TEST(mul, NPU) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   int size=1;
   for(int i=0;i<18;i++){
     Compare(&scope, ctx, size);
-    //test_transpose(&scope, ctx, size);
     size *= 2;
   }
 }

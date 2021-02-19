@@ -16,42 +16,33 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class MatMulV2NPUKernel : public framework::OpKernel<T> {
+class MulNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-    bool transpose_x = ctx.Attr<bool>("transpose_X");  
-    bool transpose_y = ctx.Attr<bool>("transpose_Y");  
-    PADDLE_ENFORCE_EQ(transpose_x, false, platform::errors::InvalidArgument(
-                "matmul npu not support transpose_x is true"));
-    PADDLE_ENFORCE_EQ(transpose_y, false, platform::errors::InvalidArgument(
-                "matmul npu not support transpose_y is true"));
-    framework::AttributeMap attr_input= {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}};
-    
+    int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");  
+    int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");  
+    if (x_num_col_dims == 1 && y_num_col_dims == 1) {
+      if (x->dims().size() == 2 && y->dims().size() == 2) {      
+        framework::AttributeMap attr_input= {{"transpose_x1", false}, {"transpose_x2", false}};
+        auto runner = NpuOpRunner("MatMul", {*x, *y}, {*out}, attr_input);
+        out->mutable_data<T>(ctx.GetPlace());
 
-    out->mutable_data<T>(ctx.GetPlace());
-
-    // TODO(zhiqiu): get the attr infomation of Ascend op and
-    // convert paddle AttributeMap to Ascend attrs.
-    // Ascend op add has no attribute ?
-    // int axis = ctx.Attr<int>("axis");
-
-    // NOTE(zhiqiu): the order of inputs and outputs is important
-    auto runner = NpuOpRunner("MatMul", {*x, *y}, {*out}, attr_input);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+        auto stream =
+            ctx.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
+        runner.Run(stream);
+      }
+    }
   }
 };
 
@@ -61,7 +52,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    matmul_v2,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>);
+    mul,
+    ops::MulNPUKernel<paddle::platform::NPUDeviceContext, float>);
 //    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
 #endif
