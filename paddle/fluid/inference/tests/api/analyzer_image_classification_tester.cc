@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+DECLARE_bool(onednn_use_input_mem_format);
 
 namespace paddle {
 namespace inference {
@@ -50,6 +51,7 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    if (FLAGS_onednn_use_input_mem_format) cfg.EnableOneDNNUseInputMemFormat();
     if (!FLAGS_disable_mkldnn_fc) {
       cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
       cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
@@ -85,6 +87,7 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    if (FLAGS_onednn_use_input_mem_format) cfg.EnableOneDNNUseInputMemFormat();
     if (!FLAGS_disable_mkldnn_fc) {
       cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
       cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
