@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_ASCEND_CL
-#include <hccl/hccl.h>
-#include <hccl/hccl_types.h>
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
 
 #include <string>
 
@@ -40,10 +40,10 @@ class CCreateGroupOpNPU : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    string group_name = Attr<string>("group_name");
-    uint32_t nranks = Attr<uint32_t>("nranks");
-    vector<uint32_t> rank_ids = Attr<vector<uint32_t>>("rank_ids");
-    platform::HCCLCommContext::Instance().CreateHCCLGroup(
+    std::string group_name = Attr<std::string>("group_name");
+    uint32_t nranks = Attr<int>("nranks");
+    std::vector<uint32_t> rank_ids = Attr<std::vector<uint32_t>>("rank_ids");
+    paddle::platform::HCCLCommContext::Instance().CreateHCCLGroup(
         group_name, nranks, rank_ids);
   }
 };
@@ -56,10 +56,10 @@ CCreateGroup operator on NPU
 
 Create collective communication group on NPU
 )DOC");
-    AddAttr<string>("group_name",
+    AddAttr<std::string>("group_name",
         "(string) name of the collective communication group");
-    AddAttr<uint32_t>("nranks", "(int) number of the group");
-    AddAttr<uint32_t>("rank_ids",
+    AddAttr<int>("nranks", "(int) number of the group");
+    AddAttr<int>("rank_ids",
                  "(list of int) The world rank id of the group members");
   }
 };
@@ -70,6 +70,6 @@ Create collective communication group on NPU
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(c_create_group, ops::CCreateGroupOpNPU,
-    ops::CCreateGroupNPUMaker);
+    ops::CCreateGroupOpNPUMaker);
 
 #endif

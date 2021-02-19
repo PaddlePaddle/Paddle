@@ -41,8 +41,8 @@ class CCommInitOpNPU : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::string rank_table_file = Attr<std::string>("rank_table_file");
-    uint32_t rank_id = Attr<uint32_t>("rank_id");
-    uint32_t device_id = Attr<uint32_t>("device_id");
+    uint32_t rank_id = Attr<int>("rank_id");
+    uint32_t device_id = Attr<int>("device_id");
     platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file,
       rank_id, device_id);
   }
@@ -58,8 +58,8 @@ Initialize collective communication context within this trainer
 )DOC");
     AddAttr<std::string>("rank_table_file",
         "(string) path to rank_table_file");
-    AddAttr<uint32_t>("rank_id", "(int) world rank id of the process");
-    AddAttr<uint32_t>("device_id", "(int) device id of the process/thread");
+    AddAttr<int>("rank_id", "(int) world rank id of the process");
+    AddAttr<int>("device_id", "(int) device id of the process/thread");
   }
 };
 
@@ -68,7 +68,7 @@ Initialize collective communication context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init, ops::CCommInitOpNPU,
+REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpNPU,
    ops::CCommInitOpNPUMaker);
 
 #endif
