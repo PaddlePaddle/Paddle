@@ -258,11 +258,13 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      PADDLE_ENFORCE_EQ(
-          !shared_node || !grad_node->InplaceGradNameMap().empty(), true,
-          platform::errors::PermissionDenied(
-              "Cannot set gradient op twice unless using Inplace Strategy."));
-      if (shared_node) {
+      if (grad_node->InplaceGradNameMap().empty()) {
+        // grad_node doesn't have Inplace message
+        PADDLE_ENFORCE_EQ(
+            shared_node, nullptr,
+            platform::errors::PermissionDenied(
+                "Cannot set gradient op twice unless using Inplace Strategy."));
+      } else if (shared_node) {
         VLOG(3) << "The gradient op of Var (" << Name()
                 << ") has been set twice. Because Inplace Strategy is used.";
       }

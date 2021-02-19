@@ -13,15 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/fleet.h"
-#include <algorithm>
-#include <utility>
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace distributed {
@@ -55,14 +48,14 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
 
 void FleetWrapper::InitServer(
     const std::string& dist_desc,
-    const std::vector<std::string>& host_sign_list, int index,
+    const std::vector<std::string>& host_sign_list, int index, int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
     pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
-                              index, server_sub_program);
+                              index, trainers, server_sub_program);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";

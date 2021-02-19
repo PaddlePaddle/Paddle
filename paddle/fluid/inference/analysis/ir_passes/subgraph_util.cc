@@ -17,7 +17,8 @@ limitations under the License. */
  */
 
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
-#include <algorithm>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

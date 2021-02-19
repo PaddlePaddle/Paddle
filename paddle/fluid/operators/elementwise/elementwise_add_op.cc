@@ -14,12 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
-#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+
+namespace paddle {
+namespace platform {
+struct complex128;
+struct complex64;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

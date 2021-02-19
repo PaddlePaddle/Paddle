@@ -15,11 +15,8 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -27,6 +24,7 @@ namespace framework {
 class Scope;
 class Tensor;
 class Variable;
+
 namespace ir {
 class MemOptVarInfo;
 }  // namespace ir

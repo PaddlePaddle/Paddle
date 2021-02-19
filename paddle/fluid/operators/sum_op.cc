@@ -145,29 +145,26 @@ class SumOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "Sum operator should have at least one tensor"));
 
+      auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&
-          this->CanMKLDNNBeUsed(ctx) &&
-          (static_cast<framework::proto::VarType::Type>(dtype) ==
-               framework::proto::VarType::FP32 ||
-           static_cast<framework::proto::VarType::Type>(dtype) ==
-               framework::proto::VarType::BF16) &&
+          this->CanMKLDNNBeUsed(ctx, data_type) &&
+          (data_type == framework::proto::VarType::FP32 ||
+           data_type == framework::proto::VarType::BF16) &&
           ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
         if (std::all_of(x_vars.begin(), x_vars.end(),
                         [](const framework::Variable* v) {
                           return v->IsType<framework::LoDTensor>();
                         })) {
-          return framework::OpKernelType(
-              static_cast<framework::proto::VarType::Type>(dtype),
-              ctx.GetPlace(), framework::DataLayout::kMKLDNN,
-              framework::LibraryType::kMKLDNN);
+          return framework::OpKernelType(data_type, ctx.GetPlace(),
+                                         framework::DataLayout::kMKLDNN,
+                                         framework::LibraryType::kMKLDNN);
         }
       }
 #endif
 
-      return framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(dtype), ctx.GetPlace(),
-          layout, library);
+      return framework::OpKernelType(data_type, ctx.GetPlace(), layout,
+                                     library);
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<framework::SelectedRows>().value();

@@ -182,6 +182,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -193,15 +194,13 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
@@ -291,6 +290,15 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force BF16 kernel output FP32, only "
+                "used in MKL-DNN BF16")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "bfloat16"});
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>("fuse_activation",
@@ -672,7 +680,17 @@ REGISTER_OP_VERSION(conv2d_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            std::vector<int>{}));
+            std::vector<int>{}))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d transpose to add a new attributes [force_fp32_output, mkldnn_data_type].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("force_fp32_output",
+                     "Force BF16 kernel output FP32, only used in MKL-DNN BF16",
+                     false)
+            .NewAttr("mkldnn_data_type", "Data type of mkldnn kernel",
+                     "float32"));
 
 REGISTER_OP_VERSION(conv3d_transpose)
     .AddCheckpoint(

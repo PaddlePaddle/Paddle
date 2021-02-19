@@ -40,24 +40,36 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
     RecordedCudaMemGetInfo(&avail, &total, &actual_avail, &actual_total,
                            DEVICE_ID);
     ASSERT_EQ(total, limit);
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+#ifdef PADDLE_WITH_HIP
+    ASSERT_EQ(hipGetLastError(), gpuSuccess);
+#else
+    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
+#endif
   }
 
   {
     CUDADeviceGuard guard(DEVICE_ID);
     GpuMemoryUsage(&avail, &total);
     ASSERT_EQ(total, limit);
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+#ifdef PADDLE_WITH_HIP
+    ASSERT_EQ(hipGetLastError(), gpuSuccess);
+#else
+    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
+#endif
   }
 
-  cudaError_t err = cudaSuccess;
+  gpuError_t err = gpuSuccess;
 
   void *p1 = nullptr;
   size_t size1 = limit / 4 * 3;
   {
     err = platform::RecordedCudaMalloc(&p1, size1, DEVICE_ID);
-    ASSERT_EQ(err, cudaSuccess);
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+    ASSERT_EQ(err, gpuSuccess);
+#ifdef PADDLE_WITH_HIP
+    ASSERT_EQ(hipGetLastError(), gpuSuccess);
+#else
+    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
+#endif
     ASSERT_NE(p1, nullptr);
 
     ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
@@ -67,8 +79,13 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   size_t size2 = limit / 2;
   {
     err = platform::RecordedCudaMalloc(&p2, size2, DEVICE_ID);
+#ifdef PADDLE_WITH_HIP
+    ASSERT_EQ(err, hipErrorOutOfMemory);
+    ASSERT_EQ(hipGetLastError(), gpuSuccess);
+#else
     ASSERT_EQ(err, cudaErrorMemoryAllocation);
-    ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+    ASSERT_EQ(cudaGetLastError(), gpuSuccess);
+#endif
     ASSERT_EQ(p2, nullptr);
 
     ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
@@ -81,8 +98,12 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
 
   {
     err = platform::RecordedCudaMalloc(&p2, size2, DEVICE_ID);
-    ASSERT_EQ(err, cudaSuccess);
+    ASSERT_EQ(err, gpuSuccess);
+#ifdef PADDLE_WITH_HIP
+    ASSERT_EQ(hipGetLastError(), hipSuccess);
+#else
     ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+#endif
     ASSERT_NE(p2, nullptr);
     ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size2);
   }

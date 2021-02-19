@@ -13,9 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 
-#include <map>
-#include <unordered_set>
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -47,7 +44,7 @@ void OpHandleBase::InitCUDA() {
 #ifdef PADDLE_WITH_CUDA
   for (auto &p : dev_ctxes_) {
     int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+    platform::SetDeviceId(dev_id);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
   }

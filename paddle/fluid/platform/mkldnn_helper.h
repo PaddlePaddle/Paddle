@@ -188,7 +188,7 @@ MKLDNNGetDataType<paddle::platform::bfloat16>() {
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
-  mkldnn::stream astream(engine);
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
@@ -489,6 +489,19 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
     int padding_right = paddings[3];
 
     return {{padding_top, padding_left}, {padding_bottom, padding_right}};
+  }
+}
+
+// The function adjusts the vector of weight dimensions for group convolutions
+inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                                  const int groups) {
+  if (groups > 1) {
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
   }
 }
 

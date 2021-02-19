@@ -14,14 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 
-#include <algorithm>
-#include <chrono>              // NOLINT
-#include <condition_variable>  // NOLINT
-#include <mutex>               // NOLINT
-#include <string>
-#include <thread>  // NOLINT
-#include <vector>
-
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -41,7 +33,7 @@ TEST(NaiveBestFitAllocatorTest, CpuAlloc) {
   alloc.Release(platform::CPUPlace());
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(NaiveBestFitAllocatorTest, GpuAlloc) {
   NaiveBestFitAllocator alloc{platform::CUDAPlace(0)};
   {
