@@ -665,22 +665,21 @@ EOF
         export https_proxy=$my_proxy
         set -x
         if [ "$mactest_error" != 0 ];then
-            if [[ "$failed_test_lists" == "" ]]; then
-                retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
-                if [ -z "${retry_unittests_record_judge}" ];then 
-                    echo "========================================"
-                    echo "There are failed tests, which have been successful after re-run:"
-                    echo "========================================"
-                    echo "The following tests have been re-ran:"
-                    echo "${retry_unittests_record}"
-                else 
-                    echo "========================================"
-                    echo "There are failed tests, which have been successful after re-run,but success rate is less than 50%:"
-                    echo "========================================"
-                    echo "The following tests have been re-ran:"
-                    echo "${retry_unittests_record_judge}" 
-                    exit 8;
-                fi
+            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
+            if [ -z "${retry_unittests_record_judge}" ];then
+                echo "========================================"
+                echo "There are failed tests, which have been successful after re-run:"
+                echo "========================================"
+                echo "The following tests have been re-ran:"
+                echo "${retry_unittests_record}"
+            else
+                echo "========================================"
+                echo "There are failed tests, which have been executed re-run, but success rate is less than 50%:"
+                echo "Summary Failed Tests... "
+                echo "========================================"
+                echo "The following tests FAILED: "
+                echo "${retry_unittests_record_judge}"
+                exit 8;
             fi
         fi
     fi
@@ -1273,29 +1272,20 @@ set +x
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
-            if [[ "$failed_test_lists" == "" ]]; then
-                retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n'| sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
-                if [ -z "${retry_unittests_record_judge}" ];then 
-                    echo "========================================"
-                    echo "There are failed tests, which have been successful after re-run:"
-                    echo "========================================"
-                    echo "The following tests have been re-ran:"
-                    echo "${retry_unittests_record}"
-                else 
-                    echo "========================================"
-                    echo "There are failed tests, which have been successful after re-run,but success rate is less than 50%:"
-                    echo "========================================"
-                    echo "The following tests have been re-ran:"
-                    echo "${retry_unittests_record_judge}"
-                    exit 8;
-                fi
-            else
-                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            retry_unittests_record_judge=$(echo ${retry_unittests_record} | tr ' ' '\n'| sort | uniq -c | awk '{if ($1 >=3 {print $2}}')
+            if [ -z "${retry_unittests_record_judge}" ];then
                 echo "========================================"
+                echo "There are failed tests, which have been successful after re-run:"
+                echo "========================================"
+                echo "The following tests have been re-ran:"
+                echo "${retry_unittests_record}"
+            else
+                echo "========================================"
+                echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
                 echo "Summary Failed Tests... "
                 echo "========================================"
                 echo "The following tests FAILED: "
-                echo "${failed_test_lists_ult}"
+                echo "${retry_unittests_record_judge}"
                 exit 8;
             fi
         fi
