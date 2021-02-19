@@ -117,7 +117,10 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     main_program = main_programs[local_rank]
     loss = Loss(Block(main_program))
     optimizer = ascend_optimizer.AscendOptimizer(None, fetch_list=[])
-    optimizer.minimize(loss, startup_program, auto_dp=True)
+    optimizer.minimize(loss, 
+                startup_program, 
+                auto_dp=True, 
+                rank_table_file=os.getenv("RANK_TABLE_FILE", None))
 
     exe = paddle.static.Executor(paddle.CPUPlace())
     #exe.run(startup_program)
