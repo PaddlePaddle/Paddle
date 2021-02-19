@@ -48,5 +48,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_sub,
-    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext,
+                                 paddle::platform::float16>);
 #endif

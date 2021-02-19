@@ -37,6 +37,7 @@ USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
 USE_OP(elementwise_sub);
 USE_OP_DEVICE_KERNEL(elementwise_sub, NPU);
 
+template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
              std::string op_type) {
   // init
@@ -46,14 +47,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   auto y = scope->Var("Y");
   auto tensor_y = y->GetMutable<f::LoDTensor>();
 
-  std::vector<float> init_x;
+  std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
-    init_x.push_back(1.0);
+    init.push_back(static_cast<T>(1.0));
   }
 
-  std::vector<float> init_y;
+  std::vector<T> init_y;
   for (int64_t i = 0; i < 10 * 10; ++i) {
-    init_y.push_back(2.0);
+    init.push_back(static_cast<T>(2.0));
   }
 
   TensorFromVector(init_x, ctx, tensor_x);
@@ -66,8 +67,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({10, 10});
-  tensor_out->mutable_data<float>(place);  // allocate
 
   // run
   f::AttributeMap attrs;
@@ -76,7 +75,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   op->Run(*scope, place);
 
-  std::vector<float> out_vec;
+  std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
@@ -86,20 +85,26 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   } else if (op_type == "elementwise_sub") {
     expected = -1.0;
   }
-  EXPECT_EQ(out_vec.size(), init_x.size());
+  EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], expected);
+    EXPECT_EQ(out_vec[i], static_cast<T>(expected));
   }
 }
 
-TEST(elementwise_add, NPU) {
+TEST(elementwise_add, NPU_fp32) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare(&scope, ctx, "elementwise_add");
+  Compare<float>(&scope, ctx, "elementwise_add");
 }
 
-TEST(elementwise_sub, NPU) {
+TEST(elementwise_sub, NPU_fp32) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare(&scope, ctx, "elementwise_sub");
+  Compare<float>(&scope, ctx, "elementwise_sub");
+}
+
+TEST(elementwise_sub, NPU_fp16) {
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<p::float16>(&scope, ctx, "elementwise_sub");
 }
