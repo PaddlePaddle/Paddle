@@ -18,6 +18,11 @@ limitations under the License. */
 
 namespace paddle {
 
+// throw std::runtime_error("function " + #NAME + " not implemented for data
+// type `" + ::paddle::ToString(__dtype__) + "`.");
+
+///////// Basic Marco ///////////
+
 #define PD_PRIVATE_CASE_TYPE_USING_HINT(NAME, enum_type, type, HINT, ...) \
   case enum_type: {                                                       \
     using HINT = type;                                                    \
@@ -28,19 +33,375 @@ namespace paddle {
 #define PD_PRIVATE_CASE_TYPE(NAME, enum_type, type, ...) \
   PD_PRIVATE_CASE_TYPE_USING_HINT(NAME, enum_type, type, data_t, __VA_ARGS__)
 
-#define PD_DISPATCH_FLOATING_TYPES(TYPE, NAME, ...)                          \
-  [&] {                                                                      \
-    const auto& dtype = TYPE;                                                \
-    switch (dtype) {                                                         \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,         \
-                           __VA_ARGS__)                                      \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,        \
-                           __VA_ARGS__)                                      \
-      default:                                                               \
-        throw std::runtime_error("function not implemented for this type."); \
-    }                                                                        \
+///////// Floating Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_TYPES(TYPE, NAME, ...)                    \
+  [&] {                                                                \
+    const auto& __dtype__ = TYPE;                                      \
+    switch (__dtype__) {                                               \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,   \
+                           __VA_ARGS__)                                \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,  \
+                           __VA_ARGS__)                                \
+      default:                                                         \
+        throw std::runtime_error("function " #NAME                     \
+                                 " not implemented for data type `" +  \
+                                 ::paddle::ToString(__dtype__) + "`"); \
+    }                                                                  \
   }()
 
-// TODD(chenweihang): implement other DISPATH macros in next PR
+#define PD_DISPATCH_FLOATING_TYPES_AND(EXTRA_TYPE, TYPE, NAME, ...)       \
+  [&] {                                                                   \
+    const auto& __dtype__ = TYPE;                                         \
+    switch (__dtype__) {                                                  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,      \
+                           __VA_ARGS__)                                   \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,     \
+                           __VA_ARGS__)                                   \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE,                              \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE>::type, \
+                           __VA_ARGS__)                                   \
+      default:                                                            \
+        throw std::runtime_error("function " #NAME                        \
+                                 " not implemented for data type `" +     \
+                                 ::paddle::ToString(__dtype__) + "`");    \
+    }                                                                     \
+  }()
+
+#define PD_DISPATCH_FLOATING_TYPES_AND2(EXTRA_TYPE1, EXTRA_TYPE2, TYPE, NAME, \
+                                        ...)                                  \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE1,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE1>::type,    \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE2,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE2>::type,    \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+///////// Integral Dispatch Marco ///////////
+
+#define PD_DISPATCH_INTEGRAL_TYPES(TYPE, NAME, ...)                           \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+#define PD_DISPATCH_INTEGRAL_TYPES_AND(EXTRA_TYPE, TYPE, NAME, ...)           \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE,                                  \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE>::type,     \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+///////// Complex Dispatch Marco ///////////
+
+#define PD_DISPATCH_COMPLEX_TYPES(TYPE, NAME, ...)                     \
+  [&] {                                                                \
+    const auto& __dtype__ = TYPE;                                      \
+    switch (__dtype__) {                                               \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,        \
+                           ::paddle::complex64, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,       \
+                           ::paddle::complex128, __VA_ARGS__)          \
+      default:                                                         \
+        throw std::runtime_error("function " #NAME                     \
+                                 " not implemented for data type `" +  \
+                                 ::paddle::ToString(__dtype__) + "`"); \
+    }                                                                  \
+  }()
+
+///////// Floating and Integral Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES(TYPE, NAME, ...)              \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES_AND(EXTRA_TYPE, TYPE, NAME,   \
+                                                    ...)                      \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE,                                  \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE>::type,     \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES_AND2(EXTRA_TYPE1, EXTRA_TYPE2, \
+                                                     TYPE, NAME, ...)          \
+  [&] {                                                                        \
+    const auto& __dtype__ = TYPE;                                              \
+    switch (__dtype__) {                                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,           \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,          \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__)  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,           \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,             \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,           \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,           \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE1,                                  \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE1>::type,     \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE2,                                  \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE2>::type,     \
+                           __VA_ARGS__)                                        \
+      default:                                                                 \
+        throw std::runtime_error("function " #NAME                             \
+                                 " not implemented for data type `" +          \
+                                 ::paddle::ToString(__dtype__) + "`");         \
+    }                                                                          \
+  }()
+
+///////// Floating and Complex Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(TYPE, NAME, ...)        \
+  [&] {                                                                \
+    const auto& __dtype__ = TYPE;                                      \
+    switch (__dtype__) {                                               \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,   \
+                           __VA_ARGS__)                                \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,  \
+                           __VA_ARGS__)                                \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,        \
+                           ::paddle::complex64, __VA_ARGS__)           \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,       \
+                           ::paddle::complex128, __VA_ARGS__)          \
+      default:                                                         \
+        throw std::runtime_error("function " #NAME                     \
+                                 " not implemented for data type `" +  \
+                                 ::paddle::ToString(__dtype__) + "`"); \
+    }                                                                  \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND(EXTRA_TYPE, TYPE, NAME, \
+                                                   ...)                    \
+  [&] {                                                                    \
+    const auto& __dtype__ = TYPE;                                          \
+    switch (__dtype__) {                                                   \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,       \
+                           __VA_ARGS__)                                    \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,      \
+                           __VA_ARGS__)                                    \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,            \
+                           ::paddle::complex64, __VA_ARGS__)               \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,           \
+                           ::paddle::complex128, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE,                               \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE>::type,  \
+                           __VA_ARGS__)                                    \
+      default:                                                             \
+        throw std::runtime_error("function " #NAME                         \
+                                 " not implemented for data type `" +      \
+                                 ::paddle::ToString(__dtype__) + "`");     \
+    }                                                                      \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(EXTRA_TYPE1, EXTRA_TYPE2, \
+                                                    TYPE, NAME, ...)          \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,               \
+                           ::paddle::complex64, __VA_ARGS__)                  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,              \
+                           ::paddle::complex128, __VA_ARGS__)                 \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE1,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE1>::type,    \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE2,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE2>::type,    \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+///////// Floating, Integral and Complex Dispatch Marco ///////////
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(TYPE, NAME, ...)  \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,               \
+                           ::paddle::complex64, __VA_ARGS__)                  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,              \
+                           ::paddle::complex128, __VA_ARGS__)                 \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES_AND(              \
+    EXTRA_TYPE, TYPE, NAME, ...)                                              \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,               \
+                           ::paddle::complex64, __VA_ARGS__)                  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,              \
+                           ::paddle::complex128, __VA_ARGS__)                 \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE,                                  \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE>::type,     \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
+
+#define PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES_AND2(             \
+    EXTRA_TYPE1, EXTRA_TYPE2, TYPE, NAME, ...)                                \
+  [&] {                                                                       \
+    const auto& __dtype__ = TYPE;                                             \
+    switch (__dtype__) {                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,         \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT64, int64_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT8, int8_t,            \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::UINT8, uint8_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT16, int16_t,          \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX64,               \
+                           ::paddle::complex64, __VA_ARGS__)                  \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::COMPLEX128,              \
+                           ::paddle::complex128, __VA_ARGS__)                 \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE1,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE1>::type,    \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, EXTRA_TYPE2,                                 \
+                           ::paddle::DataTypeToCPPType<EXTRA_TYPE2>::type,    \
+                           __VA_ARGS__)                                       \
+      default:                                                                \
+        throw std::runtime_error("function " #NAME                            \
+                                 " not implemented for data type `" +         \
+                                 ::paddle::ToString(__dtype__) + "`");        \
+    }                                                                         \
+  }()
 
 }  // namespace paddle
