@@ -302,7 +302,16 @@ def convert_var_shape_simple(x):
         return x.shape
 
 
+def eval_if_exist_else_none(name):
+    try:
+        return eval(name)
+    except:
+        return None
+
+
 def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
+    if api_shape is None:
+        return attr_shape
     if not isinstance(attr_shape, (list, tuple)):
         # some variables like x.shape[0] is no longer a list or tuple
         if isinstance(attr_shape, int) and attr_shape < 0:

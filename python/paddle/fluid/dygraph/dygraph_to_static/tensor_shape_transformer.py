@@ -51,7 +51,10 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    args = [attr_shape_name, api_shape_name]
+    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}')".format(
+        api_shape_name)
+    args = [attr_shape_name, eval_exist_func]
+
     if slice_node is not None and isinstance(slice_node, gast.Index):
         args.append(ast_to_source_code(slice_node).strip())
     choose_shape_func = "paddle.jit.dy2static.choose_shape_attr_or_api({})".format(
