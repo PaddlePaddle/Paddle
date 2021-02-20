@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #include <boost/any.hpp>
 
