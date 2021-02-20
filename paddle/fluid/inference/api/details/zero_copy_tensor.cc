@@ -115,7 +115,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
   if (place_ == PaddlePlace::kCPU) {
     auto *t_data = tensor->mutable_data<T>(platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
-  } else {
+  } else if (place_ == PaddlePlace::kGPU) {
 #ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     platform::CUDAPlace gpu_place(device_);
@@ -129,6 +129,19 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not compiled with CUDA, should not reach here."));
 #endif
+  } else if (place_ == PaddlePlace::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    platform::XPUPlace xpu_place(device_);
+    auto *t_data = tensor->mutable_data<T>(xpu_place);
+    memory::Copy(xpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
+                 data, ele_size);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Not compiled with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
 
@@ -141,7 +154,7 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 
   if (platform::is_cpu_place(t_place)) {
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
-  } else {
+  } else if (place_ == PaddlePlace::kGPU) {
 #ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
@@ -155,6 +168,18 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not compile with CUDA, should not reach here."));
 #endif
+  } else if (place_ == PaddlePlace::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, t_place);
+    memory::Copy(platform::CPUPlace(), static_cast<void *>(data), xpu_place,
+                 t_data, ele_num * sizeof(T));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Not compile with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
 template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<float>(
