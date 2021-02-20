@@ -71,7 +71,7 @@ inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
 }
 
 inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
-  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
+  UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
 
@@ -93,7 +93,7 @@ class ValueBlock {
 
     // for Entry
     {
-      auto slices = string::split_string<std::string>(entry_attr, "&");
+      auto slices = string::split_string<std::string>(entry_attr, ":");
       if (slices[0] == "none") {
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
       } else if (slices[0] == "count_filter_entry") {
