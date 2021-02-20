@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -37,19 +38,24 @@ template <typename DeviceContext, typename T>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
-  void ActCompute(const int act_type, const Device& d, X x, Y y) const {
-    if (act_type == identity)
+  void ActCompute(const int act_type, const Device& d, X x, Y y,
+                  platform::Place place) const {
+    if (act_type == identity) {
       y.device(d) = x;
-    else if (act_type == sigmoid)
+    } else if (act_type == sigmoid) {
       SigmoidFunctor<T>()(d, x, y);
-    else if (act_type == tanh)
+    } else if (act_type == tanh) {
       TanhFunctor<T>()(d, x, y);
-    else if (act_type == relu)
-      ReluFunctor<T>()(d, x, y);
-    else
+    } else if (act_type == relu) {
+      if (place == platform::CPUPlace())
+        ReluCPUFunctor<T>()(d, x, y);
+      else
+        ReluCUDAFunctor<T>()(d, x, y);
+    } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
           "and relu."));
+    }
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -97,11 +103,13 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     Eigen::array<int, 2> extents{{batch_size, frame_size}};
     Eigen::array<int, 2> u_offsets{{0, 0}};
     ActCompute(context.Attr<int>("gate_activation"), place,
-               g.slice(u_offsets, extents), g.slice(u_offsets, extents));
+               g.slice(u_offsets, extents), g.slice(u_offsets, extents),
+               context.GetPlace());
     auto u = g.slice(u_offsets, extents);  // update gate
     Eigen::array<int, 2> r_offsets{{0, frame_size}};
     ActCompute(context.Attr<int>("gate_activation"), place,
-               g.slice(r_offsets, extents), g.slice(r_offsets, extents));
+               g.slice(r_offsets, extents), g.slice(r_offsets, extents),
+               context.GetPlace());
     auto r = g.slice(r_offsets, extents);  // reset gate
     r_h_p.device(place) = r * h_p;         // reset previous hidden state
     blas.GEMM(false, false, batch_size, frame_size, frame_size, 1,
@@ -111,7 +119,8 @@ class GRUUnitKernel : public framework::OpKernel<T> {
 
     Eigen::array<int, 2> c_offsets{{0, frame_size * 2}};
     ActCompute(context.Attr<int>("activation"), place,
-               g.slice(c_offsets, extents), g.slice(c_offsets, extents));
+               g.slice(c_offsets, extents), g.slice(c_offsets, extents),
+               context.GetPlace());
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // calculate final output
