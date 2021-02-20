@@ -121,6 +121,7 @@ def count_convNd(m, x, y):
     bias_ops = 1 if m.bias is not None else 0
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops)
+    total_ops = abs(total_ops)
     m.total_ops += total_ops
 
 
@@ -135,7 +136,7 @@ def count_bn(m, x, y):
     nelements = x.numel()
     if not m.training:
         total_ops = 2 * nelements
-
+    total_ops = abs(total_ops)
     m.total_ops += int(total_ops)
 
 
@@ -143,6 +144,7 @@ def count_linear(m, x, y):
     total_mul = m.weight.shape[0]
     num_elements = y.numel()
     total_ops = total_mul * num_elements
+    total_ops = abs(total_ops)
     m.total_ops += int(total_ops)
 
 
@@ -150,7 +152,7 @@ def count_avgpool(m, x, y):
     kernel_ops = 1
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
-
+    total_ops = abs(total_ops)
     m.total_ops += int(total_ops)
 
 
@@ -161,7 +163,7 @@ def count_adap_avgpool(m, x, y):
     kernel_ops = total_add + total_div
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
-
+    total_ops = abs(total_ops)
     m.total_ops += int(total_ops)
 
 
