@@ -20,11 +20,10 @@ import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
-class TestDistMnistSync2x2(TestFleetBase):
+class TestDistMnistAsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "sync"
-        self._reader = "pyreader"
-        self._need_test = 1
+        self._mode = "async"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
@@ -37,7 +36,11 @@ class TestDistMnistSync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "CPU_NUM": "2"
+            "SAVE_MODEL": "1",
+            "dump_param": "concat_0.tmp_0",
+            "dump_fields": "dnn-fc-3.tmp_0,dnn-fc-3.tmp_0@GRAD",
+            "dump_fields_path": tempfile.mkdtemp(),
+            "Debug": "1"
         }
 
         required_envs.update(need_envs)
