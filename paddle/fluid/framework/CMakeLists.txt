@@ -345,7 +345,7 @@ if (LINUX)
 endif()
 
 if (WIN32)
-  set(FLUID_FRAMEWORK_STATIC_LIB
+  set(FLUID_FRAMEWORK_IMPORT_LIB
     ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.lib
     CACHE INTERNAL "Fluid framework lib")
   set(FLUID_FRAMEWORK_SHARED_LIB

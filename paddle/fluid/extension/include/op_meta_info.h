@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include <boost/any.hpp>
 
-#include "paddle/fluid/extension/include/paddle_dll_decl.h"
+#include "paddle/fluid/extension/include/dll_decl.h"
 #include "paddle/fluid/extension/include/tensor.h"
 
 /**
@@ -57,7 +57,7 @@ using Tensor = paddle::Tensor;
 #define END_HANDLE_THE_ERROR
 #endif
 
-#define THROW_ERROR(err_msg)           \
+#define PD_THROW(err_msg)              \
   do {                                 \
     HANDLE_THE_ERROR                   \
     throw std::runtime_error(err_msg); \

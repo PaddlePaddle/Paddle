@@ -291,9 +291,9 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.extend('-lpaddle_framework')
+        extra_link_args.extend(['-lpaddle_framework'])
         if use_cuda:
-            extra_link_args.append('-lcudart')
+            extra_link_args.append(['-lcudart'])
 
         kwargs['extra_link_args'] = extra_link_args
 
@@ -428,12 +428,11 @@ def get_build_directory(verbose=False):
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
         dir_name = "paddle_extensions"
-        if OS_NAME.startswith('linux'):
-            root_extensions_directory = os.path.join(
-                os.path.expanduser('~/.cache'), dir_name)
-        elif IS_WINDOWS:
-            root_extensions_directory = os.path.join(
-                os.path.expanduser('~\\.cache'), dir_name)
+        root_extensions_directory = os.path.join(
+            os.path.expanduser('~/.cache'), dir_name)
+        if IS_WINDOWS:
+            root_extensions_directory = os.path.normpath(
+                root_extensions_directory)
         else:
             # TODO(Aurelius84): consider macOs
             raise NotImplementedError("Not support Mac now.")

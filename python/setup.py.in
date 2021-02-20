@@ -342,7 +342,7 @@ if sys.platform == 'linux':
 
 # copy paddle_framework.lib/paddle_framework.dll to libs on windows
 if os.name == 'nt':
-    shutil.copy('${FLUID_FRAMEWORK_STATIC_LIB}', libs_path)
+    shutil.copy('${FLUID_FRAMEWORK_IMPORT_LIB}', libs_path)
     shutil.copy('${FLUID_FRAMEWORK_SHARED_LIB}', libs_path)
     package_data['paddle.libs'] += ['paddle_framework.lib', 'paddle_framework.dll']
 

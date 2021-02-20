@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+#include "paddle/fluid/extension/include/dll_decl.h"
 #include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/paddle_dll_decl.h"
 #include "paddle/fluid/extension/include/place.h"
 
 namespace paddle {
