@@ -122,15 +122,16 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 rem ------pre install clcache and init config----------
-pip install clcache --user
+rem pip install clcache --user
+pip uninstall -y clcache
 :: set USE_CLCACHE to enable clcache
-set USE_CLCACHE=1
+rem set USE_CLCACHE=1
 :: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-set CLCACHE_HARDLINK=1
+rem set CLCACHE_HARDLINK=1
 :: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
-clcache.exe -M 21474836480
+rem clcache.exe -M 21474836480
 
 rem ------show summary of current environment----------
 cmake --version
@@ -281,7 +282,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
-clcache.exe -z
+rem clcache.exe -z
 
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
@@ -305,7 +306,7 @@ echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 
 :: ci will collect clcache hit rate
-goto :collect_clcache_hits
+rem goto :collect_clcache_hits
 
 goto:eof
 

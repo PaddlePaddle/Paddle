@@ -301,6 +301,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
+        print(runtime_library_dirs)
 
     kwargs['language'] = 'c++'
     return kwargs
@@ -778,7 +779,7 @@ def _expected_compiler_current_platform():
     return expect_compilers
 
 
-def log_v(info, verbose):
+def log_v(info, verbose=True):
     """
     Print log information on stdout.
     """
