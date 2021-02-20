@@ -291,9 +291,9 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.extend(['-lpaddle_framework'])
+        extra_link_args.append('-lpaddle_framework')
         if use_cuda:
-            extra_link_args.append(['-lcudart'])
+            extra_link_args.append('-lcudart')
 
         kwargs['extra_link_args'] = extra_link_args
 
@@ -304,50 +304,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     kwargs['language'] = 'c++'
     return kwargs
-
-
-def find_paddle_includes(use_cuda=False):
-    """
-    Return Paddle necessary include dir path.
-    """
-    # pythonXX/site-packages/paddle/include
-    paddle_include_dir = get_include()
-    third_party_dir = os.path.join(paddle_include_dir, 'third_party')
-    cuda_include_dir = find_cuda_includes()
-
-    include_dirs = [paddle_include_dir, third_party_dir, cuda_include_dir]
-
-    return include_dirs
-
-
-def find_cuda_includes():
-    """
-    Use heuristic method to find cuda include path
-    """
-    cuda_home = find_cuda_home()
-    if cuda_home is None:
-        raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
-        )
-
-    return os.path.join(cuda_home, 'include')
-
-
-def find_cuda_libraries():
-    """
-    Use heuristic method to find cuda static lib path
-    """
-    cuda_home = find_cuda_home()
-    if cuda_home is None:
-        raise ValueError(
-            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
-        )
-    if IS_WINDOWS:
-        cuda_lib_dir = [os.path.join(cuda_home, 'lib', 'x64')]
-    else:
-        cuda_lib_dir = [os.path.join(cuda_home, 'lib64')]
-
-    return cuda_lib_dir
 
 
 def find_cuda_home():
@@ -386,6 +342,51 @@ def find_cuda_home():
         )
 
     return cuda_home
+
+
+def find_cuda_includes():
+    """
+    Use heuristic method to find cuda include path
+    """
+    cuda_home = find_cuda_home()
+    if cuda_home is None:
+        raise ValueError(
+            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+        )
+
+    return [os.path.join(cuda_home, 'include')]
+
+
+def find_paddle_includes(use_cuda=False):
+    """
+    Return Paddle necessary include dir path.
+    """
+    # pythonXX/site-packages/paddle/include
+    paddle_include_dir = get_include()
+    third_party_dir = os.path.join(paddle_include_dir, 'third_party')
+    include_dirs = [paddle_include_dir, third_party_dir]
+    if use_cuda:
+        cuda_include_dir = find_cuda_includes()
+        include_dirs.extend(cuda_include_dir)
+
+    return include_dirs
+
+
+def find_cuda_libraries():
+    """
+    Use heuristic method to find cuda static lib path
+    """
+    cuda_home = find_cuda_home()
+    if cuda_home is None:
+        raise ValueError(
+            "Not found CUDA runtime, please use `export CUDA_HOME=XXX` to specific it."
+        )
+    if IS_WINDOWS:
+        cuda_lib_dir = [os.path.join(cuda_home, 'lib', 'x64')]
+    else:
+        cuda_lib_dir = [os.path.join(cuda_home, 'lib64')]
+
+    return cuda_lib_dir
 
 
 def find_paddle_libraries(use_cuda=False):
@@ -431,7 +432,7 @@ def get_build_directory(verbose=False):
         if IS_WINDOWS:
             root_extensions_directory = os.path.normpath(
                 root_extensions_directory)
-        else:
+        elif OS_NAME.startswith('darwin'):
             # TODO(Aurelius84): consider macOs
             raise NotImplementedError("Not support Mac now.")
 
@@ -745,7 +746,7 @@ def check_abi_compatibility(compiler, verbose=False):
     try:
         if OS_NAME.startswith('linux'):
             version_info = subprocess.check_output(
-                [compiler, '-dumpfullversion'])
+                [compiler, '-dumpfullversion', '-dumpversion'])
             if six.PY3:
                 version_info = version_info.decode()
             version = version_info.strip().split('.')
@@ -757,8 +758,8 @@ def check_abi_compatibility(compiler, verbose=False):
                 warnings.warn(
                     ABI_INCOMPATIBILITY_WARNING.format(
                         user_compiler=compiler, version=version_info.strip()))
-        # TODO(Aurelius84): check version compatibility on windows
         elif IS_WINDOWS:
+            # TODO(zhouwei): support check abi compatibility on windows
             warnings.warn("We don't support Windows now.")
     except Exception:
         _, error, _ = sys.exc_info()

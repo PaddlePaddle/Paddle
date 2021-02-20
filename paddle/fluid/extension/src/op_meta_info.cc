@@ -110,3 +110,18 @@ void RegisterAllCustomOperator() {
 }
 
 }  // namespace paddle
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _WIN32
+// C-API to get global OpMetaInfoMap.
+paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+  return paddle::OpMetaInfoMap::Instance();
+}
+#endif
+
+#ifdef __cplusplus
+}  // end extern "C"
+#endif

@@ -329,15 +329,11 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
-#define C_DLL_DECL __declspec(dllexport)
-#else
-#define C_DLL_DECL
-#endif  // _WIN32
-
 // C-API to get global OpMetaInfoMap.
-C_DLL_DECL inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+__declspec(dllexport) inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
   return paddle::OpMetaInfoMap::Instance();
 }
+#endif  // _WIN32
 
 #ifdef __cplusplus
 }

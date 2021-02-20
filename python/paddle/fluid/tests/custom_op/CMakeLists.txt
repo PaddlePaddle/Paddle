@@ -8,11 +8,16 @@ if(WITH_GPU)
     set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
 endif()
 
-# Old custom OP will be removed and only support Linux
 if(NOT Linux)
     return()
 endif()
 
+# TODO(zhouwei): support test_check_abi/test_sysconfig on Windows
+py_test(test_check_abi SRCS test_check_abi.py)
+py_test(test_sysconfig SRCS test_sysconfig.py)
+
+# Old custom OP only support Linux, only run on Linux
+py_test(test_custom_op SRCS test_custom_op.py)
 py_test(test_jit_load SRCS test_jit_load.py)
 py_test(test_setup_install SRCS test_setup_install.py)
 py_test(test_setup_build SRCS test_setup_build.py)

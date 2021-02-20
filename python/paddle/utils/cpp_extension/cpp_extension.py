@@ -26,7 +26,7 @@ from setuptools.command.build_ext import build_ext
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat, get_build_directory
 from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
-from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS
+from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS, OS_NAME
 from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
@@ -319,31 +319,30 @@ class BuildExtension(build_ext, object):
                                          for elem in cmd) if m
                 ]
 
-                if len(src_list) >= 1 and len(obj_list) >= 1:
-                    src = src_list[0]
-                    obj = obj_list[0]
-                    if is_cuda_file(src):
-                        assert CUDA_HOME is not None
-                        nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                        if isinstance(self.cflags, dict):
-                            cflags = self.cflags['nvcc']
-                        elif isinstance(self.cflags, list):
-                            cflags = self.cflags
-                        else:
-                            cflags = []
-
-                        cflags = prepare_win_cflags(
-                            cflags) + ['--use-local-env']
-                        for flag in MSVC_COMPILE_FLAGS:
-                            cflags = ['-Xcompiler', flag] + cflags
-                        cmd = [nvcc_cmd, '-c', src, '-o', obj
-                               ] + include_list + cflags
-                    elif isinstance(self.cflags, dict):
-                        cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
-                        cmd += cflags
+                assert len(src_list) == 1 and len(obj_list) == 1
+                src = src_list[0]
+                obj = obj_list[0]
+                if is_cuda_file(src):
+                    assert CUDA_HOME is not None
+                    nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                    if isinstance(self.cflags, dict):
+                        cflags = self.cflags['nvcc']
                     elif isinstance(self.cflags, list):
-                        cflags = MSVC_COMPILE_FLAGS + self.cflags
-                        cmd += cflags
+                        cflags = self.cflags
+                    else:
+                        cflags = []
+
+                    cflags = prepare_win_cflags(cflags) + ['--use-local-env']
+                    for flag in MSVC_COMPILE_FLAGS:
+                        cflags = ['-Xcompiler', flag] + cflags
+                    cmd = [nvcc_cmd, '-c', src, '-o', obj
+                           ] + include_list + cflags
+                elif isinstance(self.cflags, dict):
+                    cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
+                    cmd += cflags
+                elif isinstance(self.cflags, list):
+                    cflags = MSVC_COMPILE_FLAGS + self.cflags
+                    cmd += cflags
 
                 return original_spawn(cmd)
 
@@ -489,7 +488,7 @@ class EasyInstallCommand(easy_install, object):
                 new_so_path = filename + "_pd_" + ext
                 if not os.path.exists(new_so_path):
                     os.rename(r'%s' % egg_file, r'%s' % new_so_path)
-                    assert os.path.exists(new_so_path)
+                assert os.path.exists(new_so_path)
 
 
 def load(name,
@@ -553,7 +552,7 @@ def load(name,
 
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
-    #
+    # Will load shared library from 'path' on windows
     if IS_WINDOWS:
         os.environ['path'] = build_directory + ';' + os.environ['path']
 
