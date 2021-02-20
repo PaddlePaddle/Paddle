@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include <hccl/hccl.h>
-#include <hccl/hccl_types.h>
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
 
 #include <string>
 
@@ -30,9 +30,9 @@ class Scope;
 namespace paddle {
 namespace operators {
 
-class CCreateGroupOpNPU : public framework::OperatorBase {
+class CCommInitOpNPU : public framework::OperatorBase {
  public:
-  CCreateGroupOpNPU(const std::string& type,
+  CCommInitOpNPU(const std::string& type,
               const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
@@ -40,27 +40,26 @@ class CCreateGroupOpNPU : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    string group_name = Attr<string>("group_name");
-    int nranks = Attr<int>("nranks");
-    vector<int> rank_ids = Attr<vector<int>>("rank_ids");
-    platform::HCCLCommContext::Instance().CreateHCCLGroup(
-        group_name, nranks, rank_ids);
+    std::string rank_table_file = Attr<std::string>("rank_table_file");
+    uint32_t rank_id = Attr<int>("rank_id");
+    uint32_t device_id = Attr<int>("device_id");
+    platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file,
+      rank_id, device_id);
   }
 };
 
-class CCreateGroupOpNPUMaker : public framework::OpProtoAndCheckerMaker {
+class CCommInitOpNPUMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddComment(R"DOC(
-CCreateGroup operator on NPU
+CCommInit operator on NPU
 
-Create collective communication group on NPU
+Initialize collective communication context within this trainer
 )DOC");
-    AddAttr<string>("group_name",
-        "(string) name of the collective communication group");
-    AddAttr<int>("nranks", "(int) number of the group");
-    AddAttr<int>("rank_ids",
-                 "(list of int) The world rank id of the group members");
+    AddAttr<std::string>("rank_table_file",
+        "(string) path to rank_table_file");
+    AddAttr<int>("rank_id", "(int) world rank id of the process");
+    AddAttr<int>("device_id", "(int) device id of the process/thread");
   }
 };
 
@@ -69,7 +68,7 @@ Create collective communication group on NPU
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_create_group, ops::CCreateGroupOpNPU,
-    ops::CCreateGroupNPUMaker);
+REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpNPU,
+   ops::CCommInitOpNPUMaker);
 
 #endif
