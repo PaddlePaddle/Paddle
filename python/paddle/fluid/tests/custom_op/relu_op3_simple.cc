@@ -31,9 +31,9 @@ std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype);
 
 // Reuse codes in `relu_op_simple.cc/cu` to register another custom operator
 // to test jointly compile multi operators at same time.
-PD_BUILD_OPERATOR("relu3")
+PD_BUILD_OP("relu3")
     .Inputs({"X"})
-    .Outputs({"Out"})
+    .Outputs({"Out", "Fake_float64", "ZFake_int32"})
     .SetKernelFn(PD_KERNEL(ReluForward))
     .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))

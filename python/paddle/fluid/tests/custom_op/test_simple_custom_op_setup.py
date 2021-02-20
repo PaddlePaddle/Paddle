@@ -29,7 +29,7 @@ def relu2_dynamic(func, device, dtype, np_x, use_func=True):
     t = paddle.to_tensor(np_x)
     t.stop_gradient = False
 
-    out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out = func(t)[0] if use_func else paddle.nn.functional.relu(t)
     out.stop_gradient = False
 
     out.backward()
@@ -45,17 +45,18 @@ def relu2_static(func, device, dtype, np_x, use_func=True):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            # out, fake_float64, fake_int32
+            out = func(x)[0] if use_func else paddle.nn.functional.relu(x)
             static.append_backward(out)
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
-
             # in static mode, x data has been covered by out
             out_v = exe.run(static.default_main_program(),
                             feed={'X': np_x},
                             fetch_list=[out.name])
 
+    paddle.disable_static()
     return out_v
 
 
@@ -68,7 +69,7 @@ def relu2_static_pe(func, device, dtype, np_x, use_func=True):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            out = func(x)[0] if use_func else paddle.nn.functional.relu(x)
             static.append_backward(out)
 
             exe = static.Executor()
@@ -82,6 +83,7 @@ def relu2_static_pe(func, device, dtype, np_x, use_func=True):
                             feed={'X': np_x},
                             fetch_list=[out.name])
 
+    paddle.disable_static()
     return out_v
 
 

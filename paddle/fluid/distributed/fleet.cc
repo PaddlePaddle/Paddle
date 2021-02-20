@@ -472,9 +472,15 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   }
 }
 
-void FleetWrapper::ShrinkSparseTable(int table_id) {
-  auto ret = pserver_ptr_->_worker_ptr->shrink(table_id);
+void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret =
+      communicator->_worker_ptr->shrink(table_id, std::to_string(threshold));
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "shrink sparse table stat failed";
+  }
 }
 
 void FleetWrapper::ClearModel() {
