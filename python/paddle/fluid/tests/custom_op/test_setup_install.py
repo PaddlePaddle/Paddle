@@ -51,13 +51,14 @@ class TestSetUpInstall(unittest.TestCase):
         import custom_relu2
 
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
+        gt_data = np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
         # use custom api
         out = custom_relu2.relu2(x)
+        out3 = custom_relu2.relu3(x)
 
-        self.assertTrue(
-            np.array_equal(out.numpy(),
-                           np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')))
+        self.assertTrue(np.array_equal(out.numpy(), gt_data))
+        self.assertTrue(np.array_equal(out3.numpy(), gt_data))
 
 
 if __name__ == '__main__':

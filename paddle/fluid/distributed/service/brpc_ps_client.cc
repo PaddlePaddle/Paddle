@@ -345,8 +345,9 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
   return fut;
 }
 
-std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id) {
-  return send_cmd(table_id, PS_SHRINK_TABLE, {std::string("1")});
+std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id,
+                                          const std::string threshold) {
+  return send_cmd(table_id, PS_SHRINK_TABLE, {threshold});
 }
 
 std::future<int32_t> BrpcPsClient::load(const std::string &epoch,

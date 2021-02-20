@@ -22,10 +22,8 @@ use_new_custom_op_load_method(False)
 
 setup(
     name='custom_relu2',
-    ext_modules=[
-        CUDAExtension(
-            name='custom_relu2',
-            sources=['relu_op.cc', 'relu_op.cu'],
-            include_dirs=paddle_includes,
-            extra_compile_args=extra_compile_args)
-    ])
+    ext_modules=CUDAExtension(  # test for not specific name here.
+        sources=['relu_op.cc', 'relu_op.cu', 'relu_op3.cc',
+                 'relu_op3.cu'],  # test for multi ops
+        include_dirs=paddle_includes,
+        extra_compile_args=extra_compile_args))

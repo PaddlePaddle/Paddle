@@ -29,7 +29,7 @@ def relu2_dynamic(func, device, dtype, np_x, use_func=True):
     t = paddle.to_tensor(np_x)
     t.stop_gradient = False
 
-    out = func(t) if use_func else paddle.nn.functional.relu(t)
+    out = func(t)[0] if use_func else paddle.nn.functional.relu(t)
     out.stop_gradient = False
 
     out.backward()
@@ -45,17 +45,18 @@ def relu2_static(func, device, dtype, np_x, use_func=True):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            # out, fake_float64, fake_int32
+            out = func(x)[0] if use_func else paddle.nn.functional.relu(x)
             static.append_backward(out)
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
-
             # in static mode, x data has been covered by out
             out_v = exe.run(static.default_main_program(),
                             feed={'X': np_x},
                             fetch_list=[out.name])
 
+    paddle.disable_static()
     return out_v
 
 
@@ -68,7 +69,7 @@ def relu2_static_pe(func, device, dtype, np_x, use_func=True):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
+            out = func(x)[0] if use_func else paddle.nn.functional.relu(x)
             static.append_backward(out)
 
             exe = static.Executor()
@@ -82,6 +83,7 @@ def relu2_static_pe(func, device, dtype, np_x, use_func=True):
                             feed={'X': np_x},
                             fetch_list=[out.name])
 
+    paddle.disable_static()
     return out_v
 
 
@@ -107,7 +109,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
         # usage: import the package directly
         import simple_setup_relu2
-        self.custom_op = simple_setup_relu2.relu2
+        self.custom_ops = [simple_setup_relu2.relu2, simple_setup_relu2.relu3]
 
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu', 'gpu']
@@ -116,40 +118,42 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out = relu2_static(self.custom_op, device, dtype, x)
-                pd_out = relu2_static(self.custom_op, device, dtype, x, False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(out,
-                                                                     pd_out))
+                for custom_op in self.custom_ops:
+                    out = relu2_static(custom_op, device, dtype, x)
+                    pd_out = relu2_static(custom_op, device, dtype, x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
 
     def test_static_pe(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out = relu2_static_pe(self.custom_op, device, dtype, x)
-                pd_out = relu2_static_pe(self.custom_op, device, dtype, x,
-                                         False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(out,
-                                                                     pd_out))
+                for custom_op in self.custom_ops:
+                    out = relu2_static_pe(custom_op, device, dtype, x)
+                    pd_out = relu2_static_pe(custom_op, device, dtype, x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
 
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out, x_grad = relu2_dynamic(self.custom_op, device, dtype, x)
-                pd_out, pd_x_grad = relu2_dynamic(self.custom_op, device, dtype,
-                                                  x, False)
-                self.assertTrue(
-                    np.array_equal(out, pd_out),
-                    "custom op out: {},\n paddle api out: {}".format(out,
-                                                                     pd_out))
-                self.assertTrue(
-                    np.array_equal(x_grad, pd_x_grad),
-                    "custom op x grad: {},\n paddle api x grad: {}".format(
-                        x_grad, pd_x_grad))
+                for custom_op in self.custom_ops:
+                    out, x_grad = relu2_dynamic(custom_op, device, dtype, x)
+                    pd_out, pd_x_grad = relu2_dynamic(custom_op, device, dtype,
+                                                      x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
+                    self.assertTrue(
+                        np.array_equal(x_grad, pd_x_grad),
+                        "custom op x grad: {},\n paddle api x grad: {}".format(
+                            x_grad, pd_x_grad))
 
 
 if __name__ == '__main__':

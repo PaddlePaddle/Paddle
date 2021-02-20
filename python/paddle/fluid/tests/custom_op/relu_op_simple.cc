@@ -18,6 +18,13 @@
 #include "paddle/extension.h"
 
 template <typename data_t>
+void fill_constant_cpu_kernel(data_t* out_data, int64_t x_numel, data_t value) {
+  for (int i = 0; i < x_numel; ++i) {
+    out_data[i] = value;
+  }
+}
+
+template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
                              data_t* out_data,
                              int64_t x_numel) {
@@ -46,8 +53,21 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
         relu_cpu_forward_kernel<data_t>(
             x.data<data_t>(), out.mutable_data<data_t>(x.place()), x.size());
       }));
+  // fake multi output: Fake_float64 with float64 dtype
+  auto fake_float64 = paddle::Tensor(paddle::PlaceType::kCPU);
+  fake_float64.reshape(x.shape());
 
-  return {out};
+  fill_constant_cpu_kernel<double>(
+      fake_float64.mutable_data<double>(x.place()), x.size(), 0.);
+
+  // fake multi output: ZFake_int32 with int32 dtype
+  auto zfake_int32 = paddle::Tensor(paddle::PlaceType::kCPU);
+  zfake_int32.reshape(x.shape());
+
+  fill_constant_cpu_kernel<int32_t>(
+      zfake_int32.mutable_data<int32_t>(x.place()), x.size(), 1);
+
+  return {out, fake_float64, zfake_int32};
 }
 
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
@@ -97,16 +117,16 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
 }
 
 std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape) {
-  return {x_shape};
+  return {x_shape, x_shape, x_shape};
 }
 
 std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype) {
-  return {x_dtype};
+  return {x_dtype, paddle::DataType::FLOAT64, paddle::DataType::INT32};
 }
 
-PD_BUILD_OPERATOR("relu2")
+PD_BUILD_OP("relu2")
     .Inputs({"X"})
-    .Outputs({"Out"})
+    .Outputs({"Out", "Fake_float64", "ZFake_int32"})
     .SetKernelFn(PD_KERNEL(ReluForward))
     .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))

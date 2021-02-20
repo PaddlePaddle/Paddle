@@ -590,6 +590,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv2d_int8_mkldnn_op',
     'test_conv2d_mkldnn_op',
     'test_conv2d_transpose_mkldnn_op',
+    'test_conv2d_transpose_bf16_mkldnn_op',
     'test_conv3d_mkldnn_op',
     'test_dequantize_mkldnn_op',
     'test_elementwise_add_mkldnn_op',
