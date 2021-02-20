@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 #include <string>
-#include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"

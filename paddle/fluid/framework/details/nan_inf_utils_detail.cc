@@ -14,15 +14,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-
-#include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/selected_rows.h"
-
 namespace paddle {
 namespace framework {
 namespace details {

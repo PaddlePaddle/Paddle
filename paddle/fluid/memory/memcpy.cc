@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 
-#include <cstring>  // for memcpy
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"

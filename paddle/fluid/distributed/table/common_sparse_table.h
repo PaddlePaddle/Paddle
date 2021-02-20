@@ -35,6 +35,8 @@
 namespace paddle {
 namespace distributed {
 
+class SparseOptimizer;
+
 class CommonSparseTable : public SparseTable {
  public:
   CommonSparseTable() { rwlock_.reset(new framework::RWLock); }
@@ -73,7 +75,7 @@ class CommonSparseTable : public SparseTable {
 
   virtual int32_t pour();
   virtual int32_t flush();
-  virtual int32_t shrink();
+  virtual int32_t shrink(const std::string& param);
   virtual void clear();
 
  protected:

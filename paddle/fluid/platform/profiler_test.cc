@@ -122,7 +122,7 @@ TEST(RecordEvent, RecordEvent) {
       if (events[i][j].name() == "_start_profiler_") ++start_profiler_count;
       if (events[i][j].name() == "push") {
         EXPECT_EQ(events[i][j + 1].name(), "pop");
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         EXPECT_GT(events[i][j].CudaElapsedMs(events[i][j + 1]), 0);
 #else
         EXPECT_GT(events[i][j].CpuElapsedMs(events[i][j + 1]), 0);
@@ -144,5 +144,15 @@ TEST(TMP, stream_wait) {
   cudaStreamSynchronize(stream);
   cudaStreamSynchronize(stream);
   cudaStreamSynchronize(stream);
+}
+#endif
+
+#ifdef PADDLE_WITH_HIP
+TEST(TMP, stream_wait) {
+  hipStream_t stream;
+  hipStreamCreate(&stream);
+  hipStreamSynchronize(stream);
+  hipStreamSynchronize(stream);
+  hipStreamSynchronize(stream);
 }
 #endif

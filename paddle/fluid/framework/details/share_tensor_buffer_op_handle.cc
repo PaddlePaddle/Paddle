@@ -15,12 +15,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 
 #include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

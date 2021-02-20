@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
 
-#include <memory>
-
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"

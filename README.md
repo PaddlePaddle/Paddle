@@ -87,7 +87,7 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 ## Communication
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 796771754 (PaddlePaddle).
+- QQ discussion group: 778260830 (PaddlePaddle).
 - [Forums](https://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
 
 ## Copyright and License

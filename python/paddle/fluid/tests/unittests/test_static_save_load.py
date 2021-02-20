@@ -1276,11 +1276,11 @@ class TestProgramStateOldSave(unittest.TestCase):
             # case 2: load with no need file
             def symlink_force(target, link_name):
                 try:
-                    os.symlink(target, link_name)
+                    self.create_symlink(target, link_name)
                 except OSError as e:
                     if e.errno == errno.EEXIST:
                         os.remove(link_name)
-                        os.symlink(target, link_name)
+                        self.create_symlink(target, link_name)
                     else:
                         raise e
 
@@ -1303,6 +1303,14 @@ class TestProgramStateOldSave(unittest.TestCase):
             load_state = fluid.load_program_state("test_program_1")
             for k, v in load_state.items():
                 self.assertTrue(np.array_equal(base_map[k], v))
+
+    def create_symlink(self, target, link_name):
+        try:
+            os.symlink(target, link_name)
+        except AttributeError:
+            import ctypes
+            kernel_dll = ctypes.windll.LoadLibrary("kernel32.dll")
+            kernel_dll.CreateSymbolicLinkA(target, link_name, 0)
 
     def check_in_static(self, main_program, base_map):
         for var in main_program.list_vars():
