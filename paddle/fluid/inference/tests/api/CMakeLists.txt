@@ -1,7 +1,7 @@
 if (NOT APPLE AND NOT WIN32)
-    set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
+    set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 else()
-    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io ir_pass_manager analysis_predictor benchmark)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
@@ -497,10 +497,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(test_analyzer_capi_xpu SRCS analyzer_capi_xpu_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
             
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
@@ -581,11 +581,11 @@ inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
         ARGS --infer_model=${RESNET50_MODEL_DIR})
 
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
 inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
@@ -598,12 +598,12 @@ inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_t
             
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
 
 inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
         ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
 if(WITH_GPU)

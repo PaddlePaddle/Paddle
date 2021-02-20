@@ -130,9 +130,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
-// TODO(wilber): cudnn8 has memory leak problem in conv + eltwise + act, so we
-// disable the pass temporarily.
-#if CUDNN_VERSION < 8000
+// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
+// disable the pass.
+#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
 #endif
