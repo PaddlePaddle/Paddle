@@ -175,8 +175,8 @@ class BuildExtension(build_ext, object):
                     # {'nvcc': {}, 'cxx: {}}
                     if isinstance(cflags, dict):
                         cflags = cflags['nvcc']
-                    else:
-                        cflags = prepare_unix_cflags(cflags)
+
+                    cflags = prepare_unix_cflags(cflags)
                 # cxx compile Cpp source
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
@@ -309,7 +309,7 @@ class EasyInstallCommand(easy_install, object):
 
 def load(name,
          sources,
-         extra_cflags=None,
+         extra_cxx_cflags=None,
          extra_cuda_cflags=None,
          extra_ldflags=None,
          extra_include_paths=None,
@@ -332,7 +332,7 @@ def load(name,
     Args:
         name(str): generated shared library file name.
         sources(list[str]): custom op source files name with .cc/.cu suffix.
-        extra_cflag(list[str]): additional flags used to compile CPP files. By default
+        extra_cxx_cflags(list[str]): additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None.
@@ -373,23 +373,24 @@ def load(name,
     file_path = os.path.join(build_directory, "setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
-    if extra_cflags is None: extra_cflags = []
+    if extra_cxx_cflags is None: extra_cxx_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
     assert isinstance(
-        extra_cflags, list
-    ), "Required type(extra_cflags) == list[str], but received {}".format(
-        extra_cflags)
+        extra_cxx_cflags, list
+    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
+        extra_cxx_cflags)
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
         extra_cuda_cflags)
 
-    log_v("additional extra_cflags: [{}], extra_cuda_cflags: [{}]".format(
-        ' '.join(extra_cflags), ' '.join(extra_cuda_cflags)), verbose)
+    log_v("additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
+        ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
     # write setup.py file and compile it 
     _write_setup_file(name, sources, file_path, extra_include_paths,
-                      extra_cflags, extra_cuda_cflags, extra_ldflags, verbose)
+                      extra_cxx_cflags, extra_cuda_cflags, extra_ldflags,
+                      verbose)
     _jit_compile(file_path, interpreter, verbose)
 
     # import as callable python api

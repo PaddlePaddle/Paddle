@@ -25,7 +25,8 @@ custom_module = load(
     name='simple_jit_relu2',
     sources=['relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cuda_cflags=extra_compile_args)  # add for Coverage CI
 
 
 class TestJITLoad(unittest.TestCase):
