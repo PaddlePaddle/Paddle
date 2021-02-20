@@ -37,7 +37,7 @@ class TestSqueezeOp(XPUOpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float64")
+            "XShape": np.random.random(self.ori_shape).astype("float32")
         }
 
     def test_check_output(self):

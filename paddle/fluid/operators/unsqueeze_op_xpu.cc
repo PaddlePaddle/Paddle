@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unsqueeze_op.h"
-
+#ifdef PADDLE_WITH_XPU
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
@@ -56,3 +56,5 @@ REGISTER_OP_XPU_KERNEL(
     ops::Unsqueeze2GradKernel<paddle::platform::XPUDeviceContext, uint8_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::XPUDeviceContext, int8_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::XPUDeviceContext, int64_t>);
+
+#endif
