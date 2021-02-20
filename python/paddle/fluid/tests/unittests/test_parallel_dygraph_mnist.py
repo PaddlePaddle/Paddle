@@ -66,12 +66,13 @@ class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
-class TestFleetDygraphMnist(TestDistBase):
+class TestParallelDygraphMnistAccGrad(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
         self._use_fleet_api = True
+        self._accumulate_gradient = True
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
