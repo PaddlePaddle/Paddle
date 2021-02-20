@@ -323,13 +323,15 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
+                log_v(nvcc_path)
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
         except:
             if IS_WINDOWS:
                 # search from default NVIDIA GPU path
                 candidate_paths = glob.glob(
-                    'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v*.*')
+                    'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v*.*'
+                )
                 if len(candidate_paths) > 0:
                     cuda_home = candidate_paths[0]
             else:
@@ -365,9 +367,11 @@ def find_paddle_includes(use_cuda=False):
     paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
     include_dirs = [paddle_include_dir, third_party_dir]
-    if use_cuda:
-        cuda_include_dir = find_cuda_includes()
-        include_dirs.extend(cuda_include_dir)
+
+    #TODO(zhouwei): because eigen need cuda_runtime.h
+    #So, extend cuda_include_dir always
+    cuda_include_dir = find_cuda_includes()
+    include_dirs.extend(cuda_include_dir)
 
     return include_dirs
 
@@ -395,9 +399,12 @@ def find_paddle_libraries(use_cuda=False):
     """
     # pythonXX/site-packages/paddle/libs
     paddle_lib_dirs = [get_lib()]
-    if use_cuda:
-        cuda_lib_dirs = find_cuda_libraries()
-        paddle_lib_dirs.extend(cuda_lib_dirs)
+
+    #TODO(zhouwei): because eigen need cuda_runtime.h
+    #So, extend cuda_lib_dir always
+    cuda_lib_dir = find_cuda_libraries()
+    paddle_lib_dirs.extend(cuda_lib_dir)
+
     return paddle_lib_dirs
 
 

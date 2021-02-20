@@ -9,17 +9,19 @@ if(WITH_GPU)
     set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
 endif()
 
+py_test(test_sysconfig SRCS test_sysconfig.py)
+
 # 'test_dispatch' compile .cc file
 py_test(test_dispatch SRCS test_dispatch.py)
 set_tests_properties(test_dispatch PROPERTIES TIMEOUT 180)
+
 
 if(NOT Linux)
     return()
 endif()
 
-# TODO(zhouwei): support test_check_abi/test_sysconfig on Windows
+# TODO(zhouwei): support test_check_abi and abi check on Windows
 py_test(test_check_abi SRCS test_check_abi.py)
-py_test(test_sysconfig SRCS test_sysconfig.py)
 
 # Old custom OP only support Linux, only run on Linux
 py_test(test_custom_op SRCS test_custom_op.py)
