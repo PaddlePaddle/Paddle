@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/interpolate_v2_op.h"
+#include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
@@ -310,10 +311,9 @@ __global__ void KeBilinearInterpBw2(
     const bool align_corners, const int align_mode,
     const DataLayout data_layout) {
   const int share_size = 1024;
-  int cnt = 0;
   const int block_per_threads = blockDim.x;
+  int max_index_s_data = 0;
   __shared__ T s_data[share_size];
-  __shared__ int max_index_s_data;
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -374,12 +374,23 @@ __global__ void KeBilinearInterpBw2(
                               h1lambda * w1lambda * out_pos);
       __syncthreads();
 
-      max_index_s_data = max_s_index;
-      // printf("[max_s_index]: %d\n", max_index_s_data);
+      printf(
+          "[top-left]: %d, [top-right]: %d\t[bottom-left]: %d, [bottom-right]: "
+          "%d\n",
+          input_index, (input_index + w_id), (input_index + h_id * in_img_w),
+          (input_index + h_id * in_img_w + w_id));
 
-      if (threadIdx.x < max_index_s_data) {
+      // printf("[top-left S]: %d, [top-right S]: %d\t[bottom-left S]: %d,
+      // [bottom-right S]: %d\n",
+      //     input_index % share_size, (input_index + w_id) % share_size,
+      //     (input_index + h_id * in_img_w) % share_size, max_s_index %
+      //     share_size);
+
+      max_index_s_data = math::blockReduceMax(max_s_index, max_index_s_data);
+      printf("max_index_s_data : %d\n", max_index_s_data);
+
+      if (threadIdx.x < max_index_s_data + 1) {
         in[input_index + threadIdx.x] += s_data[threadIdx.x];
-        // __syncthreads();
         // printf("[input_index]: %d, [input_index + threadIdx.x]: %d, [in_val]:
         // %f\t[s_idx]: %d, [s_data]: %f\n", input_index,
         //         (input_index + threadIdx.x), ((double)in[input_index]),
