@@ -1,12 +1,17 @@
 # New custom OP can support Windows/Linux now
 if(WITH_GPU)
-    # 'test_simple_custom_op_jit/test_simple_custom_op_setup' compile .cu file
+    # 'test_simple_custom_op_jit/test_simple_custom_op_setup' compile .cc and .cu file
     py_test(test_simple_custom_op_setup SRCS test_simple_custom_op_setup.py)
     py_test(test_simple_custom_op_jit SRCS test_simple_custom_op_jit.py)
+    
     # Compiling shared library will cost some time, but running process is very fast.
     set_tests_properties(test_simple_custom_op_setup PROPERTIES TIMEOUT 250)
     set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
 endif()
+
+# 'test_dispatch' compile .cc file
+py_test(test_dispatch SRCS test_dispatch.py)
+set_tests_properties(test_dispatch PROPERTIES TIMEOUT 180)
 
 if(NOT Linux)
     return()
@@ -21,9 +26,11 @@ py_test(test_custom_op SRCS test_custom_op.py)
 py_test(test_jit_load SRCS test_jit_load.py)
 py_test(test_setup_install SRCS test_setup_install.py)
 py_test(test_setup_build SRCS test_setup_build.py)
+
 set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
 set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
 set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
+
 
 if(WITH_ROCM)
     hip_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)

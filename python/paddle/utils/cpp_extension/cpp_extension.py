@@ -315,8 +315,8 @@ class BuildExtension(build_ext, object):
 
                 include_regex = re.compile(r'((\-|\/)I.*)')
                 include_list = [
-                    m.group(1) 
-                    for m in (include_regex.match(elem) for elem in cmd) if m
+                    m.group(1) for m in (include_regex.match(elem)
+                                         for elem in cmd) if m
                 ]
 
                 assert len(src_list) == 1 and len(obj_list) == 1

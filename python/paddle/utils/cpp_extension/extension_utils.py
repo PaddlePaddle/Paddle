@@ -301,7 +301,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
-        print(runtime_library_dirs)
 
     kwargs['language'] = 'c++'
     return kwargs
