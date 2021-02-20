@@ -279,6 +279,11 @@ class TestTensorShapeBasic5(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_5
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 4
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 1
+
 
 class TestTupleShape1(TestTensorShapeBasic):
     def init_test_func(self):
@@ -312,9 +317,9 @@ class TestTensorShapeInIf1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_if_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 26
-        self.expected_shape_op_num = 2
-        self.expected_slice_op_num = 2
+        self.expected_op_num = 4
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 1
 
 
 class TestTensorShapeInIf2(TestTensorShapeBasic):
@@ -342,6 +347,11 @@ class TestTensorShapeInFor2(TestTensorShapeInFor1):
     def init_test_func(self):
         self.dygraph_func = dyfunc_with_for_2
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 9
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 1
+
 
 # 4. Tests with control flow while loop
 class TestTensorShapeInWhile1(TestTensorShapeInFor1):
@@ -353,15 +363,20 @@ class TestTensorShapeInWhile2(TestTensorShapeInFor1):
     def init_test_func(self):
         self.dygraph_func = dyfunc_with_while_2
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 6
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 1
+
 
 class TestTensorShapeInWhile3(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_with_while_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 25
-        self.expected_shape_op_num = 6
-        self.expected_slice_op_num = 3
+        self.expected_op_num = 2
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 class TestTensorShapeInWhile4(TestTensorShapeBasic):
@@ -431,9 +446,9 @@ class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
-        self.expected_shape_op_num = 1
-        self.expected_slice_op_num = 1
+        self.expected_op_num = 2
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
