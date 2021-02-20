@@ -96,6 +96,7 @@ class AscendIRParser(object):
             op_parser = self.parser_factory.create_parse(
                 ascend_parser.registerd_op[op.type])
             op_parser.apply(op)
+            #print("add op:", op_parser.parser_name)
         else:
             assert False, "Op[%s] has not been registered, so we have to skip it" % (
                 op.type)
@@ -214,7 +215,8 @@ class AscendOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  auto_dp=False,
-                 rank_table_file=None):
+                 rank_table_file=None,
+                 precision_mode="must_keep_origin_dtype"):
         minimized = None
         if self.inner_opt:
             minimized = self.inner_opt.minimize(
@@ -234,7 +236,7 @@ class AscendOptimizer(Optimizer):
         config = {
             "ge.exec.deviceId": str(fleet.local_device_ids()),
             "ge.graphRunMode": "1",
-            "ge.exec.precision_mode": "must_keep_origin_dtype",
+            "ge.exec.precision_mode": precision_mode,
         }
         # if multi trainers
         if rank_table_file and fleet.world_size() > 1:
@@ -251,6 +253,8 @@ class AscendOptimizer(Optimizer):
         main_block = loss.block
         self.parser = AscendIRParser(
             auto_dp=auto_dp, world_rank_size=fleet.world_size())
+
+        #print("main program:", main_block.program)
 
         input_varlist = self._get_input_varlist(main_block.program)
 

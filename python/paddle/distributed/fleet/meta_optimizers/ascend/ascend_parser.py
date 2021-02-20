@@ -145,6 +145,7 @@ class AscendParserFactory(object):
 
     def create_parse(self, parser_class):
         try:
+            #print("globals:", globals())
             parser = globals()[parser_class](self.graph, self.var2geop)
             return parser
         except:
@@ -203,7 +204,9 @@ class AscendParserBase(object):
     def _accumulated_op_id(self):
         global global_cnt
         global_cnt += 1
-        return "." + str(global_cnt)
+        name = "." + str(global_cnt)
+        #print("op post_fix:", name)
+        return name
 
     def _create_ge_tensor(self, shape, dtype, value):
         tensor_desc = core.GETensorDesc(
