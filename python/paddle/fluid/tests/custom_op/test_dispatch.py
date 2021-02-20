@@ -34,30 +34,17 @@ class TestJitDispatch(unittest.TestCase):
         np_x = np.ones([2, 2]).astype(dtype)
         x = paddle.to_tensor(np_x)
         out = func(x)
+        np_x = x.numpy()
+        np_out = out.numpy()
+        self.assertTrue(dtype in str(np_out.dtype))
         self.assertTrue(
-            np.array_equal(x.numpy(), out.numpy()),
-            "custom op x: {},\n custom op out: {}".format(x.numpy(),
-                                                          out.numpy()))
-
-    def test_dispatch_float_and(self):
-        dtypes = ["float32", "float64", "float16"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_float_and, dtype)
-
-    def test_dispatch_float_and2(self):
-        dtypes = ["float32", "float64", "float16", "bool"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_float_and2, dtype)
+            np.array_equal(np_x, np_out),
+            "custom op x: {},\n custom op out: {}".format(np_x, np_out))
 
     def test_dispatch_integer(self):
         dtypes = ["int32", "int64", "int8", "uint8", "int16"]
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_integer, dtype)
-
-    def test_dispatch_integer_and(self):
-        dtypes = ["int32", "int64", "int8", "uint8", "int16", "bool"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_integer_and, dtype)
 
     def test_dispatch_complex(self):
         dtypes = ["complex64", "complex128"]
@@ -72,43 +59,11 @@ class TestJitDispatch(unittest.TestCase):
             self.run_dispatch_test(dispatch_op.dispatch_test_float_and_integer,
                                    dtype)
 
-    def test_dispatch_float_and_integer_and(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
-            "float16"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_integer_and, dtype)
-
-    def test_dispatch_float_and_integer_and2(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
-            "float16", "bool"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_integer_and2, dtype)
-
     def test_dispatch_float_and_complex(self):
         dtypes = ["float32", "float64", "complex64", "complex128"]
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_float_and_complex,
                                    dtype)
-
-    def test_dispatch_float_and_complex_and(self):
-        dtypes = ["float32", "float64", "complex64", "complex128", "float16"]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_complex_and, dtype)
-
-    def test_dispatch_float_and_complex_and2(self):
-        dtypes = [
-            "float32", "float64", "complex64", "complex128", "float16", "bool"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_complex_and2, dtype)
 
     def test_dispatch_float_and_integer_and_complex(self):
         dtypes = [
@@ -118,26 +73,6 @@ class TestJitDispatch(unittest.TestCase):
         for dtype in dtypes:
             self.run_dispatch_test(
                 dispatch_op.dispatch_test_float_and_integer_and_complex, dtype)
-
-    def test_dispatch_float_and_integer_and_complex_and(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
-            "complex64", "complex128", "float16"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_integer_and_complex_and,
-                dtype)
-
-    def test_dispatch_float_and_integer_and_complex_and2(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
-            "complex64", "complex128", "float16", "bool"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_integer_and_complex_and2,
-                dtype)
 
 
 if __name__ == '__main__':

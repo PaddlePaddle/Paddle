@@ -14,12 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/float16.h"
+
 namespace paddle {
 
-struct complex128;
-struct complex64;
-struct float16;
-struct bfloat16;
+using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
+using complex64 = paddle::platform::complex64;
+using complex128 = paddle::platform::complex128;
 
 enum DataType {
   BOOL,

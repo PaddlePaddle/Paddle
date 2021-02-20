@@ -34,50 +34,6 @@ std::vector<paddle::DataType> InferDType(paddle::DataType x_dtype) {
   return {x_dtype};
 }
 
-std::vector<paddle::Tensor> DispatchTestFloatAnd(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_TYPES_AND(
-      paddle::DataType::FLOAT16, x.type(), "assign_cpu_kernel", ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAnd))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestFloatAnd2(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_TYPES_AND2(
-      paddle::DataType::FLOAT16,
-      paddle::DataType::BOOL,
-      x.type(),
-      "assign_cpu_kernel",
-      ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and2")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAnd2))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
 std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
   out.reshape(x.shape());
@@ -95,26 +51,6 @@ PD_BUILD_OP("dispatch_test_integer")
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(DispatchTestInterger))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestIntergerAnd(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_INTEGRAL_TYPES_AND(
-      paddle::DataType::BOOL, x.type(), "assign_cpu_kernel", ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_integer_and")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestIntergerAnd))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
 
@@ -159,52 +95,6 @@ PD_BUILD_OP("dispatch_test_float_and_integer")
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
 
-std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAnd(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES_AND(
-      paddle::DataType::FLOAT16, x.type(), "assign_cpu_kernel", ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_integer_and")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAnd))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAnd2(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_INTEGRAL_TYPES_AND2(
-      paddle::DataType::FLOAT16,
-      paddle::DataType::BOOL,
-      x.type(),
-      "assign_cpu_kernel",
-      ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_integer_and2")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAnd2))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
 std::vector<paddle::Tensor> DispatchTestFloatAndComplex(
     const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
@@ -226,52 +116,6 @@ PD_BUILD_OP("dispatch_test_float_and_complex")
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
 
-std::vector<paddle::Tensor> DispatchTestFloatAndComplexAnd(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND(
-      paddle::DataType::FLOAT16, x.type(), "assign_cpu_kernel", ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_complex_and")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplexAnd))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestFloatAndComplexAnd2(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(
-      paddle::DataType::FLOAT16,
-      paddle::DataType::BOOL,
-      x.type(),
-      "assign_cpu_kernel",
-      ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_complex_and2")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplexAnd2))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
 std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplex(
     const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
@@ -290,51 +134,5 @@ PD_BUILD_OP("dispatch_test_float_and_integer_and_complex")
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAndComplex))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplexAnd(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES_AND(
-      paddle::DataType::FLOAT16, x.type(), "assign_cpu_kernel", ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_integer_and_complex_and")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAndComplexAnd))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
-
-std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplexAnd2(
-    const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
-
-  PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES_AND2(
-      paddle::DataType::FLOAT16,
-      paddle::DataType::BOOL,
-      x.type(),
-      "assign_cpu_kernel",
-      ([&] {
-        assign_cpu_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
-      }));
-
-  return {out};
-}
-
-PD_BUILD_OP("dispatch_test_float_and_integer_and_complex_and2")
-    .Inputs({"X"})
-    .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAndComplexAnd2))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
