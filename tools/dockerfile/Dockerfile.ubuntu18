@@ -42,8 +42,8 @@ RUN apt-get update && \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python2.7 && easy_install pip && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.5 && easy_install pip && \
+  curl https://bootstrap.pypa.io/2.7/get-pip.py -o - | python2.7 && easy_install pip && \
+  curl https://bootstrap.pypa.io/3.5/get-pip.py -o - | python3.5 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.6 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.7 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.8 && easy_install pip && \

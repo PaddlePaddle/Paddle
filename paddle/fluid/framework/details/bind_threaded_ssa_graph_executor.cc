@@ -122,18 +122,22 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   for (auto cur_op : ready_fetch_ops) {
     ready_ops->Push(cur_op);
   }
-  // Atomic variable, no need to lock
-  exec_op_count_ = 0;
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    exec_op_count_ = 0;
+  }
 
   platform::XPUPlace cur_place;
   std::size_t cur_count = 0;
 
-  while (cur_count < op_deps_.size()) {
+  while (cur_count < op_deps->size()) {
     cur_count++;
     auto cur_op = ready_ops->Pop();
     // when execption, get cur_op == nullptr
     if (cur_op == nullptr) {
-      exec_op_count_ = op_deps_.size();
+      std::lock_guard<std::mutex> lock(mutex_);
+      exec_op_count_ = op_deps->size();
       break;
     }
     auto dev_ctxes_ = cur_op->DeviceContext();
@@ -149,8 +153,9 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   }
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps_.size(); });
+    cv_.wait(lock, [&] { return exec_op_count_ >= op_deps->size(); });
   }
+
   if (exception_.IsCaught()) {
     ExecutionFinal(&fetch_ops);
   }
@@ -255,9 +260,11 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
       ready_ops->Push(nullptr);
       exception_.Catch(std::current_exception());
     }
-    // Atomic variable, no need to lock
-    exec_op_count_++;
-    cv_.notify_all();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      exec_op_count_++;
+      cv_.notify_all();
+    }
   });
 }
 // RunOpAsyncMainStream function is used for computed OPs
@@ -286,9 +293,11 @@ void BindThreadedSSAGraphExecutor::RunOpAsyncMainStream(
       ready_ops->Push(nullptr);
       exception_.Catch(std::current_exception());
     }
-    // Atomic variable, no need to lock
-    exec_op_count_++;
-    cv_.notify_all();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      exec_op_count_++;
+      cv_.notify_all();
+    }
   });
 }
 

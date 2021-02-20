@@ -15,7 +15,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"

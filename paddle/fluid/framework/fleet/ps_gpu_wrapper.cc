@@ -183,6 +183,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
         val.slot = ptr_val[6];
         val.lr = ptr_val[4];
         val.lr_g2sum = ptr_val[5];
+        val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
         if (dim > 7) {
           val.mf_size = MF_DIM + 1;

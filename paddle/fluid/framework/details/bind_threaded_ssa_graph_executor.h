@@ -80,7 +80,7 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   std::mutex mutex_;
   std::condition_variable cv_;
-  std::atomic<unsigned int> exec_op_count_;
+  uint32_t exec_op_count_;
   std::atomic<int> error_state;
 
   void RunOpAsyncMainStream(

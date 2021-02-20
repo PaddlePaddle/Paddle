@@ -68,7 +68,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC_0, *src_x_memory},

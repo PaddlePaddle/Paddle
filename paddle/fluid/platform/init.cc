@@ -11,20 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <string.h>  // for strdup
-
-#include <algorithm>
 #include <fstream>
-#include <iostream>
-#include <memory>
-#include <set>
-#include <stdexcept>
 #include <string>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -32,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/piece.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
@@ -43,6 +33,7 @@ limitations under the License. */
 #include <stdio.h>
 #include <time.h>
 #include <windows.h>
+
 #include "DbgHelp.h"
 #endif
 

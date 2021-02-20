@@ -14,10 +14,7 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
-#include <deque>
 #include <string>
-#include <unordered_set>
-#include <utility>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"

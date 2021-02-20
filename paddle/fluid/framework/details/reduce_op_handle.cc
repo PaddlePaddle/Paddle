@@ -14,12 +14,9 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 
-#include <memory>
-
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(

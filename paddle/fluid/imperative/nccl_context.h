@@ -25,6 +25,12 @@
 #include "paddle/fluid/imperative/parallel_context.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL)

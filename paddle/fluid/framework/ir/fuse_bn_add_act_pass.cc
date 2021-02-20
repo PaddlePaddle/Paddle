@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_bn_add_act_pass.h"
-#include <algorithm>
 #include <string>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_CUDA

@@ -23,134 +23,6 @@ from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
 
-class TensorRTSubgraphPassConvTest(InferencePassTest):
-    def setUp(self):
-        self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                act=None)
-        self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassConvTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [conv_out]
-
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 3
-        self.conv_padding = [1, 1]
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
-class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 3
-        self.conv_padding = 'VALID'
-
-
-'''
-# conv2d padded in 'SAME' mode is not yet supported in TRT, reopen this when support is complete.
-class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 3
-        self.conv_padding = 'SAME'
-'''
-
-
-class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 6
-        self.conv_padding = [1, 1]
-
-
-class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
-    def setUp(self):
-        self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d_transpose(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                act=None)
-        self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassConvTransposeTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [conv_out]
-
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 1
-        self.conv_padding = [1, 1]
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
-class TensorRTSubgraphPassConvTransposeValidPaddingTest(
-        TensorRTSubgraphPassConvTransposeTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 1
-        self.conv_padding = 'VALID'
-
-
-'''
-# conv2d_transpose padded in 'SAME' mode is not yet supported in TRT, reopen this when support is complete.
-class TensorRTSubgraphPassConvTransposeSamePaddingTest(TensorRTSubgraphPassConvTransposeTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 1
-        self.conv_padding = 'SAME'
-'''
-
-
-class TensorRTSubgraphPassDepthwiseConvTransposeTest(
-        TensorRTSubgraphPassConvTransposeTest):
-    def set_params(self):
-        self.conv_num_filters = 6
-        self.conv_filter_size = 6
-        self.conv_groups = 1
-        self.conv_padding = [1, 1]
-
-
 class TensorRTSubgraphPassFcTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -282,207 +154,6 @@ class TensorRTSubgraphPassValidPaddingPoolTest(InferencePassTest):
         self.exclusive = False
 
 
-class TensorRTSubgraphPassActivationTest(InferencePassTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
-
-    def setUp(self):
-        self.setUpTensorRTParam()
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32")
-            act_out = self.append_act(data)
-            out = fluid.layers.batch_norm(act_out, is_test=True)
-        self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
-        }
-        self.fetch_list = [out]
-
-    def append_act(self, x):
-        return fluid.layers.relu(x)
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
-            if self.trt_parameters.precision == AnalysisConfig.Precision.Float32:
-                self.check_output_with_option(use_gpu)
-            else:
-                self.check_output_with_option(use_gpu, 1e-3)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
-class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.leaky_relu(x)
-
-
-class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.relu6(x)
-
-
-class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.softmax(x)
-
-
-class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.sigmoid(x)
-
-
-class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.hard_swish(x)
-
-
-class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.hard_sigmoid(x)
-
-
-class TensorRTSubgraphPassHardSwishPluginTest(
-        TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.hard_swish(x, threshold=4.0, scale=8.0)
-
-
-class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.clip(x, 0, 1)
-
-
-class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.tanh(x)
-
-
-class TensorRTSubgraphPassSwishTest(TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
-
-    def append_act(self, x):
-        return fluid.layers.swish(x)
-
-
-class TensorRTSubgraphPassSwishFp16SerializeTest(
-        TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-
-    def append_act(self, x):
-        return fluid.layers.swish(x)
-
-
-class TensorRTSubgraphPassDynamicSwishFp16SerializeTest(
-        TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
-            {
-                'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
-
-    def append_act(self, x):
-        return fluid.layers.swish(x)
-
-
-class TensorRTSubgraphPassPreluAllTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
-
-
-class TensorRTSubgraphPassPreluChannelTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.prelu(x, mode='channel')
-
-
-class TensorRTSubgraphPassPreluElementTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.prelu(x, mode='element')
-
-
-class TensorRTSubgraphPassGeluTest(TensorRTSubgraphPassActivationTest):
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
-class TensorRTSubgraphPassGeluDynamicTest(TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
-            {
-                'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
-
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
-class TensorRTSubgraphPassGeluFp16Test(TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, False, False)
-
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
-class TensorRTSubgraphPassGeluFp16SerializeTest(
-        TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
-class TensorRTSubgraphPassGeluFp16DynamicTest(
-        TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, False, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
-            {
-                'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
-
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
-class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
-        TensorRTSubgraphPassActivationTest):
-    def setUpTensorRTParam(self):
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassActivationTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
-            {
-                'data': [1, 6, 8, 8]
-            }, {'data': [1, 6, 512, 512]}, {'data': [1, 6, 256, 256]}, False)
-
-    def append_act(self, x):
-        return fluid.layers.gelu(x)
-
-
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -570,7 +241,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassActivationTest.DynamicShapeParam(
+        self.dynamic_shape_params = TensorRTSubgraphPassDynamicSplitFp16SerializeTest.DynamicShapeParam(
             {
                 'data': [1, 3, 8, 64]
             }, {'data': [1, 3, 512, 64]}, {'data': [1, 3, 256, 64]}, False)
@@ -612,6 +283,59 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=1e-4, flatten=True)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassTransposeTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            transpose_out = self.append_transpose(data)
+            out = fluid.layers.batch_norm(transpose_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassTransposeTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_transpose(self, data):
+        return fluid.layers.transpose(data, [0, 3, 1, 2])
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassFlattenTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            flatten_out = self.append_flatten(data)
+            reshape_out = fluid.layers.reshape(flatten_out, [-1, 0, 1, 1])
+            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassFlattenTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

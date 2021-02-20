@@ -30,6 +30,7 @@ namespace paddle {
 namespace framework {
 
 class VarDesc;
+
 namespace details {
 struct VarHandle;
 }  // namespace details
