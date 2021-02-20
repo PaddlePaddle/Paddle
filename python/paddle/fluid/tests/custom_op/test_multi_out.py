@@ -21,7 +21,7 @@ from utils import paddle_includes, extra_compile_args
 
 # Compile and load custom op Just-In-Time.
 multi_out_module = load(
-    name='multi_out',
+    name='multi_out_module',
     sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cflags=extra_compile_args)  # add for Coverage CI

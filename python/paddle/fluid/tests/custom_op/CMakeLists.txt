@@ -33,3 +33,4 @@ set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
 
 set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
 set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
+set_tests_properties(test_multi_out PROPERTIES TIMEOUT 180)
