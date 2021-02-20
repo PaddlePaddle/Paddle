@@ -38,7 +38,7 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
           : dense_contents_.GetMutable<framework::LoDTensor>();
 
   if (platform::is_gpu_place(tensor->place())) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
   } else if (platform::is_cpu_place(tensor->place())) {
