@@ -267,9 +267,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     extra_link_args.append('-lpaddle_framework')
     if use_cuda:
         extra_link_args.append('-lcudart')
-
     kwargs['extra_link_args'] = extra_link_args
-
     kwargs['language'] = 'c++'
     return kwargs
 
