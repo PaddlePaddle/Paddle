@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
+
+struct complex128;
+struct complex64;
+struct float16;
+struct bfloat16;
 
 enum DataType {
   FLOAT32,
