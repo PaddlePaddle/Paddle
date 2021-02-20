@@ -118,6 +118,9 @@ void RegisterAllCustomOperator() {
   framework::RegisterOperatorWithMetaInfoMap(op_meta_info_map);
 }
 
+void LoadCustomOperatorLib(const std::string& dso_name) {
+  paddle::framework::LoadOpMetaInfoAndRegisterOp(dso_name);
+}
 }  // namespace paddle
 
 extern "C" {

@@ -18,7 +18,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
@@ -71,7 +71,7 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 }
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
@@ -214,7 +214,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 }
 
 void AnalysisConfig::EnableCUDNN() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_cudnn_ = use_gpu_;
 #else
   LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
@@ -288,7 +288,7 @@ void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
     AnalysisConfig::Precision precision_mode, bool use_static,
     bool use_calib_mode) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
     return;
@@ -384,7 +384,7 @@ void AnalysisConfig::Update() {
     }
   }
   if (use_gpu() && use_cudnn_) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
     } else {
@@ -526,7 +526,7 @@ void AnalysisConfig::SetCpuMathLibraryNumThreads(
 }
 
 float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_total, gpu_available;
