@@ -91,8 +91,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of TensorShapeTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        # stores origin var name (x = t.shape) to
-        # static shape var name (x_STATIC_CONVERT_VAR_SHAPE_SUFFIX = shape(t))
+        # stores origin var string name (like "x" in `x = t.shape`) to
+        # static shape var string name (like "x_SUFFIX" in `x_SUFFIX = shape(t)`)
         self.name_to_var_shape = {}
 
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)

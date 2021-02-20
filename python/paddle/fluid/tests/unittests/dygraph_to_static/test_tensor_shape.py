@@ -197,6 +197,14 @@ def dyfunc_with_while_4(x):
     return x
 
 
+def dyfunc_change_shape_after_assign(x):
+    x = paddle.to_tensor(x)
+    a, b = x.shape
+    x = paddle.reshape(x, shape=(-1, 1))
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
 # 1. Basic tests without control flow
 class TestTensorShapeBasic(unittest.TestCase):
     def setUp(self):
@@ -479,6 +487,18 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.expected_op_num = 22
         self.expected_shape_op_num = 3
         self.expected_slice_op_num = 3
+
+
+class TestChangeShapeAfterAssign(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((2, 3)).astype("int32")
+        self.input_spec = [paddle.static.InputSpec(shape=[2, 3], dtype="int32")]
+        self.dygraph_func = dyfunc_change_shape_after_assign
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 3
+        self.expected_shape_op_num = 0
+        self.expected_slice_op_num = 0
 
 
 if __name__ == '__main__':
