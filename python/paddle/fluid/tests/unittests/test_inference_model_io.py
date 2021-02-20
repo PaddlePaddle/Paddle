@@ -356,6 +356,48 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
                           None, None, None)
 
+    def test_normalize_program(self):
+        init_program = fluid.default_startup_program()
+        program = fluid.default_main_program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+
+            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost, init_program)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+
+        tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
+        tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+        for i in six.moves.xrange(3):
+            exe.run(program,
+                    feed={'x': tensor_x,
+                          'y': tensor_y},
+                    fetch_list=[avg_cost])
+
+        # test if return type of serialize_program is bytes
+        res = paddle.static.normalize_program(program, [x, y], [avg_cost])
+        self.assertTrue(isinstance(res, Program))
+        # test program type
+        self.assertRaises(TypeError, paddle.static.normalize_program, None,
+                          [x, y], [avg_cost])
+        # test feed_vars type
+        self.assertRaises(TypeError, paddle.static.normalize_program, program,
+                          ['x', 'y'], [avg_cost])
+        # test fetch_vars type
+        self.assertRaises(TypeError, paddle.static.normalize_program, program,
+                          [x, y], ['avg_cost'])
+
 
 class TestLoadInferenceModelError(unittest.TestCase):
     def test_load_model_not_exist(self):
