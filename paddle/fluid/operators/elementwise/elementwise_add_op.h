@@ -315,7 +315,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     // skip out
     auto *out = dout;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
 #ifdef __NVCC__
 
     int axis = ctx.Attr<int>("axis");
