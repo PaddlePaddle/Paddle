@@ -25,7 +25,7 @@ paddle::Tensor InitCPUTensorForTest() {
   t1.reshape(tensor_shape);
   auto* p_data_ptr = t1.mutable_data<T>(paddle::PlaceType::kCPU);
   for (int64_t i = 0; i < t1.size(); i++) {
-    p_data_ptr[i] = 5;
+    p_data_ptr[i] = T(5);
   }
   return t1;
 }
@@ -36,7 +36,7 @@ void TestCopyTensor() {
   auto t1_cpu_cp = t1.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_cpu_cp.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_cpu_cp.template data<T>()[i], 5);
+    CHECK_EQ(t1_cpu_cp.template data<T>()[i], T(5));
   }
 #ifdef PADDLE_WITH_CUDA
   VLOG(2) << "Do GPU copy test";
@@ -48,7 +48,7 @@ void TestCopyTensor() {
       t1_gpu_cp.template copy_to<T>(paddle::PlaceType::kCPU);
   CHECK((paddle::PlaceType::kCPU == t1_gpu_cp_cp_cpu.place()));
   for (int64_t i = 0; i < t1.size(); i++) {
-    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], 5);
+    CHECK_EQ(t1_gpu_cp_cp_cpu.template data<T>()[i], T(5));
   }
 #endif
 }
@@ -99,16 +99,15 @@ void GroupTestCopy() {
   TestCopyTensor<float>();
   VLOG(2) << "Double cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<double>();
-  // TODO(JiabinYang): Support these test later
-  //  VLOG(2) << "Fp16 cpu-cpu-gpu-gpu-cpu";
-  //  TestCopyTensor<paddle::platform::float16>();
-  //  VLOG(2) << "BF16 cpu-cpu-gpu-gpu-cpu";
-  //  TestCopyTensor<paddle::platform::bfloat16>();
-  //  VLOG(2) << "complex128 cpu-cpu-gpu-gpu-cpu";
-  //  TestCopyTensor<paddle::platform::complex128>();
-  //  VLOG(2) << "complex64 cpu-cpu-gpu-gpu-cpu";
-  //  TestCopyTensor<paddle::platform::complex64>();
-  //  VLOG(2) << "int cpu-cpu-gpu-gpu-cpu";
+  VLOG(2) << "Fp16 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::platform::float16>();
+  VLOG(2) << "BF16 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::platform::bfloat16>();
+  VLOG(2) << "complex128 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::platform::complex128>();
+  VLOG(2) << "complex64 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::platform::complex64>();
+  VLOG(2) << "int cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<int>();
   VLOG(2) << "int64 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<int64_t>();
@@ -138,6 +137,10 @@ void GroupTestCast() {
   VLOG(2) << "uint8 cast";
   TestCast<uint8_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "float cast";
+  TestCast<float>(paddle::DataType::FLOAT32);
+  VLOG(2) << "complex64 cast";
+  TestCast<float>(paddle::DataType::FLOAT32);
+  VLOG(2) << "complex128 cast";
   TestCast<float>(paddle::DataType::FLOAT32);
 }
 

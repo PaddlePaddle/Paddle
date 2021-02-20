@@ -60,7 +60,7 @@ class CommonDenseTable : public DenseTable {
   }
 
   virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink() override { return 0; }
+  virtual int32_t shrink(const std::string& param) override { return 0; }
   virtual void clear() override { return; }
 
  protected:
