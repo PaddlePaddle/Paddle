@@ -58,7 +58,7 @@ class CommonAccessor:
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
-        self.entry = "none"
+        self.entry = None
         self.attrs = []
         self.params = []
         self.dims = []
@@ -203,7 +203,8 @@ class CommonAccessor:
         if self.table_name:
             attrs += "table_name: \"{}\" ".format(self.table_name)
 
-        attrs += "entry: \"{}\" ".format(self.entry)
+        if self.entry:
+            attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
 
