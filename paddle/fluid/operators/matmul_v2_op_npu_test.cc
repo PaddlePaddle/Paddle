@@ -35,6 +35,7 @@ namespace m = paddle::operators::math;
 USE_OP(matmul_v2);
 USE_OP_DEVICE_KERNEL(matmul_v2, NPU);
 
+template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   // init
   auto x = scope->Var("X");
@@ -45,11 +46,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   int dim1=1024;
   int dim2=size;
 
-//  std::vector<paddle::platform::float16> init;
-  std::vector<float> init;
+  std::vector<T> init;
   for (int64_t i = 0; i < dim1 * dim2; ++i) {
-    //init.push_back(paddle::platform::float16(1.0));
-    init.push_back(1.0);
+    init.push_back(static_cast<T>(0.1));
   }
 
   TensorFromVector(init, ctx, tensor_x);
@@ -62,9 +61,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({dim1, dim1});
-  //tensor_out->mutable_data<paddle::platform::float16>(place);  // allocate
-  tensor_out->mutable_data<float>(place);  // allocate
 
   // run
   f::AttributeMap attrs = {{"transpose_X", false}, {"transpose_Y", false}};
@@ -87,18 +83,18 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   //printf("idx:%d, time:%d\n", i, micros/100);
   printf("size:%d time:%d\n", size, micros/100);
 
-  std::vector<float> out_vec;
-  //std::vector<paddle::platform::float16> out_vec;
+  std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
-  EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)(dim1 * dim1));
+  EXPECT_EQ((uint64_t)out_vec.size(), (uint64_t)(dim1 * dim1));
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], size);
+    EXPECT_EQ(out_vec[i], static_cast<T>(size * 0.01));
   }
 }
 
+template <typename T>
 void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   // init
   auto x = scope->Var("X");
@@ -109,11 +105,9 @@ void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   int dim1=1024;
   int dim2=size;
 
-//  std::vector<paddle::platform::float16> init;
-  std::vector<float> init;
+  std::vector<T> init;
   for (int64_t i = 0; i < dim1 * dim2; ++i) {
-    //init.push_back(paddle::platform::float16(1.0));
-    init.push_back(1.0);
+    init.push_back(static_cast<T>(1.0));
   }
 
   TensorFromVector(init, ctx, tensor_x);
@@ -126,9 +120,6 @@ void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({dim1, dim1});
-  //tensor_out->mutable_data<paddle::platform::float16>(place);  // allocate
-  tensor_out->mutable_data<float>(place);  // allocate
 
   // run
   f::AttributeMap attrs = {{"transpose_X", false}, {"transpose_Y", true}};
@@ -140,26 +131,42 @@ void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   op->Run(*scope, place);
   ctx.Wait();
 
-  std::vector<float> out_vec;
-  //std::vector<paddle::platform::float16> out_vec;
+  std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
-  EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)(dim1 * dim1));
+  EXPECT_EQ((uint64_t)out_vec.size(), (uint64_t)(dim1 * dim1));
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], size);
+    EXPECT_EQ(out_vec[i], static_cast<T>(size));
   }
   printf("test_transpose pass\n");
 }
 
-TEST(matmul_v2, NPU) {
+TEST(matmul_v2, NPU_fp16) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   int size=1;
-  for(int i=0;i<18;i++){
-    Compare(&scope, ctx, size);
-    //test_transpose(&scope, ctx, size);
+  for(int i=0; i<18; i++){
+    Compare<p::float16>(&scope, ctx, size);
     size *= 2;
   }
 }
+
+//TEST(matmul_v2, NPU_fp32) {
+//  f::Scope scope;
+//  p::NPUDeviceContext ctx(p::NPUPlace(0));
+//  int size=1;
+//  for(int i=0; i<18; i++){
+//    Compare<float>(&scope, ctx, size);
+//    size *= 2;
+//  }
+//}
+
+
+//TEST(matmul_v2, NPU_fp16) {
+//  f::Scope scope;
+//  p::NPUDeviceContext ctx(p::NPUPlace(0));
+//  int size=32;
+//  test_transpose<p::float16>(&scope, ctx, size);
+//}

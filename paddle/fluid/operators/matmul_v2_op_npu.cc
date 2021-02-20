@@ -37,15 +37,8 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
                 "matmul npu not support transpose_y is true"));
     framework::AttributeMap attr_input= {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}};
     
-
     out->mutable_data<T>(ctx.GetPlace());
 
-    // TODO(zhiqiu): get the attr infomation of Ascend op and
-    // convert paddle AttributeMap to Ascend attrs.
-    // Ascend op add has no attribute ?
-    // int axis = ctx.Attr<int>("axis");
-
-    // NOTE(zhiqiu): the order of inputs and outputs is important
     auto runner = NpuOpRunner("MatMul", {*x, *y}, {*out}, attr_input);
 
     auto stream =
@@ -62,6 +55,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     matmul_v2,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>);
-//    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
+    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
 #endif
