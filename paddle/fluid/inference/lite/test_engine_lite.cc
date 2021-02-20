@@ -74,7 +74,7 @@ void make_fake_model(std::string* model, std::string* param) {
   *block_->add_ops() = *fetch->Proto();
 
   framework::Scope scope;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
@@ -102,11 +102,11 @@ TEST(EngineManager, engine) {
   const std::string unique_key("engine_0");
   config.model_from_memory = true;
   config.valid_places = {
-#ifdef PADDLE_WITH_CUDA
-      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
-      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
+    paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+    paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
 
   LOG(INFO) << "Create EngineManager";

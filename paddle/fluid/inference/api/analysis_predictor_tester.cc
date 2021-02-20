@@ -63,7 +63,7 @@ TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   config.EnableUseGpu(100, 0);
 #else
   config.DisableGpu();
@@ -486,7 +486,7 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
