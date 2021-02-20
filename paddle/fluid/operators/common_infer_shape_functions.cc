@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 
-#include <algorithm>
-#include <vector>
-
 namespace paddle {
 namespace framework {
 class InferShapeContext;

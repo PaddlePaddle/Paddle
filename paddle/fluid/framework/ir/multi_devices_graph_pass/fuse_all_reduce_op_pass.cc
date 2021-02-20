@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <string>
-#include <vector>
-
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
@@ -276,7 +273,7 @@ class FuseAllReduceOpPass : public ir::Pass {
                                   ir::Node::Type::kOperation),
           local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-      auto *op_handle = new details::FusedAllReduceOpHandle(
+      op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
           local_scopes, places, num_of_all_reduce, multi_bkcl_ctxs);

@@ -52,7 +52,6 @@ class TestSetValueApi(TestSetValueBase):
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(self.program, fetch_list=[x])
-
         self._get_answer()
         self.assertTrue(
             (self.data == out).all(),
@@ -60,7 +59,7 @@ class TestSetValueApi(TestSetValueBase):
                 self.data, out))
 
 
-# 1. Test different type of item: int, python slice
+# 1. Test different type of item: int, python slice, Ellipsis
 class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
@@ -101,8 +100,40 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
+class TestSetValueItemEllipsis1(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, ..., 1:] = self.value
+
+    def _get_answer(self):
+        self.data[0:, ..., 1:] = self.value
+
+
+class TestSetValueItemEllipsis2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, ...] = self.value
+
+    def _get_answer(self):
+        self.data[0:, ...] = self.value
+
+
+class TestSetValueItemEllipsis3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[..., 1:] = self.value
+
+    def _get_answer(self):
+        self.data[..., 1:] = self.value
+
+
+class TestSetValueItemEllipsis4(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[...] = self.value
+
+    def _get_answer(self):
+        self.data[...] = self.value
+
+
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
-# 2.1 value is int32, int64, float32, bool
+# 2.1 value is int32, int64, float32, float64, bool
 
 
 def create_test_value_int32(parent):
@@ -165,6 +196,26 @@ create_test_value_fp32(TestSetValueItemSlice3)
 create_test_value_fp32(TestSetValueItemSlice4)
 
 
+def create_test_value_fp64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = 2.0**127  # float32:[-2^128, 2^128)
+
+        def set_dtype(self):
+            self.dtype = "float64"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_fp64(TestSetValueItemInt)
+create_test_value_fp64(TestSetValueItemSlice)
+create_test_value_fp64(TestSetValueItemSlice2)
+create_test_value_fp64(TestSetValueItemSlice3)
+create_test_value_fp64(TestSetValueItemSlice4)
+
+
 def create_test_value_bool(parent):
     class TestValueInt(parent):
         def set_value(self):
@@ -185,7 +236,7 @@ create_test_value_bool(TestSetValueItemSlice3)
 create_test_value_bool(TestSetValueItemSlice4)
 
 
-# 2.2 value is numpy.array (int32, int64, float32, bool)
+# 2.2 value is numpy.array (int32, int64, float32, float64, bool)
 def create_test_value_numpy_int32(parent):
     class TestValueInt(parent):
         def set_value(self):
@@ -244,6 +295,26 @@ create_test_value_numpy_fp32(TestSetValueItemSlice)
 create_test_value_numpy_fp32(TestSetValueItemSlice2)
 create_test_value_numpy_fp32(TestSetValueItemSlice3)
 create_test_value_numpy_fp32(TestSetValueItemSlice4)
+
+
+def create_test_value_numpy_fp64(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = np.array([2**127]).astype("float64")
+
+        def set_dtype(self):
+            self.dtype = "float64"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_numpy_fp64(TestSetValueItemInt)
+create_test_value_numpy_fp64(TestSetValueItemSlice)
+create_test_value_numpy_fp64(TestSetValueItemSlice2)
+create_test_value_numpy_fp64(TestSetValueItemSlice3)
+create_test_value_numpy_fp64(TestSetValueItemSlice4)
 
 
 def create_test_value_numpy_bool(parent):
@@ -451,13 +522,19 @@ class TestError(TestSetValueBase):
                 TypeError,
                 "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
         ):
-            y = paddle.ones(shape=self.shape, dtype="float64")
+            y = paddle.ones(shape=self.shape, dtype="float16")
             y[0] = 1
 
     def _step_error(self):
         with self.assertRaisesRegexp(ValueError, "only support step is 1"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:2] = self.value
+
+    def _ellipsis_error(self):
+        with self.assertRaisesRegexp(
+                IndexError, "An index can only have a single ellipsis"):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x[..., ...] = self.value
 
     def _broadcast_mismatch(self):
         program = paddle.static.Program()

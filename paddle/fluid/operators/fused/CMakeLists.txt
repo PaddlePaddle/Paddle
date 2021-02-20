@@ -14,11 +14,15 @@ register_operators(EXCLUDES
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
     fusion_gru_op
+    fusion_lstm_op
     fused_bn_add_activation_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
+op_library(fusion_lstm_op)
 file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_gru);\n")
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_lstm);\n")
+
 
 if (WITH_GPU)
     # fused_bn_activation_op needs cudnn 7.4.1 above

@@ -35,6 +35,8 @@
 namespace paddle {
 namespace distributed {
 
+class SparseOptimizer;
+
 class CommonSparseTable : public SparseTable {
  public:
   CommonSparseTable() { rwlock_.reset(new framework::RWLock); }
@@ -68,6 +70,8 @@ class CommonSparseTable : public SparseTable {
   // only for sparse geo table
   virtual int32_t push_sparse_param(const uint64_t* keys, const float* values,
                                     size_t num);
+
+  virtual int32_t set_global_lr(float* lr) override;
 
   virtual int32_t pour();
   virtual int32_t flush();

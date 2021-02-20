@@ -104,7 +104,7 @@ class Momentum(Optimizer):
             raise ValueError("learning_rate is not set")
         if momentum is None:
             raise ValueError("momentum is not set")
-        predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
+        predicate = lambda regular: isinstance(regular, (L2DecayRegularizer, float))
         py_regular = None if predicate(weight_decay) else weight_decay
         super(Momentum, self).__init__(
             learning_rate=learning_rate,
@@ -120,6 +120,9 @@ class Momentum(Optimizer):
         if (isinstance(weight_decay, L2DecayRegularizer)):
             self._regularization_method = "l2_decay"
             self._regularization_coeff = weight_decay._regularization_coeff
+        if (isinstance(weight_decay, float)):
+            self._regularization_method = "l2_decay"
+            self._regularization_coeff = weight_decay
         self._multi_precision = multi_precision
         self._rescale_grad = rescale_grad
         self._master_weights = {}
@@ -127,21 +130,6 @@ class Momentum(Optimizer):
         if framework.in_dygraph_mode():
             self.helper = LayerHelper(self.__class__.__name__)
             for p in parameters:
-                self._add_accumulator(self._velocity_acc_str, p)
-        else:
-            all_parameters = fluid.default_main_program().global_block(
-            ).all_parameters()
-            self.helper = LayerHelper(self.__class__.__name__)
-            for p in all_parameters:
-                if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
-                    master_p = self._create_master_weight(p)
-                    self._add_accumulator(self._velocity_acc_str, master_p)
-                    continue
-                if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
-                    warnings.warn(
-                        "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
-                        "Consider using multi_precision=True option of the Momentum optimizer."
-                    )
                 self._add_accumulator(self._velocity_acc_str, p)
 
     def _create_master_weight(self, param):
@@ -190,8 +178,21 @@ class Momentum(Optimizer):
         return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
+        if framework.in_dygraph_mode():
+            return
+
         assert isinstance(block, framework.Block)
-        # create accumulator in init func, so no implementation here
+        for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._velocity_acc_str, master_p)
+                continue
+            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Momentum optimizer."
+                )
+            self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

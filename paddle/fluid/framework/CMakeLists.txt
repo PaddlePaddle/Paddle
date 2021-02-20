@@ -209,12 +209,12 @@ if(WITH_DISTRIBUTE)
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
-    lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
+    lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor
     heter_service_proto pslib_brpc)
     set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  else()
+  elseif(WITH_PSCORE)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
@@ -228,6 +228,16 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(multi_trainer.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  else()
+    cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+            heterxpu_trainer.cc
+            data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
+            heterbox_worker.cc heterbox_trainer.cc ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
+            pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
+            device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
+            lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
+            graph_to_program_pass variable_helper timer monitor)
   endif()
 elseif(WITH_PSLIB)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
@@ -239,7 +249,6 @@ elseif(WITH_PSLIB)
   device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper timer monitor pslib_brpc )
-
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
@@ -256,7 +265,7 @@ target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_h
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
-        graph build_strategy collective_helper
+        graph build_strategy bind_threaded_ssa_graph_executor collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
@@ -311,11 +320,17 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
+cc_library(custom_tensor SRCS ../extension/src/tensor.cc DEPS lod_tensor)
+cc_library(op_meta_info SRCS ../extension/src/op_meta_info.cc DEPS custom_tensor)
+cc_library(custom_operator SRCS custom_operator.cc DEPS operator op_registry device_context dynamic_loader custom_tensor op_meta_info)
+cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
+    SHARED SRCS executor.cc operator.cc custom_operator.cc ../extension/src/tensor.cc
+    ../extension/src/op_meta_info.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
     ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})

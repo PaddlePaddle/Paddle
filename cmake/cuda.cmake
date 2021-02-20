@@ -15,7 +15,7 @@ else()
   set(paddle_known_gpu_archs7 "30 35 50 52")
   set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
   set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
-  set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
 
@@ -216,6 +216,8 @@ endif(WIN32)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+# Set :expt-extended-lambda to enable HOSTDEVICE annotation on lambdas
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
 
 if(WIN32)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"/wd4244 /wd4267 /wd4819 \"")

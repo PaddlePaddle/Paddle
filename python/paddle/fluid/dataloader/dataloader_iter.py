@@ -24,6 +24,7 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
+from paddle.fluid.framework import _set_expected_place, _current_expected_place
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -297,12 +298,20 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
 
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
         try:
+            #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+            # and it will call platform::SetDeviceId() in c++ internally.
+            # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+            # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+            # APIs in this thread.
+            _set_expected_place(legacy_expected_place)
+
             for indices in self._sampler_iter:
                 # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(indices)
@@ -311,7 +320,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 array = core.LoDTensorArray()
                 for slot in batch:
                     if not isinstance(slot, core.LoDTensor):
-                        self._check_input_array(slot)
                         # FIXME(dkp): blocking_queue only support
                         #             core.LoDTensorArray as input now, read
                         #             numpy data into a LoDTensorArray here,
@@ -336,19 +344,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._thread = None
             logging.warning("DataLoader reader thread raised an exception.")
             six.reraise(*sys.exc_info())
-
-    @classmethod
-    def _check_input_array(cls, item):
-        if isinstance(item, paddle.Tensor):
-            return
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError((
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
     def __next__(self):
         try:
@@ -445,11 +440,16 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 if use_shared_memory:
                     # FIXME(dkp): _convert_to_tensor_list only support np.array
                     #             list now, should support paddle.Tensor list
-                    if isinstance(batch[0][0], paddle.Tensor):
-                        np_batch = []
-                        for sample in batch:
-                            np_batch.append([s.numpy() for s in sample])
-                        batch = np_batch
+                    new_batch = []
+                    for sample in batch:
+                        new_sample = []
+                        for s in sample:
+                            if isinstance(s, paddle.Tensor):
+                                new_sample.append(s.numpy())
+                            else:
+                                new_sample.append(s)
+                        new_batch.append(new_sample)
+                    batch = new_batch
 
                     tensor_list = core._convert_to_tensor_list(batch)
                     out_queue.put((idx, tensor_list))
@@ -563,7 +563,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._pin_memory)
 
         self._thread_done_event = threading.Event()
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
@@ -603,7 +604,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
+        #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+        # and it will call platform::SetDeviceId() in c++ internally.
+        # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # APIs in this thread.
+        _set_expected_place(legacy_expected_place)
+
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():

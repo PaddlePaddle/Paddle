@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/layer_norm_op.h"
+
 #include <memory>
 #include <string>
 
@@ -124,7 +125,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }

@@ -23,6 +23,7 @@ from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
+from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 
 
 def monkey_patch_varbase():
@@ -169,7 +170,8 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
-            if paddle.distributed.get_world_size() > 1:
+            if paddle.is_compiled_with_xpu():
+                # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 scaled_loss._run_backward(framework._dygraph_tracer(),
                                           retain_graph)
@@ -318,6 +320,21 @@ def monkey_patch_varbase():
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
+
+    # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
+    # So, we need to overwrite it to a more readable one.
+    # See details in https://github.com/pybind/pybind11/issues/2537.
+    origin = getattr(core.VarDesc.VarType, "__repr__")
+
+    def dtype_str(dtype):
+        if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+            prefix = 'paddle.'
+            return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        else:
+            # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
+            return origin(dtype)
+
+    setattr(core.VarDesc.VarType, "__repr__", dtype_str)
 
     # patch math methods for varbase
     monkey_patch_math_varbase()

@@ -11,7 +11,7 @@ ARG WITH_AVX
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-11.0/targets/x86_64-linux/lib:LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-11.0/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
 ENV HOME /root
 # Add bash enhancements
@@ -20,8 +20,8 @@ COPY paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
-  apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \ 
-    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev \
+  apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
+    coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
 
 # Downgrade gcc&&g++
@@ -42,8 +42,8 @@ RUN apt-get update && \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python2.7 && easy_install pip && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.5 && easy_install pip && \
+  curl https://bootstrap.pypa.io/2.7/get-pip.py -o - | python2.7 && easy_install pip && \
+  curl https://bootstrap.pypa.io/3.5/get-pip.py -o - | python3.5 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.6 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.7 && easy_install pip && \
   curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.8 && easy_install pip && \

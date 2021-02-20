@@ -81,10 +81,35 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         "TensorRT's tensor input requires at most 4 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
+  auto ShapeStr = [](const std::vector<T>& shape) {
+    std::ostringstream os;
+    os << "[";
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (i == shape.size() - 1) {
+        os << shape[i];
+      } else {
+        os << shape[i] << ",";
+      }
+    }
+    os << "]";
+    return os.str();
+  };
   if (!with_dynamic_shape) {
     if (shape.size() == 4UL) {
+      if (shape[2] == -1 || shape[3] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
       return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
+      if (shape[1] == -1 || shape[2] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
     return nvinfer1::DimsCHW(shape[1], 1, 1);
@@ -220,6 +245,29 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data) {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+
+    if (use_dla_) {
+      if (precision_ != AnalysisConfig::Precision::kInt8 &&
+          precision_ != AnalysisConfig::Precision::kHalf) {
+        LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                        "set float32, so DLA is not used.";
+      } else if (runtime->getNbDLACores() == 0) {
+        LOG(WARNING)
+            << "TensorRT DLA is set by config, but your device does not have "
+               "DLA, so DLA is not used.";
+      } else {
+        if (dla_core_ < 0 || dla_core_ >= runtime->getNbDLACores()) {
+          dla_core_ = 0;
+          LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                       << runtime->getNbDLACores() << ", but got " << dla_core_
+                       << ", so use use 0 as default.";
+        }
+        runtime->setDLACore(dla_core_);
+        LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
+                  << dla_core_;
+      }
+    }
+
     if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
       infer_engine_.reset(runtime->deserializeCudaEngine(
@@ -287,6 +335,8 @@ class TensorRTEngine {
   }
 
   void SetUseOSS(bool use_oss) { use_oss_ = use_oss; }
+  void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
+  void SetDLACore(int dla_core) { dla_core_ = dla_core; }
   void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
 
   void ClearWeights() {
@@ -316,8 +366,8 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
-  bool use_oss() { return use_oss_; };
-  bool with_ernie() { return with_ernie_; };
+  bool use_oss() { return use_oss_; }
+  bool with_ernie() { return with_ernie_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
@@ -354,6 +404,8 @@ class TensorRTEngine {
   ShapeMapType optim_input_shape_;
   bool disable_trt_plugin_fp16_{false};
   bool use_oss_{false};
+  bool use_dla_{false};
+  int dla_core_{0};
   bool with_ernie_{false};
   nvinfer1::ILogger& logger_;
 

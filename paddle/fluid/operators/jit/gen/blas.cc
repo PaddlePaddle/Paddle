@@ -13,7 +13,8 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/blas.h"
-#include <memory>
+
+#include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 

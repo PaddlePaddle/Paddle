@@ -149,9 +149,30 @@ class TestVarBase(unittest.TestCase):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
         _test_place(core.CPUPlace())
+        _test_place("cpu")
         if core.is_compiled_with_cuda():
             _test_place(core.CUDAPinnedPlace())
+            _test_place("gpu_pinned")
             _test_place(core.CUDAPlace(0))
+            _test_place("gpu:0")
+
+    def test_to_tensor_change_place(self):
+        if core.is_compiled_with_cuda():
+            a_np = np.random.rand(1024, 1024)
+            with paddle.fluid.dygraph.guard(core.CPUPlace()):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CPUPlace")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
+                a = paddle.to_tensor(a)
+                self.assertEqual(a.place.__repr__(), "CUDAPlace(0)")
+
+            with paddle.fluid.dygraph.guard(core.CUDAPlace(0)):
+                a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
+                a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
+                self.assertEqual(a.place.__repr__(), "CUDAPinnedPlace")
 
     def test_to_variable(self):
         with fluid.dygraph.guard():
@@ -592,6 +613,16 @@ class TestVarBase(unittest.TestCase):
 
         expected = '''Tensor(shape=[], dtype=bool, place=CPUPlace, stop_gradient=True,
        False)'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_print_tensor_dtype(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.rand([1])
+        a_str = str(a.dtype)
+
+        expected = 'paddle.float32'
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

@@ -15,8 +15,6 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 
 #include <string>
-#include <unordered_set>
-#include <utility>
 
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 

@@ -15,7 +15,6 @@
 #pragma once
 
 #include <ThreadPool.h>
-#include <gflags/gflags.h>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -25,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/initializers.h"
@@ -134,6 +134,9 @@ class ValueBlock {
         } else if (slices[0] == "uniform_random") {
           initializers_.emplace_back(
               std::make_shared<UniformInitializer>(slices));
+        } else if (slices[0] == "truncated_gaussian_random") {
+          initializers_.emplace_back(
+              std::make_shared<TruncatedGaussianInitializer>(slices));
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "%s can not be supported", attr));
