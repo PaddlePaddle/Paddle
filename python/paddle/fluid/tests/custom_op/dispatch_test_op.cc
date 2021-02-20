@@ -205,6 +205,73 @@ PD_BUILD_OP("dispatch_test_float_and_integer_and2")
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
 
+std::vector<paddle::Tensor> DispatchTestFloatAndComplex(
+    const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
+      x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP("dispatch_test_float_and_complex")
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplex))
+    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+
+std::vector<paddle::Tensor> DispatchTestFloatAndComplexAnd(
+    const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND(
+      paddle::DataType::FLOAT16, x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP("dispatch_test_float_and_complex_and")
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplexAnd))
+    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+
+std::vector<paddle::Tensor> DispatchTestFloatAndComplexAnd2(
+    const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(
+      paddle::DataType::FLOAT16,
+      paddle::DataType::BOOL,
+      x.type(),
+      "assign_cpu_kernel",
+      ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP("dispatch_test_float_and_complex_and2")
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplexAnd2))
+    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
+    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+
 std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplex(
     const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);

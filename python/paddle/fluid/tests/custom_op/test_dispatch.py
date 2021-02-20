@@ -90,6 +90,26 @@ class TestJitDispatch(unittest.TestCase):
             self.run_dispatch_test(
                 dispatch_op.dispatch_test_float_and_integer_and2, dtype)
 
+    def test_dispatch_float_and_complex(self):
+        dtypes = ["float32", "float64", "complex64", "complex128"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_complex,
+                                   dtype)
+
+    def test_dispatch_float_and_complex_and(self):
+        dtypes = ["float32", "float64", "complex64", "complex128", "float16"]
+        for dtype in dtypes:
+            self.run_dispatch_test(
+                dispatch_op.dispatch_test_float_and_complex_and, dtype)
+
+    def test_dispatch_float_and_complex_and2(self):
+        dtypes = [
+            "float32", "float64", "complex64", "complex128", "float16", "bool"
+        ]
+        for dtype in dtypes:
+            self.run_dispatch_test(
+                dispatch_op.dispatch_test_float_and_complex_and2, dtype)
+
     def test_dispatch_float_and_integer_and_complex(self):
         dtypes = [
             "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
