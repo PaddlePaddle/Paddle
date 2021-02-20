@@ -159,23 +159,29 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
                           "XPU fc_fusion kernel return wrong value[%d %s]", r,
                           XPUAPIErrorMsg[r]));
   } else {
-    // batch matmul
-    int x_stride = mat_dim_a.stride_;
-    int y_stride = mat_dim_b.stride_;
-    int out_stride = m * n;
-    for (int i = 0; i < batch_size; ++i) {
-      const float *x_data = x->data<T>() + x_stride * i;
-      const float *y_data = y->data<T>() + y_stride * i;
-      float *out_data = data_c + out_stride * i;
-      int r = xpu::fc_fusion<float, float, float, FCT>(
-          dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
-          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
-          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                            XPUAPIErrorMsg[r]));
-    }
+    int r = xpu::fc_batched<float, float, float, FCT>(
+        dev_ctx.x_context(),    // Context* ctx,
+        batch_size,             // int batch_size,
+        mat_dim_a.trans_,       // bool x_trans,
+        mat_dim_b.trans_,       // bool w_trans,
+        m,                      // int m,
+        n,                      // int n,
+        k,                      // int k,
+        alpha,                  // float alpha,
+        x->data<T>(),           // const TX* x,
+        mat_dim_a.stride_,      // int stride_a,
+        y->data<T>(),           // const TW* w,
+        mat_dim_b.stride_,      // int stride_b,
+        0.0,                    // float beta,
+        data_c,                 // TY* y,
+        m * n,                  // int stride_c,
+        nullptr,                // const float* x_maxptr,
+        nullptr                 // const float* w_maxptr
+    );
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU fc_batched kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 }
 
