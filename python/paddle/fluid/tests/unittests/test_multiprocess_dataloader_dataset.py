@@ -142,5 +142,43 @@ class TestChainDataset(unittest.TestCase):
             self.run_main(num_workers=0, places=p)
 
 
+class NumpyMixTensorDataset(Dataset):
+    def __init__(self, sample_num):
+        self.sample_num = sample_num
+
+    def __len__(self):
+        return self.sample_num
+
+    def __getitem__(self, idx):
+        np.random.seed(idx)
+        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        label = np.random.randint(0, 9, (1, )).astype('int64')
+        return paddle.to_tensor(image, place=paddle.CPUPlace()), label
+
+
+class TestNumpyMixTensorDataset(TestTensorDataset):
+    def run_main(self, num_workers, places):
+        paddle.static.default_startup_program().random_seed = 1
+        paddle.static.default_main_program().random_seed = 1
+        place = paddle.CPUPlace()
+        with fluid.dygraph.guard(place):
+            dataset = NumpyMixTensorDataset(16)
+            assert len(dataset) == 16
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=num_workers,
+                batch_size=1,
+                drop_last=True)
+
+            for i, (input, label) in enumerate(dataloader()):
+                assert len(input) == 1
+                assert len(label) == 1
+                assert input.shape == [1, IMAGE_SIZE]
+                assert label.shape == [1, 1]
+                assert isinstance(input, paddle.Tensor)
+                assert isinstance(label, paddle.Tensor)
+
+
 if __name__ == '__main__':
     unittest.main()
