@@ -127,7 +127,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                                                             attr_idx + 1>(
             inputs, attrs, pargs..., arg);
       } catch (boost::bad_any_cast&) {
-        THROW_ERROR(
+        PD_THROW(
             "Attribute cast error in custom operator. Expected int value.");
       }
     }

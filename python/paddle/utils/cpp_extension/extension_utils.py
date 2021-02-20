@@ -316,7 +316,6 @@ def find_paddle_includes(use_cuda=False):
     cuda_include_dir = find_cuda_includes()
 
     include_dirs = [paddle_include_dir, third_party_dir, cuda_include_dir]
-    print(include_dirs)
 
     return include_dirs
 
@@ -397,7 +396,6 @@ def find_paddle_libraries(use_cuda=False):
     paddle_lib_dirs = [get_lib()]
     if use_cuda:
         cuda_lib_dirs = find_cuda_libraries()
-        print(cuda_lib_dirs)
         paddle_lib_dirs.extend(cuda_lib_dirs)
     return paddle_lib_dirs
 

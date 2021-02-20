@@ -29,10 +29,10 @@ from .extension_utils import _import_module_from_library, CustomOpInfo, _write_s
 from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS
 from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
 
-# Note(zhouwei): On windows, it will export 'PyInit_[name]' by default,
+# Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
-if os.name == 'nt' and six.PY3:
+if IS_WINDOWS and six.PY3:
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
     _du_build_ext.get_export_symbols = Mock(return_value=None)
@@ -279,14 +279,14 @@ class BuildExtension(build_ext, object):
                 # restore original_compiler
                 self.compiler.compiler_so = original_compiler
 
-        def win_custom_single_compile(sources,
-                                      output_dir=None,
-                                      macros=None,
-                                      include_dirs=None,
-                                      debug=0,
-                                      extra_preargs=None,
-                                      extra_postargs=None,
-                                      depends=None):
+        def win_custom_single_compiler(sources,
+                                       output_dir=None,
+                                       macros=None,
+                                       include_dirs=None,
+                                       debug=0,
+                                       extra_preargs=None,
+                                       extra_postargs=None,
+                                       depends=None):
 
             self.cflags = copy.deepcopy(extra_postargs)
             extra_postargs = None
@@ -391,7 +391,7 @@ class BuildExtension(build_ext, object):
 
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
-            self.compiler.compile = win_custom_single_compile
+            self.compiler.compile = win_custom_single_compiler
         else:
             self.compiler._compile = unix_custom_single_compiler
 
@@ -480,9 +480,9 @@ class EasyInstallCommand(easy_install, object):
         for egg_file in self.outputs:
             filename, ext = os.path.splitext(egg_file)
             will_rename = False
-            if sys.platform.startswith('linux') and ext == '.so':
+            if OS_NAME.startswith('linux') and ext == '.so':
                 will_rename = True
-            elif sys.platform.startswith('win32') and ext == '.pyd':
+            elif IS_WINDOWS and ext == '.pyd':
                 will_rename = True
 
             if will_rename:
