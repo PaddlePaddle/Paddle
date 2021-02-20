@@ -242,7 +242,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::is_xpu_place(place_), false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
