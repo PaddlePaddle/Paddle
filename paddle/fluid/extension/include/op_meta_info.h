@@ -314,6 +314,11 @@ class PD_DLL_DECL OpMetaInfoBuilder {
 // Call after PD_BUILD_OP(...)
 void RegisterAllCustomOperator();
 
+// Using this api to load compiled custom operator's dynamic library and
+// register Custom
+// Operator into it
+void LoadCustomOperatorLib(const std::string& dso_name);
+
 /////////////////////// Op register Macro /////////////////////////
 
 #define PD_BUILD_OP(op_name)                                            \

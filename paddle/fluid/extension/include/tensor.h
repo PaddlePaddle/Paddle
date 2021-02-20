@@ -26,13 +26,13 @@ class CustomTensorUtils;
 }  // namespace framework
 class PD_DLL_DECL Tensor {
  public:
-  /// \brief Construct a Tensor on None Place for CustomOp.
+  /// \brief Construct a Tensor on target Place for CustomOp.
   /// Generally it's only used for user to create Tensor.
   explicit Tensor(const PlaceType& place);
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
   /// Reshape must be called before calling
-  /// mutable_data() or copy_from_cpu()
+  /// mutable_data() or copy_to(const PlaceType& place)
   /// \param shape The shape to set.
   void reshape(const std::vector<int>& shape);
 
@@ -60,11 +60,11 @@ class PD_DLL_DECL Tensor {
 
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
-  /// \param PlaceType of target place, from which
-  /// the tensor will copy.
+  /// \param PlaceType of target place, of which
+  /// the tensor will copy to.
 
   template <typename T>
-  Tensor copy_to(const PlaceType& place);
+  Tensor copy_to(const PlaceType& place) const;
 
   /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
@@ -85,7 +85,7 @@ class PD_DLL_DECL Tensor {
   const PlaceType& place() const;
 
   /// \brief Cast datatype from one to another
-  Tensor cast(const DataType& target_type);
+  Tensor cast(const DataType& target_type) const;
 
  private:
   friend class framework::CustomTensorUtils;
