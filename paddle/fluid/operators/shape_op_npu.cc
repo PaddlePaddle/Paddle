@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ShapeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("Input");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<Tensor>("Input");
+    auto* out = ctx.Output<Tensor>("Out");
     
     out->mutable_data<T>(ctx.GetPlace());
 
