@@ -116,7 +116,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     auto *t_data = tensor->mutable_data<T>(platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (place_ == PaddlePlace::kGPU) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     platform::CUDAPlace gpu_place(device_);
     auto *t_data = tensor->mutable_data<T>(gpu_place);
@@ -155,15 +155,18 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
   if (platform::is_cpu_place(t_place)) {
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
   } else if (place_ == PaddlePlace::kGPU) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(dev_ctx->stream());
+#else
     cudaStreamSynchronize(dev_ctx->stream());
+#endif
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "Not compile with CUDA, should not reach here."));
