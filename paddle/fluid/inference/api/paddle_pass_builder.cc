@@ -96,9 +96,13 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
+// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
+// disable the pass.
+#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
       "conv_elementwise_add_act_fuse_pass",   //
       "conv_elementwise_add2_act_fuse_pass",  //
-#endif                                        //
+#endif
+#endif
       "transpose_flatten_concat_fuse_pass",
 });
 
@@ -228,7 +232,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "batch_norm_act_fuse_pass",
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
-             //"mkldnn_inplace_pass",  // This pass should be activated after
+             // "mkldnn_inplace_pass",  // This pass should be activated after
              // fuses. Disabled by default due to
              // little gain and lots of problems
          })) {

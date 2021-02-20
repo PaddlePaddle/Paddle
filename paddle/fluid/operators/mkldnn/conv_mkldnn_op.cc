@@ -33,18 +33,6 @@ using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
-inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                         const int groups) {
-  if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
-
 inline MKLDNNMemoryFormat GetWeightsFormat(const MKLDNNMemoryFormat format,
                                            const int groups,
                                            const bool is_conv3d) {
@@ -198,7 +186,7 @@ class ConvMKLDNNHandlerT
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
       auto weights_tz = paddle::framework::vectorize(filter->dims());
-      GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       const auto dst_tz = paddle::framework::vectorize(output->dims());
 
@@ -322,7 +310,7 @@ class ConvMKLDNNHandlerT
     } else {
       const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
-      GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       auto user_src_md = platform::MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<K>(),
@@ -640,7 +628,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto weights_tz = paddle::framework::vectorize(filter->dims());
       int g = std::max(groups, 1);
 
-      GetWeightsTz(weights_tz, g);
+      platform::GetGroupConvWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
@@ -959,7 +947,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_tz = paddle::framework::vectorize(filter->dims());
 
     int g = std::max(groups, 1);
-    GetWeightsTz(weights_tz, g);
+    platform::GetGroupConvWeightsTz(weights_tz, g);
     auto dst_tz = paddle::framework::vectorize(output_grad->dims());
 
     auto src_format = input->format();

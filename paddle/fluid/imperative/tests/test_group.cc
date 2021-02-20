@@ -99,6 +99,8 @@ void GroupConcatSplit(Place place, size_t size) {
         .mutable_data(place, group.dtype_);
     group.ConcatTensors(*dev_ctx);
 
+    group.DivNRanks(*dev_ctx, 1);
+
     framework::Tensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
     auto* data = tmp.data<T>();
