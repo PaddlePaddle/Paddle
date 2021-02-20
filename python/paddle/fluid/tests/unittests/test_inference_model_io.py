@@ -393,10 +393,10 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                           [x, y], [avg_cost])
         # test feed_vars type
         self.assertRaises(TypeError, paddle.static.normalize_program, program,
-                          ['x', 'y'], [avg_cost])
+                          'x', [avg_cost])
         # test fetch_vars type
         self.assertRaises(TypeError, paddle.static.normalize_program, program,
-                          [x, y], ['avg_cost'])
+                          [x, y], 'avg_cost')
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
