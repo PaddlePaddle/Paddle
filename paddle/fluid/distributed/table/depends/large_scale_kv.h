@@ -96,17 +96,17 @@ class ValueBlock {
       auto slices = string::split_string<std::string>(entry_attr, "&");
       if (slices[0] == "none") {
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
-      } else if (slices[0] == "count_filter") {
+      } else if (slices[0] == "count_filter_entry") {
         int threshold = std::stoi(slices[1]);
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, threshold);
-      } else if (slices[0] == "probability") {
+      } else if (slices[0] == "probability_entry") {
         float threshold = std::stof(slices[1]);
         entry_func_ =
             std::bind(&probility_entry, std::placeholders::_1, threshold);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Not supported Entry Type : %s, Only support [count_filter, "
-            "probability]",
+            "Not supported Entry Type : %s, Only support [CountFilterEntry, "
+            "ProbabilityEntry]",
             slices[0]));
       }
     }
