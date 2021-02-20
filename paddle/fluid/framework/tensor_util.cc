@@ -98,15 +98,18 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+  // TODO(zhiqiu): handle different condition like CUDA code below
   else if (platform::is_npu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, stream);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size, stream);
   }
   else if (platform::is_npu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
@@ -115,8 +118,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
               << dst_place;
       return;
     }
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, stream);
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -334,22 +338,22 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   else if (platform::is_npu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, nullptr);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size, nullptr);
   }
   else if (platform::is_npu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
               << dst_place;
       return;
     }
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size);
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, nullptr);
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(

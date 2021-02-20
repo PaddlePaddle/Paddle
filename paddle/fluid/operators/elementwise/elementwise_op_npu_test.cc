@@ -100,12 +100,12 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   tensor_dout->Resize({2, 3, 5});
 
   auto x = scope->Var("X");
-  auto tensor_x = dx->GetMutable<f::LoDTensor>();
-  tensor_dout->Resize({2, 3, 5});
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  tensor_x->Resize({2, 3, 5});
 
   auto y = scope->Var("Y");
-  auto tensor_y = dy->GetMutable<f::LoDTensor>();
-  tensor_dout->Resize({1, 5});
+  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  tensor_y->Resize({1, 5});
 
   auto dx = scope->Var("DX");
   auto tensor_dx = dx->GetMutable<f::LoDTensor>();
@@ -126,16 +126,17 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(op_type,
-    {{"DOut", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-    {{"DX", {"DX"}, {"DY", {"DY"}}}, attrs);
+    {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
+    {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
 
+  auto place = ctx.GetPlace();
     op->Run(*scope, place);
 
     std::vector<T> dx_vec;
     TensorToVector(*tensor_dx, ctx, &dx_vec);
 
     std::vector<T> dy_vec;
-    TensorToVector(*tensor_dx, ctx, &dy_vec);
+    TensorToVector(*tensor_dy, ctx, &dy_vec);
 
     ctx.Wait();
     float expected_x, expected_y;
@@ -143,7 +144,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
       expected_x = 1.0;
       expected_y = 6.0;
     } else if (op_type == "elementwise_sub_grad") {
-      expected_x = -1.0;
+      expected_x = 1.0;
       expected_y = -6.0;
     }
 
@@ -176,5 +177,5 @@ TEST(elementwise_sub, NPU_fp16) {
 TEST(elementwise_sub_grad, NPU) {
     f::Scope scope;
     p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<p::float16>(&scope, ctx, "elementwise_sub_grad");
+    CompareGrad<float>(&scope, ctx, "elementwise_sub_grad");
 }

@@ -47,12 +47,9 @@ template <typename DeviceContext, typename T>
 class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
 
     dx->mutable_data<T>(ctx.GetPlace());
     dy->mutable_data<T>(ctx.GetPlace());
@@ -79,81 +76,79 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    Tensor* tmp_dout = dout;
+    Tensor* tmp_dout = const_cast<Tensor*>(dout);
     Tensor reduced_dout(dx->type());
     if (axes.size() != 0) {
-      std::vectot<int64_t> reduced_dout_dims;
-      for (auto i = x_reduce_dims; i < dout->dims().size(); ++i) {
+      std::vector<int64_t> reduced_dout_dims;
+      for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
       reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
-      reduced_dout->mutable_data<T>(ctx.GetPlace());
+      reduced_dout.mutable_data<T>(ctx.GetPlace());
       auto runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
                                 {{"axes", axes}, {"keep_dims", false}});
-      runner.run();
+      runner.Run(stream);
       tmp_dout = &reduced_dout;
     }
 
     // stage 2
     axes.clear();
     for (auto i = 0; i < dx->dims().size(); ++i) {
-      if (dx->dims()[i]) == 1) {
+      if (dx->dims()[i] == 1) {
         axes.push_back(i);
       }
     }
     if (axes.size() != 0) {
       auto runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dx},
                                 {{"axes", axes}, {"keep_dims", true}});
-      runner.run();
+      runner.Run(stream);
     } else {
-      framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), *dx);
+      framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dx);
     }
 
     // For dy
     // stage 1
-    auto reduce_ndim = dout->dims().size() - dy->dims().size();
-    std::vector<int> axes;
+    reduce_ndim = dout->dims().size() - dy->dims().size();
+    axes.clear();
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    Tensor* tmp_dout = dout;
-    Tensor reduced_dout(dy->type());
+    tmp_dout = const_cast<Tensor*>(dout);
     Tensor reduced_dy(dy->type());
 
     if (axes.size() != 0) {
-      std::vectot<int64_t> reduced_dout_dims;
-      for (auto i = x_reduce_dims; i < dout->dims().size(); ++i) {
+      std::vector<int64_t> reduced_dout_dims;
+      for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
       reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
-      reduced_dout->mutable_data<T>(ctx.GetPlace());
+      reduced_dout.mutable_data<T>(ctx.GetPlace());
       auto runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
                                 {{"axes", axes}, {"keep_dims", false}});
-      runner.run();
+      runner.Run(stream);
       tmp_dout = &reduced_dout;
     }
 
     // stage 2
     axes.clear();
+    Tensor* tmp_dy = tmp_dout;
     for (auto i = 0; i < dy->dims().size(); ++i) {
-      if (dy->dims()[i]) == 1) {
+      if (dy->dims()[i] == 1) {
         axes.push_back(i);
       }
     }
     if (axes.size() != 0) {
-      reduced_dy.Resize(dout->dims());
-      reduced_dy->mutable_data<T>(ctx.GetPlace());
+      reduced_dy.Resize(dy->dims());
+      reduced_dy.mutable_data<T>(ctx.GetPlace());
       auto runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {reduced_dy},
                                 {{"axes", axes}, {"keep_dims", true}});
-      runner.run();
-      tmp_dout = &reduced_dy;
+      runner.Run(stream);
+      tmp_dy = &reduced_dy;
     }
 
     // stage 3, negative
-    reduced_dy.Resize(dout->dims());
-    reduced_dy->mutable_data<T>(ctx.GetPlace());
-    auto runner = NpuOpRunner("Neg", {*tmp_dout}, {*dy}, {});
-    runner.run();
+    auto runner = NpuOpRunner("Neg", {*tmp_dy}, {*dy}, {});
+    runner.Run(stream);
   }
 };
 
