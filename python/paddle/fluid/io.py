@@ -1779,7 +1779,7 @@ def save(program, model_path, pickle_protocol=2):
         program(Program) : The program to saved.
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
         pickle_protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: None
+                                 Default: 2
 
     Returns:
         None

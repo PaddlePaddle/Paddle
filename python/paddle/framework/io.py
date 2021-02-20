@@ -220,7 +220,7 @@ def save(obj, path, pickle_protocol=2):
         path(str) : The path of the object to be saved. 
           If saved in the current directory, the input path string will be used as the file name. 
         pickle_protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: None
+                                 Default: 2
 
     Returns:
         None
