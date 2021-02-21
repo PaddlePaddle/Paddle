@@ -307,6 +307,11 @@ class TestTensorShapeBasic6(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_6
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 4
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 1
+
 
 class TestTupleShape1(TestTensorShapeBasic):
     def init_test_func(self):
