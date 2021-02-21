@@ -301,7 +301,37 @@ __global__ void KeBilinearInterpFw(
     }
   }
 }
-// #include <iostream>
+
+template <typename T>
+__inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+#else
+    val = min(val, __shfl_xor(val, mask, warpSize));
+#endif
+  return val;
+}
+
+/* Calculate the minimum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceMin(val, mask);
+  if (lane == 0) shared[wid] = val;
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = warpReduceMin(val, mask);
+
+  return val;
+}
+
 template <typename T>
 __global__ void KeBilinearInterpBw2(
     T* in, const size_t in_img_h, const size_t in_img_w, const size_t input_h,
@@ -310,10 +340,9 @@ __global__ void KeBilinearInterpBw2(
     const size_t num_channels, const T ratio_h, const T ratio_w,
     const bool align_corners, const int align_mode,
     const DataLayout data_layout) {
-  const int share_size = 1024;
-  const int block_per_threads = blockDim.x;
-  int max_index_s_data = 0;
-  __shared__ T s_data[share_size];
+  const int block_per_threads = 256;
+  const int block_per_threads_minus_1 = 255;
+  __shared__ T s_data[2][block_per_threads];
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -358,43 +387,60 @@ __global__ void KeBilinearInterpBw2(
       int input_index = out_id_h * input_w + channel_id * in_img_size +
                         in_img_idy * in_img_w + in_img_idx;
 
-      for (int s_idx = threadIdx.x; s_idx < share_size;
-           s_idx += block_per_threads) {
-        s_data[s_idx] = 0;
+      if (threadIdx.x < block_per_threads) {
+        s_data[0][threadIdx.x] = 0.f;
+        s_data[1][threadIdx.x] = 0.f;
       }
-      int max_s_index = (input_index + h_id * in_img_w + w_id) % share_size;
-      platform::CudaAtomicAdd(&s_data[input_index % share_size],
-                              h2lambda * w2lambda * out_pos);
-      platform::CudaAtomicAdd(&s_data[(input_index + w_id) % share_size],
-                              h2lambda * w1lambda * out_pos);
+
+      int top_left_index = input_index;
+      int top_right_index = input_index + w_id;
+      int bot_left_index = input_index + h_id * in_img_w;
+      int bot_right_index = input_index + h_id * in_img_w + w_id;
+
+      int s_top_max_index = math::blockReduceMax(
+          top_right_index & block_per_threads_minus_1, FINAL_MASK);
+      int s_bot_max_index = math::blockReduceMax(
+          bot_right_index & block_per_threads_minus_1, FINAL_MASK);
+      int s_top_min_index =
+          blockReduceMin(top_left_index & block_per_threads_minus_1, 0.0);
+      int s_bot_min_index =
+          blockReduceMin(bot_left_index & block_per_threads_minus_1, 0.0);
+      int in_top_min_index = blockReduceMin(top_left_index, 0.0);
+      int in_bot_min_index = blockReduceMin(bot_left_index, 0.0);
+
       platform::CudaAtomicAdd(
-          &s_data[(input_index + h_id * in_img_w) % share_size],
+          &s_data[0][top_left_index & block_per_threads_minus_1],
+          h2lambda * w2lambda * out_pos);
+      platform::CudaAtomicAdd(
+          &s_data[0][top_right_index & block_per_threads_minus_1],
+          h2lambda * w1lambda * out_pos);
+      platform::CudaAtomicAdd(
+          &s_data[1][bot_left_index & block_per_threads_minus_1],
           h1lambda * w2lambda * out_pos);
-      platform::CudaAtomicAdd(&s_data[max_s_index],
-                              h1lambda * w1lambda * out_pos);
+      platform::CudaAtomicAdd(
+          &s_data[1][bot_right_index & block_per_threads_minus_1],
+          h1lambda * w1lambda * out_pos);
       __syncthreads();
 
-      printf(
-          "[top-left]: %d, [top-right]: %d\t[bottom-left]: %d, [bottom-right]: "
-          "%d\n",
-          input_index, (input_index + w_id), (input_index + h_id * in_img_w),
-          (input_index + h_id * in_img_w + w_id));
-
-      // printf("[top-left S]: %d, [top-right S]: %d\t[bottom-left S]: %d,
-      // [bottom-right S]: %d\n",
-      //     input_index % share_size, (input_index + w_id) % share_size,
-      //     (input_index + h_id * in_img_w) % share_size, max_s_index %
-      //     share_size);
-
-      max_index_s_data = math::blockReduceMax(max_s_index, max_index_s_data);
-      printf("max_index_s_data : %d\n", max_index_s_data);
-
-      if (threadIdx.x < max_index_s_data + 1) {
-        in[input_index + threadIdx.x] += s_data[threadIdx.x];
-        // printf("[input_index]: %d, [input_index + threadIdx.x]: %d, [in_val]:
-        // %f\t[s_idx]: %d, [s_data]: %f\n", input_index,
-        //         (input_index + threadIdx.x), ((double)in[input_index]),
-        //         threadIdx.x, ((double)s_data[threadIdx.x]) );
+      if (s_top_min_index <= threadIdx.x <= s_top_max_index) {
+        platform::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
+                                s_data[0][s_top_min_index + threadIdx.x]);
+        printf(
+            "TOP>>> [tid: %d], in_data[idx: %d, val: %f]\ts_data[idx: %d, val: "
+            "%f]\n",
+            threadIdx.x, in_top_min_index + threadIdx.x,
+            in[in_top_min_index + threadIdx.x], s_top_min_index + threadIdx.x,
+            s_data[0][s_top_min_index + threadIdx.x]);
+      }
+      if (s_bot_min_index <= threadIdx.x <= s_bot_max_index) {
+        platform::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
+                                s_data[1][s_bot_min_index + threadIdx.x]);
+        printf(
+            "BOT>>> [tid: %d], in_data[idx: %d, val: %f]\ts_data[idx: %d, val: "
+            "%f]\n",
+            threadIdx.x, in_bot_min_index + threadIdx.x,
+            in[in_bot_min_index + threadIdx.x], s_bot_min_index + threadIdx.x,
+            s_data[0][s_bot_min_index + threadIdx.x]);
       }
     } else {
       T* in_pos;
@@ -1425,7 +1471,6 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
     int threads = 256;
-    int cnt = 0;
     int blocks = (pixelNum + threads - 1) / threads;
     KeBilinearInterpBw2<
         T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
