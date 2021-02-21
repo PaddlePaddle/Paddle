@@ -34,13 +34,20 @@ def create_convert_shape_node(var_shape_node,
 
     if isinstance(var_shape_node, gast.Attribute):
         args = [ast_to_source_code(var_shape_node.value).strip()]
-        if slice_node:
+        # (1) A slice can be a simple number such as 1, -2, i.e. gast.Index
+        # (2) A slice can also be represented by bounds such as 2:-1, i.e. not gast.Index
+        # In (1) case, we pass the number as 'idx' argument in convert_var_shape
+        # In (2) case, we have to make it like `convert_var_shape(x)[slice]`
+        if slice_node is not None and isinstance(slice_node, gast.Index):
             args.append(ast_to_source_code(slice_node).strip())
 
         convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({}, in_control_flow={})".format(
             ",".join(args), in_control_flow)
-
         api_shape_node = gast.parse(convert_var_shape_func).body[0].value
+
+        if slice_node is not None and not isinstance(slice_node, gast.Index):
+            return gast.Subscript(
+                value=api_shape_node, slice=slice_node, ctx=gast.Load())
         return api_shape_node
 
     if isinstance(var_shape_node, gast.Subscript):

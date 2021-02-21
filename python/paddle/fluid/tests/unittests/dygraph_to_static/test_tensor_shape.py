@@ -60,6 +60,16 @@ def dyfunc_tensor_shape_5(x):
     return res
 
 
+def dyfunc_tensor_shape_6(x):
+    # `res = fluid.layers.reshape(x, shape=(-1, s))` to
+    # `res = fluid.layers.reshape(x, shape=(-1,
+    #           paddle.jit.dy2static.convert_var_shape(x)[0:]))`
+    x = fluid.dygraph.to_variable(x)
+    s = x.shape[0:]
+    res = fluid.layers.reshape(x, shape=s)
+    return res
+
+
 def dyfunc_tuple_shape_1(x):
     x = paddle.to_tensor(x)
     a, b = x.shape
@@ -291,6 +301,11 @@ class TestTensorShapeBasic5(TestTensorShapeBasic):
         self.expected_op_num = 4
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
+
+
+class TestTensorShapeBasic6(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_6
 
 
 class TestTupleShape1(TestTensorShapeBasic):

@@ -137,11 +137,11 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one TPM (jzhang533) approval for the api whitelist for the tools/wlist.json.\n"
           check_approval 1 29231
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
-	      echo_line="You must have (guru4elephant,raindrops2sea) approval for ${API_FILE} changes "
-	      check_approval 1 35550832 38231817
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
-	      echo_line="You must have (guru4elephant,raindrops2sea) approval for ${API_FILE} changes "
-	      check_approval 1 35550832 38231817
+	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
+	      check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
 	      echo_line="You must have one RD (zhouwei25 (Recommend), luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
 	      check_approval 1 52485244 6836917
