@@ -163,6 +163,7 @@ class AscendIRParser(object):
         startup_graph = self._parse_program("startup", startup_program)
         main_graph = self._parse_program("main", main_program, input_varlist,
                                          fetch_list)
+        """
         if self._auto_dp and self._world_rank_size > 1:
             assert len(self.groups_to_create
                        ) == 0, "can't parse program under auto_dp mode"
@@ -173,6 +174,7 @@ class AscendIRParser(object):
                     name="hcom_group_0",
                     nranks=fleet.world_size(),
                     rank_ids=[x for x in range(fleet.world_size())]))
+        """
 
         return startup_graph, main_graph
 
@@ -216,7 +218,8 @@ class AscendOptimizer(Optimizer):
                  no_grad_set=None,
                  auto_dp=False,
                  rank_table_file=None,
-                 precision_mode="must_keep_origin_dtype"):
+                 precision_mode="must_keep_origin_dtype",
+                 role_maker=None):
         minimized = None
         if self.inner_opt:
             minimized = self.inner_opt.minimize(
@@ -227,7 +230,7 @@ class AscendOptimizer(Optimizer):
         from paddle.distributed import fleet
         if auto_dp and fleet.world_size() > 1:
             from paddle.fluid.transpiler import ascend_transpiler
-            t = ascend_transpiler.AscendTranspiler(startup_program,
+            t = ascend_transpiler.AscendTranspiler(role_maker, startup_program,
                                                    loss.block.program)
             t.transpile()
             #print(loss.block.program)
