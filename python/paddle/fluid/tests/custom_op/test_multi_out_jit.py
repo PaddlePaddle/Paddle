@@ -13,39 +13,23 @@
 # limitations under the License.
 
 import os
-import sys
-import site
-import subprocess
 import unittest
 import numpy as np
 
 import paddle
-from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.utils.cpp_extension import load
+from utils import paddle_includes, extra_compile_args
+
+multi_out_module = load(
+    name='multi_out_jit',
+    sources=['multi_out_test_op.cc'],
+    extra_include_paths=paddle_includes,  # add for Coverage CI
+    extra_cflags=extra_compile_args)  # add for Coverage CI
 
 
 class TestMultiOutputDtypes(unittest.TestCase):
     def setUp(self):
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        # compile, install the custom op egg into site-packages under background
-        cmd = 'cd {} && python multi_out_setup.py install'.format(cur_dir)
-        run_cmd(cmd)
-
-        # NOTE(Aurelius84): Normally, it's no need to add following codes for users.
-        # But we simulate to pip install in current process, so interpreter don't snap
-        # sys.path has been updated. So we update it manually.
-
-        # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
-        site_dir = site.getsitepackages()[0]
-        custom_egg_path = [
-            x for x in os.listdir(site_dir) if 'multi_out_module_setup' in x
-        ]
-        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
-            custom_egg_path)
-        sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
-
-        # usage: import the package directly
-        import multi_out_module_setup
-        self.custom_op = multi_out_module_setup.multi_out
+        self.custom_op = multi_out_module.multi_out
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
 
