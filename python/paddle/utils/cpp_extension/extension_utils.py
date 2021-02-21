@@ -337,7 +337,8 @@ def find_cuda_home():
             else:
                 cuda_home = "/usr/local/cuda"
     # step 3. check whether path is valid
-    if not os.path.exists(cuda_home) and core.is_compiled_with_cuda():
+    if cuda_home and not os.path.exists(
+            cuda_home) and core.is_compiled_with_cuda():
         cuda_home = None
         warnings.warn(
             "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."

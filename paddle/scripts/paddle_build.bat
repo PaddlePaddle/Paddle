@@ -114,8 +114,8 @@ rem ------pre install python requirement----------
 where python
 where pip
 pip install wheel --user
-pip install -r %work_dir%\python\requirements.txt --user
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install --force-reinstall -r %work_dir%\python\requirements.txt --user
+pip install --force-reinstall -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
@@ -347,12 +347,13 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install -U %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN% --user
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
+
 
 set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
