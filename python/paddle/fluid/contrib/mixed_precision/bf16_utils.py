@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@ from ... import layers
 from ... import global_scope
 from ...log_helper import get_logger
 from ...wrapped_decorator import signature_safe_contextmanager
-from .fp16_lists import AutoMixedPrecisionListsFP16
+from .bf16_lists import AutoMixedPrecisionListsBF16
 import collections
 import logging
 import numpy as np
 
-__all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
+__all__ = ["bf16_guard", "cast_model_to_bf16", "cast_parameters_to_bf16"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -35,12 +35,12 @@ _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR_ARRAY
 ]
 
-_fp16_guard_pattern = "__use_fp16__"
+_bf16_guard_pattern = "__use_bf16__"
 
 
 def _rename_arg(op, old_name, new_name):
     """
-    If an op has old_name input and output, rename these input 
+    If an op has old_name input and output, rename these input
     args new_name.
 
     Args:
@@ -74,8 +74,8 @@ def _dtype_to_str(dtype):
     Args:
         dtype (VarType): Variable type.
     """
-    if dtype == core.VarDesc.VarType.FP16:
-        return 'fp16'
+    if dtype == core.VarDesc.VarType.BF16:
+        return 'bf16'
     else:
         return 'fp32'
 
@@ -130,7 +130,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
+    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.BF16:
         for out_name in op.output_names:
             if op.type in [
                     'batch_norm', 'fused_bn_add_activation', 'layer_norm'
@@ -141,9 +141,9 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 if out_var.type not in _valid_types:
                     continue
                 if out_var.dtype == core.VarDesc.VarType.FP32:
-                    out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                    out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                     if op.has_attr('out_dtype'):
-                        op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+                        op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
     return num_cast_ops
 
 
@@ -156,7 +156,7 @@ def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
         return num_cast_ops
 
     assert target_var.dtype == src_dtype, \
-           "The real dtype({}) is not equal to the src dtype({})".format(_dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
+        "The real dtype({}) is not equal to the src dtype({})".format(_dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
 
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
@@ -250,9 +250,9 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
+def _need_keep_fp32(op, unsupported_op_list, use_bf16_guard):
     if op.type in unsupported_op_list:
-        # the highest priority condition: If ops don't have fp16 computing kernels,
+        # the highest priority condition: If ops don't have bf16 computing kernels,
         # they must be executed in fp32 calculation pattern.
         return True
 
@@ -264,23 +264,23 @@ def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
         if "learning_rate" in name:
             return True
 
-    if use_fp16_guard:
+    if use_bf16_guard:
         if op.has_attr("op_namescope") and \
-            (_fp16_guard_pattern in op.attr("op_namescope")):
-            # op in fp16 guard
+                (_bf16_guard_pattern in op.attr("op_namescope")):
+            # op in bf16 guard
             return False
         else:
-            # op not in fp16 guard
+            # op not in bf16 guard
             return True
     else:
         return False
 
 
 @signature_safe_contextmanager
-def fp16_guard():
+def bf16_guard():
     """
-    As for the pure fp16 training, if users set `use_fp16_guard` to True,
-    only those ops created in the context manager `fp16_guard` will be
+    As for the pure bf16 training, if users set `use_bf16_guard` to True,
+    only those ops created in the context manager `bf16_guard` will be
     transformed as float16 type.
 
     Examples:
@@ -293,34 +293,35 @@ def fp16_guard():
             data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
             conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
 
-            with paddle.static.amp.fp16_guard():
+            with paddle.static.amp.bf16_guard():
                 bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
                 pool = F.max_pool2d(bn, kernel_size=2, stride=2)
                 hidden = paddle.static.nn.fc(pool, size=10)
                 loss = paddle.mean(hidden)
     """
-    with framework.name_scope(prefix=_fp16_guard_pattern):
+    with framework.name_scope(prefix=_bf16_guard_pattern):
         yield
 
 
-def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
+def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
     """
     Traverse all ops in the whole model and set their inputs and outputs
-    to the fp16 data type. This function will do some special process for
+    to the bf16 data type. This function will do some special process for
     the batch normalization, which keeps the computational process of
     batchnorms in FP32.
     Args:
         program (Program): The used program.
-        amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
-        use_fp16_guard(bool): Determine whether to use `fp16_guard` when
+        amp_lists (AutoMixedPrecisionListsBF16): An AutoMixedPrecisionListsBF16 object.
+        use_bf16_guard(bool): Determine whether to use `bf16_guard` when
                               constructing the program. Default True.
     """
 
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionListsFP16()
+        amp_lists = AutoMixedPrecisionListsBF16()
     global_block = program.global_block()
     keep_fp32_ops = set()
-    to_fp16_var_names = set()
+    to_bf16_var_names = set()
+    to_bf16_pre_cast_ops = set()
     origin_ops = []
     for block in program.blocks:
         origin_ops.extend(block.ops)
@@ -330,7 +331,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
         for op in ops:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
-            if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
+            if _need_keep_fp32(op, amp_lists.unsupported_list, use_bf16_guard):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
@@ -356,8 +357,11 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         continue
 
                     if in_var.dtype == core.VarDesc.VarType.FP32:
-                        in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
-                        to_fp16_var_names.add(in_var_name)
+                        if in_var.is_data:
+                            to_bf16_pre_cast_ops.add(op)
+                        else:
+                            in_var.desc.set_dtype(core.VarDesc.VarType.BF16)
+                            to_bf16_var_names.add(in_var_name)
 
                     _logger.debug(
                         "-- op type: {}, in var name: {}, in var dtype: {} --".
@@ -386,20 +390,25 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         continue
 
                     if out_var.dtype == core.VarDesc.VarType.FP32:
-                        out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
                         "-- op type: {}, out var name: {}, out var dtype: {} --".
                         format(op.type, out_var_name, out_var.dtype))
             if op.has_attr('in_dtype') and op.attr(
                     'in_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('in_dtype', core.VarDesc.VarType.BF16)
             if op.has_attr('out_dtype') and op.attr(
                     'out_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
             if op.has_attr('dtype') and op.attr(
                     'dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('dtype', core.VarDesc.VarType.BF16)
+            if op.has_attr('op_namescope') and \
+                    (_bf16_guard_pattern in op.attr("op_namescope")):
+                if op.has_attr('use_mkldnn'):
+                    op._set_attr('use_mkldnn', True)
+                    op._set_attr('mkldnn_data_type', 'bfloat16')
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [
@@ -411,16 +420,22 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
         while idx < len(ops):
             op = ops[idx]
             num_cast_ops = 0
-            if op in keep_fp32_ops:
+            if op not in keep_fp32_ops:
+                if op in to_bf16_pre_cast_ops:
+                    in_var_cast_num = _insert_cast_op(block, op, idx,
+                                                      core.VarDesc.VarType.FP32,
+                                                      core.VarDesc.VarType.BF16)
+                    num_cast_ops += in_var_cast_num
+            else:
                 pre_cast_num = _insert_cast_op(block, op, idx,
-                                               core.VarDesc.VarType.FP16,
+                                               core.VarDesc.VarType.BF16,
                                                core.VarDesc.VarType.FP32)
                 num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
                     out_var = block.vars.get(out_var_name)
                     if out_var is None or out_var.type not in _valid_types:
                         continue
-                    if out_var.dtype == core.VarDesc.VarType.FP16:
+                    if out_var.dtype == core.VarDesc.VarType.BF16:
                         out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                         post_ops = find_true_post_op(ops, op, out_var_name)
                         for post_op in post_ops:
@@ -429,58 +444,58 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                             post_cast_num = _insert_cast_post_op(
                                 block, op, idx + pre_cast_num + 1,
                                 core.VarDesc.VarType.FP32,
-                                core.VarDesc.VarType.FP16, out_var_name,
+                                core.VarDesc.VarType.BF16, out_var_name,
                                 op_var_rename_map)
                             num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
 
     _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
-    return to_fp16_var_names
+    return to_bf16_var_names
 
 
-def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
+def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
     """
-    Traverse all parameters in the whole model and set them to the FP16 data type.
+    Traverse all parameters in the whole model and set them to the BF16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
+        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the BF16 weight tensors.
         program (Program): The used program.
         scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
                                       Default is None.
-        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
-                                               will be set to FP16. Usually, it is the returned
-                                               value of `cast_model_to_fp16` API.
+        to_bf16_var_names(set|list, optional): The data types of vars in `to_bf16_var_names`
+                                               will be set to BF16. Usually, it is the returned
+                                               value of `cast_model_to_bf16` API.
     """
     all_parameters = []
     for block in program.blocks:
         all_parameters.extend(block.all_parameters())
 
-    fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
+    bf16_var_names = to_bf16_var_names if to_bf16_var_names else set()
     var_scope = scope if scope else global_scope()
     for param in all_parameters:
-        if param.name in fp16_var_names:
-            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
+        if param.name in bf16_var_names:
+            _logger.debug("---- cast {} to bf16 dtype ----".format(param.name))
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
-            param_t.set(np.float16(data), place)
+            param_t.set(np.uint16(data), place)
 
 
 def rewrite_program(main_prog, amp_lists):
     """
-    Traverse all ops in current block and insert cast op according to 
+    Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
 
     1. When an op belongs to the black list, add it to black set
     2. When an op belongs to the white list, add it to white set
-    3. When an op belongs to the gray list. If one 
-       of its inputs is the output of black set op or black list op, 
-       add it to black set. If all of its previous ops are not black 
-       op and one of its inputs is the output of white set op or 
+    3. When an op belongs to the gray list. If one
+       of its inputs is the output of black set op or black list op,
+       add it to black set. If all of its previous ops are not black
+       op and one of its inputs is the output of white set op or
        white list op, add it to white set.
     4. When an op isn't in the lists, add it to black op set.
-    5. Add necessary cast ops to make sure that black set op will be 
-       computed in fp32 mode, while white set op will be computed in 
-       fp16 mode.
+    5. Add necessary cast ops to make sure that black set op will be
+       computed in fp32 mode, while white set op will be computed in
+       bf16 mode.
 
     Args:
         main_prog (Program): The main program for training.
@@ -491,8 +506,8 @@ def rewrite_program(main_prog, amp_lists):
     black_op_set = set()
     for op in ops:
 
-        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder, 
-        # we don't need to handle reader op and the input of 'create_py_reader' is not 
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder,
+        # we don't need to handle reader op and the input of 'create_py_reader' is not
         # in block, which may result in errors.
         # See GeneratorLoader._init_non_iterable() for details.
         if op.type == 'create_py_reader' or op.type == 'read':
@@ -548,12 +563,12 @@ def rewrite_program(main_prog, amp_lists):
         num_cast_ops = 0
         if op in black_op_set:
             num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP16,
+                                           core.VarDesc.VarType.BF16,
                                            core.VarDesc.VarType.FP32)
         elif op in white_op_set:
             num_cast_ops = _insert_cast_op(block, op, idx,
                                            core.VarDesc.VarType.FP32,
-                                           core.VarDesc.VarType.FP16)
+                                           core.VarDesc.VarType.BF16)
         else:
             pass
 
@@ -563,10 +578,10 @@ def rewrite_program(main_prog, amp_lists):
 def update_role_var_grad(main_prog, params_grads):
     """
     Update op_role_var attr for some ops to make sure the gradients
-    transferred across GPUs is FP16.
+    transferred across GPUs is BF16.
     1. Check whether the op that outputs gradient is cast or not.
     2. If op is cast and gradient is FP32, remove the op_role_var
-       and find the prev op which outputs FP16 gradient
+       and find the prev op which outputs BF16 gradient
     3. Update the op_role_var of the prev op.
 
     Args:
@@ -586,14 +601,14 @@ def update_role_var_grad(main_prog, params_grads):
                 raise ValueError("The cast op {0} must be in BACKWARD role "
                                  "and have op_role_var attr.".format(op))
 
-            fp16_grad_name = op.input(op.input_names[0])[0]
-            op_for_fp16_grad = find_true_prev_op(block.ops, op, fp16_grad_name)
+            bf16_grad_name = op.input(op.input_names[0])[0]
+            op_for_bf16_grad = find_true_prev_op(block.ops, op, bf16_grad_name)
             op_role_var_attr_name = \
                 core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-            attr_val = [p.name, fp16_grad_name]
-            if op_for_fp16_grad.has_attr(op_role_var_attr_name):
-                attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
-            op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
+            attr_val = [p.name, bf16_grad_name]
+            if op_for_bf16_grad.has_attr(op_role_var_attr_name):
+                attr_val.extend(op_for_bf16_grad.attr(op_role_var_attr_name))
+            op_for_bf16_grad._set_attr(op_role_var_attr_name, attr_val)
 
             # Maximize the all_reduce overlap, and perform the cast
             # operation after gradients transfer.

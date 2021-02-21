@@ -16,11 +16,20 @@ from __future__ import print_function
 
 from . import decorator
 from .decorator import *
+from . import decorator_bf16
+from .decorator_bf16 import *
 from . import fp16_lists
 from .fp16_lists import *
+from . import bf16_lists
+from .bf16_lists import *
 from . import fp16_utils
 from .fp16_utils import *
+from . import bf16_utils
+from .bf16_utils import *
 
 __all__ = decorator.__all__
+__all__ = decorator_bf16.__all__
 __all__ += fp16_lists.__all__
+__all__ += bf16_lists.__all__
 __all__ += fp16_utils.__all__
+__all__ += bf16_utils.__all__

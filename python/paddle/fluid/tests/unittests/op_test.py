@@ -235,6 +235,14 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     return new_output
 
 
+def convert_uint16_to_float(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[np.float32])(in_list.flat)
+    return np.reshape(out, in_list.shape)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

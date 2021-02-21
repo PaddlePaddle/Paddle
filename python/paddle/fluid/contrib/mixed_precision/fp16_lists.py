@@ -14,7 +14,7 @@
 
 import copy
 
-__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
+__all__ = ["AutoMixedPrecisionListsFP16"]
 
 
 class AutoMixedPrecisionLists(object):
@@ -25,21 +25,29 @@ class AutoMixedPrecisionLists(object):
     execution mode (fp32 or fp16).
 
     Args:
+        white_list_ (set): mode default white list.
+        black_list_ (set): mode default black list.
+        gray_list_ (set): mode default gray list.
+        unsupported_list_ (set): mode default unsupported list.
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
         custom_black_varnames (set): Users' custom black varibles' names.
     """
 
     def __init__(self,
+                 white_list_,
+                 black_list_,
+                 gray_list_,
+                 unsupported_list_,
                  custom_white_list=None,
                  custom_black_list=None,
                  custom_black_varnames=None):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
-        self.white_list = copy.copy(white_list)
-        self.black_list = copy.copy(black_list)
-        self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(unsupported_fp16_list)
+        self.white_list = copy.copy(white_list_)
+        self.black_list = copy.copy(black_list_)
+        self.gray_list = copy.copy(gray_list_)
+        self.unsupported_list = copy.copy(unsupported_list_)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -69,7 +77,22 @@ class AutoMixedPrecisionLists(object):
                 self.unsupported_list.add(op_name)
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all  
+class AutoMixedPrecisionListsFP16(AutoMixedPrecisionLists):
+    def __init__(self,
+                 custom_white_list=None,
+                 custom_black_list=None,
+                 custom_black_varnames=None):
+        super(AutoMixedPrecisionListsFP16, self).__init__(
+            white_list,
+            black_list,
+            gray_list,
+            unsupported_fp16_list,
+            custom_white_list=custom_white_list,
+            custom_black_list=custom_black_list,
+            custom_black_varnames=custom_black_varnames)
+
+
+# The three sets listed below are changed dynamiclly. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -290,4 +313,4 @@ unsupported_fp16_list = {
     'lookup_table_v2',
 }
 
-CustomOpLists = AutoMixedPrecisionLists
+CustomOpListsFP16 = AutoMixedPrecisionListsFP16
