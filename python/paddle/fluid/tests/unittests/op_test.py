@@ -244,17 +244,12 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     return new_output
 
 
-def copy_bits_from_uint16_to_float(i):
-    i = np.uint32(i) << 16
-    return struct.unpack('<f', struct.pack('<I', i))[0]
-
-
-def convert_uint16_to_float(uint16_list):
-    new_output = []
-    for x in np.nditer(uint16_list):
-        new_output.append(np.float32(copy_bits_from_uint16_to_float(x)))
-
-    return np.reshape(new_output, uint16_list.shape).view(np.float32)
+def convert_uint16_to_float(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[np.float32])(in_list.flat)
+    return np.reshape(out, in_list.shape)
 
 
 class OpTest(unittest.TestCase):
