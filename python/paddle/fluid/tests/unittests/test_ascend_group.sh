@@ -16,50 +16,14 @@
 
 set -e
 
-RANK_TABLE_FILE_NAME="rank_table_file.json"
-cat > ${RANK_TABLE_FILE_NAME} <<EOF
-{
-    "status": "completed",
-    "version": "1.0",
-    "server_count": "1",
-    "server_list": [
-        {
-            "server_id": "127.0.0.1",
-            "device": [
-                {
-                    "device_id": "0",
-                    "device_ip": "192.168.60.22",
-                    "rank_id": "0"
-                },
-                {
-                    "device_id": "1",
-                    "device_ip": "192.168.61.22",
-                    "rank_id": "1"
-                },
-                {
-                    "device_id": "2",
-                    "device_ip": "192.168.62.22",
-                    "rank_id": "2"
-                },
-                {
-                    "device_id": "3",
-                    "device_ip": "192.168.63.22",
-                    "rank_id": "3"
-                }
-            ],
-            "host_nic_ip": "reserve"
-        }
-    ],
-    "status": "completed"
-}
-EOF
+curr_host_ip=`hostname -i`
+python hccl_tools.py --device_num "[0,4)" --server_ip ${curr_host_ip}
 
-# set ascend rank table file env
-export RANK_TABLE_FILE="${PWD}/${RANK_TABLE_FILE_NAME}"
+export RANK_TABLE_FILE="${PWD}/hccl_4p_0123_${curr_host_ip}.json"
 
 # use ascend
 echo "begin test use ascend npu"
 
-distributed_args="--log_dir=testlog"
+distributed_args="--run_mode=collective --log_dir=testlog"
 python -m paddle.distributed.fleet.launch ${distributed_args} \
   ascend_group.py fleetascendgroup
