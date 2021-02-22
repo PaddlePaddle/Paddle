@@ -96,10 +96,11 @@ class CommonAccessor:
 
     def parse_entry(self, varname, o_main_program):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import SPARSE_OP_TYPE_DICT
 
         for op in o_main_program.global_block().ops:
-            if not is_distributed_sparse_op(op):
+            if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
 
             param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
