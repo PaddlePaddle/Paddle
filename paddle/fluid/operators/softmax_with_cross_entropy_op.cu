@@ -22,27 +22,27 @@ using Tensor = framework::Tensor;
 namespace {
 template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
-                                 const size_t n, const size_t d,
-                                 const size_t remain, const int ignore_index) {
+                                 const int64_t n, const int64_t d,
+                                 const int64_t remain, const int ignore_index) {
   CUDA_KERNEL_LOOP_TYPE(index, n * remain, int64_t) {
-    size_t idx_n = index / remain;
-    size_t idx_remain = index % remain;
-    size_t tmp = labels[index];
+    int64_t idx_n = index / remain;
+    int64_t idx_remain = index % remain;
+    int64_t tmp = labels[index];
     if (ignore_index != tmp) {
-      size_t idx = idx_n * d + tmp * remain + idx_remain;
+      int64_t idx = idx_n * d + tmp * remain + idx_remain;
       logit_grad[idx] -= static_cast<T>(1.);
     }
   }
 }
 
 template <typename T>
-__global__ void Scale(T* logit_grad, const T* loss_grad, const size_t num,
-                      const size_t d, const size_t remain,
+__global__ void Scale(T* logit_grad, const T* loss_grad, const int64_t num,
+                      const int64_t d, const int64_t remain,
                       const int64_t* labels, const int ignore_index) {
   CUDA_KERNEL_LOOP_TYPE(index, num, int64_t) {
-    size_t idx_n = index / d;
-    size_t idx_remain = index % remain;
-    size_t idx_lbl = idx_n * remain + idx_remain;
+    int64_t idx_n = index / d;
+    int64_t idx_remain = index % remain;
+    int64_t idx_lbl = idx_n * remain + idx_remain;
     if (labels[idx_lbl] == ignore_index) {
       logit_grad[index] = static_cast<T>(0.);
     } else {
@@ -54,14 +54,14 @@ __global__ void Scale(T* logit_grad, const T* loss_grad, const size_t num,
 template <typename T>
 __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
                                                const T* loss_grad,
-                                               const T* labels, const size_t n,
-                                               const size_t d,
-                                               const size_t remain) {
-  size_t ids = blockIdx.x * blockDim.x + threadIdx.x;
+                                               const T* labels, const int64_t n,
+                                               const int64_t d,
+                                               const int64_t remain) {
+  int64_t ids = blockIdx.x * blockDim.x + threadIdx.x;
   if (ids < n * d) {
-    size_t idx_n = ids / d;
-    size_t idx_remain = ids % remain;
-    size_t idx_loss = idx_n * remain + idx_remain;
+    int64_t idx_n = ids / d;
+    int64_t idx_remain = ids % remain;
+    int64_t idx_loss = idx_n * remain + idx_remain;
     logit_grad[ids] = loss_grad[idx_loss] * (logit_grad[ids] - labels[ids]);
   }
 }
@@ -133,19 +133,19 @@ using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
 // This kernel is used to calculate the max element of each row
 template <typename T, int BlockDim>
 static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
-                                          size_t d, int axis_dim) {
+                                          int64_t d, int axis_dim) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
 
   // logits_data view as [n, axis_dim, remain]
   // max_data view as [n, 1, remain]
   // blockDim = n * remain, split blockIdx to idx_n and idx_remain
-  size_t remain = d / axis_dim;
-  size_t idx_n = blockIdx.x / remain;
-  size_t idx_remain = blockIdx.x % remain;
-  size_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
-  size_t end_idx = (idx_n + 1) * d;
+  int64_t remain = d / axis_dim;
+  int64_t idx_n = blockIdx.x / remain;
+  int64_t idx_remain = blockIdx.x % remain;
+  int64_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
+  int64_t end_idx = (idx_n + 1) * d;
 
-  size_t step = BlockDim * remain;
+  int64_t step = BlockDim * remain;
   T cur_max = logits_data[beg_idx];
   beg_idx += step;
   while (beg_idx < end_idx) {
@@ -164,20 +164,20 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
 template <typename T, int BlockDim, bool CalculateLogSoftmax = false>
 static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
                                                  T* max_data, T* softmax,
-                                                 size_t d, int axis_dim) {
+                                                 int64_t d, int axis_dim) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
 
   // logits, softmax data view as [n, axis_dim, remain]
   // max_data view as [n, 1, remain]
   // blockDim = n * remain, split blockIdx to idx_n and idx_remain
-  size_t remain = d / axis_dim;
-  size_t idx_n = blockIdx.x / remain;
-  size_t idx_remain = blockIdx.x % remain;
-  size_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
-  size_t end_idx = (idx_n + 1) * d;
+  int64_t remain = d / axis_dim;
+  int64_t idx_n = blockIdx.x / remain;
+  int64_t idx_remain = blockIdx.x % remain;
+  int64_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
+  int64_t end_idx = (idx_n + 1) * d;
 
   auto block_max = max_data[blockIdx.x];
-  size_t step = BlockDim * remain;
+  int64_t step = BlockDim * remain;
 
   // In numeric stable mode softmax_with_loss, we calc loss with
   // tmp_i_j = x_i_j - max_i - logDiffMaxSum_i, instead of
@@ -218,24 +218,24 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
 template <typename T, int BlockDim>
 static __global__ void RowReductionForSoftmaxAndCrossEntropy(
     const T* logits_data, const T* labels_data, T* loss_data, T* softmax,
-    size_t d, int axis_dim) {
+    int64_t d, int axis_dim) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
 
   // logits, softmax, labels data view as [n, axis_dim, remain]
   // loss_data view as [n, 1, remain]
   // blockDim = n * remain, split blockIdx to idx_n and idx_remain
-  size_t remain = d / axis_dim;
-  size_t idx_n = blockIdx.x / remain;
-  size_t idx_remain = blockIdx.x % remain;
-  size_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
-  size_t end_idx = (idx_n + 1) * d;
+  int64_t remain = d / axis_dim;
+  int64_t idx_n = blockIdx.x / remain;
+  int64_t idx_remain = blockIdx.x % remain;
+  int64_t beg_idx = idx_n * d + threadIdx.x * remain + idx_remain;
+  int64_t end_idx = (idx_n + 1) * d;
 
   // log_diff_max_sum shares memory with loss
   auto block_log_diff_max_sum = loss_data[blockIdx.x];
   auto tmp = softmax[beg_idx] - block_log_diff_max_sum;
   softmax[beg_idx] = exp_on_device(tmp);
   auto loss = -labels_data[beg_idx] * tmp;
-  size_t step = BlockDim * remain;
+  int64_t step = BlockDim * remain;
   beg_idx += step;
   while (beg_idx < end_idx) {
     tmp = softmax[beg_idx] - block_log_diff_max_sum;
@@ -252,7 +252,7 @@ template <typename T>
 struct HardLabelSoftmaxWithCrossEntropyFunctor {
  public:
   HardLabelSoftmaxWithCrossEntropyFunctor(const int64_t* labels, T* loss,
-                                          T* log_softmax, size_t d,
+                                          T* log_softmax, int64_t d,
                                           int axis_dim)
       : labels_(labels),
         loss_(loss),
@@ -260,14 +260,14 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
         d_(d),
         axis_dim_(axis_dim) {}
 
-  __device__ void operator()(size_t idx) const {
+  __device__ void operator()(int64_t idx) const {
     // logits view as [n, axis_dim, remain], where d = axis_dim * remain
-    size_t remain = d_ / axis_dim_;
-    size_t idx_n = idx / d_;
-    size_t idx_axis = (idx % d_) / remain;
-    size_t idx_remain = idx % remain;
+    int64_t remain = d_ / axis_dim_;
+    int64_t idx_n = idx / d_;
+    int64_t idx_axis = (idx % d_) / remain;
+    int64_t idx_remain = idx % remain;
     // labels, loss view as [n, remain]
-    size_t idx_lbl = idx_n * remain + idx_remain;
+    int64_t idx_lbl = idx_n * remain + idx_remain;
     // It also would ignore labels not in range(class_num).
     if (idx_axis != labels_[idx_lbl]) {
       log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
@@ -282,7 +282,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
   const int64_t* labels_;
   T* loss_;
   T* log_softmax_;
-  size_t d_;
+  int64_t d_;
   int axis_dim_;
 };
 
@@ -291,7 +291,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
  public:
   HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx(const int64_t* labels,
                                                        T* loss, T* log_softmax,
-                                                       size_t d, int axis_dim,
+                                                       int64_t d, int axis_dim,
                                                        int ignore_idx)
       : labels_(labels),
         loss_(loss),
@@ -300,14 +300,14 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
         axis_dim_(axis_dim),
         ignore_idx_(ignore_idx) {}
 
-  __device__ void operator()(size_t idx) const {
+  __device__ void operator()(int64_t idx) const {
     // logits view as [n, axis_dim, remain], where d = axis_dim * remain
-    size_t remain = d_ / axis_dim_;
-    size_t idx_n = idx / d_;
-    size_t idx_axis = (idx % d_) / remain;
-    size_t idx_remain = idx % remain;
+    int64_t remain = d_ / axis_dim_;
+    int64_t idx_n = idx / d_;
+    int64_t idx_axis = (idx % d_) / remain;
+    int64_t idx_remain = idx % remain;
     // labels, loss view as [n, remain]
-    size_t idx_lbl = idx_n * remain + idx_remain;
+    int64_t idx_lbl = idx_n * remain + idx_remain;
     if (idx_axis != labels_[idx_lbl] || idx_axis == ignore_idx_) {
       log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
     } else {
@@ -321,7 +321,7 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
   const int64_t* labels_;
   T* loss_;
   T* log_softmax_;
-  size_t d_;
+  int64_t d_;
   int axis_dim_;
   int ignore_idx_;
 };
@@ -329,13 +329,13 @@ struct HardLabelSoftmaxWithCrossEntropyFunctorWithIgnoreIdx {
 template <typename T>
 static void HardLabelSoftmaxWithCrossEntropy(
     const platform::CUDADeviceContext& ctx, const T* logits_data,
-    const int64_t* labels_data, T* loss_data, T* softmax_data, size_t n,
-    size_t d, int axis_dim, int ignore_idx) {
+    const int64_t* labels_data, T* loss_data, T* softmax_data, int64_t n,
+    int64_t d, int axis_dim, int ignore_idx) {
   constexpr int kMaxBlockDim = 512;
-  size_t block_dim = axis_dim >= kMaxBlockDim
-                         ? kMaxBlockDim
-                         : (1 << static_cast<int>(std::log2(axis_dim)));
-  size_t grid_dim = n * d / axis_dim;
+  int64_t block_dim = axis_dim >= kMaxBlockDim
+                          ? kMaxBlockDim
+                          : (1 << static_cast<int>(std::log2(axis_dim)));
+  int64_t grid_dim = n * d / axis_dim;
   auto stream = ctx.stream();
 
 #define CALL_HARD_LABEL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)  \
@@ -374,16 +374,14 @@ static void HardLabelSoftmaxWithCrossEntropy(
 }
 
 template <typename T>
-static void SoftmaxWithCrossEntropyFusedKernel(const T* logits_data,
-                                               const T* labels_data,
-                                               T* softmax_data, T* loss_data,
-                                               size_t n, size_t d, int axis_dim,
-                                               cudaStream_t stream) {
+static void SoftmaxWithCrossEntropyFusedKernel(
+    const T* logits_data, const T* labels_data, T* softmax_data, T* loss_data,
+    int64_t n, int64_t d, int axis_dim, cudaStream_t stream) {
   constexpr int kMaxBlockDim = 512;
-  size_t block_dim = axis_dim >= kMaxBlockDim
-                         ? kMaxBlockDim
-                         : (1 << static_cast<int>(std::log2(axis_dim)));
-  size_t grid_dim = n * d / axis_dim;
+  int64_t block_dim = axis_dim >= kMaxBlockDim
+                          ? kMaxBlockDim
+                          : (1 << static_cast<int>(std::log2(axis_dim)));
+  int64_t grid_dim = n * d / axis_dim;
 
 #define CALL_SOFTMAX_WITH_CROSS_ENTROPY_FUSED_KERNEL(BlockDim)                 \
   case BlockDim:                                                               \
