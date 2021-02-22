@@ -27,7 +27,31 @@
 namespace paddle {
 namespace imperative {
 
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+// div the nranks
+void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
+  framework::Tensor *tensor =
+      is_sparse_
+          ? sparse_contents_->GetMutable<framework::SelectedRows>()
+                ->mutable_value()
+          : dense_contents_.GetMutable<framework::LoDTensor>();
+
+  if (platform::is_gpu_place(tensor->place())) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    DivNRanks(tensor, nranks, context);
+#endif
+  } else if (platform::is_cpu_place(tensor->place())) {
+    framework::VisitDataTypeSmall(
+        dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                    tensor, nranks, context));
+  } else if (platform::is_xpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_XPU_BKCL
+// TODO(liuyuhui) support xpu about div nranks in the future
+#endif
+  }
+}
+
 template <typename DeviceContext, typename T>
 static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
@@ -183,7 +207,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(
         static_cast<const platform::CUDADeviceContext &>(context),
         dense_tensors_, &dense_contents_, dtype_);
@@ -215,7 +239,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(
         static_cast<const platform::CUDADeviceContext &>(context),
         &dense_contents_, &dense_tensors_, dtype_);
@@ -276,6 +300,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       find_unused_vars_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
+  nranks_ = parallel_ctx->GetNRanks();
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -444,7 +469,7 @@ void Reducer::PrepareForBackward(
   PADDLE_ENFORCE_EQ(
       all_group_ready_, false,
       platform::errors::PreconditionNotMet(
-          "Please note that all ``forward`` outputs derived from the module "
+          "Please note that all forward outputs derived from the module "
           "parameters must participate in the calculation of losses and "
           "subsequent gradient calculations. If not, the wrapper will hang, "
           "waiting for autograd to generate gradients for these parameters. "
@@ -631,6 +656,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       if (group.sparse_contents_ != nullptr) {
         VLOG(3) << "sparse group [" << next_group_
                 << "] start allreduce in ring[" << run_order << "]";
+        group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
         parallel_ctx_->AllReduceByStream(
             *group.sparse_contents_, group.sparse_contents_, run_order, false);
       } else {
@@ -654,6 +680,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
         parallel_ctx_->WaitComm(run_order);
       }
 #endif
+      group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
 
       // Start allreduce
       parallel_ctx_->AllReduceByStream(

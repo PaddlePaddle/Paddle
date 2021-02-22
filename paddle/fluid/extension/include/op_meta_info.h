@@ -293,11 +293,21 @@ class OpMetaInfoBuilder {
 // Call after PD_BUILD_OP(...)
 void RegisterAllCustomOperator();
 
+// Using this api to load compiled custom operator's dynamic library and
+// register Custom
+// Operator into it
+void LoadCustomOperatorLib(const std::string& dso_name);
+
 /////////////////////// Op register Macro /////////////////////////
 
-#define PD_BUILD_OP(op_name)                                            \
-  static ::paddle::OpMetaInfoBuilder __op_meta_info_##__COUNTER__##__ = \
+#define PD_BUILD_OP_WITH_COUNTER(op_name, counter)                  \
+  static ::paddle::OpMetaInfoBuilder __op_meta_info_##counter##__ = \
       ::paddle::OpMetaInfoBuilder(op_name)
+
+#define PD_BUILD_OP_INNER(op_name, counter) \
+  PD_BUILD_OP_WITH_COUNTER(op_name, counter)
+
+#define PD_BUILD_OP(op_name) PD_BUILD_OP_INNER(op_name, __COUNTER__)
 
 }  // namespace paddle
 

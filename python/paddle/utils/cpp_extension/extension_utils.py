@@ -109,7 +109,6 @@ def load_op_meta_info_and_register_op(lib_filename):
     if USING_NEW_CUSTOM_OP_LOAD_METHOD:
         core.load_op_meta_info_and_register_op(lib_filename)
     else:
-        print("old branch")
         core.load_op_library(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
@@ -152,7 +151,7 @@ def custom_write_stub(resource, pyfile):
 
     # Parse registerring op information
     _, op_info = CustomOpInfo.instance().last()
-    so_path = op_info.build_directory
+    so_path = op_info.so_path
 
     new_custom_ops = load_op_meta_info_and_register_op(so_path)
     assert len(
@@ -175,8 +174,7 @@ def custom_write_stub(resource, pyfile):
                 resource=resource, custom_api='\n\n'.join(api_content)))
 
 
-OpInfo = collections.namedtuple('OpInfo',
-                                ['so_name', 'build_directory', 'out_dtypes'])
+OpInfo = collections.namedtuple('OpInfo', ['so_name', 'so_path'])
 
 
 class CustomOpInfo:
@@ -197,8 +195,8 @@ class CustomOpInfo:
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
-    def add(self, op_name, so_name, build_directory=None, out_dtypes=None):
-        self.op_info_map[op_name] = OpInfo(so_name, build_directory, out_dtypes)
+    def add(self, op_name, so_name, so_path=None):
+        self.op_info_map[op_name] = OpInfo(so_name, so_path)
 
     def last(self):
         """
@@ -270,7 +268,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     # append link flags
     extra_link_args = kwargs.get('extra_link_args', [])
-    extra_link_args.extend(['-lpaddle_framework', '-lcudart'])
+    extra_link_args.append('-lpaddle_framework')
+    if use_cuda:
+        extra_link_args.append('-lcudart')
+
     kwargs['extra_link_args'] = extra_link_args
 
     kwargs['language'] = 'c++'
@@ -404,12 +405,9 @@ def parse_op_info(op_name):
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
     in_names = [x.name for x in op_proto.inputs]
-    assert len(op_proto.outputs) == 1
-    out_name = op_proto.outputs[0].name
+    out_names = [x.name for x in op_proto.outputs]
 
-    # TODO(Aurelius84): parse necessary out_dtype  of custom op
-    out_infos = {out_name: ['float32']}
-    return in_names, out_infos
+    return in_names, out_names
 
 
 def _import_module_from_library(module_name, build_directory, verbose=False):
@@ -452,13 +450,10 @@ def _generate_python_module(module_name,
 
 
 def _custom_api_content(op_name):
-    params_str, ins_str = _get_api_inputs_str(op_name)
+    params_str, ins_str, outs_str = _get_api_inputs_str(op_name)
 
     API_TEMPLATE = textwrap.dedent("""
         from paddle.fluid.layer_helper import LayerHelper
-        from paddle.utils.cpp_extension import parse_op_info
-
-        _, _out_infos = parse_op_info('{op_name}')
 
         def {op_name}({inputs}):
             helper = LayerHelper("{op_name}", **locals())
@@ -466,21 +461,22 @@ def _custom_api_content(op_name):
             # prepare inputs and output 
             ins = {ins}
             outs = {{}}
-            for out_name in _out_infos:
-                outs[out_name] = [helper.create_variable(dtype=dtype) for dtype in _out_infos[out_name]]
+            out_names = {out_names}
+            for out_name in out_names:
+                # Set 'float32' temporarily, and the actual dtype of output variable will be inferred
+                # in runtime.
+                outs[out_name] = helper.create_variable(dtype='float32')
             
             helper.append_op(type="{op_name}", inputs=ins, outputs=outs)
 
-            res = list(outs.values())[0]
-            if len(res) == 1:
-                return res[0]
-            else:
-                return res
+            res = [outs[out_name] for out_name in out_names]
+
+            return res[0] if len(res)==1 else res
             """).lstrip()
 
     # generate python api file
     api_content = API_TEMPLATE.format(
-        op_name=op_name, inputs=params_str, ins=ins_str)
+        op_name=op_name, inputs=params_str, ins=ins_str, out_names=outs_str)
 
     return api_content
 
@@ -511,13 +507,15 @@ def _get_api_inputs_str(op_name):
     """
     Returns string of api parameters and inputs dict.
     """
-    in_names, _ = parse_op_info(op_name)
+    in_names, out_names = parse_op_info(op_name)
     # e.g: x, y, z
     params_str = ','.join([p.lower() for p in in_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
     ins_str = "{%s}" % ','.join(
         ["'{}' : {}".format(in_name, in_name.lower()) for in_name in in_names])
-    return params_str, ins_str
+    # e.g: ['Out', 'Index']
+    outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
+    return params_str, ins_str, outs_str
 
 
 def _write_setup_file(name,
@@ -539,7 +537,6 @@ def _write_setup_file(name,
         name='{name}',
         ext_modules=[
             {prefix}Extension(
-                name='{name}',
                 sources={sources},
                 include_dirs={include_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},

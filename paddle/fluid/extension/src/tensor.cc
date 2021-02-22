@@ -174,7 +174,7 @@ DataType Tensor::type() const {
 }
 
 template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) {
+Tensor Tensor::copy_to(const PlaceType &target_place) const {
   GET_CASTED_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     platform::errors::PreconditionNotMet(
@@ -208,21 +208,21 @@ Tensor Tensor::copy_to(const PlaceType &target_place) {
 }
 
 template Tensor Tensor::copy_to<paddle::platform::float16>(
-    const PlaceType &target_place);
+    const PlaceType &target_place) const;
 template Tensor Tensor::copy_to<paddle::platform::bfloat16>(
-    const PlaceType &target_place);
+    const PlaceType &target_place) const;
 template Tensor Tensor::copy_to<paddle::platform::complex64>(
-    const PlaceType &target_place);
+    const PlaceType &target_place) const;
 template Tensor Tensor::copy_to<paddle::platform::complex128>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<float>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<double>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int64_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int32_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<uint8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int16_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<bool>(const PlaceType &target_place);
+    const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<float>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<double>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
+template Tensor Tensor::copy_to<bool>(const PlaceType &target_place) const;
 
 template float *Tensor::data<float>() const;
 template double *Tensor::data<double>() const;
@@ -295,7 +295,7 @@ const PlaceType &Tensor::place() const {
   return place_;
 }
 
-Tensor Tensor::cast(const DataType &target_type) {
+Tensor Tensor::cast(const DataType &target_type) const {
   GET_CASTED_TENSOR;
   Tensor rlt = Tensor(place());
   rlt.reshape(this->shape());
@@ -342,7 +342,14 @@ Tensor Tensor::cast(const DataType &target_type) {
       framework::VisitDataType(
           dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
-    // TODO(JiabinYang): Support Complex later
+    case framework::proto::VarType::COMPLEX64:
+      framework::VisitDataType(dst_type, CastDataType<platform::complex64>(
+                                             *tensor, rlt_tensor_, ctx));
+      break;
+    case framework::proto::VarType::COMPLEX128:
+      framework::VisitDataType(dst_type, CastDataType<platform::complex128>(
+                                             *tensor, rlt_tensor_, ctx));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
