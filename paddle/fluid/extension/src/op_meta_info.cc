@@ -83,7 +83,7 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
-  info_ptr_->Outputs(std::forward<std::vector<std::string>>(attrs));
+  info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }
 

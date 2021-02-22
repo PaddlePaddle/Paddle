@@ -28,8 +28,9 @@ custom_attrs = load(
 
 class TestJitCustomAttrs(unittest.TestCase):
     def test_attr_print(self):
+        paddle.set_device('cpu')
         x = paddle.ones([2, 2], dtype='float32')
-        custom_attrs.attr_test(x, 10)
+        custom_attrs.attr_test(x, 10, 13.4)
 
 
 if __name__ == '__main__':

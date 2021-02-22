@@ -75,12 +75,14 @@ inline bool IsMemberOf(const std::vector<std::string>& vec,
 
 std::vector<std::string> ParseAttrStr(const std::string& attr) {
   auto attr_info = string::split_string(attr, ":");
+
   // 1. name
   attr_info[0] = string::trim_spaces(attr_info[0]);
-  VLOG(0) << "attr name: " << attr_info[0];
   // 2. type
   attr_info[1] = string::trim_spaces(attr_info[1]);
-  VLOG(0) << "attr type str: " << attr_info[1];
+
+  VLOG(1) << "attr name: " << attr_info[0]
+          << ", attr type str: " << attr_info[1];
 
   return attr_info;
 }
@@ -197,7 +199,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       if (attr_type_str == "int") {
         AddAttr<int>(attr_name, "custom operator int attribute.").SetDefault(1);
       } else if (attr_type_str == "float") {
-        AddAttr<int>(attr_name, "custom operator float attribute.")
+        AddAttr<float>(attr_name, "custom operator float attribute.")
             .SetDefault(1.0f);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

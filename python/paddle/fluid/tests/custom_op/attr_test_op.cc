@@ -26,7 +26,9 @@ void assign_cpu_kernel(const data_t* x_data,
   }
 }
 
-std::vector<paddle::Tensor> AttrTest(const paddle::Tensor& x, int int_attr) {
+std::vector<paddle::Tensor> AttrTest(const paddle::Tensor& x,
+                                     int int_attr,
+                                     float float_attr) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
   out.reshape(x.shape());
 
@@ -36,8 +38,10 @@ std::vector<paddle::Tensor> AttrTest(const paddle::Tensor& x, int int_attr) {
             x.data<data_t>(), out.mutable_data<data_t>(), x.size());
       }));
 
-  std::cout << std::endl;
-  std::cout << int_attr;
+  std::cout << "enter AttrTest" << std::endl;
+
+  std::cout << int_attr << std::endl;
+  std::cout << float_attr << std::endl;
 
   return {out};
 }
@@ -53,7 +57,7 @@ std::vector<paddle::DataType> InferDType(paddle::DataType x_dtype) {
 PD_BUILD_OP("attr_test")
     .Inputs({"X"})
     .Outputs({"Out"})
-    .Attrs({"int_attr: int"})
+    .Attrs({"int_attr: int", "float_attr: float"})
     .SetKernelFn(PD_KERNEL(AttrTest))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
