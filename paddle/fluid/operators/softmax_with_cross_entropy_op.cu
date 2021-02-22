@@ -266,6 +266,10 @@ struct HardLabelSoftmaxWithCrossEntropyFunctor {
     int idx_remain = idx % remain;
     // labels, loss view as [n, remain]
     int idx_lbl = idx_n * remain + idx_remain;
+    PADDLE_ENFORCE(labels_[idx_lbl] >= 0 && labels_[idx_lbl] < d_,
+                   "The value of label expected >= 0 and < %ld,"
+                   "but got %ld. Please check input value.",
+                   d_, labels_[idx_lbl]);
     // It also would ignore labels not in range(class_num).
     if (idx_axis != labels_[idx_lbl]) {
       log_softmax_[idx] = exp_on_device(log_softmax_[idx]);
