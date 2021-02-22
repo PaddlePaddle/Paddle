@@ -106,6 +106,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transpose",
       "flatten2",
       "flatten",
+      "group_norm",
   };
 };
 

@@ -69,6 +69,8 @@ class GroupNormOpConverter : public OpConverter {
 
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;
+    scale_nv_dims.nbDims = scale_dims.size();
+    bias_nv_dims.nbDims = bias_dims.size();
     for (int i = 0; i < scale_dims.size(); i++) {
       scale_nv_dims.d[i] = scale_dims.at(i);
     }
