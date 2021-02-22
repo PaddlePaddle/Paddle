@@ -403,7 +403,8 @@ class PSLib(Fleet):
         mode = kwargs.get("mode", 0)
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir, mode)
+            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir,
+                                                      mode)
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
