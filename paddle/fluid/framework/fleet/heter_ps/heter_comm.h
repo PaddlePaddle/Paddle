@@ -13,16 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <thread>
 #include <vector>
 #include "cub/cub.cuh"
 #include "hashtable.h"
 #include "heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/place.h"
 #include "thrust/pair.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 
 #ifdef PADDLE_WITH_PSLIB
 
@@ -67,30 +68,38 @@ class HeterComm {
   template <typename Sgd>
   void push_sparse(int num, KeyType* d_keys, GradType* d_grads, size_t len,
                    Sgd& sgd);
-  
+
   template <typename Sgd>
-  void push_sparse_multi_node(int num, KeyType* d_keys, GradType* d_grads, size_t len,
-                   Sgd& sgd);
+  void push_sparse_multi_node(int num, KeyType* d_keys, GradType* d_grads,
+                              size_t len, Sgd& sgd);
 
   template <typename Sgd>
   void update_one_table(int num, KeyType* d_keys, GradType* d_grads, size_t len,
-                   Sgd& sgd);
-  
-  int gather_one_node_grad(int num, KeyType* d_keys, GradType* d_grads, int len);
-  
-  int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads, int len);
-  
+                        Sgd& sgd);
+
+  int gather_one_node_grad(int num, KeyType* d_keys, GradType* d_grads,
+                           int len);
+
+  int gather_multi_node_grad(int num, KeyType* d_keys, GradType* d_grads,
+                             int len);
+
   int log2i(int x);
-  
-  void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms, const std::vector<ncclComm_t>& inter_comms, int comm_size) {
+
+  void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
+                              const std::vector<ncclComm_t>& inter_comms,
+                              int comm_size) {
     nccl_inner_comms_ = inner_comms;
     nccl_inter_comms_ = inter_comms;
     node_size_ = comm_size;
   }
-  
+
   bool need_transfer(int send_id, int receive_id) {
     return ((send_id / 4 != receive_id / 4) && (send_id + 4) % 8 != receive_id);
   }
+
+  // void dump_to_cpu(int index);
+
+  void end_pass();
 
   int get_transfer_devid(int send_id) { return (send_id + 4) % 8; }
 
@@ -110,13 +119,12 @@ class HeterComm {
   };
 
   struct LocalStorage {
-    
     LocalStorage() {}
     void init(int size, int dev_id) {
       place_ = platform::CUDAPlace(dev_id);
       alloc(size, true);
     }
-    
+
     void alloc(int size, bool force = false) {
       if (force || size > all_keys_mem->size()) {
         all_keys_mem.reset();
@@ -141,7 +149,7 @@ class HeterComm {
     std::shared_ptr<memory::Allocation> all_grads_mem;
     KeyType* all_keys;
     GradType* all_grads;
-    
+
     std::shared_ptr<memory::Allocation> local_keys_mem;
     std::shared_ptr<memory::Allocation> local_grads_mem;
     KeyType* local_keys;
@@ -175,5 +183,5 @@ class HeterComm {
 
 }  // end namespace framework
 }  // end namespace paddle
-#include "paddle/fluid/framework/fleet/heter_ps/heter_comm.tpp"
+#include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
 #endif

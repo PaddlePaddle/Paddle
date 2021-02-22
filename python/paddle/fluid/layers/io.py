@@ -32,7 +32,7 @@ from ..unique_name import generate as unique_name
 import logging
 from ..data_feeder import check_dtype, check_type
 from paddle.fluid.framework import static_only
-from ..framework import _get_paddle_place
+from ..framework import _get_paddle_place, _current_expected_place, _set_expected_place
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -475,8 +475,11 @@ def _py_reader(capacity,
     reader.exited = False
 
     def start_provide_thread(func):
-        def __provider_thread__():
+        def __provider_thread__(legacy_expected_place):
             try:
+                # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+                _set_expected_place(legacy_expected_place)
+
                 for tensors in func():
                     array = core.LoDTensorArray()
                     for item in tensors:
@@ -498,7 +501,8 @@ def _py_reader(capacity,
                 logging.warn('Your decorated reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
-        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread = threading.Thread(
+            target=__provider_thread__, args=(_current_expected_place(), ))
         reader.thread.daemon = True
         reader.thread.start()
 

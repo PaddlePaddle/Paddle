@@ -36,7 +36,7 @@ _logger = get_logger(
 
 _op_real_in_out_name = {
     "conv2d": [["Input", "Filter"], ["Output"]],
-    "conv2d_transpose": [["Input", "Filter"], ["Output"]],
+    "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
     "pool2d": [["X"], ["Out"]],
     "elementwise_add": [["X", "Y"], ["Out"]],
     "softmax": [["X"], ["Out"]],
@@ -86,7 +86,7 @@ class ImperativeQuantAware(object):
                 'moving_average_abs_max', the static quantization scale will be calculated
                 during training and used in inference.
             moving_rate(float): the parameter for 'moving_average_abs_max' quantization.
-            quantizable_op_type(list[str]): List the type of layers that will be quantized. 
+            quantizable_layer_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
             weight_preprocess_layer(paddle.nn.Layer, optional): A paddle Layer that defines how to preprocess
@@ -229,7 +229,17 @@ class ImperativeQuantAware(object):
                 "'abs_max' or 'moving_average_abs_max' or 'channel_wise_abs_max' now."
                 % (str(weight_quantize_type)))
 
-        self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
+        self._quant_layers_map = {
+            'Conv2D': Conv2D,
+            'Linear': Linear,
+            'Pool2D': Pool2D,
+            'ReLU': ReLU,
+            'LeakyReLU': LeakyReLU,
+            'ReLU6': ReLU6,
+            'Softmax': Softmax,
+            'Tanh': Tanh,
+            'Swish': Swish
+        }
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
             if layer in self._quant_layers_map else layer
@@ -255,13 +265,19 @@ class ImperativeQuantAware(object):
             if hasattr(layer, "skip_quant") and layer.skip_quant == True:
                 continue
 
-            scopes = name.split('.')
-            target = scopes[-1]
+            last_idx = 0
+            idx = 0
             obj = model
             parent = model
-            for i in range(len(scopes) - 1):
-                obj = getattr(parent, scopes[i])
-                parent = obj
+
+            while idx < len(name):
+                if (name[idx] == '.'):
+                    if hasattr(parent, name[last_idx:idx]):
+                        obj = getattr(obj, name[last_idx:idx])
+                        parent = obj
+                        last_idx = idx + 1
+                idx += 1
+            target = name[last_idx:idx]
 
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(quant_layer, "layer_name", layer.full_name())
@@ -285,7 +301,12 @@ class ImperativeQuantAware(object):
                 layer.full_name()))
             sys.exit(-1)
 
-        quantized_layer = quant_nn.__dict__[quantized_counterpart[index]](
+        layer_with_weight = ['QuantizedConv2D', 'QuantizedLinear']
+        if quantized_counterpart[index] not in layer_with_weight:
+            quant_layer_class_name = 'QuantizedNoweightLayer'
+        else:
+            quant_layer_class_name = quantized_counterpart[index]
+        quantized_layer = quant_nn.__dict__[quant_layer_class_name](
             layer, self._weight_bits, self._activation_bits, self._moving_rate,
             self._weight_quantize_type, self._activation_quantize_type,
             self._weight_pre_layer, self._act_pre_layer,
@@ -308,9 +329,9 @@ class ImperativeCalcOutScale(object):
         super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
         self._out_scale_layer_type_list = (
-            BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D,
-            Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, MaxPool1D,
-            MaxPool2D, ReLU, ReLU6, Sigmoid, Softmax, Tanh, Swish)
+            BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D, LeakyReLU,
+            Linear, PReLU, Pool2D, MaxPool1D, MaxPool2D, ReLU, ReLU6, Sigmoid,
+            Softmax, Tanh, Swish)
         self._register_hook_handle_list = []
         self._out_scale_dict = collections.OrderedDict()
 
@@ -394,9 +415,11 @@ class ImperativeCalcOutScale(object):
 
         # Traverse all ops in the program and find out the op matching
         # the Layer in the dynamic graph.
-        layer_var_dict = {}
+        layer_var_dict = collections.OrderedDict()
         ops_list = [key for key, _ in self._out_scale_dict.items()]
         op_count = 0
+        conv_count = 0
+
         for block in inference_program.blocks:
             for op in block.ops:
                 if op.type in _op_real_in_out_name:
@@ -451,6 +474,9 @@ class ImperativeCalcOutScale(object):
                 layer_name = layer_name.replace('prelu', 'p_re_lu')
             if 'relu' in layer_name:
                 layer_name = layer_name.replace('relu', 're_lu')
+            if 'conv2d' in layer_name:
+                layer_name = 'conv2d_' + str(conv_count)
+                conv_count = conv_count + 1
             if layer_name not in self._out_scale_dict:
                 continue
             var_name_op_list[1]._set_attr('out_threshold',

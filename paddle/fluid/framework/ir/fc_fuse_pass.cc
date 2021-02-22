@@ -15,9 +15,7 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 
 #include <string>
-#include <vector>
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -148,6 +146,18 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       if (elementwise_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
+
+    auto* elementwise_add_op_desc = elementwise_add->Op();
+    // if we can find out_threshold in elementwise_add, then set it as the
+    // out_thrshold of fc
+    auto out_threshold_attr =
+        elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    if (out_threshold_attr.which()) {
+      VLOG(4) << "setting out_threshold: "
+              << BOOST_GET_CONST(float, out_threshold_attr);
+      desc.SetAttr("out_threshold", out_threshold_attr);
+    }
+    desc.Flush();
 
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     if (with_relu) {

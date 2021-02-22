@@ -30,6 +30,9 @@ def conv_indent(indent):
     return "".join([" "] * indent)
 
 
+PSERVER_SAVE_SUFFIX = "_txt"
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -165,11 +168,7 @@ class CommonAccessor:
                     shape = self.get_shard(total_dims, pserver_num, pserver_id)
             dims.append(shape)
 
-            if formal_name == "Param":
-                initializer = "uniform_random&0&-1.0&1.0"
-            else:
-                initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+            initializer = self.get_initializer_attr(param.name, startup_program)
             initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
@@ -743,6 +742,7 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
+        trainers = self.compiled_strategy.get_trainers()
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
@@ -758,7 +758,7 @@ class TheOnePSRuntime(RuntimeBase):
             string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id,
+        self._server.init_server(proto_txt, string_hosts, role_id, trainers,
                                  self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
@@ -793,9 +793,9 @@ class TheOnePSRuntime(RuntimeBase):
         begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name,
+            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.txt".format(var_name, pserver_id))
-            meta = os.path.join(dirname, var_name,
+            meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)
         end = time.time()
@@ -946,7 +946,8 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True):
+                                           export_for_deployment=True,
+                                           mode=0):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -983,10 +984,25 @@ class TheOnePSRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(executor, dirname, program)
+            self._ps_inference_save_persistables(executor, dirname, program,
+                                                 mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _shrink(self, threshold):
+        import paddle.distributed.fleet as fleet
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            sparses = self.compiled_strategy.get_the_one_recv_context(
+                is_dense=False,
+                split_dense_table=self.role_maker.
+                _is_heter_parameter_server_mode,
+                use_origin_program=True)
+
+            for id, names in sparses.items():
+                self._worker.shrink_sparse_table(id, threshold)
+        fleet.util.barrier()

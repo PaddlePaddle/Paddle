@@ -25,6 +25,7 @@ namespace paddle {
 namespace framework {
 class LoDTensor;
 class Scope;
+class SelectedRows;
 }  // namespace framework
 }  // namespace paddle
 

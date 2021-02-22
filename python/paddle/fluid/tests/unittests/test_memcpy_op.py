@@ -70,7 +70,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             type='memcpy',
             inputs={'X': gpu_var},
             outputs={'Out': pinned_var},
-            attrs={'dst_place_type': 3})
+            attrs={'dst_place_type': 2})
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         gpu_, pinned_ = exe.run(main_program,
@@ -85,7 +85,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             type='memcpy',
             inputs={'X': pinned_var},
             outputs={'Out': gpu_var},
-            attrs={'dst_place_type': 2})
+            attrs={'dst_place_type': 1})
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         gpu_, pinned_ = exe.run(main_program,
@@ -135,7 +135,7 @@ class TestMemcpyOPError(unittest.TestCase):
             type='memcpy',
             inputs={'X': selected_row_var},
             outputs={'Out': pinned_var},
-            attrs={'dst_place_type': 3})
+            attrs={'dst_place_type': 2})
         with self.assertRaises(NotImplementedError):
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)

@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/ps_client.h"
-#include <map>
-#include "brpc/server.h"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"

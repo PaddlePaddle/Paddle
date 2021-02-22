@@ -82,6 +82,8 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
         self.attrs['fuse_activation'] = self.fuse_activation
         self.attrs['fuse_alpha'] = self.fuse_alpha
         self.attrs['fuse_beta'] = self.fuse_beta
+        self.attrs['mkldnn_data_type'] = 'float32'
+        self.attrs['force_fp32_output'] = False
 
         self.outputs['Output'] = output
 
@@ -150,3 +152,8 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
         self.filter_size = [f_c, 6, 4, 3]
         self.pad = [1, 3, 2, 1]
         self.padding_algorithm = "EXPLICIT"
+
+
+if __name__ == '__main__':
+    enable_static()
+    unittest.main()

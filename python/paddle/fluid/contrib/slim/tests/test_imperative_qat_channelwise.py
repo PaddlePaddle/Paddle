@@ -86,9 +86,9 @@ def StaticLenet(data, num_classes=10):
                           size=num_classes,
                           param_attr=fc_w3_attr,
                           bias_attr=fc_b3_attr)
-    fc4 = fluid.layers.softmax(fc3, use_cudnn=True)
+    fc3 = fluid.layers.softmax(fc3, use_cudnn=True)
 
-    return fc4
+    return fc3
 
 
 class ImperativeLenet(fluid.dygraph.Layer):

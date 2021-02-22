@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <cstdint>
-#include <iostream>
-#include <unordered_set>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"

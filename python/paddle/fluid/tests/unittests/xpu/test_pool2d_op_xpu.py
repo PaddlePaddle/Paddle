@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +13,20 @@
 # limitations under the License.
 
 from __future__ import print_function
+from __future__ import division
 
 import sys
 sys.path.append("..")
-import paddle.fluid.core as core
 import unittest
 import numpy as np
-from op_test import OpTest
-import paddle
+
+import paddle.fluid.core as core
+from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
+
+paddle.enable_static()
 
 
 def max_pool2D_forward_naive(x,
@@ -241,7 +245,7 @@ def pool2D_forward_naive(x,
     return out
 
 
-class TestPool2D_Op(OpTest):
+class TestPool2D_Op(XPUOpTest):
     def setUp(self):
         self.op_type = "pool2d"
         self.use_cudnn = False
@@ -265,7 +269,7 @@ class TestPool2D_Op(OpTest):
             input, self.ksize, self.strides, self.paddings, self.global_pool,
             self.ceil_mode, self.exclusive, self.adaptive, self.data_format,
             self.pool_type, self.padding_algorithm).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': XPUOpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,
@@ -284,18 +288,20 @@ class TestPool2D_Op(OpTest):
 
         self.outputs = {'Out': output}
 
+    def has_xpu(self):
+        return core.is_compiled_with_xpu()
+
     def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
+        if self.has_xpu():
+            place = core.XPUPlace(0)
             self.check_output_with_place(place)
+        return
 
     def test_check_grad(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=0.07)
+        if self.has_xpu():
+            place = core.XPUPlace(0)
+            self.check_grad_with_place(place, set(['X']), 'Out')
+        return
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -315,7 +321,7 @@ class TestPool2D_Op(OpTest):
         self.use_cudnn = False
 
     def init_data_type(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -332,6 +338,135 @@ class TestPool2D_Op(OpTest):
 
     def init_adaptive(self):
         self.adaptive = False
+
+
+class TestCase1(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_paddings(self):
+        self.paddings = [0, 0]
+
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_global_pool(self):
+        self.global_pool = False
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestCase2(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_paddings(self):
+        self.paddings = [1, 1]
+
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_global_pool(self):
+        self.global_pool = False
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestCase3(TestPool2D_Op):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestCase4(TestCase1):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestCase5(TestCase2):
+    def init_pool_type(self):
+        self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
+
+
+class TestPool2D_AsyPadding(TestPool2D_Op):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 5, 5]
+
+
+class TestCase1_AsyPadding(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 0]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestCase2_AsyPadding(TestCase2):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 2, 1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestCase3_AsyPadding(TestCase3):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 5, 5]
+
+
+class TestCase4_AsyPadding(TestCase4):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 0, 1, 0]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestCase5_AsyPadding((TestCase5)):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [2, 2, 1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
+
+
+class TestAvgInclude_AsyPadding(TestCase2):
+    def init_exclusive(self):
+        self.exclusive = False
+
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 2, 1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 7, 7]
 
 
 if __name__ == '__main__':

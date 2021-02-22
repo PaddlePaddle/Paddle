@@ -64,7 +64,7 @@ void MultiStreamCompute(float **data, float **second_data,
 
 TEST(Malloc, CUDADeviceContextMultiStream) {
   auto place = platform::CUDAPlace(0);
-  EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
+  platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
   EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));
@@ -94,7 +94,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
 
 TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
   auto place = platform::CUDAPlace(0);
-  EXPECT_TRUE(cudaSuccess == cudaSetDevice(0));
+  platform::SetDeviceId(0);
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
   EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));

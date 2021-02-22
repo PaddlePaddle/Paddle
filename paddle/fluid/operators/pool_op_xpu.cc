@@ -30,6 +30,7 @@ xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
         "Pool op only supports 2D and 3D input."));
   }
 }
+
 template <typename DeviceContext, typename T>
 class PoolXPUKernel : public framework::OpKernel<T> {
  public:
@@ -41,7 +42,6 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     bool exclusive = context.Attr<bool>("exclusive");
-    bool is_test = context.Attr<bool>("is_test");
     bool adaptive = context.Attr<bool>("adaptive");
     PADDLE_ENFORCE_EQ(
         ksize.size(), 2,
@@ -60,36 +60,32 @@ class PoolXPUKernel : public framework::OpKernel<T> {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
-    const int c = in_x->dims()[0] * in_x->dims()[1];
+    const int n = in_x->dims()[0];
+    const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
-    const int out_h = out->dims()[2];
-    const int out_w = out->dims()[3];
-    const int win_h = ksize[0];
-    const int win_w = ksize[1];
-    const int stride_h = strides[0];
-    const int stride_w = strides[1];
-    const int pad_up = paddings[0];
-    const int pad_down = paddings[0];
-    const int pad_left = paddings[1];
-    const int pad_right = paddings[1];
     const float* input = in_x->data<float>();
     out->mutable_data<T>(context.GetPlace());
     float* output = out->data<float>();
-    xpu::Pooling_t pool_type = XPUPoolingType(pooling_type, exclusive, is_test);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::pooling_forward<float, float>(
-        dev_ctx.x_context(), input, output, index_data, pool_type, c, in_h,
-        in_w, pad_left, pad_right, pad_up, pad_down, win_h, win_w, stride_h,
-        stride_w, out_h, out_w);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "The pool2d XPU API return wrong value[%d], please check "
-            "where Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::Error_t::SUCCESS;
+    if (pooling_type == "max") {
+      r = xpu::max_pool2d(dev_ctx.x_context(), input, output, index_data, n, c,
+                          in_h, in_w, ksize, strides, paddings, true);
+    } else if (pooling_type == "avg") {
+      r = xpu::avg_pool2d(dev_ctx.x_context(), input, output, n, c, in_h, in_w,
+                          ksize, strides, paddings, !exclusive, true);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported pooling type for kunlun ", pooling_type));
+    }
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                      platform::errors::External(
+                          "The pool2d XPU API return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 };
+
 template <typename DeviceContext, typename T>
 class PoolGradXPUKernel : public framework::OpKernel<T> {
  public:
@@ -126,47 +122,33 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     if (!in_x_grad) {
       return;
     }
-    const int c = in_x->dims()[0] * in_x->dims()[1];
+    const int n = in_x->dims()[0];
+    const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
-    const int out_h = out->dims()[2];
-    const int out_w = out->dims()[3];
-    const int win_h = ksize[0];
-    const int win_w = ksize[1];
-    const int stride_h = strides[0];
-    const int stride_w = strides[1];
-    const int pad_up = paddings[0];
-    const int pad_down = paddings[0];
-    const int pad_left = paddings[1];
-    const int pad_right = paddings[1];
     const float* input = in_x->data<float>();
     const float* output = out->data<float>();
     const float* output_grad = out_grad->data<float>();
     in_x_grad->mutable_data<T>(context.GetPlace());
     float* input_grad = in_x_grad->data<float>();
-    xpu::Pooling_t pool_type = XPUPoolingType(pooling_type, exclusive, false);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    // Need to init memory in the first place
-    const int zero = 0;
-    int r =
-        xpu::memset(dev_ctx.x_context(), reinterpret_cast<void**>(input_grad),
-                    zero, in_x_grad->numel() * sizeof(float));
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "The Pool2d XPU OP return wrong value[%d], please check "
-            "where Baidu Kunlun Card is properly installed.",
-            r));
-    r = xpu::pooling_backward(dev_ctx.x_context(), input, output, index_data,
-                              output_grad, input_grad, pool_type, c, in_h, in_w,
-                              pad_left, pad_right, pad_up, pad_down, win_h,
-                              win_w, stride_h, stride_w, out_h, out_w);
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "The Pool2d XPU OP return wrong value[%d], please check "
-            "where Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::Error_t::SUCCESS;
+    if (pooling_type == "max") {
+      r = xpu::max_pool2d_grad(dev_ctx.x_context(), input, output, index_data,
+                               output_grad, input_grad, n, c, in_h, in_w, ksize,
+                               strides, paddings, true);
+    } else if (pooling_type == "avg") {
+      r = xpu::avg_pool2d_grad(dev_ctx.x_context(), input, output, output_grad,
+                               input_grad, n, c, in_h, in_w, ksize, strides,
+                               paddings, !exclusive, true);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported pooling type for kunlun ", pooling_type));
+    }
+    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                      platform::errors::External(
+                          "The Pool2dGrad XPU OP return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 

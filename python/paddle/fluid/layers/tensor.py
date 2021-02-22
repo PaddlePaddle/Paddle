@@ -228,6 +228,7 @@ def cast(x, dtype):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return out
 
     check_variable_and_dtype(
         x, 'x',

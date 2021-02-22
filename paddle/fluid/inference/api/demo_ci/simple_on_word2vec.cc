@@ -131,7 +131,7 @@ void MainThreads(int num_threads, bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::Main(false /* use_gpu*/);
   paddle::demo::MainThreads(1, false /* use_gpu*/);
   paddle::demo::MainThreads(4, false /* use_gpu*/);

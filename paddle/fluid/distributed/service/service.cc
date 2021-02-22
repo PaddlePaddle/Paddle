@@ -21,7 +21,7 @@
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/string/string_helper.h"
 
-using namespace std;
+using namespace std;  // NOLINT
 
 namespace paddle {
 namespace distributed {
@@ -59,21 +59,23 @@ void PSCore::init_gflag(const std::string& gflags) {
   flags.insert(it, "exe default");
   char* flags_ptr[flags.size()];
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = (char*)(flags[i].c_str());
+    flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
   char** params_ptr = &(flags_ptr[0]);
-  ::google::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
 }
 
 int PSCore::init_server(
     const std::string& dist_desc,
     const std::vector<std::string>* host_sign_list, int node_num, int index,
+    int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   init_gflag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(host_sign_list, node_num);
+  _ps_env.set_trainers(trainers);
   int ret = 0;
   _server_ptr = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(_ps_param));
