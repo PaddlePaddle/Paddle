@@ -878,6 +878,8 @@ class Optimizer(object):
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
+        loss = loss * self._scale
+
         parameter_list = parameters if parameters \
             else self._parameter_list
 

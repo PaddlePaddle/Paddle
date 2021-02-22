@@ -141,6 +141,7 @@ class Adam(Optimizer):
                  grad_clip=None,
                  lazy_mode=False,
                  multi_precision=False,
+                 scale=1024,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -165,6 +166,7 @@ class Adam(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._scale = scale
 
     def _create_master_weight(self, param):
         assert isinstance(self.helper, LayerHelper)
@@ -280,9 +282,11 @@ class Adam(Optimizer):
 
             return None
 
+        new_grad = param_and_grad[1] / self._scale
+
         inputs = {
             "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
+            "Grad": [new_grad],
             "LearningRate": [lr],
             "Moment1": [moment1],
             "Moment2": [moment2],
