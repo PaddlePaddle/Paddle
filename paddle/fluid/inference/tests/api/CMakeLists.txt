@@ -105,9 +105,10 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
 	     --iterations=1)
 endfunction()
 
+# (aosewski) link to 'flags' to get access to 'onednn_use_input_mem_format' global flag.
 function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} flags)
 endfunction()
 
 function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary model_dir disable_fc)
