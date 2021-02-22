@@ -14,27 +14,14 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
-namespace paddle {
-namespace framework {
-class Variable;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace imperative {
-
-struct ParallelStrategy;
-
-void AllReduce(const framework::Variable &src, framework::Variable *dst,
-               const ParallelStrategy &strategy);
-
-void AllReduce(const framework::Variable &src, framework::Variable *dst,
-               const ParallelStrategy &strategy, int ring_id,
-               bool use_calc_stream);
-
-}  // namespace imperative
-}  // namespace paddle
-
-#endif
+#if defined(_WIN32)
+#ifndef PD_DLL_DECL
+#ifdef PADDLE_DLL_EXPORT
+#define PD_DLL_DECL __declspec(dllexport)
+#else
+#define PD_DLL_DECL __declspec(dllimport)
+#endif  // PADDLE_DLL_EXPORT
+#endif  // PD_DLL_DECL
+#else
+#define PD_DLL_DECL
+#endif  // _WIN32
