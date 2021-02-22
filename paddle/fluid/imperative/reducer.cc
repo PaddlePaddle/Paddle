@@ -640,56 +640,56 @@ void Reducer::MarkGroupReady(size_t group_index) {
     return;
   }
 
+  for (uint32_t i = 0; i < groups_.size(); i++) {
+    pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
+  }
+
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
 
-    // For CUDA or XPU, compute_stream --> comm_stream.
+    // For CUDA or XPU, compute_stream --event--> comm_stream.
     // For CPU, do nothing.
     // NOTE. Because concat uses the comm_stream,
     // so we expose WaitCompute() interface and call
     // it here.
-    parallel_ctx_->WaitCompute(run_order);
+    pool_[index]->enqueue([=] {
+      parallel_ctx_->WaitCompute(run_order);
 
-    if (group.is_sparse_) {
-      if (group.sparse_contents_ != nullptr) {
-        VLOG(3) << "sparse group [" << next_group_
-                << "] start allreduce in ring[" << run_order << "]";
-        group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
-        parallel_ctx_->AllReduceByStream(
-            *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      if (group.is_sparse_) {
+        if (group.sparse_contents_ != nullptr) {
+          VLOG(3) << "sparse group [" << next_group_
+                  << "] start allreduce in ring[" << run_order << "]";
+          parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
+                                           group.sparse_contents_, run_order,
+                                           false);
+        } else {
+          VLOG(3) << "The sparse group[" << next_group_
+                  << "] has no var to allreduce";
+        }
       } else {
-        VLOG(3) << "The sparse group[" << next_group_
-                << "] has no var to allreduce";
+        if (!group.dense_tensors_.empty()) {
+          VLOG(3) << "dense group [" << next_group_
+                  << "] start allreduce in ring[" << run_order << "]";
+          // Select common commstream to concat tensors
+          // group.dense_tensors ---> group.dense_contents_
+          group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+
+          // Start allreduce
+          parallel_ctx_->AllReduceByStream(group.dense_contents_,
+                                           &(group.dense_contents_), run_order,
+                                           false);
+
+          // Select common commstream to split tensors
+          // group.dense_contents_ ---> group.dense_tensors
+          group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+        } else {
+          VLOG(3) << "The dense group[" << next_group_
+                  << "] has no var to allreduce";
+        }
       }
-    } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
-              << run_order << "]";
-      // Select common commstream to concat tensors
-      // group.dense_tensors ---> group.dense_contents_
-      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
-
-// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
-// default stream for communicating, so there exist some problems in
-// synchronization. And need to add a WaitComm there.
-// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
-// communication.
-#ifdef PADDLE_WITH_XPU_BKCL
-      if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
-        parallel_ctx_->WaitComm(run_order);
-      }
-#endif
-      group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
-
-      // Start allreduce
-      parallel_ctx_->AllReduceByStream(
-          group.dense_contents_, &(group.dense_contents_), run_order, false);
-
-      // Select common commstream to split tensors
-      // group.dense_contents_ ---> group.dense_tensors
-      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
-    }
+    });
   }
 }
 

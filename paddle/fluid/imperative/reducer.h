@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <ThreadPool.h>
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -187,6 +187,10 @@ class Reducer {
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_{false};
   bool all_group_ready_{false};
+
+  std::vector<std::unique_ptr<::ThreadPool>> pool_;
+  ::ThreadPool prepare_pool_;
+  ::ThreadPool multi_device_op_pool_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
