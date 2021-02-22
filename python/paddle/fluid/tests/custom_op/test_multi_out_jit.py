@@ -23,7 +23,6 @@ from utils import paddle_includes, extra_compile_args
 multi_out_module = load(
     name='multi_out_jit',
     sources=['multi_out_test_op.cc'],
-    verbose=True,
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cflags=extra_compile_args)  # add for Coverage CI
 
