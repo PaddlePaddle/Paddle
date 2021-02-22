@@ -74,17 +74,21 @@ inline bool IsMemberOf(const std::vector<std::string>& vec,
 }
 
 std::vector<std::string> ParseAttrStr(const std::string& attr) {
-  auto attr_info = string::split_string(attr, ":");
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos, std::string::npos,
+                    platform::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
 
+  std::vector<std::string> rlt;
   // 1. name
-  attr_info[0] = string::trim_spaces(attr_info[0]);
+  rlt.emplace_back(string::trim_spaces(attr.substr(0, split_pos)));
   // 2. type
-  attr_info[1] = string::trim_spaces(attr_info[1]);
+  rlt.emplace_back(string::trim_spaces(attr.substr(split_pos + 1)));
 
-  VLOG(1) << "attr name: " << attr_info[0]
-          << ", attr type str: " << attr_info[1];
+  VLOG(1) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
 
-  return attr_info;
+  return rlt;
 }
 
 }  // namespace detail
@@ -118,13 +122,33 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     auto attr_name_and_type = detail::ParseAttrStr(attr_str);
     auto attr_name = attr_name_and_type[0];
     auto attr_type_str = attr_name_and_type[1];
-    if (attr_type_str == "int") {
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(ctx.Attr<bool>(attr_name));
+    } else if (attr_type_str == "int") {
       custom_attrs.emplace_back(ctx.Attr<int>(attr_name));
     } else if (attr_type_str == "float") {
       custom_attrs.emplace_back(ctx.Attr<float>(attr_name));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(ctx.Attr<int64_t>(attr_name));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(ctx.Attr<std::string>(attr_name));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<int>>(attr_name));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<float>>(attr_name));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<int64_t>>(attr_name));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<std::string>>(attr_name));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported `%s` value as custom attribute now.", attr_type_str));
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data type include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
     }
   }
 
@@ -196,14 +220,45 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       auto attr_name_and_type = detail::ParseAttrStr(attr);
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
-      if (attr_type_str == "int") {
+      if (attr_type_str == "bool") {
+        AddAttr<bool>(attr_name, "custom operator bool attribute.")
+            .SetDefault(false);
+      } else if (attr_type_str == "int") {
         AddAttr<int>(attr_name, "custom operator int attribute.").SetDefault(1);
       } else if (attr_type_str == "float") {
         AddAttr<float>(attr_name, "custom operator float attribute.")
             .SetDefault(1.0f);
+      } else if (attr_type_str == "int64_t") {
+        AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
+            .SetDefault(1);
+      } else if (attr_type_str == "std::string") {
+        AddAttr<std::string>(attr_name, "custom operator int attribute.")
+            .SetDefault("");
+      } else if (attr_type_str == "std::vector<int>") {
+        AddAttr<std::vector<int>>(attr_name,
+                                  "custom operator std::vector<int> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<float>") {
+        AddAttr<std::vector<float>>(
+            attr_name, "custom operator std::vector<float> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<int64_t>") {
+        AddAttr<std::vector<int64_t>>(
+            attr_name, "custom operator std::vector<int64_t> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<std::string>") {
+        AddAttr<std::vector<std::string>>(
+            attr_name, "custom operator std::vector<std::string> attribute.")
+            .SetDefault({});
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported `%s` value as custom attribute now.", attr_type_str));
+            "Unsupported `%s` type value as custom attribute now. "
+            "Supported data type include `bool`, `int`, `float`, "
+            "`int64_t`, `std::string`, `std::vector<int>`, "
+            "`std::vector<float>`, `std::vector<int64_t>, "
+            "`std::vector<std::string>`, Please check whether "
+            "the attribute data type and data type string are matched.",
+            attr_type_str));
       }
     }
     AddComment(R"DOC(

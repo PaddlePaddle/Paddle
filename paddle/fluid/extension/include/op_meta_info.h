@@ -112,8 +112,20 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  PD_SPECIALIZE_ComputeCallHelper(bool);
   PD_SPECIALIZE_ComputeCallHelper(int);
   PD_SPECIALIZE_ComputeCallHelper(float);
+  PD_SPECIALIZE_ComputeCallHelper(int64_t);
+  PD_SPECIALIZE_ComputeCallHelper(std::string);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<float>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
+  // TODO(chenweihang): support other attribute type if needed.
+  // Why not support other attribute type here?
+  // - boost::blank, std::vector<bool> and std::vector<double> are not used in
+  // op
+  // - BlockDesc* and std::vector<BlockDesc*> are used in framework
 
   // end: base template
   template <typename T>
