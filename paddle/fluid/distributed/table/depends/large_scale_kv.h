@@ -182,10 +182,12 @@ class ValueBlock {
           initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
                                      value_dims_[x]);
         }
+        value->need_save_ = true;
       }
+    } else {
+      value->need_save_ = true;
     }
 
-    value->need_save_ = true;
     return;
   }
 
