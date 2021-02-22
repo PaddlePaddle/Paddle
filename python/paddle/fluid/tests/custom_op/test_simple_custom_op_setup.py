@@ -91,7 +91,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
-        cmd = 'cd {} && python setup_install_simple.py install'.format(cur_dir)
+        if os.name == 'nt':
+            cmd = 'cd /d {} && python setup_install_simple.py install'.format(
+                cur_dir)
+        else:
+            cmd = 'cd {} && python setup_install_simple.py install'.format(
+                cur_dir)
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.
@@ -99,7 +104,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # sys.path has been updated. So we update it manually.
 
         # See: https://stackoverflow.com/questions/56974185/import-runtime-installed-module-using-pip-in-python-3
-        site_dir = site.getsitepackages()[0]
+        if os.name == 'nt':
+            # NOTE(zhouwei25): getsitepackages on windows will return a list: [python install dir, site packages dir]
+            site_dir = site.getsitepackages()[1]
+        else:
+            site_dir = site.getsitepackages()[0]
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'simple_setup_relu2' in x
         ]
