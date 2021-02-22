@@ -41,17 +41,13 @@ IS_WINDOWS = OS_NAME.startswith('win')
 
 MSVC_COMPILE_FLAGS = [
     '/MT', '/wd4819', '/wd4251', '/wd4244', '/wd4267', '/wd4275', '/wd4018',
-    '/wd4190', '/EHsc', '/w', '/DPADDLE_WITH_CUDA', '/DEIGEN_USE_GPU',
-    '/DNDEBUG'
+    '/wd4190', '/EHsc', '/w', '/DGOOGLE_GLOG_DLL_DECL',
+    '/DBOOST_HAS_STATIC_ASSERT', '/DNDEBUG', '/DPADDLE_USE_DSO'
 ]
 
-MSVC_LINK_FLAGS = [
-    '/MACHINE:X64', 'paddle_framework.lib', 'cudadevrt.lib', 'cudart_static.lib'
-]
+MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_framework.lib']
 
-COMMON_NVCC_FLAGS = [
-    '-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-DPADDLE_USE_DSO', '-O3'
-]
+COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-O3']
 
 GCC_MINI_VERSION = (5, 4, 0)
 # Give warning if using wrong compiler
@@ -216,7 +212,7 @@ class CustomOpInfo:
         return next(reversed(self.op_info_map.items()))
 
 
-def prepare_unix_cflags(cflags):
+def prepare_unix_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
@@ -228,13 +224,11 @@ def prepare_unix_cflags(cflags):
     return cflags
 
 
-def prepare_win_cflags(cflags):
+def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + [
-        '-DGOOGLE_GLOG_DLL_DECL', '-DBOOST_HAS_STATIC_ASSERT', '-w'
-    ] + cflags + get_cuda_arch_flags(cflags)
+    cflags = COMMON_NVCC_FLAGS + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -269,6 +263,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     # append necessary include dir path of paddle
     include_dirs = kwargs.get('include_dirs', [])
     include_dirs.extend(find_paddle_includes(use_cuda))
+    for dir in include_dirs:
+        log_v(dir)
+        if os.path.exists(dir):
+            print(os.listdir(dir))
     kwargs['include_dirs'] = include_dirs
 
     # append necessary lib path of paddle
@@ -282,6 +280,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
+        if use_cuda:
+            extra_link_args.append(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
         # append compile flags
@@ -369,10 +369,9 @@ def find_paddle_includes(use_cuda=False):
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
     include_dirs = [paddle_include_dir, third_party_dir]
 
-    #TODO(zhouwei): because eigen need cuda_runtime.h
-    #So, extend cuda_include_dir always
-    cuda_include_dir = find_cuda_includes()
-    include_dirs.extend(cuda_include_dir)
+    if use_cuda:
+        cuda_include_dir = find_cuda_includes()
+        include_dirs.extend(cuda_include_dir)
 
     return include_dirs
 
@@ -401,10 +400,9 @@ def find_paddle_libraries(use_cuda=False):
     # pythonXX/site-packages/paddle/libs
     paddle_lib_dirs = [get_lib()]
 
-    #TODO(zhouwei): because eigen need cuda_runtime.h
-    #So, extend cuda_lib_dir always
-    cuda_lib_dir = find_cuda_libraries()
-    paddle_lib_dirs.extend(cuda_lib_dir)
+    if use_cuda:
+        cuda_lib_dir = find_cuda_libraries()
+        paddle_lib_dirs.extend(cuda_lib_dir)
 
     return paddle_lib_dirs
 

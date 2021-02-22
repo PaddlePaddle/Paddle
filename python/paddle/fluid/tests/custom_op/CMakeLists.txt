@@ -1,11 +1,13 @@
 # New custom OP can support Windows/Linux now
-# 'test_simple_custom_op_jit/test_simple_custom_op_setup' compile .cc and .cu file
-py_test(test_simple_custom_op_setup SRCS test_simple_custom_op_setup.py)
-py_test(test_simple_custom_op_jit SRCS test_simple_custom_op_jit.py)
+if(WITH_GPU)
+    # 'test_simple_custom_op_jit/test_simple_custom_op_setup' compile .cc and .cu file
+    py_test(test_simple_custom_op_setup SRCS test_simple_custom_op_setup.py)
+    py_test(test_simple_custom_op_jit SRCS test_simple_custom_op_jit.py)
 
-# Compiling shared library will cost some time, but running process is very fast.
-set_tests_properties(test_simple_custom_op_setup PROPERTIES TIMEOUT 250)
-set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
+    # Compiling shared library will cost some time, but running process is very fast.
+    set_tests_properties(test_simple_custom_op_setup PROPERTIES TIMEOUT 250)
+    set_tests_properties(test_simple_custom_op_jit PROPERTIES TIMEOUT 180)
+endif()
 
 py_test(test_sysconfig SRCS test_sysconfig.py)
 
