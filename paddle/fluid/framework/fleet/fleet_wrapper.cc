@@ -917,6 +917,24 @@ void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
 #endif
 }
 
+void FleetWrapper::SaveMultiTableOnePath(const std::vector<int>& table_ids,
+                                         const std::string& path,
+                                         const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_multi_table_one_path(
+      table_ids, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "save model failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveMultiTableOnePath does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
