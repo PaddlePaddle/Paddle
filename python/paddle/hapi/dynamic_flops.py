@@ -149,6 +149,7 @@ def count_avgpool(m, x, y):
     kernel_ops = 1
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
+
     m.total_ops += int(total_ops)
 
 
