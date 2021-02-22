@@ -29,17 +29,9 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
-
     out->mutable_data<T>(ctx.GetPlace());
 
-    // TODO(zhiqiu): get the attr infomation of Ascend op and
-    // convert paddle AttributeMap to Ascend attrs.
-    // Ascend op add has no attribute ?
-    // int axis = ctx.Attr<int>("axis");
-
-    // NOTE(zhiqiu): the order of inputs and outputs is important
     auto runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
-
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
