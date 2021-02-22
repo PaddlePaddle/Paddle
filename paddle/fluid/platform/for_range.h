@@ -40,7 +40,7 @@ struct ForRange<CPUDeviceContext> {
   size_t limit_;
 };
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename Function>
 __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
   size_t idx = static_cast<size_t>(threadIdx.x);
