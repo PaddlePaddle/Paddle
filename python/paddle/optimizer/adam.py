@@ -141,7 +141,7 @@ class Adam(Optimizer):
                  grad_clip=None,
                  lazy_mode=False,
                  multi_precision=False,
-                 scale=1024,
+                 scale=1.0,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
