@@ -100,6 +100,13 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
       // compute the channel wise abs max of the weight tensor
       int quant_axis =
           BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("quant_axis"));
+
+      PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+                        platform::errors::InvalidArgument(
+                            "'quant_axis' should be 0 or 1, but "
+                            "the received is %d",
+                            quant_axis));
+
       const int64_t channel = w_dims[quant_axis];
       weight_scale.resize(channel, 0);
       if (quant_axis == 0) {
