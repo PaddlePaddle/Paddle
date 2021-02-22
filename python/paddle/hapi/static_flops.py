@@ -133,7 +133,6 @@ def count_convNd(op):
 
 def count_leaky_relu(op):
     total_ops = np.product(op.outputs("Output")[0].shape()[1:])
-    total_ops = abs(total_ops)
     return total_ops
 
 
