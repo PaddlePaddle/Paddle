@@ -136,5 +136,58 @@ class TestConvertShapeCompare(unittest.TestCase):
         paddle.disable_static()
 
 
+class TestChooseShapeAttrOrApi(unittest.TestCase):
+    def test_api_shape_is_none(self):
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([1, 2], None),
+            [1, 2])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([1], None), [1])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([2, 3, 7], None, 0),
+            2)
+
+    def test_attr_shape_is_int(self):
+        x = paddle.zeros([1, 3, 5, 7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape[0],
+                                                          paddle.shape(x)[0]),
+            1)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape[1],
+                                                          paddle.shape(x)[1]),
+            3)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(-1,
+                                                          paddle.shape(x)[0]),
+            paddle.shape(x)[0])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(-1,
+                                                          paddle.shape(x), 0),
+            paddle.shape(x)[0])
+
+    def test_positive_attr_shape(self):
+        x = paddle.zeros([1, 3, 5, 7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape,
+                                                          paddle.shape(x)),
+            x.shape)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape,
+                                                          paddle.shape(x), 3),
+            x.shape[3])
+
+    def test_negative_attr_shape(self):
+        x = paddle.zeros([7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([-1],
+                                                          paddle.shape(x), 0),
+            paddle.shape(x)[0])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([-1],
+                                                          paddle.shape(x)),
+            paddle.shape(x))
+
+
 if __name__ == '__main__':
     unittest.main()
