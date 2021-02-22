@@ -315,7 +315,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     // skip out
     auto *out = dout;
 
-// TODO(@zhouwei25, wangchaochaohu): Fix conv_transpose2d API(dataformat NHWC)
+// TODO(@wangchaochaohu, zhouwei35): Fix conv_transpose2d API(dataformat NHWC)
 // error in Windows
 #if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
 #ifdef __NVCC__
