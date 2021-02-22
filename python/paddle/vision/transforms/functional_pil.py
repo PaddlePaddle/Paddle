@@ -49,7 +49,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image): Image to be converted to tensor.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -396,13 +396,18 @@ def adjust_hue(img, hue_factor):
     return img
 
 
-def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
+def rotate(img,
+           angle,
+           interpolation="nearest",
+           expand=False,
+           center=None,
+           fill=0):
     """Rotates the image by angle.
 
     Args:
         img (PIL.Image): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
             support method are as following: 
             - "nearest": Image.NEAREST, 
@@ -426,7 +431,12 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
-    return img.rotate(angle, resample, expand, center, fillcolor=fill)
+    return img.rotate(
+        angle,
+        _pil_interp_from_str[interpolation],
+        expand,
+        center,
+        fillcolor=fill)
 
 
 def to_grayscale(img, num_output_channels=1):

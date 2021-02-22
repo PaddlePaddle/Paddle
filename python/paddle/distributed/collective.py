@@ -21,6 +21,7 @@ from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
+from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -31,6 +32,7 @@ __all__ = [
     'all_gather',
     'scatter',
     'barrier',
+    'split',
     'ReduceOp',
 ]
 
@@ -485,3 +487,227 @@ def barrier(group=0):
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
         attrs={'ring_id': group})
+
+
+def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
+                     gather_out, inner_rank, name):
+    """
+    Parallel Linear
+    """
+    if not name:
+        name = "fc_by_row_rank_%d" % inner_rank if axis == 0 else "fc_by_col_rank_%d" % inner_rank
+    else:
+        name = name + "_by_row_rank_%d" % inner_rank if axis == 0 else name + "_by_col_rank_%d" % inner_rank
+    linear = paddle.nn.Linear(
+        num_rows,
+        num_cols,
+        weight_attr=param_attr,
+        bias_attr=bias_attr,
+        name=name)
+
+    weight = linear.weight
+    weight.is_distributed = True
+    linear_out = linear(x)
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[weight.name].is_distributed = True
+    main_block.vars[weight.name].is_distributed = True
+
+    if gather_out:
+        if axis == 0:
+            paddle.distributed.all_reduce(linear_out, group=0)
+        else:
+            output = []
+            paddle.distributed.all_gather(output, linear_out, group=0)
+            linear_out = paddle.concat(output, axis=len(linear_out.shape) - 1)
+    return linear_out
+
+
+def _parallel_embedding(x, per_part_embeddings, origin_size, param_attr,
+                        inner_rank, num_partitions, name):
+    """
+    Parallel Embedding
+    """
+    if not name:
+        name = "emb_rank_%d" % inner_rank
+    else:
+        name = name + "_rank_%d" % inner_rank
+
+    origin_num_embeddings = origin_size[0]
+    embedding = paddle.nn.Embedding(
+        per_part_embeddings,
+        origin_size[1],
+        padding_idx=per_part_embeddings - 1,
+        sparse=False,
+        weight_attr=param_attr,
+        name=name)
+
+    origin_input_shape = x.shape
+    if len(origin_input_shape) == 2:
+        x = paddle.unsqueeze(x, axis=-1)
+    else:
+        assert origin_input_shape[-1] == 1, (
+            "The last dimension size of x must be 1.")
+    x_shard = paddle.shard_index(x, origin_num_embeddings, num_partitions,
+                                 inner_rank, per_part_embeddings - 1)
+    if len(origin_input_shape) == 2:
+        x_shard = paddle.squeeze(x_shard, axis=-1)
+
+    embedding.weight.is_distributed = True
+    emb_out = embedding(x_shard)
+    startup_block = paddle.static.default_startup_program().global_block()
+    main_block = paddle.static.default_main_program().global_block()
+    startup_block.vars[embedding.weight.name].is_distributed = True
+    main_block.vars[embedding.weight.name].is_distributed = True
+    paddle.distributed.all_reduce(emb_out, group=0)
+    return emb_out
+
+
+def split(x,
+          size,
+          operation,
+          axis=0,
+          num_partitions=1,
+          gather_out=True,
+          weight_attr=None,
+          bias_attr=None,
+          name=None):
+    """
+
+    Split the weight of the specified operation into multiple devices
+    and do the computation in parallel.
+
+    Now the following three cases are supported.
+
+    Case 1: Parallel Embedding
+        The weight of the embedding operation is a NxM matrix with N rows and M columns.
+        With parallel embedding, the weight is split into num_partitions partitions, each
+        of which is a matrix with (N/num_partitions + 1) rows and M column where the last
+        row as the padding idx.
+        
+        Suppose we split the NxM weight into two partitons on device_0 and device_1
+        respectively. Then, one each device, the final weight has (N/2 + 1) rows with the
+        index range from 0 to N/2. On device_0, all values in the input within [0, N/2 -1]
+        keep unchanged and all other values are changed to N/2 which is the padding index and
+        are mapped to all zeros after embedding. In the same way, on device_1, the value V in the
+        input within [N/2, N-1] will be changed to (V - N/2), and all other values are changed
+        to N/2 and are mapped to all zeros after embedding. Finally, the results on the two
+        devices are sum-reduced.
+
+    Case 2: Row Parallel Linear
+        The weight of the linear operation is a NxM matrix with N rows and M columns.
+        With row parallel linear, the weight is split into num_partitions partitions, each
+        of which is a matrix with N/num_partitions rows and M column.
+
+    Case 3: Column Parallel Linear
+        The weight of the linear operation is a NxM matrix with N rows and M columns.
+        With column parallel linear, the weight is split into num_paratitions partitions, each
+        of which is a matrix with N rows and M/num_partitions column.
+
+    Args:
+        x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
+        size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
+        operation (str): The name of the operation. The supported operations are 'linear' and 'embedding'.
+        axis (int, Optional): Indicate along which axis to split the weight. Default: 0.
+        num_partitions (int, Optional): How many parts the weight is partitioned. Default: 1.
+        gather_out (bool, Optional): Whether to gather the output after computation. By default, the output
+            on each partitions will be gathered after computation. Default: True.
+        weight_attr (ParamAttr, Optional): The parameter attribute for the learnable
+            weights(Parameter) of the specified operation. Default: None.
+        bias_attr (ParamAttr, Optional): The parameter attribute for the bias
+            of the specified operation. Default: None.
+        name (str, Optional): The default value is None. Normally there is no need for user to set this
+            property. Default: None. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            data = paddle.randint(0, 8, shape=[10,4])
+            emb_out = padle.distributed.split(
+                data,
+                (8, 8),
+                operation="embedding",
+                num_partitions=2)
+    """
+    assert isinstance(size, (list, tuple)), (
+        "The type of size for "
+        "paddle.distributed.split must be list or tuple.")
+    assert len(size) == 2, ("Number of elements in size of "
+                            "paddle.distributed.split must be two.")
+    assert isinstance(operation, str), ("The type of operation for "
+                                        "paddle.distributed.split must be str.")
+    supported_operations = [
+        'linear',
+        'embedding',
+    ]
+    assert operation in supported_operations, (
+        "The operation for "
+        "paddle.distributed.split must be one of {}.".format(
+            supported_operations))
+    if in_dygraph_mode():
+        rank = paddle.distributed.get_rank()
+        nranks = paddle.distributed.get_world_size()
+    else:
+        assert fleet._role_maker, ("To use paddle.distributed.split, "
+                                   "you must call fleet.init() firstly.")
+        rank = fleet.worker_index()
+        nranks = fleet.worker_num()
+
+    # rank within a model parallel group
+    inner_rank = rank % num_partitions
+
+    if operation == "embedding":
+        assert axis == 0, ("We only support to split the weight of embedding "
+                           "along the first axis now.")
+        per_part_size = (size[0] + num_partitions - 1) // num_partitions
+        last_part_size = size[0] - per_part_size * (num_partitions - 1)
+        if inner_rank == num_partitions - 1: per_part_size = last_part_size
+        per_part_size += 1  # make the last row as the padding index
+
+        emb_out = _parallel_embedding(x, per_part_size, size, weight_attr,
+                                      inner_rank, num_partitions, name)
+        return emb_out
+    else:
+        if axis == 0:
+            assert size[0] % num_partitions == 0, (
+                "Number of rows of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[0],
+                                                           num_partitions))
+            per_part_size = size[0] // num_partitions
+            linear_size = (per_part_size, size[1])
+            assert x.shape[-1] == per_part_size, (
+                "The width ({}) of the input "
+                "x must be equal to the height ({}) of the weight. Maybe you "
+                "should split the input x using paddle.split.".format(
+                    x.shape[-1], per_part_size))
+
+        elif axis == 1:
+            assert size[1] % num_partitions == 0, (
+                "Number of column of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[1],
+                                                           num_partitions))
+            per_part_size = size[1] // num_partitions
+            linear_size = (size[0], per_part_size)
+        else:
+            raise ValueError("The value of axis must be 0 or 1, but the value "
+                             "given is {}.".format(axis))
+
+        linear_out = _parallel_linear(
+            x,
+            linear_size[0],
+            linear_size[1],
+            axis,
+            weight_attr,
+            bias_attr,
+            gather_out,
+            inner_rank,
+            name=name)
+        return linear_out

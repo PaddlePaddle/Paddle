@@ -101,15 +101,16 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            if self._role_maker.is_worker():
-                info = self._fleet_ptr.get_clients_info()
-                all_info = self._role_maker._worker_gather(info[0])
-                self._fleet_ptr.gather_clients(all_info)
-                self._fleet_ptr.set_client2client_config(
-                    self._client2client_request_timeout_ms,
-                    self._client2client_connect_timeout_ms,
-                    self._client2client_max_retry)
-                self._fleet_ptr.create_client2client_connection()
+            if not self._opt_info["use_ps_gpu"]:
+                if self._role_maker.is_worker():
+                    info = self._fleet_ptr.get_clients_info()
+                    all_info = self._role_maker._worker_gather(info[0])
+                    self._fleet_ptr.gather_clients(all_info)
+                    self._fleet_ptr.set_client2client_config(
+                        self._client2client_request_timeout_ms,
+                        self._client2client_connect_timeout_ms,
+                        self._client2client_max_retry)
+                    self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -137,9 +138,10 @@ class PSLib(Fleet):
                                     "var " + var_name + " not found in scope, "
                                     + "you should run startup program first")
                             var_name_list.append(var_name)
-                        self._fleet_ptr.init_model(scope,
-                                                   int(table.table_id),
-                                                   var_name_list)
+                        if not self._opt_info["use_ps_gpu"]:
+                            self._fleet_ptr.init_model(scope,
+                                                       int(table.table_id),
+                                                       var_name_list)
             # barrier for init model done
             self._role_maker._barrier_worker()
         else:

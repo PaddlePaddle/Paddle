@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -26,6 +23,8 @@ struct DummyVarHandle;
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
+
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -171,7 +170,8 @@ struct TestGatherOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 

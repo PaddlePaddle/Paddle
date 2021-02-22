@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/trace_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +42,8 @@ class TraceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         x_dims.size(), 2,
         platform::errors::OutOfRange(
-            "trace requires an tensor of at least two dimensions"));
+            "Input's dim is out of range (expected at least 2, but got %ld).",
+            x_dims.size()));
     PADDLE_ENFORCE_LT(
         dim1_, x_dims.size(),
         platform::errors::OutOfRange(
@@ -88,13 +90,13 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
         R"DOC((int, default 0), the first axis of the 2-D planes from which the diagonals should be taken. 
         Can be either positive or negative. Default: 0.
         )DOC")
-        .SetDefault(-2);
+        .SetDefault(0);
     AddAttr<int>(
         "axis2",
         R"DOC((int, default 1), the second axis of the 2-D planes from which the diagonals should be taken. 
         Can be either positive or negative. Default: 1.
         )DOC")
-        .SetDefault(-1);
+        .SetDefault(1);
     AddComment(R"DOC(
 Trace Operator.
 Return the sum along diagonals of the input tensor.
@@ -163,9 +165,35 @@ REGISTER_OP_CPU_KERNEL(
     trace, ops::TraceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TraceKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::TraceKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::TraceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex64>,
+    ops::TraceKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     trace_grad, ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex64>,
+    ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex128>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(trace)
+    .AddCheckpoint(
+        R"ROC(Upgrade trace add a new attribute [axis2])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("axis1",
+                     "The added attribute 'axis1' is not yet registered.",
+                     std::vector<float>{0.0f})
+            .NewAttr("axis2",
+                     "The added attribute 'axis2' is not yet registered.",
+                     std::vector<float>{1.0f})
+            .DeleteAttr("dim1",
+                        "The attribute 'dim1' is not recommend according to "
+                        "the specification 2.0.")
+            .DeleteAttr("dim2",
+                        "The attribute 'dim2' is not recommend according to "
+                        "the specification 2.0."));

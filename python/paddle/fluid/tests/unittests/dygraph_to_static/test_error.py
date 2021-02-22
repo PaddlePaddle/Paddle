@@ -82,6 +82,22 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
         return out
 
 
+class LayerErrorInCompiletime2(fluid.dygraph.Layer):
+    def __init__(self):
+        super(LayerErrorInCompiletime2, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self):
+        self.test_func()
+
+    def test_func(self):
+        """
+        NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
+	A tab here.
+        """
+        return
+
+
 class TestFlags(unittest.TestCase):
     def setUp(self):
         self.reset_flags_to_default()
@@ -228,6 +244,32 @@ class TestErrorStaticLayerCallInCompiletime_2(
              'File "{}", line 46, in func_error_in_compile_time_2'.format(self.filepath),
              'x = fluid.layers.reshape(x, shape=[1, 2])'
              ]
+
+
+class TestErrorStaticLayerCallInCompiletime_3(
+        TestErrorStaticLayerCallInCompiletime):
+    def setUp(self):
+        self.reset_flags_to_default()
+        self.set_func_call()
+        self.filepath = inspect.getfile(unwrap(self.func_call))
+        self.set_exception_type()
+        self.set_message()
+
+    def set_exception_type(self):
+        self.exception_type = IndentationError
+
+    def set_message(self):
+        self.expected_message = \
+            ['File "{}", line 91, in forward'.format(self.filepath),
+             'self.test_func()',
+             ]
+
+    def set_func_call(self):
+        layer = LayerErrorInCompiletime2()
+        self.func_call = lambda: layer()
+
+    def test_error(self):
+        self._test_raise_new_exception()
 
 
 class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):

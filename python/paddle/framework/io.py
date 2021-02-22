@@ -19,12 +19,14 @@ import collections
 import pickle
 import six
 import warnings
+import sys
 
 import paddle
 
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
+from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
@@ -259,9 +261,19 @@ def save(obj, path):
 
     # TODO(chenweihang): supports save other object
     saved_obj = _build_saved_state_dict(obj)
+    saved_obj = _unpack_saved_dict(saved_obj)
 
-    with open(path, 'wb') as f:
-        pickle.dump(saved_obj, f, protocol=2)
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+        pickle_bytes = pickle.dumps(saved_obj, protocol=2)
+        with open(path, 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(path, 'wb') as f:
+            pickle.dump(saved_obj, f, protocol=2)
 
 
 def load(path, **configs):
@@ -338,7 +350,7 @@ def load(path, **configs):
         with open(path, 'rb') as f:
             load_result = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')
-
+        load_result = _pack_loaded_dict(load_result)
         if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
             del load_result["StructuredToParameterName@@"]
     else:

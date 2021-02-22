@@ -15,17 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
-
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -172,8 +166,7 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
   PADDLE_THROW(platform::errors::PermissionDenied(
       "Increment Offset only support in CUDA place"));
 #endif
-  return std::make_pair(static_cast<int>(this->state_.current_seed),
-                        cur_offset);
+  return std::make_pair(this->state_.current_seed, cur_offset);
 }
 
 void Generator::SetIsInitPy(bool is_init_py) {

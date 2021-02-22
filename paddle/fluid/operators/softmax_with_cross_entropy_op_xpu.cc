@@ -70,7 +70,8 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
                                      r));
     } else {
       Tensor labels_int32;
-      labels_int32.mutable_data<int32_t>(context.GetPlace(), labels->numel());
+      labels_int32.mutable_data<int32_t>(context.GetPlace(),
+                                         labels->numel() * sizeof(int32_t));
       r = xpu::cast_v2<int64_t, int32_t>(
           dev_ctx.x_context(), labels->data<int64_t>(),
           labels_int32.data<int32_t>(), labels->numel());

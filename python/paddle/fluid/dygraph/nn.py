@@ -31,6 +31,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
+import os
 import paddle.utils.deprecated as deprecated
 
 __all__ = [
@@ -1334,7 +1335,6 @@ class BatchNorm(layers.Layer):
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
-
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
@@ -1364,6 +1364,9 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
+        reserve_space = self._helper.create_variable_for_type_inference(
+            dtype=self._helper.input_dtype(input), stop_gradient=True)
+
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)
 
@@ -1374,6 +1377,8 @@ class BatchNorm(layers.Layer):
             "SavedMean": [saved_mean],
             "SavedVariance": [saved_variance]
         }
+        if reserve_space is not None:
+            outputs["ReserveSpace"] = [reserve_space]
 
         self._helper.append_op(
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
@@ -1461,6 +1466,9 @@ class Dropout(layers.Layer):
         self._is_test = is_test
 
     def forward(self, input):
+        # fast return for p == 0
+        if self._dropout_prob == 0:
+            return input
         prog = default_main_program()
         if (self._seed is None or self._seed == 0) and prog.random_seed != 0:
             self._seed = prog.random_seed
@@ -2979,7 +2987,7 @@ class GroupNorm(layers.Layer):
 
 
 class SpectralNorm(layers.Layer):
-    """
+    r"""
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
@@ -3197,13 +3205,9 @@ class TreeConv(layers.Layer):
 
 class Flatten(layers.Layer):
     """
-    :alias_main: paddle.nn.Flatten
-    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
     This interface is used to construct a callable object of the ``FLatten`` class.
     For more details, refer to code examples.
     It implements flatten a contiguous range of dims into a tensor.
-
-    Equation:
 
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
@@ -3218,7 +3222,6 @@ class Flatten(layers.Layer):
 
           import paddle
           import numpy as np
-          paddle.disable_static()
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
           inp_np = paddle.to_tensor(inp_np)

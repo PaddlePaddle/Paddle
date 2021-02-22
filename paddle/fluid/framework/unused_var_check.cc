@@ -14,11 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/unused_var_check.h"
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <string>
-#include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
@@ -73,7 +72,8 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "fused_batch_norm_act",            // 2
       "fused_batch_norm_act_grad",       // 2
       "data_norm",                       // 0
-      "data_norm_grad",                  // 0);
+      "data_norm_grad",                  // 0
+      "update_loss_scaling",             // 0
   });
   return *allow_set;
 }

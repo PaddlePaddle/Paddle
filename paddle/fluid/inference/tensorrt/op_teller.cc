@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -32,8 +31,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
     teller_set.insert("hard_sigmoid");
+    teller_set.insert("clip");
     int8_teller_set.insert("relu6");
     int8_teller_set.insert("hard_sigmoid");
+    int8_teller_set.insert("clip");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
@@ -56,6 +57,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{"mul",
                                                   "conv2d",
+                                                  "conv2d_fusion",
                                                   "pool2d",
                                                   "relu",
                                                   "depthwise_conv2d",
@@ -74,6 +76,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "conv2d",
+      "conv2d_fusion",
       "pool2d",
       "relu",
       "softmax",
@@ -99,11 +102,17 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layer_norm",
       "scale",
       "stack",
+      "transpose2",
+      "transpose",
+      "flatten2",
+      "flatten",
   };
 };
 
-bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
-                    bool use_no_calib_int8) {
+bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
+                    bool with_dynamic_shape) {
+  const std::string op_type = node->Op()->Type();
+  const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -132,11 +141,32 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
           if (shape.size() < 3) {
-            VLOG(1) << "matmul op dims < 3 not supported in tensorrt, but got dims " 
-              << shape.size() << ", so jump it.";
+            VLOG(1)
+                << "matmul op dims < 3 not supported in tensorrt, but got dims "
+                << shape.size() << ", so jump it.";
             return false;
           }
         }
+      }
+    }
+    if (op_type == "transpose2" || op_type == "transpose") {
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        std::vector<int> axis =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+        if (!with_dynamic_shape && axis[0] != 0) return false;
+        if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+    }
+    if (op_type == "flatten2" || op_type == "flatten") {
+      // flatten doesn't support dynamic shape currently
+      if (!desc.HasAttr("axis")) {
+        return false;
+      } else {
+        if (with_dynamic_shape) return false;
+        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        if (axis != 1) return false;
       }
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;

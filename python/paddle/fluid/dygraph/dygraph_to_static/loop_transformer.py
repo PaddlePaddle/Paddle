@@ -25,6 +25,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysi
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForLoopTuplePreTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
@@ -167,7 +168,13 @@ class NameVisitor(gast.NodeVisitor):
                 #       var_a = func2(x)
                 #
 
-                if isinstance(var_name_to_ctxs[name][0], gast.Load):
+                is_created = False
+                for ctx in var_name_to_ctxs[name]:
+                    if isinstance(ctx, gast.Store):
+                        is_created = True
+
+                if isinstance(var_name_to_ctxs[name][0],
+                              gast.Load) and is_created:
                     loop_var_names.add(name)
                     create_var_names.add(name)
 
@@ -421,9 +428,10 @@ class LoopTransformer(gast.NodeTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.name_visitor = NameVisitor(self.root)
 
     def transform(self):
+        ForLoopTuplePreTransformer(self.wrapper_root).transform()
+        self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
     def visit(self, node):

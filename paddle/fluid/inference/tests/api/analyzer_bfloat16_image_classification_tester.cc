@@ -28,20 +28,18 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->EnableMKLDNN();
 }
 
-TEST(Analyzer_int8_image_classification, bfloat16) {
+TEST(Analyzer_bfloat16_image_classification, bfloat16) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  AnalysisConfig q_cfg;
-  SetConfig(&q_cfg);
+  AnalysisConfig b_cfg;
+  SetConfig(&b_cfg);
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInputs(&input_slots_all);
-  q_cfg.SwitchIrDebug();
-  q_cfg.EnableMkldnnBfloat16();
-  q_cfg.SetBfloat16Op({"conv2d"});
-  CompareBFloat16AndAnalysis(&cfg, &q_cfg, input_slots_all);
+  b_cfg.EnableMkldnnBfloat16();
+  CompareBFloat16AndAnalysis(&cfg, &b_cfg, input_slots_all);
 }
 
 }  // namespace analysis

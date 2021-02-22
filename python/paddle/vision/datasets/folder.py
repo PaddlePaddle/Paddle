@@ -111,6 +111,9 @@ class DatasetFolder(Dataset):
                 return data_dir
 
             temp_dir = make_fake_dir()
+            # temp_dir is root dir
+            # temp_dir/class_1/img1_1.jpg
+            # temp_dir/class_2/img2_1.jpg
             data_folder = DatasetFolder(temp_dir)
 
             for items in data_folder:
@@ -134,7 +137,7 @@ class DatasetFolder(Dataset):
                                is_valid_file)
         if len(samples) == 0:
             raise (RuntimeError(
-                "Found 0 files in subfolders of: " + self.root + "\n"
+                "Found 0 directories in subfolders of: " + self.root + "\n"
                 "Supported extensions are: " + ",".join(extensions)))
 
         self.loader = default_loader if loader is None else loader

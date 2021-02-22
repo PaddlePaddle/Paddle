@@ -97,14 +97,39 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     case proto::VarType::INT16:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int16_t>(in, out, ctx));
       break;
     case proto::VarType::UINT8:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<uint8_t>(in, out, ctx));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
+          DataTypeToString(src_type)));
+  }
+}
+
+void TransComplexToReal(const proto::VarType::Type& dst_type,
+                        const proto::VarType::Type& src_type, const Tensor& in,
+                        Tensor* out) {
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* ctx = pool.Get(in.place());
+  out->Resize(in.dims());
+
+  // complex -> real
+  switch (src_type) {
+    case proto::VarType::COMPLEX64:
+      framework::VisitDataType(dst_type,
+                               CastDataType<platform::complex64>(in, out, ctx));
+      break;
+    case proto::VarType::COMPLEX128:
+      framework::VisitDataType(
+          dst_type, CastDataType<platform::complex128>(in, out, ctx));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting complex tensor to real "
+          "data type.",
           DataTypeToString(src_type)));
   }
 }

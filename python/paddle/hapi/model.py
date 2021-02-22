@@ -31,7 +31,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable
+from paddle.fluid.framework import in_dygraph_mode, Variable, _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
@@ -49,6 +49,7 @@ from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
+import paddle.distributed as dist
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -166,6 +167,7 @@ def prepare_distributed_context(place=None):
         place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
             else fluid.CUDAPlace(0)
 
+    place = _get_paddle_place(place)
     strategy = fluid.dygraph.parallel.ParallelStrategy()
     strategy.nranks = ParallelEnv().nranks
     strategy.local_rank = ParallelEnv().local_rank
@@ -619,6 +621,7 @@ class DynamicGraphAdapter(object):
 
         self._input_info = None
         if self._nranks > 1:
+            dist.init_parallel_env()
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
             stradegy.local_rank = ParallelEnv().local_rank
@@ -940,6 +943,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
+    @paddle.no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -991,6 +995,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
+    @paddle.no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.
@@ -1270,7 +1275,6 @@ class Model(object):
                     fluid.default_main_program().random_seed = main_prog_seed
                     fluid.default_startup_program(
                     ).random_seed = startup_prog_seed
-                    fluid.dygraph.parallel.prepare_context()
                 else:
                     prepare_distributed_context(self._place)
                 _parallel_context_initialized = True
@@ -1692,11 +1696,11 @@ class Model(object):
         test_steps = self._len_data_loader(test_loader)
         logs = {'steps': test_steps}
 
-        cbks.on_begin('test', logs)
+        cbks.on_begin('predict', logs)
 
         outputs = []
 
-        logs, outputs = self._run_one_epoch(test_loader, cbks, 'test')
+        logs, outputs = self._run_one_epoch(test_loader, cbks, 'predict')
 
         outputs = list(zip(*outputs))
 
@@ -1707,7 +1711,7 @@ class Model(object):
 
         self._test_dataloader = None
 
-        cbks.on_end('test', logs)
+        cbks.on_end('predict', logs)
         return outputs
 
     def _save_inference_model(self, path):
@@ -1793,7 +1797,7 @@ class Model(object):
 
             callbacks.on_batch_begin(mode, step, logs)
 
-            if mode != 'test':
+            if mode != 'predict':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
                 if self._metrics and self._loss:
@@ -1829,7 +1833,7 @@ class Model(object):
             callbacks.on_batch_end(mode, step, logs)
         self._reset_metrics()
 
-        if mode == 'test':
+        if mode == 'predict':
             return logs, outputs
         return logs
 

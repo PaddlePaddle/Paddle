@@ -38,7 +38,7 @@ struct GRUMetaGrad {
   T *reset_output_grad;
   T *output_grad;
   T *prev_out_grad;
-  T *state_bias_grad;
+  T *bias_hh_grad;
 };
 
 template <typename DeviceContext, typename T>

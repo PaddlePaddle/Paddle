@@ -15,30 +15,37 @@ limitations under the License. */
 #include <cuda.h>
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void GpuInverse(const T* s, T* o) {
+__global__ void InverseAndMemset(const T* s, T* o, bool* found_inf) {
   *o = Inverse<T>(*s);
+  *found_inf = false;
 }
 
-template <typename T>
-__global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
+template <typename T, typename MT>
+__global__ void CheckFiniteAndUnscale(const T* in, const MT* scale, int num,
                                       bool* found_inf, T* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
-    if (!isfinite(in[idx])) {
+    MT val = static_cast<MT>(in[idx]) * (*scale);
+    T narrow_val = static_cast<T>(val);
+    out[idx] = narrow_val;
+    if (!isfinite(narrow_val)) {
       *found_inf = true;
     }
-    out[idx] = *found_inf ? in[idx] : in[idx] * (*scale);
   }
 }
 
 template <typename T>
 class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -47,15 +54,16 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
-    const T* scale_data = scale->data<T>();
+    const MPDType* scale_data = scale->data<MPDType>();
     bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
-    cudaMemset(found_inf_data, false, found_inf->numel() * sizeof(bool));
 
     framework::Tensor inverse_scale =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({1}, dev_ctx);
-    T* inverse_scale_v = inverse_scale.template data<T>();
+        ctx.AllocateTmpTensor<MPDType, platform::CUDADeviceContext>({1},
+                                                                    dev_ctx);
+    MPDType* inverse_scale_v = inverse_scale.template data<MPDType>();
 
-    GpuInverse<T><<<1, 1, 0, dev_ctx.stream()>>>(scale_data, inverse_scale_v);
+    InverseAndMemset<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+        scale_data, inverse_scale_v, found_inf_data);
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
@@ -67,7 +75,7 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       int block = 1024;
       int grid = (num + block - 1) / block;
       VLOG(3) << "launch kernel";
-      CheckFiniteAndUnscale<T><<<grid, block, 0, dev_ctx.stream()>>>(
+      CheckFiniteAndUnscale<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, inverse_scale_v, num, found_inf_data, out_data);
       VLOG(3) << "finish kernel";
     }
@@ -77,6 +85,8 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(check_finite_and_unscale,
                         ops::CheckFiniteAndUnscaleGpuKernel<float>,
-                        ops::CheckFiniteAndUnscaleGpuKernel<double>);
+                        ops::CheckFiniteAndUnscaleGpuKernel<double>,
+                        ops::CheckFiniteAndUnscaleGpuKernel<plat::float16>);

@@ -246,16 +246,27 @@ class Accuracy(Metric):
         Compute the top-k (maxinum value in `topk`) indices.
 
         Args:
-            pred (Tensor): The predicted value is a Tensor wit type
-                float32 or float64.
-            label (Tensor): The ground truth value is a 2D Tensor, its
-                shape is [batch_size, 1] and type is int64.
-
+            pred (Tensor): The predicted value is a Tensor with dtype
+                float32 or float64. Shape is [batch_size, d0, ..., dN].
+            label (Tensor): The ground truth value is Tensor with dtype
+                int64. Shape is [batch_size, d0, ..., 1], or
+                [batch_size, d0, ..., num_classes] in one hot representation.
+                
         Return:
             Tensor: Correct mask, a tensor with shape [batch_size, topk].
         """
-        pred = paddle.argsort(pred, descending=True)[:, :self.maxk]
-        label = paddle.reshape(label, (-1, 1))
+        pred = paddle.argsort(pred, descending=True)
+        pred = paddle.slice(
+            pred, axes=[len(pred.shape) - 1], starts=[0], ends=[self.maxk])
+        if (len(label.shape) == 1) or \
+           (len(label.shape) == 2 and label.shape[-1] == 1):
+            # In static mode, the real label data shape may be different
+            # from shape defined by paddle.static.InputSpec in model
+            # building, reshape to the right shape.
+            label = paddle.reshape(label, (-1, 1))
+        elif label.shape[-1] != 1:
+            # one-hot label
+            label = paddle.argmax(label, axis=-1, keepdim=True)
         correct = pred == label
         return paddle.cast(correct, dtype='float32')
 
@@ -273,10 +284,10 @@ class Accuracy(Metric):
         """
         if isinstance(correct, paddle.Tensor):
             correct = correct.numpy()
+        num_samples = np.prod(np.array(correct.shape[:-1]))
         accs = []
         for i, k in enumerate(self.topk):
-            num_corrects = correct[:, :k].sum()
-            num_samples = len(correct)
+            num_corrects = correct[..., :k].sum()
             accs.append(float(num_corrects) / num_samples)
             self.total[i] += num_corrects
             self.count[i] += num_samples

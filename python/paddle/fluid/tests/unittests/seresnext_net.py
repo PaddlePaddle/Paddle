@@ -19,6 +19,7 @@ fluid.core._set_eager_deletion_mode(-1, -1, False)
 import paddle.fluid.layers.ops as ops
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
+from seresnext_test_base import DeviceType
 import math
 import os
 os.environ['CPU_NUM'] = str(4)
@@ -169,28 +170,32 @@ def optimizer(learning_rate=0.01):
 model = SE_ResNeXt50Small
 
 
-def batch_size(use_cuda):
-    if use_cuda:
+def batch_size(use_device):
+    if use_device == DeviceType.CUDA:
         # Paddle uses 8GB P4 GPU for unittest so we decreased the batch size.
         return 8
     return 12
 
 
-def iter(use_cuda):
-    if use_cuda:
+def iter(use_device):
+    if use_device == DeviceType.CUDA:
         return 10
     return 1
 
 
 gpu_img, gpu_label = init_data(
-    batch_size=batch_size(use_cuda=True), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_device=DeviceType.CUDA),
+    img_shape=img_shape,
+    label_range=999)
 cpu_img, cpu_label = init_data(
-    batch_size=batch_size(use_cuda=False), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_device=DeviceType.CPU),
+    img_shape=img_shape,
+    label_range=999)
 feed_dict_gpu = {"image": gpu_img, "label": gpu_label}
 feed_dict_cpu = {"image": cpu_img, "label": cpu_label}
 
 
-def feed_dict(use_cuda):
-    if use_cuda:
+def feed_dict(use_device):
+    if use_device == DeviceType.CUDA:
         return feed_dict_gpu
     return feed_dict_cpu

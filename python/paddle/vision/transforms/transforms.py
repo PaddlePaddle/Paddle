@@ -296,15 +296,21 @@ class BaseTransform(object):
 class ToTensor(BaseTransform):
     """Convert a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
-    Converts a PIL.Image or numpy.ndarray (H x W x C) in the range
-    [0, 255] to a paddle.Tensor of shape (C x H x W) in the range [0.0, 1.0]
-    if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr, RGBA, CMYK, 1)
-    or if the numpy.ndarray has dtype = np.uint8
+    Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
+
+    If input is a grayscale image (H x W), it will be converted to a image of shape (H x W x 1). 
+    And the shape of output tensor will be (1 x H x W).
+
+    If you want to keep the shape of output tensor as (H x W x C), you can set data_format = ``HWC`` .
+
+    Converts a PIL.Image or numpy.ndarray in the range [0, 255] to a paddle.Tensor in the 
+    range [0.0, 1.0] if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr, 
+    RGBA, CMYK, 1) or if the numpy.ndarray has dtype = np.uint8. 
 
     In the other cases, tensors are returned without scaling.
 
     Args:
-        data_format (str, optional): Data format of input img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
         
@@ -1087,8 +1093,7 @@ class RandomRotation(BaseTransform):
         degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        interpolation (int|str, optional): Interpolation method. Default: 'bilinear'.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
             according the backend. when use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
@@ -1125,7 +1130,7 @@ class RandomRotation(BaseTransform):
 
     def __init__(self,
                  degrees,
-                 resample=False,
+                 interpolation='nearest',
                  expand=False,
                  center=None,
                  fill=0,
@@ -1142,7 +1147,7 @@ class RandomRotation(BaseTransform):
             self.degrees = degrees
 
         super(RandomRotation, self).__init__(keys)
-        self.resample = resample
+        self.interpolation = interpolation
         self.expand = expand
         self.center = center
         self.fill = fill
@@ -1163,8 +1168,8 @@ class RandomRotation(BaseTransform):
 
         angle = self._get_param(self.degrees)
 
-        return F.rotate(img, angle, self.resample, self.expand, self.center,
-                        self.fill)
+        return F.rotate(img, angle, self.interpolation, self.expand,
+                        self.center, self.fill)
 
 
 class Grayscale(BaseTransform):

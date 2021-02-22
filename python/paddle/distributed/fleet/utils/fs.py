@@ -29,7 +29,6 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 import functools
 
-from pathlib import PurePosixPath, Path
 import shutil
 
 __all__ = ['LocalFS', 'HDFSClient']
@@ -322,7 +321,7 @@ class LocalFS(FS):
                 return
             raise FSFileExistsError
 
-        return Path(fs_path).touch(exist_ok=True)
+        os.system("touch {}".format(fs_path))
 
     def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         """
@@ -554,11 +553,11 @@ class HDFSClient(FS):
             if len(arr) != 8:
                 continue
 
-            p = PurePosixPath(arr[7])
+            p = os.path.basename(arr[7])
             if arr[0][0] == 'd':
-                dirs.append(p.name)
+                dirs.append(p)
             else:
-                files.append(p.name)
+                files.append(p)
 
         return dirs, files
 

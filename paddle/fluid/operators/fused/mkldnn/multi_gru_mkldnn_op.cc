@@ -109,13 +109,8 @@ class MultiGRUHandler {
     const std::string unique_name = ctx.OutputName("Hidden");
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>());
-    } else {
-      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>(), "-t:",
-                              platform::ThreadIDasStr());
-    }
+    memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
+        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -297,7 +292,7 @@ class MultiGRUHandler {
 
     auto gru_forward_p0 = AcquireGruPrimitive(layer, dir);
 
-    dnnl::stream astream(engine_);
+    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
     gru_forward_p0->execute(astream, gru_args);
     astream.wait();
     return out_mem;
@@ -320,7 +315,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->src_iter_desc(), engine_);
 
-      dnnl::stream astream(engine_);
+      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_h0_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_h0_memory, *memory_p);
 
@@ -359,7 +354,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_layer_desc(), engine_);
 
-      dnnl::stream astream(engine_);
+      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -415,7 +410,7 @@ class MultiGRUHandler {
       memory_p = std::make_shared<dnnl::memory>(
           gru_pds_[{layer, dir}]->weights_iter_desc(), engine_);
 
-      dnnl::stream astream(engine_);
+      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, attrs_[2 * layer + (dir == R2L)])
           .execute(astream, user_memory, *memory_p);
 
@@ -521,7 +516,7 @@ class MultiGRUHandler {
 
     auto concat_p = AcquireConcatPrimitive(layer);
 
-    dnnl::stream astream(engine_);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     concat_p->execute(astream, concat_args);
     astream.wait();
     return out_mem;

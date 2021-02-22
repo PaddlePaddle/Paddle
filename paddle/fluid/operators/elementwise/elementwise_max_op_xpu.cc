@@ -29,9 +29,10 @@ class ElementwiseMaxXPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMaxGradXPUKernel : public framework::OpKernel<T> {
+class ElementwiseMaxGradXPUKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     XPUElementwiseGrad<T>(ctx, xpu::max_grad<T>, true);
   }
 };

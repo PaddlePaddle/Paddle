@@ -273,12 +273,11 @@ class SimpleRNNCell(RNNCellBase):
     The formula used is as follows:
 
     .. math::
-        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h_{t-1} + b_{hh})
 
         y_{t} & = h_{t}
     
-    where :math:`act` is for :attr:`activation` , and * is the elemetwise
-    multiplication operator.
+    where :math:`act` is for :attr:`activation`.
 
     Please refer to `Finding Structure in Time 
     <https://crl.ucsd.edu/~elman/Papers/fsit.pdf>`_ for more details.
@@ -289,46 +288,32 @@ class SimpleRNNCell(RNNCellBase):
         activation (str, optional): The activation in the SimpleRNN cell. 
             It can be `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
-            `weight_ih`. Default: None.
+            :math:`weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for 
-            `weight_hh`. Default: None.
+            :math:`weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            `bias_ih`. Default: None.
+            :math:`bias_ih`. Default: None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the 
-            `bias_hh`. Default: None.
+            :math:`bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Attributes:
-        weight_ih (Parameter): shape (hidden_size, input_size), input to hidden 
-            weight, corresponding to :math:`W_{ih}` in the formula.
-        weight_hh (Parameter): shape (hidden_size, hidden_size), hidden to 
-            hidden weight, corresponding to :math:`W_{hh}` in the formula.
-        bias_ih (Parameter): shape (hidden_size, ), input to hidden bias, 
-            corresponding to :math:`b_{ih}` in the formula.
-        bias_hh (Parameter): shape (hidden_size, ), hidden to hidden bias, 
-            corresponding to :math:`b_{hh}` in the formula.
+    Variables:
+        - **weight_ih** (Parameter): shape (hidden_size, input_size), input to hidden weight, corresponding to :math:`W_{ih}` in the formula.
+        - **weight_hh** (Parameter): shape (hidden_size, hidden_size), hidden to hidden weight, corresponding to :math:`W_{hh}` in the formula.
+        - **bias_ih** (Parameter): shape (hidden_size, ), input to hidden bias, corresponding to :math:`b_{ih}` in the formula.
+        - **bias_hh** (Parameter): shape (hidden_size, ), hidden to hidden bias, corresponding to :math:`b_{hh}` in the formula.
     
     Inputs:
-        inputs (Tensor): shape `[batch_size, input_size]`, the input, 
-                corresponding to :math:`x_t` in the formula.
-        states (Tensor, optional): shape `[batch_size, hidden_size]`, the
-            previous hidden state, corresponding to :math:`h_{t-1}` in the 
-            formula. When states is None, zero state is used. Defaults to 
-            None.
+        - **inputs** (Tensor): shape `[batch_size, input_size]`, the input, corresponding to :math:`x_{t}` in the formula.
+        - **states** (Tensor, optional): shape `[batch_size, hidden_size]`, the previous hidden state, corresponding to :math:`h_{t-1}` in the formula. When states is None, zero state is used. Defaults to None.
 
     Returns:
-        (outputs, new_states)
-        outputs (Tensor): shape `[batch_size, hidden_size]`, the output, 
-            corresponding to :math:`h_{t}` in the formula.
-        states (Tensor): shape `[batch_size, hidden_size]`, the new hidden 
-            state, corresponding to :math:`h_{t}` in the formula.
+        - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula.
+        - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
     
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by 
-        default. Where std = :math:`\frac{1}{\sqrt{hidden_size}}`. For more 
-        information about parameter initialization, please refer to
-         :ref:`api_fluid_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
 
     Examples:
 
@@ -405,6 +390,12 @@ class SimpleRNNCell(RNNCellBase):
     def state_shape(self):
         return (self.hidden_size, )
 
+    def extra_repr(self):
+        s = '{input_size}, {hidden_size}'
+        if self.activation is not "tanh":
+            s += ', activation={activation}'
+        return s.format(**self.__dict__)
+
 
 class LSTMCell(RNNCellBase):
     r"""
@@ -448,41 +439,24 @@ class LSTMCell(RNNCellBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Attributes:
-        weight_ih (Parameter): shape (4 * hidden_size, input_size), input to 
-            hidden weight, which corresponds to the concatenation of
-             :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
-        weight_hh (Parameter): shape (4 * hidden_size, hidden_size), hidden to 
-            hidden weight, which corresponds to the concatenation of
-             :math:`W_{hi}, W_{hf}, W_{hg}, W_{ho}` in the formula.
-        bias_ih (Parameter): shape (4 * hidden_size, ), input to hidden bias, 
-            which corresponds to the concatenation of
-             :math:`b_{ii}, b_{if}, b_{ig}, b_{io}` in the formula.
-        bias_hh (Parameter): shape (4 * hidden_size, ), hidden to hidden bias, 
-            which corresponds to the concatenation of
-             :math:`b_{hi}, b_{hf}, b_{hg}, b_{ho}` in the formula.
+    Variables:
+        - **weight_ih** (Parameter): shape (4 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ii}, W_{if}, W_{ig}, W_{io}` in the formula.
+        - **weight_hh** (Parameter): shape (4 * hidden_size, hidden_size), hidden to hidden weight, which corresponds to the concatenation of :math:`W_{hi}, W_{hf}, W_{hg}, W_{ho}` in the formula.
+        - **bias_ih** (Parameter): shape (4 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{ii}, b_{if}, b_{ig}, b_{io}` in the formula.
+        - **bias_hh** (Parameter): shape (4 * hidden_size, ), hidden to hidden bias, swhich corresponds to the concatenation of :math:`b_{hi}, b_{hf}, b_{hg}, b_{ho}` in the formula.
 
     Inputs:
-        inputs (Tensor): shape `[batch_size, input_size]`, the input, 
-            corresponding to :math:`x_t` in the formula.
-        states (tuple, optional): a tuple of two tensors, each of shape 
-            `[batch_size, hidden_size]`, the previous hidden state, 
-            corresponding to :math:`h_{t-1}, c_{t-1}` in the formula. 
-            When states is None, zero state is used. Defaults to None.
+        - **inputs** (Tensor): shape `[batch_size, input_size]`, the input, corresponding to :math:`x_t` in the formula.
+        - **states** (tuple, optional): a tuple of two tensors, each of shape `[batch_size, hidden_size]`, the previous hidden state, corresponding to :math:`h_{t-1}, c_{t-1}` in the formula. When states is None, zero state is used. Defaults to None.
 
     Returns:
-        (outputs, new_states)
-        outputs (Tensor): shape `[batch_size, hidden_size]`, the output, 
-            corresponding to :math:`h_{t}` in the formula.
-        states (tuple): a tuple of two tensors, each of shape 
-            `[batch_size, hidden_size]`, the new hidden states,
-            corresponding to :math:`h_{t}, c_{t}` in the formula.
+        - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula.
+        - **states** (tuple): a tuple of two tensors, each of shape `[batch_size, hidden_size]`, the new hidden states, corresponding to :math:`h_{t}, c_{t}` in the formula.
 
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by 
-        default. Where std = :math:`\frac{1}{\sqrt{hidden_size}}`. For more 
-        information about parameter initialization, please refer to
-         :ref:`api_fluid_ParamAttr`.
+        default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more 
+        information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
 
     Examples:
 
@@ -572,6 +546,9 @@ class LSTMCell(RNNCellBase):
         """
         return ((self.hidden_size, ), (self.hidden_size, ))
 
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
+
 
 class GRUCell(RNNCellBase):
     r"""
@@ -582,11 +559,11 @@ class GRUCell(RNNCellBase):
 
     ..  math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t-1} + b_{hr})
+        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}h_{t-1} + b_{hr})
 
-        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t-1} + b_{hz})
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}h_{t-1} + b_{hz})
 
-        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t-1} + b_{hc}))
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}h_{t-1} + b_{hc}))
 
         h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
 
@@ -599,7 +576,7 @@ class GRUCell(RNNCellBase):
     <http://proceedings.mlr.press/v37/jozefowicz15.pdf>`_ for more details.
 
     Parameters:
-        input_size (int): The input size..
+        input_size (int): The input size.
         hidden_size (int): The hidden size.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
             `weight_ih`. Default: None.
@@ -612,38 +589,24 @@ class GRUCell(RNNCellBase):
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Attributes:
-        weight_ih (Parameter): shape (3 * hidden_size, input_size), input to 
-            hidden weight, which corresponds to the concatenation of
-             :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
-        weight_hh (Parameter): shape (3 * hidden_size, hidden_size), hidden to 
-            hidden weight, which corresponds to the concatenation of
-             :math:`W_{hr}, W_{hz}, W_{hc}` in the formula.
-        bias_ih (Parameter): shape (3 * hidden_size, ), input to hidden bias, 
-            which corresponds to the concatenation of
-             :math:`b_{ir}, b_{iz}, b_{ic}` in the formula.
-        bias_hh (Parameter): shape (3 * hidden_size, ), hidden to hidden bias, 
-            which corresponds to the concatenation of
-             :math:`b_{hr}, b_{hz}, b_{hc}` in the formula.
+    Variables:
+        - **weight_ih** (Parameter): shape (3 * hidden_size, input_size), input to hidden weight, which corresponds to the concatenation of :math:`W_{ir}, W_{iz}, W_{ic}` in the formula.
+        - **weight_hh** (Parameter): shape (3 * hidden_size, hidden_size), hidden to hidden weight, which corresponds to the concatenation of :math:`W_{hr}, W_{hz}, W_{hc}` in the formula.
+        - **bias_ih** (Parameter): shape (3 * hidden_size, ), input to hidden bias, which corresponds to the concatenation of :math:`b_{ir}, b_{iz}, b_{ic}` in the formula.
+        - **bias_hh** (Parameter): shape (3 * hidden_size, ), hidden to hidden bias, swhich corresponds to the concatenation of :math:`b_{hr}, b_{hz}, b_{hc}` in the formula.
 
     Inputs:
-        inputs (Tensor): A tensor with shape `[batch_size, input_size]`,
-            corresponding to :math:`x_t` in the formula.
-        states (Tensor): A tensor with shape `[batch_size, hidden_size]`.
-            corresponding to :math:`h_{t-1}` in the formula.
+        - **inputs** (Tensor): A tensor with shape `[batch_size, input_size]`, corresponding to :math:`x_t` in the formula.
+        - **states** (Tensor): A tensor with shape `[batch_size, hidden_size]`, corresponding to :math:`h_{t-1}` in the formula.
 
     Returns:
-        (outputs, new_states)
-        outputs (Tensor): shape `[batch_size, hidden_size]`, the output, 
-            corresponding to :math:`h_{t}` in the formula.
-        states (Tensor): shape `[batch_size, hidden_size]`, the new hidden 
-            state, corresponding to :math:`h_{t}` in the formula.
+        - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula.
+        - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
     
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by 
-        default. Where std = :math:`\frac{1}{\sqrt{hidden_size}}`. For more 
-        information about parameter initialization, please refer to
-         :ref:`api_fluid_ParamAttr`.
+        default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more 
+        information about parameter initialization, please refer to s:ref:`api_fluid_ParamAttr`.
 
     Examples:
 
@@ -730,6 +693,9 @@ class GRUCell(RNNCellBase):
         """
         return (self.hidden_size, )
 
+    def extra_repr(self):
+        return '{input_size}, {hidden_size}'.format(**self.__dict__)
+
 
 class RNN(Layer):
     r"""
@@ -745,32 +711,14 @@ class RNN(Layer):
             time steps. Defaults to False.
 
     Inputs:
-        inputs (Tensor): A (possibly nested structure of) tensor[s]. The input 
-            sequences. 
-            If time major is False, the shape is `[batch_size, time_steps, input_size]`
-            If time major is True, the shape is `[time_steps, batch_size, input_size]`
-            where `input_size` is the input size of the cell.
-        initial_states (Tensor|list|tuple, optional): Tensor of a possibly 
-            nested structure of tensors, representing the initial state for 
-            the rnn cell. If not provided, `cell.get_initial_states` would be 
-            called to produce the initial states. Defaults to None.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
-            or int32. The valid lengths of input sequences. Defaults to None.
-            If `sequence_length` is not None, the inputs are treated as 
-            padded sequences. In each input sequence, elements whose time step 
-            index are not less than the valid length are treated as paddings.
-        **kwargs: Additional keyword arguments to pass to `forward` of the cell. 
+        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time major is False, the shape is `[batch_size, time_steps, input_size]`. If time major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
+        - **initial_states** (Tensor|list|tuple, optional): Tensor of a possibly nested structure of tensors, representing the initial state for the rnn cell. If not provided, `cell.get_initial_states` would be called to produce the initial states. Defaults to None.
+        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None.If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
+        - **kwargs**: Additional keyword arguments to pass to `forward` of the cell. 
 
     Returns:
-        (outputs, final_states)
-        outputs (Tensor|list|tuple): the output sequences.
-            If `time_major` is True, the shape is 
-            `[time_steps, batch_size, hidden_size]`, else 
-            `[batch_size, time_steps, hidden_size]`.
-        final_states (Tensor|list|tuple): final states of the cell. Tensor or 
-            a possibly nested structure of tensors which has the same structure 
-            with intial state. Each tensor in final states has the same shape 
-            and dtype as the corresponding tensor in initial states.
+        - **outputs** (Tensor|list|tuple): the output sequences. If `time_major` is True, the shape is `[time_steps, batch_size, hidden_size]`, else `[batch_size, time_steps, hidden_size]`.
+        - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
     
     Notes:
         This class is a low level API for wrapping rnn cell into a RNN network.
@@ -838,33 +786,14 @@ class BiRNN(Layer):
             time steps. Defaults to False.
 
     Inputs:
-        inputs (Tensor): the input sequences of both RNN. 
-            If time_major is True, the shape of is 
-            `[time_steps, batch_size, input_size]`, else the shape is
-            `[batch_size, time_steps, input_size]`, where input_size is the 
-            input size of both cells.
-        initial_states (list|tuple, optional): A tuple/list of the initial 
-            states of the forward cell and backward cell. Defaults to None.
-            If not provided, `cell.get_initial_states` would be called to 
-            produce the initial states for each cell. Defaults to None.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
-            or int32. The valid lengths of input sequences. Defaults to None.
-            If `sequence_length` is not None, the inputs are treated as 
-            padded sequences. In each input sequence, elements whose time step 
-            index are not less than the valid length are treated as paddings.
-        **kwargs: Additional keyword arguments. Arguments passed to `forward` 
-            for each cell.
+        - **inputs** (Tensor): the input sequences of both RNN. If time_major is True, the shape of is `[time_steps, batch_size, input_size]`, else the shape is `[batch_size, time_steps, input_size]`, where input_size is the input size of both cells.
+        - **initial_states** (list|tuple, optional): A tuple/list of the initial states of the forward cell and backward cell. Defaults to None. If not provided, `cell.get_initial_states` would be called to produce the initial states for each cell. Defaults to None.
+        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
+        - **kwargs**: Additional keyword arguments. Arguments passed to `forward` for each cell.
 
     Outputs:
-        (outputs, final_states)
-        outputs (Tensor): the outputs of the bidirectional RNN. It is the 
-            concatenation of the outputs from the forward RNN and backward 
-            RNN along the last axis. 
-            If time major is True, the shape is `[time_steps, batch_size, size]`,
-            else the shape is `[batch_size, time_steps, size]`, where size is
-            `cell_fw.hidden_size + cell_bw.hidden_size`.
-        final_states (tuple): A tuple of the final states of the forward 
-            cell and backward cell. 
+        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
+        - **final_states** (tuple): A tuple of the final states of the forward cell and backward cell. 
 
     Notes:
         This class is a low level API for wrapping rnn cells into a BiRNN 
@@ -941,11 +870,12 @@ class RNNBase(LayerList):
                  bias_ih_attr=None,
                  bias_hh_attr=None):
         super(RNNBase, self).__init__()
+        bidirectional_list = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.time_major = time_major
         self.num_layers = num_layers
         self.state_components = 2 if mode == "LSTM" else 1
@@ -965,14 +895,14 @@ class RNNBase(LayerList):
             rnn_cls = SimpleRNNCell
             kwargs["activation"] = self.activation
 
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
+        if direction in ["forward"]:
+            is_reverse = False
             cell = rnn_cls(input_size, hidden_size, **kwargs)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
                 cell = rnn_cls(hidden_size, hidden_size, **kwargs)
                 self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
+        elif direction in bidirectional_list:
             cell_fw = rnn_cls(input_size, hidden_size, **kwargs)
             cell_bw = rnn_cls(input_size, hidden_size, **kwargs)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
@@ -982,13 +912,12 @@ class RNNBase(LayerList):
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
-                "direction should be forward, backward or bidirectional, "
+                "direction should be forward or bidirect (or bidirectional), "
                 "received direction = {}".format(direction))
 
         self.could_use_cudnn = True
-        self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
-            2 if direction == "bidirectional" else 1)
+            2 if direction in bidirectional_list else 1)
 
         # Expose params as RNN's attribute, which can make it compatible when
         # replacing small ops composed rnn with cpp rnn kernel.
@@ -1060,39 +989,50 @@ class RNNBase(LayerList):
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
-        out = self._helper.create_variable_for_type_inference(inputs.dtype)
-        state = [
-            self._helper.create_variable_for_type_inference(inputs.dtype)
-            for i in range(self.state_components)
-        ]
-        reserve = self._helper.create_variable_for_type_inference(
-            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        inputs = {
-            'Input': inputs,
-            'WeightList': self._all_weights,
-            'PreState': initial_states,
-            'SequenceLength': sequence_length
-        }
-        attrs = {
-            'dropout_prob': self.dropout,
-            'is_bidirec': self.num_directions == 2,
-            'input_size': self.input_size,
-            'hidden_size': self.hidden_size,
-            'num_layers': self.num_layers,
-            'mode': self.mode,
-            'is_test': not self.training
-        }
+        if fluid.framework.in_dygraph_mode():
+            _, _, out, state = framework.core.ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.state_components, 'dropout_prob',
+                self.dropout, 'is_bidirec', self.num_directions == 2,
+                'input_size', self.input_size, 'hidden_size', self.hidden_size,
+                'num_layers', self.num_layers, 'mode', self.mode, 'is_test',
+                not self.training)
+        else:
+            out = self._helper.create_variable_for_type_inference(inputs.dtype)
+            state = [
+                self._helper.create_variable_for_type_inference(inputs.dtype)
+                for i in range(self.state_components)
+            ]
+            reserve = self._helper.create_variable_for_type_inference(
+                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-        outputs = {
-            'Out': out,
-            'State': state,
-            'Reserve': reserve,
-            'DropoutState': self._dropout_state,
-        }
+            inputs = {
+                'Input': inputs,
+                'WeightList': self._all_weights,
+                'PreState': initial_states,
+                'SequenceLength': sequence_length
+            }
+            attrs = {
+                'dropout_prob': self.dropout,
+                'is_bidirec': self.num_directions == 2,
+                'input_size': self.input_size,
+                'hidden_size': self.hidden_size,
+                'num_layers': self.num_layers,
+                'mode': self.mode,
+                'is_test': not self.training
+            }
 
-        self._helper.append_op(
-            type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+            outputs = {
+                'Out': out,
+                'State': state,
+                'Reserve': reserve,
+                'DropoutState': self._dropout_state,
+            }
+
+            self._helper.append_op(
+                type="rnn", inputs=inputs, outputs=outputs, attrs=attrs)
+
         out = paddle.tensor.transpose(out,
                                       [1, 0, 2]) if not self.time_major else out
         return out, tuple(state) if len(state) > 1 else state[0]
@@ -1103,15 +1043,15 @@ class RNNBase(LayerList):
         if initial_states is None:
             state_shape = (self.num_layers * self.num_directions, -1,
                            self.hidden_size)
-            if self.state_components == 1:
-                initial_states = paddle.fluid.layers.fill_constant_batch_size_like(
+            initial_states = tuple([
+                paddle.fluid.layers.fill_constant_batch_size_like(
                     inputs, state_shape, dtype, 0, batch_index, 1)
-            else:
-                initial_states = tuple([
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1)
-                    for _ in range(self.state_components)
-                ])
+                for _ in range(self.state_components)
+            ])
+        else:
+            initial_states = [initial_states] if isinstance(
+                initial_states,
+                paddle.fluid.framework.Variable) else initial_states
 
         if self.could_use_cudnn:
             # Add CPU kernel and dispatch in backend later
@@ -1136,6 +1076,16 @@ class RNNBase(LayerList):
                                      self.state_components)
         return outputs, final_states
 
+    def extra_repr(self):
+        main_str = '{input_size}, {hidden_size}'
+        if self.num_layers != 1:
+            main_str += ', num_layers={num_layers}'
+        if self.time_major != False:
+            main_str += ', time_major={time_major}'
+        if self.dropout != 0:
+            main_str += ', dropout={dropout}'
+        return main_str.format(**self.__dict__)
+
 
 class SimpleRNN(RNNBase):
     r"""
@@ -1150,12 +1100,11 @@ class SimpleRNN(RNNBase):
 
     .. math::
 
-        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h_{t-1} + b_{hh})
 
         y_{t} & = h_{t}
     
-    where :math:`act` is for :attr:`activation` , and * is the elemetwise
-    multiplication operator.
+    where :math:`act` is for :attr:`activation`.
 
     Using key word arguments to construct is recommended.
 
@@ -1163,8 +1112,8 @@ class SimpleRNN(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
@@ -1184,42 +1133,21 @@ class SimpleRNN(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        inputs (Tensor): the input sequence. 
-            If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
-            else, the shape is `[batch_size, time_steps, hidden_size]`.
-        initial_states (Tensor, optional): the initial state. The shape is
-            `[num_layers * num_directions, batch_size, hidden_size]`. 
-            If initial_state is not given, zero initial states are used.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
-            or int32. The valid lengths of input sequences. Defaults to None.
-            If `sequence_length` is not None, the inputs are treated as 
-            padded sequences. In each input sequence, elements whose time step 
-            index are not less than the valid length are treated as paddings.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **initial_states** (Tensor, optional): the initial state. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
+        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
 
     Returns:
-        (outputs, final_states)
-        outputs (Tensor): the output sequence. 
-            If `time_major` is True, the shape is 
-            `[time_steps, batch_size, num_directions * hidden_size]`,
-            else, the shape is 
-            `[batch_size, time_steps, num_directions * hidden_size]`.
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1.
-        final_states (Tensor): final states. The shape is
-            `[num_layers * num_directions, batch_size, hidden_size]`.
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1.
 
-    Attributes:
-        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
-            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
-            the shape is `[hidden_size, num_directions * hidden_size]`.
-        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
-            with shape `[hidden_size, hidden_size]`.
-        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
-        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
+
+    Variables:
+        - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
+        - **weight_hh_l[k]**: the learnable hidden-hidden weights of the k-th layer, with shape `[hidden_size, hidden_size]`.
+        - **bias_ih_l[k]**: the learnable input-hidden bias of the k-th layer, with shape `[hidden_size]`.
+        - **bias_hh_l[k]**: the learnable hidden-hidden bias of the k-th layer, with shape `[hidden_size]`.
 
     Examples:
 
@@ -1302,8 +1230,8 @@ class LSTM(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
@@ -1321,43 +1249,21 @@ class LSTM(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        inputs (Tensor): the input sequence. 
-            If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
-            else, the shape is `[batch_size, time_steps, hidden_size]`.
-        initial_states (tuple, optional): the initial state, a tuple of (h, c), 
-            the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. 
-            If initial_state is not given, zero initial states are used.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
-            or int32. The valid lengths of input sequences. Defaults to None.
-            If `sequence_length` is not None, the inputs are treated as 
-            padded sequences. In each input sequence, elements whos time step 
-            index are not less than the valid length are treated as paddings.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **initial_states** (tuple, optional): the initial state, a tuple of (h, c), the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used.
+        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
-        (outputs, final_states)
-        outputs (Tensor): the output sequence. 
-            If `time_major` is True, the shape is 
-            `[time_steps, batch_size, num_directions * hidden_size]`, 
-            If `time_major` is False, the shape is 
-            `[batch_size, time_steps, num_directions * hidden_size]`. 
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1. 
-        final_states (tuple): the final state, a tuple of two tensors, h and c. 
-            The shape of each is 
-            `[num_layers * num_directions, batch_size, hidden_size]`. 
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1.
 
-    Attributes:
-        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
-            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
-            the shape is `[hidden_size, num_directions * hidden_size]`.
-        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
-            with shape `[hidden_size, hidden_size]`.
-        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
-        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (tuple): the final state, a tuple of two tensors, h and c. The shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
+
+    Variables:
+        - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
+        - **weight_hh_l[k]**: the learnable hidden-hidden weights of the k-th layer, with shape `[hidden_size, hidden_size]`.
+        - **bias_ih_l[k]**: the learnable input-hidden bias of the k-th layer, with shape `[hidden_size]`.
+        - **bias_hh_l[k]**: the learnable hidden-hidden bias of the k-th layer, swith shape `[hidden_size]`.
 
     Examples:
     
@@ -1412,11 +1318,11 @@ class GRU(RNNBase):
 
     .. math::
 
-        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}x_{t-1} + b_{hr})
+        r_{t} & = \sigma(W_{ir}x_{t} + b_{ir} + W_{hr}h_{t-1} + b_{hr})
 
-        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}x_{t-1} + b_{hz})
+        z_{t} & = \sigma(W_{iz}x_{t} + b_{iz} + W_{hz}h_{t-1} + b_{hz})
 
-        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}x_{t-1} + b_{hc}))
+        \widetilde{h}_{t} & = \tanh(W_{ic}x_{t} + b_{ic} + r_{t} * (W_{hc}h_{t-1} + b_{hc}))
 
         h_{t} & = z_{t} * h_{t-1} + (1 - z_{t}) * \widetilde{h}_{t}
 
@@ -1431,8 +1337,8 @@ class GRU(RNNBase):
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be "forward",
-            "backward" and "bidirectional". When "bidirectional", the way to merge
+        direction (str, optional): The direction of the network. It can be "forward"
+            or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
@@ -1450,43 +1356,21 @@ class GRU(RNNBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Inputs:
-        inputs (Tensor): the input sequence. 
-            If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
-            else, the shape is `[batch_size, time_steps, hidden_size]`.
-        initial_states (Tensor, optional): the initial state. The shape is
-            `[num_layers * num_directions, batch_size, hidden_size]`. 
-            If initial_state is not given, zero initial states are used. 
-            Defaults to None.
-        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
-            or int32. The valid lengths of input sequences. Defaults to None.
-            If `sequence_length` is not None, the inputs are treated as 
-            padded sequences. In each input sequence, elements whos time step 
-            index are not less than the valid length are treated as paddings.
+        - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, hidden_size]`.
+        - **initial_states** (Tensor, optional): the initial state. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. If initial_state is not given, zero initial states are used. Defaults to None.
+        - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None. If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whos time step index are not less than the valid length are treated as paddings.
 
     Returns:
-        (outputs, final_states)
-        outputs (Tensor): the output sequence. 
-            If `time_major` is True, the shape is 
-            `[time_steps, batch_size, num_directions * hidden_size]`,
-            else, the shape is 
-            `[batch_size, time_steps, num_directions * hidden_size]`.
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1.
-        final_states (Tensor): final states. The shape is
-            `[num_layers * num_directions, batch_size, hidden_size]`.
-            Note that `num_directions` is 2 if direction is "bidirectional" 
-            else 1.
 
-    Attributes:
-        weight_ih_l[k]: the learnable input-hidden weights of the k-th layer,
-            If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise,
-            the shape is `[hidden_size, num_directions * hidden_size]`.
-        weight_hh_l[k]: the learnable hidden-hidden weights of the k-th layer,
-            with shape `[hidden_size, hidden_size]`.
-        bias_ih_l[k]: the learnable input-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
-        bias_hh_l[k]: the learnable hidden-hidden bias of the k-th layer,
-            with shape `[hidden_size]`.
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, else, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1.
+        
+        - **final_states** (Tensor): final states. The shape is `[num_layers * num_directions, batch_size, hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
+
+    Variables:
+        - **weight_ih_l[k]**: the learnable input-hidden weights of the k-th layer. If `k = 0`, the shape is `[hidden_size, input_size]`. Otherwise, the shape is `[hidden_size, num_directions * hidden_size]`.
+        - **weight_hh_l[k]**: the learnable hidden-hidden weights of the k-th layer, with shape `[hidden_size, hidden_size]`.
+        - **bias_ih_l[k]**: the learnable input-hidden bias of the k-th layer, with shape `[hidden_size]`.
+        - **bias_hh_l[k]**: the learnable hidden-hidden bias of the k-th layer, with shape `[hidden_size]`.
 
     Examples:
 

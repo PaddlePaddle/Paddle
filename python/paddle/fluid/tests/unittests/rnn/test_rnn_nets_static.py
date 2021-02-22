@@ -23,13 +23,15 @@ import unittest
 from convert import convert_params_for_net_static
 from rnn_numpy import SimpleRNN, LSTM, GRU
 
+bidirectional_list = ["bidirectional", "bidirect"]
+
 
 class TestSimpleRNN(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestSimpleRNN, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -173,7 +175,7 @@ class TestGRU(unittest.TestCase):
         super(TestGRU, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -319,7 +321,7 @@ class TestLSTM(unittest.TestCase):
         super(TestLSTM, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
 
     def setUp(self):
@@ -469,9 +471,13 @@ def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
-    for direction in ["forward", "backward", "bidirectional"]:
+    for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:
                 for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
                     suite.addTest(test_class(time_major, direction, device))
     return suite
+
+
+if __name__ == "__main__":
+    unittest.main()

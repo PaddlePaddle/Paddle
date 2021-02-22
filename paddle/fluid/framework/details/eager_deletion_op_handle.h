@@ -31,8 +31,9 @@ class CUDADeviceContext;
 
 namespace paddle {
 namespace framework {
-class Scope;
 class GarbageCollector;
+class Scope;
+
 namespace ir {
 class Node;
 }  // namespace ir

@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-struct SequenceExpandFunctor {
+struct SequenceExpandAsFunctor {
   void operator()(
       const DeviceContext &ctx, const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
@@ -40,7 +40,7 @@ struct SequenceExpandAsGradFunctor {
 };
 
 template <typename T>
-struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandAsFunctor<platform::CPUDeviceContext, T> {
   void operator()(
       const platform::CPUDeviceContext &context, const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
@@ -97,7 +97,7 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    SequenceExpandFunctor<DeviceContext, T> seq_espand_functor;
+    SequenceExpandAsFunctor<DeviceContext, T> seq_espand_functor;
     seq_espand_functor(dev_ctx, *x, y_lod[0], out);
   }
 };

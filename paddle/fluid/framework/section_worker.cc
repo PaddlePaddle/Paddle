@@ -11,24 +11,14 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL)
 #include <float.h>
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/program_desc.h"
-
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/trainer_desc.pb.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
 
 namespace paddle {
 namespace framework {
+
+class TrainerDesc;
 
 uint64_t SectionWorker::batch_id_(0);
 

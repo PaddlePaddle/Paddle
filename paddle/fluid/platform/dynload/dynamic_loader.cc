@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 #include <string>
-#include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -46,6 +45,24 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
+#ifdef PADDLE_WITH_HIP
+
+DEFINE_string(miopen_dir, "",
+              "Specify path for loading libMIOpen.so. For instance, "
+              "/opt/rocm/miopen/lib. If empty [default], dlopen "
+              "will search miopen from LD_LIBRARY_PATH");
+
+DEFINE_string(rocm_dir, "",
+              "Specify path for loading rocm library, such as librocblas, "
+              "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
+              "If default, dlopen will search rocm from LD_LIBRARY_PATH");
+
+DEFINE_string(rccl_dir, "",
+              "Specify path for loading rccl library, such as librccl.so. "
+              "For instance, /opt/rocm/rccl/lib. If default, "
+              "dlopen will search rccl from LD_LIBRARY_PATH");
+#endif
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -67,16 +84,25 @@ static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";
 static PathNode s_py_site_pkg_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cublas_lib =
     "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
+#if CUDA_VERSION >= 11000
+static constexpr char* win_curand_lib =
+    "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
+static constexpr char* win_cusolver_lib =
+    "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
+#else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll";
+#endif  // CUDA_VERSION
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -237,6 +263,8 @@ void* GetCublasDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cublas_lib, true,
                                     {cuda_lib_path});
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocblas.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
@@ -258,11 +286,13 @@ void* GetCUDNNDsoHandle() {
       "For instance, download cudnn-10.0-windows10-x64-v7.6.5.32.zip from "
       "NVIDIA's official website, \n"
       "then, unzip it and copy it into C:\\Program Files\\NVIDIA GPU Computing "
-      "Toolkit\\CUDA/v10.0\n"
+      "Toolkit\\CUDA\\v10.0\n"
       "You should do this according to your CUDA installation directory and "
       "CUDNN version.");
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib, true,
                                     {cuda_lib_path}, win_warn_meg);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false,
                                     {cuda_lib_path});
@@ -285,6 +315,8 @@ void* GetCurandDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib, true,
                                     {cuda_lib_path});
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
@@ -304,6 +336,8 @@ void* GetCusolverDsoHandle() {
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprtc.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -312,6 +346,8 @@ void* GetNVRTCDsoHandle() {
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhip_hcc.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -332,12 +368,23 @@ void* GetWarpCTCDsoHandle() {
 }
 
 void* GetNCCLDsoHandle() {
+#ifdef PADDLE_WITH_HIP
+  std::string warning_msg(
+      "You may need to install 'rccl' from ROCM official website: "
+      "https://rocmdocs.amd.com/en/latest/Installation_Guide/"
+      "Installation-Guide.html before install PaddlePaddle.");
+#else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
       "https://developer.nvidia.com/nccl/nccl-download"
       "before install PaddlePaddle.");
+#endif
+
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib", true, {},
+                                    warning_msg);
+#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true, {},
                                     warning_msg);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", true, {},
@@ -374,6 +421,19 @@ void* GetOpDsoHandle(const std::string& dso_name) {
       "Create custom cpp op outside framework do not support Windows."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
+#endif
+}
+
+void* GetNvtxDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Apple."));
+#elif defined(_WIN32)
+  PADDLE_THROW(platform::errors::Unimplemented("Nvtx do not support Windows."));
+#elif !defined(PADDLE_WITH_CUDA)
+  PADDLE_THROW(
+      platform::errors::Unimplemented("Nvtx do not support without CUDA."));
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
 }
 

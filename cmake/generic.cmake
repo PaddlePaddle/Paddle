@@ -95,7 +95,7 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 if(NOT APPLE)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
-  if(WITH_PSLIB)
+  if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -266,6 +266,33 @@ function(merge_static_libs TARGET_NAME)
   endif(WIN32)
 endfunction(merge_static_libs)
 
+function(check_coverage_opt TARGET_NAME SRCS)
+  if(WITH_COVERAGE AND WITH_INCREMENTAL_COVERAGE)
+    # if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
+    if ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL "" AND (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc")))
+      if (NOT ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" STREQUAL ""))
+        string(REPLACE "," ";" CC_FILE_LIST $ENV{PADDLE_GIT_DIFF_CC_FILE})
+        set(use_coverage_opt FALSE)
+        FOREACH(cc_file ${CC_FILE_LIST})
+          if("${SRCS};" MATCHES "${cc_file}")
+            set(use_coverage_opt TRUE)
+            break()
+          endif()
+        ENDFOREACH(cc_file)
+
+        if (use_coverage_opt)
+          message(STATUS "cc changed, add coverage opt for ${TARGET_NAME}")
+          target_compile_options(${TARGET_NAME} PRIVATE -g -O0 -fprofile-arcs -ftest-coverage)
+          target_link_libraries(${TARGET_NAME} -fprofile-arcs)
+          get_target_property(WH_TARGET_COMPILE_OPTIONS ${TARGET_NAME} COMPILE_OPTIONS)
+          message(STATUS "property for ${TARGET_NAME} is ${WH_TARGET_COMPILE_OPTIONS}")
+        endif()
+      endif()
+    endif()
+  endif()
+endfunction(check_coverage_opt)
+
+
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
@@ -325,6 +352,9 @@ function(cc_library TARGET_NAME)
         list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
       endif()
     endforeach()
+
+    check_coverage_opt(${TARGET_NAME} ${cc_library_SRCS})
+
   else(cc_library_SRCS)
     if(cc_library_DEPS)
       list(REMOVE_DUPLICATES cc_library_DEPS)
@@ -352,6 +382,12 @@ function(cc_binary TARGET_NAME)
   endif()
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
+  if(WITH_ROCM)
+    target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+  endif()
+
+  check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
+
 endfunction(cc_binary)
 
 function(cc_test_build TARGET_NAME)
@@ -370,7 +406,13 @@ function(cc_test_build TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${os_dependency_modules} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
+    if(WITH_ROCM)
+      target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+    endif()
   endif()
+
+  check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
+
 endfunction()
 
 function(cc_test_run TARGET_NAME)
@@ -387,16 +429,18 @@ function(cc_test_run TARGET_NAME)
     # No unit test should exceed 2 minutes.
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    elseif (APPLE)
+    endif()
+    if (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
-    else()
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
   endif()
 endfunction()
 
 function(cc_test TARGET_NAME)
-  if(WITH_TESTING)
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
+  # other than *.py are modified.
+  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -448,9 +492,9 @@ function(nv_library TARGET_NAME)
         message(FATAL "Please specify source file or library in nv_library.")
       endif()
     endif(nv_library_SRCS)
-    if (WIN32)
+    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
-    endif(WIN32)
+    endif()
   endif()
 endfunction(nv_library)
 
@@ -466,14 +510,17 @@ function(nv_binary TARGET_NAME)
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
       common_link(${TARGET_NAME})
     endif()
-    if (WIN32)
+    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
-    endif(WIN32)
+    endif()
   endif()
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
-  if (WITH_GPU AND WITH_TESTING)
+    # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+    # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
+  # other than *.py are modified.
+  if (WITH_GPU AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -490,39 +537,31 @@ function(nv_test TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    if (WIN32)
+    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
-    endif(WIN32)
+    endif()
   endif()
 endfunction(nv_test)
 
 function(hip_library TARGET_NAME)
-  if (WITH_AMD_GPU)
+  if (WITH_ROCM)
     set(options STATIC static SHARED shared)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    set(_sources ${hip_library_SRCS})
-    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
-    if(_source_files)
-      list(REMOVE_ITEM _sources ${_source_files})
-    endif()
     if(hip_library_SRCS)
+      # FindHIP.cmake defined hip_add_library, HIP_SOURCE_PROPERTY_FORMAT is requried if no .cu files found
+      if(NOT ${CMAKE_CURRENT_SOURCE_DIR} MATCHES ".*/operators")
+        set_source_files_properties(${hip_library_SRCS} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
+      endif()
       if (hip_library_SHARED OR hip_library_shared) # build *.so
-        add_library(${TARGET_NAME} SHARED ${_cmake_options} ${_generated_files} ${_sources})
-        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+        hip_add_library(${TARGET_NAME} SHARED ${hip_library_SRCS})
       else()
-        add_library(${TARGET_NAME} STATIC ${_cmake_options} ${_generated_files} ${_sources})
-        set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-        target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a /opt/rocm/rccl/lib/librccl.so /opt/rocm/hiprand/lib/libhiprand.so)
+        hip_add_library(${TARGET_NAME} STATIC ${hip_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
       endif()
-      if("${hip_library_DEPS}" MATCHES "ARCHIVE_START")
-        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
-        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
-        target_circle_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
-        list(REMOVE_ITEM hip_library_DEPS ARCHIVE_START ARCHIVE_END)
-      else()
+      if (hip_library_DEPS)
+        add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
         target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
       endif()
       # cpplint code style
@@ -534,20 +573,25 @@ function(hip_library TARGET_NAME)
       endforeach()
     else(hip_library_SRCS)
       if (hip_library_DEPS)
-        merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
+        list(REMOVE_DUPLICATES hip_library_DEPS)
+        generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR "generic.cmake:hip_library")
+
+        target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+        add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
       else()
-        message(FATAL "Please specify source file or library in nv_library.")
+        message(FATAL "Please specify source file or library in hip_library.")
       endif()
     endif(hip_library_SRCS)
   endif()
 endfunction(hip_library)
 
 function(hip_binary TARGET_NAME)
-  if (WITH_AMD_GPU)
+  if (WITH_ROCM)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
     hip_add_executable(${TARGET_NAME} ${hip_binary_SRCS})
     if(hip_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
@@ -558,23 +602,25 @@ function(hip_binary TARGET_NAME)
 endfunction(hip_binary)
 
 function(hip_test TARGET_NAME)
-  if (WITH_AMD_GPU AND WITH_TESTING)
-    set(options "")
+  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
+  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
+  # other than *.py are modified.
+  if (WITH_ROCM AND WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    set(_sources ${hip_test_SRCS})
-    HIP_PREPARE_TARGET_COMMANDS(${TARGET_NAME} OBJ _generated_files _source_files ${_sources} HIPCC_OPTIONS ${_hipcc_options} HCC_OPTIONS ${_hcc_options} NVCC_OPTIONS ${_nvcc_options})
-    if(_source_files)
-      list(REMOVE_ITEM _sources ${_source_files})
-    endif()
-    add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
-    set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
+    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
+    hip_add_executable(${TARGET_NAME} ${hip_test_SRCS})
+    # "-pthread -ldl -lrt" is defined in CMAKE_CXX_LINK_EXECUTABLE
+    target_link_options(${TARGET_NAME} PRIVATE -pthread -ldl -lrt)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags ${os_dependency_modules})
-    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})
+    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
   endif()
 endfunction(hip_test)
 
@@ -655,6 +701,9 @@ function(go_binary TARGET_NAME)
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   add_custom_target(${TARGET_NAME} ALL DEPENDS go_vendor ${TARGET_NAME}_timestamp ${go_binary_DEPS})
   install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME} DESTINATION bin)
+
+  check_coverage_opt(${TARGET_NAME} ${go_binary_SRCS})
+
 endfunction(go_binary)
 
 function(go_test TARGET_NAME)
@@ -742,14 +791,14 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE)
+    if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(NAME ${TARGET_NAME}
-               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-               FLAGS_cpu_deterministic=true
-               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
-               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+              COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+              FLAGS_cpu_deterministic=true
+              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+              COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+              ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
@@ -761,11 +810,9 @@ function(py_test TARGET_NAME)
     
     if (WIN32)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
-    elseif (APPLE)
+    endif()
+    if (APPLE)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 20)
-    else()
-        # No unit test should exceed 2 minutes in Linux.
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
 
   endif()

@@ -14,18 +14,17 @@
 
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 
-#include <memory>
-#include <unordered_set>
-#include <utility>
-
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

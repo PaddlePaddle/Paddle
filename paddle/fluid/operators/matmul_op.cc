@@ -16,6 +16,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -655,17 +656,31 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -918,3 +933,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul)
+    .AddCheckpoint(
+        R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "fused_reshape_Y",
+            "In order to support the function of fused the input Y "
+            " and input X into the input X when "
+            "using the operator of matmul, and get raw shape of input Y.",
+            std::vector<int>{}));

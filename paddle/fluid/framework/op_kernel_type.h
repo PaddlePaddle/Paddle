@@ -101,6 +101,11 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   return ret;
 }
 
+inline bool NeedTransformDataType(const OpKernelType& l,
+                                  const OpKernelType& r) {
+  return (l.data_type_ != r.data_type_);
+}
+
 inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
   return (!platform::places_are_same_class(l.place_, r.place_)) ||
          (l.data_type_ != r.data_type_) ||

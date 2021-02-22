@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/trainer_factory.h"
+
+#include <stdlib.h>
 #include <memory>
 #include <string>
-#include <unordered_map>
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
@@ -67,6 +70,9 @@ REGISTER_TRAINER_CLASS(DistMultiTrainer);
     (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(HeterXpuTrainer);
 REGISTER_TRAINER_CLASS(HeterBoxTrainer);
+#endif
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);

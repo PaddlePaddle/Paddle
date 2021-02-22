@@ -14,26 +14,27 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-
-#include <algorithm>
 #include <sstream>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
@@ -105,6 +106,35 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
       return "uninited";
     } else {
       return DataTypeToString(tensor.type());
+    }
+  } else {
+    return "";
+  }
+}
+
+static std::string GetPlace(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+  auto to_string = [](const platform::Place& p) {
+    std::stringstream sstream;
+    sstream << p;
+    return sstream.str();
+  };
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return to_string(tensor.place());
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return to_string(tensor.place());
     }
   } else {
     return "";
@@ -296,6 +326,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+          ss << "(" << GetPlace(*scope, var_name) << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -327,6 +358,7 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
+          ss << "(" << GetPlace(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
@@ -1007,6 +1039,25 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
+bool OperatorWithKernel::SupportsMKLDNN(
+    const proto::VarType::Type data_type) const {
+  auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+  return std::any_of(op_kernels.begin(), op_kernels.end(),
+                     [data_type](OpKernelMap::const_reference kern_pair) {
+                       return platform::is_cpu_place(kern_pair.first.place_) &&
+                              kern_pair.first.library_type_ ==
+                                  LibraryType::kMKLDNN &&
+                              kern_pair.first.data_type_ == data_type;
+                     });
+}
+
+bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                                         proto::VarType::Type data_type) const {
+  bool use_mkldnn_ctx =
+      ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
+  return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
+}
+
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
@@ -1093,6 +1144,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
+
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Only handle the case where the current kernel data type is complex
+  if (framework::IsComplexType(kernel_type_->data_type_)) {
+    HandleComplexGradToRealGrad(scope, runtime_ctx);
+  }
+
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
     // use attr here because some GradMakers (like ActivationGradOpMaker) add
@@ -1105,6 +1163,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
   }
 
   if (FLAGS_fast_check_nan_inf) {
@@ -1238,6 +1300,73 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   }
 }
 
+void OperatorWithKernel::HandleComplexGradToRealGrad(
+    const Scope& scope, RuntimeContext* ctx) const {
+  for (auto& var_name_item : Outputs()) {
+    std::vector<Variable*>& output_vars = ctx->outputs[var_name_item.first];
+    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
+      // 1. find grad_var & check whether is complex tensor
+      auto var_name = var_name_item.second[i];
+      auto orig_var_name = GradOriginalVarName(var_name);
+      // only focus on gradient var
+      if (var_name == orig_var_name) {
+        continue;
+      }
+      auto* grad_var = output_vars[i];
+      // skip nullptr var
+      if (grad_var == nullptr) {
+        continue;
+      }
+      // don't process LoDTensorArray temporarily,
+      // add support if necessary for complex number calculations in the future
+      if (!VarIsTensor(*grad_var)) {
+        continue;
+      }
+      auto* grad_tensor =
+          GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
+      // skip nullptr tensor
+      if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
+        continue;
+      }
+      // only focus on complex dtype now
+      auto src_type = grad_tensor->type();
+      if (!IsComplexType(src_type)) {
+        continue;
+      }
+
+      // 2. find forward var & check whether need to cast
+      auto* var = scope.FindVar(orig_var_name);
+      // if forward var not exists, do nothing
+      if (var == nullptr) {
+        continue;
+      }
+      if (!VarIsTensor(*var)) {
+        continue;
+      }
+      const auto* tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor,
+          platform::errors::Unavailable(
+              "Forward tensor is nullptr when handle complex data to real."));
+      // only need record type, the allocation may have been released
+      auto dst_type = tensor->saved_type();
+      // only focus on real dtype and need casting
+      if (IsComplexType(dst_type)) {
+        continue;
+      }
+
+      // 3. cast complex grad to real grad
+      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
+              << " var `" << var_name << "` to "
+              << framework::DataTypeToString(dst_type)
+              << " real var in static graph.";
+      Tensor out;
+      TransComplexToReal(dst_type, src_type, *grad_tensor, &out);
+      SetTensorToVariable(*grad_var, out, grad_var);
+    }
+  }
+}
+
 Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
@@ -1319,12 +1448,6 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      auto out_var_names = OutputVars(true);
-      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
-      }
-
       VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
 
@@ -1366,13 +1489,33 @@ Scope* OperatorWithKernel::PrepareData(
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
+
+      // Create new var with the same name in transfer scopes
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
+
+      // Find if inplace exists between input and output
+      // If inplace exists, set the new created var to inplaced output, and
+      // record its name in transfered_inplace_vars.
+      for (auto& pair : Outputs()) {
+        for (size_t j = 0; j < pair.second.size(); ++j) {
+          if (pair.second[j] == var_name) {
+            VLOG(4) << "Found inplace between input(" << var_name_item.first
+                    << ") and output(" << pair.first
+                    << "), the variable name is " << var_name;
+            ctx->outputs[pair.first][j] = trans_var;
+            transfered_inplace_vars->emplace_back(var_name);
+          }
+        }
+      }
+
+      // Do transfer
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+
   // If pre_scope = &scope, it means that scope is cached and the op is not in
   // while block. If new_scope = nullptr, it means that for each input of this
   // Op, there is no need to do PrepareData. So PrepareData could be skipped at
@@ -1461,6 +1604,66 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
           "LoDTensorArray.",
           name, Type()));
   return data_type;
+}
+
+Tensor* OperatorWithKernel::GetTensorFormInputSafely(
+    const ExecutionContext& ctx, const std::string& name) const {
+  // 1. get variable and check
+  // NOTE: only supports signal input var now
+  // NOTE: using const_cast is because we don't have method
+  // can get single mutable var, and here will not change
+  // the var's data, only use some attribute
+  Variable* var = const_cast<Variable*>(ctx.InputVar(name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var,
+      platform::errors::NotFound(
+          "The variable %s is not found when promote complex types.", name));
+  // 2. get tensor and check
+  Tensor* t = nullptr;
+  if (var->IsType<Tensor>()) {
+    t = var->GetMutable<Tensor>();
+  } else if (var->IsType<LoDTensor>()) {
+    t = var->GetMutable<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported input variable type in complex type promotion."));
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      t,
+      platform::errors::InvalidArgument(
+          "The Tensor of variable %s is nullptr when promote complex types."));
+  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The Tensor in the %s Op's Input Variable %s(%s) is "
+                        "not initialized.",
+                        Type(), name, ctx.InputName(name)));
+  return t;
+}
+
+/** NOTE(chenweihang): For safety reasons, we now only
+ * perform type promotes for binary operations with
+ * complex type inputs, which is used to support the
+ * paddle quantum function.
+ * In other cases, the first input data type is used as
+ * the kernel data type.
+ */
+proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
+    const ExecutionContext& ctx, const std::string& name1,
+    const std::string& name2) const {
+  // 1. Get tensor
+  auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
+  auto* tensor_b = GetTensorFormInputSafely(ctx, name2);
+
+  // 2. Get two input types
+  auto type_a = tensor_a->type();
+  auto type_b = tensor_b->type();
+
+  // 3. Get first input type or promote complex types
+  auto target_type = PromoteTypesIfComplexExists(type_a, type_b);
+
+  return target_type;
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

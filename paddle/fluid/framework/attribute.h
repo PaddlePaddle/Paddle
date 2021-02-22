@@ -14,15 +14,19 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "boost/variant/get.hpp"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -165,6 +169,35 @@ struct ExtractAttribute<float> {
   const std::string& attr_name_;
 };
 
+template <>
+struct ExtractAttribute<std::vector<double>> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  std::vector<double>* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
+      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<double> vec(val.begin(), val.end());
+      attr = vec;
+    } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
+      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<double> vec(val.begin(), val.end());
+      attr = vec;
+    }
+    std::vector<double>* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<std::vector<double>>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type std::vector<double>, its type is "
+          "%s.",
+          attr_name_, paddle::platform::demangle(attr.type().name())));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();

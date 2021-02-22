@@ -976,7 +976,7 @@ def sparse_embedding(input,
                              'fluid.contrib.layers.sparse_embedding')
 
     check_dtype(dtype, 'dtype', ['float32'],
-                'fluid.contrib.layers.sparse_embedding')
+                'paddle.static.nn.sparse_embedding')
 
     w = helper.create_parameter(
         attr=helper.param_attr,

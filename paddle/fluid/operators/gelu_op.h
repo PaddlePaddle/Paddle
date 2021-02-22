@@ -36,10 +36,22 @@ struct GeluFunctor {
   void operator()(Device d, X x, Out out, bool approximate) const {
     if (approximate) {
       // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
-      auto temp = (static_cast<T>(M_2_SQRTPI * M_SQRT1_2) *
-                   (x + static_cast<T>(0.044715) * x.cube()))
-                      .tanh();
-      out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
+      if (std::is_same<T, platform::float16>::value) {
+        VLOG(4) << "cast from float16 to float before computing";
+        auto casted_x = x.template cast<float>();
+        auto temp =
+            (static_cast<float>(M_2_SQRTPI * M_SQRT1_2) *
+             (casted_x + static_cast<float>(0.044715) * casted_x.cube()))
+                .tanh();
+        out.device(d) = (casted_x * static_cast<float>(0.5) *
+                         (static_cast<float>(1) + temp))
+                            .template cast<T>();
+      } else {
+        auto temp = (static_cast<T>(M_2_SQRTPI * M_SQRT1_2) *
+                     (x + static_cast<T>(0.044715) * x.cube()))
+                        .tanh();
+        out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
+      }
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
@@ -60,8 +72,17 @@ struct GeluFunctor {
       }
 #else
       // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-      auto temp = (x * static_cast<T>(M_SQRT1_2)).erf();
-      out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
+      if (std::is_same<T, platform::float16>::value) {
+        VLOG(4) << "cast from float16 to float before computing";
+        auto casted_x = x.template cast<float>();
+        auto temp = (casted_x * static_cast<float>(M_SQRT1_2)).erf();
+        out.device(d) = (casted_x * static_cast<float>(0.5) *
+                         (static_cast<float>(1) + temp))
+                            .template cast<T>();
+      } else {
+        auto temp = (x * static_cast<T>(M_SQRT1_2)).erf();
+        out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
+      }
 #endif
     }
   }
@@ -72,13 +93,32 @@ struct GeluGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX>
   void operator()(Device d, X x, dOut dout, dX dx, bool approximate) const {
     if (approximate) {
-      const T kAlpha = static_cast<T>(M_2_SQRTPI * M_SQRT1_2);
-      const T kBeta = kAlpha * static_cast<T>(0.044715) * static_cast<T>(3);
-      const auto y =
-          (kAlpha * ((static_cast<T>(0.044715) * x.cube()) + x)).tanh();
-      dx.device(d) = static_cast<T>(0.5) * dout *
-                     (static_cast<T>(1) + y +
-                      (x - x * y.square()) * (kAlpha + kBeta * x.square()));
+      if (std::is_same<T, platform::float16>::value) {
+        VLOG(4) << "cast from float16 to float before computing";
+        auto casted_x = x.template cast<float>();
+        auto casted_dout = dout.template cast<float>();
+
+        const float kAlpha = static_cast<float>(M_2_SQRTPI * M_SQRT1_2);
+        const float kBeta =
+            kAlpha * static_cast<float>(0.044715) * static_cast<float>(3);
+        const auto y =
+            (kAlpha *
+             ((static_cast<float>(0.044715) * casted_x.cube()) + casted_x))
+                .tanh();
+        dx.device(d) = (static_cast<float>(0.5) * casted_dout *
+                        (static_cast<float>(1) + y +
+                         (casted_x - casted_x * y.square()) *
+                             (kAlpha + kBeta * casted_x.square())))
+                           .template cast<T>();
+      } else {
+        const T kAlpha = static_cast<T>(M_2_SQRTPI * M_SQRT1_2);
+        const T kBeta = kAlpha * static_cast<T>(0.044715) * static_cast<T>(3);
+        const auto y =
+            (kAlpha * ((static_cast<T>(0.044715) * x.cube()) + x)).tanh();
+        dx.device(d) = static_cast<T>(0.5) * dout *
+                       (static_cast<T>(1) + y +
+                        (x - x * y.square()) * (kAlpha + kBeta * x.square()));
+      }
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
@@ -117,13 +157,26 @@ struct GeluGradFunctor {
 #else
       // gelu_grad(x) = dout * 0.5 * (1 + erf(x / sqrt(2)) + x * sqrt(2 / pi) *
       // exp(- x^2 / 2)
-      auto first =
-          static_cast<T>(0.5) *
-          (static_cast<T>(1) + ((x * static_cast<T>(M_SQRT1_2)).erf()));
+      if (std::is_same<T, platform::float16>::value) {
+        VLOG(4) << "cast from float16 to float before computing";
+        auto casted_x = x.template cast<float>();
+        auto casted_dout = dout.template cast<float>();
+        auto first = static_cast<float>(0.5) *
+                     (static_cast<float>(1) +
+                      ((casted_x * static_cast<float>(M_SQRT1_2)).erf()));
+        auto second = static_cast<float>(0.5 * M_2_SQRTPI * M_SQRT1_2) *
+                      casted_x *
+                      (-static_cast<float>(0.5) * casted_x.square()).exp();
+        dx.device(d) = (casted_dout * (first + second)).template cast<T>();
+      } else {
+        auto first =
+            static_cast<T>(0.5) *
+            (static_cast<T>(1) + ((x * static_cast<T>(M_SQRT1_2)).erf()));
 
-      auto second = static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2) * x *
-                    (-static_cast<T>(0.5) * x.square()).exp();
-      dx.device(d) = dout * (first + second);
+        auto second = static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2) * x *
+                      (-static_cast<T>(0.5) * x.square()).exp();
+        dx.device(d) = dout * (first + second);
+      }
 #endif
     }
   }

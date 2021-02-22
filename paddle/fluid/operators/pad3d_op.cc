@@ -893,6 +893,22 @@ class Pad3dOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class Pad3dOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> grad_op) const override {
+    if (this->HasInput("Paddings")) {
+      grad_op->SetInput("Paddings", this->Input("Paddings"));
+    }
+    grad_op->SetType("pad3d");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad3dOpGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
@@ -904,6 +920,8 @@ REGISTER_OPERATOR(pad3d, ops::Pad3dOp, ops::Pad3dOpMaker,
                   ops::Pad3dOpGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad3d_grad, ops::Pad3dOpGrad,
+                  ops::Pad3dOpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Pad3dOpDoubleGradMaker<paddle::imperative::OpBase>,
                   ops::Pad3dOpGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(pad3d, ops::Pad3dCPUKernel<float>,
                        ops::Pad3dCPUKernel<double>, ops::Pad3dCPUKernel<int>,

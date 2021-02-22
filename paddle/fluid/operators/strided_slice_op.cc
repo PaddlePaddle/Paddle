@@ -327,11 +327,19 @@ REGISTER_OP_CPU_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex64>,
+    ops::StridedSliceKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice_grad,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
+                                paddle::platform::complex64>,
+    ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext,
+                                paddle::platform::complex128>);

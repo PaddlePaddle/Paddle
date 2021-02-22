@@ -15,6 +15,7 @@
 from __future__ import division
 
 import sys
+import math
 import numbers
 import warnings
 import collections
@@ -40,7 +41,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -407,13 +408,18 @@ def adjust_hue(img, hue_factor):
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 
 
-def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
+def rotate(img,
+           angle,
+           interpolation='nearest',
+           expand=False,
+           center=None,
+           fill=0):
     """Rotates the image by angle.
 
     Args:
         img (np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (int|str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to cv2.INTER_NEAREST.
             when use cv2 backend, support method are as following: 
             - "nearest": cv2.INTER_NEAREST, 
@@ -434,15 +440,70 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
 
     """
     cv2 = try_import('cv2')
+    _cv2_interp_from_str = {
+        'nearest': cv2.INTER_NEAREST,
+        'bilinear': cv2.INTER_LINEAR,
+        'area': cv2.INTER_AREA,
+        'bicubic': cv2.INTER_CUBIC,
+        'lanczos': cv2.INTER_LANCZOS4
+    }
 
-    rows, cols = img.shape[0:2]
+    h, w = img.shape[0:2]
     if center is None:
-        center = (cols / 2, rows / 2)
+        center = (w / 2.0, h / 2.0)
     M = cv2.getRotationMatrix2D(center, angle, 1)
+
+    if expand:
+
+        def transform(x, y, matrix):
+            (a, b, c, d, e, f) = matrix
+            return a * x + b * y + c, d * x + e * y + f
+
+        # calculate output size
+        xx = []
+        yy = []
+
+        angle = -math.radians(angle)
+        expand_matrix = [
+            round(math.cos(angle), 15),
+            round(math.sin(angle), 15),
+            0.0,
+            round(-math.sin(angle), 15),
+            round(math.cos(angle), 15),
+            0.0,
+        ]
+
+        post_trans = (0, 0)
+        expand_matrix[2], expand_matrix[5] = transform(
+            -center[0] - post_trans[0], -center[1] - post_trans[1],
+            expand_matrix)
+        expand_matrix[2] += center[0]
+        expand_matrix[5] += center[1]
+
+        for x, y in ((0, 0), (w, 0), (w, h), (0, h)):
+            x, y = transform(x, y, expand_matrix)
+            xx.append(x)
+            yy.append(y)
+        nw = math.ceil(max(xx)) - math.floor(min(xx))
+        nh = math.ceil(max(yy)) - math.floor(min(yy))
+
+        M[0, 2] += (nw - w) * 0.5
+        M[1, 2] += (nh - h) * 0.5
+
+        w, h = int(nw), int(nh)
+
     if len(img.shape) == 3 and img.shape[2] == 1:
-        return cv2.warpAffine(img, M, (cols, rows))[:, :, np.newaxis]
+        return cv2.warpAffine(
+            img,
+            M, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)[:, :, np.newaxis]
     else:
-        return cv2.warpAffine(img, M, (cols, rows))
+        return cv2.warpAffine(
+            img,
+            M, (w, h),
+            flags=_cv2_interp_from_str[interpolation],
+            borderValue=fill)
 
 
 def to_grayscale(img, num_output_channels=1):

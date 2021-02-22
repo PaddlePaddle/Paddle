@@ -15,23 +15,12 @@ limitations under the License. */
 #include <deque>
 #include <forward_list>
 #include <fstream>
-#include <list>
-#include <map>
 #include <mutex>  // NOLINT
-#include <numeric>
-#include <sstream>
 #include <string>
 #include <thread>  // NOLINT
-#include <unordered_map>
-#include <utility>
-#include <vector>
 
 #include "glog/logging.h"
-#include "google/protobuf/text_format.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace platform {

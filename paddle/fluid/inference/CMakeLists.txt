@@ -17,8 +17,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
-# TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
-cc_library(paddle_fluid_api
+cc_library(paddle_inference_io
     SRCS io.cc
     DEPS paddle_framework ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
@@ -42,19 +41,19 @@ add_subdirectory(api)
 # Create static inference library if needed
 # All static libs in inference/api
 set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
-     zero_copy_tensor reset_tensor_array 
+     zero_copy_tensor reset_tensor_array
         analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
 else()
-  create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+  create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API})
 endif()
 
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.sym")
+  set_target_properties(paddle_inference PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 endif()
 
 # C inference API
@@ -76,31 +75,42 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
     ${mkldnn_quantizer_src_file})
 
-# Create shared inference library defaultly
-cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-      DEPS ${fluid_modules} analysis_predictor)
+# shared inference library deps
+set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)
+
+if (WITH_CRYPTO) 
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
+endif (WITH_CRYPTO)
+
+if (WITH_PSCORE)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
+endif ()
+
+# Create shared inference library
+cc_library(paddle_inference_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+    DEPS ${SHARED_INFERENCE_DEPS})
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
+target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
-    target_link_libraries(paddle_fluid_shared gflags)
+    target_link_libraries(paddle_inference_shared gflags)
 endif()
 
-set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME paddle_inference)
 if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.map")
-  set_target_properties(paddle_fluid_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
+  set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
   # check symbol hidden
   FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
     "execute_process(COMMAND sh -c \"${CMAKE_CURRENT_SOURCE_DIR}/check_symbol.sh"
-    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_fluid.so\" RESULT_VARIABLE symbol_res)\n"
+    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_inference.so\" RESULT_VARIABLE symbol_res)\n"
     "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
     "  message(FATAL_ERROR \"Check symbol failed.\")\n"
     "endif()\n")
   add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol"
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
-    DEPENDS paddle_fluid_shared)
+    DEPENDS paddle_inference_shared)
   add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
 endif()

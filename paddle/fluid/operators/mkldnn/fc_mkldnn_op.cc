@@ -137,7 +137,7 @@ class FCPrimitiveFactory {
   }
 
   void Execute() {
-    mkldnn::stream astream(engine_);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (bias_) {
       fc_->execute(astream, {{MKLDNN_ARG_SRC, *input_},
                              {MKLDNN_ARG_WEIGHTS, *weights_},
@@ -280,9 +280,14 @@ class FCPrimitiveFactory {
     auto dst_mem = std::make_shared<memory>(dst_desc, engine_);
 
     auto reorder = mkldnn::reorder(src_mem, *dst_mem);
-    mkldnn::stream astream(engine_);
-    reorder.execute(astream, src_mem, *dst_mem);
-    astream.wait();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream, src_mem, *dst_mem);
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -304,10 +309,14 @@ class FCPrimitiveFactory {
     attributes.set_output_scales(mask, scale_data);
     auto reorder = mkldnn::reorder(*src_mem, *dst_mem, attributes);
 
-    mkldnn::stream astream(engine_);
-    reorder.execute(astream,
-                    {{MKLDNN_ARG_FROM, *src_mem}, {MKLDNN_ARG_TO, *dst_mem}});
-    astream.wait();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+      reorder.execute(astream,
+                      {{MKLDNN_ARG_FROM, *src_mem}, {MKLDNN_ARG_TO, *dst_mem}});
+      astream.wait();
+    }
 
     return dst_mem;
   }
@@ -361,8 +370,9 @@ class FCPrimitiveFactory {
 
   void CacheWeightsAndBias(const MKLDNNDeviceContext& dev_ctx,
                            const ExecutionContext& ctx) {
-    const std::string key =
-        platform::CreateKey(platform::ThreadIDasStr(), dev_ctx.GetKeySuffix());
+    std::string key = platform::CreateKey(dev_ctx);
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+
     const std::string weights_key = key + ctx.InputName("W");
     const std::string bias_key = key + ctx.InputName("Bias");
     dev_ctx.SetBlob(weights_key, weights_);
@@ -449,6 +459,36 @@ class FCPrimitiveFactory {
       constexpr float placeholder = 1.0f;  // beta
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_gelu_tanh, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_gelu_erf,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_tanh,
+                                     alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_logistic,
+                                     alpha, beta);
     }
 
     attributes.set_post_ops(post_operations);
@@ -532,10 +572,11 @@ static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
                       const Tensor* w, const Tensor* bias, LoDTensor* output,
                       bool fuse_relu, bool force_fp32_output) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  const std::string prim_key = platform::CreateKey(
-      platform::ThreadIDasStr(), dev_ctx.GetKeySuffix(), input->format(),
-      input->dims()[0], framework::vectorize<int>(w->dims()),
-      ctx.OutputName("Out"));
+  std::string prim_key = platform::CreateKey(
+      dev_ctx, input->format(), input->dims()[0],
+      framework::vectorize<int>(w->dims()), ctx.OutputName("Out"));
+  prim_key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, prim_key);
+
   constexpr bool is_int8 =
       std::is_same<T_in, int8_t>::value || std::is_same<T_in, uint8_t>::value;
   bool is_bfloat16 = std::is_same<T_in, paddle::platform::bfloat16>::value;
@@ -561,6 +602,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");

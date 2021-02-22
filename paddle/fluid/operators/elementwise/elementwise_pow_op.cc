@@ -83,3 +83,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_VERSION(elementwise_pow)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_pow for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_pow.",
+            1.0f));
