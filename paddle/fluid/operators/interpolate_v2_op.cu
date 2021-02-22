@@ -326,7 +326,7 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = (lane < block_span) ? shared[lane] : 2e10f;
   val = warpReduceMin(val, mask);
 
   return val;
@@ -401,12 +401,15 @@ __global__ void KeBilinearInterpBw2(
           top_right_index & block_per_threads_minus_1, FINAL_MASK);
       int s_bot_max_index = math::blockReduceMax(
           bot_right_index & block_per_threads_minus_1, FINAL_MASK);
-      int s_top_min_index =
-          blockReduceMin(top_left_index & block_per_threads_minus_1, 0.0);
-      int s_bot_min_index =
-          blockReduceMin(bot_left_index & block_per_threads_minus_1, 0.0);
-      int in_top_min_index = blockReduceMin(top_left_index, 0.0);
-      int in_bot_min_index = blockReduceMin(bot_left_index, 0.0);
+      int s_top_min_index = blockReduceMin(
+          top_left_index & block_per_threads_minus_1, FINAL_MASK);
+      int s_bot_min_index = blockReduceMin(
+          bot_left_index & block_per_threads_minus_1, FINAL_MASK);
+
+      int in_top_max_index = math::blockReduceMax(top_right_index, FINAL_MASK);
+      int in_bot_max_index = math::blockReduceMax(bot_right_index, FINAL_MASK);
+      int in_top_min_index = blockReduceMin(top_left_index, FINAL_MASK);
+      int in_bot_min_index = blockReduceMin(bot_left_index, FINAL_MASK);
 
       platform::CudaAtomicAdd(
           &s_data[0][top_left_index & block_per_threads_minus_1],
@@ -421,26 +424,45 @@ __global__ void KeBilinearInterpBw2(
           &s_data[1][bot_right_index & block_per_threads_minus_1],
           h1lambda * w1lambda * out_pos);
       __syncthreads();
+      printf(
+          "[top_left]: %d, %f\t[top_right]: %d, %f\t"
+          "[bot_left]: %d, %f\t[bot_right]: %d, %f\n",
+          top_left_index & block_per_threads_minus_1,
+          s_data[0][top_left_index & block_per_threads_minus_1],
+          top_right_index & block_per_threads_minus_1,
+          s_data[0][top_right_index & block_per_threads_minus_1],
+          bot_left_index & block_per_threads_minus_1,
+          s_data[1][bot_left_index & block_per_threads_minus_1],
+          bot_right_index & block_per_threads_minus_1,
+          s_data[1][bot_right_index & block_per_threads_minus_1]);
 
-      if (s_top_min_index <= threadIdx.x <= s_top_max_index) {
-        platform::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
-                                s_data[0][s_top_min_index + threadIdx.x]);
+      if (threadIdx.x >= s_top_min_index && threadIdx.x <= s_top_max_index) {
+        platform::CudaAtomicAdd(
+            &in[in_top_min_index - s_top_min_index + threadIdx.x],
+            s_data[0][threadIdx.x]);
         printf(
-            "TOP>>> [tid: %d], in_data[idx: %d, val: %f]\ts_data[idx: %d, val: "
-            "%f]\n",
-            threadIdx.x, in_top_min_index + threadIdx.x,
-            in[in_top_min_index + threadIdx.x], s_top_min_index + threadIdx.x,
-            s_data[0][s_top_min_index + threadIdx.x]);
+            "TOP >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d, "
+            "val: %f]\n"
+            "s_top_min_index=%d, s_top_max_index=%d\tin_top_min_index=%d, "
+            "in_top_max_index=%d\n",
+            threadIdx.x, in_top_min_index - s_top_min_index + threadIdx.x,
+            in[in_top_min_index + threadIdx.x - s_top_min_index], threadIdx.x,
+            s_data[0][threadIdx.x], s_top_min_index, s_top_max_index,
+            in_top_min_index, in_top_max_index);
       }
-      if (s_bot_min_index <= threadIdx.x <= s_bot_max_index) {
-        platform::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
-                                s_data[1][s_bot_min_index + threadIdx.x]);
+      if (threadIdx.x >= s_bot_min_index && threadIdx.x <= s_bot_max_index) {
+        platform::CudaAtomicAdd(
+            &in[in_bot_min_index - s_bot_min_index + threadIdx.x],
+            s_data[1][threadIdx.x]);
         printf(
-            "BOT>>> [tid: %d], in_data[idx: %d, val: %f]\ts_data[idx: %d, val: "
-            "%f]\n",
-            threadIdx.x, in_bot_min_index + threadIdx.x,
-            in[in_bot_min_index + threadIdx.x], s_bot_min_index + threadIdx.x,
-            s_data[0][s_bot_min_index + threadIdx.x]);
+            "BOT >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d, "
+            "val: %f]\n"
+            "s_bot_min_index=%d, s_bot_max_index=%d\tin_bot_min_index=%d, "
+            "in_bot_max_index=%d\n",
+            threadIdx.x, in_bot_min_index - s_bot_min_index + threadIdx.x,
+            in[in_bot_min_index + threadIdx.x - s_bot_min_index], threadIdx.x,
+            s_data[0][threadIdx.x], s_bot_min_index, s_bot_max_index,
+            in_bot_min_index, in_bot_max_index);
       }
     } else {
       T* in_pos;
