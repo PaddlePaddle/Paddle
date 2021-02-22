@@ -137,7 +137,7 @@ function(copy_part_of_thrid_party TARGET DST)
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
+set(inference_lib_deps third_party paddle_inference paddle_inference_c paddle_inference_shared paddle_inference_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 
@@ -164,20 +164,20 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
     if(WITH_STATIC_LIB)
-        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.lib
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.*)
+        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_inference.lib
+                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.*)
     else()
-        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.dll
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.lib)
+        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.dll
+                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.lib)
     endif()
     copy(inference_lib_dist
-            SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+            SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
             DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
             ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 else(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_inference.*)
     copy(inference_lib_dist
-                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
                 DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif(WIN32)
 
@@ -196,13 +196,13 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-  set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.*)
+  set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_inference_c.*)
 else(WIN32)
-  set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
+  set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_inference_c.*)
 endif(WIN32)
 
 copy(inference_lib_dist
-      SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
+      SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_inference_c_lib}
       DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 
 # fluid library for both train and inference
@@ -213,12 +213,12 @@ set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
 set(module "inference")
 if(WIN32)
         copy(fluid_lib_dist
-                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
                 DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
                 )
         else()
         copy(fluid_lib_dist
-                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
                 DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
                 )
 endif()
