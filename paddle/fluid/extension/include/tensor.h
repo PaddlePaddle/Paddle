@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+#include "paddle/fluid/extension/include/dll_decl.h"
 #include "paddle/fluid/extension/include/dtype.h"
 #include "paddle/fluid/extension/include/place.h"
 
@@ -23,7 +24,7 @@ namespace paddle {
 namespace framework {
 class CustomTensorUtils;
 }  // namespace framework
-class Tensor {
+class PD_DLL_DECL Tensor {
  public:
   /// \brief Construct a Tensor on target Place for CustomOp.
   /// Generally it's only used for user to create Tensor.
