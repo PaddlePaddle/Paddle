@@ -585,6 +585,7 @@ def _get_api_inputs_str(op_name):
 def _write_setup_file(name,
                       sources,
                       file_path,
+                      build_dir,
                       include_dirs,
                       compile_flags,
                       link_args,
@@ -605,7 +606,7 @@ def _write_setup_file(name,
                 extra_compile_args={extra_compile_args},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
-            output_dir=get_build_directory(),
+            output_dir={build_dir},
             no_python_abi_suffix=True,
             use_new_method={use_new_method})
         }})""").lstrip()
@@ -622,6 +623,7 @@ def _write_setup_file(name,
         include_dirs=list2str(include_dirs),
         extra_compile_args=list2str(compile_flags),
         extra_link_args=list2str(link_args),
+        build_dir=build_dir,
         use_new_method=use_new_custom_op_load_method())
 
     log_v('write setup.py into {}'.format(file_path), verbose)
