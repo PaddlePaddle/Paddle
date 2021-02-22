@@ -13,7 +13,7 @@ py_test(test_sysconfig SRCS test_sysconfig.py)
 py_test(test_dispatch SRCS test_dispatch.py)
 set_tests_properties(test_dispatch PROPERTIES TIMEOUT 180)
 
-if(NOT Linux)
+if(NOT LINUX)
     return()
 endif()
 
@@ -29,6 +29,7 @@ py_test(test_setup_build SRCS test_setup_build.py)
 set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
 set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
 set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
+set_tests_properties(test_custom_op PROPERTIES TIMEOUT 30)
 
 
 if(WITH_ROCM)

@@ -10,7 +10,7 @@ add_subdirectory(unittests)
 add_subdirectory(book)
 
 # TODO: support New Custom OP on Mac
-if(Linux)
+if(LINUX)
   add_subdirectory(custom_op)
 endif()
 

@@ -275,6 +275,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     library_dirs = kwargs.get('library_dirs', [])
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
+    for dir in library_dirs:
+        log_v(dir)
+        for file in os.listdir(dir):
+            log_v(file)
 
     if IS_WINDOWS:
         # TODO(zhouwei): may append compile flags in future
@@ -323,7 +327,6 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
-                log_v(nvcc_path)
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
         except:
@@ -479,6 +482,8 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         dynamic_suffix = '.pyd'
     else:
         dynamic_suffix = '.so'
+    for file in os.listdir(build_directory):
+        log_v(file)
     ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
     if not os.path.exists(ext_path):
         raise FileNotFoundError("Extension path: {} does not exist.".format(
