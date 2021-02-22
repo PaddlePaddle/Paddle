@@ -16,6 +16,8 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <stdio.h>
+
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -47,6 +49,8 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   std::string rank_table_file = getenv("RANK_TABLE_FILE");
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
+  
+  printf("rank_table_file: %s, rank_id = %d, device_id = %d\n", rank_table_file.c_str(), rank_id, device_id);
   
   f::AttributeMap attrs;
   attrs["rank_table_file"]=rank_table_file;
