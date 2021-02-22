@@ -26,7 +26,7 @@ namespace details {
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
