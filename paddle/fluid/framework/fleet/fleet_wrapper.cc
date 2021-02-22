@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {

@@ -779,6 +779,7 @@ int HeterComm<KeyType, ValType, GradType>::gather_multi_node_grad(
   return ret;
 }
 
+template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::end_pass() {
   int total_gpu = resource_->total_gpu();
   std::vector<std::thread> threads;

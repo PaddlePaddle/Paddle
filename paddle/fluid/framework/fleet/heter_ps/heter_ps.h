@@ -35,7 +35,6 @@ class HeterPs : public HeterPsBase {
                            size_t len) override;
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) override;
-  virtual void dump() override;
   virtual void set_nccl_comm_and_size(
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms, int comm_size) override;
