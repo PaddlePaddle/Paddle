@@ -1072,12 +1072,13 @@ void ParallelExecutor::BCastParamsToDevices(
             platform::errors::Unavailable("bkcl_group_start failed"));
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
+          auto broadcast_numel = numel;
           if (main_tensor.type() == framework::proto::VarType::INT64) {
-            numel *= 2;
+            broadcast_numel *= 2;
           }
           PADDLE_ENFORCE_EQ(
-              bkcl_broadcast(bkcl_ctx.comm(), buffers[i], buffers[i], numel,
-                             data_type, 0, NULL),
+              bkcl_broadcast(bkcl_ctx.comm(), buffers[i], buffers[i],
+                             broadcast_numel, data_type, 0, NULL),
               BKCL_SUCCESS,
               platform::errors::Unavailable("bkcl_broadcast failed"));
         }
@@ -1121,8 +1122,6 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event(
-      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();

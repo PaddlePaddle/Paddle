@@ -174,7 +174,7 @@ DataType Tensor::type() const {
 }
 
 template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) {
+Tensor Tensor::copy_to(const PlaceType &target_place) const {
   GET_CASTED_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     platform::errors::PreconditionNotMet(
@@ -207,73 +207,87 @@ Tensor Tensor::copy_to(const PlaceType &target_place) {
   return target;
 }
 
-template Tensor Tensor::copy_to<paddle::platform::float16>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::bfloat16>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::complex64>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::complex128>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<float>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<double>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int64_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int32_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<uint8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int16_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<bool>(const PlaceType &target_place);
+template PD_DLL_DECL Tensor
+Tensor::copy_to<paddle::platform::float16>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::bfloat16>(
+    const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex64>(
+    const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor Tensor::copy_to<paddle::platform::complex128>(
+    const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<float>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<double>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<bool>(const PlaceType &target_place) const;
 
-template float *Tensor::data<float>() const;
-template double *Tensor::data<double>() const;
-template int64_t *Tensor::data<int64_t>() const;
-template int32_t *Tensor::data<int32_t>() const;
-template uint8_t *Tensor::data<uint8_t>() const;
-template int8_t *Tensor::data<int8_t>() const;
-template paddle::platform::float16 *Tensor::data<paddle::platform::float16>()
-    const;
-template paddle::platform::bfloat16 *Tensor::data<paddle::platform::bfloat16>()
-    const;
-template paddle::platform::complex128 *
+template PD_DLL_DECL float *Tensor::data<float>() const;
+template PD_DLL_DECL double *Tensor::data<double>() const;
+template PD_DLL_DECL int64_t *Tensor::data<int64_t>() const;
+template PD_DLL_DECL int32_t *Tensor::data<int32_t>() const;
+template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
+template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
+template PD_DLL_DECL paddle::platform::float16 *
+Tensor::data<paddle::platform::float16>() const;
+template PD_DLL_DECL paddle::platform::bfloat16 *
+Tensor::data<paddle::platform::bfloat16>() const;
+template PD_DLL_DECL paddle::platform::complex128 *
 Tensor::data<paddle::platform::complex128>() const;
-template paddle::platform::complex64 *
+template PD_DLL_DECL paddle::platform::complex64 *
 Tensor::data<paddle::platform::complex64>() const;
-template int16_t *Tensor::data<int16_t>() const;
-template bool *Tensor::data<bool>() const;
+template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL bool *Tensor::data<bool>() const;
 
-template float *Tensor::mutable_data<float>();
-template double *Tensor::mutable_data<double>();
-template int64_t *Tensor::mutable_data<int64_t>();
-template int32_t *Tensor::mutable_data<int32_t>();
-template uint8_t *Tensor::mutable_data<uint8_t>();
-template int8_t *Tensor::mutable_data<int8_t>();
-template paddle::platform::float16 *
+template PD_DLL_DECL float *Tensor::mutable_data<float>();
+template PD_DLL_DECL double *Tensor::mutable_data<double>();
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>();
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>();
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
+template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>();
-template paddle::platform::bfloat16 *
+template PD_DLL_DECL paddle::platform::bfloat16 *
 Tensor::mutable_data<paddle::platform::bfloat16>();
-template paddle::platform::complex128 *
+template PD_DLL_DECL paddle::platform::complex128 *
 Tensor::mutable_data<paddle::platform::complex128>();
-template paddle::platform::complex64 *
+template PD_DLL_DECL paddle::platform::complex64 *
 Tensor::mutable_data<paddle::platform::complex64>();
-template int16_t *Tensor::mutable_data<int16_t>();
-template bool *Tensor::mutable_data<bool>();
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
 
-template float *Tensor::mutable_data<float>(const PlaceType &place);
-template double *Tensor::mutable_data<double>(const PlaceType &place);
-template int64_t *Tensor::mutable_data<int64_t>(const PlaceType &place);
-template int32_t *Tensor::mutable_data<int32_t>(const PlaceType &place);
-template uint8_t *Tensor::mutable_data<uint8_t>(const PlaceType &place);
-template int8_t *Tensor::mutable_data<int8_t>(const PlaceType &place);
-template paddle::platform::float16 *
+template PD_DLL_DECL float *Tensor::mutable_data<float>(const PlaceType &place);
+template PD_DLL_DECL double *Tensor::mutable_data<double>(
+    const PlaceType &place);
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>(
+    const PlaceType &place);
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL paddle::platform::float16 *
 Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
-template paddle::platform::bfloat16 *
+template PD_DLL_DECL paddle::platform::bfloat16 *
 Tensor::mutable_data<paddle::platform::bfloat16>(const PlaceType &place);
-template paddle::platform::complex128 *
+template PD_DLL_DECL paddle::platform::complex128 *
 Tensor::mutable_data<paddle::platform::complex128>(const PlaceType &place);
-template paddle::platform::complex64 *
+template PD_DLL_DECL paddle::platform::complex64 *
 Tensor::mutable_data<paddle::platform::complex64>(const PlaceType &place);
-template int16_t *Tensor::mutable_data<int16_t>(const PlaceType &place);
-template bool *Tensor::mutable_data<bool>(const PlaceType &place);
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
+    const PlaceType &place);
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
 
 std::vector<int> Tensor::shape() const {
   GET_CASTED_TENSOR
@@ -295,7 +309,7 @@ const PlaceType &Tensor::place() const {
   return place_;
 }
 
-Tensor Tensor::cast(const DataType &target_type) {
+Tensor Tensor::cast(const DataType &target_type) const {
   GET_CASTED_TENSOR;
   Tensor rlt = Tensor(place());
   rlt.reshape(this->shape());
@@ -342,7 +356,14 @@ Tensor Tensor::cast(const DataType &target_type) {
       framework::VisitDataType(
           dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
-    // TODO(JiabinYang): Support Complex later
+    case framework::proto::VarType::COMPLEX64:
+      framework::VisitDataType(dst_type, CastDataType<platform::complex64>(
+                                             *tensor, rlt_tensor_, ctx));
+      break;
+    case framework::proto::VarType::COMPLEX128:
+      framework::VisitDataType(dst_type, CastDataType<platform::complex128>(
+                                             *tensor, rlt_tensor_, ctx));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
