@@ -77,6 +77,10 @@ def setup(**attr):
     if 'name' not in attr:
         raise ValueError(error_msg)
 
+    assert not attr['name'].endswith('module'),  \
+    "Please don't use 'module' as suffix in `name` argument, "
+    "it will be stripped in setuptools.bdist_egg and cause import error."
+
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
