@@ -20,14 +20,11 @@ from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_compile_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
-# Because the shared lib already exists in the cache dir,
-# it will not be compiled again unless the cache dir is cleared.
+# Because Windows don't use docker, the shared lib already exists in the 
+# cache dir, it will not be compiled again unless the shared lib is removed.
 if os.name == 'nt':
-    cmd = 'rmdir {} /s/q'.format(get_build_directory())
-else:
-    cmd = 'rm -rf {}'.format(get_build_directory())
-
-run_cmd(cmd, True)
+    cmd = 'del {}\\dispatch_op.pyd'.format(get_build_directory())
+    run_cmd(cmd, True)
 
 dispatch_op = load(
     name='dispatch_op',

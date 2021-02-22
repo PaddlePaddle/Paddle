@@ -274,6 +274,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     # append necessary lib path of paddle
     library_dirs = kwargs.get('library_dirs', [])
     library_dirs.extend(find_paddle_libraries(use_cuda))
+    for dir in library_dirs:
+        log_v(dir)
     kwargs['library_dirs'] = library_dirs
 
     if IS_WINDOWS:
@@ -301,6 +303,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
+        for dir in runtime_library_dirs:
+            log_v(dir)
 
     kwargs['language'] = 'c++'
     return kwargs
@@ -323,7 +327,6 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
-                log_v(nvcc_path)
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
         except:
