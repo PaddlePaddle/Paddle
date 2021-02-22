@@ -310,13 +310,19 @@ def eval_if_exist_else_none(name):
 
 
 def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
+    """
+    Input can be attribute `x.shape` or api `shape(x)`, this function
+    chooses which one to return to use in dy2stat.
+
+    Note: sometimes users write `x.shape[3]`, so attr_shape can be an integer.
+    """
     if api_shape is None:
-        return attr_shape
+        return attr_shape if idx is None else attr_shape[idx]
     if not isinstance(attr_shape, (list, tuple)):
         # some variables like x.shape[0] is no longer a list or tuple
         if isinstance(attr_shape, int) and attr_shape < 0:
-            return api_shape
-        return attr_shape
+            return api_shape if idx is None else api_shape[idx]
+        return attr_shape if idx is None else attr_shape[idx]
 
     def has_negative(list_shape, idx=None):
         if idx is not None:
@@ -326,8 +332,8 @@ def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
         return num_negative > 0
 
     if has_negative(attr_shape, idx):
-        return api_shape
-    return attr_shape
+        return api_shape if idx is None else api_shape[idx]
+    return attr_shape if idx is None else attr_shape[idx]
 
 
 def convert_shape_compare(left, *args):
