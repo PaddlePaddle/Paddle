@@ -180,7 +180,7 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
            {{"Out", {x7}}}, {});
 
   std::vector<bool> use_cuda_list{false};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_cuda_list.push_back(true);
 #endif
   for (auto use_cuda : use_cuda_list) {
