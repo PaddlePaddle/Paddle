@@ -62,6 +62,7 @@ extern void* hccl_dso_handle;
   __macro(hcom_get_group_rank_from_world_rank); \
   __macro(hcom_get_world_rank_from_group_rank); 
 
+
 HCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_HCCL_WRAP)
 
 #if HCCL_VERSION_CODE >= 2212
