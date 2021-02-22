@@ -13,13 +13,26 @@
 # limitations under the License.
 
 import os
+import subprocess
 import unittest
 import numpy as np
 
 import paddle
 from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
 
+# Because the shared lib already exists in the cache dir,
+# it will not be compiled again unless the cache dir is cleared.
+if os.name == 'nt':
+    cmd = 'rmdir {} /s/q'.format(get_build_directory())
+else:
+    cmd = 'rm -rf {}'.format(get_build_directory())
+
+run_cmd(cmd, True)
+
+# Compile and load custom op Just-In-Time.
 multi_out_module = load(
     name='multi_out_jit',
     sources=['multi_out_test_op.cc'],
