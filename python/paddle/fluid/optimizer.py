@@ -4840,7 +4840,7 @@ class PipelineOptimizer(object):
 
         place_list = []
         for dev in device_list:
-            dev_index = int(dev.split(":")[1])
+            dev_index = int(dev.split(":")[1]) % 8
             place_list.append(core.CUDAPlace(dev_index))
 
         # Step6: Split startup program
