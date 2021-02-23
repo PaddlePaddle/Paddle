@@ -19,7 +19,7 @@ paddle.enable_static()
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
+from paddle.distributed import ProbabilityEntry, CountFilterEntry
 
 
 class EntryAttrChecks(unittest.TestCase):
@@ -64,7 +64,7 @@ class EntryAttrChecks(unittest.TestCase):
                     lod_level=1,
                     append_batch_size=False)
                 prob = ProbabilityEntry(0.5)
-                emb = fluid.contrib.layers.sparse_embedding(
+                emb = paddle.static.nn.sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,
