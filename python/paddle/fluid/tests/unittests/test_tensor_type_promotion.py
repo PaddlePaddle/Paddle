@@ -28,27 +28,23 @@ class TestTensorTypePromotion(unittest.TestCase):
     def test_operator(self):
         with self.assertRaises(Exception) as context:
             self.x + self.y
-        self.assertTrue(
-            "the dtype of left and right vars of operator not the same" in
-            str(context.exception))
+        self.assertTrue("The dtype of left and right variables are not the same"
+                        in str(context.exception))
 
         with self.assertRaises(Exception) as context:
             self.x - self.y
-        self.assertTrue(
-            "the dtype of left and right vars of operator not the same" in
-            str(context.exception))
+        self.assertTrue("The dtype of left and right variables are not the same"
+                        in str(context.exception))
 
         with self.assertRaises(Exception) as context:
             self.x * self.y
-        self.assertTrue(
-            "the dtype of left and right vars of operator not the same" in
-            str(context.exception))
+        self.assertTrue("The dtype of left and right variables are not the same"
+                        in str(context.exception))
 
         with self.assertRaises(Exception) as context:
             self.x / self.y
-        self.assertTrue(
-            "the dtype of left and right vars of operator not the same" in
-            str(context.exception))
+        self.assertTrue("The dtype of left and right variables are not the same"
+                        in str(context.exception))
 
 
 if __name__ == '__main__':
