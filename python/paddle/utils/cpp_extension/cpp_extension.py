@@ -558,7 +558,7 @@ def load(name,
 
     log_v("build_directory: {}".format(build_directory), verbose)
 
-    file_path = os.path.join(build_directory, "setup.py")
+    file_path = os.path.join(build_directory, "{}_setup.py".format(name))
     sources = [os.path.abspath(source) for source in sources]
 
     # TODO(Aurelius84): split cflags and cuda_flags
