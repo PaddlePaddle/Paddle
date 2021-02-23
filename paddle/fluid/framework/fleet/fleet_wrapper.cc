@@ -698,13 +698,14 @@ void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm, int batch_size, const paddle::platform::Place& place,
-    cudaStream_t stream, cudaEvent_t event) {
+    gpuStream_t stream, gpuEvent_t event) {
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -719,8 +720,13 @@ void FleetWrapper::PushDenseVarsAsync(
     memory::Copy(platform::CUDAPinnedPlace(), pin_g,
                  BOOST_GET_CONST(platform::CUDAPlace, place), g_data,
                  sizeof(float) * count, stream);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+    hipEventSynchronize(event);
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
+#endif
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {

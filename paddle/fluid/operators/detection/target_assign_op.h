@@ -107,7 +107,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t k = x->dims()[2];
 
     auto x_lod = x->lod().back();
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     size_t* x_lod_data = x_lod.MutableData(ctx.GetPlace());
 #else
     size_t* x_lod_data = x_lod.data();
@@ -129,7 +129,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
               "TargetAssignOp input(NegIndices) needs 1 level of LoD"));
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
 #else
       size_t* neg_lod_data = neg_lod.data();
