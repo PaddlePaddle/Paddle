@@ -291,7 +291,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.append('-lpaddle_framework')
+        if use_new_custom_op_load_method():
+            extra_link_args.append('-lpaddle_custom_op')
+        else:
+            extra_link_args.append('-lpaddle_framework')
         if use_cuda:
             extra_link_args.append('-lcudart')
 
