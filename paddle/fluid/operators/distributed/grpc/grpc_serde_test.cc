@@ -206,7 +206,7 @@ TEST(LodTensor, Run) {
   platform::CPUPlace place;
   RunTestLodTensor(place);
   RunTestLodTensor(place, 1);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace gpu(0);
   RunTestLodTensor(gpu);
   RunTestLodTensor(gpu, 1);
@@ -217,7 +217,7 @@ TEST(SelectedRows, Run) {
   platform::CPUPlace place;
   RunSerdeTestSelectedRows(place);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace gpu;
   RunSerdeTestSelectedRows(gpu);
 #endif
