@@ -598,6 +598,10 @@ def _write_setup_file(name,
     import os
     from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
     from paddle.utils.cpp_extension import get_build_directory
+    from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+    use_new_custom_op_load_method({use_new_method})
+
     setup(
         name='{name}',
         ext_modules=[
@@ -608,8 +612,7 @@ def _write_setup_file(name,
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
             output_dir=get_build_directory(),
-            no_python_abi_suffix=True,
-            use_new_method={use_new_method})
+            no_python_abi_suffix=True)
         }})""").lstrip()
 
     with_cuda = False
