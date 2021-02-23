@@ -1274,7 +1274,7 @@ set +x
 
         if [[ "$EXIT_CODE" != "0" ]]; then
             read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name} | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
             if [ -z "${retry_unittests_record_judge}" ];then
                 echo "========================================"
                 echo "There are failed tests, which have been successful after re-run:"
