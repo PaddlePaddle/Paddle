@@ -27,11 +27,11 @@ class EntryAttrChecks(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             import paddle.fluid.entry_attr as entry
             base = entry.EntryAttr()
-            base.to_attr()
+            base._to_attr()
 
     def probability_entry(self):
         prob = ProbabilityEntry(0.5)
-        ss = prob.to_attr()
+        ss = prob._to_attr()
         self.assertEqual("probability_entry:0.5", ss)
 
         with self.assertRaises(ValueError):
@@ -42,7 +42,7 @@ class EntryAttrChecks(unittest.TestCase):
 
     def countfilter_entry(self):
         counter = CountFilterEntry(20)
-        ss = counter.to_attr()
+        ss = counter._to_attr()
         self.assertEqual("count_filter_entry:20", ss)
 
         with self.assertRaises(ValueError):
