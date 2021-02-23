@@ -22,21 +22,19 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
 from test_simple_custom_op_setup import relu2_dynamic, relu2_static
 
-# Because the shared lib already exists in the cache dir,
-# it will not be compiled again unless the cache dir is cleared.
+# Because Windows don't use docker, the shared lib already exists in the 
+# cache dir, it will not be compiled again unless the shared lib is removed.
 if os.name == 'nt':
-    cmd = 'rmdir {} /s/q'.format(get_build_directory())
-else:
-    cmd = 'rm -rf {}'.format(get_build_directory())
-
-run_cmd(cmd, True)
+    cmd = 'del {}\\simple_jit_relu2.pyd'.format(get_build_directory())
+    run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
 custom_module = load(
     name='simple_jit_relu2',
     sources=['relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True)
 
 
 class TestJITLoad(unittest.TestCase):
