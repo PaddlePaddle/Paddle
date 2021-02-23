@@ -17,7 +17,7 @@ set +x
 NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 
-PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
+export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
 else
