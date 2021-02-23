@@ -665,23 +665,7 @@ EOF
         export https_proxy=$my_proxy
         set -x
         if [ "$mactest_error" != 0 ];then
-            read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name} | tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
-            if [ -z "${retry_unittests_record_judge}" ];then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                echo "========================================"
-                echo "There are failed tests, which have been executed re-run, but success rate is less than 50%:"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${retry_unittests_record_judge}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
     fi
 }
@@ -1273,25 +1257,30 @@ set +x
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
-            read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
-            if [ -z "${retry_unittests_record_judge}" ];then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                echo "========================================"
-                echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${retry_unittests_record_judge}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
 set -ex
+    fi
+}
+
+function show_ut_retry_result() {
+    read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+    if [ -z "${retry_unittests_record_judge}" ];then
+        echo "========================================"
+        echo "There are failed tests, which have been successful after re-run:"
+        echo "========================================"
+        echo "The following tests have been re-ran:"
+        echo "${retry_unittests_record}"
+    else
+        failed_ut_re=$(echo retry_unittests_record | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+        echo "========================================"
+        echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+        echo "Summary Failed Tests... "
+        echo "========================================"
+        echo "The following tests FAILED: "
+        echo "${retry_unittests_record_judge}" | grep -E "$failed_ut_re"
+        exit 8;
     fi
 }
 
