@@ -323,7 +323,6 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
-                log_v(nvcc_path)
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
         except:
