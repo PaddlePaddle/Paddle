@@ -55,12 +55,6 @@ class ParallelEnvArgs(object):
         # for training.
         self.selected_gpus = None
 
-        # It's for xpu training and the training process will run 
-        # on the selected_xpus, each process is bound to a single XPU. 
-        # And if it's not set, this module will use all the xpu cards 
-        # for training.
-        self.selected_xpus = None
-
 
 def _py_supported_check():
     if not sys.version_info >= (3, 4):
@@ -160,7 +154,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     if core.is_compiled_with_xpu():
         args.selected_gpus = options.get('xpus', None)
-        if args.selected_xpus is None:
+        if args.selected_gpus is None:
             args.selected_gpus = options.get('selected_gpus', None)
         env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
@@ -454,8 +448,12 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             nprocs = _cpu_num()
         elif device == 'gpu':
             nprocs = core.get_cuda_device_count()
-        else:
+        elif device == 'xpu':
             nprocs = core.get_xpu_device_count()
+        else:
+            raise ValueError(
+                "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
+                format(device))
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
     # when using `paddle.distributed.spawn` start parallel training, 

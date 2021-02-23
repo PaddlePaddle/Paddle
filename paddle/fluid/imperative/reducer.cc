@@ -298,7 +298,12 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
       find_unused_vars_(find_unused_vars),
-      multi_device_op_pool_(1) {
+#ifdef PADDLE_WITH_XPU_BKCL
+      comm_pool_(1),
+      comm_op_count_(0) {
+#else
+{
+#endif
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
@@ -641,27 +646,23 @@ void Reducer::MarkGroupReady(size_t group_index) {
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    multi_device_op_count_ = 0;
-  }
-
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
 
-    // For CUDA or XPU, compute_stream --event--> comm_stream.
-    // For CPU, do nothing.
-    // NOTE. Because concat uses the comm_stream,
-    // so we expose WaitCompute() interface and call
-    // it here.
+// For CUDA or XPU, compute_stream --> comm_stream.
+// For CPU, do nothing.
+// NOTE. Because concat uses the comm_stream,
+// so we expose WaitCompute() interface and call
+// it here.
+#ifdef PADDLE_WITH_XPU_BKCL
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      multi_device_op_count_ += 1;  // lock
+      comm_op_count_ += 1;  // lock
     }
 
-    multi_device_op_pool_.enqueue([&] {
+    comm_pool_.enqueue([&] {
       parallel_ctx_->WaitCompute(run_order);
 
       if (group.is_sparse_) {
@@ -683,16 +684,18 @@ void Reducer::MarkGroupReady(size_t group_index) {
           // group.dense_tensors ---> group.dense_contents_
           group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
-// default stream for communicating, so there exist some problems in
-// synchronization. And need to add a WaitComm there.
-// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
-// communication.
-#ifdef PADDLE_WITH_XPU_BKCL
+          // NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL
+          // only support
+          // default stream for communicating, so there exist some problems in
+          // synchronization. And need to add a WaitComm there.
+          // TODO(liuyuhui): If BKCL support events, it should be fixed as
+          // non-blocking
+          // communication.
           if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
             parallel_ctx_->WaitComm(run_order);
           }
-#endif
+
+          group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
 
           // Start allreduce
           parallel_ctx_->AllReduceByStream(group.dense_contents_,
@@ -710,11 +713,40 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        multi_device_op_count_ -= 1;  // lock
+        comm_op_count_ -= 1;  // lock
         cv_.notify_all();
       }
-      // cnt -= 1; // lock
     });
+#else
+    if (group.is_sparse_) {
+      if (group.sparse_contents_ != nullptr) {
+        VLOG(3) << "sparse group [" << next_group_
+                << "] start allreduce in ring[" << run_order << "]";
+        group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+        parallel_ctx_->AllReduceByStream(
+            *group.sparse_contents_, group.sparse_contents_, run_order, false);
+      } else {
+        VLOG(3) << "The sparse group[" << next_group_
+                << "] has no var to allreduce";
+      }
+    } else {
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+              << run_order << "]";
+      // Select common commstream to concat tensors
+      // group.dense_tensors ---> group.dense_contents_
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+
+      group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+
+      // Start allreduce
+      parallel_ctx_->AllReduceByStream(
+          group.dense_contents_, &(group.dense_contents_), run_order, false);
+
+      // Select common commstream to split tensors
+      // group.dense_contents_ ---> group.dense_tensors
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+    }
+#endif
   }
 }
 
@@ -745,7 +777,7 @@ void Reducer::FinalizeBackward() {
 
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [&] { return multi_device_op_count_ == 0; });
+    cv_.wait(lock, [&] { return comm_op_count_ == 0; });
   }
 
   // Must prevent compute_stream_ starting until all comm streams have finished

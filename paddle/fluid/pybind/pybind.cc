@@ -2486,6 +2486,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int nccl_comm_num) {
             self.nccl_comm_num_ = nccl_comm_num;
           })
+      .def_property(
+          "bkcl_comm_num",
+          [](const BuildStrategy &self) { return self.bkcl_comm_num_; },
+          [](BuildStrategy &self, int bkcl_comm_num) {
+            self.bkcl_comm_num_ = bkcl_comm_num;
+          })
       .def_property("use_hierarchical_allreduce",
                     [](const BuildStrategy &self) {
                       return self.use_hierarchical_allreduce_;

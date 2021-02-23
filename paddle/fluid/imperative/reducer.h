@@ -190,8 +190,8 @@ class Reducer {
 
   // std::vector<std::unique_ptr<::ThreadPool>> pool_;
   // ::ThreadPool comm_pool_;
-  ::ThreadPool multi_device_op_pool_;
-  uint32_t multi_device_op_count_;
+  ::ThreadPool comm_pool_;
+  uint32_t comm_op_count_;
   std::mutex mutex_;
   std::condition_variable cv_;
 };
