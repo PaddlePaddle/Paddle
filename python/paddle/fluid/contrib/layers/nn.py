@@ -47,12 +47,6 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check
 from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
-from paddle.fluid.entry_attr import ProbabilityEntry as FP
-from paddle.fluid.entry_attr import CountFilterEntry as FC
-
-from paddle.distributed.entry_attr import ProbabilityEntry as DP
-from paddle.distributed.entry_attr import CountFilterEntry as DC
-
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
@@ -998,9 +992,9 @@ def sparse_embedding(input,
     entry_str = "none"
 
     if entry is not None:
-        if not isinstance(entry, DP) and not isinstance(
-                entry, DC) and not isinstance(entry, FP) and not isinstance(
-                    entry, FC):
+        if entry.__class__.__name__ not in [
+                "ProbabilityEntry", "CountFilterEntry"
+        ]:
             raise ValueError(
                 "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
             )
