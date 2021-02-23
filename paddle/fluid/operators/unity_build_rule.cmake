@@ -34,7 +34,11 @@ register_unity_group(cc
     chunk_eval_op.cc
     clip_by_norm_op.cc
     clip_op.cc
-    coalesce_tensor_op.cc)
+    coalesce_tensor_op.cc
+    mkldnn/activation_mkldnn_op.cc
+    mkldnn/interpolate_mkldnn_op.cc
+    mkldnn/pool_mkldnn_op.cc
+    mkldnn/softmax_mkldnn_op.cc)
 register_unity_group(cc
     center_loss_op.cc
     mkldnn/concat_mkldnn_op.cc
@@ -79,7 +83,10 @@ register_unity_group(cc
     py_func_op.cc
     real_op.cc
     sync_batch_norm_op.cc
-    top_k_op.cc)
+    top_k_op.cc
+    conv_op.cc
+    conv_transpose_op.cc
+    gru_unit_op.cc)
 register_unity_group(cc
     expand_v2_op.cc
     fake_dequantize_op.cc
@@ -323,10 +330,6 @@ register_unity_group(cc
     arg_max_op.cc
     arg_min_op.cc
     squared_l2_distance_op.cc)
-register_unity_group(cc
-    conv_op.cc
-    conv_transpose_op.cc
-    gru_unit_op.cc)
 register_unity_group(cc
     linear_chain_crf_op.cc
     lstm_op.cc
