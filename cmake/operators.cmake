@@ -213,6 +213,7 @@ function(op_library TARGET)
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+    set(ORIGINAL_TARGET ${TARGET})
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
     # [ \t\r\n]* is used for blank characters
@@ -288,15 +289,16 @@ function(op_library TARGET)
     endif()
 
     if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
-        file(READ ${TARGET}_npu.cc TARGET_NPU_CONTENT)
-        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\(.*REGISTER_OP_NPU_KERNEL\\(" multi_npu_register "${TARGET_NPU_CONTENT}")
+        file(READ ${ORIGINAL_TARGET}_npu.cc TARGET_NPU_CONTENT)
+        # It is different from the logic above, becareful
+        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\(.*" multi_npu_register "${TARGET_NPU_CONTENT}")
         # [ \t\r\n]* is used for blank characters
         string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_npu_register "${multi_npu_register}")
 
-        if (one_register STREQUAL "")
+        if (one_npu_register STREQUAL "")
             string(REPLACE "_op" "" NPU_TARGET "${TARGET}")
         else ()
-            string(REPLACE "REGISTER_OP_NPU_KERNEL(" "" NPU_TARGET "${one_register}")
+            string(REPLACE "REGISTER_OP_NPU_KERNEL(" "" NPU_TARGET "${one_npu_register}")
             string(REPLACE "," "" NPU_TARGET "${NPU_TARGET}")
             # [ \t\r\n]+ is used for blank characters.
             # Here we use '+' instead of '*' since it is a REPLACE operation.
