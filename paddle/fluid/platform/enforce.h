@@ -1016,8 +1016,7 @@ DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
 
 inline std::string build_npu_error_msg(aclError stat) {
   std::ostringstream sout;
-  sout << "  ACL error, the error code is : " << stat << ". ";
-  VLOG(4) << sout.str();
+  sout << " ACL error, the error code is : " << stat << ". ";
   return sout.str();
 }
 
