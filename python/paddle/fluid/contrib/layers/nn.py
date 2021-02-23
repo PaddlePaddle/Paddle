@@ -998,7 +998,7 @@ def sparse_embedding(input,
             raise ValueError(
                 "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
             )
-        entry_str = entry.to_attr()
+        entry_str = entry._to_attr()
 
     helper.append_op(
         type='lookup_table',

@@ -19,16 +19,34 @@ __all__ = ['ProbabilityEntry', 'CountFilterEntry']
 
 class EntryAttr(object):
     """
+    Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
+
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            entry = paddle.distributed.ProbabilityEntry(0.1)
+
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+
+            emb = fluid.contrib.layers.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
+                                           initializer=fluid.initializer.Uniform()))
+
     """
 
     def __init__(self):
         self._name = None
 
-    def to_attr(self):
+    def _to_attr(self):
         """
         Returns the attributes of this parameter.
 
@@ -39,6 +57,29 @@ class EntryAttr(object):
 
 
 class ProbabilityEntry(EntryAttr):
+    """
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            entry = paddle.distributed.ProbabilityEntry(0.1)
+
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
+                                           initializer=fluid.initializer.Uniform()))
+
+    """
+
     def __init__(self, probability):
         super(EntryAttr, self).__init__()
 
@@ -51,11 +92,34 @@ class ProbabilityEntry(EntryAttr):
         self._name = "probability_entry"
         self._probability = probability
 
-    def to_attr(self):
+    def _to_attr(self):
         return ":".join([self._name, str(self._probability)])
 
 
 class CountFilterEntry(EntryAttr):
+    """
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            entry = paddle.distributed.CountFilterEntry(10)
+
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
+                                           initializer=fluid.initializer.Uniform()))
+
+    """
+
     def __init__(self, count_filter):
         super(EntryAttr, self).__init__()
 
@@ -70,5 +134,5 @@ class CountFilterEntry(EntryAttr):
         self._name = "count_filter_entry"
         self._count_filter = count_filter
 
-    def to_attr(self):
+    def _to_attr(self):
         return ":".join([self._name, str(self._count_filter)])

@@ -97,16 +97,19 @@ class CommonAccessor:
     def parse_entry(self, varname, o_main_program):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import SPARSE_OP_TYPE_DICT
 
         for op in o_main_program.global_block().ops:
             if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
 
-            param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
+            param_name = op.input("W")[0]
 
-            if param_name == varname:
+            if param_name == varname and op.type == "lookup_table":
                 self.entry = op.attr('entry')
+                break
+
+            if param_name == varname and op.type == "lookup_table_v2":
+                self.entry = "none"
                 break
 
     def get_shard(self, total_dim, shard_num, pserver_id):
