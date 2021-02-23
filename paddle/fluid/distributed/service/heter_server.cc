@@ -13,12 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_server.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {

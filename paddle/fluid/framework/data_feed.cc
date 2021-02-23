@@ -22,19 +22,8 @@ limitations under the License. */
 #include <stdio_ext.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #endif
-#include <utility>
-#include "gflags/gflags.h"
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
 #include "io/fs.h"
-#include "io/shell.h"
-#include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 

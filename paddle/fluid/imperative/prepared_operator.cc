@@ -14,11 +14,8 @@
 
 #include "paddle/fluid/imperative/prepared_operator.h"
 
-#include <sstream>
-
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
-#include "paddle/fluid/imperative/infer_var_type_context.h"
 
 namespace paddle {
 namespace imperative {

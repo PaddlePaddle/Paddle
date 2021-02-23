@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <atomic>
 #include <ctime>
@@ -161,6 +162,9 @@ class PSGPUWrapper {
   void SetSlotVector(const std::vector<int>& slot_vector) {
     slot_vector_ = slot_vector;
   }
+
+  void EndPass() { HeterPs_->end_pass(); }
+  void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;

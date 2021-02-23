@@ -14,15 +14,19 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "boost/variant/get.hpp"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {

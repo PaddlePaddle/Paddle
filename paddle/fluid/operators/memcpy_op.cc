@@ -19,7 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class OpDesc;
-class Variable;
+class InferShapeContext;
+template <typename T>
+class EmptyGradOpMaker;
 }  // namespace framework
 namespace imperative {
 class OpBase;

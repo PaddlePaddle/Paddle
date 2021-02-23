@@ -25,7 +25,7 @@ __global__ void fill_idx(T* idx, size_t len) {
 }
 
 template <typename T>
-void show_tensor(T* input, size_t len, cudaStream_t stream, std::string name) {
+void show_tensor(T* input, size_t len, gpuStream_t stream, std::string name) {
   T tmp[len];
   cudaMemcpyAsync(&tmp, input, sizeof(T) * len, cudaMemcpyDeviceToHost, stream);
   cudaStreamSynchronize(stream);
@@ -270,7 +270,7 @@ void HeterComm<KeyType, ValType, GradType>::build_ps(int num, KeyType* h_keys,
   std::vector<std::shared_ptr<memory::Allocation>> d_key_bufs;
   std::vector<std::shared_ptr<memory::Allocation>> d_val_bufs;
 
-  cudaStream_t streams[stream_num];
+  gpuStream_t streams[stream_num];
   for (int i = 0; i < stream_num; ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(streams[i])));
     auto d_k_buf = memory::AllocShared(place, chunk_size * sizeof(KeyType));
@@ -594,6 +594,34 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int gpu_num,
     cudaStreamSynchronize(resource_->remote_stream(i));
   }
 }
+
+template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::end_pass() {
+  int total_gpu = resource_->total_gpu();
+  std::vector<std::thread> threads;
+
+  auto dump_to_cpu_func = [this](int index) {
+    auto stream = resource_->local_stream(index, 0);
+    int dev_id = resource_->dev_id(index);
+    platform::CUDADeviceGuard guard(dev_id);
+    tables_[index]->dump_to_cpu(dev_id, stream);
+  };
+
+  for (int i = 0; i < total_gpu; ++i) {
+    threads.push_back(std::thread(dump_to_cpu_func, i));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
+// template <typename KeyType, typename ValType, typename GradType>
+// void HeterComm<KeyType, ValType, GradType>::dump_to_cpu(int index) {
+//  auto stream = resource_->local_stream(index, 0);
+//  int dev_id = resource_->dev_id(index);
+//  platform::CUDADeviceGuard guard(dev_id);
+//  tables_[index]->dump_to_cpu(dev_id, stream);
+//}
 
 }  // end namespace framework
 }  // end namespace paddle

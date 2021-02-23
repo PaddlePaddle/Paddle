@@ -41,9 +41,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
-#include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+
+namespace paddle {
+namespace distributed {
+class PSClient;
+struct CommContext;
+}  // namespace distributed
+}  // namespace paddle
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 

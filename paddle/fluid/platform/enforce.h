@@ -42,8 +42,7 @@ limitations under the License. */
 #include <miopen/miopen.h>
 #include <rocblas.h>
 #include <thrust/system/hip/error.h>
-#include <thrust/system_error.h>                  // NOLINT
-#include "paddle/fluid/platform/cuda_error.pb.h"  // NOLINT
+#include <thrust/system_error.h>  // NOLINT
 #endif
 
 #include <fstream>
@@ -1034,11 +1033,6 @@ inline void retry_sleep(unsigned milliseconds) {
 inline bool is_error(hipError_t e) { return e != hipSuccess; }
 
 inline std::string build_rocm_error_msg(hipError_t e) {
-#if defined(PADDLE_WITH_HIP)
-  int32_t cuda_version = 100;
-#else
-  int32_t cuda_version = -1;
-#endif
   std::ostringstream sout;
   sout << " Hip error(" << e << "), " << hipGetErrorString(e) << ".";
   return sout.str();

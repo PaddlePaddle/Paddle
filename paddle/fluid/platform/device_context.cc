@@ -11,13 +11,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/memory/memory.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/rw_lock.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -34,7 +29,7 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
   }
 
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     auto& desired_dev_ctx =
@@ -70,7 +65,7 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
 namespace paddle {
 namespace platform {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
@@ -127,7 +122,7 @@ DeviceContextPool::DeviceContextPool(
       EmplaceDeviceContext<CPUDeviceContext, CPUPlace>(&device_contexts_, p);
 #endif
     } else if (platform::is_gpu_place(p)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
 #else
       PADDLE_THROW(
@@ -135,7 +130,7 @@ DeviceContextPool::DeviceContextPool(
                                           "re-compile with WITH_GPU option."));
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
           &device_contexts_, p);
 #else
@@ -188,14 +183,29 @@ XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
                         "XPU API return wrong value[%d], please check whether "
                         "Baidu Kunlun Card is properly installed.",
                         ret));
+
+  LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: " << place_.device;
+
   context_ = xpu::create_context();
-  void* l3ptr = nullptr;
-  int l3_size = 13.5 * 1024 * 1024;
-  xpu_malloc(static_cast<void**>(&l3ptr), l3_size, XPU_MEM_L3);
-  if (l3ptr != nullptr) {
-    context_->_l3_mgr.set(l3ptr, l3_size);
-    std::cout << "set l3 size " << l3_size << std::endl;
+  const int MAX_XPU_NUM = 16;
+  const int l3_size = 13.5 * 1024 * 1024;
+  static void* l3ptrs[MAX_XPU_NUM] = {nullptr};
+
+  auto selected_xpus = GetXPUSelectedDevices();
+  for (unsigned int i = 0; i < selected_xpus.size(); i++) {
+    if (place.device == selected_xpus[i]) {
+      if (l3ptrs[place.device] == nullptr) {
+        xpu_malloc(static_cast<void**>(&l3ptrs[place.device]), l3_size,
+                   XPU_MEM_L3);
+      }
+      if (l3ptrs[place.device] != nullptr) {
+        context_->_l3_mgr.set(l3ptrs[place.device], l3_size);
+        VLOG(3) << "xpu place " << place.device << " set l3 size " << l3_size;
+      }
+      break;
+    }
   }
+
   ret = xpu_set_device(dev_id);
   PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
                     platform::errors::External(
@@ -219,7 +229,7 @@ Place XPUDeviceContext::GetPlace() const { return place_; }
 xpu::Context* XPUDeviceContext::x_context() const { return context_; }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
@@ -228,15 +238,19 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
   ~EigenCudaStreamDevice() override {}
 
-  void Reinitialize(const cudaStream_t* cuda_stream, CUDAPlace place) {
+  void Reinitialize(const gpuStream_t* cuda_stream, CUDAPlace place) {
     stream_ = cuda_stream;
     place_ = place;
     device_prop_ = &Eigen::m_deviceProperties[place.device];
   }
 
-  const cudaStream_t& stream() const override { return *stream_; }
+  const gpuStream_t& stream() const override { return *stream_; }
 
+#ifdef PADDLE_WITH_HIP
+  const hipDeviceProp_t& deviceProperties() const override {
+#else
   const cudaDeviceProp& deviceProperties() const override {
+#endif
     return *device_prop_;
   }
 
@@ -264,37 +278,34 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
   void* scratchpad() const override {
     if (scratch_ == NULL) {
-// windows use an old version of eigen that uses kCudaScratchSize,
-// once windows updates eigen to a recent version, the following code
-// can use kGpuScratchSize uniformly
-#ifdef _WIN32
-      scratch_ = allocate(Eigen::kCudaScratchSize + sizeof(unsigned int));
-#else
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
-#endif
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
     if (semaphore_ == NULL) {
-#ifdef _WIN32
-      char* scratch =
-          static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
-#else
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
-#endif
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+#endif
     }
     return semaphore_;
   }
 
  private:
   CUDAPlace place_;
-  const cudaStream_t* stream_;         // not owned;
+  const gpuStream_t* stream_;  // not owned;
+#ifdef PADDLE_WITH_HIP
+  const hipDeviceProp_t* device_prop_;
+#else
   const cudaDeviceProp* device_prop_;  // not owned;
+#endif
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
   mutable std::mutex mtx_;  // to protect allocations_
@@ -329,14 +340,18 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();
+#ifndef PADDLE_WITH_HIP
   InitCuSolverContext();
+#endif
 }
 
 CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+#ifndef PADDLE_WITH_HIP
   DestoryCuSolverContext();
+#endif
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
@@ -359,17 +374,29 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
                           << ", Runtime API Version: "
                           << runtime_version_ / 1000 << "."
                           << (runtime_version_ % 100) / 10;
+#ifdef PADDLE_WITH_HIP
+  size_t version_major, version_minor, version_patch;
+  PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+      &version_major, &version_minor, &version_patch));
+  LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
+                          << ", MIOpen Version: " << version_major << "."
+                          << version_minor << "." << version_patch;
+#else
   size_t cudnn_dso_ver = dynload::cudnnGetVersion();
   LOG_FIRST_N(WARNING, 1) << "device: " << place_.device
                           << ", cuDNN Version: " << cudnn_dso_ver / 1000 << "."
                           << (cudnn_dso_ver % 1000) / 100 << ".";
-
+#endif
   {
     // Check CUDA/CUDNN version compatiblity
     auto local_cuda_version =
         (driver_version_ / 1000) * 10 + (driver_version_ % 100) / 10;
+#ifdef PADDLE_WITH_HIP
+    auto compile_cuda_version = (HIP_VERSION / 100) * 10 + (HIP_VERSION % 10);
+#else
     auto compile_cuda_version =
         (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
+#endif
     if (local_cuda_version < compile_cuda_version) {
       LOG_FIRST_N(WARNING, 1)
           << "WARNING: device: " << place_.device
@@ -387,7 +414,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
@@ -424,7 +451,11 @@ dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 
+#ifdef PADDLE_WITH_HIP
+miopenHandle_t CUDADeviceContext::cudnn_handle() const {
+#else
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+#endif
   return context()->CudnnHandle();
 }
 
@@ -432,13 +463,13 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
+#ifndef PADDLE_WITH_HIP
 cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
   return context()->CusolverDnHandle();
 }
+#endif
 
-cudaStream_t CUDADeviceContext::stream() const {
-  return context()->RawStream();
-}
+gpuStream_t CUDADeviceContext::stream() const { return context()->RawStream(); }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

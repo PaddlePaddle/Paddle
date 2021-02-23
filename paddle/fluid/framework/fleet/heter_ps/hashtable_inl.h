@@ -87,7 +87,7 @@ void HashTable<KeyType, ValType>::show() {
 
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
-                                      size_t len, cudaStream_t stream) {
+                                      size_t len, gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -99,7 +99,7 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys, ValType* d_vals,
 template <typename KeyType, typename ValType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals, size_t len,
-                                         cudaStream_t stream) {
+                                         gpuStream_t stream) {
   if (len == 0) {
     return;
   }
@@ -109,10 +109,45 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
+void HashTable<KeyType, ValType>::dump_to_cpu(int devid, cudaStream_t stream) {
+  container_->prefetch(cudaCpuDeviceId, stream);
+  size_t num = container_->size();
+  KeyType unuse_key = std::numeric_limits<KeyType>::max();
+  thrust::pair<KeyType, ValType>* kv = container_->data();
+  for (size_t i = 0; i < num; ++i) {
+    if (kv[i].first == unuse_key) {
+      continue;
+    }
+    ValType& gpu_val = kv[i].second;
+    auto* downpour_value =
+        (paddle::ps::DownpourFixedFeatureValue*)(gpu_val.cpu_ptr);
+    int downpour_value_size = downpour_value->size();
+    if (gpu_val.mf_size > 0 && downpour_value_size == 7) {
+      downpour_value->resize(gpu_val.mf_size + downpour_value_size);
+    }
+    float* cpu_val = downpour_value->data();
+    cpu_val[0] = 0;
+    cpu_val[1] = gpu_val.delta_score;
+    cpu_val[2] = gpu_val.show;
+    cpu_val[3] = gpu_val.clk;
+    cpu_val[4] = gpu_val.lr;
+    cpu_val[5] = gpu_val.lr_g2sum;
+    cpu_val[6] = gpu_val.slot;
+    if (gpu_val.mf_size > 0) {
+      for (int x = 0; x < gpu_val.mf_size; x++) {
+        cpu_val[x + 7] = gpu_val.mf[x];
+      }
+    }
+  }
+
+  container_->prefetch(devid, stream);
+}
+
+template <typename KeyType, typename ValType>
 template <typename GradType, typename Sgd>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
                                          const GradType* d_grads, size_t len,
-                                         Sgd sgd, cudaStream_t stream) {
+                                         Sgd sgd, gpuStream_t stream) {
   if (len == 0) {
     return;
   }
