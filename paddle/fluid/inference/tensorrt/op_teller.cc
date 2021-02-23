@@ -42,6 +42,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("skip_layernorm");
     teller_set.insert("slice");
 #endif
+#if IS_TRT_VERSION_GE(7130)
+    teller_set.insert("group_norm");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -106,7 +109,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transpose",
       "flatten2",
       "flatten",
-      "group_norm",
   };
 };
 
@@ -149,6 +151,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           }
         }
       }
+    }
+    if (op_type == "group_norm") {
+      bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
+      if (has_attrs == false) return false;
+
+      auto registry = GetPluginRegistry();
+      if (registry == nullptr) return false;
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
