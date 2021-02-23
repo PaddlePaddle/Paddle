@@ -227,12 +227,18 @@ def get_valid_op_role(block, insert_idx):
     return OpRole.Forward or OpRole.Backward
     """
     op_role = block.ops[insert_idx].attr('op_role')
-    if (insert_idx >= len(block.ops)) or (
-            op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
-        return OpRole.Backward
+    # if (insert_idx >= len(block.ops)) or (
+    #         op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
+    #     return OpRole.Backward
+    # if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
+    #     return OpRole.Forward
+
+    # return get_valid_op_role(block, insert_idx + 1)
+    if insert_idx >= len(block.ops): return OpRole.Optimize
+    if op_role == int(OpRole.Backward): return OpRole.Backward
+    if op_role == int(OpRole.Optimize): return OpRole.Optimize
     if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
         return OpRole.Forward
-
     return get_valid_op_role(block, insert_idx + 1)
 
 
@@ -479,6 +485,9 @@ def save_persistables(exe, dirname, main_program, filename=None):
     and part of persistable vars are duplicated and exist in all the ranks with different values.
     This function handles the model saving for sharding training.
     """
+
+    if main_program._pipeline_opt:
+        main_program = main_program._pipeline_opt['section_program']['program']
 
     def is_opt_vars(var):
         # NOTE(liangjianzhong): The checks should be updated when add new compatible optimizer
