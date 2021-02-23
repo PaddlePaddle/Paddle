@@ -16,7 +16,7 @@ from __future__ import print_function, division
 
 import unittest
 import numpy as np
-
+import warnings
 import paddle
 
 
@@ -26,25 +26,33 @@ class TestTensorTypePromotion(unittest.TestCase):
         self.y = paddle.to_tensor([1.0, 2.0])
 
     def test_operator(self):
-        with self.assertWarns(UserWarning) as context:
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
             self.x + self.y
-        self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.warning))
+            self.assertTrue(
+                "The dtype of left and right variables are not the same" in
+                str(context[-1].message))
 
-        with self.assertWarns(UserWarning) as context:
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
             self.x - self.y
-        self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.warning))
+            self.assertTrue(
+                "The dtype of left and right variables are not the same" in
+                str(context[-1].message))
 
-        with self.assertWarns(UserWarning) as context:
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
             self.x * self.y
-        self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.warning))
+            self.assertTrue(
+                "The dtype of left and right variables are not the same" in
+                str(context[-1].message))
 
-        with self.assertWarns(UserWarning) as context:
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
             self.x / self.y
-        self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.warning))
+            self.assertTrue(
+                "The dtype of left and right variables are not the same" in
+                str(context[-1].message))
 
 
 if __name__ == '__main__':
