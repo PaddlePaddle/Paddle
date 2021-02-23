@@ -286,9 +286,25 @@ function(op_library TARGET)
     if (WITH_XPU AND ${xpu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, XPU);\n")
     endif()
-    if (WITH_XPU AND ${npu_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, NPU);\n")
+
+    if (WITH_ASCEND_CL AND ${npu_cc_srcs_len} GREATER 0)
+        file(READ ${TARGET}_npu.cc TARGET_NPU_CONTENT)
+        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\(.*REGISTER_OP_NPU_KERNEL\\(" multi_npu_register "${TARGET_NPU_CONTENT}")
+        # [ \t\r\n]* is used for blank characters
+        string(REGEX MATCH "REGISTER_OP_NPU_KERNEL\\([ \t\r\n]*[a-z0-9_]*," one_npu_register "${multi_npu_register}")
+
+        if (one_register STREQUAL "")
+            string(REPLACE "_op" "" NPU_TARGET "${TARGET}")
+        else ()
+            string(REPLACE "REGISTER_OP_NPU_KERNEL(" "" NPU_TARGET "${one_register}")
+            string(REPLACE "," "" NPU_TARGET "${NPU_TARGET}")
+            # [ \t\r\n]+ is used for blank characters.
+            # Here we use '+' instead of '*' since it is a REPLACE operation.
+            string(REGEX REPLACE "[ \t\r\n]+" "" NPU_TARGET "${NPU_TARGET}")
+        endif()
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${NPU_TARGET}, NPU);\n")
     endif()
+
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN
     if (WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
       # Append first implemented MKLDNN activation operator
