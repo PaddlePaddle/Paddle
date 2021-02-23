@@ -75,6 +75,29 @@ class CollectiveHelper(object):
 
         block = program.global_block()
         if core.is_compiled_with_cuda():
+            if not wait_port:
+                temp_var = block.create_var(
+                    name=unique_name.generate('temp_var'),
+                    dtype=core.VarDesc.VarType.INT32,
+                    persistable=False,
+                    stop_gradient=True)
+                block.append_op(
+                    type='fill_constant',
+                    inputs={},
+                    outputs={'Out': [temp_var]},
+                    attrs={
+                        'shape': [1],
+                        'dtype': temp_var.dtype,
+                        'value': 1,
+                        'force_cpu': False,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
+                block.append_op(
+                    type='c_allreduce_sum',
+                    inputs={'X': [temp_var]},
+                    outputs={'Out': [temp_var]},
+                    attrs={'ring_id': 3,
+                           OP_ROLE_KEY: OpRole.Forward})
             comm_id_var = block.create_var(
                 name=unique_name.generate('nccl_id'),
                 persistable=True,
