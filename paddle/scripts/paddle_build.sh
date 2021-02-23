@@ -623,8 +623,7 @@ EOF
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
-                        retry_unittests_record="$retry_unittests_record
-                        $failed_test_lists"
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
@@ -664,10 +663,10 @@ EOF
         set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
-        set -x
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
+        set -x
     fi
 }
 
@@ -1193,8 +1192,7 @@ set +x
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
-                        retry_unittests_record="$retry_unittests_record
-                        $failed_test_lists"
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
