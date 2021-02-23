@@ -21,7 +21,7 @@ size_t Alignment(size_t size, const platform::Place &place) {
   if (platform::is_cpu_place(place)) {
     alignment = CpuMinChunkSize();
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     alignment = GpuMinChunkSize();
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

@@ -17,16 +17,25 @@ import six
 import sys
 import textwrap
 import copy
+import re
 
 import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
-from .extension_utils import is_cuda_file, prepare_unix_cflags, add_std_without_repeat, get_build_directory
+from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat, get_build_directory
 from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
-from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS
-from .extension_utils import use_new_custom_op_load_method
+from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS, OS_NAME
+from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
+
+# Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
+# The solution is: 1.User add function PyInit_[name] 2. set not to export
+# refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
+if IS_WINDOWS and six.PY3:
+    from distutils.command.build_ext import build_ext as _du_build_ext
+    from unittest.mock import Mock
+    _du_build_ext.get_export_symbols = Mock(return_value=None)
 
 CUDA_HOME = find_cuda_home()
 
@@ -116,7 +125,7 @@ def CppExtension(sources, *args, **kwargs):
            sources(list[str]): The C++/CUDA source file names
            args(list[options]): list of config options used to compile shared library
            kwargs(dict[option]): dict of config options used to compile shared library
-           
+
        Returns:
            Extension: An instance of setuptools.Extension
     """
@@ -141,7 +150,7 @@ def CUDAExtension(sources, *args, **kwargs):
            sources(list[str]): The C++/CUDA source file names
            args(list[options]): list of config options used to compile shared library
            kwargs(dict[option]): dict of config options used to compile shared library
-           
+
        Returns:
            Extension: An instance of setuptools.Extension
     """
@@ -195,12 +204,12 @@ class BuildExtension(build_ext, object):
     def __init__(self, *args, **kwargs):
         """
         Attributes is initialized with following oreder:
-        
+
             1. super(self).__init__()
             2. initialize_options(self)
             3. the reset of current __init__()
             4. finalize_options(self)
-        
+
         So, it is recommended to set attribute value in `finalize_options`.
         """
         super(BuildExtension, self).__init__(*args, **kwargs)
@@ -227,8 +236,10 @@ class BuildExtension(build_ext, object):
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
         # Save the original _compile method for later.
-        if self.compiler.compiler_type == 'msvc' or IS_WINDOWS:
-            raise NotImplementedError("Not support on MSVC currently.")
+        if self.compiler.compiler_type == 'msvc':
+            self.compiler._cpp_extensions += ['.cu', '.cuh']
+            original_compile = self.compiler.compile
+            original_spawn = self.compiler.spawn
         else:
             original_compile = self.compiler._compile
 
@@ -264,6 +275,81 @@ class BuildExtension(build_ext, object):
                 # restore original_compiler
                 self.compiler.compiler_so = original_compiler
 
+        def win_custom_single_compiler(sources,
+                                       output_dir=None,
+                                       macros=None,
+                                       include_dirs=None,
+                                       debug=0,
+                                       extra_preargs=None,
+                                       extra_postargs=None,
+                                       depends=None):
+
+            self.cflags = copy.deepcopy(extra_postargs)
+            extra_postargs = None
+
+            def win_custom_spawn(cmd):
+                # Using regex to modify compile options
+                compile_options = self.compiler.compile_options
+                for i in range(len(cmd)):
+                    if re.search('/MD', cmd[i]) is not None:
+                        cmd[i] = '/MT'
+                    if re.search('/W[1-4]', cmd[i]) is not None:
+                        cmd[i] = '/W0'
+
+                # Using regex to match src, obj and include files
+                src_regex = re.compile('/T(p|c)(.*)')
+                src_list = [
+                    m.group(2) for m in (src_regex.match(elem) for elem in cmd)
+                    if m
+                ]
+
+                obj_regex = re.compile('/Fo(.*)')
+                obj_list = [
+                    m.group(1) for m in (obj_regex.match(elem) for elem in cmd)
+                    if m
+                ]
+
+                include_regex = re.compile(r'((\-|\/)I.*)')
+                include_list = [
+                    m.group(1)
+                    for m in (include_regex.match(elem) for elem in cmd) if m
+                ]
+
+                assert len(src_list) == 1 and len(obj_list) == 1
+                src = src_list[0]
+                obj = obj_list[0]
+                if is_cuda_file(src):
+                    assert CUDA_HOME is not None
+                    nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                    if isinstance(self.cflags, dict):
+                        cflags = self.cflags['nvcc']
+                    elif isinstance(self.cflags, list):
+                        cflags = self.cflags
+                    else:
+                        cflags = []
+
+                    cflags = prepare_win_cflags(cflags) + ['--use-local-env']
+                    for flag in MSVC_COMPILE_FLAGS:
+                        cflags = ['-Xcompiler', flag] + cflags
+                    cmd = [nvcc_cmd, '-c', src, '-o', obj
+                           ] + include_list + cflags
+                elif isinstance(self.cflags, dict):
+                    cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
+                    cmd += cflags
+                elif isinstance(self.cflags, list):
+                    cflags = MSVC_COMPILE_FLAGS + self.cflags
+                    cmd += cflags
+
+                return original_spawn(cmd)
+
+            try:
+                self.compiler.spawn = win_custom_spawn
+                return original_compile(sources, output_dir, macros,
+                                        include_dirs, debug, extra_preargs,
+                                        extra_postargs, depends)
+            finally:
+                self.compiler.spawn = original_spawn
+
         def object_filenames_with_cuda(origina_func, build_directory):
             """
             Decorated the function to add customized naming machanism.
@@ -276,10 +362,13 @@ class BuildExtension(build_ext, object):
                     objects = origina_func(source_filenames, strip_dir,
                                            output_dir)
                     for i, source in enumerate(source_filenames):
-                        # modify xx.o -> xx.cu.o
+                        # modify xx.o -> xx.cu.o/xx.cu.obj
                         if is_cuda_file(source):
                             old_obj = objects[i]
-                            objects[i] = old_obj[:-1] + 'cu.o'
+                            if self.compiler.compiler_type == 'msvc':
+                                objects[i] = old_obj[:-3] + 'cu.obj'
+                            else:
+                                objects[i] = old_obj[:-1] + 'cu.o'
                     # if user set build_directory, output objects there.
                     if build_directory is not None:
                         objects = [
@@ -296,10 +385,13 @@ class BuildExtension(build_ext, object):
             return wrapper
 
         # customized compile process
-        self.compiler._compile = unix_custom_single_compiler
+        if self.compiler.compiler_type == 'msvc':
+            self.compiler.compile = win_custom_single_compiler
+        else:
+            self.compiler._compile = unix_custom_single_compiler
+
         self.compiler.object_filenames = object_filenames_with_cuda(
             self.compiler.object_filenames, self.build_lib)
-
         self._record_op_info()
 
         print("Compiling user custom op, it will cost a few seconds.....")
@@ -329,15 +421,21 @@ class BuildExtension(build_ext, object):
             compiler = self.compiler.compiler_cxx[0]
         elif IS_WINDOWS:
             compiler = os.environ.get('CXX', 'cl')
-            raise NotImplementedError("We don't support Windows Currently.")
         else:
             compiler = os.environ.get('CXX', 'c++')
 
         check_abi_compatibility(compiler)
+        # Warn user if VC env is activated but `DISTUILS_USE_SDK` is not set.
+        if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' in os.environ and 'DISTUTILS_USE_SDK' not in os.environ:
+            msg = (
+                'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
+                'This may lead to multiple activations of the VC env.'
+                'Please set `DISTUTILS_USE_SDK=1` and try again.')
+            raise UserWarning(msg)
 
     def _record_op_info(self):
         """
-        Record custum op inforomation. 
+        Record custum op inforomation.
         """
         # parse shared library abs path
         outputs = self.get_outputs()
@@ -376,7 +474,13 @@ class EasyInstallCommand(easy_install, object):
         # .so shared library to another name.
         for egg_file in self.outputs:
             filename, ext = os.path.splitext(egg_file)
-            if ext == '.so':
+            will_rename = False
+            if OS_NAME.startswith('linux') and ext == '.so':
+                will_rename = True
+            elif IS_WINDOWS and ext == '.pyd':
+                will_rename = True
+
+            if will_rename:
                 new_so_path = filename + "_pd_" + ext
                 if not os.path.exists(new_so_path):
                     os.rename(r'%s' % egg_file, r'%s' % new_so_path)
@@ -421,7 +525,7 @@ def load(name,
         extra_include_paths(list[str]): additional include path used to search header files.
                                         Default None.
         build_directory(str): specific directory path to put shared library file. If set None,
-                            it will use `PADDLE_EXTENSION_DIR` from os.environ. Use 
+                            it will use `PADDLE_EXTENSION_DIR` from os.environ. Use
                             `paddle.utils.cpp_extension.get_build_directory()` to see the location.
         interpreter(str): alias or full interpreter path to specific which one to use if have installed multiple.
                            If set None, will use `python` as default interpreter.
@@ -444,9 +548,13 @@ def load(name,
 
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
+    # Will load shared library from 'path' on windows
+    if IS_WINDOWS:
+        os.environ['path'] = build_directory + ';' + os.environ['path']
+
     log_v("build_directory: {}".format(build_directory), verbose)
 
-    file_path = os.path.join(build_directory, "setup.py")
+    file_path = os.path.join(build_directory, "{}_setup.py".format(name))
     sources = [os.path.abspath(source) for source in sources]
 
     if extra_cxx_cflags is None: extra_cxx_cflags = []
@@ -463,7 +571,7 @@ def load(name,
     log_v("additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
         ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
-    # write setup.py file and compile it 
+    # write setup.py file and compile it
     _write_setup_file(name, sources, file_path, extra_include_paths,
                       extra_cxx_cflags, extra_cuda_cflags, extra_ldflags,
                       verbose)

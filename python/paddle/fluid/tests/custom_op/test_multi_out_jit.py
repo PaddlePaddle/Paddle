@@ -13,20 +13,30 @@
 # limitations under the License.
 
 import os
+import subprocess
 import unittest
-import paddle
 import numpy as np
+
+import paddle
 from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
-from test_simple_custom_op_setup import relu2_dynamic, relu2_static
+
+# Because Windows don't use docker, the shared lib already exists in the 
+# cache dir, it will not be compiled again unless the shared lib is removed.
+if os.name == 'nt':
+    cmd = 'del {}\\multi_out_jit.pyd'.format(get_build_directory())
+    run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
-custom_module = load(
-    name='simple_jit_relu2',
-    sources=['relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'],
+multi_out_module = load(
+    name='multi_out_jit',
+    sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
-    extra_cuda_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True)
 
 
 class TestJITLoad(unittest.TestCase):
@@ -67,9 +77,40 @@ class TestJITLoad(unittest.TestCase):
 
 class TestMultiOutputDtypes(unittest.TestCase):
     def setUp(self):
-        self.custom_op = custom_module.relu2
+        self.custom_op = multi_out_module.multi_out
         self.dtypes = ['float32', 'float64']
-        self.devices = ['cpu', 'gpu']
+        self.devices = ['cpu']
+
+    def run_static(self, device, dtype):
+        paddle.set_device(device)
+        x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
+
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
+                outs = self.custom_op(x)
+
+                exe = paddle.static.Executor()
+                exe.run(paddle.static.default_startup_program())
+                res = exe.run(paddle.static.default_main_program(),
+                              feed={'X': x_data},
+                              fetch_list=outs)
+
+                return res
+
+    def check_multi_outputs(self, outs, is_dynamic=False):
+        out, zero_float64, one_int32 = outs
+        if is_dynamic:
+            zero_float64 = zero_float64.numpy()
+            one_int32 = one_int32.numpy()
+        # Fake_float64
+        self.assertTrue('float64' in str(zero_float64.dtype))
+        self.assertTrue(
+            np.array_equal(zero_float64, np.zeros([4, 8]).astype('float64')))
+        # ZFake_int32
+        self.assertTrue('int32' in str(one_int32.dtype))
+        self.assertTrue(
+            np.array_equal(one_int32, np.ones([4, 8]).astype('int32')))
 
     def test_static(self):
         paddle.enable_static()
@@ -89,37 +130,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
 
                 self.assertTrue(len(outs) == 3)
                 self.check_multi_outputs(outs, True)
-
-    def check_multi_outputs(self, outs, is_dynamic=False):
-        out, zero_float64, one_int32 = outs
-        if is_dynamic:
-            zero_float64 = zero_float64.numpy()
-            one_int32 = one_int32.numpy()
-        # Fake_float64
-        self.assertTrue('float64' in str(zero_float64.dtype))
-        self.assertTrue(
-            np.array_equal(zero_float64, np.zeros([4, 8]).astype('float64')))
-        # ZFake_int32
-        self.assertTrue('int32' in str(one_int32.dtype))
-        self.assertTrue(
-            np.array_equal(one_int32, np.ones([4, 8]).astype('int32')))
-
-    def run_static(self, device, dtype):
-        paddle.set_device(device)
-        x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
-                outs = self.custom_op(x)
-
-                exe = paddle.static.Executor()
-                exe.run(paddle.static.default_startup_program())
-                res = exe.run(paddle.static.default_main_program(),
-                              feed={'X': x_data},
-                              fetch_list=outs)
-
-                return res
 
 
 if __name__ == '__main__':
