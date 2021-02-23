@@ -21,11 +21,11 @@ import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 
-from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
-from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat, get_build_directory
-from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
-from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS, OS_NAME
-from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
+from .extension_utils import find_cuda_home, normalize_extension_kwargs, bootstrap_context
+from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat
+from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile, parse_op_name_from
+from .extension_utils import check_abi_compatibility, log_v, get_build_directory, use_new_custom_op_load_method
+from .extension_utils import CustomOpInfo, IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
