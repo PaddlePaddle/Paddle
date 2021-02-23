@@ -13,9 +13,6 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 
-#include <map>
-#include <unordered_set>
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -34,22 +31,31 @@ std::string OpHandleBase::DebugString() const {
 }
 
 OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &ev : events_) {
     if (ev.second) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(ev.second));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(ev.second));
+#endif
     }
   }
 #endif
 }
 
 void OpHandleBase::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &p : dev_ctxes_) {
     int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
+    platform::SetDeviceId(dev_id);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipEventCreateWithFlags(&events_[dev_id], hipEventDisableTiming));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
+#endif
   }
   if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
     for (auto &out_var : outputs_) {
@@ -127,7 +133,7 @@ void OpHandleBase::InitXPU() {
 }
 
 void OpHandleBase::Run(DeviceType use_device) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (events_.empty() && use_device == p::kCUDA && dev_ctxes_.size() > 0) {
     InitCUDA();
   }
@@ -161,7 +167,7 @@ void OpHandleBase::Run(DeviceType use_device) {
 }
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_NOT_NULL(waited_ctx, platform::errors::InvalidArgument(
                                           "Argument waited_ctx is NULL."));
   if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
@@ -175,7 +181,11 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
     auto stream =
         static_cast<platform::CUDADeviceContext *>(waited_ctx)->stream();
     for (auto &ev : events_) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, ev.second, 0));
+#endif
     }
   }
 #else
@@ -206,22 +216,20 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
       if (in_var_handle) {
         auto &place = in_var_handle->place();
         if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream =
               static_cast<platform::CUDADeviceContext *>(dev_ctxes_.at(place))
                   ->stream();
+#ifdef PADDLE_WITH_HIP
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#else
           PADDLE_ENFORCE_CUDA_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#endif
 #else
           PADDLE_THROW(
               platform::errors::PreconditionNotMet("Not compiled with CUDA."));
-#endif
-        } else if (platform::is_xpu_place(place)) {
-#ifdef PADDLE_WITH_XPU
-          dev_ctxes_.at(place)->Wait();
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
         }
         // There are nothing to do when the place is CPUPlace.
@@ -236,13 +244,17 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
         if (in_var_handle) {
           auto &place = in_var_handle->place();
           if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             platform::DeviceContextPool &pool =
                 platform::DeviceContextPool::Instance();
             auto stream =
                 static_cast<platform::CUDADeviceContext *>(pool.Get(place))
                     ->stream();
+#ifdef PADDLE_WITH_HIP
+            PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
             PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
 #else
             PADDLE_THROW(platform::errors::PreconditionNotMet(
                 "Not compiled with CUDA."));
@@ -262,28 +274,20 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
       auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
       if (in_var_handle) {
         if (platform::is_gpu_place(in_var_handle->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           auto stream = static_cast<platform::CUDADeviceContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
                             ->stream();
+#ifdef PADDLE_WITH_HIP
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#else
           PADDLE_ENFORCE_CUDA_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#endif
 #else
           PADDLE_THROW(
               platform::errors::PreconditionNotMet("Not compiled with CUDA."));
-#endif
-        } else if (platform::is_xpu_place(in_var_handle->place())) {
-#ifdef PADDLE_WITH_XPU
-          PADDLE_ENFORCE_EQ(
-              platform::is_same_place(place, in_var_handle->place()), true,
-              platform::errors::InvalidArgument(
-                  "The place of output(%s) is not consistent with the "
-                  "place of current op(%s).",
-                  in_var_handle->Name(), Name()));
-          dev_ctxes_.at(place)->Wait();
-#else
-          PADDLE_THROW(
-              platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
         }
         // There are nothing to do when the place is CPUPlace.
@@ -308,14 +312,19 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
   callback();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!events_.empty()) {  // Use event
     for (auto &p : dev_ctxes_) {
       auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
       auto *cuda_dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
       VLOG(10) << "cudadevicecontext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
+#endif
     }
   }
 #endif
@@ -323,7 +332,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 
 void OpHandleBase::RunAndRecordEvent(platform::Place p,
                                      const std::function<void()> &callback) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_cpu_place(p) || events_.empty()) {
     callback();
   } else {

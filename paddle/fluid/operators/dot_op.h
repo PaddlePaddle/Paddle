@@ -26,10 +26,6 @@ using Tensor = framework::Tensor;
 using complex64 = platform::complex64;
 using complex128 = platform::complex128;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
 template <typename T, typename R>
 struct P {
   void operator()(T a, R b);
@@ -85,11 +81,11 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
         dy.device(dev) = dy * dout.broadcast(size);
       }
     } else {
-      auto dout = EigenMatrix<T>::From(*tensor_dout);
+      auto dout = framework::EigenMatrix<T>::From(*tensor_dout);
 
       if (tensor_dx) {
         tensor_dx->mutable_data<T>(ctx.GetPlace());
-        auto y = EigenMatrix<T>::From(*tensor_y);
+        auto y = framework::EigenMatrix<T>::From(*tensor_y);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
         auto& dev = *dev_raw.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
@@ -99,14 +95,14 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
         math::ConjFunctor<T> functor(tensor_y->data<T>(), tensor_y->numel(),
                                      tensor_dx->data<T>());
         for_range(functor);
-        auto dx = EigenMatrix<T>::From(*tensor_dx);
+        auto dx = framework::EigenMatrix<T>::From(*tensor_dx);
 
         dx.device(dev) = dx * dout.broadcast(size);
       }
 
       if (tensor_dy) {
         tensor_dy->mutable_data<T>(ctx.GetPlace());
-        auto x = EigenMatrix<T>::From(*tensor_x);
+        auto x = framework::EigenMatrix<T>::From(*tensor_x);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
         auto& dev = *dev_raw.eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
@@ -117,7 +113,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
                                      tensor_dy->data<T>());
         for_range(functor);
 
-        auto dy = EigenMatrix<T>::From(*tensor_dy);
+        auto dy = framework::EigenMatrix<T>::From(*tensor_dy);
 
         dy.device(dev) = dy * dout.broadcast(size);
       }
@@ -186,12 +182,12 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
         dy.device(dev) = x * dout.broadcast(size);
       }
     } else {
-      auto dout = EigenMatrix<T>::From(*tensor_dout);
+      auto dout = framework::EigenMatrix<T>::From(*tensor_dout);
 
       if (tensor_dx) {
         tensor_dx->mutable_data<T>(ctx.GetPlace());
-        auto y = EigenMatrix<T>::From(*tensor_y);
-        auto dx = EigenMatrix<T>::From(*tensor_dx);
+        auto y = framework::EigenMatrix<T>::From(*tensor_y);
+        auto dx = framework::EigenMatrix<T>::From(*tensor_dx);
         auto& dev =
             *ctx.template device_context<DeviceContext>().eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dx->dims()[1]);
@@ -200,8 +196,8 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
 
       if (tensor_dy) {
         tensor_dy->mutable_data<T>(ctx.GetPlace());
-        auto x = EigenMatrix<T>::From(*tensor_x);
-        auto dy = EigenMatrix<T>::From(*tensor_dy);
+        auto x = framework::EigenMatrix<T>::From(*tensor_x);
+        auto dy = framework::EigenMatrix<T>::From(*tensor_dy);
         auto& dev =
             *ctx.template device_context<DeviceContext>().eigen_device();
         Eigen::DSizes<int, 2> size(1, tensor_dy->dims()[1]);
@@ -262,9 +258,9 @@ class DotKernel : public framework::OpKernel<T> {
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       out.device(dev) = (x * y).sum();
     } else {
-      auto out = EigenMatrix<T>::From(*tensor_out);
-      auto x = EigenMatrix<T>::From(*tensor_x);
-      auto y = EigenMatrix<T>::From(*tensor_y);
+      auto out = framework::EigenMatrix<T>::From(*tensor_out);
+      auto x = framework::EigenMatrix<T>::From(*tensor_x);
+      auto y = framework::EigenMatrix<T>::From(*tensor_y);
 
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
       out.device(dev) = (x * y).sum(Eigen::DSizes<int, 1>(1));

@@ -19,7 +19,7 @@ function(py_dist_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_dist_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE AND WITH_GPU AND WITH_NCCL AND NOT WIN32)
+    if(WITH_COVERAGE AND (WITH_GPU OR WITH_ROCM) AND (WITH_NCCL OR WITH_RCCL) AND NOT WIN32)
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
                FLAGS_cpu_deterministic=true NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1

@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col.h"
 #include <gtest/gtest.h>
-#include <vector>
 #include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
-#include "paddle/fluid/platform/port.h"
 
 template <typename DeviceContext, typename Place>
 void testIm2col() {

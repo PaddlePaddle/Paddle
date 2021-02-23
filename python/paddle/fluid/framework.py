@@ -248,8 +248,9 @@ def _fake_interface_only_(func):
         raise AssertionError(
             "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
             "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static" %
-            func.__name__)
+            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
@@ -1865,7 +1866,43 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
+        steps = []
+
         max_integer = sys.maxsize
+
+        def replace_ellipsis(item):
+            # Use slice(None) to replace Ellipsis.
+            # For var, var.shape = [3,4,5,6]
+            #
+            #   var[..., 1:2] -> var[:, :, :, 1:2]
+            #   var[0, ...] -> var[0]
+            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
+
+            item = list(item)
+
+            # Remove Variable to skip bug when counting Ellipsis
+            item_remove_var = [
+                ele for ele in item if not isinstance(ele, Variable)
+            ]
+            ell_count = item_remove_var.count(Ellipsis)
+            if ell_count == 0:
+                return item
+            elif ell_count > 1:
+                raise IndexError(
+                    "An index can only have a single ellipsis ('...')")
+
+            ell_idx = item.index(Ellipsis)
+
+            if ell_idx == len(item) - 1:
+                return item[:-1]
+            else:
+                item[ell_idx:ell_idx + 1] = [slice(None)] * (
+                    len(self.shape) - len(item) + 1)
+
+            return item
+
+        item = replace_ellipsis(item)
+
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -1875,23 +1912,47 @@ class Variable(object):
                 if start is None and end is None and step is None:
                     continue
 
-                start = 0 if start is None else start
                 step = 1 if step is None else step
 
-                # TODO: support cases when step != 1
-                if step != 1:
+                # TODO: support cases when step < 1
+                if not isinstance(step, Variable) and step == 0:
                     raise ValueError(
-                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "When assign a value to a paddle.Tensor, step can not be 0, "
                         "but received step is {}.".format(step))
-                end = max_integer if end is None else end
+
+                if isinstance(step, Variable) and (start is None or
+                                                   end is None):
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, it's not supported that "
+                        "the start or end is None when the type of step is paddle.Tensor."
+                    )
+
+                if start is None:
+                    start = 0 if step > 0 else max_integer
+
+                if end is None:
+                    end = max_integer if step > 0 else (0 - max_integer)
             else:
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
+                step = 1
             axes.append(dim)
             starts.append(start)
             ends.append(end)
+            steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+
+        from .layers import utils
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            del attrs['starts']
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            del attrs['ends']
+        if utils._contain_var(steps):
+            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+            del attrs['steps']
 
         # 2. Parse value
         dtype = self.dtype
@@ -1938,6 +1999,7 @@ class Variable(object):
 
         self.block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+
         return self
 
 
@@ -1991,9 +2053,13 @@ class OpProtoHolder(object):
 
     def update_op_proto(self):
         op_protos = get_all_op_protos()
+        custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
+                custom_op_names.append(proto.type)
+
+        return custom_op_names
 
     @staticmethod
     def generated_op_attr_names():
@@ -2053,9 +2119,9 @@ class Operator(object):
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
-        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue',
-        'heter_listen_and_serv'
+        'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
+        'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
     }
 
     def __init__(self,
@@ -5702,6 +5768,9 @@ def load_op_library(lib_filename):
 
     Args:
         lib_filename (str): name of dynamic library.
+    
+    Returns:
+        list[str]: new registered custom op names.
 
     Examples:
         .. code-block:: python
@@ -5711,7 +5780,7 @@ def load_op_library(lib_filename):
 
     """
     core.load_op_library(lib_filename)
-    OpProtoHolder.instance().update_op_proto()
+    return OpProtoHolder.instance().update_op_proto()
 
 
 def switch_device(device):
@@ -5740,27 +5809,28 @@ def device_guard(device=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            support_gpu = fluid.is_compiled_with_cuda()
-            place = fluid.CPUPlace()
+            paddle.enable_static()
+            support_gpu = paddle.is_compiled_with_cuda()
+            place = paddle.CPUPlace()
             if support_gpu:
-                place = fluid.CUDAPlace(0)
+                place = paddle.CUDAPlace(0)
 
             # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
-            data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
-            data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
-            shape = fluid.layers.shape(data2)
+            data1 = paddle.full(shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')
+            data2 = paddle.full(shape=[1, 3, 64], fill_value=0.5, dtype='float32')
+            shape = paddle.shape(data2)
 
-            with fluid.device_guard("cpu"):
+            with paddle.static.device_guard("cpu"):
                 # Ops created here will be placed on CPUPlace
-                shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
-            with fluid.device_guard('gpu'):
+                shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
+            with paddle.static.device_guard('gpu'):
                 # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
-                out = fluid.layers.crop_tensor(data1, shape=shape)
+                out = paddle.reshape(data1, shape=shape)
 
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
             result = exe.run(fetch_list=[out])
     """
 

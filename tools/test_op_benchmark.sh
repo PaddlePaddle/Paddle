@@ -210,9 +210,10 @@ function run_op_benchmark_test {
 
 # check benchmark result
 function check_op_benchmark_result {
-  local api_info_file check_status_code
+  local logs_dir api_info_file check_status_code
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
+  logs_dir=$(pwd)/logs-test_pr
   api_info_file=$(pwd)/api_info.txt
   for retry_time in $(seq 0 ${RETRY_TIMES})
   do
@@ -223,7 +224,7 @@ function check_op_benchmark_result {
       pushd benchmark/api > /dev/null
       bash deploy/main_control.sh tests_v2 \
                                   tests_v2/configs \
-                                  $(pwd)/logs-test_pr \
+                                  ${logs_dir} \
                                   $VISIBLE_DEVICES \
                                   "gpu" \
                                   "speed" \

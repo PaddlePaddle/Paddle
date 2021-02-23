@@ -25,7 +25,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using DataLayout = platform::DataLayout;
 
 template <typename T, int D>
 static void DataTranspose(const framework::ExecutionContext& ctx,
@@ -67,14 +66,15 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     const T* filter_data = filter->data<T>();
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
-    const paddle::operators::DataLayout data_layout =
-        (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
+    const paddle::platform::DataLayout data_layout =
+        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW
+                                   : platform::DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
     std::vector<int> input_vec = framework::vectorize<int>(input->dims());
     std::vector<int> output_vec = framework::vectorize<int>(output->dims());
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == platform::DataLayout::kNHWC) {
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 3, 1, 2};
         for (size_t i = 0; i < axis.size(); ++i) {
@@ -195,7 +195,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
     T* transformed_output_data = transformed_output.data<T>();
 
-    DataLayout layout;
+    platform::DataLayout layout;
 
     int iwo_groups = groups;
     int c_groups = 1;
@@ -206,9 +206,9 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 #endif
 
     if (strides.size() == 2U) {
-      layout = DataLayout::kNCHW;
+      layout = platform::DataLayout::kNCHW;
     } else {
-      layout = DataLayout::kNCDHW;
+      layout = platform::DataLayout::kNCDHW;
     }
 
     size_t workspace_size = 0;
@@ -269,7 +269,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
           ctx, &transformed_output, output, starts, ends, axes);
     }
 
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == platform::DataLayout::kNHWC) {
       Tensor output_transpose;
       Tensor output_nchw;
       output_nchw.ShareDataWith(*output);
@@ -309,8 +309,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
-    const paddle::operators::DataLayout data_layout =
-        (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
+    const paddle::platform::DataLayout data_layout =
+        (data_layout_str != "NHWC" ? platform::DataLayout::kNCHW
+                                   : platform::DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
@@ -318,7 +319,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> input_vec = framework::vectorize<int>(input->dims());
     std::vector<int> output_vec =
         framework::vectorize<int>(output_grad->dims());
-    if (data_layout == DataLayout::kNHWC) {
+    if (data_layout == platform::DataLayout::kNHWC) {
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 3, 1, 2};
         for (size_t i = 0; i < axis.size(); ++i) {
@@ -416,12 +417,12 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     output_vec = framework::vectorize<int>(transformed_output_grad.dims());
 
     // ------------------- cudnn descriptors ---------------------
-    DataLayout layout;
+    platform::DataLayout layout;
 
     if (strides.size() == 2U) {
-      layout = DataLayout::kNCHW;
+      layout = platform::DataLayout::kNCHW;
     } else {
-      layout = DataLayout::kNCDHW;
+      layout = platform::DataLayout::kNCDHW;
     }
 
     int iwo_groups = groups;
@@ -515,7 +516,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         workspace_handle.RunFunc(cudnn_func, workspace_size);
       }
 
-      if (data_layout == DataLayout::kNHWC) {
+      if (data_layout == platform::DataLayout::kNHWC) {
         Tensor input_grad_transpose;
         Tensor input_grad_nchw;
         input_grad_nchw.ShareDataWith(*input_grad);
@@ -849,7 +850,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo =
         static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
 
-    auto layout = GetCudnnTensorFormat(DataLayout::kNCHW);
+    auto layout = GetCudnnTensorFormat(platform::DataLayout::kNCHW);
 
     // ddo = conv(ddI, W) + conv(I, ddW)
     size_t workspace_size = 0;
@@ -916,12 +917,12 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     }
 
     int i_n, i_c, i_d, i_h, i_w;
-    GetNCDHW(transformed_X.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h,
-             &i_w);
+    GetNCDHW(transformed_X.dims(), platform::DataLayout::kNCHW, &i_n, &i_c,
+             &i_d, &i_h, &i_w);
 
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(transformed_dO.dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h,
-             &o_w);
+    GetNCDHW(transformed_dO.dims(), platform::DataLayout::kNCHW, &o_n, &o_c,
+             &o_d, &o_h, &o_w);
 
     int group_offset_in =
         transformed_X.numel() / transformed_X.dims()[0] / groups;

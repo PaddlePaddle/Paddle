@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/tensor_formatter.h"
-#include <algorithm>
+
 #include <string>
 
 namespace paddle {

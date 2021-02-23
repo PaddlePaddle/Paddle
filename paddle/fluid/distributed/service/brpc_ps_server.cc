@@ -13,14 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
-
 #include <thread>  // NOLINT
-#include "Eigen/Dense"
-#include "butil/endpoint.h"
-#include "iomanip"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
 
 namespace paddle {
 namespace distributed {
@@ -58,14 +61,24 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
 
   std::string ip_port = ip + ":" + std::to_string(port);
   VLOG(3) << "server of rank " << _rank << " starts at " << ip_port;
-  int num_threads = std::thread::hardware_concurrency();
   brpc::ServerOptions options;
-  options.num_threads = num_threads;
+
+  int num_threads = std::thread::hardware_concurrency();
+  auto trainers = _environment->get_trainers();
+  options.num_threads = trainers > num_threads ? trainers : num_threads;
 
   if (_server.Start(ip_port.c_str(), &options) != 0) {
-    LOG(ERROR) << "BrpcPsServer start failed, ip_port=" << ip_port;
-    return 0;
+    VLOG(0) << "BrpcPsServer start failed, ip_port= " << ip_port
+            << " , Try Again.";
+
+    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+
+    if (_server.Start(int_ip_port.c_str(), &options) != 0) {
+      LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
+      return 0;
+    }
   }
+
   VLOG(0) << "BrpcPsServer::start registe_ps_server";
   _environment->registe_ps_server(ip, port, _rank);
   VLOG(0) << "BrpcPsServer::start wait";
@@ -450,6 +463,8 @@ int32_t BrpcPsService::save_one_table(Table *table,
   table->flush();
 
   int32_t feasign_size = 0;
+
+  VLOG(0) << "save one table " << request.params(0) << " " << request.params(1);
   feasign_size = table->save(request.params(0), request.params(1));
   if (feasign_size < 0) {
     set_response_code(response, -1, "table save failed");
@@ -481,10 +496,18 @@ int32_t BrpcPsService::shrink_table(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
-  table->flush();
-  if (table->shrink() != 0) {
-    set_response_code(response, -1, "table shrink failed");
+  if (request.params_size() < 1) {
+    set_response_code(
+        response, -1,
+        "PsRequestMessage.datas is requeired at least 1, threshold");
+    return -1;
   }
+  table->flush();
+  if (table->shrink(request.params(0)) != 0) {
+    set_response_code(response, -1, "table shrink failed");
+    return -1;
+  }
+  VLOG(0) << "Pserver Shrink Finished";
   return 0;
 }
 

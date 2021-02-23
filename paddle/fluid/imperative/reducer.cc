@@ -14,60 +14,257 @@
 
 #include "paddle/fluid/imperative/reducer.h"
 
+#include <iostream>
+
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/string/string_helper.h"
+
+#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
+
+#include "paddle/fluid/imperative/parallel_context.h"
+
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
-std::shared_ptr<Reducer> Reducer::s_instance_ = NULL;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+// div the nranks
+void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
+  framework::Tensor *tensor =
+      is_sparse_
+          ? sparse_contents_->GetMutable<framework::SelectedRows>()
+                ->mutable_value()
+          : dense_contents_.GetMutable<framework::LoDTensor>();
+
+  if (platform::is_gpu_place(tensor->place())) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    DivNRanks(tensor, nranks, context);
+#endif
+  } else if (platform::is_cpu_place(tensor->place())) {
+    framework::VisitDataTypeSmall(
+        dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
+                    tensor, nranks, context));
+  } else if (platform::is_xpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_XPU_BKCL
+// TODO(liuyuhui) support xpu about div nranks in the future
+#endif
+  }
+}
+
+template <typename DeviceContext, typename T>
+static void ConcatTensorsForAllReduce(
+    const DeviceContext &context,
+    const std::vector<framework::Tensor> &dense_tensors_,
+    framework::Variable *p_dense_contents) {
+  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+  concat_functor_(context, dense_tensors_, 0,
+                  p_dense_contents->GetMutable<framework::LoDTensor>());
+}
+
+template <typename DeviceContext, typename T>
+static void SplitTensorsForAllReduce(
+    const DeviceContext &context, framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors) {
+  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor *> outs;
+  std::vector<const framework::Tensor *> shape_refer;
+
+  outs.reserve(p_dense_tensors->size());
+  shape_refer.reserve(p_dense_tensors->size());
+
+  for (auto &tensor : *p_dense_tensors) {
+    outs.emplace_back(&tensor);
+    shape_refer.emplace_back(&tensor);
+  }
+  // Sometimes direct copies will be faster
+  if (p_dense_tensors->size() < 10) {
+    operators::StridedMemcpyWithAxis0<T>(context, *in, shape_refer, &outs);
+  } else {
+    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    split_functor_(context, *in, shape_refer, 0, &outs);
+  }
+}
 
 // context is used to select the stream for concat
-void Group::ConcatTensors(const platform::CUDADeviceContext &context) {
-  VLOG(3) << "Before concat, set output tensor size is " << all_length_;
-  auto tensor = dense_contents_.GetMutable<framework::LoDTensor>();
-  tensor->Resize(framework::make_ddim({all_length_}))
-      .mutable_data(context.GetPlace(), dtype_);
-
-  switch (dtype_) {
+template <typename DeviceContext>
+static void ConcatTensorsWithType(
+    const DeviceContext &context,
+    const std::vector<framework::Tensor> &dense_tensors_,
+    framework::Variable *p_dense_contents,
+    framework::proto::VarType::Type type) {
+  switch (type) {
     case framework::proto::VarType::FP16:
-      ConcatTensorsForAllReduce<platform::float16>(context, dense_tensors_,
-                                                   &dense_contents_);
+      ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
+          context, dense_tensors_, p_dense_contents);
       break;
     case framework::proto::VarType::FP32:
-      ConcatTensorsForAllReduce<float>(context, dense_tensors_,
-                                       &dense_contents_);
+      ConcatTensorsForAllReduce<DeviceContext, float>(context, dense_tensors_,
+                                                      p_dense_contents);
       break;
     case framework::proto::VarType::FP64:
-      ConcatTensorsForAllReduce<double>(context, dense_tensors_,
-                                        &dense_contents_);
+      ConcatTensorsForAllReduce<DeviceContext, double>(context, dense_tensors_,
+                                                       p_dense_contents);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          framework::DataTypeToString(dtype_)));
+          framework::DataTypeToString(type)));
   }
 }
 
 // context is used to select the stream for split
-void Group::SplitTensors(const platform::CUDADeviceContext &context) {
-  switch (dtype_) {
+template <typename DeviceContext>
+static void SplitTensorsWithType(
+    const DeviceContext &context, framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors,
+    framework::proto::VarType::Type type) {
+  switch (type) {
     case framework::proto::VarType::FP16:
-      SplitTensorsForAllReduce<platform::float16>(context, &dense_contents_,
-                                                  &dense_tensors_);
+      SplitTensorsForAllReduce<DeviceContext, platform::float16>(
+          context, p_dense_contents, p_dense_tensors);
       break;
     case framework::proto::VarType::FP32:
-      SplitTensorsForAllReduce<float>(context, &dense_contents_,
-                                      &dense_tensors_);
+      SplitTensorsForAllReduce<DeviceContext, float>(context, p_dense_contents,
+                                                     p_dense_tensors);
       break;
     case framework::proto::VarType::FP64:
-      SplitTensorsForAllReduce<double>(context, &dense_contents_,
-                                       &dense_tensors_);
+      SplitTensorsForAllReduce<DeviceContext, double>(context, p_dense_contents,
+                                                      p_dense_tensors);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          framework::DataTypeToString(dtype_)));
+          framework::DataTypeToString(type)));
+  }
+}
+
+#ifdef PADDLE_WITH_XPU_BKCL
+template <>
+void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+    const platform::XPUDeviceContext &context,
+    framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors) {
+  auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
+  std::vector<framework::Tensor *> outs;
+  std::vector<const framework::Tensor *> shape_refer;
+
+  outs.reserve(p_dense_tensors->size());
+  shape_refer.reserve(p_dense_tensors->size());
+
+  for (auto &tensor : *p_dense_tensors) {
+    outs.emplace_back(&tensor);
+    shape_refer.emplace_back(&tensor);
+  }
+  operators::math::SplitFunctor<platform::XPUDeviceContext, float>
+      split_functor_;
+  split_functor_(context, *in, shape_refer, 0, &outs);
+}
+
+// context is used to select the stream for concat
+template <>
+void ConcatTensorsWithType<platform::XPUDeviceContext>(
+    const platform::XPUDeviceContext &context,
+    const std::vector<framework::Tensor> &dense_tensors_,
+    framework::Variable *p_dense_contents,
+    framework::proto::VarType::Type type) {
+  switch (type) {
+    case framework::proto::VarType::FP32:
+      ConcatTensorsForAllReduce<platform::XPUDeviceContext, float>(
+          context, dense_tensors_, p_dense_contents);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it concats tensors for "
+          "allreduce.",
+          framework::DataTypeToString(type)));
+  }
+}
+
+// context is used to select the stream for split
+template <>
+void SplitTensorsWithType<platform::XPUDeviceContext>(
+    const platform::XPUDeviceContext &context,
+    framework::Variable *p_dense_contents,
+    std::vector<framework::Tensor> *p_dense_tensors,
+    framework::proto::VarType::Type type) {
+  switch (type) {
+    case framework::proto::VarType::FP32:
+      SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it splits tensors for "
+          "allreduce.",
+          framework::DataTypeToString(type)));
+  }
+}
+#endif
+
+void Group::ConcatTensors(const platform::DeviceContext &context) {
+  auto place = context.GetPlace();
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    ConcatTensorsWithType(
+        static_cast<const platform::CUDADeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat grad tensors since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU_BKCL
+    ConcatTensorsWithType(
+        static_cast<const platform::XPUDeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat xpu grads since it's not compiled with BKCL,"
+        "Please recompile or reinstall Paddle with BKCL support."));
+#endif
+  } else if (platform::is_cpu_place(place)) {
+    ConcatTensorsWithType(
+        static_cast<const platform::CPUDeviceContext &>(context),
+        dense_tensors_, &dense_contents_, dtype_);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Concat grad tensor not supported on place (%s)", place));
+  }
+}
+
+void Group::SplitTensors(const platform::DeviceContext &context) {
+  auto place = context.GetPlace();
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    SplitTensorsWithType(
+        static_cast<const platform::CUDADeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split grad tensor since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU_BKCL
+    SplitTensorsWithType(
+        static_cast<const platform::XPUDeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split xpu grad since it's not compiled with BKCL,"
+        "Please recompile or reinstall Paddle with BKCL support."));
+#endif
+  } else if (platform::is_cpu_place(place)) {
+    SplitTensorsWithType(
+        static_cast<const platform::CPUDeviceContext &>(context),
+        &dense_contents_, &dense_tensors_, dtype_);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Split grad tensor not supported on place (%s)", place));
   }
 }
 
@@ -103,6 +300,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       find_unused_vars_(find_unused_vars) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
+  nranks_ = parallel_ctx->GetNRanks();
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -114,43 +312,6 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
               this->AddDistHook(global_var_index);
             })));
     var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;
-  }
-  // create streams
-  compute_stream_ = static_cast<platform::CUDADeviceContext *>(
-                        platform::DeviceContextPool::Instance().Get(place_))
-                        ->stream();
-  for (int i = 0; i < nrings_; ++i) {
-    comm_streams_.emplace_back(
-        platform::NCCLCommContext::Instance().Get(i, place_)->stream());
-    comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::CUDAPlace, place_).device));
-  }
-  CreateGroupEvents(group_indices.size());
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { Reducer::GetInstance()->ReleaseReducer(); });
-  });
-}
-
-void Reducer::ReleaseReducer() {
-  for (auto &event : group_events_) {
-    event.reset();
-  }
-  for (auto &event : comm_events_) {
-    event.reset();
-  }
-}
-
-void Reducer::CreateGroupEvents(int group_num) {
-  // release old events
-  for (auto &event : group_events_) {
-    event.reset();
-  }
-  group_events_.clear();
-  group_events_.resize(group_num);
-  for (auto &event : group_events_) {
-    event = platform::CudaEventResourcePool::Instance().New(
-        BOOST_GET_CONST(platform::CUDAPlace, place_).device);
   }
 }
 
@@ -179,6 +340,9 @@ void Reducer::InitializeDenseGroups(
 
     p_group->length_.push_back(size);
 
+    // for concat operator
+    p_group->dense_tensors_.push_back(framework::Tensor());
+
     // check the dtype and place, it must be same.
     auto dtype = var->DataType();
     auto place = var->Place();
@@ -200,6 +364,7 @@ void Reducer::InitializeDenseGroups(
       place_ = place;
     }
   }
+  p_group->all_length_ = all_length;
 }
 
 // Each parameter will be initialized according to the group information.
@@ -234,6 +399,9 @@ void Reducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(variable_indices_, &group);
+      auto tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim({group.all_length_}))
+          .mutable_data(place_, group.dtype_);
     }
 
     // map variables to this group by VariableLocator
@@ -295,16 +463,13 @@ void Reducer::PrepareForBackward(
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
-    group.all_length_ = 0;
-    group.dense_tensors_.clear();
-    group.dense_tensors_.reserve(group.pending_);
     group.sparse_contents_ = nullptr;
   });
 
   PADDLE_ENFORCE_EQ(
       all_group_ready_, false,
       platform::errors::PreconditionNotMet(
-          "Please note that all ``forward`` outputs derived from the module "
+          "Please note that all forward outputs derived from the module "
           "parameters must participate in the calculation of losses and "
           "subsequent gradient calculations. If not, the wrapper will hang, "
           "waiting for autograd to generate gradients for these parameters. "
@@ -423,22 +588,42 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
 
-  if (is_used_var) {
-    auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-    if (!group.is_sparse_) {
-      auto grad = var_warpper->MutableVar();
-      auto inside_group_index = var_locator.inside_group_index;
-      auto length = group.length_[inside_group_index];
-
-      auto tensor = grad->GetMutable<framework::LoDTensor>();
-      framework::Tensor tmp;
-      tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(length)});
-      group.dense_tensors_.push_back(std::move(tmp));
-      group.all_length_ += length;
+  if (!group.is_sparse_) {
+    // process dense group
+    auto inside_group_index = var_locator.inside_group_index;
+    auto length = group.length_[inside_group_index];
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
+    if (is_used_var) {
+      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+      auto tensor =
+          var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+      group_tensor.ShareDataWith(*tensor).Resize(
+          {static_cast<int64_t>(length)});
     } else {
+      if (!group_tensor.IsInitialized()) {
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(place_, group.dtype_);
+#ifdef PADDLE_WITH_XPU_BKCL
+        if (platform::is_xpu_place(group_tensor.place())) {
+          // TODO(liuyuhui) support XPU set constant
+          VLOG(3) << "XPU doesn't support set_constant";
+        }
+#else
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+#endif
+      }
+    }
+  } else {
+    // process sparse group
+    if (is_used_var) {
+      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
       group.sparse_contents_ = var_warpper->MutableVar();
+    } else {
+      group.sparse_contents_ = nullptr;
     }
   }
+
   if (--group.pending_ == 0) {
     // can start allreduce
     MarkGroupReady(group_index);
@@ -455,22 +640,23 @@ void Reducer::MarkGroupReady(size_t group_index) {
     return;
   }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaEventRecord(group_events_[group_index].get(), compute_stream_));
-
-  for (int i = 0; i < nrings_; ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(
-        comm_streams_[i], group_events_[group_index].get(), 0));
-  }
-
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
+
+    // For CUDA or XPU, compute_stream --> comm_stream.
+    // For CPU, do nothing.
+    // NOTE. Because concat uses the comm_stream,
+    // so we expose WaitCompute() interface and call
+    // it here.
+    parallel_ctx_->WaitCompute(run_order);
+
     if (group.is_sparse_) {
       if (group.sparse_contents_ != nullptr) {
         VLOG(3) << "sparse group [" << next_group_
                 << "] start allreduce in ring[" << run_order << "]";
+        group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
         parallel_ctx_->AllReduceByStream(
             *group.sparse_contents_, group.sparse_contents_, run_order, false);
       } else {
@@ -478,24 +664,31 @@ void Reducer::MarkGroupReady(size_t group_index) {
                 << "] has no var to allreduce";
       }
     } else {
-      if (!group.dense_tensors_.empty()) {
-        VLOG(3) << "dense group [" << next_group_
-                << "] start allreduce in ring[" << run_order << "]";
-        // Select common commstream to concat tensors
-        // group.dense_tensors ---> group.dense_contents_
-        group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+              << run_order << "]";
+      // Select common commstream to concat tensors
+      // group.dense_tensors ---> group.dense_contents_
+      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-        // Start allreduce
-        parallel_ctx_->AllReduceByStream(
-            group.dense_contents_, &(group.dense_contents_), run_order, false);
-
-        // Select common commstream to split tensors
-        // group.dense_contents_ ---> group.dense_tensors
-        group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
-      } else {
-        VLOG(3) << "The dense group[" << next_group_
-                << "] has no var to allreduce";
+// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
+// default stream for communicating, so there exist some problems in
+// synchronization. And need to add a WaitComm there.
+// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
+// communication.
+#ifdef PADDLE_WITH_XPU_BKCL
+      if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+        parallel_ctx_->WaitComm(run_order);
       }
+#endif
+      group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+
+      // Start allreduce
+      parallel_ctx_->AllReduceByStream(
+          group.dense_contents_, &(group.dense_contents_), run_order, false);
+
+      // Select common commstream to split tensors
+      // group.dense_contents_ ---> group.dense_tensors
+      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
     }
   }
 }
@@ -526,20 +719,13 @@ void Reducer::FinalizeBackward() {
   all_group_ready_ = false;
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventRecord(comm_events_[i].get(), comm_streams_[i]));
-  }
-  for (int i = 0; i < nrings_; ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(compute_stream_, comm_events_[i].get(), 0));
+    parallel_ctx_->WaitComm(i);
   }
 
   if (NeedRebuildGroup()) {
     VLOG(3) << "Start rebuilding the groups";
     auto rebuild_group_indices = RebuildGruops();
-    auto rebuild_group_number = rebuild_group_indices.size();
     group_indices_ = std::move(rebuild_group_indices);
-    CreateGroupEvents(rebuild_group_number);
     InitializeGroups(group_indices_);
   }
 

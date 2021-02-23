@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <algorithm>
 #include <map>
@@ -30,11 +31,19 @@ namespace framework {
 
 class HeterContext {
  public:
+  ~HeterContext() {
+    for (size_t i = 0; i < mutex_.size(); ++i) {
+      delete mutex_[i];
+    }
+    mutex_.clear();
+  }
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
   std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> value_ptr_;
-  std::vector<std::vector<FeatureValue>> feature_values_;
-  std::vector<std::mutex*> mutex_lock_;
+  std::vector<std::vector<FeatureValue>> device_values_;
+  std::vector<std::vector<FeatureKey>> device_keys_;
+  std::vector<std::mutex*> mutex_;
+
   uint32_t shard_num_ = 37;
   uint64_t size() {
     uint64_t total_size = 0;
@@ -45,19 +54,28 @@ class HeterContext {
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
-  void init() { feature_keys_.resize(shard_num_); }
+  void init(int shard_num, int device_num) {
+    shard_num_ = shard_num;
+    feature_keys_.resize(shard_num_);
+    value_ptr_.resize(shard_num_);
+
+    device_values_.resize(device_num);
+    device_keys_.resize(device_num);
+    mutex_.resize(device_num);
+    for (size_t i = 0; i < mutex_.size(); ++i) {
+      mutex_[i] = new std::mutex();
+    }
+  }
   void batch_add_keys(const std::vector<std::vector<uint64_t>>& thread_keys) {
     assert(thread_keys.size() == feature_keys_.size());
 
     for (uint32_t i = 0; i < shard_num_; i++) {
       int idx = 0;
-      // mutex_lock_[i]->lock();
       idx = feature_keys_[i].size();
       feature_keys_[i].resize(feature_keys_[i].size() + thread_keys[i].size());
       for (uint64_t j = 0; j < thread_keys[i].size(); j++) {
         feature_keys_[i][idx + j] = thread_keys[i][j];
       }
-      // mutex_lock_[i]->unlock();
     }
   }
   void UniqueKeys() {

@@ -380,11 +380,20 @@ class ReshapeKernel {
 
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(ctx.GetPlace())) {
-      auto &dev_ctx =
-          ctx.template device_context<paddle::platform::XPUDeviceContext>();
-      xpu::memcpy_device(
-          dev_ctx.x_context(), out->data<void>(), in->data<void>(),
-          in->numel() * paddle::framework::SizeOfType(in->type()));
+      void *out_ptr = out->data<void>();
+      const void *in_ptr = in->data<void>();
+      if ((out_ptr != nullptr) && (in_ptr != nullptr) &&
+          (paddle::framework::SizeOfType(in->type()) > 0)) {
+        auto &dev_ctx =
+            ctx.template device_context<paddle::platform::XPUDeviceContext>();
+        int r = xpu::memcpy_device(
+            dev_ctx.x_context(), out_ptr, in_ptr,
+            in->numel() * paddle::framework::SizeOfType(in->type()));
+        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                          platform::errors::External(
+                              "XPU memcpy_device return wrong value[%d %s]", r,
+                              XPUAPIErrorMsg[r]));
+      }
     } else {
 #endif
       framework::TensorCopy(
@@ -633,12 +642,14 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad, float, ops::ReshapeGradKernel, double,
     ops::ReshapeGradKernel, int, ops::ReshapeGradKernel, uint8_t,
     ops::ReshapeGradKernel, int64_t, ops::ReshapeGradKernel, bool,
-    ops::ReshapeGradKernel, paddle::platform::complex64, ops::ReshapeGradKernel,
+    ops::ReshapeGradKernel, paddle::platform::bfloat16, ops::ReshapeGradKernel,
+    paddle::platform::complex64, ops::ReshapeGradKernel,
     paddle::platform::complex128, ops::ReshapeGradKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
     ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, uint8_t,
     ops::ReshapeDoubleGradKernel, int64_t, ops::ReshapeDoubleGradKernel, bool,
+    ops::ReshapeDoubleGradKernel, paddle::platform::bfloat16,
     ops::ReshapeDoubleGradKernel, paddle::platform::complex64,
     ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
     ops::ReshapeDoubleGradKernel);
