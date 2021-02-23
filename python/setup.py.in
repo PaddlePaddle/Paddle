@@ -139,6 +139,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/f
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.cpp_extension',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
@@ -378,6 +379,8 @@ def find_files(pattern, root):
           yield os.path.join(dirpath, filename)
 
 headers = (
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +

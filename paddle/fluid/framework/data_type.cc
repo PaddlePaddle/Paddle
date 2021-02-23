@@ -84,6 +84,10 @@ std::string DataTypeToString(const proto::VarType::Type type) {
   if (it != gDataTypeMap().proto_to_str_.end()) {
     return it->second;
   }
+  // deal with RAW type
+  if (type == proto::VarType::RAW) {
+    return "RAW(runtime decided type)";
+  }
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not support proto::VarType::Type(%d) as tensor type.",
       static_cast<int>(type)));
