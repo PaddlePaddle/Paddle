@@ -23,6 +23,9 @@ namespace inference {
 
 TEST(TensorRT, split_converter) {
   std::string model_dir = FLAGS_infer_model + "/split_converter";
+  std::string opt_cache_dir = model_dir + "/_opt_cache";
+  delete_cache_files(opt_cache_dir);
+
   AnalysisConfig config;
   int batch_size = 4;
   config.EnableUseGpu(100, 0);
