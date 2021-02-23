@@ -16,7 +16,7 @@ set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 180)
 py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
 set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 180)
 
-if(NOT Linux)
+if(NOT LINUX)
     return()
 endif()
 

@@ -196,9 +196,22 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 
+#ifdef PADDLE_WITH_HIP
+inline void SyncCUDAStream() {
+#if !defined(_WIN32)
+  hipStreamSynchronize(0);
+#else
+  hipError_t e_sync = hipSuccess;
+  while (e_sync = hipStreamQuery(0)) {
+    if (e_sync == hipErrorNotReady) continue;
+    break;
+  }
+#endif
+}
+#else
 inline void SyncCUDAStream() {
 #if !defined(_WIN32)
   cudaStreamSynchronize(0);
@@ -210,6 +223,7 @@ inline void SyncCUDAStream() {
   }
 #endif
 }
+#endif
 
 // NOTE(zcd): Do not use GpuMemcpySync as much as possible.
 // because GpuMemcpySync issues the copying command to the default stream,
@@ -228,10 +242,18 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost, stream);
+#else
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+#endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
+#else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+#endif
     // FIXME(zjl): do we really need it?
     if (num <= kMaxGpuAsyncCopyBytes) {
       SyncCUDAStream();
@@ -250,10 +272,18 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CPU->GPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice, stream);
+#else
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+#endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:CPU->GPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
+#else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+#endif
     // FIXME(zjl): do we really need it?
     if (num <= kMaxGpuAsyncCopyBytes) {
       SyncCUDAStream();
@@ -273,10 +303,18 @@ void Copy<platform::CUDAPlace, platform::CUDAPlace>(
     platform::SetDeviceId(src_place.device);
     if (stream) {
       platform::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU");
+#ifdef PADDLE_WITH_HIP
+      platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToDevice, stream);
+#else
       platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToDevice, stream);
+#endif
     } else {
       platform::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU");
+#ifdef PADDLE_WITH_HIP
+      platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToDevice);
+#else
       platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToDevice);
+#endif
     }
   } else {
     if (stream) {
@@ -332,10 +370,18 @@ void Copy<platform::CUDAPinnedPlace, platform::CUDAPlace>(
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyDeviceToHost, stream);
+#else
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
+#endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
+#else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyDeviceToHost);
+#endif
   }
 }
 
@@ -351,10 +397,18 @@ void Copy<platform::CUDAPlace, platform::CUDAPinnedPlace>(
           << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpyAsync(dst, src, num, hipMemcpyHostToDevice, stream);
+#else
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);
+#endif
   } else {
     platform::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU");
+#ifdef PADDLE_WITH_HIP
+    platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
+#else
     platform::GpuMemcpySync(dst, src, num, cudaMemcpyHostToDevice);
+#endif
   }
 }
 
