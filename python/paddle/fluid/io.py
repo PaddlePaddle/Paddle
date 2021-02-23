@@ -1714,7 +1714,7 @@ def _load_persistable_nodes(executor, dirname, graph):
 def _unpack_saved_dict(saved_obj, protocol):
     temp_saved_obj = {}
     unpack_infor = {}
-    # When pickle protocol=2 or protocol=3 the serialized object cannot be larger 4G.
+    # When pickle protocol=2 or protocol=3 the serialized object cannot be larger than 4G.
     if 1 < protocol < 4:
         if isinstance(saved_obj, dict):
             for key, value in saved_obj.items():
