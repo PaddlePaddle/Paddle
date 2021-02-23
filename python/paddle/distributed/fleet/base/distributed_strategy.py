@@ -133,12 +133,6 @@ class DistributedStrategy(object):
         key = 'FLAGS_sync_nccl_allreduce'
         if core.globals().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(core.globals()[key])
-        key = 'FLAGS_fuse_parameter_memory_size'
-        if core.globals().is_public(key):
-            self.strategy.fuse_grad_size_in_MB = int(core.globals()[key])
-        key = 'FLAGS_fuse_parameter_groups_size'
-        if core.globals().is_public(key):
-            self.strategy.fuse_grad_size_in_TFLOPS = int(core.globals()[key])
 
         self.__lock_attr = True
 
