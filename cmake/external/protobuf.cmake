@@ -232,6 +232,9 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                         ${OPTIONAL_CACHE_ARGS}
     )
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+        set(EXTERN_PROTOBUF_DEPEND extern_protobuf)
+    endif()
 ENDFUNCTION()
 
 SET(PROTOBUF_VERSION 3.1.0)

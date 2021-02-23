@@ -753,7 +753,7 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
-      DEPENDS ${ABS_FIL} protoc
+      DEPENDS ${ABS_FIL} protoc ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
   endforeach()
