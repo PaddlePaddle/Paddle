@@ -138,7 +138,7 @@ class AclInstance {
  public:
   // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
   // no PADDLE_ENFORCE here, call acl API directly.
-  ~AclInstance() {}
+  ~AclInstance();
   AclInstance(const AclInstance &o) = delete;
   const AclInstance &operator=(const AclInstance &o) = delete;
   static AclInstance &Instance();
