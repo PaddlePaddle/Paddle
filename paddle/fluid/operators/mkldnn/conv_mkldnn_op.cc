@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -976,8 +977,12 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-
-    auto chosen_memory_format = MKLDNNMemoryFormat::any;
+    // TODO: NHWC is preferred starting from oneDNN 2.1 . Any may crash
+    auto chosen_memory_format =
+        platform::MayIUse(platform::cpu_isa_t::avx512_core) &&
+                is_conv3d == false
+            ? MKLDNNMemoryFormat::nhwc
+            : MKLDNNMemoryFormat::any;
     weights_format = MKLDNNMemoryFormat::any;
 
     auto src_md = platform::MKLDNNMemDesc(
