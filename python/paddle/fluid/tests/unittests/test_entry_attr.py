@@ -25,8 +25,8 @@ from paddle.distributed import ProbabilityEntry, CountFilterEntry
 class EntryAttrChecks(unittest.TestCase):
     def base(self):
         with self.assertRaises(NotImplementedError):
-            import paddle.fluid.entry_attr as entry
-            base = entry.EntryAttr()
+            from paddle.distributed.entry_attr import EntryAttr
+            base = EntryAttr()
             base._to_attr()
 
     def probability_entry(self):
