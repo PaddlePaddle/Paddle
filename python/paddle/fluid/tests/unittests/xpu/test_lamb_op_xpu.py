@@ -27,9 +27,9 @@ import paddle
 class TestLambOp1(OpTest):
     def set_attrs(self):
         self.attrs = {
-            'epsilon': 1e-4,
-            'beta1': 0.78,
-            'beta2': 0.836,
+            'epsilon': 1e-6,
+            'beta1': 0.9,
+            'beta2': 0.999,
             'weight_decay': 0.01
         }
 
