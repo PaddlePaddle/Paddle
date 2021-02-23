@@ -21,6 +21,7 @@ from . import no_grad
 
 import numpy as np
 import six
+import warnings
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -232,9 +233,10 @@ def monkey_patch_math_varbase():
                     other_var = other_var if rhs_dtype == promote_dtype else astype(
                         other_var, promote_dtype)
                 else:
-                    raise Exception(
-                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}'.
-                        format(lhs_dtype, rhs_dtype))
+                    warnings.warn(
+                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'.
+                        format(lhs_dtype, rhs_dtype, lhs_dtype))
+                    other_var = astype(other_var, lhs_dtype)
 
             if reverse:
                 tmp = self

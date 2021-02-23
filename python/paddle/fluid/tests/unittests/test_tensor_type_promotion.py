@@ -26,25 +26,25 @@ class TestTensorTypePromotion(unittest.TestCase):
         self.y = paddle.to_tensor([1.0, 2.0])
 
     def test_operator(self):
-        with self.assertRaises(Exception) as context:
+        with self.assertWarns(UserWarning) as context:
             self.x + self.y
         self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.exception))
+                        in str(context.warning))
 
-        with self.assertRaises(Exception) as context:
+        with self.assertWarns(UserWarning) as context:
             self.x - self.y
         self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.exception))
+                        in str(context.warning))
 
-        with self.assertRaises(Exception) as context:
+        with self.assertWarns(UserWarning) as context:
             self.x * self.y
         self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.exception))
+                        in str(context.warning))
 
-        with self.assertRaises(Exception) as context:
+        with self.assertWarns(UserWarning) as context:
             self.x / self.y
         self.assertTrue("The dtype of left and right variables are not the same"
-                        in str(context.exception))
+                        in str(context.warning))
 
 
 if __name__ == '__main__':
