@@ -46,7 +46,6 @@ class TestElementwiseAddOp(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        _set_use_system_allocator(False)
 
     def init_kernel_type(self):
         self.use_mkldnn = False

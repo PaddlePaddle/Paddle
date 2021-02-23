@@ -469,7 +469,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-
+      // TODO(ascendrc): Support garbage collector on NPUPlace
+      VLOG(4) << "Skip NPU gc because it is not implemented now.";
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "No NPU gc found in CPU/GPU/XPU paddle"));

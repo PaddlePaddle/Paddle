@@ -288,6 +288,9 @@ void SetTensorFromPyArrayT(
 #endif
   } else if (paddle::platform::is_npu_place(place)) {
 #ifdef PADDLE_WITH_ASCEND_CL
+    platform::Place tmp_place = place;
+    platform::NPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
     platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
                             ACL_MEMCPY_HOST_TO_DEVICE);
