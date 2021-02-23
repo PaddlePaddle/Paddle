@@ -66,10 +66,10 @@ class NPURangeKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(range, 
-                        ops::NPURangeKernel<float>,
-                        ops::NPURangeKernel<int>,
-                        ops::NPURangeKernel<int64_t>,
-                        ops::NPURangeKernel<double>);
+REGISTER_OP_NPU_KERNEL(range, 
+                       ops::NPURangeKernel<float>,
+                       ops::NPURangeKernel<int>,
+                       ops::NPURangeKernel<int64_t>,
+                       ops::NPURangeKernel<double>);
 
 #endif

@@ -38,16 +38,21 @@ USE_OP_DEVICE_KERNEL(range, NPU);
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
              std::string op_type) {
+
+  std::cout << "aaaaaaaaaaaaaaaaaaa";
   // init
-  auto start = scope->Var("start");
+  auto start = scope->Var("Start");
   auto tensor_start = start->GetMutable<f::LoDTensor>();
 
-  auto end = scope->Var("end");
+  std::cout << "bbbbbbbbbbbbbbbbbbbbb";
+
+  auto end = scope->Var("End");
   auto tensor_end = end->GetMutable<f::LoDTensor>();
 
-  auto step = scope->Var("step");
+  auto step = scope->Var("Step");
   auto tensor_step = step->GetMutable<f::LoDTensor>();
 
+  std::cout << "cccccccccccccccccccc";
   std::vector<T> init_start;
   init_start.push_back(static_cast<T>(1));
 
@@ -57,26 +62,35 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   std::vector<T> init_step;
   init_step.push_back(static_cast<T>(2));
 
+  std::cout << "dddddddddddddddddddddd";
   TensorFromVector(init_start, ctx, tensor_start);
+  tensor_start->Resize({1});
   TensorFromVector(init_end, ctx, tensor_end);
+  tensor_end->Resize({1});
   TensorFromVector(init_step, ctx, tensor_step);
+  tensor_step->Resize({1});
 
   ctx.Wait();
 
+  std::cout << "eeeeeeeeeeeeeeeeeeeeee";
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(op_type, {{"start", {"start"}}, {"end", {"end"}}},
-                                    {{"step", {"step"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(op_type, {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
+                                    {{"Out", {"Out"}}}, attrs);
 
+  std::cout << "fffffffffffffffffffffffff";
   op->Run(*scope, place);
+  std::cout << "hhhhhhhhhhhhhhhhhhhhhhhhhh";
 
   std::vector<T> out_vec;
+  std::cout << "iiiiiiiiiiiiiiiiiiiiiii";
   TensorToVector(*tensor_out, ctx, &out_vec);
 
+  std::cout << "gggggggggggggggggggggggg";
   ctx.Wait();
 
   std::vector<T> expected_vec;
@@ -97,7 +111,12 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 TEST(range, NPU_fp32) {
     f::Scope scope;
     p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<int>(&scope, ctx, "range");
+    Compare<float>(&scope, ctx, "range");
 }
 
+TEST(range, NPU) {
+    f::Scope scope;
+    p::NPUDeviceContext ctx(p::NPUPlace(0));
+    Compare<int>(&scope, ctx, "range");
+}
 
