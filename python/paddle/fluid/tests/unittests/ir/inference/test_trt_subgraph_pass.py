@@ -345,7 +345,8 @@ class TensorRTSubgraphPassGroupNormTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            out = flatten_out = self.append_group_norm(data)
+            group_norm_out = self.append_group_norm(data)
+            out = fluid.layers.batch_norm(group_norm_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -359,7 +360,7 @@ class TensorRTSubgraphPassGroupNormTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_group_norm(self, data):
-        return fluid.layers.group_norm(data, groups=4, epsilon=1e-05)
+        return fluid.layers.group_norm(data, groups=3, epsilon=1e-05)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
