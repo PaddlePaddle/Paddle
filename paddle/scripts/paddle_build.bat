@@ -198,7 +198,6 @@ set start=%start:~4,10%
 @ECHO ON
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
 set PATH=%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
-set CUDA_PATH=%CUDA_TOOLKIT_ROOT_DIR%
 
 rem ------set third_party cache dir------
 
@@ -425,9 +424,7 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
-rem %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
-ctest -R test_custom_relu_op_jit -C Release --output-on-failure
-cd /d C:\Users\paddle-ci\.cache\paddle_extensions && python setup.py build
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
 
 goto:eof
 

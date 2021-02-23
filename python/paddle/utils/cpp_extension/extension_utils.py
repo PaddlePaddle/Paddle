@@ -263,10 +263,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     # append necessary include dir path of paddle
     include_dirs = kwargs.get('include_dirs', [])
     include_dirs.extend(find_paddle_includes(use_cuda))
-    for dir in include_dirs:
-        log_v(dir)
-        if os.path.exists(dir):
-            print(os.listdir(dir))
+
     kwargs['include_dirs'] = include_dirs
 
     # append necessary lib path of paddle
@@ -312,7 +309,6 @@ def find_cuda_home():
     """
     # step 1. find in $CUDA_HOME or $CUDA_PATH
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
-    log_v(cuda_home)
 
     # step 2.  find path by `which nvcc`
     if cuda_home is None:
@@ -324,10 +320,9 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
-                log_v(nvcc_path)
+
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
-                log_v(cuda_home)
         except:
             if IS_WINDOWS:
                 # search from default NVIDIA GPU path
@@ -346,7 +341,6 @@ def find_cuda_home():
             "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
         )
 
-    log_v(cuda_home)
     return cuda_home
 
 
