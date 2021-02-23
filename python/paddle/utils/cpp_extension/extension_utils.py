@@ -314,9 +314,6 @@ def find_cuda_home():
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
     log_v(cuda_home)
 
-    log_v(subprocess.check_output(['where', 'nvcc']))
-    log_v(subprocess.check_output(['nvcc', '--version']))
-
     # step 2.  find path by `which nvcc`
     if cuda_home is None:
         which_cmd = 'where' if IS_WINDOWS else 'which'

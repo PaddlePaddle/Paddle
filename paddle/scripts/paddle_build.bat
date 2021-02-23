@@ -426,7 +426,7 @@ setlocal enabledelayedexpansion
 set CUDA_DEVICE_COUNT=1
 
 rem %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
-ctest -R test_simple_custom_op_jit -C Release --output-on-failure
+ctest -R test_custom_relu_op_jit -C Release --output-on-failure
 cd /d C:\Users\paddle-ci\.cache\paddle_extensions && python setup.py build
 
 goto:eof
