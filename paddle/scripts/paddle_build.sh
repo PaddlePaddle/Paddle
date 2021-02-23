@@ -623,7 +623,8 @@ EOF
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
-                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        retry_unittests_record="$retry_unittests_record
+                        $failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
@@ -1192,7 +1193,8 @@ set +x
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
-                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        retry_unittests_record="$retry_unittests_record
+                        $failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
@@ -1279,7 +1281,7 @@ function show_ut_retry_result() {
         echo "Summary Failed Tests... "
         echo "========================================"
         echo "The following tests FAILED: "
-        echo "${retry_unittests_record_judge}" | grep -E "$failed_ut_re"
+        echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
         exit 8;
     fi
 }
