@@ -32,23 +32,11 @@ class ExpandV2Op : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandV2");
     auto x_dims = ctx->GetInputDim("X");
     auto expand_shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    auto infer_shape_flags =
-        ctx->Attrs().Get<std::vector<int>>("infer_shape_flags");
 
     if (expand_shape.size() == 0) {
       expand_shape = std::vector<int>(x_dims.size(), -1);
     }
-    if (infer_shape_flags.size() == 0) {
-      infer_shape_flags = std::vector<int>(x_dims.size(), 0);
-    }
 
-    PADDLE_ENFORCE_EQ(
-        infer_shape_flags.size(), static_cast<size_t>(x_dims.size()),
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) of 'infer_shape_flags' for "
-            "expand_v2 op must be equal to the rank "
-            "(%d) of the input.",
-            infer_shape_flags.size(), static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_GE(
         expand_shape.size(), static_cast<size_t>(x_dims.size()),
         platform::errors::InvalidArgument(
@@ -77,11 +65,10 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       if (x_dims[i] == -1) {
         out_shape[i] = -1;
       } else if (expand_shape[i] == -1) {
-        if (infer_shape_flags[i] == 0) {
-          out_shape[i] = x_dims[i];
-        } else {
-          out_shape[i] = -1;
-        }
+        out_shape[i] = x_dims[i];
+      } else if (expand_shape[i] == -2) {
+        // We use -2 to represent the element in expand_shape is a var.
+        out_shape[i] = -1;
       } else {
         PADDLE_ENFORCE_GT(
             expand_shape[i], 0,
@@ -143,9 +130,6 @@ class ExpandV2OpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("shape", "The expanded shape for each dimension.")
         .SetDefault({});
-    AddAttr<std::vector<int>>("infer_shape_flags",
-                              "Flags used for infering shape.")
-        .SetDefault({});
     AddComment(R"DOC(
 Expand the input to the given shape. The rank of X
 should be in [1, 6] and size of 'shape' must be in [1, 6] also.
@@ -193,7 +177,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
 
     for (size_t i = 0; i < expand_shape.size(); ++i) {
-      if (expand_shape[i] == -1 || x_dim_vec[i] == -1) {
+      if (expand_shape[i] < 0 || x_dim_vec[i] == -1) {
         continue;
       } else {
         if (ctx->IsRuntime()) {

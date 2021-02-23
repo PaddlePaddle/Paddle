@@ -1444,12 +1444,11 @@ def expand(x, shape, name=None):
 
     helper = LayerHelper('expand', **locals())
 
-    def get_attr_expand_shape(list_expand_shape, flags):
+    def get_attr_expand_shape(list_expand_shape):
         attrs_expand_shape = []
         for idx, shape in enumerate(list_expand_shape):
             if isinstance(shape, Variable):
-                attrs_expand_shape.append(-1)
-                flags[idx] = 1
+                attrs_expand_shape.append(-2)
             else:
                 attrs_expand_shape.append(shape)
                 assert shape > 0 or shape == -1, (
@@ -1460,9 +1459,7 @@ def expand(x, shape, name=None):
         shape.stop_gradient = True
         inputs['Shape'] = shape
     elif isinstance(shape, (list, tuple)):
-        infer_shape_flags = [0] * len(shape)
-        attrs['shape'] = get_attr_expand_shape(shape, infer_shape_flags)
-        attrs['infer_shape_flags'] = infer_shape_flags
+        attrs['shape'] = get_attr_expand_shape(shape)
         if utils._contain_var(shape):
             inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
                 shape)
