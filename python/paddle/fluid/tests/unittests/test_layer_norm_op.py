@@ -214,7 +214,7 @@ class TestLayerNormOp(unittest.TestCase):
                 self.__assert_close(y, out[0], "y")
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
-                self.__assert_close(x_grad, out[3], "x_grad")
+                self.__assert_close(x_grad, out[3], "x_grad", 1e-3)
                 if has_scale:
                     self.__assert_close(scale_grad,
                                         out[fetch_list.index('scale@GRAD')],
@@ -273,6 +273,9 @@ class TestLayerNormOp(unittest.TestCase):
             has_scale=False,
             has_bias=False,
             y_grad_scale=0.1)
+
+    def test_check_forward_backward_with_large_batch(self):
+        self.check_forward_backward(shape=[128, 512, 4], begin_norm_axis=2)
 
 
 class TestLayerNormAPI(unittest.TestCase):
