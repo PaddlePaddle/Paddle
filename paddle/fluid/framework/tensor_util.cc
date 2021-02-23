@@ -342,19 +342,19 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+           platform::is_cpu_place(dst_place)) {  /* npu -> cpu*/
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size,
                  nullptr);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
-           platform::is_npu_place(dst_place)) {
+           platform::is_npu_place(dst_place)) {  /* cpu -> npu*/
     memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
                  nullptr);
   }
   else if (platform::is_npu_place(src_place) &&  // NOLINT
-           platform::is_npu_place(dst_place)) {
+           platform::is_npu_place(dst_place)) {  /* npu -> npu*/
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
               << dst_place;
