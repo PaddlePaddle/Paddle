@@ -145,7 +145,6 @@ class AscendParserFactory(object):
 
     def create_parse(self, parser_class):
         try:
-            #print("globals:", globals())
             parser = globals()[parser_class](self.graph, self.var2geop)
             return parser
         except:

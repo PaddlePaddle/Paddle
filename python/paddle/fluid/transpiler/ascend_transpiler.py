@@ -80,9 +80,8 @@ class AscendTranspiler(collective.Collective):
         worker_endpoints = copy.copy(fleet.worker_endpoints())
         rank = fleet.rank()
         current = worker_endpoints[rank]
-        #others=worker_endpoints.remove(current)
-        print("rank:{} current:{} worker_endpoints:{}".format(rank, current,
-                                                              worker_endpoints))
+        #print("rank:{} current:{} worker_endpoints:{}".format(rank, current,
+        #                                                      worker_endpoints))
         self._collective_helper._init_communicator(
             self._startup_program, current, worker_endpoints, rank, 0, False)
         self._insert_allreduce_ops()

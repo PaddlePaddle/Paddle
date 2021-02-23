@@ -440,7 +440,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _get_node_num(self):
+    def _node_num(self):
         """
         Get the training node number
         Returns:
