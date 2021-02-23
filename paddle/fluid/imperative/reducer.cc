@@ -297,7 +297,8 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
-      find_unused_vars_(find_unused_vars) {
+      find_unused_vars_(find_unused_vars),
+      multi_device_op_pool_(1) {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
@@ -640,8 +641,9 @@ void Reducer::MarkGroupReady(size_t group_index) {
     return;
   }
 
-  for (uint32_t i = 0; i < groups_.size(); i++) {
-    pool_.emplace_back(std::unique_ptr<::ThreadPool>(new ::ThreadPool(1)));
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    multi_device_op_count_ = 0;
   }
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
@@ -654,7 +656,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
     // NOTE. Because concat uses the comm_stream,
     // so we expose WaitCompute() interface and call
     // it here.
-    pool_[index]->enqueue([=] {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      multi_device_op_count_ += 1;  // lock
+    }
+
+    multi_device_op_pool_.enqueue([&] {
       parallel_ctx_->WaitCompute(run_order);
 
       if (group.is_sparse_) {
@@ -676,6 +683,17 @@ void Reducer::MarkGroupReady(size_t group_index) {
           // group.dense_tensors ---> group.dense_contents_
           group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
+// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
+// default stream for communicating, so there exist some problems in
+// synchronization. And need to add a WaitComm there.
+// TODO(liuyuhui): If BKCL support events, it should be fixed as non-blocking
+// communication.
+#ifdef PADDLE_WITH_XPU_BKCL
+          if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+            parallel_ctx_->WaitComm(run_order);
+          }
+#endif
+
           // Start allreduce
           parallel_ctx_->AllReduceByStream(group.dense_contents_,
                                            &(group.dense_contents_), run_order,
@@ -689,6 +707,13 @@ void Reducer::MarkGroupReady(size_t group_index) {
                   << "] has no var to allreduce";
         }
       }
+
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        multi_device_op_count_ -= 1;  // lock
+        cv_.notify_all();
+      }
+      // cnt -= 1; // lock
     });
   }
 }
@@ -717,6 +742,12 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 
 void Reducer::FinalizeBackward() {
   all_group_ready_ = false;
+
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [&] { return multi_device_op_count_ == 0; });
+  }
+
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     parallel_ctx_->WaitComm(i);

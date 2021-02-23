@@ -188,9 +188,12 @@ class Reducer {
   bool find_unused_vars_{false};
   bool all_group_ready_{false};
 
-  std::vector<std::unique_ptr<::ThreadPool>> pool_;
-  ::ThreadPool prepare_pool_;
+  // std::vector<std::unique_ptr<::ThreadPool>> pool_;
+  // ::ThreadPool comm_pool_;
   ::ThreadPool multi_device_op_pool_;
+  uint32_t multi_device_op_count_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
