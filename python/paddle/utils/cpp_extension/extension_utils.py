@@ -606,7 +606,7 @@ def _write_setup_file(name,
                 extra_compile_args={extra_compile_args},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
-            output_dir={build_dir},
+            output_dir='{build_dir}',
             no_python_abi_suffix=True,
             use_new_method={use_new_method})
         }})""").lstrip()
