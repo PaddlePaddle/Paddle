@@ -77,7 +77,7 @@ if(WITH_ASCEND)
 endif()
 
 if(WITH_ASCEND_CL)
-    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor atlas_acl atlas_acl_op_compiler)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
 endif()
 
 add_subdirectory(dynload)
@@ -106,7 +106,7 @@ ELSE()
 ENDIF()
 
 IF(WITH_ASCEND_CL)
-cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce atlas_acl) 
+cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 ENDIF()
 
 IF(WITH_GPU)
