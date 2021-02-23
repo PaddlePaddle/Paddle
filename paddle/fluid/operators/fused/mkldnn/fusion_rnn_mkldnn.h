@@ -194,10 +194,10 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                          this->engine_, to_void_cast(h0->data<T>()));
       } else {
         user_h0_memory = dnnl::memory({{1, 1, N, OC},
-                                       MKLDNNGetDataType<float>(),
+                                       MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::ldnc},
                                       this->engine_);
-        memset(user_h0_memory.get_data_handle(), 0, sizeof(float) * N * OC);
+        memset(user_h0_memory.get_data_handle(), 0, sizeof(T) * N * OC);
       }
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
                                                 this->engine_);

@@ -81,7 +81,7 @@ class LSTMMKLDNNHandler
                                      MKLDNNMemoryFormat::tnc);
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(), // Vanilla LSTM and LSTM with peepoles has c0 as flp
+      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(), // Vanilla LSTM and LSTM with peepoles has c0 as fp32
                                  MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
@@ -110,13 +110,14 @@ class LSTMMKLDNNHandler
   // needed
   // PaddlePaddle:  {c, i, f, o}
   // oneDNN:        {i, f, c, o}
-  void ReorderGates(float* weights, int64_t I) {
+  template <typename U>
+  void ReorderGates(U* weights, int64_t I) {
     size_t inner_block_size = this->OC;
     size_t block_size = inner_block_size * this->G;
     for (size_t i = 0; i < (size_t)I; ++i) {
       size_t offset = i * block_size;
 
-      float* base_pos = weights + offset;
+      U* base_pos = weights + offset;
       std::swap_ranges(base_pos, base_pos + inner_block_size,
                        base_pos + inner_block_size);  // c <-> i
       std::swap_ranges(base_pos + inner_block_size,
@@ -133,13 +134,13 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_x_data, weight_x->data<float>(),
-             sizeof(float) * this->IC * this->G * this->OC);
+          reinterpret_cast<T*>(user_memory.get_data_handle());
+      memcpy(weight_x_data, weight_x->data<T>(),
+             sizeof(T) * this->IC * this->G * this->OC);
 
       ReorderGates(weight_x_data, this->IC);
 
@@ -163,13 +164,13 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_h_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_h_data, weight_h->data<float>(),
-             sizeof(float) * this->OC * this->G * this->OC);
+          reinterpret_cast<T*>(user_memory.get_data_handle());
+      memcpy(weight_h_data, weight_h->data<T>(),
+             sizeof(T) * this->OC * this->G * this->OC);
 
       ReorderGates(weight_h_data, this->OC);
 

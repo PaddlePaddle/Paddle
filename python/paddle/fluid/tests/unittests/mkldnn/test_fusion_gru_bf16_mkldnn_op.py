@@ -30,6 +30,11 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
     def set_confs(self):
         self.mkldnn_data_type = False
 
+    def test_check_output(self):
+        for use_seq in {True, False}:
+            self.attrs['use_seq'] = use_seq
+            self.check_output(check_dygraph=False)
+
     def setUp(self):
         self.op_type = "fusion_gru"
         self.lod = [[2, 4, 3]]
@@ -87,7 +92,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
             self.inputs['H0'] = h0_bf16
 
         h0_bf16 = convert_float_to_uint16(h0_fp32)
-        self.outputs = {'Hidden': (hidden_bf16, self.lod)}
+        self.outputs = {'Hidden': (hidden, self.lod)}
 
         self.attrs = {
             'activation': self.act_state,

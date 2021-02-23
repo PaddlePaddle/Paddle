@@ -229,6 +229,19 @@ def convert_float_to_uint16(float_list):
     return np.reshape(new_output, float_list.shape).view(np.uint16)
 
 
+def copy_bits_from_uint16_to_float(i):
+    i = np.uint32(i) << 16
+    return struct.unpack('<f', struct.pack('<I', i))[0]
+
+
+def convert_uint16_to_float(uint16_list):
+    new_output = []
+    for x in np.nditer(uint16_list):
+        new_output.append(np.float32(copy_bits_from_uint16_to_float(x)))
+
+    return np.reshape(new_output, uint16_list.shape).view(np.float32)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1133,8 +1146,36 @@ class OpTest(unittest.TestCase):
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
+
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+
+                if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
+                    actual_t = convert_uint16_to_float(actual_t)
+
+                    #expect_t = convert_float_to_uint16(expect_t)
+                    #expect_t = convert_uint16_to_float(expect_t)
+
+                    max_abs_error = 0
+                    max_err_act = 0
+                    max_err_exp = 0
+
+                    for j in range(actual_t.shape[0]):
+                        for i in range(actual_t.shape[1]):
+                            if abs(expect_t[j][i] - actual_t[j][i]) > max_abs_error:
+                                max_abs_error = abs(expect_t[j][i] - actual_t[j][i])
+                                max_err_act = actual_t[j][i]
+                                max_err_exp = expect_t[j][i]
+
+                    print("error = ", max_abs_error)
+                    print(max_err_act)
+                    print(max_err_exp)
+                    
+
+                    #print(actual_t.dtype)
+                    #print(expect_t.dtype, "\n")
+                print("\n\nResult:\n", actual_t, "\n\n")
+
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
