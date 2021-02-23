@@ -228,7 +228,7 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + cflags + get_cuda_arch_flags(cflags)
+    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
 
@@ -281,7 +281,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
         if use_cuda:
-            extra_link_args.append(['cudadevrt.lib', 'cudart_static.lib'])
+            extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
         # append compile flags
@@ -312,6 +312,10 @@ def find_cuda_home():
     """
     # step 1. find in $CUDA_HOME or $CUDA_PATH
     cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
+    log_v(cuda_home)
+
+    log_v(subprocess.check_output(['where', 'nvcc']))
+    log_v(subprocess.check_output(['nvcc', '--version']))
 
     # step 2.  find path by `which nvcc`
     if cuda_home is None:
@@ -323,8 +327,10 @@ def find_cuda_home():
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
                 nvcc_path = nvcc_path.rstrip('\r\n')
+                log_v(nvcc_path)
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
+                log_v(cuda_home)
         except:
             if IS_WINDOWS:
                 # search from default NVIDIA GPU path
@@ -343,6 +349,7 @@ def find_cuda_home():
             "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
         )
 
+    log_v(cuda_home)
     return cuda_home
 
 

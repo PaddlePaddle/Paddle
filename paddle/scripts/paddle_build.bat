@@ -348,7 +348,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install --force-reinstall %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN% --user
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -424,14 +424,10 @@ setlocal enabledelayedexpansion
 :: if %errorlevel% NEQ 0 exit /b 8
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
-set CUDA_HOME="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0"
-set CUDA_PATH="C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0"
 
 rem %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
-ctest -R test_dispatch -C Release --output-on-failure
-cd /d C:\Users\Administrator\.cache\paddle_extensions && python setup.py build
 ctest -R test_simple_custom_op_jit -C Release --output-on-failure
-cd /d C:\Users\Administrator\.cache\paddle_extensions && python setup.py build
+cd /d C:\Users\paddle-ci\.cache\paddle_extensions && python setup.py build
 
 goto:eof
 
@@ -439,9 +435,8 @@ goto:eof
 echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
-rem ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
-ctest -R test_dispatch -C Release --output-on-failure
-cd /d C:\Users\Administrator\.cache\paddle_extensions && python setup.py build
+
+ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 
 goto:eof
 
