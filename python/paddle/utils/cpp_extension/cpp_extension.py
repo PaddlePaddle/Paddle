@@ -14,8 +14,6 @@
 
 import os
 import six
-import sys
-import textwrap
 import copy
 import re
 
@@ -23,11 +21,11 @@ import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 
-from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
-from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat, get_build_directory
-from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
-from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS, OS_NAME
-from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
+from .extension_utils import find_cuda_home, normalize_extension_kwargs, bootstrap_context
+from .extension_utils import is_cuda_file, prepare_unix_cflags, prepare_win_cflags, add_std_without_repeat
+from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile, parse_op_name_from
+from .extension_utils import check_abi_compatibility, log_v, get_build_directory, use_new_custom_op_load_method
+from .extension_utils import CustomOpInfo, IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -49,7 +47,7 @@ def setup(**attr):
     Its usage is almost same as `setuptools.setup` except for `ext_modules`
     arguments. For compiling multi custom operators, all necessary source files
     can be include into just one Extension (CppExtension/CUDAExtension).
-    Moreover, only one `name` argument is required in `setup` and no need to spcific
+    Moreover, only one `name` argument is required in `setup` and no need to specify
     `name` in Extension.
 
     Example:
@@ -59,11 +57,11 @@ def setup(**attr):
                  ext_modules=CUDAExtension(
                     sources=['relu_op.cc', 'relu_op.cu'],
                     include_dirs=[],       # specific user-defined include dirs
-                    extra_compile_args=[]) # specific user-defined compil arguments.
+                    extra_compile_args=[]) # specific user-defined compiler arguments.
     """
     cmdclass = attr.get('cmdclass', {})
     assert isinstance(cmdclass, dict)
-    # if not specific cmdclass in setup, add it automaticaly.
+    # if not specific cmdclass in setup, add it automatically.
     if 'build_ext' not in cmdclass:
         cmdclass['build_ext'] = BuildExtension.with_options(
             no_python_abi_suffix=True)
@@ -80,7 +78,7 @@ def setup(**attr):
               sources=['relu_op.cc', 'relu_op.cu'])
         
         # After running `python setup.py install`
-        from custom_module import relue
+        from custom_module import relu
     """
     # name argument is required
     if 'name' not in attr:
@@ -95,7 +93,7 @@ def setup(**attr):
         ext_modules = [ext_modules]
     assert len(
         ext_modules
-    ) == 1, "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extenion.".format(
+    ) == 1, "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
         len(ext_modules))
     # replace Extension.name with attr['name] to keep consistant with Package name.
     for ext_module in ext_modules:
@@ -425,7 +423,7 @@ class BuildExtension(build_ext, object):
             compiler = os.environ.get('CXX', 'c++')
 
         check_abi_compatibility(compiler)
-        # Warn user if VC env is activated but `DISTUILS_USE_SDK` is not set.
+        # Warn user if VC env is activated but `DISTUTILS_USE_SDK` is not set.
         if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' in os.environ and 'DISTUTILS_USE_SDK' not in os.environ:
             msg = (
                 'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
@@ -435,7 +433,7 @@ class BuildExtension(build_ext, object):
 
     def _record_op_info(self):
         """
-        Record custum op inforomation.
+        Record custom op information.
         """
         # parse shared library abs path
         outputs = self.get_outputs()
@@ -516,10 +514,10 @@ def load(name,
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None.
-        extra_cuda_cflags(list[str]): additonal flags used to compile CUDA files. See
+        extra_cuda_cflags(list[str]): additional flags used to compile CUDA files. See
                                 https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
                                 for details. Default None.
-        extra_ldflags(list[str]): additonal flags used to link shared library. See
+        extra_ldflags(list[str]): additional flags used to link shared library. See
                                 https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html for details.
                                 Default None.
         extra_include_paths(list[str]): additional include path used to search header files.
@@ -532,7 +530,7 @@ def load(name,
         verbose(bool): whether to verbose compiled log information
 
     Returns:
-        custom api: A callable python function with same signature as CustomOp Kernel defination.
+        custom api: A callable python function with same signature as CustomOp Kernel definition.
 
     Example:
 

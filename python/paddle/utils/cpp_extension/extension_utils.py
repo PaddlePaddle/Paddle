@@ -16,7 +16,6 @@ import os
 import re
 import six
 import sys
-import copy
 import glob
 import logging
 import collections
@@ -292,7 +291,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
     else:
         # append compile flags
-        extra_compile_args.extend(['-g', '-w'])  # diable warnings
+        add_compile_flag(extra_compile_args, ['-g', '-w'])  # disable warnings
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -375,8 +374,8 @@ def find_paddle_includes(use_cuda=False):
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
     include_dirs = [paddle_include_dir, third_party_dir]
 
-    #TODO(zhouwei): because eigen need cuda_runtime.h
-    #So, extend cuda_include_dir always
+    # TODO(zhouwei): because eigen need cuda_runtime.h
+    # So, extend cuda_include_dir always
     cuda_include_dir = find_cuda_includes()
     include_dirs.extend(cuda_include_dir)
 
@@ -407,8 +406,8 @@ def find_paddle_libraries(use_cuda=False):
     # pythonXX/site-packages/paddle/libs
     paddle_lib_dirs = [get_lib()]
 
-    #TODO(zhouwei): because eigen need cuda_runtime.h
-    #So, extend cuda_lib_dir always
+    # TODO(zhouwei): because eigen need cuda_runtime.h
+    # So, extend cuda_lib_dir always
     cuda_lib_dir = find_cuda_libraries()
     paddle_lib_dirs.extend(cuda_lib_dir)
 
@@ -526,7 +525,7 @@ def _custom_api_content(op_name):
         def {op_name}({inputs}):
             helper = LayerHelper("{op_name}", **locals())
 
-            # prepare inputs and output 
+            # prepare inputs and outputs
             ins = {ins}
             outs = {{}}
             out_names = {out_names}
