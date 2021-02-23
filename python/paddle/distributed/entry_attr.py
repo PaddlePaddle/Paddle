@@ -33,13 +33,13 @@ class EntryAttr(object):
 
             input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = fluid.contrib.layers.sparse_embedding(
+            emb = paddle.static.nn.sparse_embedding((
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
                 entry=entry,
-                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
-                                           initializer=fluid.initializer.Uniform()))
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                                           initializer=paddle.nn.initializer.Uniform()))
 
     """
 
@@ -70,13 +70,14 @@ class ProbabilityEntry(EntryAttr):
 
             input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = paddle.static.nn.sparse_embedding(
+            emb = paddle.static.nn.sparse_embedding((
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
                 entry=entry,
-                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
-                                           initializer=fluid.initializer.Uniform()))
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                                           initializer=paddle.nn.initializer.Uniform()))
+
 
     """
 
@@ -110,13 +111,13 @@ class CountFilterEntry(EntryAttr):
 
             input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = paddle.static.nn.sparse_embedding(
+            emb = paddle.static.nn.sparse_embedding((
                 input=input,
                 size=[sparse_feature_dim, embedding_size],
                 is_test=False,
                 entry=entry,
-                param_attr=fluid.ParamAttr(name="SparseFeatFactors",
-                                           initializer=fluid.initializer.Uniform()))
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                                           initializer=paddle.nn.initializer.Uniform()))
 
     """
 
