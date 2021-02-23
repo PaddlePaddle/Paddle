@@ -45,7 +45,8 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-#ifdef PADDLE_WITH_CUDA
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many flags.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ASCEND_CL)
 
 /**
  * CUDA related related FLAG
@@ -377,7 +378,8 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-#ifdef PADDLE_WITH_CUDA
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many flags.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ASCEND_CL)
 
 /**
  * Memory related FLAG

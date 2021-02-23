@@ -217,7 +217,6 @@ class AscendOptimizer(Optimizer):
                  auto_dp=False,
                  rank_table_file=None,
                  precision_mode="must_keep_origin_dtype"):
-
         minimized = None
         if self.inner_opt:
             minimized = self.inner_opt.minimize(

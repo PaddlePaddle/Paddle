@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/npu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
 
@@ -26,24 +26,15 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_ASCEND_CL
 
-enum class Priority : uint8_t {
-  kNull = 0x0,
-  kHigh = 0x1,
-  kNormal = 0x2,
-};
-
-class CUDAStream final {
+class NPUStream final {
  public:
-  CUDAStream() = default;
-  explicit CUDAStream(const Place& place,
-                      const Priority& priority = Priority::kNormal) {
-    Init(place, priority);
-  }
-  virtual ~CUDAStream() { Destroy(); }
+  NPUStream() = default;
+  explicit NPUStream(const Place& place) { Init(place); }
+  virtual ~NPUStream() { Destroy(); }
 
-  bool Init(const Place& place, const Priority& priority = Priority::kNormal);
+  bool Init(const Place& place);
 
   template <typename Callback>
   void AddCallback(Callback&& callback) const {
@@ -51,32 +42,31 @@ class CUDAStream final {
   }
 
   template <typename Callback>
-  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+  void RecordEvent(aclrtEvent ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
   }
 
-  void RecordEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+  void RecordEvent(aclrtEvent ev) const {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(ev, stream_));
   }
 
-  void WaitEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+  void WaitEvent(aclrtEvent ev) const {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtStreamWaitEvent(stream_, ev));
   }
 
   void Wait() const;
   void WaitCallback() const { callback_manager_->Wait(); }
 
-  const cudaStream_t& raw_stream() const { return stream_; }
+  aclrtStream raw_stream() const { return stream_; }
   void Destroy();
 
  private:
   Place place_;
-  cudaStream_t stream_{nullptr};
-  Priority priority_{Priority::kNormal};
-  std::unique_ptr<StreamCallbackManager<cudaStream_t>> callback_manager_;
+  aclrtStream stream_{nullptr};
+  std::unique_ptr<StreamCallbackManager<aclrtStream>> callback_manager_;
 
-  DISABLE_COPY_AND_ASSIGN(CUDAStream);
+  DISABLE_COPY_AND_ASSIGN(NPUStream);
 };
 
 #endif

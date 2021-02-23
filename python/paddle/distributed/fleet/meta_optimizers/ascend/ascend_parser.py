@@ -204,7 +204,6 @@ class AscendParserBase(object):
         global global_cnt
         global_cnt += 1
         name = "." + str(global_cnt)
-        #print("op post_fix:", name)
         return name
 
     def _create_ge_tensor(self, shape, dtype, value):

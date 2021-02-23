@@ -459,7 +459,7 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
-    ids=cluster.world_device_ids()
+    ids = cluster.world_device_ids()
     res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
@@ -582,8 +582,8 @@ def get_ascend_npus(npus):
     if npus is None:
         count = fluid.core.NPUDevice.get_device_count()
         if count <= 0:
-            return ret
-        ret = [x for x in range(count)]
+            return None
+        ret = [str(x) for x in range(count)]
     else:
         ret = [x.strip() for x in npus.split(',')]
     return ret

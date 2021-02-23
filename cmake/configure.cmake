@@ -82,6 +82,10 @@ if(WITH_ASCEND)
     add_definitions(-DPADDLE_WITH_ASCEND)
 endif()
 
+if(WITH_ASCEND_CL)
+    add_definitions(-DPADDLE_WITH_ASCEND_CL)
+endif()
+
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)

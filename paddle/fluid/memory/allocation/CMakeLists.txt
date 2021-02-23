@@ -19,6 +19,10 @@ if (WITH_GPU)
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
 endif()
 
+if (WITH_ASCEND_CL)
+  cc_library(npu_allocator SRCS npu_allocator.cc DEPS allocator npu_info)
+endif()
+
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
