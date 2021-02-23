@@ -15,6 +15,7 @@
 set -e
 set +x
 NIGHTLY_MODE=$1
+WINGPU=$2
 
 PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
@@ -203,20 +204,6 @@ long_time_test="^best_fit_allocator_test$|\
 ^test_strided_slice_op$|\
 ^test_transpose_op$"
 
-export FLAGS_call_stack_level=2
-export FLAGS_fraction_of_gpu_memory_to_use=0.92
-export CUDA_VISIBLE_DEVICES=0
-
-UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
-num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
-echo "Windows 1 card TestCases count is $num"
-output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-eight_parallel_job=$(echo $output | cut -d ";" -f 1)
-tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
-non_parallel_job=$(echo $output | cut -d ";" -f 3)
-
-non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
-non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
@@ -251,19 +238,109 @@ function run_unittest() {
     wait;
 }
 
-set +e
-run_unittest $eight_parallel_job 8
-run_unittest $tetrad_parallel_jog 4
-run_unittest $non_parallel_job_1
-run_unittest $non_parallel_job_2
-collect_failed_tests
-set -e
+function run_unittest_gpu() {
+    export FLAGS_call_stack_level=2
+    export FLAGS_fraction_of_gpu_memory_to_use=0.92
+    export CUDA_VISIBLE_DEVICES=0
+
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
+    echo "Windows 1 card TestCases count is $num"
+    output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+    eight_parallel_job=$(echo $output | cut -d ";" -f 1)
+    tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
+    non_parallel_job=$(echo $output | cut -d ";" -f 3)
+
+    non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
+    non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
+
+    set +e
+    run_unittest $eight_parallel_job 8
+    run_unittest $tetrad_parallel_jog 4
+    run_unittest $non_parallel_job_1
+    run_unittest $non_parallel_job_2
+    collect_failed_tests
+    set -e
+
+}
+
+function run_unittest_cpu() {
+    echo    ========================================
+    echo    Running CPU unit tests in parallel way ...
+    echo    ========================================
+    tmpfile=$tmp_dir/$RANDOM
+    ctest -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 | tee $tmpfile
+    wait;
+}
+
+function unittests_retry(){
+    if "${WINGPU}" == "ON" ];then
+        parallel_job=1
+    else
+        parallel_job=8
+    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    retry_time=3
+    exec_times=0
+    exec_time_array=('first' 'second' 'third')
+    exec_retry_threshold=10
+    retry_unittests_regular=''
+
+    for line in ${retry_unittests[@]} ;
+        do
+            if [[ "$retry_unittests_regular" == "" ]];then
+                retry_unittests_regular="^$line$"
+            else
+                retry_unittests_regular="$retry_unittests_regular|^$line$"
+            fi
+        done
+
+    retry_unittests_record=''
+    while ( [ $exec_times -lt $retry_time ] )
+        do
+            retry_unittests_record="$retry_unittests_record$failed_test_lists"
+            echo "========================================="
+            echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+            echo "========================================="
+            echo "The following unittest will be re-run:"
+            echo "${retry_unittests}"
+            echo "========================================="
+            rm -f $tmp_dir/*
+            failed_test_lists=''
+            ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j 8 | tee $tmpfile
+            collect_failed_tests
+            exec_times=$[$exec_times+1]
+        done
+    rm -f $tmp_dir/*
+}
+
+function show_ut_retry_result() {
+    read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+    if [ -z "${retry_unittests_record_judge}" ];then
+        echo "========================================"
+        echo "There are failed tests, which have been successful after re-run:"
+        echo "========================================"
+        echo "The following tests have been re-ran:"
+        echo "${retry_unittests_record}"
+    else
+        failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+        echo "========================================"
+        echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+        echo "Summary Failed Tests... "
+        echo "========================================"
+        echo "The following tests FAILED: "
+        echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+        exit 8;
+    fi
+
+if "${WINGPU}" == "ON" ];then
+    run_unittest_gpu
+else
+    run_unittest_cpu
+fi
+
 rm -f $tmp_dir/*
 if [[ "$failed_test_lists" != "" ]]; then
-    echo "========================================"
-    echo "Summary Failed Tests... "
-    echo "========================================"
-    echo "The following tests FAILED: "
-    echo "${failed_test_lists}"
-    exit 8
+    unittests_retry
+    show_ut_retry_result
 fi
