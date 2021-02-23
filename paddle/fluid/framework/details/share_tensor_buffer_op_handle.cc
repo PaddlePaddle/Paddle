@@ -84,7 +84,7 @@ void ShareTensorBufferOpHandle::SetShareDims(bool share_dims) {
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int dev_id =
       BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;
