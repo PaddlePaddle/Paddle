@@ -1877,6 +1877,8 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
