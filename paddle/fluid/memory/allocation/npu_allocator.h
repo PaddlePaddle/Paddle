@@ -13,41 +13,29 @@
 // limitations under the License.
 
 #pragma once
-
-#include <ThreadPool.h>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-#endif
-#include <functional>
-#include <future>  // NOLINT
-#include <memory>
 #include <mutex>  // NOLINT
-
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-namespace platform {
+namespace memory {
+namespace allocation {
 
-// NOTE(zjl): clean StreamCallbackManager to make compilation faster
-// Make StreamCallbackManager thread-safe
-template <typename Stream>
-class StreamCallbackManager {
+class NPUAllocator : public Allocator {
  public:
-  explicit StreamCallbackManager(const Stream stream);
+  explicit NPUAllocator(const platform::NPUPlace& place) : place_(place) {}
 
-  ~StreamCallbackManager() = default;
+  bool IsAllocThreadSafe() const override;
 
-  void AddCallback(std::function<void()> callback) const;
-
-  void Wait() const;
+ protected:
+  void FreeImpl(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size) override;
 
  private:
-  const Stream stream_;
-  mutable ::ThreadPool thread_pool_;
-  mutable std::mutex mtx_;
-  mutable std::future<void> last_future_;
+  platform::NPUPlace place_;
+  std::once_flag once_flag_;
 };
 
-}  // namespace platform
+}  // namespace allocation
+}  // namespace memory
 }  // namespace paddle

@@ -16,6 +16,7 @@ from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np
 from paddle.distributed import fleet
+from functools import reduce
 
 registerd_op = {## forwards
                 "elementwise_add": "AddParser",
@@ -170,6 +171,7 @@ class AscendParserBase(object):
             self.parser_name, len(index_list), output_num)
         for output_id in range(output_num):
             arguments = self.op.output(self.op.output_names[output_id])
+            #print("%d argument:  %s" % (output_id, str(arguments)))
             if len(arguments) > 0:
                 assert len(arguments) == len(
                     index_list[output_id]
@@ -177,6 +179,8 @@ class AscendParserBase(object):
                     self.parser_name, output_id, len(index_list[output_id]),
                     len(arguments))
                 for i in range(len(arguments)):
+                    #print("assgin index_list[%d][%d] to %s" %
+                    #      (output_id, i, arguments[i]))
                     self.var2geop[arguments[i]] = geop_list[index_list[
                         output_id][i]]
 
@@ -199,7 +203,8 @@ class AscendParserBase(object):
     def _accumulated_op_id(self):
         global global_cnt
         global_cnt += 1
-        return "." + str(global_cnt)
+        name = "." + str(global_cnt)
+        return name
 
     def _create_ge_tensor(self, shape, dtype, value):
         tensor_desc = core.GETensorDesc(
@@ -789,6 +794,8 @@ class FillConstantParser(AscendParserBase):
             "Const").set_attr_tensor("value", tensor)
         self._mark_as_input(const)
         if self.op.block.var(self.op.output('Out')[0]).persistable:
+            #print("%s is Persistable in fill_constant" %
+            #      (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -800,6 +807,10 @@ class FillConstantParser(AscendParserBase):
                 "assign" + self._accumulated_op_id(), "Assign").set_input(
                     "value", const).set_input("ref", var)
             return [const], [[0]]
+        #else:
+        #    print(
+        #        "self.op.output('Out')[0]: %s is not persistable in fill_constant"
+        #        % (self.op.output('Out')[0]))
         return [const], [[0]]
 
 
@@ -853,6 +864,8 @@ class TruncatedNormalParser(AscendParserBase):
 
         ## wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
+            #print("%s is Persistable in truncated_normal" %
+            #      (self.op.output('Out')[0]))
             var = core.GEOperatorFactory.create_operator(
                 self.op.output('Out')[0], "Variable")
             var.update_output_desc("y",
@@ -867,6 +880,10 @@ class TruncatedNormalParser(AscendParserBase):
                 shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor,
                 truncated_normal
             ], [[-1]]
+        #else:
+        #    print(
+        #        "self.op.output('Out')[0] is not persistable in truncated_noraml"
+        #    )
         return [truncated_normal], [[0]]
 
 
@@ -1366,7 +1383,7 @@ class UniformRandomParser(AscendParserBase):
 
         tensor1 = self._create_ge_tensor([len(shape)], 2, shape)
         shape_tensor = core.GEOperatorFactory.create_operator(
-            "const" + self._accumulated_op_id(), 
+            "const" + self._accumulated_op_id(),
             "Const").set_attr_tensor("value", tensor1)
 
         ge_ur = core.GEOperatorFactory.create_operator(
@@ -1379,9 +1396,9 @@ class UniformRandomParser(AscendParserBase):
         scale = max_v - min_v
 
         scale_value = core.GEOperatorFactory.create_operator(
-                "scale" + self._accumulated_op_id(), "Power").set_input(
-                    "x", ge_ur).set_attr_float("power", 1.0).set_attr_float(
-                        "scale", scale).set_attr_float("shift", min_v)
+            "scale" + self._accumulated_op_id(), "Power").set_input(
+                "x", ge_ur).set_attr_float("power", 1.0).set_attr_float(
+                    "scale", scale).set_attr_float("shift", min_v)
 
         return [scale_value], [[0]]
 
@@ -1429,14 +1446,15 @@ class SqueezeParser(AscendParserBase):
 
     def _apply(self):
         tensor = self._get_ge_input(self.op.input_arg_names[0])
-        axes = self.op.attr("axes") 
+        axes = self.op.attr("axes")
 
         data_squeezed = core.GEOperatorFactory\
            .create_operator("squeeze" + self._accumulated_op_id(), "Squeeze")\
              .set_input("x", tensor)\
              .set_attr_vec_int32("axes", axes)
         shape = core.GEOperatorFactory.create_operator(
-            "shape" + self._accumulated_op_id(), "Shape").set_input("x", data_squeezed)
+            "shape" + self._accumulated_op_id(),
+            "Shape").set_input("x", data_squeezed)
         return [shape, data_squeezed], [[1], [0]]
 
 
@@ -1613,10 +1631,14 @@ class MulGradParser(AscendParserBase):
                     "unsqueeze" + self._accumulated_op_id(),
                     "Unsqueeze").set_input("x",
                                            y).set_attr_vec_int32("axes", [0])
+                y_stack = core.GEOperatorFactory.create_operator(
+                    "stack" + self._accumulated_op_id(),
+                    "TileWithAxis").set_input("x", y_unsqueeze).set_attr_int32(
+                        "axis", 0).set_attr_int32("tiles", shape_out_grad[0])
                 x_grad = core.GEOperatorFactory.create_operator(
                     self.parser_name + self._accumulated_op_id(),
                     "BatchMatMul").set_input("x1", out_grad).set_input(
-                        "x2", y_unsqueeze).set_attr_bool(
+                        "x2", y_stack).set_attr_bool(
                             "adj_x1", False).set_attr_bool("adj_x2", True)
                 y_grad = core.GEOperatorFactory.create_operator(
                     self.parser_name + self._accumulated_op_id(),

@@ -42,6 +42,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
+#include "paddle/fluid/platform/npu_info.h"
 
 DEFINE_int64(
     gpu_allocator_retry_time, 10000,
@@ -76,6 +77,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+        for (int dev_id = 0; dev_id < platform::GetNPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitNPUAllocator(platform::NPUPlace(dev_id));
+        }
 #endif
         break;
       }
@@ -191,6 +197,12 @@ class AllocatorFacadePrivate {
 
 #ifdef PADDLE_WITH_XPU
   void InitNaiveBestFitXPUAllocator(platform::XPUPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  void InitNaiveBestFitNPUAllocator(platform::NPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 #endif

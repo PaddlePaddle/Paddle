@@ -117,7 +117,8 @@ class StreamGarbageCollector : public GarbageCollector {
 
  private:
   cudaStream_t stream_;
-  std::unique_ptr<platform::StreamCallbackManager> callback_manager_;
+  std::unique_ptr<platform::StreamCallbackManager<cudaStream_t>>
+      callback_manager_;
 };
 
 class CUDAPinnedGarbageCollector : public GarbageCollector {

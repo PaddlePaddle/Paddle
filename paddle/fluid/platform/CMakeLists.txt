@@ -71,6 +71,10 @@ if(WITH_ASCEND)
     cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
 endif()
 
+if(WITH_ASCEND_CL)
+    cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
+endif()
+
 add_subdirectory(dynload)
 add_subdirectory(stream)
 
@@ -86,14 +90,27 @@ IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
+IF(WITH_ASCEND_CL)
+    set(NPU_CTX_DEPS npu_stream npu_info)
+ENDIF()
+
 IF(WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)
 ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 IF(WITH_GPU)
+nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+ENDIF()
+
+IF(WITH_ASCEND_CL)
+cc_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
+ENDIF()
+
+IF(WITH_GPU)
+  set(STREAM_CALLBACK_DEPS stream_callback_manager)
+ELSEIF(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 ELSE()
   set(STREAM_CALLBACK_DEPS)
@@ -108,7 +125,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS})
 
 cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)

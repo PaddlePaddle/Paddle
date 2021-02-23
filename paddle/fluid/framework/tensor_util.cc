@@ -97,6 +97,36 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  // TODO(zhiqiu): handle different condition like CUDA code below
+  else if (platform::is_npu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, stream);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_npu_place(dst_place)) {
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size, stream);
+  }
+  else if (platform::is_npu_place(src_place) &&  // NOLINT
+           platform::is_npu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    auto stream = reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, stream);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
@@ -304,6 +334,32 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  else if (platform::is_npu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, nullptr);
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_npu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size, nullptr);
+  }
+  else if (platform::is_npu_place(src_place) &&  // NOLINT
+           platform::is_npu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data sync from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src_place), src_ptr, size, nullptr);
+  }
+  else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
@@ -429,6 +485,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
   bool GetResult(const framework::Tensor& out,
                  const platform::CUDAPlace& gpu) const {
     return GetResultHelper(out, gpu);
+  }
+
+  bool GetResult(const framework::Tensor& out,
+                 const platform::NPUPlace& npu) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Not supported on place (%s) ", npu));
+    // return GetResultHelper(out, npu);
   }
 
   bool GetResult(const framework::Tensor& out,
@@ -631,6 +694,10 @@ struct BothFalseVisitor : public boost::static_visitor<> {
     BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
         in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
 #endif
+  }
+
+  void VisitorImpl(const platform::NPUPlace& npu) const {
+    // TODO(zhiqiu)
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {

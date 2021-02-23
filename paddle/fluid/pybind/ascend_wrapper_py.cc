@@ -55,6 +55,9 @@ void BindAscendWrapper(py::module *m) {
       .def("init_global_resources",
            &framework::AscendInstance::InitGlobalResouces,
            py::call_guard<py::gil_scoped_release>())
+      .def("destroy_global_resources",
+           &framework::AscendInstance::DestroyGlobalResouces,
+           py::call_guard<py::gil_scoped_release>())
       .def("add_ascend_subgraph", &framework::AscendInstance::AddAscendSubgraph,
            py::call_guard<py::gil_scoped_release>());
 }

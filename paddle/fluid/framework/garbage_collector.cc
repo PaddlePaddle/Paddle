@@ -89,7 +89,8 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
-  callback_manager_.reset(new platform::StreamCallbackManager(stream_));
+  callback_manager_.reset(
+      new platform::StreamCallbackManager<cudaStream_t>(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
