@@ -292,17 +292,22 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
                  const std::vector<size_t> &group_size_limits,
                  bool find_unused_vars)
+#ifdef PADDLE_WITH_XPU_BKCL
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
       find_unused_vars_(find_unused_vars),
-#ifdef PADDLE_WITH_XPU_BKCL
       comm_pool_(1),
       comm_op_count_(0) {
 #else
-{
+    : vars_(vars),
+      group_indices_(group_indices),
+      is_sparse_gradient_(is_sparse_gradient),
+      parallel_ctx_(parallel_ctx),
+      group_size_limits_(group_size_limits),
+      find_unused_vars_(find_unused_vars) {
 #endif
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();

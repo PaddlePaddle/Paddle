@@ -188,8 +188,7 @@ class Reducer {
   bool find_unused_vars_{false};
   bool all_group_ready_{false};
 
-  // std::vector<std::unique_ptr<::ThreadPool>> pool_;
-  // ::ThreadPool comm_pool_;
+  // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
   ::ThreadPool comm_pool_;
   uint32_t comm_op_count_;
   std::mutex mutex_;
