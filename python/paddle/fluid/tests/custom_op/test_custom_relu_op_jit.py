@@ -22,14 +22,11 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
-# Because the shared lib already exists in the cache dir,
-# it will not be compiled again unless the cache dir is cleared.
+# Because Windows don't use docker, the shared lib already exists in the 
+# cache dir, it will not be compiled again unless the shared lib is removed.
 if os.name == 'nt':
-    cmd = 'rmdir {} /s/q'.format(get_build_directory())
-else:
-    cmd = 'rm -rf {}'.format(get_build_directory())
-
-run_cmd(cmd, True)
+    cmd = 'del {}\\custom_relu_module_jit.pyd'.format(get_build_directory())
+    run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
 # custom_relu_op_dup.cc is only used for multi ops test,
@@ -41,7 +38,8 @@ custom_module = load(
         'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
     ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True)
 
 
 class TestJITLoad(unittest.TestCase):

@@ -26,7 +26,7 @@ from utils import paddle_includes, extra_compile_args
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
 if os.name == 'nt':
-    cmd = 'del {}\\simple_jit_relu2.pyd'.format(get_build_directory())
+    cmd = 'del {}\\multi_out_jit.pyd'.format(get_build_directory())
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
