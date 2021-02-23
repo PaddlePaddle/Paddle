@@ -1454,7 +1454,7 @@ All parameter, weight, gradient are variables in Paddle.
                      "number on your machine is %d",
                      dev_id, platform::GetCUDADeviceCount(),
                      platform::GetCUDADeviceCount());
-                 std::exit(-1);
+                 // std::exit(-1);
                }
              }
 
