@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/reader.h"
+
 #include <memory>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
+#include "gtest/gtest_pred_impl.h"
 
 class StubDecoratedReader : public paddle::framework::DecoratedReader {
  public:

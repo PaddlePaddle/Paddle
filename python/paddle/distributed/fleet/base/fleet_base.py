@@ -521,7 +521,8 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             export_for_deployment=True):
+                             export_for_deployment=True,
+                             mode=0):
         """
         save inference model for inference.
 
@@ -544,7 +545,7 @@ class Fleet(object):
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment)
+            export_for_deployment, mode)
 
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
@@ -590,6 +591,9 @@ class Fleet(object):
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
+
+    def shrink(self, threshold):
+        self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """

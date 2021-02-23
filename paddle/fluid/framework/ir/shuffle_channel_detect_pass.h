@@ -22,6 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 class ShuffleChannelDetectPass : public FusePassBase {
  public:
   virtual ~ShuffleChannelDetectPass() {}

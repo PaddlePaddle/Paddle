@@ -259,38 +259,6 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
-// NOTE(wangxi): When copying data to the accelerator card,
-// we need set_device(dev_id) first.
-template <typename P>
-static int GetDeviceId(const P &place) {
-  // for CPUPlace and CUDAPinnedPlace.
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
-}
-
-template <>
-int GetDeviceId<platform::CUDAPlace>(const platform::CUDAPlace &place) {
-  return place.GetDeviceId();
-}
-
-template <>
-int GetDeviceId<platform::XPUPlace>(const platform::XPUPlace &place) {
-  return place.GetDeviceId();
-}
-
-// NOTE(wangxi16): Used by VarBase __setitem__
-template <>
-int GetDeviceId<platform::Place>(const platform::Place &place) {
-  if (paddle::platform::is_gpu_place(place)) {
-    return GetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place));
-  } else if (paddle::platform::is_xpu_place(place)) {
-    return GetDeviceId(BOOST_GET_CONST(platform::XPUPlace, place));
-  }
-  // for CPUPlace and CUDAPinnedPlace.
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "Paddle can't Get CPUPlace or CUDAPinnedPlace Device Id."));
-}
-
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
@@ -314,7 +282,11 @@ void SetTensorFromPyArrayT(
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    platform::XPUDeviceGuard guard(GetDeviceId(place));
+    // NOTE(wangxi): When copying data to the accelerator card,
+    // we need set_device(dev_id) first.
+    platform::Place tmp_place = place;
+    platform::XPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::XPUPlace, tmp_place).device);
     auto dst = self->mutable_data<T>(place);
     xpu_memcpy(dst, array.data(), array.nbytes(),
                XPUMemcpyKind::XPU_HOST_TO_DEVICE);
@@ -326,7 +298,11 @@ void SetTensorFromPyArrayT(
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {
-      platform::CUDADeviceGuard guard(GetDeviceId(place));
+      // NOTE(wangxi): When copying data to the accelerator card,
+      // we need set_device(dev_id) first.
+      platform::Place tmp_place = place;
+      platform::CUDADeviceGuard guard(
+          BOOST_GET_CONST(platform::CUDAPlace, tmp_place).device);
       auto dst = self->mutable_data<T>(place);
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);

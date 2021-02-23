@@ -13,19 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/layer.h"
-#include <algorithm>
-#include <queue>
-#include <utility>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/imperative/execution_context.h"
-#include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
-#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"

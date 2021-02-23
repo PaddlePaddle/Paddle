@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"

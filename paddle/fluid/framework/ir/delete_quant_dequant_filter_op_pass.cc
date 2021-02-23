@@ -14,10 +14,13 @@
 
 #include "paddle/fluid/framework/ir/delete_quant_dequant_filter_op_pass.h"
 
-#include <memory>
 #include <string>
-#include <unordered_set>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

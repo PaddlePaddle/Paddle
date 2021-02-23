@@ -13,21 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <glog/logging.h>
-#include <algorithm>
-#include <map>
 #include <memory>
-#include <set>
 #include <sstream>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -250,7 +242,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::is_xpu_place(place_), false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =

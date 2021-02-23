@@ -186,8 +186,8 @@ class TestDistRunnerBase(object):
             fleet.save_inference_model(exe, infer_save_dir_fleet,
                                        feeded_var_names, [avg_cost])
 
-    def run_gpu_fleet_api_trainer(self, args):
-        assert args.update_method == "nccl2"
+    def run_use_fleet_api_trainer(self, args):
+        assert args.update_method == "nccl2" or "bkcl"
 
         self.lr = args.lr
 
@@ -207,7 +207,7 @@ class TestDistRunnerBase(object):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        print_to_err("gpu_fleet", "fleet.node_num:")
+        print_to_err("use_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
 
@@ -217,8 +217,16 @@ class TestDistRunnerBase(object):
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
 
-        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(device_id)
+        if fluid.core.is_compiled_with_cuda():
+            device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+            place = fluid.CUDAPlace(device_id)
+        elif fluid.core.is_compiled_with_xpu():
+            device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+            place = fluid.XPUPlace(device_id)
+        else:
+            raise ValueError(
+                "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
+            )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
@@ -511,7 +519,8 @@ class TestParallelDyGraphRunnerBase(object):
                 loss.backward()
 
                 opt.minimize(loss)
-                model.clear_gradients()
+                if not args.accumulate_gradient:
+                    model.clear_gradients()
         print_to_out(out_losses)
 
     def run_trainer_with_spawn(self, args):
@@ -550,7 +559,7 @@ class TestParallelDyGraphRunnerBase(object):
             model.clear_gradients()
         return out_losses
 
-    def run_gpu_fleet_api_trainer(self, args):
+    def run_use_fleet_api_trainer(self, args):
         import paddle.distributed.fleet as fleet
         import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
@@ -566,12 +575,12 @@ class TestParallelDyGraphRunnerBase(object):
         args.trainer_id = paddle.distributed.get_rank()
 
         # 3. init parallel env
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or "bkcl":
             fleet.init(is_collective=True)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2":
+        if args.update_method == "nccl2" or "bkcl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -586,7 +595,8 @@ class TestParallelDyGraphRunnerBase(object):
             loss.backward()
 
             opt.step()
-            opt.clear_grad()
+            if not args.accumulate_gradient:
+                opt.clear_grad()
         print_to_out(out_losses)
 
 
@@ -606,7 +616,7 @@ def runtime_main(test_class):
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--use_pipeline', action='store_true')
-    parser.add_argument('--gpu_fleet_api', action='store_true')
+    parser.add_argument('--use_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
@@ -617,6 +627,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
+    parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
@@ -644,8 +655,8 @@ def runtime_main(test_class):
     model = test_class()
     if args.role == "pserver" and args.update_method == "pserver":
         model.run_pserver(args)
-    elif args.gpu_fleet_api:
-        model.run_gpu_fleet_api_trainer(args)
+    elif args.use_fleet_api:
+        model.run_use_fleet_api_trainer(args)
     elif args.use_pipeline:
         model.run_pipeline_trainer(args)
     else:
@@ -708,12 +719,13 @@ class TestDistBase(unittest.TestCase):
         self._dygraph = False
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
-        self._gpu_fleet_api = False
+        self._use_fleet_api = False
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._save_model = False
         self._fuse_all_reduce = None
+        self._accumulate_gradient = False
         self._setup_config()
 
         global DIST_UT_PORT
@@ -836,6 +848,9 @@ class TestDistBase(unittest.TestCase):
         # not use dgc in single card
         if len(devices) > 1 and self._use_dgc:
             cmd += " --use_dgc"
+
+        if self._accumulate_gradient:
+            cmd += " --accumulate_gradient"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -1003,6 +1018,9 @@ class TestDistBase(unittest.TestCase):
         if self._use_dgc:
             tr_cmd += " --use_dgc"
 
+        if self._accumulate_gradient:
+            tr_cmd += " --accumulate_gradient"
+
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
@@ -1020,8 +1038,8 @@ class TestDistBase(unittest.TestCase):
         if self._fuse_all_reduce is not None:
             tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
-        if self._gpu_fleet_api:
-            tr_cmd += " --gpu_fleet_api"
+        if self._use_fleet_api:
+            tr_cmd += " --use_fleet_api"
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:

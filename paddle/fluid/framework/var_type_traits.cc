@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/var_type_traits.h"
-#include <unordered_map>
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"

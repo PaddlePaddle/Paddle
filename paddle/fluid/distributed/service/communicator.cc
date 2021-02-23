@@ -15,24 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 
 #include <google/protobuf/text_format.h>
-#include <paddle/fluid/framework/program_desc.h>
-
-#include <algorithm>
-#include <chrono>  // NOLINT
-#include <map>
-#include <thread>  // NOLINT
-#include <unordered_set>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -385,6 +372,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
+  platform::RecordEvent record_event("Communicator->SendGlobalStep");
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -788,6 +776,7 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
+  platform::RecordEvent record_event("GeoCommunicator->Send");
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1024,6 +1013,7 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {

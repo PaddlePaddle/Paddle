@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <ostream>
 #include <sstream>
 #include <string>
-
-#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/imperative/reducer.h"
@@ -77,7 +73,7 @@ void GroupConcatSplit(Place place, size_t size) {
     }
 
     if (std::is_same<Place, platform::CUDAPlace>::value) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       paddle::memory::Copy(place, data, cpu_place, value.data(),
                            sizeof(T) * value.size(), 0);
 #endif
@@ -98,9 +94,13 @@ void GroupConcatSplit(Place place, size_t size) {
   auto* dev_ctx = pool.Get(place);
 
   {  // concat
+    auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({group.all_length_}))
+        .mutable_data(place, group.dtype_);
     group.ConcatTensors(*dev_ctx);
 
-    auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
+    group.DivNRanks(*dev_ctx, 1);
+
     framework::Tensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
     auto* data = tmp.data<T>();
@@ -133,7 +133,7 @@ void GroupConcatSplit(Place place, size_t size) {
   }
 }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 TEST(TestGroup, TestConcatSplit) {
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;

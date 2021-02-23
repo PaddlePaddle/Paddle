@@ -17,17 +17,30 @@
 #include <string>
 #include <vector>
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/cuda_resource_pool.h"
+#endif
+
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
 #endif
 
 #include "paddle/fluid/imperative/parallel_context.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLParallelContext : public ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,
