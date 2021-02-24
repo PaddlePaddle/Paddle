@@ -17,16 +17,21 @@ when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction li
 """
 
 import os
+import sys
 import re
 import glob
 
-tool_dir = os.path.dirname(os.path.abspath(__file__))
 
-all_op = glob.glob(
-    os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'), recursive=True)
-all_op += glob.glob(
-    os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'), recursive=True)
-spec_ops = ['activation_op.cc']
+def find_type_files(cur_dir, file_type, file_list=[]):
+    next_level_dirs = os.listdir(cur_dir)
+    for next_level_name in next_level_dirs:
+        next_level_dir = os.path.join(cur_dir, next_level_name)
+        if os.path.isfile(next_level_dir):
+            if os.path.splitext(next_level_dir)[1] == file_type:
+                file_list.append(next_level_dir)
+        elif os.path.isdir(next_level_dir):
+            find_type_files(next_level_dir, file_type, file_list)
+    return file_list
 
 
 def remove_grad_op_and_kernel(content, pattern1, pattern2):
@@ -38,6 +43,24 @@ def remove_grad_op_and_kernel(content, pattern1, pattern2):
 
 
 if __name__ == '__main__':
+
+    tool_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if sys.version_info[0] == 3:
+        all_op = glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+            recursive=True)
+        all_op += glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+            recursive=True)
+    elif sys.version_info[0] == 2:
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
+        all_op = find_type_files(
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+
+    spec_ops = ['activation_op.cc']
+
     register_op_count, register_op_cpu_kernel_count, register_op_cuda_kernel_count, register_op_xpu_kernel_count = 0, 0, 0, 0
     register_op_kernel_count, register_op_kernel_with_custom_type_count = 0, 0
 
