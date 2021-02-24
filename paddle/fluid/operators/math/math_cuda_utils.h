@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <cuda_fp16.h>
 #include <algorithm>
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
