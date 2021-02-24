@@ -22,6 +22,7 @@ import re
 import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
+from distutils.command.build import build
 
 from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags, add_std_without_repeat, get_build_directory
@@ -102,6 +103,13 @@ def setup(**attr):
     # Add rename .so hook in easy_install
     assert 'easy_install' not in cmdclass
     cmdclass['easy_install'] = EasyInstallCommand
+
+    # Note(Aurelius84): Add rename build_base directory hook in build command.
+    # To avoid using same build directory that will lead to remove the directory
+    # by mistake while parallelling execute setup.py, for example on CI.
+    assert 'build' not in cmdclass
+    build_base = os.path.join('build', attr['name'])
+    cmdclass['build'] = BuildCommand.with_options(build_base=build_base)
 
     # Always set zip_safe=False to make compatible in PY2 and PY3
     # See http://peak.telecommunity.com/DevCenter/setuptools#setting-the-zip-safe-flag
@@ -491,6 +499,43 @@ class EasyInstallCommand(easy_install, object):
                 assert os.path.exists(new_so_path)
 
 
+class BuildCommand(build, object):
+    """
+    Extend build Command to control the behavior of specifying `build_base` root directory.
+
+    NOTE(Aurelius84): This is a hook subclass inherited Command used to specify customized
+                      build_base directory.
+    """
+
+    @classmethod
+    def with_options(cls, **options):
+        """
+        Returns a BuildCommand subclass containing use-defined options.
+        """
+
+        class cls_with_options(cls):
+            def __init__(self, *args, **kwargs):
+                kwargs.update(options)
+                cls.__init__(self, *args, **kwargs)
+
+        return cls_with_options
+
+    def __init__(self, *args, **kwargs):
+        # Note: shall put before super()
+        self._specified_build_base = kwargs.get('build_base', None)
+
+        super(BuildCommand, self).__init__(*args, **kwargs)
+
+    def initialize_options(self):
+        """
+        build_base is root directory for all sub-command, such as
+        build_lib, build_temp. See `distutils.command.build` for details.
+        """
+        super(BuildCommand, self).initialize_options()
+        if self._specified_build_base is not None:
+            self.build_base = self._specified_build_base
+
+
 def load(name,
          sources,
          extra_cflags=None,
@@ -569,11 +614,13 @@ def load(name,
           verbose)
 
     # write setup.py file and compile it
-    _write_setup_file(name, sources, file_path, extra_include_paths,
-                      compile_flags, extra_ldflags, verbose)
+    build_base_dir = os.path.join(build_directory, name)
+    _write_setup_file(name, sources, file_path, build_base_dir,
+                      extra_include_paths, compile_flags, extra_ldflags,
+                      verbose)
     _jit_compile(file_path, interpreter, verbose)
 
     # import as callable python api
-    custom_op_api = _import_module_from_library(name, build_directory, verbose)
+    custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
 
     return custom_op_api
