@@ -142,7 +142,7 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 :: install ninja
-pip install --user ninja
+pip install ninja
 ninja -V
 set GENERATOR=Ninja
 
