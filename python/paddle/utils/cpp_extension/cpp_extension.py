@@ -48,7 +48,7 @@ def setup(**attr):
 
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
     and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
-    concecepts, such as necessary compiling flags, included paths of head files, and linking
+    concepts, such as necessary compiling flags, included paths of head files, and linking
     flags. It also will automatically search and valid local enviromment and versions of ``cc`` and
     ``nvcc`` , then compiles customized operators supporting CPU or GPU device according to
     the specified Extension type.
@@ -66,7 +66,7 @@ def setup(**attr):
            we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
         2. Using ``which cc`` to ensure location of ``cc`` and using ``cc --version`` 
            to ensure linking GCC version on Linux.
-        3. Currenly we support Linux and Windows platfrom. MacOS is supporting...
+        3. Currently we support Linux and Windows platfrom. MacOS is supporting...
 
 
     Compared with Just-In-Time ``load`` interface, it only compiles once by executing
@@ -100,7 +100,7 @@ def setup(**attr):
         )
 
 
-    Applying compilation and installation by execting ``python setup.py install`` under source files directory.
+    Applying compilation and installation by executing ``python setup.py install`` under source files directory.
     Then we can use the layer api as followed:
 
     .. code-block:: text
@@ -120,10 +120,10 @@ def setup(**attr):
                                 supporting CPU and GPU devices, please use ``CUDAExtension`` .
         include_dirs(list[str], optional): Specify the extra include directoies to search head files. The interface will automatically add
                                  ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
-                                 head files.
+                                 head files. Default is None.
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
                                 will be applied for ``cc`` and ``nvcc`` compiler. It support specify flags only applied ``cc`` or ``nvcc``
-                                compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` .
+                                compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
     Returns: None
@@ -717,25 +717,25 @@ def load(name,
         extra_cxx_cflags(list[str], optional): Specify additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
-                               ``-DPADDLE_WITH_MKLDNN`` . Default None.
+                               ``-DPADDLE_WITH_MKLDNN`` . Default is None.
         extra_cuda_cflags(list[str], optional): Specify additional flags used to compile CUDA files. By default
                                all basic and framework related flags have been included. If your pre-insall Paddle supported MKLDNN, 
                                please add ``-DPADDLE_WITH_MKLDNN`` . Default None. See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
-                               for details. Default None.
+                               for details. Default is None.
         extra_ldflags(list[str], optional): Specify additional flags used to link shared library. See
                                 `GCC Link Options <https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html>`_ for details.
-                                Default None.
+                                Default is None.
         extra_include_paths(list[str], optional): Specify additional include path used to search header files. By default
                                 all basic headers are included implicitly from ``site-package/paddle/include`` .
-                                Default None.
+                                Default is None.
         build_directory(str, optional): Specify root directory path to put shared library file. If set None,
                             it will use ``PADDLE_EXTENSION_DIR`` from os.environ. Use
-                            ``paddle.utils.cpp_extension.get_build_directory()`` to see the location.
+                            ``paddle.utils.cpp_extension.get_build_directory()`` to see the location. Default is None.
         interpreter(str, optional): Specify nterpreter path, supporting alias and full path.
                            If set None, it will use `python` as default interpreter. If local environment contains
                            more than one python interpreters and want to use new interpreter to apply compilation,
-                           please specify this parameter, such as ``python3.7`` .
-        verbose(bool, optional): whether to verbose compiled log information.
+                           please specify this parameter, such as ``python3.7`` . Default is None.
+        verbose(bool, optional): whether to verbose compiled log information. Default is False
 
     Returns:
         Moudle: A callable python module contains all CustomOp Layer APIs.
