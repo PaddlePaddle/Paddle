@@ -472,7 +472,7 @@ set CUDA_DEVICE_COUNT=1
 goto:eof
 
 :parallel_test_base_cpu
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests_cpu.sh %NIGHTLY_MODE% %WITH_GPU%
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %WITH_GPU%
 
 goto:eof
 
