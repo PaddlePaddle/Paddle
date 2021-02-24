@@ -37,10 +37,10 @@ class TestLambOp1(XPUOpTest):
         '''Test Lamb Op with supplied attributes
         '''
         self.op_type = "lamb"
-        param = np.random.uniform(-1, 1, 512).astype("float32")
-        grad = np.random.uniform(-1, 1, 512).astype("float32")
-        moment1 = np.random.uniform(-1, 1, 512).astype("float32")
-        moment2 = np.random.random(512).astype("float32")
+        param = np.random.uniform(-1, 1, 32).astype("float32")
+        grad = np.random.uniform(-1, 1, 32).astype("float32")
+        moment1 = np.random.uniform(-1, 1, 32).astype("float32")
+        moment2 = np.random.random(32).astype("float32")
 
         self.set_attrs()
         learning_rate = 0.001
@@ -69,7 +69,7 @@ class TestLambOp1(XPUOpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-1)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-2)
 
 
 def lamb_step(inputs, attributes):
