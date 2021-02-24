@@ -219,9 +219,6 @@ class BuildExtension(build_ext, object):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
-        # for compatible two custom op define method
-        use_new_custom_op_load_method(
-            kwargs.get("use_new_method", use_new_custom_op_load_method()))
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()

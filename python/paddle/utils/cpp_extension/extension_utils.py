@@ -296,7 +296,10 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.append('-lpaddle_framework')
+        if use_new_custom_op_load_method():
+            extra_link_args.append('-lpaddle_custom_op')
+        else:
+            extra_link_args.append('-lpaddle_framework')
         if use_cuda:
             extra_link_args.append('-lcudart')
 
@@ -614,6 +617,10 @@ def _write_setup_file(name,
     import os
     from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
     from paddle.utils.cpp_extension import get_build_directory
+    from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+    use_new_custom_op_load_method({use_new_method})
+
     setup(
         name='{name}',
         ext_modules=[
@@ -623,9 +630,8 @@ def _write_setup_file(name,
                 extra_compile_args={extra_compile_args},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
-            output_dir='{build_dir}',
-            no_python_abi_suffix=True,
-            use_new_method={use_new_method})
+            output_dir=r'{build_dir}',
+            no_python_abi_suffix=True)
         }})""").lstrip()
 
     with_cuda = False
