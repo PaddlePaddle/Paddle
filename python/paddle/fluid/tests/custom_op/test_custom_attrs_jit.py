@@ -34,7 +34,8 @@ custom_attrs = load(
     name='custom_attrs_jit',
     sources=['attr_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True)
 
 
 class TestJitCustomAttrs(unittest.TestCase):
