@@ -119,7 +119,7 @@ class CublasHandleHolder {
   }
 
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
