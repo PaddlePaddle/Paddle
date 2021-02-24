@@ -249,7 +249,7 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
   } else {
     shared_last_idx = threadIdx.x >> 5;
     shared_last_val = 1e10;
-    platform::CudaAtomicMin(&shared_last_val, val);
+    paddle::platform::CudaAtomicMin(&shared_last_val, val);
     shared[shared_last_idx] = shared_last_val;
   }
   __syncthreads();
