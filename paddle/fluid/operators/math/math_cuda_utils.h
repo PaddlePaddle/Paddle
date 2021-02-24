@@ -239,7 +239,7 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
   static __shared__ int shared_last_idx;
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
-  int total_num = math::blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
+  int total_num = blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
   int threshold = (total_num >> 5) << 5;
   shared_last_idx = ((blockDim.x + warpSize - 1) >> 5) - 1;
 
