@@ -148,10 +148,9 @@ inline int getReduceNum(const framework::Tensor& input, const framework::Tensor*
         channel_last ? output->dims()[2] : output->dims()[3];
     // data_format can be NCHW , NDHWC, NHWC
     bool is_reduce = false;
-    int fix = (int) (!channel_last);
     if ((output_height == 1) && (output_width == 1) && (!channel_last)) {
-      reduce_dim.push_back(1 + fix);
-      reduce_dim.push_back(2 + fix);
+      reduce_dim.push_back(2);
+      reduce_dim.push_back(3);
       is_reduce = true;
     }
     // reduce
