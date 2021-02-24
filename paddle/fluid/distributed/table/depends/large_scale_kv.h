@@ -71,7 +71,7 @@ inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
 }
 
 inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
-  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
+  UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
 
@@ -93,20 +93,20 @@ class ValueBlock {
 
     // for Entry
     {
-      auto slices = string::split_string<std::string>(entry_attr, "&");
+      auto slices = string::split_string<std::string>(entry_attr, ":");
       if (slices[0] == "none") {
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, 0);
-      } else if (slices[0] == "count_filter") {
+      } else if (slices[0] == "count_filter_entry") {
         int threshold = std::stoi(slices[1]);
         entry_func_ = std::bind(&count_entry, std::placeholders::_1, threshold);
-      } else if (slices[0] == "probability") {
+      } else if (slices[0] == "probability_entry") {
         float threshold = std::stof(slices[1]);
         entry_func_ =
             std::bind(&probility_entry, std::placeholders::_1, threshold);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Not supported Entry Type : %s, Only support [count_filter, "
-            "probability]",
+            "Not supported Entry Type : %s, Only support [CountFilterEntry, "
+            "ProbabilityEntry]",
             slices[0]));
       }
     }
@@ -182,10 +182,12 @@ class ValueBlock {
           initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
                                      value_dims_[x]);
         }
+        value->need_save_ = true;
       }
+    } else {
+      value->need_save_ = true;
     }
 
-    value->need_save_ = true;
     return;
   }
 
