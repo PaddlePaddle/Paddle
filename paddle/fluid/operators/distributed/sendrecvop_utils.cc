@@ -39,7 +39,7 @@ using VarMsg = sendrecv::VariableMessage;
 static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
   if (is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     PADDLE_ENFORCE_EQ(
         is_gpu_place(tensor.place()), true,
         platform::errors::PreconditionNotMet("Please run in gpu place."));

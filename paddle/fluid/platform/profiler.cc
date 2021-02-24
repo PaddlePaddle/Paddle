@@ -206,7 +206,7 @@ void EnableProfiler(ProfilerState state) {
   g_state = state;
   should_send_profile_state = true;
   GetDeviceTracer()->Enable();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (g_state == ProfilerState::kCUDA || g_state == ProfilerState::kAll ||
       g_state == ProfilerState::kCPU) {
     // Generate some dummy events first to reduce the startup overhead.
