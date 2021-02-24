@@ -14,10 +14,10 @@
 
 import copy
 
-__all__ = ["AutoMixedPrecisionListsFP16"]
+__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 
-class AutoMixedPrecisionLists(object):
+class AutoMixedPrecisionListsCommon(object):
     """
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black
@@ -77,12 +77,12 @@ class AutoMixedPrecisionLists(object):
                 self.unsupported_list.add(op_name)
 
 
-class AutoMixedPrecisionListsFP16(AutoMixedPrecisionLists):
+class AutoMixedPrecisionLists(AutoMixedPrecisionListsCommon):
     def __init__(self,
                  custom_white_list=None,
                  custom_black_list=None,
                  custom_black_varnames=None):
-        super(AutoMixedPrecisionListsFP16, self).__init__(
+        super(AutoMixedPrecisionLists, self).__init__(
             white_list,
             black_list,
             gray_list,
@@ -313,4 +313,4 @@ unsupported_fp16_list = {
     'lookup_table_v2',
 }
 
-CustomOpListsFP16 = AutoMixedPrecisionListsFP16
+CustomOpLists = AutoMixedPrecisionLists

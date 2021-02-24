@@ -24,7 +24,7 @@ from .fp16_utils import rewrite_program
 from .fp16_utils import cast_model_to_fp16
 from .fp16_utils import cast_parameters_to_fp16
 from .fp16_utils import update_role_var_grad
-from .fp16_lists import AutoMixedPrecisionListsFP16
+from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
 from .amp_nn import update_loss_scaling
 import types
@@ -513,7 +513,7 @@ def decorate(optimizer,
                 run_example_code()
     """
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionListsFP16()
+        amp_lists = AutoMixedPrecisionLists()
 
     if use_fp16_guard is None:
         use_fp16_guard = use_pure_fp16
