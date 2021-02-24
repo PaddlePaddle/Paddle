@@ -53,7 +53,8 @@ def setup(**attr):
     ``nvcc`` , then compiles customized operators supporting CPU or GPU device according to
     the specified Extension type.
 
-    Moreover, ABI compatibility will be checked to ensure that compiler version from ``cc``
+    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
+    will be checked to ensure that compiler version from ``cc``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
     For example if Paddle with CUDA 10.1 is built with GCC 8.2, then the version of user's
     local machine should satisfy GCC >= 8.2. Otherwise, a fatal error will occur because of
@@ -669,7 +670,8 @@ def load(name,
     is installed in local environment.
     
     
-    Moreover, ABI compatibility will be checked to ensure that compiler version from ``cc``
+    Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
+    will be checked to ensure that compiler version from ``cc``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
     For example if Paddle with CUDA 10.1 is built with GCC 8.2, then the version of user's
     local machine should satisfy GCC >= 8.2. Otherwise, a fatal error will occur because of
@@ -715,12 +717,11 @@ def load(name,
         extra_cxx_cflags(list[str], optional): Specify additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
-                               '-DPADDLE_WITH_MKLDNN'. Default None.
+                               ``-DPADDLE_WITH_MKLDNN`` . Default None.
         extra_cuda_cflags(list[str], optional): Specify additional flags used to compile CUDA files. By default
-                               all basic and framework related flags have been included.
-                               If your pre-insall Paddle supported MKLDNN, please add
-                               ``-DPADDLE_WITH_MKLDNN`` . Default None. See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
-                                for details. Default None.
+                               all basic and framework related flags have been included. If your pre-insall Paddle supported MKLDNN, 
+                               please add ``-DPADDLE_WITH_MKLDNN`` . Default None. See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
+                               for details. Default None.
         extra_ldflags(list[str], optional): Specify additional flags used to link shared library. See
                                 `GCC Link Options <https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html>`_ for details.
                                 Default None.
