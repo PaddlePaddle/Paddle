@@ -199,6 +199,17 @@ __inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
   return val;
 }
 
+template <typename T>
+__inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+#else
+    val = min(val, __shfl_xor(val, mask, warpSize));
+#endif
+  return val;
+}
+
 /* Calculate the maximum of all elements in a block */
 template <typename T>
 __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
@@ -217,6 +228,41 @@ __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
   val = (lane < block_span) ? shared[lane] : -1e10f;
   val = warpReduceMax(val, mask);
 
+  return val;
+}
+
+/* Calculate the minimum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  static __shared__ T shared_last_val;
+  static __shared__ T shared_last_idx;
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+  int total_num = math::blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
+  int threshold = (total_num >> 5) << 5;
+  shared_last_idx = ((blockDim.x + warpSize - 1) >> 5) - 1;
+
+  if (threadIdx.x < threshold) {
+    val = warpReduceMin(val, mask);
+    if (lane == 0) shared[wid] = val;
+  } else {
+    shared_last_idx = threadIdx.x >> 5;
+    shared_last_val = 1e10;
+    platform::CudaAtomicMin(&shared_last_val, val);
+    shared[shared_last_idx] = shared_last_val;
+  }
+  __syncthreads();
+
+  if (threadIdx.x < threshold) {
+    val = (lane <= shared_last_idx) ? shared[lane] : 1e10f;
+    val = warpReduceMin(val, mask);
+    shared_last_val = val;
+  }
+  __syncthreads();
+  if (threadIdx.x >= threshold) {
+    val = shared_last_val;
+  }
   return val;
 }
 
