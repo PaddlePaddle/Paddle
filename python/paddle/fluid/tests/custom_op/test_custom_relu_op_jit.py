@@ -13,24 +13,43 @@
 # limitations under the License.
 
 import os
+import subprocess
 import unittest
 import paddle
 import numpy as np
-from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_compile_args
-from test_simple_custom_op_setup import relu2_dynamic, relu2_static
+from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
+
+# Because Windows don't use docker, the shared lib already exists in the 
+# cache dir, it will not be compiled again unless the shared lib is removed.
+file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
+    get_build_directory())
+if os.name == 'nt' and os.path.isfile(file):
+    cmd = 'del {}'.format(file)
+    run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
+# custom_relu_op_dup.cc is only used for multi ops test,
+# not a new op, if you want to test only one op, remove this
+# source file
 custom_module = load(
-    name='simple_jit_relu2',
-    sources=['relu_op_simple.cc', 'relu_op_simple.cu', 'relu_op3_simple.cc'],
+    name='custom_relu_module_jit',
+    sources=[
+        'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
+    ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args)  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
+    verbose=True)
 
 
 class TestJITLoad(unittest.TestCase):
     def setUp(self):
-        self.custom_ops = [custom_module.relu2, custom_module.relu3]
+        self.custom_ops = [
+            custom_module.custom_relu, custom_module.custom_relu_dup
+        ]
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu', 'gpu']
 
@@ -39,8 +58,9 @@ class TestJITLoad(unittest.TestCase):
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
-                    out = relu2_static(custom_op, device, dtype, x)
-                    pd_out = relu2_static(custom_op, device, dtype, x, False)
+                    out = custom_relu_static(custom_op, device, dtype, x)
+                    pd_out = custom_relu_static(custom_op, device, dtype, x,
+                                                False)
                     self.assertTrue(
                         np.array_equal(out, pd_out),
                         "custom op out: {},\n paddle api out: {}".format(
@@ -51,9 +71,10 @@ class TestJITLoad(unittest.TestCase):
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
-                    out, x_grad = relu2_dynamic(custom_op, device, dtype, x)
-                    pd_out, pd_x_grad = relu2_dynamic(custom_op, device, dtype,
-                                                      x, False)
+                    out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
+                                                      x)
+                    pd_out, pd_x_grad = custom_relu_dynamic(custom_op, device,
+                                                            dtype, x, False)
                     self.assertTrue(
                         np.array_equal(out, pd_out),
                         "custom op out: {},\n paddle api out: {}".format(

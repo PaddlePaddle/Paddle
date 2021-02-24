@@ -72,6 +72,13 @@ TEST(test_tracer, test_trace_op) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+
+#ifndef PADDLE_WITH_XPU
+  ASSERT_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map,
+                              platform::XPUPlace(0), true);
+               , platform::EnforceNotMet);
+#endif
+
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
@@ -195,7 +202,7 @@ TEST(test_tracer, test_track_backward_input) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 }
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   // Doing an mul
   imperative::Tracer tracer;
@@ -311,10 +318,6 @@ TEST(test_tracer, test_expected_place) {
     platform::CUDAPlace gpu_place(0);
     tracer.SetExpectedPlace(gpu_place);
     ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
-
-    // assert throw
-    platform::XPUPlace xpu_place(0);
-    ASSERT_THROW(tracer.SetExpectedPlace(xpu_place), platform::EnforceNotMet);
 #endif
   }
   {
@@ -323,10 +326,6 @@ TEST(test_tracer, test_expected_place) {
     platform::XPUPlace xpu_place(0);
     tracer.SetExpectedPlace(xpu_place);
     ASSERT_EQ(platform::is_xpu_place(tracer.ExpectedPlace()), true);
-
-    // assert throw
-    platform::CUDAPlace cuda_place(0);
-    ASSERT_THROW(tracer.SetExpectedPlace(cuda_place), platform::EnforceNotMet);
 #endif
   }
 }
@@ -521,7 +520,7 @@ static void TestVarOpDestructionMain(const platform::Place& place,
 
 TEST(test_tracer, test_var_op_destruction) {
   TestVarOpDestructionMain(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestVarOpDestructionMain(platform::CUDAPlace(0));
 #endif
 }

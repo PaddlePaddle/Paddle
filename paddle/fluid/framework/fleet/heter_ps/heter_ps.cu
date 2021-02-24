@@ -54,7 +54,14 @@ void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num, FeatureKey* d_keys,
                           FeaturePushValue* d_grads, size_t len) {
-  comm_->push_sparse(num, d_keys, d_grads, len, opt_);
+  // comm_->push_sparse(num, d_keys, d_grads, len, opt_);
+  comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
+}
+
+void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
+                                     const std::vector<ncclComm_t>& inter_comms,
+                                     int comm_size) {
+  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
 }
 
 }  // end namespace framework

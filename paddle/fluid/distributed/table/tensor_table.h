@@ -60,7 +60,7 @@ class TensorTable : public Table {
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 
@@ -110,7 +110,7 @@ class DenseTensorTable : public TensorTable {
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 
@@ -166,7 +166,7 @@ class GlobalStepTable : public DenseTensorTable {
                       size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
 

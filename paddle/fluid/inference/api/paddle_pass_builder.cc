@@ -16,6 +16,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
+#ifdef PADDLE_WITH_HIP
+#include <miopen/miopen.h>
+#endif
 #include <glog/logging.h>
 #include <sstream>
 
@@ -131,11 +134,15 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
+// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
+// disable the pass.
+#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
-        "conv_elementwise_add_fuse_pass",       //
-#endif                                          //
-        "transpose_flatten_concat_fuse_pass",   //
+#endif
+        "conv_elementwise_add_fuse_pass",      //
+#endif                                         //
+        "transpose_flatten_concat_fuse_pass",  //
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
@@ -261,6 +268,7 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   if (!use_mkldnn_bfloat16_) {
     passes_.push_back("cpu_bfloat16_placement_pass");
     passes_.push_back("cpu_bfloat16_pass");
+    passes_.push_back("cpu_quantize_squash_pass");
   }
   use_mkldnn_bfloat16_ = true;
 #else

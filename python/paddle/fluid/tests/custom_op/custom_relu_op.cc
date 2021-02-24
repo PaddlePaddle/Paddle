@@ -104,7 +104,7 @@ std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype) {
   return {x_dtype};
 }
 
-PD_BUILD_OP("relu2")
+PD_BUILD_OP("custom_relu")
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(ReluForward))

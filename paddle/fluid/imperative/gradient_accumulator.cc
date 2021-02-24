@@ -99,7 +99,7 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void operator()(const platform::CUDAPlace& place) {
     platform::CUDADeviceContext* ctx =
         dynamic_cast<platform::CUDADeviceContext*>(
@@ -186,7 +186,7 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 
   if (data_type == framework::proto::VarType::FP16) {
     if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       return TensorAddImpl<platform::CUDADeviceContext, platform::float16>(
           src_tensor, dst_tensor, place);
 #else
@@ -224,7 +224,7 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
     return;                                                                  \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, double);
@@ -232,7 +232,7 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 #endif
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -267,7 +267,7 @@ static void SelectedRowsAddTensor(
     return;                                                                \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, double);
@@ -275,7 +275,7 @@ static void SelectedRowsAddTensor(
 #endif
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -314,7 +314,7 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
     return dst_var;                                                       \
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::is_gpu_place(place)) {
     PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, double);
@@ -322,7 +322,7 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
 #endif
     PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, float);
     PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, double);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
 
@@ -518,7 +518,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         }
       }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (paddle::platform::is_gpu_place(place)) {
         // sum selected rows firstly
         for (auto& var_info : tmp_grad_vars_) {
@@ -579,7 +579,7 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
           // Increase count
           IncreaseCurCnt();
         }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       }
 #endif
       tmp_grad_vars_.clear();
