@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/collective_helper.h"
+#include <utility>
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLCommImpl : public NCCLComm {
  public:
   void set_ring_id(int ring_id) { ring_id_ = ring_id; }
@@ -35,7 +36,7 @@ class NCCLCommImpl : public NCCLComm {
   void set_comm(ncclComm_t comm) { comm_ = comm; }
   ncclComm_t comm() const override { return comm_; }
 
-  cudaStream_t stream() const override { return dev_ctx_->stream(); }
+  gpuStream_t stream() const override { return dev_ctx_->stream(); }
 
   void set_dev_ctx(std::unique_ptr<CUDADeviceContext>&& dev_ctx) {
     dev_ctx_ = std::move(dev_ctx);

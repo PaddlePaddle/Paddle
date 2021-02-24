@@ -737,7 +737,7 @@ x.second );
   }
 
   int assign_async(const concurrent_unordered_map& other,
-                   cudaStream_t stream = 0) {
+                   gpuStream_t stream = 0) {
     m_collisions = other.m_collisions;
     if (other.m_hashtbl_size <= m_hashtbl_capacity) {
       m_hashtbl_size = other.m_hashtbl_size;
@@ -754,7 +754,7 @@ x.second );
     return 0;
   }
 
-  void clear_async(cudaStream_t stream = 0) {
+  void clear_async(gpuStream_t stream = 0) {
     constexpr int block_size = 128;
     init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1, block_size, 0,
                    stream>>>(m_hashtbl_values, m_hashtbl_size, unused_key,
@@ -771,7 +771,7 @@ x.second );
     }
   }
 
-  int prefetch(const int dev_id, cudaStream_t stream = 0) {
+  int prefetch(const int dev_id, gpuStream_t stream = 0) {
     cudaPointerAttributes hashtbl_values_ptr_attributes;
     cudaError_t status = cudaPointerGetAttributes(
         &hashtbl_values_ptr_attributes, m_hashtbl_values);

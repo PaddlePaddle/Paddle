@@ -35,6 +35,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
@@ -43,8 +44,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
-                                             no_calib_int8);
+    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                             with_dynamic_shape);
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -390,7 +391,7 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .LE("elementwise_add", 1)
             .LE("elementwise_mul", 1)
             .EQ("prelu", 0)
-            .LE("conv2d_transpose", 1)
+            .LE("conv2d_transpose", 2)
             .LE("leaky_relu", 1)
             .EQ("fc", 0)
             .EQ("shuffle_channel", 0)
