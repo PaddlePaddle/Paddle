@@ -278,6 +278,7 @@ function unittests_retry(){
         parallel_job=1
     else
         parallel_job=8
+    fi
     read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     retry_time=3
     exec_times=0
