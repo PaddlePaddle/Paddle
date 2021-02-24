@@ -39,42 +39,6 @@ multi_out_module = load(
     verbose=True)
 
 
-class TestJITLoad(unittest.TestCase):
-    def setUp(self):
-        self.custom_ops = [custom_module.relu2, custom_module.relu3]
-        self.dtypes = ['float32', 'float64']
-        self.devices = ['cpu', 'gpu']
-
-    def test_static(self):
-        for device in self.devices:
-            for dtype in self.dtypes:
-                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                for custom_op in self.custom_ops:
-                    out = relu2_static(custom_op, device, dtype, x)
-                    pd_out = relu2_static(custom_op, device, dtype, x, False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
-
-    def test_dynamic(self):
-        for device in self.devices:
-            for dtype in self.dtypes:
-                x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                for custom_op in self.custom_ops:
-                    out, x_grad = relu2_dynamic(custom_op, device, dtype, x)
-                    pd_out, pd_x_grad = relu2_dynamic(custom_op, device, dtype,
-                                                      x, False)
-                    self.assertTrue(
-                        np.array_equal(out, pd_out),
-                        "custom op out: {},\n paddle api out: {}".format(
-                            out, pd_out))
-                    self.assertTrue(
-                        np.array_equal(x_grad, pd_x_grad),
-                        "custom op x grad: {},\n paddle api x grad: {}".format(
-                            x_grad, pd_x_grad))
-
-
 class TestMultiOutputDtypes(unittest.TestCase):
     def setUp(self):
         self.custom_op = multi_out_module.multi_out

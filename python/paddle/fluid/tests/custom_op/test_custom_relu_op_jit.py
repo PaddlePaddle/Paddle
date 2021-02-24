@@ -38,7 +38,8 @@ custom_module = load(
         'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
     ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
     verbose=True)
 
 
