@@ -317,18 +317,34 @@ __inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
 template <typename T>
 __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
   static __shared__ T shared[WARP_SIZE];
+  static __shared__ T shared_last_val;
+  static __shared__ T shared_last_idx;
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
+  int total_num = math::blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
+  int threshold = (total_num >> 5) << 5;
+  shared_last_idx = ((blockDim.x + warpSize - 1) >> 5) - 1;
 
-  val = warpReduceMin(val, mask);
-  if (lane == 0) shared[wid] = val;
+  if (threadIdx.x < threshold) {
+    val = warpReduceMin(val, mask);
+    if (lane == 0) shared[wid] = val;
+  } else {
+    shared_last_idx = threadIdx.x >> 5;
+    shared_last_val = 1e10;
+    platform::CudaAtomicMin(&shared_last_val, val);
+    shared[shared_last_idx] = shared_last_val;
+  }
   __syncthreads();
 
-  // align block_span to warpSize
-  int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : 2e10f;
-  val = warpReduceMin(val, mask);
-
+  if (threadIdx.x < threshold) {
+    val = (lane <= shared_last_idx) ? shared[lane] : 1e10f;
+    val = warpReduceMin(val, mask);
+    shared_last_val = val;
+  }
+  __syncthreads();
+  if (threadIdx.x >= threshold) {
+    val = shared_last_val;
+  }
   return val;
 }
 
@@ -391,7 +407,6 @@ __global__ void KeBilinearInterpBw2(
         s_data[0][threadIdx.x] = 0.f;
         s_data[1][threadIdx.x] = 0.f;
       }
-
       int top_left_index = input_index;
       int top_right_index = input_index + w_id;
       int bot_left_index = input_index + h_id * in_img_w;
@@ -403,14 +418,18 @@ __global__ void KeBilinearInterpBw2(
           bot_right_index & block_per_threads_minus_1, FINAL_MASK);
       int s_top_min_index = blockReduceMin(
           top_left_index & block_per_threads_minus_1, FINAL_MASK);
-      int s_bot_min_index = blockReduceMin(
-          bot_left_index & block_per_threads_minus_1, FINAL_MASK);
+      printf("s_top_min_index=%d\n", s_top_min_index);
+      // int s_bot_min_index = blockReduceMin(bot_left_index &
+      // block_per_threads_minus_1, FINAL_MASK);
 
+      // printf("[Outside]>>> threadIdx.x= %d\t left_index=%d\tright_index=%d\t,
+      // belongs to [%d, %d]\n",
+      //                      threadIdx.x, top_left_index, top_right_index,
+      //                      s_top_min_index, s_top_max_index);
       int in_top_max_index = math::blockReduceMax(top_right_index, FINAL_MASK);
       int in_bot_max_index = math::blockReduceMax(bot_right_index, FINAL_MASK);
       int in_top_min_index = blockReduceMin(top_left_index, FINAL_MASK);
       int in_bot_min_index = blockReduceMin(bot_left_index, FINAL_MASK);
-
       platform::CudaAtomicAdd(
           &s_data[0][top_left_index & block_per_threads_minus_1],
           h2lambda * w2lambda * out_pos);
@@ -424,46 +443,52 @@ __global__ void KeBilinearInterpBw2(
           &s_data[1][bot_right_index & block_per_threads_minus_1],
           h1lambda * w1lambda * out_pos);
       __syncthreads();
-      printf(
-          "[top_left]: %d, %f\t[top_right]: %d, %f\t"
-          "[bot_left]: %d, %f\t[bot_right]: %d, %f\n",
-          top_left_index & block_per_threads_minus_1,
-          s_data[0][top_left_index & block_per_threads_minus_1],
-          top_right_index & block_per_threads_minus_1,
-          s_data[0][top_right_index & block_per_threads_minus_1],
-          bot_left_index & block_per_threads_minus_1,
-          s_data[1][bot_left_index & block_per_threads_minus_1],
-          bot_right_index & block_per_threads_minus_1,
-          s_data[1][bot_right_index & block_per_threads_minus_1]);
 
-      if (threadIdx.x >= s_top_min_index && threadIdx.x <= s_top_max_index) {
-        platform::CudaAtomicAdd(
-            &in[in_top_min_index - s_top_min_index + threadIdx.x],
-            s_data[0][threadIdx.x]);
-        printf(
-            "TOP >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d, "
-            "val: %f]\n"
-            "s_top_min_index=%d, s_top_max_index=%d\tin_top_min_index=%d, "
-            "in_top_max_index=%d\n",
-            threadIdx.x, in_top_min_index - s_top_min_index + threadIdx.x,
-            in[in_top_min_index + threadIdx.x - s_top_min_index], threadIdx.x,
-            s_data[0][threadIdx.x], s_top_min_index, s_top_max_index,
-            in_top_min_index, in_top_max_index);
-      }
-      if (threadIdx.x >= s_bot_min_index && threadIdx.x <= s_bot_max_index) {
-        platform::CudaAtomicAdd(
-            &in[in_bot_min_index - s_bot_min_index + threadIdx.x],
-            s_data[1][threadIdx.x]);
-        printf(
-            "BOT >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d, "
-            "val: %f]\n"
-            "s_bot_min_index=%d, s_bot_max_index=%d\tin_bot_min_index=%d, "
-            "in_bot_max_index=%d\n",
-            threadIdx.x, in_bot_min_index - s_bot_min_index + threadIdx.x,
-            in[in_bot_min_index + threadIdx.x - s_bot_min_index], threadIdx.x,
-            s_data[0][threadIdx.x], s_bot_min_index, s_bot_max_index,
-            in_bot_min_index, in_bot_max_index);
-      }
+      // printf("[top_left]: %d, %f\t[top_right]: %d, %f\t"
+      //        "[bot_left]: %d, %f\t[bot_right]: %d, %f\n",
+      //        top_left_index & block_per_threads_minus_1,
+      //        s_data[0][top_left_index & block_per_threads_minus_1],
+      //        top_right_index & block_per_threads_minus_1,
+      //        s_data[0][top_right_index & block_per_threads_minus_1],
+      //        bot_left_index & block_per_threads_minus_1,
+      //        s_data[1][bot_left_index & block_per_threads_minus_1],
+      //        bot_right_index & block_per_threads_minus_1,
+      //        s_data[1][bot_right_index & block_per_threads_minus_1]);
+
+      // if (threadIdx.x <=  (s_top_max_index - s_top_min_index) {
+      //   platform::CudaAtomicAdd(&in[in_top_min_index - s_top_min_index +
+      //   threadIdx.x],
+      //                           s_data[0][threadIdx.x + s_top_min_index]);
+      // }
+      // if (threadIdx.x <=  (s_bot_max_index - s_bot_min_index) {
+      //   platform::CudaAtomicAdd(&in[in_bot_min_index - s_bot_min_index +
+      //   threadIdx.x],
+      //                           s_data[1][threadIdx.x + s_bot_min_index]);
+
+      // printf(
+      //      "TOP >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d,
+      //      val: %f]\n"
+      //      "s_top_min_id=%d, s_top_max_id=%d\tin_top_min_id=%d,
+      //      in_top_max_id=%d\n",
+      //      threadIdx.x,
+      //      in_top_min_index - s_top_min_index + threadIdx.x,
+      //      in[in_top_min_index + threadIdx.x - s_top_min_index],
+      //      threadIdx.x, s_data[0][threadIdx.x],
+      //      s_top_min_index, s_top_max_index,
+      //      in_top_min_index, in_top_max_index);
+
+      // printf(
+      //     "BOT >> [tid: %d], in_data[idx: %d, val: %f]\t s_data[idx: %d, val:
+      //     %f]\n"
+      //     "s_bot_min_id=%d, s_bot_max_id=%d\t in_bot_min_id=%d,
+      //     in_bot_max_id=%d\n",
+      //     threadIdx.x,
+      //     in_bot_min_index - s_bot_min_index + threadIdx.x,
+      //     in[in_bot_min_index + threadIdx.x - s_bot_min_index],
+      //     threadIdx.x, s_data[0][threadIdx.x],
+      //     s_bot_min_index, s_bot_max_index,
+      //     in_bot_min_index, in_bot_max_index);
+      // }
     } else {
       T* in_pos;
       in_pos = &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
