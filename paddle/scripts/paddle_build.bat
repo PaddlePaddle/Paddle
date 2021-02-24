@@ -123,6 +123,7 @@ where pip
 pip install wheel --user
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 pip install -r %work_dir%\python\requirements.txt --user
+
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
@@ -234,7 +235,6 @@ set start=%start:~4,10%
 @ECHO ON
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
 set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
-set CUDA_PATH=%CUDA_TOOLKIT_ROOT_DIR%
 
 rem ------set third_party cache dir------
 
@@ -246,7 +246,11 @@ set /p day_before=< %cache_dir%\day.txt
 if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
-    if %day_now% EQU 20 (
+    if %day_now% EQU 25 (
+        rmdir %cache_dir%\third_party_GPU/ /s/q
+        rmdir %cache_dir%\third_party/ /s/q
+    )
+    if %day_now% EQU 10 (
         rmdir %cache_dir%\third_party_GPU/ /s/q
         rmdir %cache_dir%\third_party/ /s/q
     )
@@ -452,7 +456,7 @@ if "%WITH_GPU%"=="ON" (
 
 :parallel_test_base_gpu
 echo    ========================================
-echo    Running GPU unit tests...
+echo    Running GPU unit tests in parallel way ...
 echo    ========================================
 
 setlocal enabledelayedexpansion
@@ -471,6 +475,7 @@ goto:eof
 echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
+
 ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 
 goto:eof
@@ -676,6 +681,7 @@ taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0
