@@ -279,21 +279,14 @@ function unittests_retry(){
     else
         parallel_job=8
     fi
-    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    #read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     retry_time=3
     exec_times=0
     exec_time_array=('first' 'second' 'third')
     exec_retry_threshold=10
-    retry_unittests_regular=''
-
-    for line in ${retry_unittests[@]} ;
-        do
-            if [[ "$retry_unittests_regular" == "" ]];then
-                retry_unittests_regular="^$line$"
-            else
-                retry_unittests_regular="$retry_unittests_regular|^$line$"
-            fi
-        done
+    retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+(" | sed 's/(//' | sed 's/- //' )
+    retry_unittests_num=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
+    retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
 
     retry_unittests_record=''
     while ( [ $exec_times -lt $retry_time ] )
@@ -315,7 +308,7 @@ function unittests_retry(){
 }
 
 function show_ut_retry_result() {
-    read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
     if [ -z "${retry_unittests_record_judge}" ];then
         echo "========================================"
@@ -324,7 +317,7 @@ function show_ut_retry_result() {
         echo "The following tests have been re-ran:"
         echo "${retry_unittests_record}"
     else
-        failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+        failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"|"$1}} END{print all_str}')
         echo "========================================"
         echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
         echo "Summary Failed Tests... "
@@ -333,6 +326,7 @@ function show_ut_retry_result() {
         echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
         exit 8;
     fi
+}
 
 if "${WINGPU}" == "ON" ];then
     run_unittest_gpu
