@@ -102,13 +102,13 @@ def setup(**attr):
         ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al. 
                                 If only compile operator supporting CPU device, please use `CppExtension` ; If compile operator
                                 supporting CPU and GPU devices, please use `CUDAExtension` .
-        include_dirs(list[str]): Specify the extra include directoies to search head files. The interface will automatically expand
+        include_dirs(list[str], optional): Specify the extra include directoies to search head files. The interface will automatically expand
                                  `site-package/paddle/include`. Please add the corresponding directory path if including third-party
                                  head files.
-        extra_compile_args(list[str] | dict): Specify the extra compiling flags such as `-O3` . If set `list[str]` , all these flags
+        extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as `-O3` . If set `list[str]` , all these flags
                                 will be applied for `cc` and `nvcc` compiler. It support specify flags only applied `cc` or `nvcc`
                                 compiler using dict type with `{'cxx': [...], 'nvcc': [...]}` .
-        **attr(dict): Specify other arguments same as `setuptools.setup` .
+        **attr(dict, optional): Specify other arguments same as `setuptools.setup` .
 
     Returns: None
 
@@ -207,8 +207,8 @@ def CppExtension(sources, *args, **kwargs):
 
     Args:
         sources(list[str]): Specify the C++/CUDA source files of customized operators.
-        *args(list[options]): Specify other arguments same as `setuptools.Extension` .
-        **kwargs(dict[option]): Specify other arguments same as `setuptools.Extension` .
+        *args(list[options], optional): Specify other arguments same as `setuptools.Extension` .
+        **kwargs(dict[option], optional): Specify other arguments same as `setuptools.Extension` .
 
     Returns:
         Extension: An instance of setuptools.Extension
@@ -259,8 +259,8 @@ def CUDAExtension(sources, *args, **kwargs):
 
     Args:
         sources(list[str]): Specify the C++/CUDA source files of customized operators.
-        *args(list[options]): Specify other arguments same as `setuptools.Extension` .
-        **kwargs(dict[option]): Specify other arguments same as `setuptools.Extension` .
+        *args(list[options], optional): Specify other arguments same as `setuptools.Extension` .
+        **kwargs(dict[option], optional): Specify other arguments same as `setuptools.Extension` .
 
     Returns:
         Extension: An instance of setuptools.Extension
@@ -698,30 +698,30 @@ def load(name,
     Args:
         name(str): Specify the name of generated shared library file name, not including .so and .dll suffix.
         sources(list[str]): Specify source files name of customize operators.  Supporting .cc, .cpp for CPP file and .cu for CUDA file.
-        extra_cxx_cflags(list[str]): additional flags used to compile CPP files. By default
+        extra_cxx_cflags(list[str], optional): additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None.
-        extra_cuda_cflags(list[str]): Specify additional flags used to compile CUDA files. By default
+        extra_cuda_cflags(list[str], optional): Specify additional flags used to compile CUDA files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None. See
                                 https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
                                 for details. Default None.
-        extra_ldflags(list[str]): Specify additional flags used to link shared library. See
+        extra_ldflags(list[str], optional): Specify additional flags used to link shared library. See
                                 https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html for details.
                                 Default None.
-        extra_include_paths(list[str]): Specify additional include path used to search header files. By default
+        extra_include_paths(list[str], optional): Specify additional include path used to search header files. By default
                                 all basic headers are included implicitly from `site-package/paddle/include` .
                                 Default None.
-        build_directory(str): Specify directory path to put shared library file. If set None,
+        build_directory(str, optional): Specify directory path to put shared library file. If set None,
                             it will use `PADDLE_EXTENSION_DIR` from os.environ. Use
                             `paddle.utils.cpp_extension.get_build_directory()` to see the location.
-        interpreter(str): alias or full interpreter path to specific which one to use if have installed multiple.
+        interpreter(str, optional): alias or full interpreter path to specific which one to use if have installed multiple.
                            If set None, will use `python` as default interpreter. If local environment contains
                            more than one python interpreters and want to use new interpreter to apply compilation,
                            please specify this parameter, such as `python3.7` .
-        verbose(bool): whether to verbose compiled log information
+        verbose(bool, optional): whether to verbose compiled log information
 
     Returns:
         custom api: A callable python function with same signature as CustomOp Kernel definition.
