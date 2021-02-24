@@ -16,7 +16,6 @@ import os
 import re
 import six
 import sys
-import copy
 import glob
 import logging
 import collections
@@ -271,6 +270,13 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
 
+    # append compile flags and check settings of compiler
+    extra_compile_args = kwargs.get('extra_compile_args', [])
+    if isinstance(extra_compile_args, dict):
+        for compiler in ['cxx', 'nvcc']:
+            if compiler not in extra_compile_args:
+                extra_compile_args[compiler] = []
+
     if IS_WINDOWS:
         # TODO(zhouwei): may append compile flags in future
         pass
@@ -282,9 +288,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
     else:
         # append compile flags
-        extra_compile_args = kwargs.get('extra_compile_args', [])
-        extra_compile_args.extend(['-g', '-w'])  # diable warnings
-        kwargs['extra_compile_args'] = extra_compile_args
+        add_compile_flag(extra_compile_args, ['-g', '-w'])  # disable warnings
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -301,6 +305,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
+
+    kwargs['extra_compile_args'] = extra_compile_args
 
     kwargs['language'] = 'c++'
     return kwargs
@@ -407,15 +413,13 @@ def find_paddle_libraries(use_cuda=False):
     return paddle_lib_dirs
 
 
-def add_compile_flag(extension, flag):
-    extra_compile_args = copy.deepcopy(extension.extra_compile_args)
+def add_compile_flag(extra_compile_args, flags):
+    assert isinstance(flags, list)
     if isinstance(extra_compile_args, dict):
         for args in extra_compile_args.values():
-            args.append(flag)
+            args.extend(flags)
     else:
-        extra_compile_args.append(flag)
-
-    extension.extra_compile_args = extra_compile_args
+        extra_compile_args.extend(flags)
 
 
 def is_cuda_file(path):
@@ -520,7 +524,7 @@ def _custom_api_content(op_name):
         def {op_name}({inputs}):
             helper = LayerHelper("{op_name}", **locals())
 
-            # prepare inputs and output 
+            # prepare inputs and outputs
             ins = {ins}
             outs = {{}}
             out_names = {out_names}
@@ -585,7 +589,8 @@ def _write_setup_file(name,
                       file_path,
                       build_dir,
                       include_dirs,
-                      compile_flags,
+                      extra_cxx_cflags,
+                      extra_cuda_cflags,
                       link_args,
                       verbose=False):
     """
@@ -605,7 +610,7 @@ def _write_setup_file(name,
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
-                extra_compile_args={extra_compile_args},
+                extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
             output_dir=r'{build_dir}',
@@ -622,7 +627,8 @@ def _write_setup_file(name,
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
-        extra_compile_args=list2str(compile_flags),
+        extra_cxx_cflags=list2str(extra_cxx_cflags),
+        extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),
         build_dir=build_dir,
         use_new_method=use_new_custom_op_load_method())
