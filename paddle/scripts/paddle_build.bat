@@ -132,6 +132,10 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
+:: install ninja
+pip install --user ninja
+set GENERATOR=Ninja
+
 rem ------show summary of current environment----------
 cmake --version
 nvcc --version
@@ -266,7 +270,7 @@ for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+ninja third_party
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 2 (
@@ -285,7 +289,7 @@ clcache.exe -z
 
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:normal paddle.sln
+    ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:normal paddle.sln
 )
