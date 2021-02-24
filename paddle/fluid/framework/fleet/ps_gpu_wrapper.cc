@@ -235,7 +235,8 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
-  for (int i = 0; i < shard_num; ++i) {
+  HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
+  auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     std::cout << "building table: " << i << std::endl;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
