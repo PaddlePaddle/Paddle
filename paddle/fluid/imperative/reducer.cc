@@ -723,6 +723,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       }
     });
 #else
+    parallel_ctx_->WaitCompute(run_order);
     if (group.is_sparse_) {
       if (group.sparse_contents_ != nullptr) {
         VLOG(3) << "sparse group [" << next_group_
@@ -779,12 +780,12 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 
 void Reducer::FinalizeBackward() {
   all_group_ready_ = false;
-
+#ifdef PADDLE_WITH_XPU_BKCL
   {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [&] { return comm_op_count_ == 0; });
   }
-
+#endif
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     parallel_ctx_->WaitComm(i);
