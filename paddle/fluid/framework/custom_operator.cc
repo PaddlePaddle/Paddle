@@ -143,7 +143,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
-          "Supported data type include `bool`, `int`, `float`, "
+          "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
           "`std::vector<float>`, `std::vector<int64_t>, "
           "`std::vector<std::string>`, Please check whether "
@@ -253,7 +253,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
-            "Supported data type include `bool`, `int`, `float`, "
+            "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
             "`std::vector<float>`, `std::vector<int64_t>, "
             "`std::vector<std::string>`, Please check whether "
@@ -425,8 +425,10 @@ void RegisterOperatorKernel(const std::string& name,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kCPU, inputs, outputs, attrs);
+#ifdef PADDLE_WITH_CUDA
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
                                   PlaceType::kGPU, inputs, outputs, attrs);
+#endif
 }
 
 void RegisterOperatorWithMetaInfo(

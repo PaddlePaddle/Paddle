@@ -94,7 +94,7 @@ using KernelFunc = std::vector<Tensor> (*)(std::vector<Tensor> inputs,
                                                             attr_idx + 1>(  \
             inputs, attrs, pargs..., arg);                                  \
       } catch (boost::bad_any_cast&) {                                      \
-        PD_THROW(                                           \
+        PD_THROW(                                                           \
             "Attribute cast error in custom operator. Expected " #attr_type \
             " value.");                                                     \
       }                                                                     \
@@ -145,10 +145,9 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
   // TODO(chenweihang): support other attribute type if needed.
   // Why not support other attribute type here?
-  // - boost::blank, std::vector<bool> and std::vector<double> are not used in
-  // op
+  // - boost::blank, std::vector<bool> and std::vector<double>
+  //   are not used in op
   // - BlockDesc* and std::vector<BlockDesc*> are used in framework
-
   // end: base template
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
