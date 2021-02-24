@@ -242,9 +242,9 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
   int wid = threadIdx.x >> 5;
   int total_num = blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
   int threshold = (total_num >> 5) << 5;
-  shared_last_idx = ((blockDim.x + warpSize - 1) >> 5) - 1;
 
   if (threadIdx.x < threshold) {
+    shared_last_idx = (threshold >> 5) - 1;
     val = warpReduceMin(val, mask);
     if (lane == 0) shared[wid] = val;
   } else {
