@@ -143,6 +143,7 @@ rem clcache.exe -M 21474836480
 
 :: install ninja
 pip install --user ninja
+ninja -V
 set GENERATOR=Ninja
 
 rem ------show summary of current environment----------
