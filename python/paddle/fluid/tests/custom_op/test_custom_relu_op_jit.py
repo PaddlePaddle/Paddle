@@ -24,8 +24,10 @@ from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
-if os.name == 'nt':
-    cmd = 'del {}\\custom_relu_module_jit.pyd'.format(get_build_directory())
+file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
+    get_build_directory())
+if os.name == 'nt' and os.path.isfile(file):
+    cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
