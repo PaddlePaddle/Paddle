@@ -17,14 +17,14 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test_xpu import XPUOpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 
 
-class TestLambOp1(OpTest):
+class TestLambOp1(XPUOpTest):
     def set_attrs(self):
         self.attrs = {
             'epsilon': 1e-6,
@@ -69,7 +69,7 @@ class TestLambOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-1)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-2)
 
 
 def lamb_step(inputs, attributes):
