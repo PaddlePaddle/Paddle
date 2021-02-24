@@ -1173,6 +1173,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(group_norm);
 USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
