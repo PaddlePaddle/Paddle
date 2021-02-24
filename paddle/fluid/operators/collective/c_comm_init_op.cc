@@ -14,6 +14,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
+#if defined(PADDLE_WITH_RCCL)
+#include <rccl.h>
+#endif
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -26,7 +29,8 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -50,7 +54,7 @@ class CCommInitOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
     if (is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
       int nranks = Attr<int>("nranks");
