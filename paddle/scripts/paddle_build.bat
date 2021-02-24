@@ -429,7 +429,7 @@ echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% >>  %work_dir%\get_added_ut.sh
 
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\check_added_ut.sh
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\check_added_ut.sh
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST%
 
 goto:eof
