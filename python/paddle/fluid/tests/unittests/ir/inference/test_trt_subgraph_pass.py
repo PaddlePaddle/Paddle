@@ -340,36 +340,6 @@ class TensorRTSubgraphPassFlattenTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
-class TensorRTSubgraphPassGroupNormTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 64, 64], dtype="float32")
-            group_norm_out = self.append_group_norm(data)
-            out = fluid.layers.batch_norm(group_norm_out, is_test=True)
-        self.feeds = {
-            "data": np.random.random([1, 3, 64, 64]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassGroupNormTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassGroupNormTest.DynamicShapeParam(
-            {
-                'data': [1, 3, 64, 64]
-            }, {'data': [1, 3, 64, 64]}, {'data': [1, 3, 64, 64]}, False)
-        self.fetch_list = [out]
-
-    def append_group_norm(self, data):
-        return fluid.layers.group_norm(data, groups=3, epsilon=1e-05)
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
