@@ -28,7 +28,7 @@ from . import bf16_utils
 from .bf16_utils import *
 
 __all__ = decorator.__all__
-__all__ = decorator_bf16.__all__
+__all__ += decorator_bf16.__all__
 __all__ += fp16_lists.__all__
 __all__ += bf16_lists.__all__
 __all__ += fp16_utils.__all__

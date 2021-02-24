@@ -20,7 +20,7 @@ from ... import layers
 from ... import global_scope
 from ...log_helper import get_logger
 from ...wrapped_decorator import signature_safe_contextmanager
-from .fp16_lists import AutoMixedPrecisionListsFP16
+from .fp16_lists import AutoMixedPrecisionLists
 import collections
 import logging
 import numpy as np
@@ -317,7 +317,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
     """
 
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionListsFP16()
+        amp_lists = AutoMixedPrecisionLists()
     global_block = program.global_block()
     keep_fp32_ops = set()
     to_fp16_var_names = set()

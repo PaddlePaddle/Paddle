@@ -137,7 +137,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"})
         mp_optimizer = decorate(
             optimizer=optimizer,
@@ -282,7 +282,7 @@ class TestImageClassification(unittest.TestCase):
         gray_list = copy.copy(
             fluid.contrib.mixed_precision.fp16_lists.gray_list)
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16()
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists()
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
@@ -299,7 +299,7 @@ class TestImageClassification(unittest.TestCase):
         white_list.add('exp')
         black_list.remove('exp')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             {'exp'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -317,7 +317,7 @@ class TestImageClassification(unittest.TestCase):
         white_list.add('tanh')
         gray_list.remove('tanh')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             {'tanh'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -334,7 +334,7 @@ class TestImageClassification(unittest.TestCase):
         # 3. w={'lstm'}, b=None
         white_list.add('lstm')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             {'lstm'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -352,7 +352,7 @@ class TestImageClassification(unittest.TestCase):
         white_list.remove('conv2d')
         black_list.add('conv2d')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_list={'conv2d'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -370,7 +370,7 @@ class TestImageClassification(unittest.TestCase):
         black_list.add('tanh')
         gray_list.remove('tanh')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_list={'tanh'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -387,7 +387,7 @@ class TestImageClassification(unittest.TestCase):
         # 6. w=None, b={'lstm'}
         black_list.add('lstm')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
             custom_black_list={'lstm'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
@@ -396,10 +396,9 @@ class TestImageClassification(unittest.TestCase):
     def test_amp_lists_7(self):
         # 7. w={'lstm'} b={'lstm'}
         # raise ValueError
-        self.assertRaises(
-            ValueError,
-            fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16,
-            {'lstm'}, {'lstm'})
+        self.assertRaises(ValueError,
+                          fluid.contrib.mixed_precision.AutoMixedPrecisionLists,
+                          {'lstm'}, {'lstm'})
 
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
@@ -442,7 +441,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 avg_cost = fluid.layers.mean(cost)
 
                 optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
-                amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionListsFP16(
+                amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"})
                 mp_optimizer = decorate(
                     optimizer=optimizer,
