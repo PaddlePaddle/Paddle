@@ -31,8 +31,12 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
+option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 if (WITH_GPU  AND WITH_XPU)
     message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
+if (WITH_GPU  AND WITH_ASCEND)
+    message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
 endif()
 # cmake 3.12, 3.13, 3.14 will append gcc link options to nvcc, and nvcc doesn't recognize them.
 if(WITH_GPU AND (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.15))
@@ -63,12 +67,17 @@ if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
+    set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj")
+    set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj")
+    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
+    set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj")
+
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
-        set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
-        set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
-        set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
-        set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+        set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /MTd")
+        set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /MT")
+        set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+        set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /MT")
         foreach(flag_var
             CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
             CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
@@ -80,6 +89,8 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
+    # NOTE(Avin0323): Less parallel count result in faster compilation.
+    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -87,13 +98,7 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        # NOTE(Avin0323): Less parallel count result in faster compilation with
-        # Unity Build on GPU.
-        if(WITH_UNITY_BUILD AND WITH_GPU)
-            set(${flag_var} "${${flag_var}} /MP8")
-        else()
-            set(${flag_var} "${${flag_var}} /MP")
-        endif()
+        set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
     endforeach(flag_var)
     foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
         set(${flag_var} "${${flag_var}} /w")
@@ -148,8 +153,9 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
-option(WITH_ROCM_PLATFORM     "Compile PaddlePaddle with ROCM platform"             OFF)
-option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
+option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"         OFF)
+option(WITH_RCCL        "Compile PaddlePaddle with RCCL support"          OFF)
+option(WITH_NV_JETSON   "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(WITH_INCREMENTAL_COVERAGE    "Generate coverage reports only for incremental code"       OFF)
@@ -278,19 +284,25 @@ include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
-if(NOT DEFINED ENV{ROCM_PATH})
-    set(ROCM_PATH "/opt/rocm" CACHE PATH "Path to which ROCm has been installed")
-    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
-else()
-    set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Path to which ROCm has been installed")
-    set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
-endif()
-set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
-
-if(WITH_ROCM_PLATFORM)
-    find_package(HIP)
+if(WITH_ROCM)
     include(hip)
-endif(WITH_ROCM_PLATFORM)
+endif(WITH_ROCM)
+
+if (NOT WITH_ROCM AND WITH_RCCL)
+    MESSAGE(WARNING
+        "Disable RCCL when compiling without GPU. Force WITH_RCCL=OFF.")
+    set(WITH_NCCL OFF CACHE STRING
+        "Disable RCCL when compiling without GPU" FORCE)
+endif()
+
+if(WITH_RCCL)
+     add_definitions("-DPADDLE_WITH_RCCL")
+     include(rccl)
+else()
+     if(WITH_ROCM)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
+endif()
 
 if(WITH_NV_JETSON)
     set(WITH_ARM ON CACHE STRING "Set WITH_ARM=ON when compiling WITH_NV_JETSON=ON." FORCE)
@@ -322,6 +334,8 @@ set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+
+add_definitions(-DPADDLE_DLL_EXPORT)
 
 if(ON_INFER)
     # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF

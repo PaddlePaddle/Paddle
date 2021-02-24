@@ -154,8 +154,7 @@ class Quant2Int8MkldnnPass(object):
                 is_quantized_op = True
                 for var_node in op_node.inputs:
                     for front_op_node in var_node.inputs:
-                        if "fake_quantize_dequantize_" not in front_op_node.name(
-                        ):
+                        if "quantize_dequantize" not in front_op_node.name():
                             is_quantized_op = False
                 if not is_quantized_op:
                     op_node.op()._set_attr("skip_quant", True)

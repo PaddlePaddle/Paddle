@@ -30,6 +30,12 @@ import numpy as np
 from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
 
+# Note(Aurelius): Do not forget the dot `.` to distinguish other
+# module such as paddlenlp.
+PADDLE_MODULE_PREFIX = 'paddle.'
+DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
+DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
@@ -69,6 +75,8 @@ dygraph_class_to_static_api = {
 }
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
+FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
+FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 
@@ -191,16 +199,21 @@ def is_api_in_module(node, module_prefix):
 def is_dygraph_api(node):
 
     # Note: A api in module dygraph_to_static is not a real dygraph api.
-    if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
+    if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
         return False
 
     # TODO(liym27): A better way to determine whether it is a dygraph api.
     #  Consider the decorator @dygraph_only
-    return is_api_in_module(node, "paddle.fluid.dygraph")
+    return is_api_in_module(node, DYGRAPH_MODULE_PREFIX)
 
 
 def is_paddle_api(node):
-    return is_api_in_module(node, "paddle")
+    return is_api_in_module(node, PADDLE_MODULE_PREFIX)
+
+
+def is_paddle_func(func):
+    m = inspect.getmodule(func)
+    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -799,6 +812,155 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
         return node
 
 
+class ForLoopTuplePreTransformer(gast.NodeTransformer):
+    """
+    ForNodeVisitor parses 3 type statements (Here var is VarBase(Tensor) or python variable):
+        1). for x in range(var[*]|var.numpy()[*])
+        2). for x in var|var.numpy()
+        3). for i, x in enumerate(var|var.numpy())
+
+        We chose these 3 types because they are easier (x can be variable name iterating in var).
+        However, users can write tuples in Python for loop, such as
+        1). for var1, var2 in var|var.numpy()
+        2). for t in enumerate(var|var.numpy())
+        2). for i, (var1, var2, va3) in enumerate(var|var.numpy())
+
+        To handle these case, this method will do the rewrite tuple pre-process:
+        1). Non-enumerate case: for var1, var2 in var|var.numpy() will be re-written as:
+          for FOR_ITER_TUPLE_PREFIX_x in var | var.numpy():
+            var1 = FOR_ITER_TUPLE_PREFIX_x[0]
+            var2 = FOR_ITER_TUPLE_PREFIX_x[1]
+        2). Enumerate out tuple case: for t in enumerate(var|var.numpy) will be rewritten as:
+          for FOR_ITER_TUPLE_INDEX_PREFIX_x, FOR_ITER_TUPLE_PREFIX_x in enumerate(var|var.numpy):
+            t = (FOR_ITER_TUPLE_INDEX_PREFIX_x, FOR_ITER_TUPLE_PREFIX_x)
+        3). Enumerate inner tuple case: for i, (var1, (var2, va3)) in enumerate(var|var.numpy()) will
+        be re-written as:
+          for i, FOR_ITER_TUPLE_PREFIX_x in var | var.numpy():
+            var1 = FOR_ITER_TUPLE_PREFIX_x[0]
+            var2 = FOR_ITER_TUPLE_PREFIX_x[1][0]
+            var3 = FOR_ITER_TUPLE_PREFIX_x[1][1]
+    """
+
+    def __init__(self, wrapper_root):
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
+
+    def transform(self):
+        self.visit(self.root)
+
+    def visit_For(self, node):
+        if self.is_for_enumerate_iter(node):
+            if isinstance(node.target, (gast.Name, gast.Attribute)):
+                # Out tuple case
+                out_tuple_name = ast_to_source_code(node.target).strip()
+                tuple_iter_name = unique_name.generate(
+                    FOR_ITER_TUPLE_INDEX_PREFIX)
+                tuple_var_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
+                node.target = gast.Tuple(
+                    elts=[
+                        gast.Name(
+                            id=tuple_iter_name,
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None), gast.Name(
+                                id=tuple_var_name,
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+                    ],
+                    ctx=gast.Store())
+                node.body.insert(
+                    0,
+                    gast.Assign(
+                        targets=[
+                            gast.Name(
+                                id=out_tuple_name,
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+                        ],
+                        value=gast.Tuple(
+                            elts=[
+                                gast.Name(
+                                    id=tuple_iter_name,
+                                    ctx=gast.Load(),
+                                    annotation=None,
+                                    type_comment=None), gast.Name(
+                                        id=tuple_var_name,
+                                        ctx=gast.Load(),
+                                        annotation=None,
+                                        type_comment=None)
+                            ],
+                            ctx=gast.Load())))
+            elif isinstance(node.target, (
+                    gast.List,
+                    gast.Tuple)) and len(node.target.elts) >= 2 and isinstance(
+                        node.target.elts[1], (gast.List, gast.Tuple)):
+                # Inner tuple case
+                inner_tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
+                origin_inner_tuple_node = node.target.elts[1]
+                node.target.elts[1] = gast.Name(
+                    id=inner_tuple_name,
+                    ctx=gast.Store(),
+                    annotation=None,
+                    type_comment=None)
+                node.body[0:0] = self.tuple_to_stmts(origin_inner_tuple_node,
+                                                     inner_tuple_name)
+        elif self.is_for_iter(node) and isinstance(node.target,
+                                                   (gast.List, gast.Tuple)):
+            # Non-enumrate case:
+            tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
+            origin_tuple_node = node.target
+            node.target = gast.Name(
+                id=tuple_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None)
+            node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_name)
+        return node
+
+    def tuple_to_stmts(self, node, tuple_name, idx=[]):
+        if not isinstance(node, (gast.Tuple, gast.List)):
+            value_node = gast.Name(
+                id=tuple_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None)
+            for i in idx:
+                value_node = gast.Subscript(
+                    value=value_node,
+                    slice=gast.Index(value=gast.Constant(
+                        value=i, kind=None)),
+                    ctx=gast.Load())
+            return [gast.Assign(targets=[node], value=value_node)]
+        # isinstance(node, (gast.Tuple, gast.List))
+        ret = []
+        for i, element in enumerate(node.elts):
+            ret += self.tuple_to_stmts(node.elts[i], tuple_name, idx + [i])
+        return ret
+
+    def is_for_iter(self, for_node):
+        assert isinstance(for_node,
+                          gast.For), "Input node is not gast.For node."
+        if isinstance(for_node.iter, (gast.Name, gast.Attribute)):
+            return True
+        elif isinstance(for_node.iter, gast.Call) and isinstance(
+                for_node.iter.func,
+                gast.Attribute) and for_node.iter.func.attr == 'numpy':
+            return True
+        elif isinstance(for_node.iter, gast.Subscript):
+            return True
+        else:
+            return False
+
+    def is_for_enumerate_iter(self, for_node):
+        assert isinstance(for_node,
+                          gast.For), "Input node is not gast.For node."
+        return isinstance(for_node.iter, gast.Call) and isinstance(
+            for_node.iter.func,
+            gast.Name) and for_node.iter.func.id == "enumerate"
+
+
 class ForNodeVisitor(object):
     """
     This class parses python for statement, get transformed 3 statement components of for node
@@ -1235,7 +1397,7 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
     len_specs = len(src_input_specs)
     if len_specs != len(desired_input_specs):
         # NOTE(chenweihang): if the input_spec of jit.save is a subset of
-        # input_spec of to_static, also compatible 
+        # input_spec of to_static, also compatible
         for spec in src_input_specs:
             if spec not in desired_input_specs:
                 return False

@@ -35,7 +35,7 @@ class HeterPsBase {
   virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
                         size_t len, size_t chunk_size, int stream_num) = 0;
   virtual int get_index_by_devid(int devid) = 0;
-  virtual void dump() = 0;
+  virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
   virtual void push_sparse(int num, FeatureKey* d_keys,
                            FeaturePushValue* d_grads, size_t len) = 0;

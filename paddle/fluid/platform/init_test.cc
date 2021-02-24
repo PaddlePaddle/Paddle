@@ -11,17 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/xpu_info.h"
+#include "gtest/gtest.h"
+#include "paddle/fluid/platform/device_context.h"
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU) && \
+    !defined(PADDLE_WITH_HIP)
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U);
@@ -32,7 +31,7 @@ TEST(InitDevices, CUDA) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int count = paddle::platform::GetCUDADeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();

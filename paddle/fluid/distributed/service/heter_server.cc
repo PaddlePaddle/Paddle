@@ -13,12 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_server.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace distributed {
@@ -34,7 +29,14 @@ void HeterServer::StartHeterService() {
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
-    VLOG(0) << "heter server start fail";
+    VLOG(0) << "HeterServer start fail. Try again.";
+    auto ip_port = paddle::string::Split(endpoint_, ':');
+    std::string ip = ip_port[0];
+    int port = std::stoi(ip_port[1]);
+    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+    if (server_.Start(endpoint_.c_str(), &options) != 0) {
+      LOG(ERROR) << "HeterServer start failed, ip_port= " << int_ip_port;
+    }
   } else {
     VLOG(0) << "heter server start success! listen on " << endpoint_;
   }

@@ -163,7 +163,7 @@ TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
 #endif
 
 // Check the model by gpu
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(Analyzer_ernie, profile_gpu) { profile(false, true); }
 #endif
 

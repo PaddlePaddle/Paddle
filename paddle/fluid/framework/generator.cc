@@ -15,17 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
-
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

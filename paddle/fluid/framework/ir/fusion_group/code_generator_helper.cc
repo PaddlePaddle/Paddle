@@ -13,14 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
-#include <algorithm>
+
 #include <sstream>
 #include <string>
-#include <vector>
-#include "glog/logging.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
-#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {

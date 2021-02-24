@@ -20,12 +20,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class SquaredL2DistanceKernel : public framework::OpKernel<T> {
@@ -41,15 +35,15 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
 
     int cols = in0->numel() / in0_dims[0];
     // reduce dimensions except the first
-    auto x =
-        EigenMatrix<T>::From(*in0, framework::make_ddim({in0_dims[0], cols}));
-    auto y =
-        EigenMatrix<T>::From(*in1, framework::make_ddim({in1_dims[0], cols}));
+    auto x = framework::EigenMatrix<T>::From(
+        *in0, framework::make_ddim({in0_dims[0], cols}));
+    auto y = framework::EigenMatrix<T>::From(
+        *in1, framework::make_ddim({in1_dims[0], cols}));
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
-    auto sub_result = EigenMatrix<T>::From(*out0);
-    auto z = EigenVector<T>::Flatten(*out1);
+    auto sub_result = framework::EigenMatrix<T>::From(*out0);
+    auto z = framework::EigenVector<T>::Flatten(*out1);
 
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
@@ -88,8 +82,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                  "in scope for operator 'squared_l2_distance_grad'.",
                  framework::GradVarName("Y")));
 
-    auto sub_result = EigenMatrix<T>::From(*in0);
-    auto out_grad = EigenMatrix<T>::From(*in1);
+    auto sub_result = framework::EigenMatrix<T>::From(*in0);
+    auto out_grad = framework::EigenMatrix<T>::From(*in1);
 
     auto x_dims = x_g->dims();
     auto y_dims = y_g->dims();
@@ -106,8 +100,8 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
 
     x_g->mutable_data<T>(context.GetPlace());
     // eigen matrix
-    auto x_grad =
-        EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+    auto x_grad = framework::EigenMatrix<T>::From(
+        *x_g, framework::make_ddim({x_dims[0], cols}));
     // dimensions are same with subResult
     x_grad.device(eigen_place) = grad_mat;
 
@@ -121,12 +115,12 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
                           sub_result.dimensions()[0], y_dims[0]));
 
     if (sub_result.dimensions()[0] == y_dims[0]) {
-      auto y_grad =
-          EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
+      auto y_grad = framework::EigenMatrix<T>::From(
+          *y_g, framework::make_ddim({y_dims[0], cols}));
       y_grad.device(eigen_place) = -1 * grad_mat;
     } else {
       auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
-      auto y_grad = EigenVector<T>::Flatten(*y_g);
+      auto y_grad = framework::EigenVector<T>::Flatten(*y_g);
       y_grad.device(eigen_place) = col_sum_res;
     }
   }

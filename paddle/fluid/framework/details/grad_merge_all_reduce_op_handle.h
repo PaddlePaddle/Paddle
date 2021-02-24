@@ -33,7 +33,7 @@ namespace platform {
 class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -44,7 +44,7 @@ namespace details {
 
 class GradMergeAllReduceOpHandle : public AllReduceOpHandle {
  public:
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   GradMergeAllReduceOpHandle(ir::Node *node,
                              const std::vector<Scope *> &local_scopes,
                              const std::vector<platform::Place> &places,
@@ -75,7 +75,7 @@ class GradMergeAllReduceOpHandle : public AllReduceOpHandle {
 
 class FusedGradMergeAllReduceOpHandle : public FusedAllReduceOpHandle {
  public:
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   FusedGradMergeAllReduceOpHandle(ir::Node *node,
                                   const std::vector<Scope *> &local_scopes,
                                   const std::vector<platform::Place> &places,

@@ -221,13 +221,16 @@ void BasicEngine::PrepareGradAccumulators(
 void BasicEngine::PrepareDeps() {
   PADDLE_ENFORCE_EQ(
       node_deps_.empty(), true,
-      platform::errors::AlreadyExists("Op deps must be initialized."));
-  PADDLE_ENFORCE_EQ(
-      accumulators_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized."));
-  PADDLE_ENFORCE_EQ(
-      accumulators_with_grad_node_.empty(), true,
-      platform::errors::AlreadyExists("Accumulators must be initialized."));
+      platform::errors::AlreadyExists("Op deps are not empty before preparing "
+                                      "it for backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators are not empty before preparing it for "
+                        "backward network execution."));
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators with grad_node as the key are not empty "
+                        "before preparing it for backward network execution."));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
@@ -278,6 +281,8 @@ void BasicEngine::Execute() {
     auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
 
     for (auto& cur_op : *shared_cur_node) {
+      platform::RecordEvent op_type_record_event(cur_op.Type());
+
       ++op_num;
 
       // CheckBackWardInput
@@ -334,9 +339,13 @@ void BasicEngine::Execute() {
                     "Cannot find gradient of variable %s", var->Name()));
           }
 
-          // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor
+          // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor,
+          // it should be orderly and not reapeated.
           if (var->IsLeafGrad()) {
-            leaf_accumulators_.insert(iter->second.get());
+            if (std::find(leaf_accumulators_.begin(), leaf_accumulators_.end(),
+                          iter->second.get()) == leaf_accumulators_.end()) {
+              leaf_accumulators_.push_back(iter->second.get());
+            }
 
             if (iter->second->HasInnerVar()) {
               var = iter->second->InnerVar();

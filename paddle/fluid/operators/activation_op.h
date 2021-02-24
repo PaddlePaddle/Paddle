@@ -318,7 +318,17 @@ struct ExpGradFunctor : public BaseActivationFunctor<T> {
 
 // relu(x) = max(x, 0)
 template <typename T>
-struct ReluFunctor : public BaseActivationFunctor<T> {
+struct ReluCPUFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr([] HOSTDEVICE(T v) {
+      return v > static_cast<T>(0) ? v : static_cast<T>(0);
+    });
+  }
+};
+
+template <typename T>
+struct ReluCUDAFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.cwiseMax(static_cast<T>(0));
@@ -791,26 +801,6 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.round();
   }
-};
-
-// abs(x) = |x|
-template <typename T>
-struct AbsFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.abs();
-  }
-};
-
-template <typename T>
-struct AbsGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * x.sign();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // reciprocal(x) = 1 / x
