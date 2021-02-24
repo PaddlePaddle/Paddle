@@ -27,7 +27,7 @@ import paddle
 class TestLambOp1(XPUOpTest):
     def set_attrs(self):
         self.attrs = {
-            'epsilon': 1e-8,
+            'epsilon': 1e-6,
             'beta1': 0.9,
             'beta2': 0.999,
             'weight_decay': 0.01
