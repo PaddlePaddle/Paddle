@@ -268,8 +268,8 @@ class BuildExtension(build_ext, object):
                     # {'nvcc': {}, 'cxx: {}}
                     if isinstance(cflags, dict):
                         cflags = cflags['nvcc']
-                    else:
-                        cflags = prepare_unix_cudaflags(cflags)
+
+                    cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
