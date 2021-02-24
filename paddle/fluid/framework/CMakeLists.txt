@@ -329,9 +329,10 @@ cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+
+# Old custom op extension mechanism related, will be removed in 2.1.0
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc custom_operator.cc ../extension/src/tensor.cc
-    ../extension/src/op_meta_info.cc
+    SHARED SRCS executor.cc operator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
     ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
@@ -383,9 +384,9 @@ if (LINUX)
 endif()
 
 if (WIN32)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
+  set(PADDLE_CUSTOM_OP_IMPORT_LIB
       ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.lib
-      CACHE INTERNAL "Paddle custom op lib")
+      CACHE INTERNAL "Paddle custom op import lib")
   set(PADDLE_CUSTOM_OP_SHARED_LIB
       ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.dll
       CACHE INTERNAL "Paddle custom op dll")
