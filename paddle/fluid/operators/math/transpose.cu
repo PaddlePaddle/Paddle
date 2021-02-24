@@ -662,9 +662,7 @@ class TransposeFunctor<platform::CUDADeviceContext, T> {
       int ndims = axis.size();
       TransCompute<platform::CUDADeviceContext, T>(ndims, context, in, out,
                                                    axis);
-      VLOG(1) << "=========== TransCompute =======";
     }
-    VLOG(1) << "=========== TransposeSimple =======";
   }
 };
 

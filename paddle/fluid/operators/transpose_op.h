@@ -39,7 +39,7 @@ class TransposeKernel : public framework::OpKernel<T> {
     if (out_tensor->numel() == 0) {
       return;
     }
-    VLOG(3) << "====== Transpose Kernel========";
+
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     paddle::operators::math::TransposeFunctor<DeviceContext, T> transpose;
     auto& dev_ctx = context.template device_context<DeviceContext>();

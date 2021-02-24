@@ -25,7 +25,6 @@ class TransposeFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, framework::Tensor* out,
                   const std::vector<int>& axis) {
     int ndims = axis.size();
-    VLOG(1) << "=====CPU transpose=====";
     TransCompute<platform::CPUDeviceContext, T>(ndims, context, in, out, axis);
   }
 };

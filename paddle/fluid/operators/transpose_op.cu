@@ -37,7 +37,7 @@ class TransposeGPUKernel : public framework::OpKernel<T> {
     if (out_tensor->numel() == 0) {
       return;
     }
-    VLOG(3) << "====== Transpose GPU Kernel========";
+
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     paddle::operators::math::TransposeFunctor<
         paddle::platform::CUDADeviceContext, T>
