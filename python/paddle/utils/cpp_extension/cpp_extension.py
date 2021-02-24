@@ -41,24 +41,77 @@ CUDA_HOME = find_cuda_home()
 
 def setup(**attr):
     """
-    Wrapper setuptools.setup function to valid `build_ext` command and
-    implement paddle api code injection by switching `write_stub`
-    function in bdist_egg with `custom_write_stub`.
+    The interface is used to config the process of compiling customized operators,
+    mainly includes how to complile shared library, automatically generate python API 
+    and install it into site-package. It supports using custom op directly using `import`
+    statement.
 
-    Its usage is almost same as `setuptools.setup` except for `ext_modules`
-    arguments. For compiling multi custom operators, all necessary source files
-    can be include into just one Extension (CppExtension/CUDAExtension).
-    Moreover, only one `name` argument is required in `setup` and no need to specify
-    `name` in Extension.
+    It encapsulates the python built-in `setuptools.setup` function and keeps arguments
+    and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
+    concecepts, such as necessary compiling flags, included paths of head files, and linking
+    flags. It also will automatically search and valid local enviromment and versions of `cc` and
+    `nvcc` , then compiles customized operators supporting CPU or GPU device according to
+    specified Extension type.
 
-    Example:
+    Compared with Just-In-Time ``load`` interface, it only compiles once by executing
+    ``python setup.py install`` . Then customized operators API will be available everywhere
+    after importing it.
 
-        >> from paddle.utils.cpp_extension import CUDAExtension, setup
-        >> setup(name='custom_module',
-                 ext_modules=CUDAExtension(
-                    sources=['relu_op.cc', 'relu_op.cu'],
-                    include_dirs=[],       # specific user-defined include dirs
-                    extra_compile_args=[]) # specific user-defined compiler arguments.
+    A simple example of `setup.py` as followed: 
+
+    .. code-block:: text
+
+        # setup.py 
+
+        # Case 1: Compiling customized operators supporting CPU and GPU devices
+        from paddle.utils.cpp_extension import CUDAExtension, setup
+
+        setup(
+            name='custom_op',  # name of package used by `import`
+            ext_modules=CUDAExtension(
+                sources=['relu_op.cc', 'relu_op.cu', 'tanh_op.cc', 'tanh_op.cu']  # Support for compilation of multiple OPs
+            )
+        )
+
+        # Case 2: Compiling customized operators supporting only CPU device
+        from paddle.utils.cpp_extension import CppExtension, setup
+
+        setup(
+            name='custom_op',  # name of package used by `import`
+            ext_modules=CppExtension(
+                sources=['relu_op.cc', 'tanh_op.cc']  # Support for compilation of multiple OPs
+            )
+        )
+
+
+    Applying compilation and installation by execting `python setup.py install` under source files directory.
+    Then we can use the layer api as followed:
+
+    .. code-block:: text
+
+        import paddle
+        from custom_op import relu, tanh
+
+        x = paddle.randn([4, 10], dtype='float32')
+        relu_out = relu(x)
+        tanh_out = tanh(x)
+    
+
+    Args:
+        name(str): Specify the name of shared library file and installing python package.
+        ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al. 
+                                If only compile operator supporting CPU device, please use `CppExtension` ; If compile operator
+                                supporting CPU and GPU devices, please use `CUDAExtension` .
+        include_dirs(list[str]): Specify the extra include directoies to search head files. The interface will automatically expand
+                                 `site-package/paddle/include`. Please add the corresponding directory path if including third-party
+                                 head files.
+        extra_compile_args(list[str] | dict): Specify the extra compiling flags such as `-O3` . If set `list[str]` , all these flags
+                                will be applied for `cc` and `nvcc` compiler. It support specify flags only applied `cc` or `nvcc`
+                                compiler using dict type with `{'cxx': [...], 'nvcc': [...]}` .
+        **attr(dict): Specify other arguments same as `setuptools.setup` .
+
+    Returns: None
+
     """
     cmdclass = attr.get('cmdclass', {})
     assert isinstance(cmdclass, dict)
@@ -124,16 +177,41 @@ def setup(**attr):
 
 def CppExtension(sources, *args, **kwargs):
     """
-    Returns setuptools.CppExtension instance for setup.py to make it easy
-    to specify compile flags while building C++ custommed op kernel.
+    The interface is used to config source files of customized operators and complie
+    Op Kernel only supporting CPU device. Please use `CUDAExtension` if you want to
+    compile Op Kernel that supports both CPU and GPU devices.
+
+    It furtherly encapsulates python built-in `setuptools.Extension`.The argument and
+    usage are same as the native interface, except for no need to explicitly specify
+    `name` .
+
+    **A simple example:**
+
+    .. code-block:: text
+
+        # setup.py 
+
+        # Compiling customized operators supporting only CPU device
+        from paddle.utils.cpp_extension import CppExtension, setup
+
+        setup(
+            name='custom_op',
+            ext_modules=CppExtension(sources=['relu_op.cc'])
+        )
+
+
+    .. note::
+        It is mainly used in ``setup`` and the nama of built shared library keeps same
+        as `name` argument specified in ``setup`` interface.
+
 
     Args:
-           sources(list[str]): The C++/CUDA source file names
-           args(list[options]): list of config options used to compile shared library
-           kwargs(dict[option]): dict of config options used to compile shared library
+        sources(list[str]): Specify the C++/CUDA source files of customized operators.
+        *args(list[options]): Specify other arguments same as `setuptools.Extension` .
+        **kwargs(dict[option]): Specify other arguments same as `setuptools.Extension` .
 
-       Returns:
-           Extension: An instance of setuptools.Extension
+    Returns:
+        Extension: An instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
@@ -149,16 +227,43 @@ def CppExtension(sources, *args, **kwargs):
 
 def CUDAExtension(sources, *args, **kwargs):
     """
-    Returns setuptools.CppExtension instance for setup.py to make it easy
-    to specify compile flags while build CUDA custommed op kernel.
+    The interface is used to config source files of customized operators and complie
+    Op Kernel supporting both CPU and GPU devices. Please use `CppExtension` if you want to
+    compile Op Kernel that supports only CPU device.
+
+    It furtherly encapsulates python built-in `setuptools.Extension`.The argument and
+    usage are same as the native interface, except for no need to explicitly specify
+    `name` .
+
+    **A simple example:**
+
+    .. code-block:: text
+
+        # setup.py 
+
+        # Compiling customized operators supporting CPU and GPU devices
+        from paddle.utils.cpp_extension import CUDAExtension, setup
+
+        setup(
+            name='custom_op',
+            ext_modules=CUDAExtension(
+                sources=['relu_op.cc', 'relu_op.cu',
+            )
+        )
+
+
+    .. note::
+        It is mainly used in ``setup`` and the nama of built shared library keeps same
+        as `name` argument specified in ``setup`` interface.
+
 
     Args:
-           sources(list[str]): The C++/CUDA source file names
-           args(list[options]): list of config options used to compile shared library
-           kwargs(dict[option]): dict of config options used to compile shared library
+        sources(list[str]): Specify the C++/CUDA source files of customized operators.
+        *args(list[options]): Specify other arguments same as `setuptools.Extension` .
+        **kwargs(dict[option]): Specify other arguments same as `setuptools.Extension` .
 
-       Returns:
-           Extension: An instance of setuptools.Extension
+    Returns:
+        Extension: An instance of setuptools.Extension
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
@@ -544,46 +649,83 @@ def load(name,
     and return callable python function as other Paddle layers API. It will
     append user defined custom op in background.
 
-    This module will perform compiling, linking, api generation and module loading
-    processes for users. It does not require CMake or Ninja environment and only
-    g++/nvcc on Linux and clang++ on MacOS. Moreover, ABI compatibility will be
-    checked to ensure that compiler version on local machine is compatible with
-    pre-installed Paddle whl in python site-packages. For example if Paddle is built
-    with GCC5.4, the version of user's local machine should satisfy GCC >= 5.4.
-    Otherwise, a fatal error will occur because  ABI compatibility.
+    It will perform compiling, linking, api generation and module loading
+    processes under subprocess. It does not require CMake or Ninja environment
+    and only g++/nvcc on Linux and clang++ on MacOS. For example it requires
+    GCC compiler with version is greater than 5.4 and linked into `/usr/bin/cc` .
+    If compiling Operators supporting GPU device, please make sure `nvcc` compiler
+    is installed in local environment.
+    
+    
+    Moreover, ABI compatibility will be checked to ensure that compiler version from `cc`
+    on local machine is compatible with pre-installed Paddle whl in python site-packages.
+    For example if Paddle with CUDA 10.1 is built with GCC 8.2, then the version of user's
+    local machine should satisfy GCC >= 8.2. Otherwise, a fatal error will occur because of
+    ABI compatibility.
+
+    Compared with `setup` interface, it doesn't need extra `setup.py` and excute
+    `python setup.py install` command. The interface contains all compiling and installing
+    process underground.
+
+    .. note::
+
+        1. Compiler ABI compatibility is forward compatible. On Linux platform, 
+           we recommend to use GCC 8.2 as soft linking condidate of `/usr/bin/cc` .
+        2. Using `which cc` to ensure location of ``cc`` and using ``cc --version`` 
+           to ensure linking GCC version on Linux.
+
+
+    **A simple example:**
+
+    .. code-block:: text
+    
+        import paddle
+        from paddle.utils.cpp_extension import load
+
+        custom_op_module = load(
+            name="op_shared_libary_name",                # name of shared library
+            sources=['relu_op.cc', 'relu_op.cu'],        # source files of cusomized op
+            extra_cxx_cflags=['-DPADDLE_WITH_MKLDNN'],   # need to specify the flag if pre-installed Paddle supports MKLDNN
+            extra_cuda_cflags=['-DPADDLE_WITH_MKLDNN'],  # need to specify the flag if pre-installed Paddle supports MKLDNN
+            interpreter='python3.7',                     # optional, specify another python interpreter
+            verbose=True                                 # output log information
+        )
+
+        x = paddle.randn([4, 10], dtype='float32')
+        out = custom_op_module.relu(x)
+
 
     Args:
-        name(str): generated shared library file name.
-        sources(list[str]): custom op source files name with .cc/.cu suffix.
+        name(str): Specify the name of generated shared library file name, not including .so and .dll suffix.
+        sources(list[str]): Specify source files name of customize operators.  Supporting .cc, .cpp for CPP file and .cu for CUDA file.
         extra_cxx_cflags(list[str]): additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None.
-        extra_cuda_cflags(list[str]): additional flags used to compile CUDA files. See
+        extra_cuda_cflags(list[str]): Specify additional flags used to compile CUDA files. By default
+                               all basic and framework related flags have been included.
+                               If your pre-insall Paddle supported MKLDNN, please add
+                               '-DPADDLE_WITH_MKLDNN'. Default None. See
                                 https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
                                 for details. Default None.
-        extra_ldflags(list[str]): additional flags used to link shared library. See
+        extra_ldflags(list[str]): Specify additional flags used to link shared library. See
                                 https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html for details.
                                 Default None.
-        extra_include_paths(list[str]): additional include path used to search header files.
-                                        Default None.
-        build_directory(str): specific directory path to put shared library file. If set None,
+        extra_include_paths(list[str]): Specify additional include path used to search header files. By default
+                                all basic headers are included implicitly from `site-package/paddle/include` .
+                                Default None.
+        build_directory(str): Specify directory path to put shared library file. If set None,
                             it will use `PADDLE_EXTENSION_DIR` from os.environ. Use
                             `paddle.utils.cpp_extension.get_build_directory()` to see the location.
         interpreter(str): alias or full interpreter path to specific which one to use if have installed multiple.
-                           If set None, will use `python` as default interpreter.
+                           If set None, will use `python` as default interpreter. If local environment contains
+                           more than one python interpreters and want to use new interpreter to apply compilation,
+                           please specify this parameter, such as `python3.7` .
         verbose(bool): whether to verbose compiled log information
 
     Returns:
         custom api: A callable python function with same signature as CustomOp Kernel definition.
 
-    Example:
-
-        >> from paddle.utils.cpp_extension import load
-        >> relu2 = load(name='relu2',
-                        sources=['relu_op.cc', 'relu_op.cu'])
-        >> x = paddle.rand([4, 10]], dtype='float32')
-        >> out = relu2(x)
     """
 
     if build_directory is None:
