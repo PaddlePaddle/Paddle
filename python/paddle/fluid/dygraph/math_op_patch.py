@@ -21,6 +21,7 @@ from . import no_grad
 
 import numpy as np
 import six
+import warnings
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -49,6 +50,11 @@ _supported_promote_complex_types_ = [
     '__rdiv__',
     '__rtruediv__',
     '__matmul__',
+]
+
+_complex_dtypes = [
+    core.VarDesc.VarType.COMPLEX64,
+    core.VarDesc.VarType.COMPLEX128,
 ]
 
 _already_patch_varbase = False
@@ -214,7 +220,9 @@ def monkey_patch_math_varbase():
             # 3. promote types or unify right var type to left var
             rhs_dtype = other_var.dtype
             if lhs_dtype != rhs_dtype:
-                if method_name in _supported_promote_complex_types_:
+                if method_name in _supported_promote_complex_types_ and (
+                        lhs_dtype in _complex_dtypes or
+                        rhs_dtype in _complex_dtypes):
                     # only when lhs_dtype or rhs_dtype is complex type,
                     # the dtype will promote, in other cases, directly
                     # use lhs_dtype, this is consistent will original rule
@@ -225,6 +233,9 @@ def monkey_patch_math_varbase():
                     other_var = other_var if rhs_dtype == promote_dtype else astype(
                         other_var, promote_dtype)
                 else:
+                    warnings.warn(
+                        'The dtype of left and right variables are not the same, left dtype is {}, but right dtype is {}, the right dtype will convert to {}'.
+                        format(lhs_dtype, rhs_dtype, lhs_dtype))
                     other_var = astype(other_var, lhs_dtype)
 
             if reverse:
