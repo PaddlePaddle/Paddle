@@ -14,8 +14,6 @@
 
 import os
 import six
-import sys
-import textwrap
 import copy
 import re
 
@@ -50,7 +48,7 @@ def setup(**attr):
     Its usage is almost same as `setuptools.setup` except for `ext_modules`
     arguments. For compiling multi custom operators, all necessary source files
     can be include into just one Extension (CppExtension/CUDAExtension).
-    Moreover, only one `name` argument is required in `setup` and no need to spcific
+    Moreover, only one `name` argument is required in `setup` and no need to specify
     `name` in Extension.
 
     Example:
@@ -60,11 +58,11 @@ def setup(**attr):
                  ext_modules=CUDAExtension(
                     sources=['relu_op.cc', 'relu_op.cu'],
                     include_dirs=[],       # specific user-defined include dirs
-                    extra_compile_args=[]) # specific user-defined compil arguments.
+                    extra_compile_args=[]) # specific user-defined compiler arguments.
     """
     cmdclass = attr.get('cmdclass', {})
     assert isinstance(cmdclass, dict)
-    # if not specific cmdclass in setup, add it automaticaly.
+    # if not specific cmdclass in setup, add it automatically.
     if 'build_ext' not in cmdclass:
         cmdclass['build_ext'] = BuildExtension.with_options(
             no_python_abi_suffix=True)
@@ -81,18 +79,22 @@ def setup(**attr):
               sources=['relu_op.cc', 'relu_op.cu'])
         
         # After running `python setup.py install`
-        from custom_module import relue
+        from custom_module import relu
     """
     # name argument is required
     if 'name' not in attr:
         raise ValueError(error_msg)
+
+    assert not attr['name'].endswith('module'),  \
+    "Please don't use 'module' as suffix in `name` argument, "
+    "it will be stripped in setuptools.bdist_egg and cause import error."
 
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
     assert len(
         ext_modules
-    ) == 1, "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extenion.".format(
+    ) == 1, "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
         len(ext_modules))
     # replace Extension.name with attr['name] to keep consistant with Package name.
     for ext_module in ext_modules:
@@ -233,12 +235,6 @@ class BuildExtension(build_ext, object):
 
     def build_extensions(self):
         self._check_abi()
-        for extension in self.extensions:
-            # check settings of compiler
-            if isinstance(extension.extra_compile_args, dict):
-                for compiler in ['cxx', 'nvcc']:
-                    if compiler not in extension.extra_compile_args:
-                        extension.extra_compile_args[compiler] = []
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -248,8 +244,6 @@ class BuildExtension(build_ext, object):
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
         else:
-            # add determine compile flags
-            add_compile_flag(extension, '-std=c++11')
             original_compile = self.compiler._compile
 
         def unix_custom_single_compiler(obj, src, ext, cc_args, extra_postargs,
@@ -271,8 +265,8 @@ class BuildExtension(build_ext, object):
                     # {'nvcc': {}, 'cxx: {}}
                     if isinstance(cflags, dict):
                         cflags = cflags['nvcc']
-                    else:
-                        cflags = prepare_unix_cudaflags(cflags)
+
+                    cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
@@ -434,7 +428,7 @@ class BuildExtension(build_ext, object):
             compiler = os.environ.get('CXX', 'c++')
 
         check_abi_compatibility(compiler)
-        # Warn user if VC env is activated but `DISTUILS_USE_SDK` is not set.
+        # Warn user if VC env is activated but `DISTUTILS_USE_SDK` is not set.
         if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' in os.environ and 'DISTUTILS_USE_SDK' not in os.environ:
             msg = (
                 'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
@@ -444,7 +438,7 @@ class BuildExtension(build_ext, object):
 
     def _record_op_info(self):
         """
-        Record custum op inforomation.
+        Record custom op information.
         """
         # parse shared library abs path
         outputs = self.get_outputs()
@@ -535,7 +529,7 @@ class BuildCommand(build, object):
 
 def load(name,
          sources,
-         extra_cflags=None,
+         extra_cxx_cflags=None,
          extra_cuda_cflags=None,
          extra_ldflags=None,
          extra_include_paths=None,
@@ -558,14 +552,14 @@ def load(name,
     Args:
         name(str): generated shared library file name.
         sources(list[str]): custom op source files name with .cc/.cu suffix.
-        extra_cflag(list[str]): additional flags used to compile CPP files. By default
+        extra_cxx_cflags(list[str]): additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
                                If your pre-insall Paddle supported MKLDNN, please add
                                '-DPADDLE_WITH_MKLDNN'. Default None.
-        extra_cuda_cflags(list[str]): additonal flags used to compile CUDA files. See
+        extra_cuda_cflags(list[str]): additional flags used to compile CUDA files. See
                                 https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
                                 for details. Default None.
-        extra_ldflags(list[str]): additonal flags used to link shared library. See
+        extra_ldflags(list[str]): additional flags used to link shared library. See
                                 https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html for details.
                                 Default None.
         extra_include_paths(list[str]): additional include path used to search header files.
@@ -578,7 +572,7 @@ def load(name,
         verbose(bool): whether to verbose compiled log information
 
     Returns:
-        custom api: A callable python function with same signature as CustomOp Kernel defination.
+        custom api: A callable python function with same signature as CustomOp Kernel definition.
 
     Example:
 
@@ -603,18 +597,25 @@ def load(name,
     file_path = os.path.join(build_directory, "{}_setup.py".format(name))
     sources = [os.path.abspath(source) for source in sources]
 
-    # TODO(Aurelius84): split cflags and cuda_flags
-    if extra_cflags is None: extra_cflags = []
+    if extra_cxx_cflags is None: extra_cxx_cflags = []
     if extra_cuda_cflags is None: extra_cuda_cflags = []
-    compile_flags = extra_cflags + extra_cuda_cflags
-    log_v("additonal compile_flags: [{}]".format(' '.join(compile_flags)),
-          verbose)
+    assert isinstance(
+        extra_cxx_cflags, list
+    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
+        extra_cxx_cflags)
+    assert isinstance(
+        extra_cuda_cflags, list
+    ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
+        extra_cuda_cflags)
+
+    log_v("additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
+        ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)
     _write_setup_file(name, sources, file_path, build_base_dir,
-                      extra_include_paths, compile_flags, extra_ldflags,
-                      verbose)
+                      extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,
+                      extra_ldflags, verbose)
     _jit_compile(file_path, interpreter, verbose)
 
     # import as callable python api

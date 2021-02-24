@@ -29,7 +29,8 @@ custom_module = load(
     sources=['relu_op.cc', 'relu_op.cu', 'relu_op3.cc', 'relu_op3.cu'],
     interpreter='python',  # add for unittest
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI,
+    extra_cuda_cflags=extra_compile_args,  # add for split cpp/cuda flags
     verbose=True  # add for unittest
 )
 
