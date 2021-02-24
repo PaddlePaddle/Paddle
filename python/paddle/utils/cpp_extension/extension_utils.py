@@ -433,14 +433,15 @@ def is_cuda_file(path):
 def get_build_directory(verbose=False):
     """
     Return paddle extension root directory to put shared library. It could be specified by
-    `export PADDLE_EXTENSION_DIR=XXX` . If not set, `~/.cache/paddle_extension` will be used
+    ``export PADDLE_EXTENSION_DIR=XXX`` . If not set, ``~/.cache/paddle_extension`` will be used
     by default.
 
     Returns:
         The root directory of compiling customized operators.
 
     Examples:
-        .. code-block:: python
+
+    .. code-block:: python
 
         from paddle.utils.cpp_extension import get_build_directory
 
