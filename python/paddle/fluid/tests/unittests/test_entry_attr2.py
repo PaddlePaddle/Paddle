@@ -14,6 +14,9 @@
 
 from __future__ import print_function
 
+import paddle
+paddle.enable_static()
+
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.framework import default_main_program
