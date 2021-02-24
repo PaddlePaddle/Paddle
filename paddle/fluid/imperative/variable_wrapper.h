@@ -328,7 +328,8 @@ class VariableWrapper {
   framework::Variable var_;
   std::string name_;
 
-  //
+  //Used for cache the dtype promotioned variableWrapper in real and complex 
+  //compute of Paddle Quantum
   std::map<paddle::framework::OpKernelType, std::shared_ptr<VariableWrapper>>
       var_cache;
   // add this property for users may set stop_gradient themselves and this
