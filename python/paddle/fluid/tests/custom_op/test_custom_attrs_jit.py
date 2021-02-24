@@ -52,9 +52,13 @@ class TestJitCustomAttrs(unittest.TestCase):
         str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
         x = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
         out = custom_attrs.attr_test(
             x, bool_attr, int_attr, float_attr, int64_attr, str_attr,
             int_vec_attr, float_vec_attr, int64_vec_attr, str_vec_attr)
+        out.stop_gradient = False
+        out.backward()
+
         self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
 
 

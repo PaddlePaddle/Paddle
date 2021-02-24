@@ -27,16 +27,17 @@ void assign_cpu_kernel(const data_t* x_data,
   }
 }
 
-std::vector<paddle::Tensor> AttrTest(const paddle::Tensor& x,
-                                     bool bool_attr,
-                                     int int_attr,
-                                     float float_attr,
-                                     int64_t int64_attr,
-                                     std::string str_attr,
-                                     std::vector<int> int_vec_attr,
-                                     std::vector<float> float_vec_attr,
-                                     std::vector<int64_t> int64_vec_attr,
-                                     std::vector<std::string> str_vec_attr) {
+std::vector<paddle::Tensor> AttrTestForward(
+    const paddle::Tensor& x,
+    bool bool_attr,
+    int int_attr,
+    float float_attr,
+    int64_t int64_attr,
+    std::string str_attr,
+    std::vector<int> int_vec_attr,
+    std::vector<float> float_vec_attr,
+    std::vector<int64_t> int64_vec_attr,
+    std::vector<std::string> str_vec_attr) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
   out.reshape(x.shape());
 
@@ -106,6 +107,49 @@ std::vector<paddle::Tensor> AttrTest(const paddle::Tensor& x,
   return {out};
 }
 
+// The attrs of backward op must be the subset of attrs of forward op
+std::vector<paddle::Tensor> AttrTestBackward(
+    const paddle::Tensor& grad_out,
+    int int_attr,
+    std::vector<float> float_vec_attr,
+    std::vector<std::string> str_vec_attr) {
+  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU);
+  grad_x.reshape(grad_out.shape());
+
+  PD_DISPATCH_FLOATING_TYPES(grad_out.type(), "assign_cpu_kernel", ([&] {
+                               assign_cpu_kernel<data_t>(
+                                   grad_out.data<data_t>(),
+                                   grad_x.mutable_data<data_t>(),
+                                   grad_out.size());
+                             }));
+
+  if (int_attr != 10) {
+    throw std::runtime_error("int_attr value error.");
+  }
+
+  if (float_vec_attr.size() != 3) {
+    throw std::runtime_error("float_vec_attr size error.");
+  } else {
+    for (auto& value : float_vec_attr) {
+      if (std::abs(value - 3.14) > 1e-6) {
+        throw std::runtime_error("float_vec_attr value error.");
+      }
+    }
+  }
+
+  if (str_vec_attr.size() != 3) {
+    throw std::runtime_error("str_vec_attr size error.");
+  } else {
+    for (auto& value : str_vec_attr) {
+      if (value != "StrAttr") {
+        throw std::runtime_error("str_vec_attr value error.");
+      }
+    }
+  }
+
+  return {grad_x};
+}
+
 std::vector<std::vector<int64_t>> InferShape(std::vector<int64_t> x_shape) {
   return {x_shape};
 }
@@ -126,6 +170,13 @@ PD_BUILD_OP("attr_test")
             "float_vec_attr: std::vector<float>",
             "int64_vec_attr: std::vector<int64_t>",
             "str_vec_attr: std::vector<std::string>"})
-    .SetKernelFn(PD_KERNEL(AttrTest))
+    .SetKernelFn(PD_KERNEL(AttrTestForward))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType))
+    .SetBackwardOp("attr_test_grad")
+    .Inputs({paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .Attrs({"int_attr: int",
+            "float_vec_attr: std::vector<float>",
+            "str_vec_attr: std::vector<std::string>"})
+    .SetKernelFn(PD_KERNEL(AttrTestBackward));

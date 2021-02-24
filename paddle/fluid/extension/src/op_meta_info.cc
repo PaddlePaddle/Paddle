@@ -87,7 +87,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
   return *this;
 }
 
-
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
   info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
   return *this;
