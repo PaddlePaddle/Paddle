@@ -15,16 +15,6 @@
 #include "paddle/extension.h"
 
 template <typename data_t>
-__global__ void fill_constant_cuda_kernel(data_t* y,
-                                          const int num,
-                                          data_t value) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-    y[i] = value;
-  }
-}
-
-template <typename data_t>
 __global__ void relu_cuda_forward_kernel(const data_t* x,
                                          data_t* y,
                                          const int num) {
@@ -57,18 +47,8 @@ std::vector<paddle::Tensor> relu_cuda_forward(const paddle::Tensor& x) {
         relu_cuda_forward_kernel<data_t><<<grid, block>>>(
             x.data<data_t>(), out.mutable_data<data_t>(x.place()), numel);
       }));
-  // fake multi output: Fake_1
-  auto fake_float64 = paddle::Tensor(paddle::PlaceType::kGPU);
-  fake_float64.reshape(x.shape());
-  fill_constant_cuda_kernel<double><<<grid, block>>>(
-      fake_float64.mutable_data<double>(x.place()), numel, 0.);
-  // fake multi output: ZFake_1
-  auto zfake_int32 = paddle::Tensor(paddle::PlaceType::kGPU);
-  zfake_int32.reshape(x.shape());
-  fill_constant_cuda_kernel<int32_t><<<grid, block>>>(
-      zfake_int32.mutable_data<int32_t>(x.place()), numel, 1);
 
-  return {out, fake_float64, zfake_int32};
+  return {out};
 }
 
 std::vector<paddle::Tensor> relu_cuda_backward(const paddle::Tensor& x,
