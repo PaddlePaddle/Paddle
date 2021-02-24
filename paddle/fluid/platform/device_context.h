@@ -410,7 +410,7 @@ class CUDADeviceContext : public DeviceContext {
 #endif
 
   /*! \brief  Return cublas handle in the device context. */
-  cublasHandle_t get_cublas_handle() const;
+  cublasHandle_t cublas_handle() const;
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
    *  functions without interrupting by other threads.

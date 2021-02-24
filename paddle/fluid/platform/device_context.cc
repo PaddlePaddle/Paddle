@@ -459,7 +459,7 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   return context()->CudnnHandle();
 }
 
-cublasHandle_t CUDADeviceContext::get_cublas_handle() const {
+cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
 }
 

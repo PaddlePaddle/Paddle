@@ -47,7 +47,7 @@ TEST(Device, CUDADeviceContext) {
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
 #endif
     ASSERT_NE(nullptr, cudnn_handle);
-    cublasHandle_t cublas_handle = device_context->get_cublas_handle();
+    cublasHandle_t cublas_handle = device_context->cublas_handle();
     ASSERT_NE(nullptr, cublas_handle);
     delete device_context;
   }
