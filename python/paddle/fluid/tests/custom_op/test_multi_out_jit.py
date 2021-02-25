@@ -36,7 +36,6 @@ multi_out_module = load(
     sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
-    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
     verbose=True)
 
 
