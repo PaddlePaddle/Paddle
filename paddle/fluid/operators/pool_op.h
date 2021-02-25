@@ -174,7 +174,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, true, false, out);
+                         true, false, out, pool_process);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
@@ -182,7 +182,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
           pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, exclusive, adaptive, out);
+                         exclusive, adaptive, out, pool_process);
         }
       } break;
       case 3: {
@@ -192,7 +192,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, true, false, out);
+                         true, false, out, pool_process);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
@@ -200,7 +200,7 @@ class PoolKernel : public framework::OpKernel<T> {
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
           pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                         pool_process, exclusive, adaptive, out);
+                         exclusive, adaptive, out, pool_process);
         }
       } break;
       default: {
@@ -273,8 +273,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, data_format, pool_process, exclusive,
-                            adaptive, in_x_grad);
+                            paddings, data_format, exclusive, adaptive,
+                            in_x_grad, pool_process);
           }
         } break;
         case 3: {
@@ -289,8 +289,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, data_format, pool_process, exclusive,
-                            adaptive, in_x_grad);
+                            paddings, data_format, exclusive, adaptive,
+                            in_x_grad, pool_process);
           }
         } break;
         default: {
