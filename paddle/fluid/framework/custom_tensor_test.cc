@@ -91,7 +91,7 @@ void TestCast(paddle::DataType data_type) {
   t1.reshape(tensor_shape);
   t1.template mutable_data<T>();
   auto t2 = t1.cast(data_type);
-  CHECK_EQ(t2.type(), data_type);
+  CHECK(t2.type() == data_type);
 }
 
 void GroupTestCopy() {
