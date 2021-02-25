@@ -259,7 +259,7 @@ class LSTMMKLDNNHandler
         memset(user_c0_memory.get_data_handle(), 0,
                sizeof(float) * this->N * this->OC);
       }
-      memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
+      memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_c_desc(),
                                                 this->engine_);
 
       dnnl::stream astream(this->engine_);

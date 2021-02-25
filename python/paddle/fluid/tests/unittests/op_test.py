@@ -1152,29 +1152,7 @@ class OpTest(unittest.TestCase):
 
                 if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
                     actual_t = convert_uint16_to_float(actual_t)
-
-                    #expect_t = convert_float_to_uint16(expect_t)
-                    #expect_t = convert_uint16_to_float(expect_t)
-
-                    max_abs_error = 0
-                    max_err_act = 0
-                    max_err_exp = 0
-
-                    for j in range(actual_t.shape[0]):
-                        for i in range(actual_t.shape[1]):
-                            if abs(expect_t[j][i] - actual_t[j][i]) > max_abs_error:
-                                max_abs_error = abs(expect_t[j][i] - actual_t[j][i])
-                                max_err_act = actual_t[j][i]
-                                max_err_exp = expect_t[j][i]
-
-                    print("error = ", max_abs_error)
-                    print(max_err_act)
-                    print(max_err_exp)
-                    
-
-                    #print(actual_t.dtype)
-                    #print(expect_t.dtype, "\n")
-                print("\n\nResult:\n", actual_t, "\n\n")
+                    atol = 0.03
 
                 self.assertTrue(
                     np.allclose(

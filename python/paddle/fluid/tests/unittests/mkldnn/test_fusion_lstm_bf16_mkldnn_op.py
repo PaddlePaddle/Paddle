@@ -29,7 +29,6 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
     def set_confs(self):
         self.mkldnn_data_type = False
 
-
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
@@ -44,6 +43,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         self.has_initial_state = False
         self.use_peepholes = False
         self.is_reverse = False
+        self._cpu_only = True
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
@@ -67,9 +67,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             h0 = np.zeros((bs, self.D)).astype('float32')
             c0 = np.zeros((bs, self.D)).astype('float32')
 
-        wh = np.random.rand(self.D, 4 * self.D).astype('float32')
+        wh = np.random.normal(size=(self.D, 4 * self.D)).astype('float32')
 
-        c0_bf16 = convert_float_to_uint16(c0)
         h0_bf16 = convert_float_to_uint16(h0)
 
         if self.use_peepholes:
@@ -93,12 +92,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
                            ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
 
         hidden = hidden.astype('float32')
-
         hidden_bf16 = convert_float_to_uint16(hidden)
-        hidden_fp32 = convert_uint16_to_float(hidden_bf16)
-
-        #print("\n\n", hidden, "\n\n")
-        #print("\n\n", x_bf16, "\n\n")
 
         self.inputs = {
             'X': (x_bf16, self.lod),
@@ -111,7 +105,6 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             self.inputs['H0'] = h0_bf16
             self.inputs['C0'] = c0 # in Vanilla LSTM and LSTM with peepholes Cell type is always fp32 
 
-        print(hidden.dtype)
 
         self.outputs = {
             'Hidden': (hidden, self.lod),
@@ -129,19 +122,19 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         }
 
 
-#class TestFusionLSTMBF16ONEDNNPeepholesOp(TestFusionLSTMBF16ONEDNNOp):
-#    def set_confs(self):
-#        self.use_peepholes = True
+class TestFusionLSTMBF16ONEDNNPeepholesOp(TestFusionLSTMBF16ONEDNNOp):
+    def set_confs(self):
+        self.use_peepholes = True
 
 
-#class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
-#    def set_confs(self):
-#        self.has_initial_state = True
+class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
+    def set_confs(self):
+        self.has_initial_state = True
 
 
-#class TestFusionLSTMBF16ONEDNNWithoutBiasOp(TestFusionLSTMBF16ONEDNNOp):
-#    def set_confs(self):
-#        self.is_reverse = True
+class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
+    def set_confs(self):
+        self.is_reverse = True
 
 
 

@@ -98,18 +98,19 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_x_data, weight_x->data<float>(),
-             sizeof(float) * this->IC * this->G * this->OC);
+          reinterpret_cast<T*>(user_memory.get_data_handle());
+      memcpy(weight_x_data, weight_x->data<T>(),
+             sizeof(T) * this->IC * this->G * this->OC);
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < this->IC; ++i) {
           for (int64_t j = 0; j < this->OC; ++j) {
-            weight_x_data[j] *= -1;
+            T minus_one(-1.0f);
+            weight_x_data[j] = minus_one * weight_x_data[j];
           }
           weight_x_data += 3 * this->OC;
         }
@@ -136,34 +137,35 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
       // oneDNN format [OC, 3OC]
       auto* weight_h_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      auto* user_weight_h_data = weight_h->data<float>();
+          reinterpret_cast<T*>(user_memory.get_data_handle());
+      auto* user_weight_h_data = weight_h->data<T>();
 
       auto src1_iter = user_weight_h_data;
       auto src2_iter = user_weight_h_data + 2 * this->OC * this->OC;
 
       for (int64_t c = 0; c < this->OC; ++c) {
-        memcpy(weight_h_data, src1_iter, 2 * this->OC * sizeof(float));
+        memcpy(weight_h_data, src1_iter, 2 * this->OC * sizeof(T));
         memcpy(weight_h_data + 2 * this->OC, src2_iter,
-               this->OC * sizeof(float));
+               this->OC * sizeof(T));
 
         src1_iter += 2 * this->OC;
         src2_iter += this->OC;
         weight_h_data += 3 * this->OC;
       }
 
-      weight_h_data = reinterpret_cast<float*>(user_memory.get_data_handle());
+      weight_h_data = reinterpret_cast<T*>(user_memory.get_data_handle());
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < this->OC; ++i) {
           for (int64_t j = 0; j < this->OC; ++j) {
-            weight_h_data[j] *= -1;
+            T minus_one(-1.0f);
+            weight_h_data[j] = minus_one * weight_h_data[j];
           }
           weight_h_data += 3 * this->OC;
         }

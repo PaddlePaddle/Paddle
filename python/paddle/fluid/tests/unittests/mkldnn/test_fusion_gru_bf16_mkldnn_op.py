@@ -63,6 +63,9 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         wx_fp32 = np.random.rand(self.M, 3 * self.D).astype('float32')
         wh_fp32 = np.random.rand(self.D, 3 * self.D).astype('float32')
 
+        wx_bf16 = convert_float_to_uint16(wx_fp32)
+        wh_bf16 = convert_float_to_uint16(wh_fp32)
+
         # bias is fp32 despite other inputs being in bf16
         bias = np.random.rand(
             1, 3 * self.D).astype('float32') if self.with_bias else np.zeros(
@@ -81,8 +84,8 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
 
         self.inputs = {
             'X': (x_bf16, self.lod),
-            'WeightX': wx_fp32,
-            'WeightH': wh_fp32
+            'WeightX': wx_bf16,
+            'WeightH': wh_bf16
         }
 
         if self.with_bias:
