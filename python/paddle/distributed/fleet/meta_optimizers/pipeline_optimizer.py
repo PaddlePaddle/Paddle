@@ -49,15 +49,34 @@ class PipelineHelper(object):
             self._init_communicator(self.startup_program, current_endpoint,
                                     mp_endpoints, mp_rank, 0, self.wait_port)
             self._broadcast_params(0)
-            pp_rank = rank // tensor_model_parallel
-            pp_group = rank % tensor_model_parallel
-            pp_endpoints = [
-                ep for idx, ep in enumerate(endpoints)
-                if idx % tensor_model_parallel == m_group
-            ]
+            pp_rank = rank // tensor_model_parallel % pp_len
+            pp_offset = rank // (tensor_model_parallel * pp_len) * (
+                tensor_model_parallel * pp_len)
+            pp_group_start = rank % tensor_model_parallel
+            pp_group_start += pp_offset
+            pp_endpoints = []
+            for i in range(pp_len):
+                pp_endpoints.append(endpoints[pp_group_start])
+                pp_group_start += tensor_model_parallel
             self._init_communicator(self.startup_program, current_endpoint,
                                     pp_endpoints, pp_rank, 1, self.wait_port)
-            # Create ring 1 for all gpus within a model_parallel group
+            if nranks == tensor_model_parallel * pp_len: return
+            dp_rank = rank // (tensor_model_parallel * pp_len)
+            pp_offset = rank // tensor_model_parallel * tensor_model_parallel
+            pp_group_start = rank % tensor_model_parallel
+            dp_group_start += offset
+            dp_endpoints = []
+            dp_len = nranks // (tensor_model_parallel * pp_len)
+            for i in range(dp_len):
+                dp_endpoints.append(endpoints[dp_group_start])
+                dp_group_start += (tensor_model_parallel * pp_len)
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    dp_endpoints, dp_rank, 2, self.wait_port)
+            self._broadcast_params(2)
+
+            print("mp_rank:{}, mp_endpoints: {}.".format(mp_rank, mp_endpoints))
+            print("pp_rank:{}, pp_endpoints: {}.".format(pp_rank, pp_endpoints))
+            print("dp_rank:{}, dp_endpoints: {}.".format(dp_rank, dp_endpoints))
             return
         # Create ring 0 for all gpus in the same pipeline
         if inner_parallelism > 1:
