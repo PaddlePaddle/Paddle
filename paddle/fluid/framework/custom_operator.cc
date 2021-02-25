@@ -73,6 +73,24 @@ inline bool IsMemberOf(const std::vector<std::string>& vec,
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
 }
 
+std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos, std::string::npos,
+                    platform::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(string::trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(string::trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(1) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
+
 }  // namespace detail
 
 ////////////////// Kernel Define ////////////////////
@@ -81,7 +99,8 @@ inline bool IsMemberOf(const std::vector<std::string>& vec,
 static void RunKernelFunc(const framework::ExecutionContext& ctx,
                           const paddle::KernelFunc& func,
                           const std::vector<std::string>& inputs,
-                          const std::vector<std::string>& outputs) {
+                          const std::vector<std::string>& outputs,
+                          const std::vector<std::string>& attrs) {
   VLOG(1) << "Custom Operator: Start run KernelFunc.";
   std::vector<paddle::Tensor> custom_ins;
   for (auto& in_name : inputs) {
@@ -98,10 +117,43 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     custom_ins.emplace_back(custom_in);
   }
 
-  std::vector<boost::any> attrs;
+  std::vector<boost::any> custom_attrs;
+  for (auto& attr_str : attrs) {
+    auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(ctx.Attr<bool>(attr_name));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(ctx.Attr<int>(attr_name));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(ctx.Attr<float>(attr_name));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(ctx.Attr<int64_t>(attr_name));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(ctx.Attr<std::string>(attr_name));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<int>>(attr_name));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<float>>(attr_name));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<int64_t>>(attr_name));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(ctx.Attr<std::vector<std::string>>(attr_name));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>, "
+          "`std::vector<std::string>`, Please check whether "
+          "the attribute data type and data type string are matched.",
+          attr_type_str));
+    }
+  }
 
   VLOG(1) << "Run ComputeFunc.";
-  auto outs = func(custom_ins, attrs);
+  auto outs = func(custom_ins, custom_attrs);
 
   VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
   for (size_t i = 0; i < outputs.size(); ++i) {
@@ -164,7 +216,51 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
     for (auto& out_name : outputs_) {
       AddOutput(out_name, "The output " + out_name + "of Custom Operator.");
     }
-    // TODO(chenweihang): support attrs in later PR
+    for (auto& attr : attrs_) {
+      auto attr_name_and_type = detail::ParseAttrStr(attr);
+      auto attr_name = attr_name_and_type[0];
+      auto attr_type_str = attr_name_and_type[1];
+      if (attr_type_str == "bool") {
+        AddAttr<bool>(attr_name, "custom operator bool attribute.")
+            .SetDefault(false);
+      } else if (attr_type_str == "int") {
+        AddAttr<int>(attr_name, "custom operator int attribute.").SetDefault(1);
+      } else if (attr_type_str == "float") {
+        AddAttr<float>(attr_name, "custom operator float attribute.")
+            .SetDefault(1.0f);
+      } else if (attr_type_str == "int64_t") {
+        AddAttr<int64_t>(attr_name, "custom operator int64_t attribute.")
+            .SetDefault(1);
+      } else if (attr_type_str == "std::string") {
+        AddAttr<std::string>(attr_name, "custom operator int attribute.")
+            .SetDefault("");
+      } else if (attr_type_str == "std::vector<int>") {
+        AddAttr<std::vector<int>>(attr_name,
+                                  "custom operator std::vector<int> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<float>") {
+        AddAttr<std::vector<float>>(
+            attr_name, "custom operator std::vector<float> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<int64_t>") {
+        AddAttr<std::vector<int64_t>>(
+            attr_name, "custom operator std::vector<int64_t> attribute.")
+            .SetDefault({});
+      } else if (attr_type_str == "std::vector<std::string>") {
+        AddAttr<std::vector<std::string>>(
+            attr_name, "custom operator std::vector<std::string> attribute.")
+            .SetDefault({});
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported `%s` type value as custom attribute now. "
+            "Supported data types include `bool`, `int`, `float`, "
+            "`int64_t`, `std::string`, `std::vector<int>`, "
+            "`std::vector<float>`, `std::vector<int64_t>, "
+            "`std::vector<std::string>`, Please check whether "
+            "the attribute data type and data type string are matched.",
+            attr_type_str));
+      }
+    }
     AddComment(R"DOC(
 Custom Operator.
 
@@ -227,7 +323,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
       VLOG(1) << "Custom Operator: GradOpDescMaker - output: " << out_name;
       grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
     }
-    // TODO(chenweihang): support attrs in later PR
+    grad_op->SetAttrMap(this->Attrs());
   }
 
  private:
@@ -287,7 +383,7 @@ class CustomGradOpMaker<imperative::OpBase>
       VLOG(1) << "Custom Operator: GradOpBaseMaker - output: " << out_name;
       grad_op->SetOutput(out_name, this->InputGrad(detail::NoGrad(out_name)));
     }
-    // TODO(chenweihang): support attrs in later PR
+    grad_op->SetAttrMap(this->Attrs());
   }
 
  private:
@@ -303,21 +399,24 @@ void RegisterOperatorKernelWithPlace(const std::string& name,
                                      const proto::VarType::Type type,
                                      const PlaceType& place,
                                      const std::vector<std::string>& inputs,
-                                     const std::vector<std::string>& outputs) {
+                                     const std::vector<std::string>& outputs,
+                                     const std::vector<std::string>& attrs) {
   OpKernelType key(type,
                    CustomTensorUtils::ConvertEnumPlaceToInnerPlace(place));
   VLOG(1) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] =
-      [kernel_func, inputs, outputs](const framework::ExecutionContext& ctx) {
+      [kernel_func, inputs, outputs,
+       attrs](const framework::ExecutionContext& ctx) {
         VLOG(1) << "Custom Operator: run custom kernel func in lambda.";
-        RunKernelFunc(ctx, kernel_func, inputs, outputs);
+        RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs);
       };
 }
 
 void RegisterOperatorKernel(const std::string& name,
                             const paddle::KernelFunc& kernel_func,
                             const std::vector<std::string>& inputs,
-                            const std::vector<std::string>& outputs) {
+                            const std::vector<std::string>& outputs,
+                            const std::vector<std::string>& attrs) {
   VLOG(1) << "Custom Operator: op name in kernel: " << name;
   // NOTE [ Dummy Op Kernel Key ]
   // TODO(chenweihang): Because execute engine need get device context based
@@ -325,9 +424,11 @@ void RegisterOperatorKernel(const std::string& name,
   // device. But this is not entirely correct, if user only give a cpu kernel,
   // but call api in gpu device, it will cause error.
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kCPU, inputs, outputs);
+                                  PlaceType::kCPU, inputs, outputs, attrs);
+#ifdef PADDLE_WITH_CUDA
   RegisterOperatorKernelWithPlace(name, kernel_func, proto::VarType::RAW,
-                                  PlaceType::kGPU, inputs, outputs);
+                                  PlaceType::kGPU, inputs, outputs, attrs);
+#endif
 }
 
 void RegisterOperatorWithMetaInfo(
@@ -350,6 +451,8 @@ void RegisterOperatorWithMetaInfo(
           << string::join_strings(op_inputs, ',');
   VLOG(1) << "Custom Operator: forward, op outputs: "
           << string::join_strings(op_outputs, ',');
+  VLOG(1) << "Custom Operator: forward, op attrs: "
+          << string::join_strings(op_attrs, ',');
 
   // Op
   info.creator_ = [](const std::string& op_name, const VariableNameMap& inputs,
@@ -426,7 +529,7 @@ void RegisterOperatorWithMetaInfo(
   };
 
   // Kernel func
-  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs);
+  RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs);
 
   // If grad op or double grad op exists
   std::string cur_op_name = op_name;
@@ -436,6 +539,7 @@ void RegisterOperatorWithMetaInfo(
     auto& grad_op_name = OpMetaInfoHelper::GetOpName(cur_grad_op);
     auto& grad_op_inputs = OpMetaInfoHelper::GetInputs(cur_grad_op);
     auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
+    auto& grad_op_attrs = OpMetaInfoHelper::GetAttrs(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
 
     VLOG(1) << "Custom Operator: backward, op name: " << grad_op_name;
@@ -489,7 +593,7 @@ void RegisterOperatorWithMetaInfo(
 
     // Kernel func
     RegisterOperatorKernel(grad_op_name, grad_kernel_fn, grad_op_inputs,
-                           grad_op_outputs);
+                           grad_op_outputs, grad_op_attrs);
 
     // update current info
     OpInfoMap::Instance().Insert(cur_op_name, info);
