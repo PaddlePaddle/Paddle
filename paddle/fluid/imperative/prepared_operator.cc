@@ -14,14 +14,21 @@
 
 #include "paddle/fluid/imperative/prepared_operator.h"
 
-#include <sstream>
-
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
-#include "paddle/fluid/imperative/infer_var_type_context.h"
 
 namespace paddle {
 namespace imperative {
+
+const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<paddle::imperative::VarBase>& var) {
+  return var->SharedVar();
+}
+
+const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<VariableWrapper>& var) {
+  return var;
+}
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   if (var.IsType<framework::LoDTensor>()) {

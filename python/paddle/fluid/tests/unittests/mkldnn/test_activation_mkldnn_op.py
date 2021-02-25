@@ -19,7 +19,7 @@ import numpy as np
 from scipy.special import expit
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
@@ -158,6 +158,16 @@ class TestMKLDNNSwishDim2(TestSwish):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNHardSwishDim2(TestHardSwish):
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim2, self).setUp()
+
+        self.attrs["use_mkldnn"] = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -319,6 +329,32 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
+    return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
+            scale).astype(x.dtype)
+
+
+class TestMKLDNNHardSwishDim4(TestHardSwish):
+    def setUp(self):
+        super(TestMKLDNNHardSwishDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        threshold = 6.0
+        scale = 6.0
+        offset = 3.0
+        x[np.abs(x + offset) < 0.005] = 0.02
+        x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
+
+        out = ref_hardswish(x, threshold, scale, offset)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
 
     def init_dtype(self):
         self.dtype = np.float32

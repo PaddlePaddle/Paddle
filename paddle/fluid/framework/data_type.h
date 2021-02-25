@@ -26,9 +26,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 struct bfloat16;
-struct float16;
-struct complex64;
 struct complex128;
+struct complex64;
+struct float16;
 }  // namespace platform
 }  // namespace paddle
 

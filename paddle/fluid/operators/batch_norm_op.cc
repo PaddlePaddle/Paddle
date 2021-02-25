@@ -157,7 +157,8 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -524,17 +525,17 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
-      library);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(

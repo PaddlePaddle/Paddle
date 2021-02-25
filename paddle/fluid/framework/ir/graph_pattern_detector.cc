@@ -12,22 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <array>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
-#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
@@ -824,22 +814,25 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->AsOutput()
-                              ->assert_is_op_output("batch_norm", "MeanOut");
+                              ->assert_is_op_output("batch_norm", "MeanOut")
+                              ->assert_has_n_outputs(0);
 
   auto *bn_variance_out_var =
       pattern->NewNode(bn_variance_out_repr())
           ->AsOutput()
-          ->assert_is_op_output("batch_norm", "VarianceOut");
+          ->assert_is_op_output("batch_norm", "VarianceOut")
+          ->assert_has_n_outputs(0);
 
-  auto *bn_saved_mean_var =
-      pattern->NewNode(bn_saved_mean_repr())
-          ->AsOutput()
-          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn_saved_mean_var = pattern->NewNode(bn_saved_mean_repr())
+                                ->AsOutput()
+                                ->assert_is_op_output("batch_norm", "SavedMean")
+                                ->assert_has_n_outputs(0);
 
   auto *bn_saved_variance_var =
       pattern->NewNode(bn_saved_variance_repr())
           ->AsOutput()
-          ->assert_is_op_output("batch_norm", "SavedVariance");
+          ->assert_is_op_output("batch_norm", "SavedVariance")
+          ->assert_has_n_outputs(0);
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
 
@@ -1836,9 +1829,8 @@ PDNode *patterns::OpDequant::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())
                     ->assert_is_op()
                     ->assert_more([&](Node *node) {
-                      return (node->Op()->Type() == "matmul" ||
-                              node->Op()->Type() == "conv2d" ||
-                              node->Op()->Type() == "fc");
+                      return (node->Op()->HasAttr("force_fp32_output") ||
+                              node->Op()->HasProtoAttr("force_fp32_output"));
                     });
   auto dequant_in = pattern->NewNode(dequant_in_repr())
                         ->assert_is_op_input("dequantize", "Input");
@@ -1870,6 +1862,44 @@ PDNode *patterns::DequantScale::operator()() {
   scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
 
   return scale_out;
+}
+
+PDNode *patterns::ScaleQuant::operator()() {
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("scale", "X");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto quant_in = pattern->NewNode(quant_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("quantize", "Input");
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  scale_op->LinksFrom({scale_in}).LinksTo({quant_in});
+  quant_op->LinksFrom({quant_in});
+
+  return quant_op;
+}
+
+PDNode *patterns::QuantConv::operator()() {
+  auto quant_in = pattern->NewNode(quant_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("quantize", "Input");
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  auto conv_in = pattern->NewNode(conv_in_repr())
+                     ->AsInput()
+                     ->assert_is_op_input("conv2d", "Input");
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  conv_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  quant_op->LinksFrom({quant_in}).LinksTo({conv_in});
+  conv_op->LinksFrom({conv_in});
+
+  return quant_op;
 }
 
 PDNode *patterns::ScaleMatmul::operator()() {
@@ -2198,10 +2228,11 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
-           "fusion_gru", "gelu", "layer_norm", "matmul", "pool2d", "reshape2",
-           "softmax", "sum", "transpose2"});
+      std::unordered_set<std::string>({"concat", "conv2d", "conv2d_transpose",
+                                       "elementwise_add", "elementwise_mul",
+                                       "fc", "fusion_gru", "gelu", "layer_norm",
+                                       "matmul", "pool2d", "relu", "reshape2",
+                                       "softmax", "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2247,25 +2278,12 @@ PDNode *patterns::LastBfloat16Ops::operator()() {
            "bfloat16";
   });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
-
-  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-  next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
-  });
-
   op->LinksTo({op_out});
-  next_op->LinksFrom({op_out});
-  return next_op;
+  return op_out;
 }
 
 PDNode *patterns::FirstBfloat16Ops::operator()() {
-  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-  prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
-  });
-  auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
+  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
@@ -2273,7 +2291,6 @@ PDNode *patterns::FirstBfloat16Ops::operator()() {
            "bfloat16";
   });
 
-  prev_op->LinksTo({op_in});
   op->LinksFrom({op_in});
   return op;
 }
@@ -2285,27 +2302,6 @@ PDNode *patterns::DuplicatedInputs::operator()() {
            "bfloat16";
   });
   return op;
-}
-
-PDNode *patterns::UnnecessaryReorders::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-  prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-
-  auto *quant_in = pattern->NewNode(quant_in_repr())
-                       ->assert_is_op_input("quantize", "Input");
-
-  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
-
-  auto *quant_out = pattern->NewNode(quant_out_repr())
-                        ->assert_is_op_output("quantize", "Output");
-
-  prev_op->LinksTo({quant_in});
-  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
-
-  return quant_out;
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
@@ -2791,6 +2787,122 @@ PDNode *patterns::MultiGru::operator()() {
       "multi_gru", "Hidden");
   gru->LinksFrom({x, wx, wh}).LinksTo({h});
   return h;
+}
+
+PDNode *patterns::LayerNorm::operator()() {
+  auto *x = pattern->NewNode(x_repr())->AsInput()->assert_is_ops_input(
+      {"reduce_mean", "elementwise_sub"});
+  auto *x_mean = pattern->NewNode(x_mean_repr())->assert_is_op("reduce_mean");
+  auto *x_mean_out = pattern->NewNode(x_mean_out_repr())
+                         ->assert_is_op_output("reduce_mean", "Out")
+                         ->assert_is_op_input("elementwise_sub", "Y")
+                         ->AsIntermediate();
+  auto *x_sub_mean =
+      pattern->NewNode(x_sub_mean_repr())->assert_is_op("elementwise_sub");
+  auto *x_sub_mean_out =
+      pattern->NewNode(x_sub_mean_out_repr())
+          ->assert_is_op_output("elementwise_sub")
+          ->assert_is_ops_input({"elementwise_pow", "elementwise_div"}, "X")
+          ->AsIntermediate();
+  auto *sqr_pow = pattern->NewNode(sqr_pow_repr())
+                      ->assert_is_op_input("elementwise_pow", "Y")
+                      ->assert_is_persistable_var()
+                      ->AsInput();
+  auto *x_sub_mean_sqr =
+      pattern->NewNode(x_sub_mean_sqr_repr())->assert_is_op("elementwise_pow");
+  auto *x_sub_mean_sqr_out = pattern->NewNode(x_sub_mean_sqr_out_repr())
+                                 ->assert_is_op_output("elementwise_pow")
+                                 ->assert_is_op_input("reduce_mean")
+                                 ->AsIntermediate();
+  auto *std_dev = pattern->NewNode(std_dev_repr())->assert_is_op("reduce_mean");
+  auto *std_dev_out = pattern->NewNode(std_dev_out_repr())
+                          ->assert_is_op_output("reduce_mean")
+                          ->assert_is_op_input("elementwise_add")
+                          ->AsIntermediate();
+  auto *eps = pattern->NewNode(eps_repr())
+                  ->assert_is_op_input("elementwise_add", "Y")
+                  ->assert_is_persistable_var()
+                  ->AsInput();
+  auto *std_dev_eps =
+      pattern->NewNode(std_dev_eps_repr())->assert_is_op("elementwise_add");
+  auto *std_dev_eps_out = pattern->NewNode(std_dev_eps_out_repr())
+                              ->assert_is_op_output("elementwise_add")
+                              ->assert_is_op_input("sqrt")
+                              ->AsIntermediate();
+  auto *std_dev_eps_sqrt =
+      pattern->NewNode(std_dev_eps_sqrt_repr())->assert_is_op("sqrt");
+  auto *std_dev_eps_sqrt_out = pattern->NewNode(std_dev_eps_sqrt_out_repr())
+                                   ->assert_is_op_output("sqrt")
+                                   ->assert_is_op_input("elementwise_div", "Y")
+                                   ->AsIntermediate();
+  auto *division =
+      pattern->NewNode(division_repr())->assert_is_op("elementwise_div");
+  auto *division_out = pattern->NewNode(division_out_repr())
+                           ->assert_is_op_output("elementwise_div")
+                           ->assert_is_op_input("elementwise_mul")
+                           ->AsIntermediate();
+  auto *gamma = pattern->NewNode(gamma_repr())
+                    ->assert_is_op_input("elementwise_mul", "Y")
+                    ->assert_is_persistable_var()
+                    ->AsInput();
+  auto *scale = pattern->NewNode(scale_repr())->assert_is_op("elementwise_mul");
+  auto *scale_out = pattern->NewNode(scale_out_repr())
+                        ->assert_is_op_output("elementwise_mul")
+                        ->assert_is_op_input("elementwise_add")
+                        ->AsIntermediate();
+  auto *beta = pattern->NewNode(beta_repr())
+                   ->assert_is_op_input("elementwise_add", "Y")
+                   ->assert_is_persistable_var()
+                   ->AsInput();
+  auto *shift = pattern->NewNode(shift_repr())->assert_is_op("elementwise_add");
+  auto *shift_out = pattern->NewNode(shift_out_repr())
+                        ->assert_is_op_output("elementwise_add")
+                        ->AsOutput();
+
+  /*
+   *            X
+   *           / \
+   *          /   reduce_mean "u(x)"
+   *          \   /
+   *      elementwise_sub     "x - u(x)"
+   *      /           \    2
+   *      |            \  /
+   *      |      elementwise_pow  "(x - u(x))^2"
+   *      |             |
+   *      |       reduce_mean     "sigma^2 = 1/C*Sum{(x - u(x))^2}"
+   *      |             |     eps
+   *      |             |     /
+   *      |       elementwise_add "sigma^2 + epsilon"
+   *      \             |
+   *       \           sqrt       "sqrt(sigma^2 + epsilon)"
+   *        \          /
+   *         \        /
+   *       elementwise_div        "lnorm = {x-u(x)}/{sqrt(sigma^2 + epsilon)}"
+   *              |
+   *       gamma  |
+   *          \   |
+   *       elementwise_mul        "scale: gamma(C) * lnorm"
+   *              |
+   *        beta  |
+   *          \   |
+   *       elementwise_add        "shift: gamma(C) * lnorm + beta(C)"
+   */
+
+  x_mean->LinksFrom({x}).LinksTo({x_mean_out});
+  x_sub_mean->LinksFrom({x, x_mean_out}).LinksTo({x_sub_mean_out});
+  x_sub_mean_sqr->LinksFrom({x_sub_mean_out, sqr_pow})
+      .LinksTo({x_sub_mean_sqr_out});
+  std_dev->LinksFrom({x_sub_mean_sqr_out}).LinksTo({std_dev_out});
+  std_dev_eps->LinksFrom({std_dev_out, eps}).LinksTo({std_dev_eps_out});
+
+  std_dev_eps_sqrt->LinksFrom({std_dev_eps_out})
+      .LinksTo({std_dev_eps_sqrt_out});
+  division->LinksFrom({x_sub_mean_out, std_dev_eps_sqrt_out})
+      .LinksTo({division_out});
+  scale->LinksFrom({division_out, gamma}).LinksTo({scale_out});
+  shift->LinksFrom({scale_out, beta}).LinksTo({shift_out});
+
+  return shift_out;
 }
 
 }  // namespace ir
