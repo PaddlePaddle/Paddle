@@ -22,15 +22,16 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
-if os.name == 'nt':
-    cmd = 'del {}\\dispatch_op.pyd'.format(get_build_directory())
+file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
+if os.name == 'nt' and os.path.isfile(file):
+    cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
 
 dispatch_op = load(
     name='dispatch_op',
     sources=['dispatch_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,
     verbose=True)
 
 

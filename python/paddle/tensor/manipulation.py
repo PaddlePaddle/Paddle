@@ -1448,7 +1448,7 @@ def expand(x, shape, name=None):
         attrs_expand_shape = []
         for idx, shape in enumerate(list_expand_shape):
             if isinstance(shape, Variable):
-                attrs_expand_shape.append(-1)
+                attrs_expand_shape.append(-2)
             else:
                 attrs_expand_shape.append(shape)
                 assert shape > 0 or shape == -1, (

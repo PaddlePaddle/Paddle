@@ -78,6 +78,7 @@ void GetDownpourSparseTableProto(
   common_proto->set_table_name("MergedDense");
   common_proto->set_trainer_num(1);
   common_proto->set_sync(false);
+  common_proto->set_entry("none");
   common_proto->add_params("Param");
   common_proto->add_dims(10);
   common_proto->add_initializers("uniform_random&0&-1.0&1.0");

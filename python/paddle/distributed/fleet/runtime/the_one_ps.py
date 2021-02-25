@@ -58,6 +58,7 @@ class CommonAccessor:
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
+        self.entry = None
         self.attrs = []
         self.params = []
         self.dims = []
@@ -92,6 +93,24 @@ class CommonAccessor:
         self.opt_attr_map = opt_attr_map
         self.opt_input_map = opt_input_map
         self.opt_init_map = opt_init_map
+
+    def parse_entry(self, varname, o_main_program):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+        for op in o_main_program.global_block().ops:
+            if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+                continue
+
+            param_name = op.input("W")[0]
+
+            if param_name == varname and op.type == "lookup_table":
+                self.entry = op.attr('entry')
+                break
+
+            if param_name == varname and op.type == "lookup_table_v2":
+                self.entry = "none"
+                break
 
     def get_shard(self, total_dim, shard_num, pserver_id):
         # remainder = total_dim % shard_num
@@ -188,6 +207,8 @@ class CommonAccessor:
         if self.table_name:
             attrs += "table_name: \"{}\" ".format(self.table_name)
 
+        if self.entry:
+            attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
 
@@ -655,36 +676,31 @@ class TheOnePSRuntime(RuntimeBase):
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
+
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
-                table = Table()
-                table.id = ctx.table_id()
-
-                if ctx.is_tensor_table():
+                if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
+                table = Table()
+                table.id = ctx.table_id()
+                common = CommonAccessor()
+
                 if ctx.is_sparse():
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
                     table.type = "PS_SPARSE_TABLE"
+                    table.shard_num = 256
 
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
                         table.table_class = "CommonSparseTable"
-                    table.shard_num = 256
-                else:
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
 
-                common = CommonAccessor()
-                if ctx.is_sparse():
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
                 else:
+                    table.type = "PS_DENSE_TABLE"
+                    table.table_class = "CommonDenseTable"
+                    table.shard_num = 256
                     common.table_name = "MergedDense"
 
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
@@ -692,6 +708,10 @@ class TheOnePSRuntime(RuntimeBase):
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
                                           self.compiled_strategy)
+
+                if ctx.is_sparse():
+                    common.parse_entry(common.table_name,
+                                       self.origin_main_program)
 
                 if is_sync:
                     common.sync = "true"
