@@ -99,14 +99,6 @@ void GroupTestCopy() {
   TestCopyTensor<float>();
   VLOG(2) << "Double cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<double>();
-  VLOG(2) << "Fp16 cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::platform::float16>();
-  VLOG(2) << "BF16 cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::platform::bfloat16>();
-  VLOG(2) << "complex128 cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::platform::complex128>();
-  VLOG(2) << "complex64 cpu-cpu-gpu-gpu-cpu";
-  TestCopyTensor<paddle::platform::complex64>();
   VLOG(2) << "int cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<int>();
   VLOG(2) << "int64 cpu-cpu-gpu-gpu-cpu";
