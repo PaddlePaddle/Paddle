@@ -24,7 +24,7 @@ export CI_SKIP_CPP_TEST=OFF
 SYSTEM=`uname -s`
 if [ "$SYSTEM" == "Linux" ];then
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
-elif ["$SYSTEM" == "Windows_NT" ];then
+elif [ "$SYSTEM" == "Windows_NT" ];then
     PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 fi
 CURDIR=`pwd`
@@ -39,7 +39,7 @@ mkdir prec_build
 cd prec_build
 if [ "$SYSTEM" == "Linux" ];then
     bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
-elif ["$SYSTEM" == "Windows_NT" ];then
+elif [ "$SYSTEM" == "Windows_NT" ];then
     bash $PADDLE_ROOT/get_added_ut.sh
     echo "Windows Added UT"
 fi
@@ -54,6 +54,8 @@ cat $PADDLE_ROOT/added_ut
 rm -rf prec_build
 if [ "$SYSTEM" == "Linux" ];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
+elif [ "$SYSTEM" == "Windows_NT" ];then
+    rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
 fi
 git checkout $CURBRANCH
 echo $CURBRANCH
