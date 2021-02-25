@@ -69,7 +69,7 @@ class TestLambOp1(XPUOpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-2)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-1)
 
 
 def lamb_step(inputs, attributes):
