@@ -45,6 +45,8 @@ __all__ = [
     'Variable',
     'load_vars',
     'save_vars',
+    'auc',
+    'accuracy',
 ]
 
 from . import nn
@@ -57,6 +59,7 @@ from .io import deserialize_program  #DEFINE_ALIAS
 from .io import serialize_program  #DEFINE_ALIAS
 from .io import load_from_file  #DEFINE_ALIAS
 from .io import save_to_file  #DEFINE_ALIAS
+from .io import normalize_program  #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
@@ -70,6 +73,7 @@ from ..fluid.compiler import CompiledProgram  #DEFINE_ALIAS
 from ..fluid.compiler import ExecutionStrategy  #DEFINE_ALIAS
 from ..fluid.framework import default_main_program  #DEFINE_ALIAS
 from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
+from ..fluid.framework import device_guard  #DEFINE_ALIAS
 from ..fluid.framework import Program  #DEFINE_ALIAS
 from ..fluid.framework import name_scope  #DEFINE_ALIAS
 from ..fluid.framework import program_guard  #DEFINE_ALIAS
@@ -92,3 +96,4 @@ from ..fluid.io import save_vars  #DEFINE_ALIAS
 from ..fluid.layers import create_parameter  #DEFINE_ALIAS
 from ..fluid.layers import create_global_var  #DEFINE_ALIAS
 from ..fluid.layers.metric_op import auc  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import accuracy  #DEFINE_ALIAS

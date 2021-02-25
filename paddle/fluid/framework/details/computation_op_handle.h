@@ -28,6 +28,7 @@ namespace paddle {
 namespace framework {
 class OperatorBase;
 class Scope;
+
 namespace ir {
 class Node;
 }  // namespace ir

@@ -189,6 +189,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       if (h0) {
         user_h0_memory =
             dnnl::memory({{1, 1, N, OC},
+<<<<<<< HEAD
                           MKLDNNGetDataType<T>(),
                           MKLDNNMemoryFormat::ldnc},
                          this->engine_, to_void_cast(h0->data<T>()));
@@ -198,11 +199,26 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                                        MKLDNNMemoryFormat::ldnc},
                                       this->engine_);
         memset(user_h0_memory.get_data_handle(), 0, sizeof(T) * N * OC);
+=======
+                          MKLDNNGetDataType<float>(),
+                          MKLDNNMemoryFormat::ldnc},
+                         this->engine_, to_void_cast(h0->data<float>()));
+      } else {
+        user_h0_memory = dnnl::memory({{1, 1, N, OC},
+                                       MKLDNNGetDataType<float>(),
+                                       MKLDNNMemoryFormat::ldnc},
+                                      this->engine_);
+        memset(user_h0_memory.get_data_handle(), 0, sizeof(float) * N * OC);
+>>>>>>> origin/develop
       }
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
                                                 this->engine_);
 
+<<<<<<< HEAD
       dnnl::stream astream(this->engine_);
+=======
+      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+>>>>>>> origin/develop
       dnnl::reorder(user_h0_memory, *memory_p, attr_)
           .execute(astream, user_h0_memory, *memory_p);
 

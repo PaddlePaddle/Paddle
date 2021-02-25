@@ -45,7 +45,24 @@ if(WITH_GPU)
     endif()
     nv_library(broadcast_op_handle SRCS broadcast_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
     nv_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
+elseif(WITH_ROCM)
+    hip_library(nan_inf_utils SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu DEPS framework_proto scope place)
+    hip_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
+            dynload_cuda variable_visitor)
+    hip_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
+            dynload_cuda variable_visitor place device_memory_aligment)
+    hip_library(grad_merge_all_reduce_op_handle SRCS grad_merge_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor
+            ddim memory dynload_cuda variable_visitor place device_memory_aligment all_reduce_op_handle fused_all_reduce_op_handle)
 
+    if(WITH_DISTRIBUTE)
+        hip_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
+                    ddim dynload_cuda selected_rows_functor)
+    else()
+        hip_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
+                    ddim dynload_cuda selected_rows_functor)
+    endif()
+    hip_library(broadcast_op_handle SRCS broadcast_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
+    hip_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
 else()
     cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
@@ -101,6 +118,8 @@ cc_library(scope_buffered_monitor SRCS scope_buffered_monitor.cc DEPS scope prof
 cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_executor.cc DEPS ssa_graph_executor scope_buffered_monitor)
 #cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
 #        device_context reduce_op_handle )
+cc_library(bind_threaded_ssa_graph_executor SRCS bind_threaded_ssa_graph_executor.cc
+        DEPS fetch_op_handle gflags ssa_graph_executor scope simple_threadpool device_context)
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
         DEPS fetch_async_op_handle ssa_graph_executor scope simple_threadpool device_context)
 cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS fused_broadcast_op_handle)
@@ -116,7 +135,7 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
     fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
     sync_batch_norm_pass runtime_context_cache_pass)
-if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
+if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})

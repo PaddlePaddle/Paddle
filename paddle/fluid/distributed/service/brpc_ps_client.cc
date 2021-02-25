@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
-#include "Eigen/Dense"
 
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/string_helper.h"
 
 const static int max_port = 65535;
 
@@ -62,9 +57,6 @@ namespace framework {
 class Scope;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -134,8 +126,15 @@ int32_t BrpcPsClient::create_client2client_connection(
     server_ip_port.append(std::to_string(client_list[i].port));
     _client_channels[i].reset(new brpc::Channel());
     if (_client_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
-      LOG(ERROR) << "psclient connect to client:" << server_ip_port
-                 << " Failed!";
+      VLOG(0) << "BrpcPSClient connect to Client:" << server_ip_port
+              << " Failed! Try again.";
+      std::string int_ip_port =
+          GetIntTypeEndpoint(client_list[i].ip, client_list[i].port);
+      if (_client_channels[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "BrpcPSClient connect to Client:" << int_ip_port
+                   << " Failed!";
+        return -1;
+      }
     }
     os << server_ip_port << ",";
   }
@@ -168,9 +167,16 @@ int32_t BrpcPsClient::initialize() {
       _server_channels[i][j].reset(new brpc::Channel());
       if (_server_channels[i][j]->Init(server_ip_port.c_str(), "", &options) !=
           0) {
-        LOG(ERROR) << "psclient connect to server:" << server_ip_port
-                   << " Failed!";
-        return -1;
+        VLOG(0) << "BrpcPSclient connect to Server:" << server_ip_port
+                << " Failed! Try again.";
+        std::string int_ip_port =
+            GetIntTypeEndpoint(server_list[i].ip, server_list[i].port);
+        if (_server_channels[i][j]->Init(int_ip_port.c_str(), "", &options) !=
+            0) {
+          LOG(ERROR) << "BrpcPSclient connect to Server:" << int_ip_port
+                     << " Failed!";
+          return -1;
+        }
       }
     }
     os << server_ip_port << ",";
@@ -339,8 +345,9 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
   return fut;
 }
 
-std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id) {
-  return send_cmd(table_id, PS_SHRINK_TABLE, {std::string("1")});
+std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id,
+                                          const std::string threshold) {
+  return send_cmd(table_id, PS_SHRINK_TABLE, {threshold});
 }
 
 std::future<int32_t> BrpcPsClient::load(const std::string &epoch,

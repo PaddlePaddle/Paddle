@@ -95,6 +95,9 @@ black_list = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
+    # fp16 is slower than fp32, though fp16 is supported.
+    'lookup_table',
+    'lookup_table_v2',
 }
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
@@ -115,8 +118,6 @@ gray_list = {
     'layer_norm',
     'tanh',
     'sigmoid',
-    'lookup_table',
-    'lookup_table_v2',
     'top_k',
     'pool2d',
     'pool3d',
@@ -284,6 +285,9 @@ unsupported_fp16_list = {
     'generate_proposals',
     'generate_proposal_labels',
     'generate_mask_labels',
+    # fp16 is slower than fp32, though fp16 is supported.
+    'lookup_table',
+    'lookup_table_v2',
 }
 
 CustomOpLists = AutoMixedPrecisionLists

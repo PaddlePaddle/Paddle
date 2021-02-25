@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sys/types.h>
 #include <random>
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 DECLARE_bool(use_system_allocator);
 
@@ -27,7 +31,7 @@ namespace framework {
 static std::vector<platform::Place> CreatePlaceList() {
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPlace(0));
 #endif
   return places;

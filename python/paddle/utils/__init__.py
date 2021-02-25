@@ -25,6 +25,8 @@ from ..fluid.framework import require_version
 
 from . import download
 
+from . import cpp_extension
+
 __all__ = ['dump_config', 'deprecated', 'download', 'run_check']
 
 #TODO: define new api under this directory

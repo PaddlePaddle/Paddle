@@ -20,8 +20,8 @@ register_operators(EXCLUDES
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
-file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_gru);\nUSE_CPU_ONLY_OP(fusion_lstm);\n")
-
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_gru);\n")
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_lstm);\n")
 
 
 if (WITH_GPU)

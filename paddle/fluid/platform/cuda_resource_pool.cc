@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_resource_pool.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -25,15 +25,24 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
       platform::SetDeviceId(dev_idx);
-      cudaStream_t stream;
+      gpuStream_t stream;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipStreamCreateWithFlags(&stream, hipStreamNonBlocking));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+#endif
       return stream;
     };
 
-    auto deleter = [dev_idx](cudaStream_t stream) {
+    auto deleter = [dev_idx](gpuStream_t stream) {
       platform::SetDeviceId(dev_idx);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream));
+#endif
     };
 
     pool_.emplace_back(
@@ -65,15 +74,24 @@ CudaEventResourcePool::CudaEventResourcePool() {
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [dev_idx] {
       platform::SetDeviceId(dev_idx);
-      cudaEvent_t event;
+      gpuEvent_t event;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          hipEventCreateWithFlags(&event, hipEventDisableTiming));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+#endif
       return event;
     };
 
-    auto deleter = [dev_idx](cudaEvent_t event) {
+    auto deleter = [dev_idx](gpuEvent_t event) {
       platform::SetDeviceId(dev_idx);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipEventDestroy(event));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+#endif
     };
 
     pool_.emplace_back(ResourcePool<CudaEventObject>::Create(creator, deleter));

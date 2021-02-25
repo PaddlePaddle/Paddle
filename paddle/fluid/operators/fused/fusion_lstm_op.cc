@@ -150,15 +150,25 @@ framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(ctx)) {
+=======
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+>>>>>>> origin/develop
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
+<<<<<<< HEAD
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
       library);
+=======
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+>>>>>>> origin/develop
 }
 
 void FusionLSTMOpMaker::Make() {
@@ -250,10 +260,13 @@ void FusionLSTMOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+<<<<<<< HEAD
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Force INT8 kernel output FP32, only "
                 "used in MKL-DNN INT8")
       .SetDefault(false);
+=======
+>>>>>>> origin/develop
   AddComment(R"DOC(
 Fusion Long-Short Term Memory (LSTM) Operator.
 This operator fuse the X into LSTM, more details can refer to LSTM op.

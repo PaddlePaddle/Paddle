@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -43,14 +44,16 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
 
 class GradOpBaseMakerBase {
  public:
-  explicit GradOpBaseMakerBase(const std::string& type,
-                               const NameVarBaseMap& var_base_map_in,
-                               const NameVarBaseMap& var_base_map_out,
-                               const framework::AttributeMap& attrs)
+  explicit GradOpBaseMakerBase(
+      const std::string& type, const NameVarBaseMap& var_base_map_in,
+      const NameVarBaseMap& var_base_map_out,
+      const framework::AttributeMap& attrs,
+      const std::map<std::string, std::string>& inplace_map)
       : type_(type),
         var_base_map_in_(var_base_map_in),
         var_base_map_out_(var_base_map_out),
-        attrs_(attrs) {}
+        attrs_(attrs),
+        inplace_map_(inplace_map) {}
 
   virtual ~GradOpBaseMakerBase() = default;
 
@@ -141,6 +144,10 @@ class GradOpBaseMakerBase {
     return std::make_shared<GradOpNode>();
   }
 
+  const std::map<std::string, std::string>& GetInplaceMap() const {
+    return inplace_map_;
+  }
+
  private:
   template <TracedVarRole kRole>
   TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name,
@@ -192,6 +199,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
+  const std::map<std::string, std::string>& inplace_map_;
 };
 
 class TracedGradOp {
@@ -220,6 +228,10 @@ class TracedGradOp {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
+          auto dirty_grad_node = var->GradNode();
+          if (dirty_grad_node) {
+            map_dirty_grad_node_[var] = dirty_grad_node;
+          }
           var->SetGradNode(node_);
         }
       }
@@ -246,7 +258,11 @@ class TracedGradOp {
       } else {
         for (auto& var : vars) {
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
-            node_->InsertGradPendingNode(var->GradNode());
+            if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
+            } else {
+              node_->InsertGradPendingNode(var->GradNode());
+            }
           }
         }
       }
@@ -329,6 +345,12 @@ class TracedGradOp {
  private:
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
+  // Inplace op has recursion problems when performing grad calculation.
+  // Because the input and output of inplace op are the same, the grad
+  // node of inplace var will be overwritten.
+  // This map is used to store the grad node of inplace var in temporary.
+  std::unordered_map<std::shared_ptr<VarBase>, std::shared_ptr<GradOpNode>>
+      map_dirty_grad_node_;
 };
 
 }  // namespace imperative

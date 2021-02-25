@@ -13,8 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -39,7 +47,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
 
   void* ptr;
   auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
-  if (LIKELY(result == cudaSuccess)) {
+  if (LIKELY(result == gpuSuccess)) {
     return new Allocation(ptr, size, platform::Place(place_));
   }
 

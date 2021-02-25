@@ -27,9 +27,12 @@ class TestSetValueBase(unittest.TestCase):
         paddle.enable_static()
         self.set_dtype()
         self.set_value()
-        self.shape = [2, 3, 4]
+        self.set_shape()
         self.data = np.ones(self.shape).astype(self.dtype)
         self.program = paddle.static.Program()
+
+    def set_shape(self):
+        self.shape = [2, 3, 4]
 
     def set_value(self):
         self.value = 6
@@ -52,7 +55,6 @@ class TestSetValueApi(TestSetValueBase):
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(self.program, fetch_list=[x])
-
         self._get_answer()
         self.assertTrue(
             (self.data == out).all(),
@@ -60,7 +62,8 @@ class TestSetValueApi(TestSetValueBase):
                 self.data, out))
 
 
-# 1. Test different type of item: int, python slice
+# 1. Test different type of item: int, Python slice, Paddle Tensor
+# 1.1 item is int
 class TestSetValueItemInt(TestSetValueApi):
     def _call_setitem(self, x):
         x[0] = self.value
@@ -69,6 +72,8 @@ class TestSetValueItemInt(TestSetValueApi):
         self.data[0] = self.value
 
 
+# 1.2 item is slice
+# 1.2.1 step is 1
 class TestSetValueItemSlice(TestSetValueApi):
     def _call_setitem(self, x):
         x[0:2] = self.value
@@ -99,6 +104,197 @@ class TestSetValueItemSlice4(TestSetValueApi):
 
     def _get_answer(self):
         self.data[0:, 1:2, :] = self.value
+
+
+# 1.2.2 step > 1
+class TestSetValueItemSliceStep(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5, 5, 5]
+
+    def _call_setitem(self, x):
+        x[0:2:2] = self.value
+
+    def _get_answer(self):
+        self.data[0:2:2] = self.value
+
+
+class TestSetValueItemSliceStep2(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [7, 5, 5]
+
+    def _call_setitem(self, x):
+        x[0:-1:3] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1:3] = self.value
+
+
+class TestSetValueItemSliceStep3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:-1, 0:2, ::2] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1, 0:2, ::2] = self.value
+
+
+class TestSetValueItemSliceStep4(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, 1:2:2, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:2:2, :] = self.value
+
+
+# 1.2.3 step < 0
+class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5, 2]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[5:2:-1] = self.value
+
+    def _get_answer(self):
+        self.data[5:2:-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [5]
+
+    def set_value(self):
+        self.value = np.array([3, 4])
+
+    def _call_setitem(self, x):
+        x[1::-1] = self.value
+
+    def _get_answer(self):
+        self.data[1::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3]
+
+    def set_value(self):
+        self.value = np.array([3, 4, 5])
+
+    def _call_setitem(self, x):
+        x[::-1] = self.value
+
+    def _get_answer(self):
+        self.data[::-1] = self.value
+
+
+class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3, 4, 5]
+
+    def _call_setitem(self, x):
+        x[2:0:-1, 0:2, ::-1] = self.value
+
+    def _get_answer(self):
+        self.data[2:0:-1, 0:2, ::-1] = self.value
+
+
+# 1.3 item is Ellipsis
+
+
+class TestSetValueItemEllipsis1(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, ..., 1:] = self.value
+
+    def _get_answer(self):
+        self.data[0:, ..., 1:] = self.value
+
+
+class TestSetValueItemEllipsis2(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[0:, ...] = self.value
+
+    def _get_answer(self):
+        self.data[0:, ...] = self.value
+
+
+class TestSetValueItemEllipsis3(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[..., 1:] = self.value
+
+    def _get_answer(self):
+        self.data[..., 1:] = self.value
+
+
+class TestSetValueItemEllipsis4(TestSetValueApi):
+    def _call_setitem(self, x):
+        x[...] = self.value
+
+    def _get_answer(self):
+        self.data[...] = self.value
+
+
+# 1.4 item is Paddle Tensor
+class TestSetValueItemTensor(TestSetValueApi):
+    def _call_setitem(self, x):
+        zero = paddle.full([1], 0, dtype="int32")
+        x[zero] = self.value
+
+    def _get_answer(self):
+        self.data[0] = self.value
+
+
+class TestSetValueItemTensor2(TestSetValueApi):
+    def _call_setitem(self, x):
+        zero = paddle.full([1], 0, dtype="int32")
+        two = paddle.full([1], 2, dtype="int64")
+        x[zero:two] = self.value
+
+    def _get_answer(self):
+        self.data[0:2] = self.value
+
+
+class TestSetValueItemTensor3(TestSetValueApi):
+    def _call_setitem(self, x):
+        zero = paddle.full([1], 0, dtype="int32")
+        two = paddle.full([1], 2, dtype="int64")
+        x[zero:-1, 0:two] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1, 0:2] = self.value
+
+
+class TestSetValueItemTensor4(TestSetValueApi):
+    def _call_setitem(self, x):
+        zero = paddle.full([1], 0, dtype="int32")
+        two = paddle.full([1], 2, dtype="int64")
+        x[0:-1, zero:2, 0:6:two] = self.value
+
+    def _get_answer(self):
+        self.data[0:-1, 0:2, ::2] = self.value
+
+
+class TestSetValueItemTensor5(TestSetValueApi):
+    def _call_setitem(self, x):
+        zero = paddle.full([1], 0, dtype="int32")
+        two = paddle.full([1], 2, dtype="int64")
+        x[zero:, 1:2:two, :] = self.value
+
+    def _get_answer(self):
+        self.data[0:, 1:2:2, :] = self.value
+
+
+class TestSetValueItemTensor6(TestSetValueApi):
+    def set_shape(self):
+        self.shape = [3, 4, 5]
+
+    def _call_setitem(self, x):
+        minus1 = paddle.full([1], -1, dtype="int32")
+        zero = paddle.full([1], 0, dtype="int32")
+        x[2:zero:minus1, 0:2, 10:-6:minus1] = self.value
+
+    def _get_answer(self):
+        self.data[2:0:-1, 0:2, ::-1] = self.value
 
 
 # 2. Test different type of value: int, float, numpy.ndarray, Tensor
@@ -495,9 +691,19 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "only support step is 1"):
+        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            x[0:1:2] = self.value
+            x[0:1:0] = self.value
+
+    def _ellipsis_error(self):
+        with self.assertRaisesRegexp(
+                IndexError, "An index can only have a single ellipsis"):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x[..., ...] = self.value
+        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            one = paddle.ones([1])
+            x[::one] = self.value
 
     def _broadcast_mismatch(self):
         program = paddle.static.Program()

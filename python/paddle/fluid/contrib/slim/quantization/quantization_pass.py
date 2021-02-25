@@ -74,6 +74,11 @@ _out_scale_op_list = [
     "bilinear_interp",
     "nearest_interp",
     "trilinear_interp",
+    "flatten",
+    "flatten2",
+    "transpose",
+    "pad2d",
+    "reshape",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -120,6 +125,10 @@ _op_real_in_out_name = {
     "hard_swish": [["X"], ["Out"]],
     "hard_sigmoid": [["X"], ["Out"]],
     "gru": [["Input", "Weight"], ["Hidden"]],
+    "lstm": [["Input", "Weight"], ["Hidden"]],
+    "pad2d": [["X"], ["Out"]],
+    "flatten": [["X"], ["Out"]],
+    "flatten2": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -142,6 +151,21 @@ def _get_op_input_var_names(op):
         else:
             var_names.append(var_name)
     return var_names
+
+
+def _get_input_name_index(op, input_var_name):
+    """Get the input name and index of the var_name in the op"""
+    assert isinstance(op, (IrNode, Operator)), \
+        "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) \
+        else op.type
+    res = None
+    for argname in _op_real_in_out_name[op_name][0]:
+        var_names = op.input(argname)
+        for index, name in enumerate(var_names):
+            if name == input_var_name:
+                res = (argname, index)
+    return res
 
 
 def _get_op_output_var_names(op):
@@ -1675,7 +1699,8 @@ class AddQuantDequantPass(object):
         "less_than", "mean", "not_equal", "reshape", "reshape2",
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
-        "leaky_relu", "tanh", "swish"
+        "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
+        "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now

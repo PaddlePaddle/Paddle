@@ -24,6 +24,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -65,6 +66,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -152,6 +156,17 @@ bool SupportsBfloat16() {
   return false;
 #else
   if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+    return true;
+  else
+    return false;
+#endif
+}
+
+bool SupportsBfloat16FastPerformance() {
+#ifndef PADDLE_WITH_MKLDNN
+  return false;
+#else
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
     return true;
   else
     return false;
@@ -383,7 +398,7 @@ PYBIND11_MODULE(core_noavx, m) {
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    Tensor tensor;
+    framework::Tensor tensor;
 
     if (dl.ctx.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
@@ -521,77 +536,80 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindImperative(&m);
 
-  py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
+  py::class_<framework::Tensor>(m, "Tensor", py::buffer_protocol())
+      .def("__array__",
+           [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("_is_initialized",
-           [](const Tensor &self) { return self.IsInitialized(); })
+           [](const framework::Tensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
-           [](const Tensor &self) { return vectorize(self.dims()); })
+           [](const framework::Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
-           [](Tensor &self, const std::vector<int64_t> &dim) {
+           [](framework::Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
       .def("_set_layout",
-           [](Tensor &self, const std::string &layout) {
+           [](framework::Tensor &self, const std::string &layout) {
              self.set_layout(StringToDataLayout(layout));
            })
       .def("_alloc_float",
-           [](Tensor &self, paddle::platform::CUDAPlace &place) {
+           [](framework::Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](Tensor &self, paddle::platform::XPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::XPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](Tensor &self, paddle::platform::CPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_double",
-           [](Tensor &self, paddle::platform::CPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<double>(place);
            })
       .def("_alloc_int",
-           [](Tensor &self, paddle::platform::CPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](Tensor &self, paddle::platform::XPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::XPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](Tensor &self, paddle::platform::CUDAPlace &place) {
+           [](framework::Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
+           [](framework::Tensor &self,
+              paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_float",
-           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
+           [](framework::Tensor &self,
+              paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_mutable_data",
-           [](Tensor &self, paddle::platform::CPUPlace &place,
+           [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_mutable_data",
-           [](Tensor &self, paddle::platform::XPUPlace &place,
+           [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_mutable_data",
-           [](Tensor &self, paddle::platform::CUDAPlace &place,
+           [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_mutable_data",
-           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place,
+           [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
-      .def("_clear", &Tensor::clear)
+      .def("_clear", &framework::Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
@@ -623,7 +641,9 @@ PYBIND11_MODULE(core_noavx, m) {
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
 
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
+      .def("shape",
+           [](framework::Tensor &self) { return vectorize(self.dims()); },
+           R"DOC(
            Return the shape of LoDTensor.
 
            Returns:
@@ -641,7 +661,7 @@ PYBIND11_MODULE(core_noavx, m) {
                   print(t.shape())  # [5, 30]
            )DOC")
       .def("_to_dlpack",
-           [](Tensor &self) {
+           [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
              DLManagedTensor *dmt =
                  dlpack_tensor.ToCudfCompatibleDLManagedTensor();
@@ -666,20 +686,22 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-      .def("_place", [](Tensor &self) { return self.place(); })
-      .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("_place", [](framework::Tensor &self) { return self.place(); })
+      .def("_dtype", [](framework::Tensor &self) { return self.type(); })
       .def("_layout",
-           [](Tensor &self) { return DataLayoutToString(self.layout()); })
-      .def("_share_data_with", &Tensor::ShareDataWith)
+           [](framework::Tensor &self) {
+             return DataLayoutToString(self.layout());
+           })
+      .def("_share_data_with", &framework::Tensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
-      .def("__str__", [](const Tensor &self) {
+      .def("__str__", [](const framework::Tensor &self) {
         std::stringstream ostr;
         ostr << self;
         return ostr.str();
       });
 
   // TODO(cql): add reference: en_user_guide_lod_tensor
-  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+  py::class_<LoDTensor, framework::Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD (Level of Details) information, 
     it can be used for variable-length sequences, 
     see :ref:`user_guide_lod_tensor` for details.
@@ -763,7 +785,8 @@ PYBIND11_MODULE(core_noavx, m) {
           t = fluid.LoDTensor()
 
         )DOC")
-      .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
+      .def("__array__",
+           [](framework::Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
            [](LoDTensor &instance, const std::vector<std::vector<size_t>>
                                        &recursive_sequence_lengths) {
@@ -1721,12 +1744,15 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_library", framework::LoadOpLib);
+  m.def("load_op_meta_info_and_register_op",
+        framework::LoadOpMetaInfoAndRegisterOp);
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
+  m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
@@ -1948,6 +1974,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
 
@@ -2837,6 +2867,10 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifdef PADDLE_WITH_ASCEND
+  BindAscendWrapper(&m);
+  BindAscendGraph(&m);
+#endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif

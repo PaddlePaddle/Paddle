@@ -15,15 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
-#include <memory>
-#include <unordered_set>
-#include <utility>
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
@@ -165,7 +158,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     AppendPassWithCheck(strategy_.fuse_bn_add_act_ops_, "fuse_bn_add_act_pass");
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #else
     LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
@@ -312,7 +306,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
                                 DeviceType use_device,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
@@ -338,7 +332,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -358,7 +352,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -385,7 +379,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -481,6 +475,7 @@ USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif

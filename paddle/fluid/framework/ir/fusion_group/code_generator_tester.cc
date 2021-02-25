@@ -15,7 +15,6 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
@@ -29,7 +28,7 @@ class LoDTensor;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 namespace paddle {
 namespace framework {
@@ -181,7 +180,11 @@ void TestMainImpl(std::string func_name, std::string code_str,
 
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
+#ifdef PADDLE_WITH_HIP
+  device_code.Compile(true);
+#else
   device_code.Compile(is_float16);
+#endif
 
   std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
   std::vector<paddle::framework::LoDTensor> tmp_cpu_tensors(cpu_tensors.size());

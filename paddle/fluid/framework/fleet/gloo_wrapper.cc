@@ -14,7 +14,16 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 
 namespace gloo {
+namespace transport {
+class Device;
+}  // namespace transport
+}  // namespace gloo
+
+namespace gloo {
 namespace rendezvous {
+
+class HTTPStore;
+class Store;
 
 constexpr int kNodeSize = 136;
 

@@ -221,6 +221,10 @@ class SingleGradOpMaker<imperative::OpBase>
 
   std::shared_ptr<imperative::GradOpNode> operator()() const final {
     auto node = this->NewGradNode();
+    auto& inplace_map = this->GetInplaceMap();
+    if (!inplace_map.empty()) {
+      node->SetInplaceGradNameMap(inplace_map);
+    }
     {
       imperative::TracedGradOp traced_grad_op(node);
       try {

@@ -617,6 +617,16 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
+    def test_print_tensor_dtype(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.rand([1])
+        a_str = str(a.dtype)
+
+        expected = 'paddle.float32'
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
 
 class TestVarBaseSetitem(unittest.TestCase):
     def setUp(self):

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/recv_v2_op.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -26,7 +26,8 @@ template <typename T>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 2703
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
         rid, 0,
@@ -45,7 +46,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(data_type);
 
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -65,12 +66,21 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     // Recv the number of elements to receive first
     int numel = 0;
     int *numel_ptr = nullptr;
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&numel_ptr, sizeof(int)));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));
+#endif
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::ncclRecv(static_cast<void *>(numel_ptr), 1, ncclInt,
                                     peer, comm->comm(), stream));
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipMemcpy(&numel, numel_ptr, sizeof(int), hipMemcpyDeviceToHost));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(&numel, numel_ptr, sizeof(int), cudaMemcpyDeviceToHost));
+#endif
 
     int rest_numel = 1;
     for (int i = 1; i < out_dims.size(); ++i) {

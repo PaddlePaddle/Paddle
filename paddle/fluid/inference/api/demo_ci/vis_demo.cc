@@ -20,7 +20,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
@@ -82,7 +82,7 @@ void Main(bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
   } else {

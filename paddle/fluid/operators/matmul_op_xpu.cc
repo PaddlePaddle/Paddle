@@ -24,6 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::Tensor;
+
 static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
@@ -97,6 +99,86 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
 
+template <typename T, typename FCT>
+static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
+                              bool trans_x, bool trans_y,
+                              const paddle::framework::ExecutionContext &ctx) {
+  const auto &x_dims = x->dims();
+  const auto &y_dims = y->dims();
+  auto &dev_ctx =
+      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+
+  auto mat_dim_a =
+      math::CreateMatrixDescriptor(RowMatrixFromVector(x_dims), 0, trans_x);
+  auto mat_dim_b =
+      math::CreateMatrixDescriptor(ColumnMatrixFromVector(y_dims), 0, trans_y);
+
+  if (x_dims.size() == 3 && y_dims.size() <= 2) {
+    // if transpose_X is true, the transpose cost much time
+    if (!trans_x) {
+      mat_dim_a.height_ *= mat_dim_a.batch_size_;
+      mat_dim_a.batch_size_ = 0;
+    } else {
+      mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
+      mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      mat_dim_a.width_, mat_dim_b.height_,
+      platform::errors::InvalidArgument("Shape mistake in matmul_op, the "
+                                        "first tensor width must be same as "
+                                        "second tensor height, but received "
+                                        "width:%d, height:%d",
+                                        mat_dim_a.width_, mat_dim_b.height_));
+  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+                    platform::errors::InvalidArgument(
+                        "Shape mistake in matmul_op, the two input"
+                        "tensor batch_size must be same, but received first "
+                        "tensor batch_size:%d, second "
+                        "tensor batch_size:%d",
+                        mat_dim_a.batch_size_, mat_dim_b.batch_size_));
+
+  T alpha = static_cast<T>(ctx.Attr<float>("alpha"));
+
+  float *data_c = out->data<T>();
+  int m = mat_dim_a.height_;
+  int n = mat_dim_b.width_;
+  int k = mat_dim_a.width_;
+  int ldx = mat_dim_a.trans_ ? m : k;
+  int ldy = mat_dim_b.trans_ ? k : n;
+  int ldout = n;
+  int batch_size = mat_dim_a.batch_size_;
+
+  if (batch_size == 0) {
+    int r = xpu::fc_fusion<float, float, float, FCT>(
+        dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
+        mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy,
+        ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
+  } else {
+    // batch matmul
+    int x_stride = mat_dim_a.stride_;
+    int y_stride = mat_dim_b.stride_;
+    int out_stride = m * n;
+    for (int i = 0; i < batch_size; ++i) {
+      const float *x_data = x->data<T>() + x_stride * i;
+      const float *y_data = y->data<T>() + y_stride * i;
+      float *out_data = data_c + out_stride * i;
+      int r = xpu::fc_fusion<float, float, float, FCT>(
+          dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
+          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
+          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                        platform::errors::External(
+                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
+                            XPUAPIErrorMsg[r]));
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MatMulXPUKernel : public framework::OpKernel<T> {
  public:
@@ -105,78 +187,12 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
     auto *y = context.Input<framework::Tensor>("Y");
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(x->dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b =
-        math::CreateMatrixDescriptor(ColumnMatrixFromVector(y->dims()), 0,
-                                     context.Attr<bool>("transpose_Y"));
-
-    const auto &x_dims = x->dims();
-    const auto &y_dims = y->dims();
-    if (x_dims.size() == 3 && y_dims.size() <= 2) {
-      // if transpose_X is true, the transpose cost much time
-      if (!context.Attr<bool>("transpose_X")) {
-        mat_dim_a.height_ *= mat_dim_a.batch_size_;
-        mat_dim_a.batch_size_ = 0;
-      } else {
-        mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
-        mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(
-        mat_dim_a.width_, mat_dim_b.height_,
-        platform::errors::InvalidArgument("Shape mistake in matmul_op, the "
-                                          "first tensor width must be same as "
-                                          "second tensor height, but received "
-                                          "width:%d, height:%d",
-                                          mat_dim_a.width_, mat_dim_b.height_));
-    PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
-                      platform::errors::InvalidArgument(
-                          "Shape mistake in matmul_op, the two input"
-                          "tensor batch_size must be same, but received first "
-                          "tensor batch_size:%d, second "
-                          "tensor batch_size:%d",
-                          mat_dim_a.batch_size_, mat_dim_b.batch_size_));
-    T alpha = static_cast<T>(context.Attr<float>("alpha"));
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    float *data_c = out->data<T>();
-    int m = mat_dim_a.height_;
-    int n = mat_dim_b.width_;
-    int k = mat_dim_a.width_;
-    int ldx = mat_dim_a.trans_ ? m : k;
-    int ldy = mat_dim_b.trans_ ? k : n;
-    int ldout = n;
-    int batch_size = mat_dim_a.batch_size_;
-    if (batch_size == 0 || batch_size == 1) {
-      int r = xpu::fc_fusion<float, float, float, int16_t>(
-          dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
-          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
-          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                            XPUAPIErrorMsg[r]));
+    bool trans_x = context.Attr<bool>("transpose_X");
+    bool trans_y = context.Attr<bool>("transpose_Y");
+    if (std::getenv("XPU_PADDLE_MAT_MUL_FCINT32") != nullptr) {
+      MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, context);
     } else {
-      // batch matmul
-      int x_stride = mat_dim_a.stride_;
-      int y_stride = mat_dim_b.stride_;
-      int out_stride = m * n;
-      for (int i = 0; i < batch_size; ++i) {
-        const float *x_data = x->data<T>() + x_stride * i;
-        const float *y_data = y->data<T>() + y_stride * i;
-        float *out_data = data_c + out_stride * i;
-        int r = xpu::fc_fusion<float, float, float, int16_t>(
-            dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
-            mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
-            ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                          platform::errors::External(
-                              "XPU fc_fusion kernel return wrong value[%d %s]",
-                              r, XPUAPIErrorMsg[r]));
-      }
+      MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, context);
     }
   }
 };
@@ -244,75 +260,10 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
-    const auto &a_dims = a.dims();
-    const auto &b_dims = b.dims();
-    if (a_dims.size() == 3 && b_dims.size() <= 2) {
-      // if transpose_X is true, the transpose cost much time
-      if (!context.Attr<bool>("transpose_X")) {
-        mat_dim_a.height_ *= mat_dim_a.batch_size_;
-        mat_dim_a.batch_size_ = 0;
-      } else {
-        mat_dim_b.batch_size_ = mat_dim_a.batch_size_;
-        mat_dim_b.height_ = mat_dim_b.height_ / mat_dim_b.batch_size_;
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_,
-                      platform::errors::InvalidArgument(
-                          "Shape mistake in matmul_grad_op, the "
-                          "first tensor width must be same as second tensor "
-                          "height, but received "
-                          "width:%d, height:%d",
-                          mat_dim_a.width_, mat_dim_b.height_));
-    PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
-                      platform::errors::InvalidArgument(
-                          "Shape mistake in matmul_grad_op, the two input"
-                          "tensor batch_size must be same, but received first "
-                          "tensor batch_size:%d, second "
-                          "tensor batch_size:%d",
-                          mat_dim_a.batch_size_, mat_dim_b.batch_size_));
-
-    T alpha = static_cast<T>(context.Attr<float>("alpha"));
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    float *data_c = out->data<T>();
-
-    int m = mat_dim_a.height_;
-    int n = mat_dim_b.width_;
-    int k = mat_dim_a.width_;
-    int ldx = mat_dim_a.trans_ ? m : k;
-    int ldy = mat_dim_b.trans_ ? k : n;
-    int ldout = n;
-    int batch_size = mat_dim_a.batch_size_;
-    if (batch_size == 0 || batch_size == 1) {
-      int r = xpu::fc_fusion<float, float, float, int16_t>(
-          dev_ctx.x_context(), a.data<T>(), b.data<T>(), data_c, m, n, k,
-          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
-          ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                            XPUAPIErrorMsg[r]));
+    if (std::getenv("XPU_PADDLE_MAT_MUL_GRAD_FCINT32") != nullptr) {
+      MatMulXPUFunction<T, int32_t>(&a, &b, out, trans_a, trans_b, context);
     } else {
-      // batch matmul
-      int x_stride = mat_dim_a.stride_;
-      int y_stride = mat_dim_b.stride_;
-      int out_stride = m * n;
-      for (int i = 0; i < batch_size; ++i) {
-        const float *x_data = a.data<T>() + x_stride * i;
-        const float *y_data = b.data<T>() + y_stride * i;
-        float *out_data = data_c + out_stride * i;
-        int r = xpu::fc_fusion<float, float, float, int16_t>(
-            dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
-            mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx,
-            ldy, ldout, alpha, 0, nullptr, xpu::Activation_t::LINEAR);
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                          platform::errors::External(
-                              "XPU fc_fusion kernel return wrong value[%d %s]",
-                              r, XPUAPIErrorMsg[r]));
-      }
+      MatMulXPUFunction<T, int16_t>(&a, &b, out, trans_a, trans_b, context);
     }
   }
 

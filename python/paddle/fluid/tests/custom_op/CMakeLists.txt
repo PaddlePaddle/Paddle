@@ -1,4 +1,47 @@
-if (WITH_GPU)
+# New custom OP can support Windows/Linux now
+if(WITH_GPU)
+    # 'test_custom_relu_op_setup/jit' compile .cc and .cu file
+    py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
+    py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
+
+    # Compiling shared library will cost some time, but running process is very fast.
+    set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
+    set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
+endif()
+
+py_test(test_sysconfig SRCS test_sysconfig.py)
+
+# 'test_dispatch' compile .cc file
+py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
+set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 120)
+
+py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
+set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
+
+py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
+
+if(NOT LINUX)
+    return()
+endif()
+
+# TODO(zhouwei): support test_check_abi and abi check on Windows
+py_test(test_check_abi SRCS test_check_abi.py)
+
+# Old custom OP only support Linux, only run on Linux
+py_test(test_custom_op SRCS test_custom_op.py)
+py_test(test_jit_load SRCS test_jit_load.py)
+py_test(test_setup_install SRCS test_setup_install.py)
+py_test(test_setup_build SRCS test_setup_build.py)
+
+set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
+
+
+if(WITH_ROCM)
+    hip_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
+elseif(WITH_GPU)
     nv_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS paddle_framework_shared)
 else()
     cc_library(relu_op_shared SHARED SRCS relu_op.cc DEPS paddle_framework_shared)
@@ -16,13 +59,3 @@ get_target_property(TARGET_LIBRARIES relu_op_shared LINK_LIBRARIES)
 LIST(REMOVE_ITEM TARGET_LIBRARIES glog)
 LIST(REMOVE_ITEM TARGET_LIBRARIES gflags)
 set_property(TARGET relu_op_shared PROPERTY LINK_LIBRARIES  ${TARGET_LIBRARIES} )
-
-file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
-string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-
-# for coverage
-LIST(REMOVE_ITEM TEST_OPS test_custom_op)
-
-foreach(src ${TEST_OPS})
-    py_test(${src} SRCS ${src}.py)
-endforeach()
