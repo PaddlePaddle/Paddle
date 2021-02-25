@@ -37,10 +37,10 @@ class TestLambOp1(XPUOpTest):
         '''Test Lamb Op with supplied attributes
         '''
         self.op_type = "lamb"
-        param = np.random.uniform(-1, 1, 16).astype("float32")
-        grad = np.random.uniform(-1, 1, 16).astype("float32")
-        moment1 = np.random.uniform(-1, 1, 16).astype("float32")
-        moment2 = np.random.random(16).astype("float32")
+        param = np.random.uniform(-1, 1, 10000).astype("float32")
+        grad = np.random.uniform(-1, 1, 10000).astype("float32")
+        moment1 = np.random.uniform(-1, 1, 10000).astype("float32")
+        moment2 = np.random.random(10000).astype("float32")
 
         self.set_attrs()
         learning_rate = 0.001
@@ -69,7 +69,7 @@ class TestLambOp1(XPUOpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-1)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-2)
 
 
 def lamb_step(inputs, attributes):
@@ -102,8 +102,10 @@ def lamb_step(inputs, attributes):
     r_1 = np.linalg.norm(param)
     r_2 = np.linalg.norm(moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon
                                              ) + weight_decay * param)
-
-    lr_t = lr * r_1 / r_2
+    if r_1 > 0.0 and r_2 > 0.0:
+        lr_t = lr * r_1 / r_2
+    else:
+        lr_t = 1.0
 
     param_out = param - lr_t * (moment1_unbiased / (
         np.sqrt(moment2_unbiased) + epsilon) + weight_decay * param)
