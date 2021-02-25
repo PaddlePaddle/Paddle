@@ -36,14 +36,6 @@ class SqueezeNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     runner.Run(stream);
-    
-    //framework::Tensor cpu_tensor;
-    //cpu_tensor.mutable_data<T>(ctx.GetPlace());
-    //TensorCopySync(*out, platform::CPUPlace(), &cpu_tensor);
-    //for (auto i = 0; i < cpu_tensor.dims().size(); ++i){
-    //  printf("ddddddddddddim%d: %ld", i, cpu_tensor.dims()[i]);
-    //}
-
   }
 };
 
