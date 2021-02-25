@@ -16,6 +16,7 @@ import os
 import re
 import six
 import sys
+import json
 import glob
 import logging
 import collections
@@ -217,6 +218,97 @@ class CustomOpInfo:
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
+
+
+VersionFields = collections.namedtuple('VersionFields', [
+    'sources',
+    'extra_compile_args',
+    'extra_link_args',
+    'library_dirs',
+    'runtime_library_dirs',
+    'include_dirs',
+    'define_macros',
+    'undef_macros',
+])
+
+
+class VersionManager:
+    def __init__(self, version_field):
+        self.version_field = version_field
+        self.version = self.hasher(version_field)
+
+    def hasher(self, version_field):
+        hash_value = 10
+        for field in version_field._fields:
+            elem = getattr(version_field, field)
+            if not elem: continue
+            assert isinstance(elem, (list, tuple))
+            hash_value = combine_hash(hash_value, tuple(elem))
+
+        return hash_value
+
+    @property
+    def details(self):
+        return self.version_field._asdict()
+
+
+def combine_hash(seed, value):
+    """
+    Return new hash value.
+    See https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
+    """
+    return seed ^ (hash(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2))
+
+
+def clean_object_if_change_cflags(so_path, extension):
+    """
+    If already compiling source before, we should check whether cflags 
+    have changed and delete the built object to re-compile the source
+    even though source file content keeps unchanaged.
+    """
+
+    def serialize(path, version_info):
+        assert isinstance(version_info, dict)
+        with open(path, 'w') as f:
+            f.write(json.dumps(version_info, indent=4, sort_keys=True))
+
+    def deserialize(path):
+        assert os.path.exists(path)
+        with open(path, 'r') as f:
+            content = f.read()
+            return json.loads(content)
+
+    # version file
+    VERSION_FILE = "version.txt"
+    base_dir = os.path.dirname(so_path)
+    so_name = os.path.basename(so_path)
+    version_file = os.path.join(base_dir, VERSION_FILE)
+
+    # version info
+    args = [getattr(extension, field, None) for field in VersionFields._fields]
+    version_field = VersionFields._make(args)
+    versioner = VersionManager(version_field)
+
+    if os.path.exists(so_path) and os.path.exists(version_file):
+        old_version_info = deserialize(version_file)
+        so_version = old_version_info.get(so_name, None)
+        # delete shared library file if versison is changed to re-compile it.
+        if so_version is not None and so_version != versioner.version:
+            log_v(
+                "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".
+                format(so_name, versioner.version, version_file))
+            os.remove(so_path)
+            # upate new version information
+            new_version_info = versioner.details
+            new_version_info[so_name] = versioner.version
+            serialize(version_file, new_version_info)
+    else:
+        # If compile at first time, save compiling detail information for debug.
+        if not os.path.exists(base_dir):
+            os.makedirs(base_dir)
+        details = versioner.details
+        details[so_name] = versioner.version
+        serialize(version_file, details)
 
 
 def prepare_unix_cudaflags(cflags):
