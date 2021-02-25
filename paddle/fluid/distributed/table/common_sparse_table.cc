@@ -170,7 +170,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     auto id = std::stoull(values[0]);
 
     if (id % pserver_num != pserver_id) {
-      VLOG(0) << "will not load " << values[0] << " from " << valuepath
+      VLOG(3) << "will not load " << values[0] << " from " << valuepath
               << ", please check id distribution";
       continue;
     }
@@ -263,7 +263,7 @@ int32_t CommonSparseTable::initialize_value() {
     }
   }
 
-  VLOG(0) << "has " << feasigns.size() << " ids need to be pre inited";
+  VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
 
   auto buckets = bucket(feasigns.size(), 10);
   for (int x = 0; x < 10; ++x) {
@@ -295,10 +295,10 @@ int32_t CommonSparseTable::initialize_optimizer() {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
   } else {
-    VLOG(0) << "init optimizer failed";
+    VLOG(3) << "init optimizer failed";
   }
 
-  VLOG(0) << "init optimizer " << name << " done";
+  VLOG(3) << "init optimizer " << name << " done";
   return 0;
 }
 
@@ -311,7 +311,7 @@ int32_t CommonSparseTable::set_global_lr(float* lr) {
 int32_t CommonSparseTable::load(const std::string& path,
                                 const std::string& param) {
   rwlock_->WRLock();
-  VLOG(0) << "sparse table load with " << path << " with meta " << param;
+  VLOG(3) << "sparse table load with " << path << " with meta " << param;
   LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
                &shard_values_);
   rwlock_->UNLock();
@@ -322,7 +322,7 @@ int32_t CommonSparseTable::save(const std::string& dirname,
                                 const std::string& param) {
   rwlock_->WRLock();
   int mode = std::stoi(param);
-  VLOG(0) << "sparse table save: " << dirname << " mode: " << mode;
+  VLOG(3) << "sparse table save: " << dirname << " mode: " << mode;
 
   auto varname = _config.common().table_name();
   std::string var_store =
@@ -538,11 +538,11 @@ int32_t CommonSparseTable::flush() { return 0; }
 int32_t CommonSparseTable::shrink(const std::string& param) {
   rwlock_->WRLock();
   int threshold = std::stoi(param);
-  VLOG(0) << "sparse table shrink: " << threshold;
+  VLOG(3) << "sparse table shrink: " << threshold;
 
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // shrink
-    VLOG(0) << shard_id << " " << task_pool_size_ << " begin shrink";
+    VLOG(4) << shard_id << " " << task_pool_size_ << " begin shrink";
     shard_values_[shard_id]->Shrink(threshold);
   }
   rwlock_->UNLock();

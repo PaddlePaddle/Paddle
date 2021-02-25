@@ -94,7 +94,7 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else {
     VLOG(0) << "init optimizer failed";
   }
-  VLOG(0) << "init optimizer " << name << " done";
+  VLOG(3) << "init optimizer " << name << " done";
   return 0;
 }
 
