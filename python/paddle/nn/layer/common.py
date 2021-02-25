@@ -922,7 +922,7 @@ class Pad1D(layers.Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int32. If is int, use the
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
@@ -1004,7 +1004,7 @@ class Pad2D(layers.Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int32. If is int, use the
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
@@ -1088,7 +1088,7 @@ class Pad3D(layers.Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int] | int): The padding size with data type int32. If is int, use the
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
