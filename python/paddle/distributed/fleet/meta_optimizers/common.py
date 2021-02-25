@@ -98,6 +98,12 @@ class CollectiveHelper(object):
                     outputs={'Out': [temp_var]},
                     attrs={'ring_id': 3,
                            OP_ROLE_KEY: OpRole.Forward})
+                block.append_op(
+                    type='c_sync_comm_stream',
+                    inputs={'X': temp_var},
+                    outputs={'Out': temp_var},
+                    attrs={'ring_id': 3,
+                           OP_ROLE_KEY: OpRole.Forward})
             comm_id_var = block.create_var(
                 name=unique_name.generate('nccl_id'),
                 persistable=True,
