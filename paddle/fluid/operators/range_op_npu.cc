@@ -19,6 +19,7 @@ limitations under the License. */
 //#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/range_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -31,27 +32,32 @@ class NPURangeKernel : public framework::OpKernel<T> {
     auto* end_t = context.Input<framework::Tensor>("End");
     auto* step_t = context.Input<framework::Tensor>("Step");
     auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
 
-    //framework::Tensor n;
-    //framework::TensorCopy(*start_t, platform::CPUPlace(), &n);
-    //T start = n.data<T>()[0];
-    //framework::TensorCopy(*end_t, platform::CPUPlace(), &n);
-    //T end = n.data<T>()[0];
-    //framework::TensorCopy(*step_t, platform::CPUPlace(), &n);
-    //T step = n.data<T>()[0];
+    framework::Tensor n;
+    framework::TensorCopySync(*start_t, platform::CPUPlace(), &n);
+    T start = n.data<T>()[0];
+    framework::TensorCopySync(*end_t, platform::CPUPlace(), &n);
+    T end = n.data<T>()[0];
+    framework::TensorCopySync(*step_t, platform::CPUPlace(), &n);
+    T step = n.data<T>()[0];
 
-    /*
+    //std::cout << "start>>>>>>>>>>>>>>>"<<  start << "----------" <<std::endl;
+    //std::cout << "end>>>>>>>>>>>>>>>"  <<  end << "----------" <<std::endl ;
+    //std::cout << "step>>>>>>>>>>>>>>>" <<  step << "----------"  <<std::endl;
+
     int64_t size = 0;
     GetSize(start, end, step, &size);
     out->Resize(framework::make_ddim({size}));
-    T* out_data = out->mutable_data<T>(context.GetPlace());
+    //std::cout << "dims>>>>>>>>>>>>>>>" <<  out->dims()[0] << "----------"  <<std::endl;
+    out->mutable_data<T>(context.GetPlace());
 
-    auto stream = context.cuda_device_context().stream();
-    int block = 512;
-    int grid = (size + block - 1) / block;
-    RangeKernel<T><<<grid, block, 0, stream>>>(start, step, size, out_data);
-    */
+    //std::cout << "start dims>>>>>>>>>>>>>>>" <<  start_t->dims()[0] << "----------"  <<std::endl;
+    //((framework::Tensor*) start_t)->Resize(framework::make_ddim({}));
+    //((framework::Tensor*) end_t)->Resize(framework::make_ddim({}));
+    //((framework::Tensor*) step_t)->Resize(framework::make_ddim({}));
+    //((framework::Tensor*) start_t)->Resize({});
+    //((framework::Tensor*) end_t)->Resize({});
+    //((framework::Tensor*) step_t)->Resize({});
 
     auto runner = NpuOpRunner("Range", {*start_t, *end_t, *step_t}, {*out}, {});
     auto stream =
@@ -73,3 +79,38 @@ REGISTER_OP_NPU_KERNEL(range,
                        ops::NPURangeKernel<double>);
 
 #endif
+
+/*
+framework::Tensor cpu_tensor;
+TensorCopySync(*start_t, platform::CPUPlace(), &cpu_tensor);
+
+auto* data = cpu_tensor.data<T>();
+
+auto vec_data = std::vector<T>(data, data + start_t->numel());
+for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
+    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
+}
+
+
+TensorCopySync(*end_t, platform::CPUPlace(), &cpu_tensor);
+data = cpu_tensor.data<T>();
+vec_data = std::vector<T>(data, data + start_t->numel());
+for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
+    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
+}
+
+TensorCopySync(*step_t, platform::CPUPlace(), &cpu_tensor);
+data = cpu_tensor.data<T>();
+vec_data = std::vector<T>(data, data + start_t->numel());
+for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
+    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
+}
+
+
+TensorCopySync(*out, platform::CPUPlace(), &cpu_tensor);
+data = cpu_tensor.data<T>();
+vec_data = std::vector<T>(data, data + start_t->numel());
+for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
+    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
+}
+*/

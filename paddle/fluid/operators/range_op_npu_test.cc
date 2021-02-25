@@ -64,11 +64,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   std::cout << "dddddddddddddddddddddd";
   TensorFromVector(init_start, ctx, tensor_start);
-  tensor_start->Resize({1});
+  //tensor_start->Resize({});
   TensorFromVector(init_end, ctx, tensor_end);
-  tensor_end->Resize({1});
+  //tensor_end->Resize({});
   TensorFromVector(init_step, ctx, tensor_step);
-  tensor_step->Resize({1});
+  //tensor_step->Resize({});
 
   ctx.Wait();
 
