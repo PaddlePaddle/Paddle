@@ -388,11 +388,16 @@ if (LINUX)
 endif()
 
 if (WIN32)
+  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
+  else()
+    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+  endif()
   set(PADDLE_CUSTOM_OP_IMPORT_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.lib
+      ${paddle_custom_op_lib_path}/paddle_custom_op.lib
       CACHE INTERNAL "Paddle custom op import lib")
   set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.dll
+      ${paddle_custom_op_lib_path}/paddle_custom_op.dll
       CACHE INTERNAL "Paddle custom op dll")
 endif()
 
