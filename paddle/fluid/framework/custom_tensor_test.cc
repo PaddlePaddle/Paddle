@@ -128,31 +128,17 @@ void GroupTestCast() {
   TestCast<int64_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "double cast";
   TestCast<double>(paddle::DataType::FLOAT32);
-  VLOG(2) << "bfloat16 cast";
-  TestCast<paddle::platform::bfloat16>(paddle::DataType::FLOAT32);
-  VLOG(2) << "float16 cast";
-  TestCast<paddle::platform::float16>(paddle::DataType::FLOAT32);
   VLOG(2) << "bool cast";
   TestCast<bool>(paddle::DataType::FLOAT32);
   VLOG(2) << "uint8 cast";
   TestCast<uint8_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "float cast";
   TestCast<float>(paddle::DataType::FLOAT32);
-  VLOG(2) << "complex64 cast";
-  TestCast<float>(paddle::DataType::FLOAT32);
-  VLOG(2) << "complex128 cast";
-  TestCast<float>(paddle::DataType::FLOAT32);
 }
 
 void GroupTestDtype() {
   CHECK(TestDtype<float>() == paddle::DataType::FLOAT32);
   CHECK(TestDtype<double>() == paddle::DataType::FLOAT64);
-  CHECK(TestDtype<paddle::platform::float16>() == paddle::DataType::FLOAT16);
-  CHECK(TestDtype<paddle::platform::bfloat16>() == paddle::DataType::BFLOAT16);
-  CHECK(TestDtype<paddle::platform::complex128>() ==
-        paddle::DataType::COMPLEX128);
-  CHECK(TestDtype<paddle::platform::complex64>() ==
-        paddle::DataType::COMPLEX64);
   CHECK(TestDtype<int>() == paddle::DataType::INT32);
   CHECK(TestDtype<int64_t>() == paddle::DataType::INT64);
   CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
@@ -163,23 +149,11 @@ void GroupTestDtype() {
 void GroupTestDtypeConvert() {
   // enum -> proto
   CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-            paddle::DataType::COMPLEX128) ==
-        paddle::framework::proto::VarType::COMPLEX128);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-            paddle::DataType::COMPLEX64) ==
-        paddle::framework::proto::VarType::COMPLEX64);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
             paddle::DataType::FLOAT64) ==
         paddle::framework::proto::VarType::FP64);
   CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
             paddle::DataType::FLOAT32) ==
         paddle::framework::proto::VarType::FP32);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-            paddle::DataType::FLOAT16) ==
-        paddle::framework::proto::VarType::FP16);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
-            paddle::DataType::BFLOAT16) ==
-        paddle::framework::proto::VarType::BF16);
   CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
             paddle::DataType::UINT8) ==
         paddle::framework::proto::VarType::UINT8);
@@ -198,23 +172,11 @@ void GroupTestDtypeConvert() {
             paddle::DataType::BOOL) == paddle::framework::proto::VarType::BOOL);
   // proto -> enum
   CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
-            paddle::framework::proto::VarType::COMPLEX128) ==
-        paddle::DataType::COMPLEX128);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
-            paddle::framework::proto::VarType::COMPLEX64) ==
-        paddle::DataType::COMPLEX64);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
             paddle::framework::proto::VarType::FP64) ==
         paddle::DataType::FLOAT64);
   CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
             paddle::framework::proto::VarType::FP32) ==
         paddle::DataType::FLOAT32);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
-            paddle::framework::proto::VarType::FP16) ==
-        paddle::DataType::FLOAT16);
-  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
-            paddle::framework::proto::VarType::BF16) ==
-        paddle::DataType::BFLOAT16);
   CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
             paddle::framework::proto::VarType::INT64) ==
         paddle::DataType::INT64);

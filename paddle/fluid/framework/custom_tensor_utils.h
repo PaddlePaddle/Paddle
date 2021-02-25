@@ -20,9 +20,31 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#endif
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
+
+#ifdef PADDLE_WITH_CUDA
+class StreamWrapper {
+ public:
+  StreamWrapper() : stream_(0), is_stream_set_(false) {}
+  void SetStream(const cudaStream_t& stream) {
+    stream_ = stream;
+    is_stream_set_ = true;
+  }
+
+  const cudaStream_t& GetStream() const { return stream_; }
+
+  bool IsStreamSet() const { return is_stream_set_; }
+
+ private:
+  cudaStream_t stream_;
+  bool is_stream_set_;
+};
+#endif
 
 class CustomTensorUtils {
  public:
@@ -39,18 +61,10 @@ class CustomTensorUtils {
   static framework::proto::VarType::Type ConvertEnumDTypeToInnerDType(
       const paddle::DataType& dtype) {
     switch (dtype) {
-      case paddle::DataType::COMPLEX128:
-        return framework::proto::VarType::COMPLEX128;
-      case paddle::DataType::COMPLEX64:
-        return framework::proto::VarType::COMPLEX64;
       case paddle::DataType::FLOAT64:
         return framework::proto::VarType::FP64;
       case paddle::DataType::FLOAT32:
         return framework::proto::VarType::FP32;
-      case paddle::DataType::FLOAT16:
-        return framework::proto::VarType::FP16;
-      case paddle::DataType::BFLOAT16:
-        return framework::proto::VarType::BF16;
       case paddle::DataType::UINT8:
         return framework::proto::VarType::UINT8;
       case paddle::DataType::INT8:
@@ -74,18 +88,10 @@ class CustomTensorUtils {
   static paddle::DataType ConvertInnerDTypeToEnumDType(
       const framework::proto::VarType::Type& dtype) {
     switch (dtype) {
-      case framework::proto::VarType::COMPLEX128:
-        return paddle::DataType::COMPLEX128;
-      case framework::proto::VarType::COMPLEX64:
-        return paddle::DataType::COMPLEX64;
       case framework::proto::VarType::FP64:
         return paddle::DataType::FLOAT64;
       case framework::proto::VarType::FP32:
         return paddle::DataType::FLOAT32;
-      case framework::proto::VarType::FP16:
-        return paddle::DataType::FLOAT16;
-      case framework::proto::VarType::BF16:
-        return paddle::DataType::BFLOAT16;
       case framework::proto::VarType::INT64:
         return paddle::DataType::INT64;
       case framework::proto::VarType::INT32:
@@ -138,6 +144,20 @@ class CustomTensorUtils {
                                           pc));
     }
     return PlaceType::kUNK;
+  }
+
+  static void SetTensorCurrentStream(paddle::Tensor* src,
+                                     const platform::Place& pc) {
+    if (platform::is_gpu_place(pc)) {
+#ifdef PADDLE_WITH_CUDA
+      auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      cudaStream_t stream = dev_ctx->stream();
+      src->stream_.SetStream(stream);
+#endif
+    } else {
+      return;
+    }
   }
 };
 
