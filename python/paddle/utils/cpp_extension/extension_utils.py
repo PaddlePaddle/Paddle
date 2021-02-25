@@ -44,7 +44,7 @@ MSVC_COMPILE_FLAGS = [
     '/DBOOST_HAS_STATIC_ASSERT', '/DNDEBUG', '/DPADDLE_USE_DSO'
 ]
 
-MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_framework.lib']
+MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
 
 COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-O3']
 
@@ -84,6 +84,14 @@ information
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 USING_NEW_CUSTOM_OP_LOAD_METHOD = True
+
+DEFAULT_OP_ATTR_NAMES = [
+    core.op_proto_and_checker_maker.kOpRoleAttrName(),
+    core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
+    core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
+    core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
+    core.op_proto_and_checker_maker.kOpDeviceAttrName()
+]
 
 
 # NOTE(chenweihang): In order to be compatible with
@@ -432,7 +440,22 @@ def is_cuda_file(path):
 
 def get_build_directory(verbose=False):
     """
-    Return paddle extension root directory, default specific by `PADDLE_EXTENSION_DIR`
+    Return paddle extension root directory to put shared library. It could be specified by
+    ``export PADDLE_EXTENSION_DIR=XXX`` . If not set, ``~/.cache/paddle_extension`` will be used
+    by default.
+
+    Returns:
+        The root directory of compiling customized operators.
+
+    Examples:
+
+    .. code-block:: python
+
+        from paddle.utils.cpp_extension import get_build_directory
+
+        build_dir = get_build_directory()
+        print(build_dir)
+
     """
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
@@ -469,8 +492,11 @@ def parse_op_info(op_name):
 
     in_names = [x.name for x in op_proto.inputs]
     out_names = [x.name for x in op_proto.outputs]
+    attr_names = [
+        x.name for x in op_proto.attrs if x.name not in DEFAULT_OP_ATTR_NAMES
+    ]
 
-    return in_names, out_names
+    return in_names, out_names, attr_names
 
 
 def _import_module_from_library(module_name, build_directory, verbose=False):
@@ -516,7 +542,7 @@ def _generate_python_module(module_name,
 
 
 def _custom_api_content(op_name):
-    params_str, ins_str, outs_str = _get_api_inputs_str(op_name)
+    params_str, ins_str, attrs_str, outs_str = _get_api_inputs_str(op_name)
 
     API_TEMPLATE = textwrap.dedent("""
         from paddle.fluid.layer_helper import LayerHelper
@@ -526,6 +552,7 @@ def _custom_api_content(op_name):
 
             # prepare inputs and outputs
             ins = {ins}
+            attrs = {attrs}
             outs = {{}}
             out_names = {out_names}
             for out_name in out_names:
@@ -533,7 +560,7 @@ def _custom_api_content(op_name):
                 # in runtime.
                 outs[out_name] = helper.create_variable(dtype='float32')
             
-            helper.append_op(type="{op_name}", inputs=ins, outputs=outs)
+            helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
 
             res = [outs[out_name] for out_name in out_names]
 
@@ -542,7 +569,11 @@ def _custom_api_content(op_name):
 
     # generate python api file
     api_content = API_TEMPLATE.format(
-        op_name=op_name, inputs=params_str, ins=ins_str, out_names=outs_str)
+        op_name=op_name,
+        inputs=params_str,
+        ins=ins_str,
+        attrs=attrs_str,
+        out_names=outs_str)
 
     return api_content
 
@@ -573,15 +604,21 @@ def _get_api_inputs_str(op_name):
     """
     Returns string of api parameters and inputs dict.
     """
-    in_names, out_names = parse_op_info(op_name)
+    in_names, out_names, attr_names = parse_op_info(op_name)
     # e.g: x, y, z
-    params_str = ','.join([p.lower() for p in in_names])
+    param_names = in_names + attr_names
+    params_str = ','.join([p.lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
     ins_str = "{%s}" % ','.join(
         ["'{}' : {}".format(in_name, in_name.lower()) for in_name in in_names])
+    # e.g: {'num': n}
+    attrs_str = "{%s}" % ",".join([
+        "'{}' : {}".format(attr_name, attr_name.lower())
+        for attr_name in attr_names
+    ])
     # e.g: ['Out', 'Index']
     outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
-    return params_str, ins_str, outs_str
+    return params_str, ins_str, attrs_str, outs_str
 
 
 def _write_setup_file(name,
