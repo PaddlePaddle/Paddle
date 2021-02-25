@@ -28,8 +28,13 @@ DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
-DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
+
+DEFINE_string(selected_npus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (NPU). If you want to use "
+              "all visible devices, set this to empty string.");
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -78,7 +83,7 @@ std::vector<int> GetSelectedNPUDevices() {
   // use user specified NPUs in single-node multi-process mode.
   std::vector<int> devices;
   if (!FLAGS_selected_gpus.empty()) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
+    auto devices_str = paddle::string::Split(FLAGS_selected_npus, ',');
     for (auto id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }

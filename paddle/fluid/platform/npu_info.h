@@ -23,6 +23,8 @@ limitations under the License. */
 #include "acl/acl.h"
 #include "paddle/fluid/platform/enforce.h"
 
+DECLARE_string(selected_npus);
+
 namespace paddle {
 namespace platform {
 
