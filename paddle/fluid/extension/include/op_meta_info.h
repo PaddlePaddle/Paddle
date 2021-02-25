@@ -81,6 +81,26 @@ inline std::string Grad(const std::string& var_name) {
 using KernelFunc = std::vector<Tensor> (*)(std::vector<Tensor> inputs,
                                            std::vector<boost::any> attrs);
 
+#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                          \
+  template <typename... Tail>                                               \
+  struct ComputeCallHelper<attr_type, Tail...> {                            \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>           \
+    static Return Compute(std::vector<Tensor> inputs,                       \
+                          std::vector<boost::any> attrs,                    \
+                          const PreviousArgs&... pargs) {                   \
+      try {                                                                 \
+        attr_type arg = boost::any_cast<attr_type>(attrs[attr_idx]);        \
+        return ComputeCallHelper<Tail...>::template Compute<in_idx,         \
+                                                            attr_idx + 1>(  \
+            inputs, attrs, pargs..., arg);                                  \
+      } catch (boost::bad_any_cast&) {                                      \
+        PD_THROW(                                                           \
+            "Attribute cast error in custom operator. Expected " #attr_type \
+            " value.");                                                     \
+      }                                                                     \
+    }                                                                       \
+  }
+
 template <typename T>
 struct TypeTag {};
 
@@ -114,26 +134,20 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // TODO(chenweihang): add support for attribute input
-  // int attribute input (not used now)
-  template <typename... Tail>
-  struct ComputeCallHelper<int, Tail...> {
-    template <int in_idx, int attr_idx, typename... PreviousArgs>
-    static Return Compute(std::vector<Tensor> inputs,
-                          std::vector<boost::any> attrs,
-                          const PreviousArgs&... pargs) {
-      try {
-        int arg = boost::any_cast<int>(attrs[attr_idx]);
-        return ComputeCallHelper<Tail...>::template Compute<in_idx,
-                                                            attr_idx + 1>(
-            inputs, attrs, pargs..., arg);
-      } catch (boost::bad_any_cast&) {
-        PD_THROW(
-            "Attribute cast error in custom operator. Expected int value.");
-      }
-    }
-  };
-
+  PD_SPECIALIZE_ComputeCallHelper(bool);
+  PD_SPECIALIZE_ComputeCallHelper(int);
+  PD_SPECIALIZE_ComputeCallHelper(float);
+  PD_SPECIALIZE_ComputeCallHelper(int64_t);
+  PD_SPECIALIZE_ComputeCallHelper(std::string);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<float>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
+  // TODO(chenweihang): support other attribute type if needed.
+  // Why not support other attribute type here?
+  // - boost::blank, std::vector<bool> and std::vector<double>
+  //   are not used in op
+  // - BlockDesc* and std::vector<BlockDesc*> are used in framework
   // end: base template
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
@@ -245,10 +259,23 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 class PD_DLL_DECL OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
+
+  // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
+
+  // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Outputs(std::vector<std::string>&& outputs);
+
+  // format: {"<name1>:<type1>", "<name1>:<type1>", ...}
+  OpMetaInfo& Attrs(std::vector<std::string>&& attrs);
+
+  // format: PD_KERNEL(...)
   OpMetaInfo& SetKernelFn(KernelFunc&& func);
+
+  // format: PD_INFER_SHAPE(...)
   OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func);
+
+  // format: PD_INFER_DTYPE(...)
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
@@ -297,6 +324,7 @@ class PD_DLL_DECL OpMetaInfoBuilder {
   explicit OpMetaInfoBuilder(std::string&& name);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
+  OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
