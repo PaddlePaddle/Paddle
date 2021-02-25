@@ -37,10 +37,10 @@ class TestLambOp1(XPUOpTest):
         '''Test Lamb Op with supplied attributes
         '''
         self.op_type = "lamb"
-        param = np.random.uniform(-1, 1, 10000).astype("float32")
-        grad = np.random.uniform(-1, 1, 10000).astype("float32")
-        moment1 = np.random.uniform(-1, 1, 10000).astype("float32")
-        moment2 = np.random.random(10000).astype("float32")
+        param = np.random.uniform(-1, 1, 1).astype("float32")
+        grad = np.random.uniform(-1, 1, 1).astype("float32")
+        moment1 = np.random.uniform(-1, 1, 1).astype("float32")
+        moment2 = np.random.random(1).astype("float32")
 
         self.set_attrs()
         learning_rate = 0.001
