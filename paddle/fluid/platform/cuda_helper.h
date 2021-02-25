@@ -96,12 +96,14 @@ class CublasHandleHolder {
 #endif  // CUDA_VERSION >= 9000
   }
 
+  const cublasHandle_t& GetCublasHandle() const { return handle_; }
+
   ~CublasHandleHolder() PADDLE_MAY_THROW {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
   }
 
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
