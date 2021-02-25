@@ -349,6 +349,10 @@ class PD_DLL_DECL OpMetaInfoBuilder {
 
 /////////////////////// Op register API /////////////////////////
 
+// For inference: compile directly with framework
+// Call after PD_BUILD_OP(...)
+void RegisterAllCustomOperator();
+
 // Using this api to load compiled custom operator's dynamic library and
 // register Custom
 // Operator into it
