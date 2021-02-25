@@ -88,8 +88,8 @@ class TestDygraphModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu']
 
         # for saving model
-        self.model_path_template = "custom_relu_dygaph_model_{}.pdparams"
-        self.model_dy2stat_path = "custom_relu_model_dy2sta"
+        self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
+        self.model_dy2stat_path = "infer_model/custom_relu_model_dy2sta"
 
         # for dy2stat
         self.x_spec = paddle.static.InputSpec(
@@ -101,10 +101,10 @@ class TestDygraphModel(unittest.TestCase):
             paddle.set_device(device)
 
             # for train
-            origin_relu_train_out = self.train_model(False)
-            custom_relu_train_out = self.train_model(True)
+            origin_relu_train_out = self.train_model(use_custom_op=False)
+            custom_relu_train_out = self.train_model(use_custom_op=True)
             custom_relu_dy2stat_train_out = self.train_model(
-                True, True)  # for to_static
+                use_custom_op=True, dy2stat=True)  # for to_static
 
             self.assertTrue(
                 np.array_equal(origin_relu_train_out, custom_relu_train_out))
@@ -113,10 +113,10 @@ class TestDygraphModel(unittest.TestCase):
                                custom_relu_dy2stat_train_out))
 
             # for eval
-            origin_relu_eval_out = self.eval_model(False)
-            custom_relu_eval_out = self.eval_model(True)
+            origin_relu_eval_out = self.eval_model(use_custom_op=False)
+            custom_relu_eval_out = self.eval_model(use_custom_op=True)
             custom_relu_dy2stat_eval_out = self.eval_model(
-                True, True)  # for to_static
+                use_custom_op=True, dy2stat=True)  # for to_static
 
             self.assertTrue(
                 np.array_equal(origin_relu_eval_out, custom_relu_eval_out))
@@ -158,7 +158,7 @@ class TestDygraphModel(unittest.TestCase):
 
         return out.numpy()
 
-    def eval_model(self, use_custom_op, dy2stat=False):
+    def eval_model(self, use_custom_op=False, dy2stat=False):
         net = Net(self.in_dim, self.out_dim, use_custom_op)
 
         if dy2stat:
@@ -181,7 +181,7 @@ class TestStaticModel(unittest.TestCase):
         self.in_dim = 10
         self.out_dim = 64
         self.batch_num = 10
-        self.batch_size = 4
+        self.batch_size = 8
         self.datas = [
             np.random.uniform(
                 size=[self.batch_size, self.in_dim]).astype('float32')
@@ -195,7 +195,7 @@ class TestStaticModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu']
 
         # for saving model
-        self.model_path_template = "custom_relu_static_model_{}"
+        self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"
 
         paddle.enable_static()
 
@@ -204,29 +204,52 @@ class TestStaticModel(unittest.TestCase):
 
     def test_train_eval(self):
         for device in self.devices:
-            paddle.set_device(device)
             # for train
-            original_relu_train_out = self.train_model(False)
-            custom_relu_train_out = self.train_model(True)
+            original_relu_train_out = self.train_model(
+                device, use_custom_op=False)
+            custom_relu_train_out = self.train_model(device, use_custom_op=True)
+            # using PE
+            original_relu_train_pe_out = self.train_model(
+                device, use_custom_op=False, use_pe=True)
+            custom_relu_train_pe_out = self.train_model(
+                device, use_custom_op=True, use_pe=True)
             print(original_relu_train_out)
             print(custom_relu_train_out)
+            print(original_relu_train_pe_out)
+            print(custom_relu_train_pe_out)
 
             self.assertTrue(
                 np.array_equal(original_relu_train_out, custom_relu_train_out))
+            self.assertTrue(
+                np.array_equal(original_relu_train_pe_out,
+                               custom_relu_train_pe_out))
 
             # for eval
-            original_relu_train_out = self.eval_model(False)
-            custom_relu_train_out = self.eval_model(True)
-            print(original_relu_train_out)
-            print(custom_relu_train_out)
+            original_relu_eval_out = self.eval_model(
+                device, use_custom_op=False)
+            custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
+            # using PE
+            original_relu_eval_pe_out = self.eval_model(
+                device, use_custom_op=False, use_pe=True)
+            custom_relu_eval_pe_out = self.eval_model(
+                device, use_custom_op=True, use_pe=True)
+            print(original_relu_eval_out)
+            print(custom_relu_eval_out)
+            print(original_relu_eval_pe_out)
+            print(custom_relu_eval_pe_out)
 
             self.assertTrue(
-                np.array_equal(original_relu_train_out, custom_relu_train_out))
+                np.array_equal(original_relu_eval_out, custom_relu_eval_out))
+            self.assertTrue(
+                np.array_equal(original_relu_eval_pe_out,
+                               custom_relu_eval_pe_out))
 
-    def train_model(self, use_custom_relu=False):
+    def train_model(self, device, use_custom_op=False, use_pe=False):
         # reset random seed
         paddle.seed(self.seed)
         np.random.seed(self.seed)
+        # set device
+        paddle.set_device(device)
 
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(paddle.static.Program()):
@@ -235,7 +258,7 @@ class TestStaticModel(unittest.TestCase):
                 y = paddle.static.data(
                     shape=[None, 1], name='y', dtype='float32')
 
-                net = Net(self.in_dim, self.out_dim, use_custom_relu)
+                net = Net(self.in_dim, self.out_dim, use_custom_op)
                 out = net(x)
 
                 loss = nn.functional.mse_loss(out, y)
@@ -245,30 +268,44 @@ class TestStaticModel(unittest.TestCase):
                 exe = exe = paddle.static.Executor()
                 exe.run(paddle.static.default_startup_program())
 
+                # For PE
+                if use_pe:
+                    places = paddle.static.cpu_places(
+                    ) if device is 'cpu' else paddle.static.cuda_places()
+                    main_program = paddle.static.CompiledProgram(
+                        paddle.static.default_main_program(
+                        )).with_data_parallel(
+                            loss_name=loss.name, places=places)
+                else:
+                    main_program = paddle.static.default_main_program()
+
                 for batch_id in range(self.batch_num):
                     x_data = self.datas[batch_id]
                     y_data = self.labels[batch_id]
 
-                    res = exe.run(paddle.static.default_main_program(),
+                    res = exe.run(main_program,
                                   feed={'x': x_data,
                                         'y': y_data},
                                   fetch_list=[out])
 
                 # save model
                 paddle.static.save_inference_model(
-                    self.model_path_template.format(use_custom_relu), [x],
-                    [out], exe)
+                    self.model_path_template.format(use_custom_op, use_pe),
+                    [x], [out], exe)
 
                 return res[0]
 
-    def eval_model(self, use_custom_relu=False):
+    def eval_model(self, device, use_custom_op=False, use_pe=False):
+        paddle.set_device(device)
+
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(paddle.static.Program()):
                 exe = paddle.static.Executor()
 
                 [inference_program, feed_target_names,
                  fetch_targets] = paddle.static.load_inference_model(
-                     self.model_path_template.format(use_custom_relu), exe)
+                     self.model_path_template.format(use_custom_op, use_pe),
+                     exe)
 
                 x_data = self.datas[0]
                 results = exe.run(inference_program,
