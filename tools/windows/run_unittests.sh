@@ -282,7 +282,6 @@ function unittests_retry(){
     #read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     retry_time=3
     exec_times=0
-    exec_time_array=('first' 'second' 'third')
     exec_retry_threshold=10
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+(" | sed 's/(//' | sed 's/- //' )
     retry_unittests_num=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
@@ -292,8 +291,15 @@ function unittests_retry(){
     while ( [ $exec_times -lt $retry_time ] )
         do
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
+            if ( "$exec_times"=="0" );then
+                cur_order='first'
+            elif ( "$exec_times"=="1" );then
+                cur_order='second'
+            elif ( "$exec_times"=="1" );then
+                cur_order='third'
+            fi
             echo "========================================="
-            echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+            echo "This is the ${cur_order} time to re-run"
             echo "========================================="
             echo "The following unittest will be re-run:"
             echo "${retry_unittests}"
@@ -302,7 +308,7 @@ function unittests_retry(){
             failed_test_lists=''
             ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j 8 | tee $tmpfile
             collect_failed_tests
-            exec_times=$[$exec_times+1]
+            exec_times=$(echo $exec_times | awk '{print $0+1}')
         done
     rm -f $tmp_dir/*
 }
