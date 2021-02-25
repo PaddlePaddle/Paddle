@@ -345,11 +345,16 @@ if (LINUX)
 endif()
 
 if (WIN32)
+  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    set(paddle_framework_lib_path ${CMAKE_CURRENT_BINARY_DIR})
+  else()
+    set(paddle_framework_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+  endif()
   set(FLUID_FRAMEWORK_IMPORT_LIB
-    ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.lib
-    CACHE INTERNAL "Fluid framework lib")
+      ${paddle_framework_lib_path}/paddle_framework.lib
+      CACHE INTERNAL "Fluid framework lib")
   set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.dll
+      ${paddle_framework_lib_path}/paddle_framework.dll
       CACHE INTERNAL "Fluid framework dll")
 endif()
 
