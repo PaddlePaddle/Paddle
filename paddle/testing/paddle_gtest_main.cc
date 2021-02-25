@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_ASCEND_CL)
   envs.push_back("selected_npus");
 #endif
 
