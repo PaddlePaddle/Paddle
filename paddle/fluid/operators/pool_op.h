@@ -30,11 +30,11 @@ namespace paddle {
 namespace operators {
 template <typename T>
 struct DivideFunctor {
-     HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
-     HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
 
-     private:
-        T n_inv;
+ private:
+  T n_inv;
 };
 
 using Tensor = framework::Tensor;
@@ -136,29 +136,30 @@ inline void UpdateKsize(std::vector<T>* ksize,
   }
 }
 
-inline int getReduceNum(const framework::Tensor& input, const framework::Tensor* output,
-                        const std::string data_format, std::vector<int> &reduce_dim) {
-    bool channel_last = (data_format == "NHWC");
-    const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-    const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
+inline int getReduceNum(const framework::Tensor& input,
+                        const framework::Tensor* output,
+                        const std::string data_format,
+                        std::vector<int>* reduce_dim) {
+  bool channel_last = (data_format == "NHWC");
+  const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
+  const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
 
-    const int output_height =
-        channel_last ? output->dims()[1] : output->dims()[2];
-    const int output_width =
-        channel_last ? output->dims()[2] : output->dims()[3];
-    // data_format can be NCHW , NDHWC, NHWC
-    bool is_reduce = false;
-    if ((output_height == 1) && (output_width == 1) && (!channel_last)) {
-      reduce_dim.push_back(2);
-      reduce_dim.push_back(3);
-      is_reduce = true;
-    }
-    // reduce
-    int reduce_num = 0;
-    if (is_reduce) {
-      reduce_num = input_height * input_width;
-    }
-    return reduce_num;
+  const int output_height =
+      channel_last ? output->dims()[1] : output->dims()[2];
+  const int output_width = channel_last ? output->dims()[2] : output->dims()[3];
+  // data_format can be NCHW , NDHWC, NHWC
+  bool is_reduce = false;
+  if ((output_height == 1) && (output_width == 1) && (!channel_last)) {
+    reduce_dim->push_back(2);
+    reduce_dim->push_back(3);
+    is_reduce = true;
+  }
+  // reduce
+  int reduce_num = 0;
+  if (is_reduce) {
+    reduce_num = input_height * input_width;
+  }
+  return reduce_num;
 }
 
 template <typename DeviceContext, typename T>
@@ -214,30 +215,30 @@ class PoolKernel : public framework::OpKernel<T> {
 
         } else if (pooling_type == "avg") {
           std::vector<int> reduce_dim;
-          int reduce_num = getReduceNum(*in_x, out, data_format, reduce_dim);
+          int reduce_num = getReduceNum(*in_x, out, data_format, &reduce_dim);
 
-          if (reduce_num > 0 && adaptive) { // for adaptive_avg_pool2d && output_size == 1
-
-            #ifdef __NVCC__
-               auto stream = dev_ctx.stream();
-               TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
-                   *in_x, out, reduce_dim, static_cast<T>(0), cub::Sum(),
-                   DivideFunctor<T>(reduce_num), stream);
-            #else  // for cpu
-               paddle::operators::math::Pool2dFunctor<
-                   DeviceContext, paddle::operators::math::AvgPool<T>, T>
-                   pool2d_forward;
-               paddle::operators::math::AvgPool<T> pool_process;
-               pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                              pool_process, exclusive, adaptive, out);
-             #endif
-          } else { // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
+          if (reduce_num > 0 &&
+              adaptive) {  // for adaptive_avg_pool2d && output_size == 1
+#ifdef __NVCC__
+            auto stream = dev_ctx.stream();
+            TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
+                *in_x, out, reduce_dim, static_cast<T>(0), cub::Sum(),
+                DivideFunctor<T>(reduce_num), stream);
+#else  // for cpu
             paddle::operators::math::Pool2dFunctor<
                 DeviceContext, paddle::operators::math::AvgPool<T>, T>
                 pool2d_forward;
             paddle::operators::math::AvgPool<T> pool_process;
-            pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
-                           pool_process, exclusive, adaptive, out);
+            pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings,
+                           data_format, pool_process, exclusive, adaptive, out);
+#endif
+          } else {  // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
+            paddle::operators::math::Pool2dFunctor<
+                DeviceContext, paddle::operators::math::AvgPool<T>, T>
+                pool2d_forward;
+            paddle::operators::math::AvgPool<T> pool_process;
+            pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings,
+                           data_format, pool_process, exclusive, adaptive, out);
           }
         }
       } break;
