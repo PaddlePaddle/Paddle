@@ -1015,8 +1015,9 @@ DEFINE_NPU_STATUS_TYPE(aclError, ACL_ERROR_NONE);
 }  // namespace details
 
 inline std::string build_npu_error_msg(aclError stat) {
-  std::string s = " ACL error, the error code is : " + stat;
-  return s;
+  std::ostringstream sout;
+  sout << " ACL error, the error code is : " << stat << ". ";
+  return sout.str();
 }
 
 #define PADDLE_ENFORCE_NPU_SUCCESS(COND)                       \

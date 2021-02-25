@@ -218,7 +218,7 @@ def __bootstrap__():
         read_env_flags.append('tracer_mkldnn_ops_on')
         read_env_flags.append('tracer_mkldnn_ops_off')
 
-    if core.is_compiled_with_cuda():
+    if core.is_compiled_with_cuda() or core.is_compiled_with_npu():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use',
             'initial_gpu_memory_in_mb',
@@ -234,6 +234,10 @@ def __bootstrap__():
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
         ]
+
+    if core.is_compiled_with_npu():
+        read_env_flags += ['selected_npus', ]
+
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
