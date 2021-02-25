@@ -87,8 +87,15 @@ DEFINE_string(selected_gpus, "",
               "share-memory only.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_ASCEND_CL)
+DEFINE_string(selected_npus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (NPU). If you want to use "
+              "all visible devices, set this to empty string.");
+#endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_deterministic

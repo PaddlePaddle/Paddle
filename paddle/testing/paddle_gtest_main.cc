@@ -64,6 +64,10 @@ int main(int argc, char** argv) {
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+  envs.push_back("selected_npus");
+#endif
+
   char* env_str = nullptr;
   if (envs.size() > 0) {
     std::string env_string = "--tryfromenv=";
