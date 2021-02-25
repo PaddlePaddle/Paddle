@@ -1,21 +1,11 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
-
-if (WITH_GPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
-endif()
+  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper)
 
 if (WITH_NCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if (WITH_XPU_BKCL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
 endif()
 
 if(NOT WIN32)
@@ -41,6 +31,7 @@ set(PYBIND_SRCS
   heter_wrapper_py.cc
   ps_gpu_wrapper_py.cc
   gloo_wrapper_py.cc
+  graph_service.cc
   box_helper_py.cc
   data_set_py.cc
   imperative.cc
@@ -84,10 +75,6 @@ if(WITH_PYTHON)
   if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif(WITH_NCCL)
-
-  if(WITH_XPU_BKCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
-  endif(WITH_XPU_BKCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
@@ -164,11 +151,11 @@ if(WITH_PYTHON)
     endif(WITH_MKLDNN)
   endif(WIN32)
 
-  if(WITH_ROCM_PLATFORM)
-    cc_library(paddle_pybind SHARED
+  if(WITH_AMD_GPU)
+    hip_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
-      DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+      DEPS ARCHIVE_START ${PYBIND_DEPS}
+      ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ARCHIVE_END)
   else()
     cc_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
@@ -177,7 +164,7 @@ if(WITH_PYTHON)
     if(NOT APPLE AND NOT WIN32)
       target_link_libraries(paddle_pybind rt)
     endif(NOT APPLE AND NOT WIN32)
-  endif(WITH_ROCM_PLATFORM)
+  endif(WITH_AMD_GPU)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})

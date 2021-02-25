@@ -24,15 +24,10 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 
 namespace paddle {
 namespace distributed {
-
-class PSEnvironment;
-class PsRequestMessage;
-class PsResponseMessage;
-class ValueAccessor;
-struct Region;
 
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;
@@ -75,8 +70,7 @@ class PSClient {
       int max_retry) = 0;
 
   // 触发table数据退场
-  virtual std::future<int32_t> shrink(uint32_t table_id,
-                                      const std::string threshold) = 0;
+  virtual std::future<int32_t> shrink(uint32_t table_id) = 0;
 
   // 全量table进行数据load
   virtual std::future<int32_t> load(const std::string &epoch,
@@ -160,6 +154,23 @@ class PSClient {
     promise.set_value(-1);
     return fut;
   }
+  // virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id,
+  // GraphNodeType type, int sample_size,std::vector<GraphNode> &res){
+  //       LOG(FATAL) << "Did not implement";
+  // std::promise<int32_t> promise;
+  // std::future<int> fut = promise.get_future();
+  // promise.set_value(-1);
+  // return fut;
+  // }
+  // virtual std::future<int32_t> pull_graph_list(uint32_t table_id, uint64_t
+  // node_id, GraphNodeType type,int start, int size, std::vector<GraphNode>
+  // &res){
+  //       LOG(FATAL) << "Did not implement";
+  // std::promise<int32_t> promise;
+  // std::future<int> fut = promise.get_future();
+  // promise.set_value(-1);
+  // return fut;
+  // }
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;

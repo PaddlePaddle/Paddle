@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -86,11 +87,23 @@ class Table {
     return 0;
   }
 
+  // only for graph table
+  virtual int32_t pull_graph_list(uint64_t id, GraphNodeType type, int start,
+                                  int total_size, char *&buffer,
+                                  int &actual_size) {
+    return 0;
+  }
+  // only for graph table
+  virtual int32_t random_sample(uint64_t node_id, GraphNodeType type,
+                                int sampe_size, char *&buffer,
+                                int &actual_size) {
+    return 0;
+  }
   virtual int32_t pour() { return 0; }
 
   virtual void clear() = 0;
   virtual int32_t flush() = 0;
-  virtual int32_t shrink(const std::string &param) = 0;
+  virtual int32_t shrink() = 0;
 
   //指定加载路径
   virtual int32_t load(const std::string &path,
@@ -141,5 +154,6 @@ class TableManager {
   TableManager() {}
   ~TableManager() {}
 };
+
 }  // namespace distributed
 }  // namespace paddle
