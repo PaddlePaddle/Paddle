@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import struct
 
 from ... import core
 from ... import framework
@@ -25,7 +26,10 @@ import collections
 import logging
 import numpy as np
 
-__all__ = ["bf16_guard", "cast_model_to_bf16", "cast_parameters_to_bf16"]
+__all__ = [
+    "bf16_guard", "cast_model_to_bf16", "cast_parameters_to_bf16",
+    "convert_float_to_uint16", "convert_uint16_to_float"
+]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -36,6 +40,22 @@ _valid_types = [
 ]
 
 _bf16_guard_pattern = "__use_bf16__"
+
+
+def convert_float_to_uint16(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
+        otypes=[np.uint16])(in_list.flat)
+    return np.reshape(out, in_list.shape)
+
+
+def convert_uint16_to_float(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[np.float32])(in_list.flat)
+    return np.reshape(out, in_list.shape)
 
 
 def _rename_arg(op, old_name, new_name):

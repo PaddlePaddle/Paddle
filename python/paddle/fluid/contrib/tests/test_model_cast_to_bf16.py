@@ -21,8 +21,8 @@ import unittest
 import numpy as np
 import paddle.fluid.layers as layers
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision.bf16_utils import cast_model_to_bf16
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16, convert_uint16_to_float
+from paddle.fluid.contrib.mixed_precision.bf16_utils import cast_model_to_bf16,\
+    convert_float_to_uint16, convert_uint16_to_float
 
 paddle.enable_static()
 
