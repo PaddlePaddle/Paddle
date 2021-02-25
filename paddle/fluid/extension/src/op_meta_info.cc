@@ -32,6 +32,10 @@ OpMetaInfo& OpMetaInfo::Outputs(std::vector<std::string>&& outputs) {
   outputs_ = std::forward<std::vector<std::string>>(outputs);
   return *this;
 }
+OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
+  attrs_ = std::forward<std::vector<std::string>>(attrs);
+  return *this;
+}
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
   kernel_fn_ = std::forward<KernelFunc>(func);
   return *this;
@@ -75,6 +79,11 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Inputs(
 OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
     std::vector<std::string>&& outputs) {
   info_ptr_->Outputs(std::forward<std::vector<std::string>>(outputs));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }
 
