@@ -40,4 +40,3 @@ if(WITH_GPU)
 endif()
 
 
-cc_test(reduce_sum_op_npu_test SRCS reduce_sum_op_npu_test.cc DEPS op_registry reduce_sum_op scope device_context enforce executor)
