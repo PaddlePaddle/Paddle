@@ -31,8 +31,9 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
     auto bias = static_cast<T>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
+    float _power = 1.0;
     if (bias_after_scale){
-      framework::AttributeMap attr_input= {{"power", 1.0}, {"scale", scale}, {"shift", bias}};
+      framework::AttributeMap attr_input= {{"power", _power}, {"scale", scale}, {"shift", bias}};
       out->mutable_data<T>(ctx.GetPlace());
       auto runner = NpuOpRunner("Power", {*x}, {*out}, attr_input);
 
@@ -41,8 +42,6 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
                 .stream();
       runner.Run(stream);
     }
-    
-    // to do else:
   }
 };
 
@@ -52,7 +51,6 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    matmul_v2,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MatMulV2NPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
+    scale,
+    ops::ScaleNPUKernel<paddle::platform::NPUDeviceContext, float>);
 #endif
