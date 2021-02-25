@@ -22,12 +22,28 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
-
 namespace paddle {
 namespace framework {
 class CustomTensorUtils;
-class StreamWrapper;
 }  // namespace framework
+
+class StreamWrapper {
+ public:
+  StreamWrapper() : stream_(nullptr), is_stream_set_(false) {}
+  void SetStream(void* stream) {
+    stream_ = stream;
+    is_stream_set_ = true;
+  }
+
+  void* GetStream() const { return stream_; }
+
+  bool IsStreamSet() const { return is_stream_set_; }
+
+ private:
+  //  cudaStream_t stream_;
+  void* stream_;
+  bool is_stream_set_;
+};
 
 class PD_DLL_DECL Tensor {
  public:
@@ -94,16 +110,14 @@ class PD_DLL_DECL Tensor {
 
 #ifdef PADDLE_WITH_CUDA
   /// \bref Get current stream of Tensor
-  const cudaStream_t& get_current_stream() const;
+  cudaStream_t stream() const;
 #endif
 
  private:
   friend class framework::CustomTensorUtils;
   mutable std::shared_ptr<void> tensor_;
   mutable PlaceType place_;
-#ifdef PADDLE_WITH_CUDA
-  framework::StreamWrapper stream_;
-#endif
+  StreamWrapper stream_;
 };
 
 }  // namespace paddle

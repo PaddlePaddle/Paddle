@@ -27,25 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_CUDA
-class StreamWrapper {
- public:
-  StreamWrapper() : stream_(0), is_stream_set_(false) {}
-  void SetStream(const cudaStream_t& stream) {
-    stream_ = stream;
-    is_stream_set_ = true;
-  }
-
-  const cudaStream_t& GetStream() const { return stream_; }
-
-  bool IsStreamSet() const { return is_stream_set_; }
-
- private:
-  cudaStream_t stream_;
-  bool is_stream_set_;
-};
-#endif
-
 class CustomTensorUtils {
  public:
   /// \brief Share data TO another tensor.
@@ -151,9 +132,8 @@ class CustomTensorUtils {
     if (platform::is_gpu_place(pc)) {
 #ifdef PADDLE_WITH_CUDA
       auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
-          platform::DeviceContextPool::Instance().Get(place));
-      cudaStream_t stream = dev_ctx->stream();
-      src->stream_.SetStream(stream);
+          platform::DeviceContextPool::Instance().Get(pc));
+      src->stream_.SetStream(reinterpret_cast<void*>(dev_ctx->stream()));
 #endif
     } else {
       return;

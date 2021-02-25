@@ -14,9 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+
 namespace paddle {
 
-enum DataType {
+enum class DataType {
   BOOL,
   INT8,
   UINT8,

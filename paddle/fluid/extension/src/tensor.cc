@@ -101,8 +101,9 @@ void Tensor::reshape(const std::vector<int> &shape) {
 }
 
 Tensor::Tensor(const PlaceType &place)
-    : tensor_(std::make_shared<framework::LoDTensor>()), place_(place) {}
-
+    : tensor_(std::make_shared<framework::LoDTensor>()),
+      place_(place),
+      stream_(StreamWrapper()) {}
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   place_ = place;
@@ -324,13 +325,13 @@ int64_t Tensor::size() const {
 }
 
 #ifdef PADDLE_WITH_CUDA
-const cudaStream_t &Tensor::get_current_stream() const {
+cudaStream_t Tensor::stream() const {
   if (!stream_.IsStreamSet()) {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Stream is not Set, only input tensor will have "
         "stream which is set by framework "));
   } else {
-    return stream_.GetStream();
+    return reinterpret_cast<cudaStream_t>(stream_.GetStream());
   }
 }
 #endif
