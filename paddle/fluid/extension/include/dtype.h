@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 
-enum DataType {
+enum class DataType {
   BOOL,
   INT8,
   UINT8,
