@@ -286,6 +286,22 @@ void SetTensorFromPyArrayT(
         "Cannot use XPUPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
+  } else if (paddle::platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::Place tmp_place = place;
+    platform::NPUDeviceGuard guard(
+        BOOST_GET_CONST(platform::NPUPlace, tmp_place).device);
+    auto dst = self->mutable_data<T>(place);
+    platform::NPUMemcpySync(dst, array.data(), array.nbytes(),
+                            ACL_MEMCPY_HOST_TO_DEVICE);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    ctx.Wait();
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use NPUPlace in CPU/GPU/XPU version. "
+        "Please recompile or reinstall Paddle with NPU support."));
+#endif
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_gpu_place(place)) {

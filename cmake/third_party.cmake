@@ -276,7 +276,12 @@ endif(WITH_BOX_PS)
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
     include(external/ascend)
-    list(APPEND third_party_deps extern_ascend)
+    if(WITH_ASCEND)
+        list(APPEND third_party_deps extern_ascend)
+    endif()
+    if(WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend_cl)
+    endif()
 endif ()
 
 if (WITH_PSCORE)

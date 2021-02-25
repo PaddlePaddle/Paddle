@@ -253,7 +253,7 @@ void NpuOpRunner::Run(aclrtStream stream) {
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
       output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
       stream);
-  VLOG(4) << "after aclopCompileAndExecute";
+  VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
 }  // namespace operators
