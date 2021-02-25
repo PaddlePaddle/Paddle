@@ -158,7 +158,7 @@ std::vector<paddle::DataType> InferDType(paddle::DataType x_dtype) {
   return {x_dtype};
 }
 
-PD_BUILD_OP("attr_test")
+PD_BUILD_OP(attr_test)
     .Inputs({"X"})
     .Outputs({"Out"})
     .Attrs({"bool_attr: bool",
@@ -172,8 +172,9 @@ PD_BUILD_OP("attr_test")
             "str_vec_attr: std::vector<std::string>"})
     .SetKernelFn(PD_KERNEL(AttrTestForward))
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType))
-    .SetBackwardOp("attr_test_grad")
+    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+
+PD_BUILD_GRAD_OP(attr_test)
     .Inputs({paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .Attrs({"int_attr: int",
