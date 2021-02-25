@@ -323,18 +323,6 @@ int64_t Tensor::size() const {
   return tensor->numel();
 }
 
-#ifdef PADDLE_WITH_CUDA
-const cudaStream_t &Tensor::get_current_stream() const {
-  if (!stream_.IsStreamSet()) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Stream is not Set, only input tensor will have "
-        "stream which is set by framework "));
-  } else {
-    return stream_.GetStream();
-  }
-}
-#endif
-
 namespace framework {
 
 void CustomTensorUtils::ShareDataTo(const paddle::Tensor &src, void *dst) {

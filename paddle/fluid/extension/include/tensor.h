@@ -19,14 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/extension/include/dll_decl.h"
 #include "paddle/fluid/extension/include/dtype.h"
 #include "paddle/fluid/extension/include/place.h"
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
 
 namespace paddle {
 namespace framework {
 class CustomTensorUtils;
-class StreamWrapper;
 }  // namespace framework
 
 class PD_DLL_DECL Tensor {
@@ -92,18 +88,10 @@ class PD_DLL_DECL Tensor {
   /// \brief Cast datatype from one to another
   Tensor cast(const DataType& target_type) const;
 
-#ifdef PADDLE_WITH_CUDA
-  /// \bref Get current stream of Tensor
-  const cudaStream_t& get_current_stream() const;
-#endif
-
  private:
   friend class framework::CustomTensorUtils;
   mutable std::shared_ptr<void> tensor_;
   mutable PlaceType place_;
-#ifdef PADDLE_WITH_CUDA
-  framework::StreamWrapper stream_;
-#endif
 };
 
 }  // namespace paddle

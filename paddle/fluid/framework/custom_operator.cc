@@ -114,7 +114,6 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     auto custom_in = paddle::Tensor(
         CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
     CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_in);
-    CustomTensorUtils::SetTensorCurrentStream(&custom_in, ctx.GetPlace());
     custom_ins.emplace_back(custom_in);
   }
 
