@@ -238,12 +238,13 @@ int32_t CommonSparseTable::initialize() {
 int32_t CommonSparseTable::initialize_recorder() { return 0; }
 
 int32_t CommonSparseTable::initialize_value() {
+  auto common = _config.common();
   shard_values_.reserve(task_pool_size_);
 
   for (int x = 0; x < task_pool_size_; ++x) {
-    auto shard =
-        std::make_shared<ValueBlock>(value_names_, value_dims_, value_offsets_,
-                                     value_idx_, initializer_attrs_, "none");
+    auto shard = std::make_shared<ValueBlock>(
+        value_names_, value_dims_, value_offsets_, value_idx_,
+        initializer_attrs_, common.entry());
 
     shard_values_.emplace_back(shard);
   }
