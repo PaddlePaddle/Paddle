@@ -20,6 +20,16 @@
 namespace paddle {
 namespace imperative {
 
+const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<paddle::imperative::VarBase>& var) {
+  return var->SharedVar();
+}
+
+const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<VariableWrapper>& var) {
+  return var;
+}
+
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   if (var.IsType<framework::LoDTensor>()) {
     return &(var.Get<framework::LoDTensor>());
