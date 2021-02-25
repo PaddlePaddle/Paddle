@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include <algorithm>
-#include <utility>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 

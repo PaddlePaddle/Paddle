@@ -20,6 +20,10 @@ import paddle
 import subprocess
 import numpy as np
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
+
+# switch to old custom op method
+use_new_custom_op_load_method(False)
 
 
 class TestSetUpInstall(unittest.TestCase):
@@ -38,7 +42,8 @@ class TestSetUpInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'custom_relu2' in x
         ]
-        assert len(custom_egg_path) == 1
+        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
+            custom_egg_path)
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
     def test_api(self):
@@ -46,13 +51,14 @@ class TestSetUpInstall(unittest.TestCase):
         import custom_relu2
 
         raw_data = np.array([[-1, 1, 0], [1, -1, -1]]).astype('float32')
+        gt_data = np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')
         x = paddle.to_tensor(raw_data, dtype='float32')
         # use custom api
         out = custom_relu2.relu2(x)
+        out3 = custom_relu2.relu3(x)
 
-        self.assertTrue(
-            np.array_equal(out.numpy(),
-                           np.array([[0, 1, 0], [1, 0, 0]]).astype('float32')))
+        self.assertTrue(np.array_equal(out.numpy(), gt_data))
+        self.assertTrue(np.array_equal(out3.numpy(), gt_data))
 
 
 if __name__ == '__main__':

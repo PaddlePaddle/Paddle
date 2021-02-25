@@ -29,16 +29,16 @@ static inline int CanonicalAxis(const int axis, const int rank) {
   return axis;
 }
 
-static inline int SizeToAxis(const int axis, const framework::DDim dims) {
-  int size = 1;
+static inline size_t SizeToAxis(const int axis, const framework::DDim dims) {
+  size_t size = 1;
   for (int i = 0; i < axis; i++) {
     size *= dims[i];
   }
   return size;
 }
 
-static inline int SizeFromAxis(const int axis, const framework::DDim dims) {
-  int size = 1;
+static inline size_t SizeFromAxis(const int axis, const framework::DDim dims) {
+  size_t size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
   }

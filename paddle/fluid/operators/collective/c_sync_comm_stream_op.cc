@@ -14,13 +14,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-
 namespace paddle {
 namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -41,11 +40,15 @@ class CSyncCommStreamOp : public framework::OperatorBase {
                       platform::errors::PreconditionNotMet(
                           "Sync stream op can run on gpu place only for now."));
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

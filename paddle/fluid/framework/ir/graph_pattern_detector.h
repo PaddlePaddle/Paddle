@@ -1135,9 +1135,34 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
-
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
+};
+
+// Scale + Quantize
+struct ScaleQuant : public PatternBase {
+  ScaleQuant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "scale_quant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+};
+
+// Quantize + Conv2d
+struct QuantConv : public PatternBase {
+  QuantConv(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_conv") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(conv_in);
+  PATTERN_DECL_NODE(conv_op);
 };
 
 // Scale + Matmul
@@ -1338,7 +1363,6 @@ struct LastBfloat16Ops : public PatternBase {
 
   PATTERN_DECL_NODE(op);
   PATTERN_DECL_NODE(op_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 struct FirstBfloat16Ops : public PatternBase {
@@ -1346,7 +1370,6 @@ struct FirstBfloat16Ops : public PatternBase {
       : PatternBase(pattern, name_scope, "first_bfloat16_ops") {}
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
@@ -1358,17 +1381,6 @@ struct DuplicatedInputs : public PatternBase {
   PDNode* operator()();
 
   PATTERN_DECL_NODE(op);
-};
-
-struct UnnecessaryReorders : public PatternBase {
-  UnnecessaryReorders(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "unnecessary_reorders") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(quant_in);
-  PATTERN_DECL_NODE(quant_op);
-  PATTERN_DECL_NODE(quant_out);
 };
 
 // Pattern used for enforcing inplace computation for in-place computation

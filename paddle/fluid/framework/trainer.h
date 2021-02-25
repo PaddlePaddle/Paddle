@@ -46,6 +46,7 @@ class ProgramDesc;
 class PullDenseWorker;
 class Scope;
 class VarDesc;
+class DeviceWorker;
 template <class T>
 class ChannelObject;
 

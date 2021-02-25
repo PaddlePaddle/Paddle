@@ -172,8 +172,21 @@ def distributed_ops_pass(program, config):
                         "lookup_table_version": op_type
                     })
             else:
-                raise ValueError(
-                    "something wrong with Fleet, submit a issue is recommended")
+                for i in range(len(inputs_idxs)):
+                    distributed_idx = op_idxs[i] + 1
+
+                    program.global_block()._insert_op(
+                        index=distributed_idx,
+                        type="distributed_lookup_table",
+                        inputs={"Ids": [inputs[i]],
+                                'W': w},
+                        outputs={"Outputs": [outputs[i]]},
+                        attrs={
+                            "is_distributed": is_distributed,
+                            "padding_idx": padding_idx,
+                            "table_id": table_id,
+                            "lookup_table_version": op_type
+                        })
 
     pull_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops)

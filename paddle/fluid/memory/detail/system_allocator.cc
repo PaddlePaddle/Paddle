@@ -24,12 +24,6 @@ limitations under the License. */
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
-#include <stdlib.h>  // for malloc and free
-
-#include <algorithm>  // for std::max
-#include <string>
-#include <utility>
-
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"

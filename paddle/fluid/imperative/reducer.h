@@ -28,10 +28,13 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace platform {
 class DeviceContext;
+
 }  // namespace platform
 
 namespace imperative {
@@ -44,7 +47,39 @@ class VariableWrapper;
 namespace paddle {
 namespace imperative {
 
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+
+template <typename T>
+struct DivNRanksFunctor {
+  DivNRanksFunctor(int64_t nranks, T* output)
+      : nranks_(nranks), output_(output) {}
+  HOSTDEVICE void operator()(size_t idx) const {
+    output_[idx] /= static_cast<T>(nranks_);
+  }
+  int64_t nranks_;
+  T* output_;
+};
+
+template <typename Dex>
+struct DivNRanksForAllReduce {
+  framework::Tensor* in_;
+  int64_t nranks_;
+  const platform::DeviceContext& ctx_;
+  DivNRanksForAllReduce(framework::Tensor* in, int64_t nranks,
+                        const platform::DeviceContext& ctx)
+      : in_(in), nranks_(nranks), ctx_(ctx) {}
+
+  template <typename T>
+  void apply() const {
+    T* data = in_->mutable_data<T>(ctx_.GetPlace());
+    platform::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
+                                      static_cast<size_t>(in_->numel()));
+    DivNRanksFunctor<T> functor(nranks_, data);
+    for_range(functor);
+  }
+};
+
 class Group {
  public:
   // Here, we use dense_contents_ & sparse_contents_ to
@@ -75,6 +110,12 @@ class Group {
 
   // context is used to select the stream for split
   void SplitTensors(const platform::DeviceContext& context);
+
+  // use it in CUDA
+  void DivNRanks(framework::Tensor* tensor, int64_t nranks,
+                 const platform::DeviceContext& context);
+
+  void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
 
   friend std::ostream& operator<<(std::ostream&, const Group&);
 };
@@ -121,7 +162,6 @@ class Reducer {
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
-  static std::shared_ptr<Reducer> s_instance_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
   platform::Place place_;
@@ -131,9 +171,11 @@ class Reducer {
   std::vector<VariableLocator> variable_locators_;
 
   int nrings_ = 1;
+  int64_t nranks_ = -1;
 
   // Following variables are to help rebuild group
-  bool has_rebuilt_group_{false};
+  // TODO(shenliang03): Support rebuild in the future.
+  bool has_rebuilt_group_{true};
   std::vector<std::shared_ptr<imperative::VarBase>> rebuild_vars_;
   std::vector<int64_t> rebuild_var_indices_;
   const std::vector<size_t> group_size_limits_;
