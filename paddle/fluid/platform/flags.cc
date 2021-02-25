@@ -45,7 +45,8 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-// NOTE(zhiqiu): better to share the flags, otherwise we will have too many flags.
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many
+// flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ASCEND_CL)
 
 /**
@@ -83,6 +84,14 @@ DEFINE_string(selected_gpus, "",
               "reason of doing this is that we want to use P2P communication"
               "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
               "share-memory only.");
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+DEFINE_string(selected_npus, "",
+              "A list of device ids separated by comma, like: 0,1,2,3. "
+              "This option is useful when doing multi process training and "
+              "each process have only one device (NPU). If you want to use "
+              "all visible devices, set this to empty string.");
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -378,7 +387,8 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-// NOTE(zhiqiu): better to share the flags, otherwise we will have too many flags.
+// NOTE(zhiqiu): better to share the flags, otherwise we will have too many
+// flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ASCEND_CL)
 
 /**
