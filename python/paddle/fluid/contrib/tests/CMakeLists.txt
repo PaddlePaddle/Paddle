@@ -3,6 +3,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 list(REMOVE_ITEM TEST_OPS test_multi_precision_fp16_train)
 list(REMOVE_ITEM TEST_OPS test_model_cast_to_bf16)
+list(REMOVE_ITEM TEST_OPS test_bf16_utils)
 
 foreach(src ${TEST_OPS})
         py_test(${src} SRCS ${src}.py)
@@ -15,6 +16,7 @@ set_tests_properties(test_weight_decay_extend PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multi_precision_fp16_train PROPERTIES TIMEOUT 120)
 
 if(WITH_MKLDNN)
-   py_test_modules(test_model_cast_to_bf16 MODULES test_model_cast_to_bf16)
-   set_tests_properties(test_model_cast_to_bf16 PROPERTIES TIMEOUT 120)
+    py_test(test_bf16_utils SRCS test_bf16_utils.py)
+    py_test_modules(test_model_cast_to_bf16 MODULES test_model_cast_to_bf16)
+    set_tests_properties(test_model_cast_to_bf16 PROPERTIES TIMEOUT 120)
 endif()
