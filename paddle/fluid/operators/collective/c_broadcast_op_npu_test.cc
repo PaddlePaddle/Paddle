@@ -88,9 +88,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"]="tag";
+  //attrs["tag2"]="tagx";
   attrs["root"]=0;
-  attrs["group"]="hccl_world_group";
+  // attrs["group"]="hccl_world_group";
 
   auto op =
       f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},

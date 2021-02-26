@@ -45,17 +45,16 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    uint32_t root = ctx.Attr<uint32_t>("root");
-    std::string tag = ctx.Attr<std::string>("tag");
-    std::string group = ctx.Attr<std::string>("group");
+    int root = ctx.Attr<int>("root");
+    //std::string tag = ctx.Attr<std::string>("tag");
+    // std::string group = ctx.Attr<std::string>("group");
+    #pragma message("bianyi")
+    VLOG(3) << "begin hccl broadcast, parameter is: "
+            << "root " << root ;
 
-    if (root == comm->rank()) {
-      // PADDLE_ENFORCE_ASCEND_SUCCESS(platform::dynload::HcclBroadcast(
-      //     reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
-      //     root, comm->comm(), stream));
-
-      platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                   dtype, root, group.c_str(), (void*)stream);
+    if (root == static_cast<int>(comm->rank())) {
+      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast("abc", ptr, numel,
+                                   dtype, root, "hccl_world_group", (void*)stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
@@ -66,8 +65,9 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
             static_cast<framework::Tensor*>(out));
       }
     } else {
-        platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                     dtype, root, group.c_str(), (void*)stream);
+
+        PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast("abc", ptr, numel,
+                                     dtype, root, "hccl_world_group", (void*)stream));
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
                 << framework::product(out->dims());
     }
