@@ -501,7 +501,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
     if (name.find("batch_sum") != std::string::npos) {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      VLOG(0) << "prepare shrink dense batch_sum";
+      VLOG(3) << "prepare shrink dense batch_sum";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
 
