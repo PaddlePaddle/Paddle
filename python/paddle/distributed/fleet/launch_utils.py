@@ -484,7 +484,8 @@ def start_local_trainers(cluster,
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
-        if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
+        elif len(t.
+                 accelerators) > 0 and pod.device_mode == DeviceMode.ASCEND_NPU:
             proc_env["FLAGS_selected_npus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
