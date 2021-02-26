@@ -282,11 +282,10 @@ class PipelineOptimizer(MetaOptimizerBase):
             self.inner_parallelism, self.tensor_model_parallel, self.pp_num)
         print("Done startup program")
 
-        if self.pp_num * self.tensor_model_parallel == self.nranks:
-            return
-        pipeline_num = self.nranks // self.inner_parallelism
-        self._transpile_main_program(loss, pipeline_num, self.inner_parallelism)
-        print("Done main program")
+        if self.pp_num * self.tensor_model_parallel != self.nranks:
+            pipeline_num = self.nranks // self.inner_parallelism
+            self._transpile_main_program(loss, pipeline_num,
+                                         self.inner_parallelism)
         return optimize_ops, params_grads
 
     def _transpile_main_program(self, loss, pipeline_num, inner_parallelism):
