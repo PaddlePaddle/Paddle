@@ -334,7 +334,7 @@ function show_ut_retry_result() {
     fi
 }
 
-if "${WINGPU}" == "ON" ];then
+if [ "${WINGPU}" == "ON" ];then
     run_unittest_gpu
 else
     run_unittest_cpu
