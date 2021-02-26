@@ -19,7 +19,7 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_compile_args, IS_WINDOWS
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
 # Because Windows don't use docker, the shared lib already exists in the 
@@ -94,9 +94,14 @@ class TestJITLoad(unittest.TestCase):
             self.assertTrue(
                 "function \"relu_cpu_forward\" is not implemented for data type `int32_t`"
                 in str(e))
-            self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:48" in
-                str(e))
+            if IS_WINDOWS:
+                self.assertTrue(
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:48"
+                    in str(e))
+            else:
+                self.assertTrue(
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:48"
+                    in str(e))
         self.assertTrue(caught_exception)
 
         caught_exception = False
