@@ -44,7 +44,6 @@ PD_BUILD_OP(dispatch_test_integer)
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(DispatchTestInterger));
 
-
 std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
     const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
