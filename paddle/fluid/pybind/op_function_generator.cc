@@ -340,7 +340,7 @@ std::string GenerateOpFunctionsBody(
   }
   ins_initializer += "}";
 
-  if (input_args.back() == ',') {
+  if (!input_args.empty() && input_args.back() == ',') {
     input_args.pop_back();
   }
 
