@@ -290,6 +290,15 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force BF16 kernel output FP32, only "
+                "used in MKL-DNN BF16")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "bfloat16"});
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>("fuse_activation",
@@ -671,7 +680,17 @@ REGISTER_OP_VERSION(conv2d_transpose)
             "output_padding",
             "In order to add additional size to one side of each dimension "
             "in the output",
-            std::vector<int>{}));
+            std::vector<int>{}))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d transpose to add a new attributes [force_fp32_output, mkldnn_data_type].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("force_fp32_output",
+                     "Force BF16 kernel output FP32, only used in MKL-DNN BF16",
+                     false)
+            .NewAttr("mkldnn_data_type", "Data type of mkldnn kernel",
+                     "float32"));
 
 REGISTER_OP_VERSION(conv3d_transpose)
     .AddCheckpoint(

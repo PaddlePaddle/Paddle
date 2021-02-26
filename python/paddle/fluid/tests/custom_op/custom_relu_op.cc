@@ -96,21 +96,12 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
   }
 }
 
-std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape) {
-  return {x_shape};
-}
-
-std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype) {
-  return {x_dtype};
-}
-
-PD_BUILD_OPERATOR("relu2")
+PD_BUILD_OP(custom_relu)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(ReluForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))
-    .SetBackwardOp("relu2_grad")
+    .SetKernelFn(PD_KERNEL(ReluForward));
+
+PD_BUILD_GRAD_OP(custom_relu)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward));
