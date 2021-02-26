@@ -349,15 +349,15 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
 }
 
 template <typename T>
-__global__ void KeBilinearInterpBw2(
+__global__ void KeBilinearInterpBw(
     T* in, const size_t in_img_h, const size_t in_img_w, const size_t input_h,
     const size_t input_w, const T* __restrict__ out, const size_t out_img_h,
     const size_t out_img_w, const size_t output_h, const size_t output_w,
     const size_t num_channels, const T ratio_h, const T ratio_w,
     const bool align_corners, const int align_mode,
     const DataLayout data_layout) {
-  const int block_per_threads = 256;
-  const int block_per_threads_minus_1 = 255;
+  const int block_per_threads = 512;
+  const int block_per_threads_minus_1 = block_per_threads - 1;
   __shared__ T s_data[2][block_per_threads];
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1456,10 +1456,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
-    int threads = 256;
-    int blocks = (pixelNum + threads - 1) / threads;
-    KeBilinearInterpBw2<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+    int threads = 512;
+    KeBilinearInterpBw<T><<<config.block_per_grid, threads, 0,
+                            ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
         data_layout);
