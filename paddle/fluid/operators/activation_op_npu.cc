@@ -115,9 +115,13 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    pow, ops::PowNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    pow, ops::PowNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::PowNPUKernel<paddle::platform::NPUDeviceContext,
+                      paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    pow_grad, ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    pow_grad, ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext,
+                          paddle::platform::float16>);
 
 #endif
