@@ -270,10 +270,11 @@ function run_unittest_cpu() {
     echo    ========================================
     tmpfile=$tmp_dir/$RANDOM
     ctest -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 | tee $tmpfile
+    collect_failed_tests
 }
 
 function unittests_retry(){
-    if [ "${WINGPU}" == "ON" ];then
+    if [[ "${WINGPU}" == "ON" ]];then
         parallel_job=1
     else
         parallel_job=4
@@ -283,7 +284,7 @@ function unittests_retry(){
     retry_time=3
     exec_times=0
     exec_retry_threshold=10
-    retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+(" | sed 's/(//' | sed 's/- //' )
+    retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     need_retry_ut_counts=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
     
@@ -292,11 +293,11 @@ function unittests_retry(){
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    if ( "$exec_times"=="0" );then
+                    if ( [[ "$exec_times" == "0" ]] );then
                         cur_order='first'
-                    elif ( "$exec_times"=="1" );then
+                    elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
-                    elif ( "$exec_times"=="1" );then
+                    elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='third'
                     fi
                     echo "========================================="
