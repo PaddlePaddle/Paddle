@@ -152,7 +152,7 @@ class HeterObjectPool {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
       num_ += 1;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       VLOG(0) << "pool construct size: " << num_;
 #endif
       return std::make_shared<T>();
