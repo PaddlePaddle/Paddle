@@ -28,8 +28,8 @@ DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
-DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
+DECLARE_string(selected_npus);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
@@ -77,8 +77,8 @@ int GetCurrentNPUDeviceId() {
 std::vector<int> GetSelectedNPUDevices() {
   // use user specified NPUs in single-node multi-process mode.
   std::vector<int> devices;
-  if (!FLAGS_selected_gpus.empty()) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_gpus, ',');
+  if (!FLAGS_selected_npus.empty()) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_npus, ',');
     for (auto id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }
@@ -366,6 +366,43 @@ uint64_t RecordedNPUMallocSize(int dev_id) {
 
 bool IsNPUMallocRecorded(int dev_id) {
   return RecordedNPUMallocHelper::Instance(dev_id)->NeedRecord();
+}
+
+AclInstance::~AclInstance() {}
+
+AclInstance &AclInstance::Instance() {
+  static AclInstance instance;
+  return instance;
+}
+
+AclInstance::AclInstance() {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
+  VLOG(4) << "Call aclrtSetDevice ";
+  // NOTE(zhiqiu): why set devices here?
+  // Because ACL creates a default context which contains 2 streams
+  // when calling aclrtSetDeviceId, so usually we do not need to
+  // create contexts explicitly. And, for each device, aclrtSetDeviceId
+  // need to call parily with aclrtResetDeviceId to destory the default
+  // context. Here, we use this singleton and static instance to manage
+  // the devices to make sure they will be resetted before program exit.
+  devices_ = platform::GetSelectedNPUDevices();
+  for (auto it = devices_.rbegin(); it != devices_.rend(); ++it) {
+    SetNPUDeviceId(*it);
+    VLOG(4) << "Call aclrtSetDevice " << *it;
+  }
+}
+
+void AclInstance::Finalize() {
+  // NOTE(zhiqiu): DO NOT perform finalize in destructor
+  // to avoid problems caused by destructor order of static
+  // object.
+  for (size_t i = 0; i < devices_.size(); ++i) {
+    auto status = aclrtResetDevice(devices_[i]);
+    VLOG(4) << "Call aclrtResetDevice " << devices_[i]
+            << " status = " << status;
+  }
+  auto status = aclFinalize();
+  VLOG(4) << "Call aclFinalize, status = " << status;
 }
 
 }  // namespace platform

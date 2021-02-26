@@ -39,7 +39,8 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
   envs.push_back("fraction_of_gpu_memory_to_use");
   envs.push_back("initial_gpu_memory_in_mb");
   envs.push_back("reallocate_gpu_memory_in_mb");
@@ -61,6 +62,10 @@ int main(int argc, char** argv) {
   undefok.push_back("use_pinned_memory");
   undefok.push_back("use_mkldnn");
   undefok.push_back("initial_cpu_memory_in_mb");
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  envs.push_back("selected_npus");
 #endif
 
   char* env_str = nullptr;
@@ -94,7 +99,7 @@ int main(int argc, char** argv) {
   paddle::framework::InitDevices();
 
   int ret = RUN_ALL_TESTS();
-  
+
 #ifdef PADDLE_WITH_ASCEND_CL
   paddle::platform::AclInstance::Instance().Finalize();
 #endif
