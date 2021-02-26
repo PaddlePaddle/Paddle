@@ -24,6 +24,7 @@ namespace paddle {
 namespace framework {
 class CustomTensorUtils;
 }  // namespace framework
+
 class PD_DLL_DECL Tensor {
  public:
   /// \brief Construct a Tensor on target Place for CustomOp.
