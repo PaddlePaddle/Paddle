@@ -307,8 +307,11 @@ def eval_if_exist_else_none(name, local_symbol_table):
     Args:
         name([str]): Expression passed into `eval`.
         local_symbol_table(dict): Specified from `locals()`. DO NOT use `globals()`,
-                                  it has a high priority and will hide way variabels
+                                  it has a higher priority and will hide away variables
                                   from `locals()`.
+    
+    Returns:
+        Return vaiable if found in local_symbol_table else None.
     """
     try:
         return eval(name, local_symbol_table)
