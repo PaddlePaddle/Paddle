@@ -14,22 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_NCCL
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <nccl.h>
-#include <string>
-#include <utility>
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/nccl_context.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/nccl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 namespace paddle {
 namespace framework {

@@ -12,12 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 #include "paddle/fluid/imperative/all_reduce.h"
 
+#ifdef PADDLE_WITH_NCCL
+#include <nccl.h>
+#endif
+
+#ifdef PADDLE_WITH_RCCL
+#include <rccl.h>
+#endif
+
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/parallel_context.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/string/string_helper.h"
+
 namespace paddle {
 namespace imperative {
+
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();
@@ -35,7 +52,7 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
 }
 
 static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
-                      const cudaStream_t stream,
+                      const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
@@ -56,7 +73,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 static void AllReduce(const framework::SelectedRows &src,
                       framework::SelectedRows *dst,
                       const ParallelStrategy &strategy,
-                      const cudaStream_t stream,
+                      const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
   VLOG(3) << "SelectedRows AllReduce start";
   const auto &src_tensor = src.value();
@@ -88,7 +105,11 @@ static void AllReduce(const framework::SelectedRows &src,
       comm->comm(), stream));
 
   if (!use_calc_stream) {
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
   }
 
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
@@ -165,7 +186,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       platform::DeviceContextPool::Instance().Get(place));
   platform::NCCLComm *comm =
       platform::NCCLCommContext::Instance().Get(ring_id, place);
-  cudaStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
+  gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
   if (src.IsType<framework::LoDTensor>()) {
     if (!dst->IsType<framework::LoDTensor>()) {
@@ -188,8 +209,12 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
       AllReduce(src.Get<framework::SelectedRows>(),
                 tmp_dst.GetMutable<framework::SelectedRows>(), strategy, stream,
                 comm);
-      // stream must synchronize to ensure accuracy of the move operation
+// stream must synchronize to ensure accuracy of the move operation
+#ifdef PADDLE_WITH_RCCL
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
       *dst = std::move(tmp_dst);
     }
 #endif

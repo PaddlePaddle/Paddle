@@ -11,17 +11,22 @@ foreach(src ${OPS})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${COLLECTIVE_COMPILE_FLAGS})
 endforeach()
 
-register_operators(EXCLUDES c_gen_nccl_id_op gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
+register_operators(EXCLUDES c_gen_bkcl_id_op gen_bkcl_id_op c_gen_nccl_id_op gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 
-if(WITH_NCCL)
+if(WITH_NCCL OR WITH_RCCL)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper)
-    cc_library(gen_nccl_id_op_helper SRCS gen_nccl_id_op_helper.cc DEPS nccl_common)
-    op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} gen_nccl_id_op_helper)
-    op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS} gen_nccl_id_op_helper)
+    op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
+    op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
 if(WITH_GLOO)
     set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper)
+endif()
+
+if(WITH_XPU_BKCL)
+    set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
+    op_library(c_gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
+    op_library(gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COLLECTIVE_DEPS} PARENT_SCOPE)

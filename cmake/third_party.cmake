@@ -274,6 +274,11 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
+if(WITH_ASCEND)
+    include(external/ascend)
+    list(APPEND third_party_deps extern_ascend)
+endif (WITH_ASCEND)
+
 if (WITH_PSCORE)
     include(external/snappy)
     list(APPEND third_party_deps extern_snappy)
@@ -306,6 +311,7 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 

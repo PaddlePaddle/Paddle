@@ -13,9 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/helper.h"
-#include <algorithm>  // tolower
 #include <numeric>
-#include <string>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -13,8 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/set_value_op.h"
-
 #include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -44,18 +60,52 @@ class SetValue : public framework::OperatorWithKernel {
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StepsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class SetValueMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    // Input
     AddInput("Input", "(Tensor) Input tensor of set_value operator.");
     AddInput("ValueTensor", "(Tensor) Value tensor of set_value operator.")
         .AsDispensable();
+    AddInput("StartsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must be [1]."
+             "It has higher priority compare with attr(starts).")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput("EndsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(ends).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    AddInput("StepsTensorList",
+             "(vector<Tensor<int32>>, optional) If provided, set_value will "
+             "use this. The shape of the tensor in vector must BE [1]."
+             "It has higher priority compare with attr(steps).")
+        .AsDuplicable()
+        .AsDispensable();
+
+    // Output
     AddOutput("Out",
               "(Tensor) Output tensor of set_value operator. The output is the "
               "same Tensor as input");
 
+    // Attr
     AddAttr<int>("dtype", "data type of input.")
         .InEnum(
             {framework::proto::VarType::BOOL, framework::proto::VarType::INT32,
@@ -66,20 +116,25 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
     AddAttr<std::vector<int64_t>>(
         "starts",
-        "(list<int64_t>) Starting indices of corresponding axis in `axes`");
+        "(list<int64_t>) Starting indices of corresponding axis in `axes`.")
+        .SetDefault({});
     AddAttr<std::vector<int64_t>>(
         "ends",
-        "(list<int64_t>) Ending indices of corresponding axis in `axes`.");
+        "(list<int64_t>) Ending indices of corresponding axis in `axes`.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>(
+        "steps", "(list<int64_t>) Stride step from the start to the end.")
+        .SetDefault({});
 
-    AddAttr<std::vector<int>>("bool_values", "store the bool values")
+    AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
         .SetDefault({});
-    AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
+    AddAttr<std::vector<float>>("fp32_values", "Store the float32 values.")
         .SetDefault({});
-    AddAttr<std::vector<int>>("int32_values", "store the int32 values")
+    AddAttr<std::vector<int>>("int32_values", "Store the int32 values.")
         .SetDefault({});
-    AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+    AddAttr<std::vector<int64_t>>("int64_values", "Store the int64 values.")
         .SetDefault({});
-    AddAttr<std::vector<double>>("fp64_values", "store the float64 values")
+    AddAttr<std::vector<double>>("fp64_values", "Store the float64 values.")
         .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
@@ -105,3 +160,30 @@ REGISTER_OP_CPU_KERNEL(
     ops::SetValueKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SetValueKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SetValueKernel<paddle::platform::CPUDeviceContext, bool>);
+
+REGISTER_OP_VERSION(set_value)
+    .AddCheckpoint(
+        R"ROC(
+Upgrade set_value, add 3 inputs [StartsTensorList, EndsTensorList, StepsTensorList] and 1 attribute [steps].
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("StartsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(starts).")
+            .NewInput("EndsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(ends).")
+            .NewInput("StepsTensorList",
+                      "If provided, set_value will use this.The shape of the "
+                      "tensor in vector must be [1]. It has higher priority "
+                      "compare with attr(steps).")
+            .ModifyAttr("starts",
+                        "Starting indices of corresponding axis in `axes`.",
+                        std::vector<int64_t>{})
+            .ModifyAttr("ends",
+                        "Ending indices of corresponding axis in `axes`.",
+                        std::vector<int64_t>{})
+            .NewAttr("steps", "Stride step from the start to the end.",
+                     std::vector<int64_t>{}));
