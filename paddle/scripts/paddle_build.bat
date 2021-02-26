@@ -114,23 +114,25 @@ rem ------pre install python requirement----------
 where python
 where pip
 pip install wheel --user
-pip install -r %work_dir%\python\requirements.txt --user
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\requirements.txt --user
+
 if %ERRORLEVEL% NEQ 0 (
     echo pip install requirements.txt failed!
     exit /b 7
 )
 
 rem ------pre install clcache and init config----------
-pip install clcache --user
+rem pip install clcache --user
+pip uninstall -y clcache
 :: set USE_CLCACHE to enable clcache
-set USE_CLCACHE=1
+rem set USE_CLCACHE=1
 :: In some scenarios, CLCACHE_HARDLINK can save one file copy.
-set CLCACHE_HARDLINK=1
+rem set CLCACHE_HARDLINK=1
 :: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
-set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
-clcache.exe -M 21474836480
+rem clcache.exe -M 21474836480
 
 rem ------show summary of current environment----------
 python %work_dir%\tools\summary_env.py
@@ -194,10 +196,27 @@ set start=%start:~4,10%
 
 @ECHO ON
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.0
-set PATH=%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
-set CUDA_PATH=%CUDA_TOOLKIT_ROOT_DIR%
+set PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR%\bin;%CUDA_TOOLKIT_ROOT_DIR%\libnvvp;%PATH%
 
 rem ------set third_party cache dir------
+
+: clear third party cache every once in a while
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %cache_dir%\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %cache_dir%\day.txt
+    type %cache_dir%\day.txt
+    if %day_now% EQU 25 (
+        rmdir %cache_dir%\third_party_GPU/ /s/q
+        rmdir %cache_dir%\third_party/ /s/q
+    )
+    if %day_now% EQU 10 (
+        rmdir %cache_dir%\third_party_GPU/ /s/q
+        rmdir %cache_dir%\third_party/ /s/q
+    )
+)
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/build/third_party
@@ -263,6 +282,9 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
+:: reset clcache zero stats for collect PR's actual hit rate
+rem clcache.exe -z
+
 echo Build Paddle the %build_times% time:
 if "%WITH_CLCACHE%"=="OFF" (
     msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
@@ -281,6 +303,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo Build Paddle successfully!
+echo 0 > %cache_dir%\error_code.txt
+type %cache_dir%\error_code.txt
+
+:: ci will collect clcache hit rate
+rem goto :collect_clcache_hits
 
 goto:eof
 
@@ -319,12 +346,13 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install -U %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN% --user
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
+
 
 set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
@@ -383,7 +411,7 @@ if "%WITH_GPU%"=="ON" (
 
 :parallel_test_base_gpu
 echo    ========================================
-echo    Running GPU unit tests...
+echo    Running GPU unit tests in parallel way ...
 echo    ========================================
 
 setlocal enabledelayedexpansion
@@ -451,6 +479,7 @@ goto:eof
 echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
+
 ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 
 goto:eof
@@ -622,6 +651,7 @@ taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
+wmic process where name="python.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 echo 0 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt

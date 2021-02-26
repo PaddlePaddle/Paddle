@@ -14,12 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <boost/any.hpp>
 
+#include "paddle/fluid/extension/include/dll_decl.h"
 #include "paddle/fluid/extension/include/tensor.h"
 
 /**
@@ -31,7 +33,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class OpMetaInfoHelper;
+class PD_DLL_DECL OpMetaInfoHelper;
 }  // namespace framework
 
 using Tensor = paddle::Tensor;
@@ -42,6 +44,26 @@ using Tensor = paddle::Tensor;
   classname(classname&&) = delete;                 \
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
+
+#if defined _WIN32
+#define HANDLE_THE_ERROR try {
+#define END_HANDLE_THE_ERROR            \
+  }                                     \
+  catch (const std::exception& e) {     \
+    std::cerr << e.what() << std::endl; \
+    throw e;                            \
+  }
+#else
+#define HANDLE_THE_ERROR
+#define END_HANDLE_THE_ERROR
+#endif
+
+#define PD_THROW(err_msg)              \
+  do {                                 \
+    HANDLE_THE_ERROR                   \
+    throw std::runtime_error(err_msg); \
+    END_HANDLE_THE_ERROR               \
+  } while (0)
 
 ///////////////// Util Define and Function ////////////////
 
@@ -58,6 +80,26 @@ inline std::string Grad(const std::string& var_name) {
 // Record Op kernel core function
 using KernelFunc = std::vector<Tensor> (*)(std::vector<Tensor> inputs,
                                            std::vector<boost::any> attrs);
+
+#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                          \
+  template <typename... Tail>                                               \
+  struct ComputeCallHelper<attr_type, Tail...> {                            \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>           \
+    static Return Compute(std::vector<Tensor> inputs,                       \
+                          std::vector<boost::any> attrs,                    \
+                          const PreviousArgs&... pargs) {                   \
+      try {                                                                 \
+        attr_type arg = boost::any_cast<attr_type>(attrs[attr_idx]);        \
+        return ComputeCallHelper<Tail...>::template Compute<in_idx,         \
+                                                            attr_idx + 1>(  \
+            inputs, attrs, pargs..., arg);                                  \
+      } catch (boost::bad_any_cast&) {                                      \
+        PD_THROW(                                                           \
+            "Attribute cast error in custom operator. Expected " #attr_type \
+            " value.");                                                     \
+      }                                                                     \
+    }                                                                       \
+  }
 
 template <typename T>
 struct TypeTag {};
@@ -92,26 +134,20 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // TODO(chenweihang): add support for attribute input
-  // int attribute input (not used now)
-  template <typename... Tail>
-  struct ComputeCallHelper<int, Tail...> {
-    template <int in_idx, int attr_idx, typename... PreviousArgs>
-    static Return Compute(std::vector<Tensor> inputs,
-                          std::vector<boost::any> attrs,
-                          const PreviousArgs&... pargs) {
-      try {
-        int arg = boost::any_cast<int>(attrs[attr_idx]);
-        return ComputeCallHelper<Tail...>::template Compute<in_idx,
-                                                            attr_idx + 1>(
-            inputs, attrs, pargs..., arg);
-      } catch (boost::bad_any_cast&) {
-        throw std::runtime_error(
-            "Attribute cast error in custom operator. Expected int value.");
-      }
-    }
-  };
-
+  PD_SPECIALIZE_ComputeCallHelper(bool);
+  PD_SPECIALIZE_ComputeCallHelper(int);
+  PD_SPECIALIZE_ComputeCallHelper(float);
+  PD_SPECIALIZE_ComputeCallHelper(int64_t);
+  PD_SPECIALIZE_ComputeCallHelper(std::string);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<float>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
+  PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
+  // TODO(chenweihang): support other attribute type if needed.
+  // Why not support other attribute type here?
+  // - boost::blank, std::vector<bool> and std::vector<double>
+  //   are not used in op
+  // - BlockDesc* and std::vector<BlockDesc*> are used in framework
   // end: base template
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
@@ -220,13 +256,26 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
-class OpMetaInfo {
+class PD_DLL_DECL OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
+
+  // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
+
+  // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Outputs(std::vector<std::string>&& outputs);
+
+  // format: {"<name1>:<type1>", "<name1>:<type1>", ...}
+  OpMetaInfo& Attrs(std::vector<std::string>&& attrs);
+
+  // format: PD_KERNEL(...)
   OpMetaInfo& SetKernelFn(KernelFunc&& func);
+
+  // format: PD_INFER_SHAPE(...)
   OpMetaInfo& SetInferShapeFn(InferShapeFunc&& func);
+
+  // format: PD_INFER_DTYPE(...)
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
  private:
@@ -246,7 +295,7 @@ class OpMetaInfo {
 
 //////////////// Op Meta Info Map /////////////////
 
-class OpMetaInfoMap {
+class PD_DLL_DECL OpMetaInfoMap {
  public:
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
@@ -270,14 +319,15 @@ class OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
-class OpMetaInfoBuilder {
+class PD_DLL_DECL OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
-  OpMetaInfoBuilder& SetKernelFn(KernelFunc&& func);
-  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc&& func);
-  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc&& func);
+  OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);
+  OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
+  OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
+  OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
   OpMetaInfoBuilder& SetBackwardOp(const std::string& bwd_op_name);
 
  private:
@@ -317,8 +367,12 @@ void LoadCustomOperatorLib(const std::string& dso_name);
 extern "C" {
 #endif
 
+#if defined(_WIN32)
 // C-API to get global OpMetaInfoMap.
-paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap();
+__declspec(dllexport) inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+  return paddle::OpMetaInfoMap::Instance();
+}
+#endif  // _WIN32
 
 #ifdef __cplusplus
 }

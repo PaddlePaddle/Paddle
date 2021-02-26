@@ -32,6 +32,10 @@ OpMetaInfo& OpMetaInfo::Outputs(std::vector<std::string>&& outputs) {
   outputs_ = std::forward<std::vector<std::string>>(outputs);
   return *this;
 }
+OpMetaInfo& OpMetaInfo::Attrs(std::vector<std::string>&& attrs) {
+  attrs_ = std::forward<std::vector<std::string>>(attrs);
+  return *this;
+}
 OpMetaInfo& OpMetaInfo::SetKernelFn(KernelFunc&& func) {
   kernel_fn_ = std::forward<KernelFunc>(func);
   return *this;
@@ -78,17 +82,22 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetKernelFn(KernelFunc func) {
   info_ptr_->SetKernelFn(std::forward<KernelFunc>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
   info_ptr_->SetInferShapeFn(std::forward<InferShapeFunc>(func));
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc&& func) {
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }
@@ -114,10 +123,17 @@ void LoadCustomOperatorLib(const std::string& dso_name) {
 }
 }  // namespace paddle
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
+#ifndef _WIN32
+// C-API to get global OpMetaInfoMap.
 paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
   return paddle::OpMetaInfoMap::Instance();
 }
+#endif
 
+#ifdef __cplusplus
 }  // end extern "C"
+#endif
