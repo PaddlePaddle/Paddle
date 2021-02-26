@@ -49,6 +49,7 @@ else()
   SET(XPU_API_INC_DIR   "${XPU_SDK_ROOT}/XTDK/include/")
   SET(XPU_API_LIB "${XPU_SDK_ROOT}/XTDK/shlib/libxpuapi.so")
   SET(XPU_RT_LIB "${XPU_SDK_ROOT}/XTDK/runtime/shlib/libxpurt.so")
+  SET(XPU_LIB_DIR "${XPU_SDK_ROOT}/XTDK/shlib/")
 endif()
 
 INCLUDE_DIRECTORIES(${XPU_API_INC_DIR})
