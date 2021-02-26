@@ -299,6 +299,16 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL(
+    coalesce_tensor,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
+                                plat::float16>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
+#endif
+
 REGISTER_OP_VERSION(coalesce_tensor)
     .AddCheckpoint(
         R"ROC(

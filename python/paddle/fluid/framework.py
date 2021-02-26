@@ -248,8 +248,9 @@ def _fake_interface_only_(func):
         raise AssertionError(
             "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
             "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static" %
-            func.__name__)
+            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
@@ -1865,6 +1866,8 @@ class Variable(object):
         axes = []
         starts = []
         ends = []
+        steps = []
+
         max_integer = sys.maxsize
 
         def replace_ellipsis(item):
@@ -1876,7 +1879,12 @@ class Variable(object):
             #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
 
             item = list(item)
-            ell_count = item.count(Ellipsis)
+
+            # Remove Variable to skip bug when counting Ellipsis
+            item_remove_var = [
+                ele for ele in item if not isinstance(ele, Variable)
+            ]
+            ell_count = item_remove_var.count(Ellipsis)
             if ell_count == 0:
                 return item
             elif ell_count > 1:
@@ -1904,23 +1912,47 @@ class Variable(object):
                 if start is None and end is None and step is None:
                     continue
 
-                start = 0 if start is None else start
                 step = 1 if step is None else step
 
-                # TODO: support cases when step != 1
-                if step != 1:
+                # TODO: support cases when step < 1
+                if not isinstance(step, Variable) and step == 0:
                     raise ValueError(
-                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "When assign a value to a paddle.Tensor, step can not be 0, "
                         "but received step is {}.".format(step))
-                end = max_integer if end is None else end
+
+                if isinstance(step, Variable) and (start is None or
+                                                   end is None):
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, it's not supported that "
+                        "the start or end is None when the type of step is paddle.Tensor."
+                    )
+
+                if start is None:
+                    start = 0 if step > 0 else max_integer
+
+                if end is None:
+                    end = max_integer if step > 0 else (0 - max_integer)
             else:
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
+                step = 1
             axes.append(dim)
             starts.append(start)
             ends.append(end)
+            steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+
+        from .layers import utils
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            del attrs['starts']
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            del attrs['ends']
+        if utils._contain_var(steps):
+            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+            del attrs['steps']
 
         # 2. Parse value
         dtype = self.dtype
@@ -1967,6 +1999,7 @@ class Variable(object):
 
         self.block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+
         return self
 
 

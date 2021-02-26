@@ -153,7 +153,7 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
-    VLOG(0) << "HeterServer Stop()";
+    VLOG(3) << "HeterServer Stop()";
     std::unique_lock<std::mutex> lock(mutex_);
     stoped_ = true;
     cv_.notify_all();

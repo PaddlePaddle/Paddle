@@ -206,9 +206,19 @@ class PassRegistry {
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    PADDLE_ENFORCE_EQ(Has(pass_type), true,
-                      platform::errors::InvalidArgument(
-                          "Pass %s has not been registered.", pass_type));
+    if (pass_type == "tensorrt_subgraph_pass") {
+      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+                        platform::errors::InvalidArgument(
+                            "Pass %s has not been registered. Please "
+                            "use the paddle inference library "
+                            "compiled with tensorrt or disable "
+                            "the tensorrt engine in inference configuration! ",
+                            pass_type));
+    } else {
+      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+                        platform::errors::InvalidArgument(
+                            "Pass %s has not been registered.", pass_type));
+    }
     return map_.at(pass_type)();
   }
 

@@ -73,7 +73,7 @@ void GroupConcatSplit(Place place, size_t size) {
     }
 
     if (std::is_same<Place, platform::CUDAPlace>::value) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       paddle::memory::Copy(place, data, cpu_place, value.data(),
                            sizeof(T) * value.size(), 0);
 #endif
@@ -98,6 +98,8 @@ void GroupConcatSplit(Place place, size_t size) {
     tensor->Resize(framework::make_ddim({group.all_length_}))
         .mutable_data(place, group.dtype_);
     group.ConcatTensors(*dev_ctx);
+
+    group.DivNRanks(*dev_ctx, 1);
 
     framework::Tensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
@@ -131,7 +133,7 @@ void GroupConcatSplit(Place place, size_t size) {
   }
 }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 TEST(TestGroup, TestConcatSplit) {
   platform::CUDAPlace cuda_place(0);
   platform::CPUPlace cpu_place;
