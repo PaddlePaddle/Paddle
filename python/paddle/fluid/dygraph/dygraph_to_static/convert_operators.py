@@ -302,9 +302,16 @@ def convert_var_shape_simple(x):
         return x.shape
 
 
-def eval_if_exist_else_none(name):
+def eval_if_exist_else_none(name, local_symbol_table):
+    """
+    Args:
+        name([str]): Expression passed into `eval`.
+        local_symbol_table(dict): Specified from `locals()`. DO NOT use `globals()`,
+                                  it has a high priority and will hide way variabels
+                                  from `locals()`.
+    """
     try:
-        return eval(name)
+        return eval(name, local_symbol_table)
     except:
         return None
 

@@ -58,7 +58,8 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}')".format(
+    # Note(Aurelius84): Add `locals()` to help `eval` to locate the variable correctly.
+    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', locals())".format(
         api_shape_name)
     args = [attr_shape_name, eval_exist_func]
 
