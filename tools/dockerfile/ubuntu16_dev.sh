@@ -44,29 +44,32 @@ function ref_whl(){
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
       ref_version=.post101
-  elif [[ ${ref_CUDA_MAJOR} == "10.2" ]];then
+  elif [[ ${ref_CUDA_MAJOR} == "10.2" && ${PADDLE_VERSION} == "develop" ]];then
+      ref_version=.post102
+  elif [[ ${ref_CUDA_MAJOR} == "10.2" && ${PADDLE_VERSION} != "develop" ]];then
       ref_version=""
   elif [[ ${ref_CUDA_MAJOR} == "9" ]];then
       ref_version=.post90
   fi
+
+  ref_dev_cpu=2.1.0.dev0
+  ref_dev_gpu=2.1.0_dev0
   
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
   
-  if [[ ${PADDLE_VERSION} == "0.0.0" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp36-cp36m-linux_x86_64.whl
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp37-cp37m-linux_x86_64.whl
-    ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
-  else
-    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp36-cp36m-linux_x86_64.whl
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp37-cp37m-linux_x86_64.whl
-    ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
-  fi
-  
-  if [[ ${PADDLE_VERSION} != "0.0.0" && ${WITH_GPU} == "ON" ]]; then
+  if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
+    ref_paddle_whl=paddlepaddle${install_gpu}-${ref_dev_gpu}${ref_version}-cp27-cp27mu-linux_x86_64.whl
+    ref_paddle3_whl=paddlepaddle${install_gpu}-${ref_dev_gpu}${ref_version}-cp35-cp35m-linux_x86_64.whl
+    ref_paddle36_whl=paddlepaddle${install_gpu}-${ref_dev_gpu}${ref_version}-cp36-cp36m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev_gpu}${ref_version}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev_gpu}${ref_version}-cp38-cp38-linux_x86_64.whl
+  elif [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} != "ON" ]]; then
+    ref_paddle_whl=paddlepaddle${install_gpu}-${ref_dev_cpu}-cp27-cp27mu-linux_x86_64.whl
+    ref_paddle3_whl=paddlepaddle${install_gpu}-${ref_dev_cpu}-cp35-cp35m-linux_x86_64.whl
+    ref_paddle36_whl=paddlepaddle${install_gpu}-${ref_dev_cpu}-cp36-cp36m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev_cpu}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev_cpu}-cp38-cp38-linux_x86_64.whl
+  elif [[ ${PADDLE_VERSION} != "develop" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp27-cp27mu-linux_x86_64.whl
     ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp36-cp36m-linux_x86_64.whl
@@ -121,7 +124,7 @@ function main(){
   make_dockerfile
   install_gcc
   ref_whl
-  install_whl
+  
 }
 
 main $@
