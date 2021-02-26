@@ -20,11 +20,11 @@
 #include "paddle/fluid/distributed/common/registerer.h"
 
 #include "paddle/fluid/distributed/table/common_dense_table.h"
-#include "paddle/fluid/distributed/table/common_graph_table.h"
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/tensor_accessor.h"
 #include "paddle/fluid/distributed/table/tensor_table.h"
+#include "paddle/fluid/distributed/table/common_graph_table.h"
 
 namespace paddle {
 namespace distributed {

@@ -21,12 +21,12 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/table/accessor.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 
 namespace paddle {
 namespace distributed {
@@ -88,16 +88,12 @@ class Table {
   }
 
   // only for graph table
-  virtual int32_t pull_graph_list(uint64_t id, GraphNodeType type, int start,
-                                  int total_size, char *&buffer,
-                                  int &actual_size) {
+  virtual int32_t pull_graph_list(uint64_t id, GraphNodeType type, int start, int total_size, char* &buffer,int &actual_size){
     return 0;
   }
   // only for graph table
-  virtual int32_t random_sample(uint64_t node_id, GraphNodeType type,
-                                int sampe_size, char *&buffer,
-                                int &actual_size) {
-    return 0;
+  virtual int32_t random_sample(uint64_t node_id, GraphNodeType type,int sampe_size, char* &buffer, int &actual_size){
+     return 0;
   }
   virtual int32_t pour() { return 0; }
 

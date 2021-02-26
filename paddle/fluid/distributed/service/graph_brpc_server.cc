@@ -1,28 +1,14 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "paddle/fluid/distributed/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 
 #include <thread>  // NOLINT
-#include "Eigen/Dense"
-#include "butil/endpoint.h"
 #include "iomanip"
-#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
+#include "Eigen/Dense"
+#include "butil/endpoint.h"
 namespace paddle {
 namespace distributed {
 
@@ -90,15 +76,13 @@ int32_t GraphBrpcService::initialize() {
   _service_handler_map[PS_LOAD_ONE_TABLE] = &GraphBrpcService::load_one_table;
   _service_handler_map[PS_LOAD_ALL_TABLE] = &GraphBrpcService::load_all_table;
 
-  _service_handler_map[PS_PRINT_TABLE_STAT] =
-      &GraphBrpcService::print_table_stat;
+  _service_handler_map[PS_PRINT_TABLE_STAT] = &GraphBrpcService::print_table_stat;
   _service_handler_map[PS_BARRIER] = &GraphBrpcService::barrier;
   _service_handler_map[PS_START_PROFILER] = &GraphBrpcService::start_profiler;
   _service_handler_map[PS_STOP_PROFILER] = &GraphBrpcService::stop_profiler;
 
-  _service_handler_map[PS_PULL_GRAPH_LIST] = &GraphBrpcService::pull_graph_list;
-  _service_handler_map[PS_GRAPH_SAMPLE] =
-      &GraphBrpcService::graph_random_sample;
+    _service_handler_map[PS_PULL_GRAPH_LIST] =&GraphBrpcService::pull_graph_list;
+  _service_handler_map[PS_GRAPH_SAMPLE] = &GraphBrpcService::graph_random_sample;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -131,9 +115,9 @@ int32_t GraphBrpcService::initialize_shard_info() {
 }
 
 void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
-                               const PsRequestMessage *request,
-                               PsResponseMessage *response,
-                               google::protobuf::Closure *done) {
+                            const PsRequestMessage *request,
+                            PsResponseMessage *response,
+                            google::protobuf::Closure *done) {
   brpc::ClosureGuard done_guard(done);
   std::string log_label("ReceiveCmd-");
   if (!request->has_table_id()) {
@@ -161,9 +145,11 @@ void GraphBrpcService::service(google::protobuf::RpcController *cntl_base,
   }
 }
 
+
+
 int32_t GraphBrpcService::barrier(Table *table, const PsRequestMessage &request,
-                                  PsResponseMessage &response,
-                                  brpc::Controller *cntl) {
+                               PsResponseMessage &response,
+                               brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
 
   if (request.params_size() < 1) {
@@ -179,10 +165,12 @@ int32_t GraphBrpcService::barrier(Table *table, const PsRequestMessage &request,
   return 0;
 }
 
+
+
 int32_t GraphBrpcService::print_table_stat(Table *table,
-                                           const PsRequestMessage &request,
-                                           PsResponseMessage &response,
-                                           brpc::Controller *cntl) {
+                                        const PsRequestMessage &request,
+                                        PsResponseMessage &response,
+                                        brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   std::pair<int64_t, int64_t> ret = table->print_table_stat();
   paddle::framework::BinaryArchive ar;
@@ -194,9 +182,9 @@ int32_t GraphBrpcService::print_table_stat(Table *table,
 }
 
 int32_t GraphBrpcService::load_one_table(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
+                                      const PsRequestMessage &request,
+                                      PsResponseMessage &response,
+                                      brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
@@ -212,9 +200,9 @@ int32_t GraphBrpcService::load_one_table(Table *table,
 }
 
 int32_t GraphBrpcService::load_all_table(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
+                                      const PsRequestMessage &request,
+                                      PsResponseMessage &response,
+                                      brpc::Controller *cntl) {
   auto &table_map = *(_server->table());
   for (auto &itr : table_map) {
     if (load_one_table(itr.second.get(), request, response, cntl) != 0) {
@@ -225,10 +213,13 @@ int32_t GraphBrpcService::load_all_table(Table *table,
   return 0;
 }
 
+
+
+
 int32_t GraphBrpcService::stop_server(Table *table,
-                                      const PsRequestMessage &request,
-                                      PsResponseMessage &response,
-                                      brpc::Controller *cntl) {
+                                   const PsRequestMessage &request,
+                                   PsResponseMessage &response,
+                                   brpc::Controller *cntl) {
   auto *p_server = _server;
   std::thread t_stop([p_server]() {
     p_server->stop();
@@ -239,48 +230,46 @@ int32_t GraphBrpcService::stop_server(Table *table,
 }
 
 int32_t GraphBrpcService::stop_profiler(Table *table,
-                                        const PsRequestMessage &request,
-                                        PsResponseMessage &response,
-                                        brpc::Controller *cntl) {
+                                     const PsRequestMessage &request,
+                                     PsResponseMessage &response,
+                                     brpc::Controller *cntl) {
   platform::DisableProfiler(platform::EventSortingKey::kDefault,
                             string::Sprintf("server_%s_profile", _rank));
   return 0;
 }
 
 int32_t GraphBrpcService::start_profiler(Table *table,
-                                         const PsRequestMessage &request,
-                                         PsResponseMessage &response,
-                                         brpc::Controller *cntl) {
+                                      const PsRequestMessage &request,
+                                      PsResponseMessage &response,
+                                      brpc::Controller *cntl) {
   platform::EnableProfiler(platform::ProfilerState::kCPU);
   return 0;
 }
 
-int32_t GraphBrpcService::pull_graph_list(Table *table,
-                                          const PsRequestMessage &request,
-                                          PsResponseMessage &response,
-                                          brpc::Controller *cntl) {
+int32_t GraphBrpcService::pull_graph_list(Table *table, const PsRequestMessage &request,
+                           PsResponseMessage &response, brpc::Controller *cntl){
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
-    set_response_code(response, -1,
-                      "pull_graph_list request requires at least 2 arguments");
+    set_response_code(
+        response, -1,
+        "pull_graph_list request requires at least 2 arguments");
     return 0;
   }
   uint64_t node_id = *(uint64_t *)(request.params(0).c_str());
-  std::string type_str = request.params(1);
-  GraphNodeType type = GraphNode::get_graph_node_type(type_str);
+  std::string type_str = request.params(1); 
+  GraphNodeType type = GraphNode::get_graph_node_type(type_str); 
   int start = *(int *)(request.params(2).c_str());
   int size = *(int *)(request.params(3).c_str());
   std::vector<float> res_data;
   char *buffer;
   int actual_size;
-  table->pull_graph_list(node_id, type, start, size, buffer, actual_size);
-  cntl->response_attachment().append(buffer, actual_size);
+  table->pull_graph_list(node_id, type, start, size, buffer,actual_size);
+  cntl->response_attachment().append(buffer,
+                                     actual_size);
   return 0;
 }
-int32_t GraphBrpcService::graph_random_sample(Table *table,
-                                              const PsRequestMessage &request,
-                                              PsResponseMessage &response,
-                                              brpc::Controller *cntl) {
+int32_t GraphBrpcService::graph_random_sample(Table *table, const PsRequestMessage &request,
+                           PsResponseMessage &response, brpc::Controller *cntl){
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 3) {
     set_response_code(
@@ -290,14 +279,17 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
   }
   uint64_t node_id = *(uint64_t *)(request.params(0).c_str());
   std::string type_str = request.params(1);
-  int sample_size = *(uint64_t *)(request.params(2).c_str());
+  int sample_size = *(uint64_t *)(request.params(2).c_str());  
   GraphNodeType type = GraphNode::get_graph_node_type(type_str);
   char *buffer;
   int actual_size;
-  table->random_sample(node_id, type, sample_size, buffer, actual_size);
-  cntl->response_attachment().append(buffer, actual_size);
-  return 0;
-}
+  table->random_sample(node_id,type,sample_size,buffer, actual_size);
+  cntl->response_attachment().append(buffer,
+                                     actual_size);
+  return 0;                             
+                           }
+
+
 
 }  // namespace distributed
 }  // namespace paddle
