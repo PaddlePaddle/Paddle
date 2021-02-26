@@ -140,24 +140,18 @@ inline int getReduceNum(const framework::Tensor& input,
                         const framework::Tensor* output,
                         const std::string data_format,
                         std::vector<int>* reduce_dim) {
+  // data_format only can be NCHW
   bool channel_last = (data_format == "NHWC");
-  const int input_height = channel_last ? input.dims()[1] : input.dims()[2];
-  const int input_width = channel_last ? input.dims()[2] : input.dims()[3];
-
-  const int output_height =
-      channel_last ? output->dims()[1] : output->dims()[2];
-  const int output_width = channel_last ? output->dims()[2] : output->dims()[3];
-  // data_format can be NCHW , NDHWC, NHWC
-  bool is_reduce = false;
-  if ((output_height == 1) && (output_width == 1) && (!channel_last)) {
+  if (channel_last) {
+    return 0;
+  }
+  int reduce_num = 0;
+  const int output_height = output->dims()[2];
+  const int output_width = output->dims()[3];
+  if ((output_height == 1) && (output_width == 1)) {
     reduce_dim->push_back(2);
     reduce_dim->push_back(3);
-    is_reduce = true;
-  }
-  // reduce
-  int reduce_num = 0;
-  if (is_reduce) {
-    reduce_num = input_height * input_width;
+    reduce_num = input.dims()[2] * input.dims()[3];
   }
   return reduce_num;
 }
