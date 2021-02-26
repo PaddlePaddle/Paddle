@@ -273,8 +273,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.main_program = loss.block.program
         self.inner_parallelism = loss.block.program._pipeline_opt[
             'inner_parallelism']
-        assert self.nranks % (self.inner_parallelism *
-                              self.tensor_model_parallel) == 0
+        assert self.nranks % (self.pp_num * self.tensor_model_parallel) == 0
 
         pipeline_helper = PipelineHelper(self.role_maker)
         pipeline_helper.update_startup_program(
@@ -283,7 +282,8 @@ class PipelineOptimizer(MetaOptimizerBase):
         print("Done startup program")
 
         if self.pp_num * self.tensor_model_parallel != self.nranks:
-            pipeline_num = self.nranks // self.inner_parallelism
+            pipeline_num = self.nranks // (self.pp_num *
+                                           self.tensor_model_parallel)
             self._transpile_main_program(loss, pipeline_num,
                                          self.inner_parallelism)
         return optimize_ops, params_grads
