@@ -26,14 +26,6 @@ void assign_cpu_kernel(const data_t* x_data,
   }
 }
 
-std::vector<std::vector<int64_t>> InferShape(std::vector<int64_t> x_shape) {
-  return {x_shape};
-}
-
-std::vector<paddle::DataType> InferDType(paddle::DataType x_dtype) {
-  return {x_dtype};
-}
-
 std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
   out.reshape(x.shape());
@@ -47,12 +39,10 @@ std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
   return {out};
 }
 
-PD_BUILD_OP("dispatch_test_integer")
+PD_BUILD_OP(dispatch_test_integer)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestInterger))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+    .SetKernelFn(PD_KERNEL(DispatchTestInterger));
 
 std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
     const paddle::Tensor& x) {
@@ -68,9 +58,7 @@ std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
   return {out};
 }
 
-PD_BUILD_OP("dispatch_test_float_and_integer")
+PD_BUILD_OP(dispatch_test_float_and_integer)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndInteger))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType));
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndInteger));

@@ -54,7 +54,7 @@ class Array {
   }
 
   HOSTDEVICE inline T &at(size_t i) {
-#ifndef __CUDA_ARCH__
+#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
     PADDLE_ENFORCE_LT(
         i, N, platform::errors::OutOfRange("Array index out of bounds."));
 #endif
@@ -62,7 +62,7 @@ class Array {
   }
 
   HOSTDEVICE inline const T &at(size_t i) const {
-#ifndef __CUDA_ARCH__
+#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
     PADDLE_ENFORCE_LT(
         i, N, platform::errors::OutOfRange("Array index out of bounds."));
 #endif
@@ -103,7 +103,12 @@ class Array<T, 0> {
   HOSTDEVICE inline T *GetMutable() { return nullptr; }
 
   HOSTDEVICE inline T &operator[](size_t) {
-#ifdef __CUDA_ARCH__
+#if defined(__HIPCC__)
+    // HIP will have compile error, if use "obj()"
+    // function declared in block scope cannot have 'static' storage class
+    static T obj{};
+    return obj;
+#elif defined(__CUDA_ARCH__)
     static T obj();
     return obj;
 #else
@@ -112,7 +117,12 @@ class Array<T, 0> {
   }
 
   HOSTDEVICE inline const T &operator[](size_t) const {
-#ifdef __CUDA_ARCH__
+#if defined(__HIPCC__)
+    // HIP will have compile error, if use "obj()"
+    // function declared in block scope cannot have 'static' storage class
+    static const T obj{};
+    return obj;
+#elif defined(__CUDA_ARCH__)
     static const T obj();
     return obj;
 #else

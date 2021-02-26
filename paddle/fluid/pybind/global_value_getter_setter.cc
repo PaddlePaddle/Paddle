@@ -66,7 +66,7 @@ DECLARE_bool(benchmark);
 DECLARE_int32(inner_op_parallelism);
 DECLARE_int32(max_inplace_grad_add);
 DECLARE_string(tracer_profile_fname);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cudnn
 DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
@@ -354,7 +354,7 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
       FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
       FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
