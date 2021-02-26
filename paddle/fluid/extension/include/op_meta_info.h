@@ -47,6 +47,60 @@ using Tensor = paddle::Tensor;
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
 
+#if !defined(_WIN32)
+#define PD_UNLIKELY(expr) (__builtin_expect(static_cast<bool>(expr), 0))
+#define PD_LIKELY(expr) (__builtin_expect(static_cast<bool>(expr), 1))
+#else
+#define PD_UNLIKELY(expr) (expr)
+#define PD_LIKELY(expr) (expr)
+#endif
+
+struct PD_Exception : public std::exception {
+ public:
+  template <typename... Args>
+  explicit PD_Exception(const std::string& msg, const char* file, int line,
+                        const char* default_msg) {
+    std::ostringstream sout;
+    if (msg.empty()) {
+      sout << default_msg << " at " << file << ":" << line;
+    } else {
+      sout << msg << " at " << file << ":" << line;
+    }
+    err_msg_ = sout.str();
+  }
+
+  const char* what() const noexcept override { return err_msg_.c_str(); }
+
+ private:
+  std::string err_msg_;
+};
+
+class ErrorMessage {
+ public:
+  template <typename... Args>
+  explicit ErrorMessage(const Args&... args) {
+    build_string(args...);
+  }
+
+  void build_string() { oss << ""; }
+
+  template <typename T>
+  void build_string(const T& t) {
+    oss << t;
+  }
+
+  template <typename T, typename... Args>
+  void build_string(const T& t, const Args&... args) {
+    build_string(t);
+    build_string(args...);
+  }
+
+  std::string to_string() { return oss.str(); }
+
+ private:
+  std::ostringstream oss;
+};
+
 #if defined _WIN32
 #define HANDLE_THE_ERROR try {
 #define END_HANDLE_THE_ERROR            \
@@ -60,11 +114,25 @@ using Tensor = paddle::Tensor;
 #define END_HANDLE_THE_ERROR
 #endif
 
-#define PD_THROW(err_msg)              \
-  do {                                 \
-    HANDLE_THE_ERROR                   \
-    throw std::runtime_error(err_msg); \
-    END_HANDLE_THE_ERROR               \
+#define PD_CHECK(COND, ...)                                               \
+  do {                                                                    \
+    if (PD_UNLIKELY(!(COND))) {                                           \
+      HANDLE_THE_ERROR                                                    \
+      auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
+      throw ::paddle::PD_Exception(__message__, __FILE__, __LINE__,       \
+                                   "Expected " #COND                      \
+                                   ", but it's not satisfied.");          \
+      END_HANDLE_THE_ERROR                                                \
+    }                                                                     \
+  } while (0)
+
+#define PD_THROW(...)                                                   \
+  do {                                                                  \
+    HANDLE_THE_ERROR                                                    \
+    auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
+    throw ::paddle::PD_Exception(__message__, __FILE__, __LINE__,       \
+                                 "An error occured.");                  \
+    END_HANDLE_THE_ERROR                                                \
   } while (0)
 
 #define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
