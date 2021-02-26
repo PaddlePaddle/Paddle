@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#endif
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -122,6 +125,19 @@ class CustomTensorUtils {
                                           pc));
     }
     return PlaceType::kUNK;
+  }
+
+  static void SetTensorCurrentStream(paddle::Tensor* src,
+                                     const platform::Place& pc) {
+    if (platform::is_gpu_place(pc)) {
+#ifdef PADDLE_WITH_CUDA
+      auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(pc));
+      src->stream_.SetStream(reinterpret_cast<void*>(dev_ctx->stream()));
+#endif
+    } else {
+      return;
+    }
   }
 };
 
