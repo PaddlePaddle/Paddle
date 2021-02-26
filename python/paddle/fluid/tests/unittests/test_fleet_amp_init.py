@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-import unittest
 import paddle.nn.functional as F
-import numpy as np
 
 paddle.enable_static()
 
