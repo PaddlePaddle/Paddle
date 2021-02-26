@@ -62,3 +62,4 @@ PD_BUILD_OP(dispatch_test_float_and_integer)
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(DispatchTestFloatAndInteger));
+
