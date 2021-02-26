@@ -143,6 +143,13 @@ void test_transpose(f::Scope* scope, const p::DeviceContext& ctx, int size) {
   printf("test_transpose pass\n");
 }
 
+TEST(matmul_v2, NPU_fp16_transpose) {
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  int size=32;
+  test_transpose<p::float16>(&scope, ctx, size);
+}
+
 TEST(matmul_v2, NPU_fp16) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
@@ -164,9 +171,3 @@ TEST(matmul_v2, NPU_fp16) {
 //}
 
 
-//TEST(matmul_v2, NPU_fp16) {
-//  f::Scope scope;
-//  p::NPUDeviceContext ctx(p::NPUPlace(0));
-//  int size=32;
-//  test_transpose<p::float16>(&scope, ctx, size);
-//}

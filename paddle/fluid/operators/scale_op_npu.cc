@@ -33,7 +33,8 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     float _power = 1.0;
     if (bias_after_scale){
-      framework::AttributeMap attr_input= {{"power", _power}, {"scale", scale}, {"shift", bias}};
+      framework::AttributeMap attr_input =
+            {{"power", _power}, {"scale", scale}, {"shift", bias}};
       out->mutable_data<T>(ctx.GetPlace());
       auto runner = NpuOpRunner("Power", {*x}, {*out}, attr_input);
 
@@ -44,7 +45,6 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 
