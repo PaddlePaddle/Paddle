@@ -352,7 +352,10 @@ def terminate_local_procs(procs):
 def get_host_name_ip():
     try:
         host_name = socket.gethostname()
-        host_ip = socket.gethostbyname(host_name)
+        #host_ip = socket.gethostbyname(host_name)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        host_ip = s.getsockname()[0]
         return host_name, host_ip
     except:
         return None

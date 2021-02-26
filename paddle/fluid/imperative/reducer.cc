@@ -636,7 +636,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
-    VLOG(3) << "It will adjust the order of group in next batch automatically";
+    VLOG(0) << "It will adjust the order of group in next batch automatically";
     return;
   }
 
@@ -654,17 +654,17 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
     if (group.is_sparse_) {
       if (group.sparse_contents_ != nullptr) {
-        VLOG(3) << "sparse group [" << next_group_
+        VLOG(0) << "sparse group [" << next_group_
                 << "] start allreduce in ring[" << run_order << "]";
         group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
         parallel_ctx_->AllReduceByStream(
             *group.sparse_contents_, group.sparse_contents_, run_order, false);
       } else {
-        VLOG(3) << "The sparse group[" << next_group_
+        VLOG(0) << "The sparse group[" << next_group_
                 << "] has no var to allreduce";
       }
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+      VLOG(0) << "dense group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";
       // Select common commstream to concat tensors
       // group.dense_tensors ---> group.dense_contents_
@@ -677,6 +677,10 @@ void Reducer::MarkGroupReady(size_t group_index) {
 // communication.
 #ifdef PADDLE_WITH_XPU_BKCL
       if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+        VLOG(0) << "Wait Comm init in XPU device id:"
+                << BOOST_GET_CONST(platform::XPUPlace,
+                                   group.dense_tensors_[0].place())
+                       .device;
         parallel_ctx_->WaitComm(run_order);
       }
 #endif
@@ -729,7 +733,7 @@ void Reducer::FinalizeBackward() {
     InitializeGroups(group_indices_);
   }
 
-  VLOG(3) << "In the batch, Reducer is finished...";
+  VLOG(0) << "In the batch, Reducer is finished...";
 }
 
 // According to the size of each parameter, it is allocated to different groups.
