@@ -18,6 +18,7 @@ import six
 import sys
 import json
 import glob
+import hashlib
 import logging
 import collections
 import textwrap
@@ -238,26 +239,35 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        hash_value = 10
+        from paddle.fluid.layers.utils import flatten
+
+        md5 = hashlib.md5()
         for field in version_field._fields:
             elem = getattr(version_field, field)
             if not elem: continue
-            assert isinstance(elem, (list, tuple))
-            hash_value = combine_hash(hash_value, tuple(elem))
+            if isinstance(elem, (list, tuple, dict)):
+                flat_elem = flatten(elem)
+                md5 = combine_hash(md5, tuple(flat_elem))
+            else:
+                raise RuntimeError(
+                    "Support types with list, tuple and dict, but received {} with {}.".
+                    format(type(elem), elem))
 
-        return hash_value
+        return md5.hexdigest()
 
     @property
     def details(self):
         return self.version_field._asdict()
 
 
-def combine_hash(seed, value):
+def combine_hash(md5, value):
     """
     Return new hash value.
-    See https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
+    DO NOT use `hash()` beacuse it doesn't generate stable value between different process.
+    See https://stackoverflow.com/questions/27522626/hash-function-in-python-3-3-returns-different-results-between-sessions
     """
-    return seed ^ (hash(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2))
+    md5.update(repr(value).encode())
+    return md5
 
 
 def clean_object_if_change_cflags(so_path, extension):
