@@ -51,8 +51,8 @@ echo "begin test use ascend npu"
 distributed_args="--run_mode=collective --log_dir=testlog"
 python -m paddle.distributed.fleet.launch ${distributed_args} ascend_multi_process_collective.py fleetlaunchascend
 
-str1="selected_accelerators:0 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171 trainers_num:2 current_endpoint:127.0.0.1:6170 trainer_id:0 device_ids:0,1 device_id:0"
-str2="selected_accelerators:1 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171 trainers_num:2 current_endpoint:127.0.0.1:6171 trainer_id:1 device_ids:0,1 device_id:1"
+str1="selected_accelerators:0 selected_npus:0 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171 trainers_num:2 current_endpoint:127.0.0.1:6170 trainer_id:0 device_ids:0,1 device_id:0"
+str2="selected_accelerators:1 selected_npus:1 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171 trainers_num:2 current_endpoint:127.0.0.1:6171 trainer_id:1 device_ids:0,1 device_id:1"
 file_0="multi_process_fleetlaunchascend.check_0.log"
 file_1="multi_process_fleetlaunchascend.check_1.log"
 
