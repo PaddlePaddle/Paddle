@@ -14,7 +14,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/extension/include/all.h"
+#include "paddle/fluid/extension/include/ext_all.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
