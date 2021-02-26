@@ -15,6 +15,7 @@
 import numpy as np
 import paddle
 import unittest
+from paddle.jit.dy2static.convert_operators import eval_if_exist_else_none
 
 
 class CallNotExist(paddle.nn.Layer):
@@ -187,6 +188,62 @@ class TestChooseShapeAttrOrApi(unittest.TestCase):
             paddle.jit.dy2static.choose_shape_attr_or_api([-1],
                                                           paddle.shape(x)),
             paddle.shape(x))
+
+
+class TestEvaIfExistElseNone(unittest.TestCase):
+    def test_locals(self):
+        x_shape = [1, 2, 3]
+        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), x_shape)
+
+    def test_globals(self):
+        x_shape = [1, 2, 3]
+
+        def foo():
+            x_shape = [2, 3, 4]
+            self.assertEqual(
+                eval_if_exist_else_none('x_shape', locals()), [2, 3, 4])
+
+        foo()
+
+    def test_invisible_of_func(self):
+        x_shape = [1, 2, 3]
+
+        def foo():
+            x_shape = [2, 3, 4]
+            return x_shape
+
+        self.assertEqual(
+            eval_if_exist_else_none('x_shape', locals()), [1, 2, 3])
+
+    def test_none(self):
+        def foo():
+            x_shape = [2, 3, 4]
+            return x_shape
+
+        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), None)
+
+
+class ShapeLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(ShapeLayer, self).__init__()
+
+    @paddle.jit.to_static(input_spec=[paddle.static.InputSpec(shape=[None, 1])])
+    def forward(self, x):
+        x = paddle.reshape(x, [-1, x.shape[1]])
+        bs = x.shape[0]  # -1
+
+        # for trigger choos_shape_attr_or_api
+        out = paddle.zeros([bs, 1], dtype='float32')
+        return out
+
+
+class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
+    def test_tensor_shape(self):
+        x = paddle.zeros(shape=[4, 1], dtype='float32')
+        net = ShapeLayer()
+        out = net(x)
+
+        self.assertTrue(np.array_equal(out.numpy(), x.numpy()))
 
 
 if __name__ == '__main__':
