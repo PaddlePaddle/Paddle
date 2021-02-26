@@ -70,26 +70,27 @@ class TestPowFp16(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.power(x, 3)
+        x = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
+        out = np.power(x, 2)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'factor': 3.0}
+        self.attrs = {'factor': 2.0}
         self.outputs = {'Out': out}
 
     def set_npu(self):
         self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSubtractNet(unittest.TestCase):
+class TestPowNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -126,6 +127,7 @@ class TestSubtractNet(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
+        print("Start run on {}".format(place))
         for epoch in range(100):
 
             pred_res, loss_res = exe.run(
