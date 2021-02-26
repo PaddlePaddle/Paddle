@@ -431,7 +431,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
   std::unique_ptr<GarbageCollector> gc;
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
     if (platform::is_gpu_place(place_)) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
             BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));

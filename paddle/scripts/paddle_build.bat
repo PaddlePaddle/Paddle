@@ -28,6 +28,7 @@ if not exist %cache_dir%\tools (
 )
 taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
+taskkill /f /im python.exe  2>NUL
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
@@ -55,6 +56,7 @@ rem -------set cache build directory-----------
 rmdir build\python /s/q
 rmdir build\paddle_install_dir /s/q
 rmdir build\paddle_inference_install_dir /s/q
+rmdir build\paddle_inference_c_install_dir /s/q
 del build\CMakeCache.txt
 
 : set CI_SKIP_CPP_TEST if only *.py changed
@@ -77,7 +79,10 @@ setlocal enabledelayedexpansion
 git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
-    git diff HEAD last_pr --stat --name-only | findstr "cmake/[a-zA-Z]*\.cmake CMakeLists.txt"
+    git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
+    if %ERRORLEVEL% EQU 0 (
+        rmdir build /s/q
+    )
     git branch -D last_pr
     git branch last_pr
 ) else (
@@ -246,11 +251,15 @@ set /p day_before=< %cache_dir%\day.txt
 if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
-    if %day_now% EQU 25 (
+    if %day_now% EQU 21 (
         rmdir %cache_dir%\third_party_GPU/ /s/q
         rmdir %cache_dir%\third_party/ /s/q
     )
-    if %day_now% EQU 10 (
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party_GPU/ /s/q
+        rmdir %cache_dir%\third_party/ /s/q
+    )
+    if %day_now% EQU 01 (
         rmdir %cache_dir%\third_party_GPU/ /s/q
         rmdir %cache_dir%\third_party/ /s/q
     )
@@ -604,8 +613,7 @@ python -c "import shutil;shutil.make_archive('paddle_inference', 'zip', root_dir
 set /p libsize=< lib_size.txt
 for /F %%i in ("%libsize%") do (
     set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
+    echo "Windows Paddle_Inference ZIP Size: !libsize_m!M"
 )
 goto:eof
 

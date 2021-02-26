@@ -3,20 +3,25 @@ if(WITH_GPU)
     # 'test_custom_relu_op_setup/jit' compile .cc and .cu file
     py_test(test_custom_relu_op_setup SRCS test_custom_relu_op_setup.py)
     py_test(test_custom_relu_op_jit SRCS test_custom_relu_op_jit.py)
+    py_test(test_custom_relu_model SRCS test_custom_relu_model.py)
 
     # Compiling shared library will cost some time, but running process is very fast.
     set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
 endif()
 
 py_test(test_sysconfig SRCS test_sysconfig.py)
 
 # 'test_dispatch' compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
-set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 180)
+set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 120)
 
 py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
-set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 180)
+set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
+
+py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
 
 if(NOT LINUX)
     return()

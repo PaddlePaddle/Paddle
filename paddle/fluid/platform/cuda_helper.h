@@ -108,6 +108,8 @@ class CublasHandleHolder {
   }
 #endif
 
+  const cublasHandle_t& GetCublasHandle() const { return handle_; }
+
   ~CublasHandleHolder() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_HIP
     PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_destroy_handle(handle_));
@@ -117,7 +119,7 @@ class CublasHandleHolder {
   }
 
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }

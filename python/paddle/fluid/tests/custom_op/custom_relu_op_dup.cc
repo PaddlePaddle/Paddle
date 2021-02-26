@@ -25,19 +25,14 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
                                          const paddle::Tensor& out,
                                          const paddle::Tensor& grad_out);
 
-std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape);
-
-std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype);
-
 // Reuse codes in `custom_relu_op.cc/cu` to register another custom operator
 // to test jointly compile multi operators at same time.
-PD_BUILD_OP("custom_relu_dup")
+PD_BUILD_OP(custom_relu_dup)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(ReluForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))
-    .SetBackwardOp("relu3_grad")
+    .SetKernelFn(PD_KERNEL(ReluForward));
+
+PD_BUILD_GRAD_OP(custom_relu_dup)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward));
