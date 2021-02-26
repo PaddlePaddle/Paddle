@@ -43,8 +43,13 @@ class CCommInitOpNPU : public framework::OperatorBase {
     std::string rank_table_file = Attr<std::string>("rank_table_file");
     uint32_t rank_id = Attr<int>("rank_id");
     uint32_t device_id = Attr<int>("device_id");
-    platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file,
-      rank_id, device_id);
+
+    VLOG(3) << "begin init hccl, parameter is: "
+            << "rank_table_file " << rank_table_file 
+            << " rank_id " << rank_id
+            << " device_id " << device_id;
+    
+    platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file, rank_id, device_id);
   }
 };
 

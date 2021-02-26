@@ -165,7 +165,7 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id) const;
+  HCCLComm* CreateHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id);
 
   void CreateHCCLGroup(const std::string& group_name, uint32_t nranks, const std::vector<uint32_t>& rank_ids);
 
@@ -178,7 +178,7 @@ class HCCLCommContext {
   std::mutex comm_map_mutex_;
   std::unique_ptr<HCCLComm> comm_;
 
-  HCCLComm* AssignHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id) const;
+  HCCLComm* AssignHCCLComm(const std::string& config_file, uint32_t rank, uint32_t device_id);
 
   HCCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);

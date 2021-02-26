@@ -45,7 +45,7 @@ class HCCLCommImpl : public HCCLComm {
 };
 
 HCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
-                                          uint32_t rank, uint32_t device_id) const {
+                                          uint32_t rank, uint32_t device_id) {
 /*
   PADDLE_ENFORCE_NOT_NULL(rank_table_file,
                           platform::errors::InvalidArgument(
@@ -59,25 +59,30 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
       platform::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", device_id));
 */
-  platform::dynload::hcom_init(rank_table_file.c_str(), std::to_string(rank).c_str());
-
   auto* comm_wrapper = AssignHCCLComm(rank_table_file, rank, device_id);
+
+  platform::dynload::hcom_init(rank_table_file.c_str(), std::to_string(rank).c_str());
 
   VLOG(1) << "hccl communicator of rank " << rank << " has been created";
   return comm_wrapper;
 }
 
 HCCLComm* HCCLCommContext::AssignHCCLComm(const std::string& rank_table_file,
-		uint32_t rank, uint32_t device_id) const {
+		uint32_t rank, uint32_t device_id)  {
+
   std::unique_ptr<NPUDeviceContext> dev_ctx(
       new NPUDeviceContext(NPUPlace(device_id)));
 
+  VLOG(3) << "device_id" << device_id;
+  VLOG(3) << "dev_ctx->stream()" << dev_ctx->stream();  
+  
   HCCLCommImpl* c = new HCCLCommImpl;
   c->set_rank_table_file(rank_table_file);
   c->set_rank(rank);
   c->set_device_id(device_id);
   c->set_dev_ctx(std::move(dev_ctx));
-
+  // comm_ = c
+  comm_.reset(c);
   return c;
 }
 
