@@ -118,6 +118,7 @@ message AsyncConfig {
 message PipelineConfig {
   optional int32 micro_batch = 1 [ default = 1 ];
   optional int32 tensor_model_parallel = 2 [ default = 1 ];
+  optional int32 pp_num = 3 [ default = 1 ];
 }
 
 message DistributedStrategy {

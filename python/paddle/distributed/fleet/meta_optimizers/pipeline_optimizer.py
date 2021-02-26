@@ -30,13 +30,16 @@ class PipelineHelper(object):
     def update_startup_program(self,
                                startup_program=None,
                                inner_parallelism=None,
-                               tensor_model_parallel=1):
+                               tensor_model_parallel=1,
+                               pp_len=1):
         self.startup_program = startup_program
 
         nranks = self.role_maker._worker_num()
         rank = self.role_maker._worker_index()
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[rank]
+        self._init_communicator(self.startup_program, current_endpoint,
+                                endpoints, rank, 3, True)
 
         if tensor_model_parallel > 1:
             # Create ring 0 for all gpus within a model_parallel group
@@ -44,10 +47,11 @@ class PipelineHelper(object):
             mp_group = rank // tensor_model_parallel
             mp_endpoints = [
                 ep for idx, ep in enumerate(endpoints)
-                if idx // tensor_model_parallel == m_group
+                if idx // tensor_model_parallel == mp_group
             ]
+            print("mp_rank:{}, mp_endpoints: {}.".format(mp_rank, mp_endpoints))
             self._init_communicator(self.startup_program, current_endpoint,
-                                    mp_endpoints, mp_rank, 0, self.wait_port)
+                                    mp_endpoints, mp_rank, 0, False)
             self._broadcast_params(0)
             pp_rank = rank // tensor_model_parallel % pp_len
             pp_offset = rank // (tensor_model_parallel * pp_len) * (
@@ -58,8 +62,11 @@ class PipelineHelper(object):
             for i in range(pp_len):
                 pp_endpoints.append(endpoints[pp_group_start])
                 pp_group_start += tensor_model_parallel
+            print("pp_rank:{}, pp_endpoints: {}.".format(pp_rank, pp_endpoints))
             self._init_communicator(self.startup_program, current_endpoint,
-                                    pp_endpoints, pp_rank, 1, self.wait_port)
+                                    pp_endpoints, pp_rank, 1, False)
+            with open("start_after_%d" % rank, 'w') as f:
+                f.writelines(str(self.startup_program))
             if nranks == tensor_model_parallel * pp_len: return
             dp_rank = rank // (tensor_model_parallel * pp_len)
             pp_offset = rank // tensor_model_parallel * tensor_model_parallel
@@ -70,13 +77,10 @@ class PipelineHelper(object):
             for i in range(dp_len):
                 dp_endpoints.append(endpoints[dp_group_start])
                 dp_group_start += (tensor_model_parallel * pp_len)
-            self._init_communicator(self.startup_program, current_endpoint,
-                                    dp_endpoints, dp_rank, 2, self.wait_port)
-            self._broadcast_params(2)
-
-            print("mp_rank:{}, mp_endpoints: {}.".format(mp_rank, mp_endpoints))
-            print("pp_rank:{}, pp_endpoints: {}.".format(pp_rank, pp_endpoints))
             print("dp_rank:{}, dp_endpoints: {}.".format(dp_rank, dp_endpoints))
+            self._init_communicator(self.startup_program, current_endpoint,
+                                    dp_endpoints, dp_rank, 2, False)
+            self._broadcast_params(2)
             return
         # Create ring 0 for all gpus in the same pipeline
         if inner_parallelism > 1:
@@ -108,9 +112,38 @@ class PipelineHelper(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
+        block = program.global_block()
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
-
+        if not wait_port:
+            temp_var = block.create_var(
+                name=unique_name.generate('temp_var'),
+                dtype=core.VarDesc.VarType.INT32,
+                persistable=False,
+                stop_gradient=True)
+            block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [temp_var]},
+                attrs={
+                    'shape': [1],
+                    'dtype': temp_var.dtype,
+                    'value': 1,
+                    'force_cpu': False,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+            block.append_op(
+                type='c_allreduce_sum',
+                inputs={'X': [temp_var]},
+                outputs={'Out': [temp_var]},
+                attrs={'ring_id': 3,
+                       OP_ROLE_KEY: OpRole.Forward})
+            block.append_op(
+                type='c_sync_comm_stream',
+                inputs={'X': temp_var},
+                outputs={'Out': temp_var},
+                attrs={'ring_id': 3,
+                       OP_ROLE_KEY: OpRole.Forward})
         block = program.global_block()
         nccl_id_var = block.create_var(
             name=unique_name.generate('nccl_id'),
@@ -168,7 +201,10 @@ class PipelineOptimizer(MetaOptimizerBase):
         super(PipelineOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+        ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
@@ -179,6 +215,7 @@ class PipelineOptimizer(MetaOptimizerBase):
             'micro_batch']
         self.tensor_model_parallel = user_defined_strategy.pipeline_configs[
             'tensor_model_parallel']
+        self.pp_num = user_defined_strategy.pipeline_configs['pp_num']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -196,7 +233,8 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline = True
         dist_strategy.pipeline_configs = {
             "micro_batch": 1,
-            "tensor_model_parallel": 1
+            "tensor_model_parallel": 1,
+            "pp_num": 1
         }
 
     def minimize_impl(self,
@@ -215,9 +253,16 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
 
-        loss.block.program._pipeline_opt = dict()
-        loss.block.program._pipeline_opt[
-            'local_rank'] = self.rank % self.tensor_model_parallel
+        main_program = loss.block.program
+        main_program._pipeline_opt = dict()
+        pp_rank = self.role_maker._worker_index(
+        ) // self.tensor_model_parallel % self.pp_num
+        main_program._pipeline_opt[
+            'global_rank'] = self.role_maker._worker_index()
+        # loss.block.program._pipeline_opt = dict()
+        #loss.block.program._pipeline_opt[
+        #    'local_rank'] = self.rank % self.tensor_model_parallel
+        main_program._pipeline_opt['local_rank'] = pp_rank
         loss.block.program._pipeline_opt[
             'ring_id'] = 0 if self.tensor_model_parallel == 0 else 1
         optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
@@ -234,13 +279,16 @@ class PipelineOptimizer(MetaOptimizerBase):
         pipeline_helper = PipelineHelper(self.role_maker)
         pipeline_helper.update_startup_program(
             self.startup_program._pipeline_opt["startup_program"],
-            self.inner_parallelism, self.tensor_model_parallel)
+            self.inner_parallelism, self.tensor_model_parallel, self.pp_num)
+        print("Done startup program")
 
         pipeline_num = self.nranks // self.inner_parallelism
         self._transpile_main_program(loss, pipeline_num, self.inner_parallelism)
+        print("Done main program")
         return optimize_ops, params_grads
 
     def _transpile_main_program(self, loss, pipeline_num, inner_parallelism):
+        print("_tranpile_main_program")
         if pipeline_num <= 1: return
         self._insert_loss_grad_ops(loss, pipeline_num)
         for ring_id in range(1, inner_parallelism + 1):
