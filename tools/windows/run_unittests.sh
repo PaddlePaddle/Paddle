@@ -13,7 +13,7 @@
 # limitations under the License.
 
 set -e
-set +x
+set -x
 NIGHTLY_MODE=$1
 WINGPU=$2
 
@@ -270,7 +270,6 @@ function run_unittest_cpu() {
     echo    ========================================
     tmpfile=$tmp_dir/$RANDOM
     ctest -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 | tee $tmpfile
-    wait;
 }
 
 function unittests_retry(){
