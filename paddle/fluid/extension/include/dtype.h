@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/extension/include/exception.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
@@ -69,7 +70,7 @@ inline std::string ToString(DataType dtype) {
     case DataType::COMPLEX128:
       return "complex128";
     default:
-      throw std::runtime_error("Unsupported paddle enum data type.");
+      PD_THROW("Unsupported paddle enum data type.");
   }
 }
 

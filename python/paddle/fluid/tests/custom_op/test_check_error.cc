@@ -20,10 +20,10 @@ TEST(PD_THROW, empty) {
   } catch (const std::exception& e) {
     caught_exception = true;
     std::string err_msg = e.what();
-    EXPECT_TRUE(err_msg.find("An error occured. ") != std::string::npos);
+    EXPECT_TRUE(err_msg.find("An error occured.") != std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:19") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
@@ -44,11 +44,11 @@ TEST(PD_THROW, non_empty) {
     caught_exception = true;
     std::string err_msg = e.what();
     EXPECT_TRUE(err_msg.find("PD_THROW returns 0. DataType of 1 is INT. "
-                             "DataType of 0.23 is FLOAT.  ") !=
+                             "DataType of 0.23 is FLOAT.") !=
                 std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:42") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
@@ -71,11 +71,11 @@ TEST(PD_CHECK, FAILED) {
   } catch (const std::exception& e) {
     caught_exception = true;
     std::string err_msg = e.what();
-    EXPECT_TRUE(err_msg.find("Expected false, but it's not satisfied. ") !=
+    EXPECT_TRUE(err_msg.find("Expected false, but it's not satisfied.") !=
                 std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:70") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
@@ -95,11 +95,11 @@ TEST(PD_CHECK, FAILED) {
     caught_exception = true;
     std::string err_msg = e.what();
     EXPECT_TRUE(err_msg.find("PD_CHECK returns 0. DataType of 1 is INT. "
-                             "DataType of 0.23 is FLOAT.  ") !=
+                             "DataType of 0.23 is FLOAT.") !=
                 std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:93") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
@@ -112,11 +112,11 @@ TEST(PD_CHECK, FAILED) {
   } catch (const std::exception& e) {
     caught_exception = true;
     std::string err_msg = e.what();
-    EXPECT_TRUE(err_msg.find("Expected a > b, but it's not satisfied. ") !=
+    EXPECT_TRUE(err_msg.find("Expected a > b, but it's not satisfied.") !=
                 std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:111") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
@@ -133,7 +133,7 @@ TEST(PD_CHECK, FAILED) {
                 std::string::npos);
     EXPECT_TRUE(
         err_msg.find(
-            "python/paddle/fluid/tests/custom_op/test_check_error.cc:128") !=
+            "python/paddle/fluid/tests/custom_op/test_check_error.cc") !=
         std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
