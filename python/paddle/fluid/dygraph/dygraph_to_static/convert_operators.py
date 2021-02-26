@@ -311,7 +311,7 @@ def eval_if_exist_else_none(name, local_symbol_table):
                                   from `locals()`.
     
     Returns:
-        Return vaiable if found in local_symbol_table else None.
+        Return the variable if found in local_symbol_table else None.
     """
     try:
         return eval(name, local_symbol_table)
