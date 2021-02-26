@@ -27,7 +27,9 @@ from paddle.fluid.contrib.mixed_precision.bf16_utils import cast_model_to_bf16,\
 paddle.enable_static()
 
 
-class TestImageMultiPrecision(unittest.TestCase):
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestModelCastBF16(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.seed = 111
