@@ -4839,6 +4839,7 @@ class PipelineOptimizer(object):
 
         local_rank = main_program._pipeline_opt['local_rank'] % len(device_list)
         print("local_rank in pp opt:", local_rank)
+        print("device_list size:", len(device_list))
 
         place_list = []
         for dev in device_list:
