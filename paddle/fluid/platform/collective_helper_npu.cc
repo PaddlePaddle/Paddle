@@ -62,6 +62,7 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
   auto* comm_wrapper = AssignHCCLComm(rank_table_file, rank, device_id);
 
   platform::dynload::hcom_init(rank_table_file.c_str(), std::to_string(rank).c_str());
+  platform::dynload::hcom_bind_model(comm_wrapper->stream(), comm_wrapper->stream());
 
   VLOG(1) << "hccl communicator of rank " << rank << " has been created";
   return comm_wrapper;
