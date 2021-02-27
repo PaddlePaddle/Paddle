@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
