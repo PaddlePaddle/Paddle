@@ -52,7 +52,7 @@ enum PsCmdID {
   PS_GRAPH_SAMPLE = 31;
 }
 
-message  PsRequestMessage{
+message PsRequestMessage {
   required uint32 cmd_id = 1;
   optional uint32 table_id = 2;
   repeated bytes params = 3;

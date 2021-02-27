@@ -40,6 +40,7 @@ message PSParameter {
   optional ServerParameter server_param = 102;
   repeated DownpourTrainerParameter trainer_param = 301;
   optional FsClientParameter fs_client_param = 501;
+  optional int32 shard_num = 502;
 }
 
 message WorkerParameter {

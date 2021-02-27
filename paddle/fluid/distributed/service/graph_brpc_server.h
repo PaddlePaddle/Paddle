@@ -1,3 +1,17 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include "brpc/channel.h"
@@ -6,8 +20,8 @@
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/distributed/service/server.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/service/server.h"
 
 namespace paddle {
 namespace distributed {
@@ -51,7 +65,6 @@ typedef int32_t (GraphBrpcService::*serviceFunc)(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl);
 
-
 class GraphBrpcService : public PsBaseService {
  public:
   virtual int32_t initialize() override;
@@ -62,12 +75,13 @@ class GraphBrpcService : public PsBaseService {
                        ::google::protobuf::Closure *done) override;
 
  protected:
-   std::unordered_map<int32_t, serviceFunc> _service_handler_map;
+  std::unordered_map<int32_t, serviceFunc> _service_handler_map;
   int32_t initialize_shard_info();
-    int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
-                           PsResponseMessage &response, brpc::Controller *cntl);
-int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
-                           PsResponseMessage &response, brpc::Controller *cntl);  
+  int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
+                          PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
+                              PsResponseMessage &response,
+                              brpc::Controller *cntl);
   int32_t barrier(Table *table, const PsRequestMessage &request,
                   PsResponseMessage &response, brpc::Controller *cntl);
   int32_t load_one_table(Table *table, const PsRequestMessage &request,
@@ -94,9 +108,11 @@ int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
 //  public:
 //   virtual int32_t initialize() override;
 //   int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
-//                            PsResponseMessage &response, brpc::Controller *cntl);
+//                            PsResponseMessage &response, brpc::Controller
+//                            *cntl);
 // int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
-//                            PsResponseMessage &response, brpc::Controller *cntl);                           
+//                            PsResponseMessage &response, brpc::Controller
+//                            *cntl);
 // };
 
 }  // namespace distributed

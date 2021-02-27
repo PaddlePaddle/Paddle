@@ -21,37 +21,36 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
+#include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
-#include "paddle/fluid/distributed/table/table.h"
 
 namespace paddle {
 namespace distributed {
 
-class GraphBrpcClient: public BrpcPsClient{
-public:
-    GraphBrpcClient(){
+class GraphBrpcClient : public BrpcPsClient {
+ public:
+  GraphBrpcClient() {}
+  virtual ~GraphBrpcClient() {}
+  virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id,
+                                      GraphNodeType type, int sample_size,
+                                      std::vector<GraphNode> &res);
+  virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
+                                               uint64_t node_id,
+                                               GraphNodeType type, int start,
+                                               int end,
+                                               std::vector<GraphNode> &res);
+  virtual int32_t initialize();
+  int get_shard_num() { return shard_num; }
+  void set_shard_num(int shard_num) { this->shard_num = shard_num; }
+  int get_server_index_by_id(uint64_t id);
 
-    }
-    virtual ~GraphBrpcClient(){
-
-    } 
-    virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id, GraphNodeType type, int sample_size,vector<GraphNode> &res);
-    virtual std::future<int32_t> pull_graph_list(uint32_t table_id, uint64_t node_id, GraphNodeType type,int start, int end, vector<GraphNode> &res);
-    virtual int32_t initialize();
-    int get_shard_num(){
-        return shard_num;
-    }
-    void set_shard_num(int shard_num){
-        this->shard_num = shard_num;
-    }
-    int get_server_index_by_id(uint64_t id);
-private:
-    int shard_num;
+ private:
+  int shard_num;
+  size_t server_size;
 };
 
 }  // namespace distributed

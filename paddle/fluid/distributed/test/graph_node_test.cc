@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <condition_variable>  // NOLINT
+#include <fstream>
+#include <iomanip>
 #include <string>
 #include <thread>  // NOLINT
-#include<fstream>
-#include<iomanip>
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
@@ -47,27 +47,29 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 void testGraphToBuffer();
-std::string nodes[] = {std::string("37\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),std::string("96\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21")};
+std::string nodes[] = {
+    std::string("37\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),
+    std::string("96\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21")};
 char file_name[] = "nodes.txt";
-void prepare_file(char file_name[]){
-  ofstream ofile;
-  ofile.open(file_name);  
-  for(auto x: nodes){
-    ofile<<x<<endl;
+void prepare_file(char file_name[]) {
+  std::ofstream ofile;
+  ofile.open(file_name);
+  for (auto x : nodes) {
+    ofile << x << std::endl;
   }
   ofile.close();
 }
-distributed::GraphNodeType get_graph_node_type(std::string &str){
-      distributed::GraphNodeType type;
-      if(str == "user")
-            type = distributed::GraphNodeType::user;
-       else if(str == "item")
-            type = distributed::GraphNodeType::item;
-       else if(str == "query")
-          type = distributed::GraphNodeType:: query;
-       else
-           type = distributed::GraphNodeType::unknown;
-      return type;   
+distributed::GraphNodeType get_graph_node_type(std::string& str) {
+  distributed::GraphNodeType type;
+  if (str == "user")
+    type = distributed::GraphNodeType::user;
+  else if (str == "item")
+    type = distributed::GraphNodeType::item;
+  else if (str == "query")
+    type = distributed::GraphNodeType::query;
+  else
+    type = distributed::GraphNodeType::unknown;
+  return type;
 }
 void GetDownpourSparseTableProto(
     ::paddle::distributed::TableParameter* sparse_table_proto) {
@@ -81,17 +83,17 @@ void GetDownpourSparseTableProto(
       sparse_table_proto->mutable_common();
 }
 
-distributed::GraphNodeType get_graph_node_type(std::string str){
-      distributed::GraphNodeType type;
-      if(str == "user")
-            type = distributed::GraphNodeType::user;
-       else if(str == "item")
-            type = distributed::GraphNodeType::item;
-       else if(str == "query")
-          type = distributed::GraphNodeType:: query;
-       else
-           type = distributed::GraphNodeType::unknown;
-      return type;   
+distributed::GraphNodeType get_graph_node_type(std::string str) {
+  distributed::GraphNodeType type;
+  if (str == "user")
+    type = distributed::GraphNodeType::user;
+  else if (str == "item")
+    type = distributed::GraphNodeType::item;
+  else if (str == "query")
+    type = distributed::GraphNodeType::query;
+  else
+    type = distributed::GraphNodeType::unknown;
+  return type;
 }
 
 ::paddle::distributed::PSParameter GetServerProto() {
@@ -118,7 +120,7 @@ distributed::GraphNodeType get_graph_node_type(std::string str){
 
 ::paddle::distributed::PSParameter GetWorkerProto() {
   ::paddle::distributed::PSParameter worker_fleet_desc;
-  worker_fleet_desc.set_shard_num(127);  
+  worker_fleet_desc.set_shard_num(127);
   ::paddle::distributed::WorkerParameter* worker_proto =
       worker_fleet_desc.mutable_worker_param();
 
@@ -150,7 +152,7 @@ distributed::GraphNodeType get_graph_node_type(std::string str){
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1",ip2 = "127.0.0.1";
+std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
 uint32_t port_ = 4209, port2 = 4210;
 
 std::vector<std::string> host_sign_list_;
@@ -164,31 +166,31 @@ void RunServer() {
   ::paddle::distributed::PSParameter server_proto = GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-  _ps_env.set_ps_servers(&host_sign_list_, 2); //test
+  _ps_env.set_ps_servers(&host_sign_list_, 2);  // test
   pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
   pserver_ptr_->configure(server_proto, _ps_env, 0, empty_vec);
-LOG(INFO) << "first server, run start(ip,port)";
+  LOG(INFO) << "first server, run start(ip,port)";
   pserver_ptr_->start(ip_, port_);
   LOG(INFO) << "init first server Done";
 }
 
-void RunServer2(){
+void RunServer2() {
   LOG(INFO) << "init second server";
-   ::paddle::distributed::PSParameter server_proto2 = GetServerProto();
+  ::paddle::distributed::PSParameter server_proto2 = GetServerProto();
 
   auto _ps_env2 = paddle::distributed::PaddlePSEnvironment();
-  _ps_env2.set_ps_servers(&host_sign_list_, 2); //test
+  _ps_env2.set_ps_servers(&host_sign_list_, 2);  // test
   pserver_ptr2 = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(server_proto2));
   std::vector<framework::ProgramDesc> empty_vec2;
   framework::ProgramDesc empty_prog2;
   empty_vec2.push_back(empty_prog2);
   pserver_ptr2->configure(server_proto2, _ps_env2, 1, empty_vec2);
-  pserver_ptr2->start(ip2, port2); 
+  pserver_ptr2->start(ip2, port2);
 }
 
 void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
@@ -210,13 +212,13 @@ void RunBrpcPushSparse() {
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   host_sign_list_.push_back(ph_host.serialize_to_string());
 
-  //test-start
+  // test-start
   auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
   host_sign_list_.push_back(ph_host2.serialize_to_string());
-  //test-end
+  // test-end
   // Srart Server
   std::thread server_thread(RunServer);
-   std::thread server_thread2(RunServer2); 
+  std::thread server_thread2(RunServer2);
   sleep(1);
 
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
@@ -228,80 +230,86 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   LOG(INFO) << "Run pull_sparse_param";
-  auto pull_status = worker_ptr_->load(0,std::string(file_name),std::string(""));
+  auto pull_status =
+      worker_ptr_->load(0, std::string(file_name), std::string(""));
   pull_status.wait();
-  vector<distributed::GraphNode> v;
-  pull_status = worker_ptr_->sample(0,37,get_graph_node_type(string("user")),v);
+  std::vector<distributed::GraphNode> v;
+  pull_status = worker_ptr_->sample(
+      0, 37, get_graph_node_type(std::string("user")), 4, v);
   pull_status.wait();
-  for(auto g:v){
-    std::cout<<g.get_id()<<" "<<g.get_graph_node_type()<<std::endl;
+  for (auto g : v) {
+    std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
   }
   /*-----------------------Test Push Param----------------------------------*/
 
-//   LOG(INFO) << "Run push_sparse_param";
-//   paddle::distributed::DownpourBrpcClosure* closure_push_param =
-//       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
-//         int ret = 0;
-//         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
-//         for (size_t i = 0; i < 2; ++i) {
-//   LOG(INFO) << "check response" <<i;
-//           if (closure->check_response(
-//                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
-//             ret = -1;
-//             break;
-//           }
-//           VLOG(0)<<i<<" push_sparse_param response "<<closure->check_response(
-//                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM);
-//         }
-//         closure->set_promise_value(ret);
-//       });
-//   VLOG(0)<<"begin to push_sparse_param";
-//   auto push_status = worker_ptr_->push_sparse_param(
-//       0, fea_keys.data(), (const float**)fea_value_ptr.data(), fea_keys.size(),
-//       closure_push_param);
-//   push_status.wait();
+  //   LOG(INFO) << "Run push_sparse_param";
+  //   paddle::distributed::DownpourBrpcClosure* closure_push_param =
+  //       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
+  //         int ret = 0;
+  //         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+  //         for (size_t i = 0; i < 2; ++i) {
+  //   LOG(INFO) << "check response" <<i;
+  //           if (closure->check_response(
+  //                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
+  //             ret = -1;
+  //             break;
+  //           }
+  //           VLOG(0)<<i<<" push_sparse_param response
+  //           "<<closure->check_response(
+  //                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM);
+  //         }
+  //         closure->set_promise_value(ret);
+  //       });
+  //   VLOG(0)<<"begin to push_sparse_param";
+  //   auto push_status = worker_ptr_->push_sparse_param(
+  //       0, fea_keys.data(), (const float**)fea_value_ptr.data(),
+  //       fea_keys.size(),
+  //       closure_push_param);
+  //   push_status.wait();
 
-//   auto pull_param_status = worker_ptr_->pull_sparse(
-//       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
-//   pull_param_status.wait();
+  //   auto pull_param_status = worker_ptr_->pull_sparse(
+  //       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+  //   pull_param_status.wait();
 
-//   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-//     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx]);
-//   }
-// LOG(INFO) << "first stage done";
-//   /*-----------------------Test Push Grad----------------------------------*/
+  //   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  //     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx]);
+  //   }
+  // LOG(INFO) << "first stage done";
+  //   /*-----------------------Test Push
+  //   Grad----------------------------------*/
 
-//   paddle::distributed::DownpourBrpcClosure* closure_push_grad =
-//       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
-//         int ret = 0;
-//         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
-//         for (size_t i = 0; i < 2; ++i) {
-//           if (closure->check_response(
-//                   i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
-//             ret = -1;
-//             break;
-//           }
-//         }
-//         closure->set_promise_value(ret);
-//       });
+  //   paddle::distributed::DownpourBrpcClosure* closure_push_grad =
+  //       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
+  //         int ret = 0;
+  //         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+  //         for (size_t i = 0; i < 2; ++i) {
+  //           if (closure->check_response(
+  //                   i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
+  //             ret = -1;
+  //             break;
+  //           }
+  //         }
+  //         closure->set_promise_value(ret);
+  //       });
 
-//   LOG(INFO) << "Run pull_sparse_grad";
-//   std::vector<float*> push_g_vec;
-//   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
-//     push_g_vec.push_back(tensor->data<float>() + i * 10);
-//   }
-//   auto push_grad_status = worker_ptr_->push_sparse_raw_gradient(
-//       0, fea_keys.data(), (const float**)push_g_vec.data(), fea_keys.size(),
-//       closure_push_grad);
-//   push_grad_status.wait();
+  //   LOG(INFO) << "Run pull_sparse_grad";
+  //   std::vector<float*> push_g_vec;
+  //   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
+  //     push_g_vec.push_back(tensor->data<float>() + i * 10);
+  //   }
+  //   auto push_grad_status = worker_ptr_->push_sparse_raw_gradient(
+  //       0, fea_keys.data(), (const float**)push_g_vec.data(),
+  //       fea_keys.size(),
+  //       closure_push_grad);
+  //   push_grad_status.wait();
 
-//   auto pull_update_status = worker_ptr_->pull_sparse(
-//       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
-//   pull_update_status.wait();
+  //   auto pull_update_status = worker_ptr_->pull_sparse(
+  //       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
+  //   pull_update_status.wait();
 
-//   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-//     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
-//   }
+  //   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
+  //     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
+  //   }
 
   LOG(INFO) << "Run stop_server";
   worker_ptr_->stop_server();
@@ -312,8 +320,8 @@ void RunBrpcPushSparse() {
   testGraphToBuffer();
 }
 
-void testGraphToBuffer(){
-  ::paddle::distributed::GraphNode s,s1;
+void testGraphToBuffer() {
+  ::paddle::distributed::GraphNode s, s1;
   s.set_feature("hhhh");
   s.set_id(65);
   s.set_graph_node_type(::paddle::distributed::GraphNodeType(0));
@@ -322,10 +330,8 @@ void testGraphToBuffer(){
   s.to_buffer(str);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
-  ASSERT_EQ((int)s.get_graph_node_type(),(int)s1.get_graph_node_type());
-  VLOG(0)<<s.get_feature();
-  VLOG(0)<<s1.get_feature();
-
+  ASSERT_EQ((int)s.get_graph_node_type(), (int)s1.get_graph_node_type());
+  VLOG(0) << s.get_feature();
+  VLOG(0) << s1.get_feature();
 }
 TEST(RunBrpcPushSparse, Run) { RunBrpcPushSparse(); }
-
