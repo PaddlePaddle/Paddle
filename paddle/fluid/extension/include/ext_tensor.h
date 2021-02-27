@@ -16,12 +16,14 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/extension/include/dll_decl.h"
-#include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
+
+#include "ext_dll_decl.h"  // NOLINT
+#include "ext_dtype.h"     // NOLINT
+#include "ext_place.h"     // NOLINT
+
 namespace paddle {
 namespace framework {
 class CustomTensorUtils;
