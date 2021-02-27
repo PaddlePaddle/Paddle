@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/extension/include/dtype.h"
+#include "ext_dtype.h"  // NOLINT
 
 namespace paddle {
 

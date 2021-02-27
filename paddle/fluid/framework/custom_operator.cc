@@ -25,7 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/c/c_api.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
