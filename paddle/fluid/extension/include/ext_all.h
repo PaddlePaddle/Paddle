@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "ext_dispatch.h"      // NOLINT
 #include "ext_dtype.h"         // NOLINT
+#include "ext_exception.h"     // NOLINT
 #include "ext_op_meta_info.h"  // NOLINT
 #include "ext_place.h"         // NOLINT
 #include "ext_tensor.h"        // NOLINT

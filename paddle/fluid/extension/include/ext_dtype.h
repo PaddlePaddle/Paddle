@@ -14,8 +14,9 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
-#include <stdexcept>
 #include <string>
+
+#include "ext_exception.h"  // NOLINT
 
 namespace paddle {
 
@@ -50,7 +51,7 @@ inline std::string ToString(DataType dtype) {
     case DataType::FLOAT64:
       return "double";
     default:
-      throw std::runtime_error("Unsupported paddle enum data type.");
+      PD_THROW("Unsupported paddle enum data type.");
   }
 }
 

@@ -79,7 +79,7 @@ std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_forward(x);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 
@@ -92,7 +92,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_backward(x, out, grad_out);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 
