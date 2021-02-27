@@ -21,8 +21,9 @@ limitations under the License. */
 
 #include <boost/any.hpp>
 
-#include "paddle/fluid/extension/include/dll_decl.h"
-#include "paddle/fluid/extension/include/tensor.h"
+#include "ext_dll_decl.h"   // NOLINT
+#include "ext_exception.h"  // NOLINT
+#include "ext_tensor.h"     // NOLINT
 
 /**
  * Op Meta Info Related Define.
@@ -46,26 +47,6 @@ using Tensor = paddle::Tensor;
   classname(classname&&) = delete;                 \
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
-
-#if defined _WIN32
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cerr << e.what() << std::endl; \
-    throw e;                            \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
-
-#define PD_THROW(err_msg)              \
-  do {                                 \
-    HANDLE_THE_ERROR                   \
-    throw std::runtime_error(err_msg); \
-    END_HANDLE_THE_ERROR               \
-  } while (0)
 
 #define STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                        \
   struct __test_global_namespace_##uniq_name##__ {};                          \

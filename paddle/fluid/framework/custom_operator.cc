@@ -25,7 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/ext_tensor.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/c/c_api.h"
 #include "paddle/fluid/framework/custom_tensor_utils.h"
@@ -114,6 +114,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     auto custom_in = paddle::Tensor(
         CustomTensorUtils::ConvertInnerPlaceToEnumPlace(x->place()));
     CustomTensorUtils::ShareDataFrom(static_cast<const void*>(x), custom_in);
+    CustomTensorUtils::SetTensorCurrentStream(&custom_in, ctx.GetPlace());
     custom_ins.emplace_back(custom_in);
   }
 

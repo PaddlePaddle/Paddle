@@ -25,6 +25,8 @@ set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
 
 py_test(test_check_abi SRCS test_check_abi.py)
 
+cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)
+
 if(NOT LINUX)
     return()
 endif()
