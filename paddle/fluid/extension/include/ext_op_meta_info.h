@@ -21,9 +21,9 @@ limitations under the License. */
 
 #include <boost/any.hpp>
 
-#include "paddle/fluid/extension/include/dll_decl.h"
-#include "paddle/fluid/extension/include/exception.h"
-#include "paddle/fluid/extension/include/tensor.h"
+#include "ext_dll_decl.h"   // NOLINT
+#include "ext_exception.h"  // NOLINT
+#include "ext_tensor.h"     // NOLINT
 
 /**
  * Op Meta Info Related Define.

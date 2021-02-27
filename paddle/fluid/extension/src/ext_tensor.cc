@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/ext_tensor.h"
 #include <utility>
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -101,8 +101,9 @@ void Tensor::reshape(const std::vector<int> &shape) {
 }
 
 Tensor::Tensor(const PlaceType &place)
-    : tensor_(std::make_shared<framework::LoDTensor>()), place_(place) {}
-
+    : tensor_(std::make_shared<framework::LoDTensor>()),
+      place_(place),
+      stream_(StreamWrapper()) {}
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   place_ = place;
@@ -322,6 +323,18 @@ int64_t Tensor::size() const {
   GET_CASTED_TENSOR;
   return tensor->numel();
 }
+
+#ifdef PADDLE_WITH_CUDA
+cudaStream_t Tensor::stream() const {
+  if (!stream_.IsStreamSet()) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Stream is not Set, only input tensor will have "
+        "stream which is set by framework "));
+  } else {
+    return reinterpret_cast<cudaStream_t>(stream_.GetStream());
+  }
+}
+#endif
 
 namespace framework {
 
