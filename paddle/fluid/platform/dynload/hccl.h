@@ -45,6 +45,8 @@ extern void* hccl_dso_handle;
 #define HCCL_RAND_ROUTINE_EACH(__macro)         \
   __macro(hcom_init);                           \
   __macro(hcom_destroy);                        \
+  __macro(hcom_bind_model);                     \
+  __macro(hcom_unbind_model);                   \
   __macro(hcom_send);                           \
   __macro(hcom_receive);                        \
   __macro(hcom_broadcast);                      \
