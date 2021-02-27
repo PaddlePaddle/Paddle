@@ -150,15 +150,7 @@ std::vector<paddle::Tensor> AttrTestBackward(
   return {grad_x};
 }
 
-std::vector<std::vector<int64_t>> InferShape(std::vector<int64_t> x_shape) {
-  return {x_shape};
-}
-
-std::vector<paddle::DataType> InferDType(paddle::DataType x_dtype) {
-  return {x_dtype};
-}
-
-PD_BUILD_OP("attr_test")
+PD_BUILD_OP(attr_test)
     .Inputs({"X"})
     .Outputs({"Out"})
     .Attrs({"bool_attr: bool",
@@ -170,10 +162,9 @@ PD_BUILD_OP("attr_test")
             "float_vec_attr: std::vector<float>",
             "int64_vec_attr: std::vector<int64_t>",
             "str_vec_attr: std::vector<std::string>"})
-    .SetKernelFn(PD_KERNEL(AttrTestForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(InferDType))
-    .SetBackwardOp("attr_test_grad")
+    .SetKernelFn(PD_KERNEL(AttrTestForward));
+
+PD_BUILD_GRAD_OP(attr_test)
     .Inputs({paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .Attrs({"int_attr: int",

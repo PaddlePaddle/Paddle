@@ -153,12 +153,21 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
   }
 
   VLOG(1) << "Run ComputeFunc.";
-  auto outs = func(custom_ins, custom_attrs);
+  try {
+    auto outs = func(custom_ins, custom_attrs);
 
-  VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto* true_out = ctx.Output<Tensor>(outputs[i]);
-    CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
+    VLOG(1) << "Custom Operator: Share outputs into ExecutionContext.";
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      auto* true_out = ctx.Output<Tensor>(outputs[i]);
+      CustomTensorUtils::ShareDataTo(outs.at(i), true_out);
+    }
+  } catch (platform::EnforceNotMet& exception) {
+    throw std::move(exception);
+  } catch (std::exception& ex) {
+    PADDLE_THROW(platform::errors::External("%s", ex.what()));
+  } catch (...) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Custom operator raises an unknown exception in rumtime."));
   }
 }
 
@@ -475,58 +484,108 @@ void RegisterOperatorWithMetaInfo(
           op_name, info.proto_->InitializationErrorString()));
 
   // InferShape
-  PADDLE_ENFORCE_NOT_NULL(
-      infer_shape_func,
-      platform::errors::PreconditionNotMet(
-          "InferShapeFn is nullptr. Need to set the InferShapeFn of custom "
-          "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
-  info.infer_shape_ = [op_inputs, op_outputs,
-                       infer_shape_func](InferShapeContext* ctx) {
-    std::vector<std::vector<int64_t>> input_shapes;
+  if (infer_shape_func == nullptr) {
+    // use default InferShape
+    info.infer_shape_ = [op_inputs, op_outputs](InferShapeContext* ctx) {
+      PADDLE_ENFORCE_EQ(
+          op_inputs.size(), 1UL,
+          platform::errors::Unavailable(
+              "Your custom operator contains multiple inputs. "
+              "We only allow a custom operator that contains only one input "
+              "and "
+              "only one output without setting the InferShapeFn. At this time, "
+              "the input shape will be directly set to the output shape.\n"
+              "Please set the InferShapeFn of custom "
+              "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
+      PADDLE_ENFORCE_EQ(
+          op_outputs.size(), 1UL,
+          platform::errors::Unavailable(
+              "Your custom operator contains multiple outputs. "
+              "We only allow a custom operator that contains only one input "
+              "and "
+              "only one output without setting the InferShapeFn. At this time, "
+              "the input shape will be directly set to the output shape.\n"
+              "Please set the InferShapeFn of custom "
+              "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
 
-    VLOG(1) << "Custom Operator: InferShape - get input ddim.";
-    for (auto& in_name : op_inputs) {
-      OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
-      auto ddim = ctx->GetInputDim(in_name);
-      input_shapes.emplace_back(framework::vectorize(ddim));
-    }
+      VLOG(1) << "Custom Operator: Default InferShape - share ddim.";
+      ctx->ShareDim(op_inputs[0], op_outputs[0]);
+    };
+  } else {
+    info.infer_shape_ = [op_inputs, op_outputs,
+                         infer_shape_func](InferShapeContext* ctx) {
+      std::vector<std::vector<int64_t>> input_shapes;
 
-    VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
-    auto output_shapes = infer_shape_func(input_shapes);
+      VLOG(1) << "Custom Operator: InferShape - get input ddim.";
+      for (auto& in_name : op_inputs) {
+        OP_INOUT_CHECK(ctx->HasInput(in_name), "Input", in_name, "Custom");
+        auto ddim = ctx->GetInputDim(in_name);
+        input_shapes.emplace_back(framework::vectorize(ddim));
+      }
 
-    VLOG(1) << "Custom Operator: InferShape - set output ddim.";
-    for (size_t i = 0; i < op_outputs.size(); ++i) {
-      ctx->SetOutputDim(op_outputs[i], framework::make_ddim(output_shapes[i]));
-    }
-  };
+      VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
+      auto output_shapes = infer_shape_func(input_shapes);
+
+      VLOG(1) << "Custom Operator: InferShape - set output ddim.";
+      for (size_t i = 0; i < op_outputs.size(); ++i) {
+        ctx->SetOutputDim(op_outputs[i],
+                          framework::make_ddim(output_shapes[i]));
+      }
+    };
+  }
 
   // Infer Dtype
-  PADDLE_ENFORCE_NOT_NULL(
-      infer_dtype_func,
-      platform::errors::PreconditionNotMet(
-          "InferDtypeFn is nullptr. Need to set the InferDtypeFn of custom "
-          "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-  info.infer_var_type_ = [op_inputs, op_outputs,
-                          infer_dtype_func](InferVarTypeContext* ctx) {
-    std::vector<DataType> input_dtypes;
+  if (infer_dtype_func == nullptr) {
+    // use defalut InferDtype
+    info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
+      PADDLE_ENFORCE_EQ(
+          op_inputs.size(), 1UL,
+          platform::errors::Unavailable(
+              "Your custom operator contains multiple inputs. "
+              "We only allow a custom operator that contains only one input "
+              "and "
+              "only one output without setting the InferDtypeFn. At this time, "
+              "the input dtype will be directly set to the output dtype.\n"
+              "Please set the InferDtypeFn of custom "
+              "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
+      PADDLE_ENFORCE_EQ(
+          op_outputs.size(), 1UL,
+          platform::errors::Unavailable(
+              "Your custom operator contains multiple outputs. "
+              "We only allow a custom operator that contains only one input "
+              "and "
+              "only one output without setting the InferDtypeFn. At this time, "
+              "the input dtype will be directly set to the output dtype.\n"
+              "Please set the InferDtypeFn of custom "
+              "operator by .SetInferDtypeFn(PD_INFER_DTYPE(...))"));
 
-    VLOG(1) << "Custom Operator: InferDtype - get input dtype.";
-    for (auto& in_name : op_inputs) {
-      auto dtype = ctx->GetInputDataType(in_name);
-      input_dtypes.emplace_back(
-          CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
-    }
+      VLOG(1) << "Custom Operator: InferDtype - share dtype.";
+      auto dtype = ctx->GetInputDataType(op_inputs[0]);
+      ctx->SetOutputDataType(op_outputs[0], dtype);
+    };
+  } else {
+    info.infer_var_type_ = [op_inputs, op_outputs,
+                            infer_dtype_func](InferVarTypeContext* ctx) {
+      std::vector<DataType> input_dtypes;
 
-    VLOG(1) << "Custom Operator: InferDtype - infer output dtype.";
-    auto output_dtypes = infer_dtype_func(input_dtypes);
+      VLOG(1) << "Custom Operator: InferDtype - get input dtype.";
+      for (auto& in_name : op_inputs) {
+        auto dtype = ctx->GetInputDataType(in_name);
+        input_dtypes.emplace_back(
+            CustomTensorUtils::ConvertInnerDTypeToEnumDType(dtype));
+      }
 
-    VLOG(1) << "Custom Operator: InferDtype - set output dtype.";
-    for (size_t i = 0; i < op_outputs.size(); ++i) {
-      ctx->SetOutputDataType(
-          op_outputs[i],
-          CustomTensorUtils::ConvertEnumDTypeToInnerDType(output_dtypes[i]));
-    }
-  };
+      VLOG(1) << "Custom Operator: InferDtype - infer output dtype.";
+      auto output_dtypes = infer_dtype_func(input_dtypes);
+
+      VLOG(1) << "Custom Operator: InferDtype - set output dtype.";
+      for (size_t i = 0; i < op_outputs.size(); ++i) {
+        ctx->SetOutputDataType(
+            op_outputs[i],
+            CustomTensorUtils::ConvertEnumDTypeToInnerDType(output_dtypes[i]));
+      }
+    };
+  }
 
   // Kernel func
   RegisterOperatorKernel(op_name, kernel_fn, op_inputs, op_outputs, op_attrs);
