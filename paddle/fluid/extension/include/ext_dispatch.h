@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "ext_dtype.h"  // NOLINT
+#include "ext_dtype.h"      // NOLINT
+#include "ext_exception.h"  // NOLINT
 
 namespace paddle {
 

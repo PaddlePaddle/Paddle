@@ -12,7 +12,7 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 #include "gtest/gtest.h"
-#include "paddle/fluid/extension/include/op_meta_info.h"
+#include "paddle/fluid/extension/include/ext_exception.h"
 
 TEST(PD_THROW, empty) {
   bool caught_exception = false;

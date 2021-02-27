@@ -15,7 +15,8 @@ limitations under the License. */
 
 #include <cstdint>
 #include <string>
-#include "paddle/fluid/extension/include/exception.h"
+
+#include "ext_exception.h"  // NOLINT
 
 namespace paddle {
 
