@@ -75,12 +75,13 @@ void GetDownpourSparseTableProto(
     ::paddle::distributed::TableParameter* sparse_table_proto) {
   sparse_table_proto->set_table_id(0);
   sparse_table_proto->set_table_class("GraphTable");
-  sparse_table_proto->set_shard_num(256);
+  sparse_table_proto->set_shard_num(127);
   sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
   ::paddle::distributed::TableAccessorParameter* accessor_proto =
       sparse_table_proto->mutable_accessor();
-  ::paddle::distributed::CommonAccessorParameter* common_proto =
-      sparse_table_proto->mutable_common();
+  // ::paddle::distributed::CommonAccessorParameter* common_proto =
+  //     sparse_table_proto->mutable_common();
+  accessor_proto->set_accessor_class("CommMergeAccessor");
 }
 
 distributed::GraphNodeType get_graph_node_type(std::string str) {
@@ -232,6 +233,7 @@ void RunBrpcPushSparse() {
   LOG(INFO) << "Run pull_sparse_param";
   auto pull_status =
       worker_ptr_->load(0, std::string(file_name), std::string(""));
+
   pull_status.wait();
   std::vector<distributed::GraphNode> v;
   pull_status = worker_ptr_->sample(

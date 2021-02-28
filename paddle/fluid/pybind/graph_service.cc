@@ -13,18 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/graph_service.h"
-#include "paddle/fluid/distributed/service/graph_service.cc"
+// #include "paddle/fluid/distributed/service/graph_py_service.h"
+// #include "paddle/fluid/distributed/service/graph_brpc_client.h"
+#include "brpc/stream.h"
 namespace py = pybind11;
-using paddle::distributed::graph_service;
+// using paddle::distributed::graph_service;
 
 namespace paddle {
 namespace pybind {
 
 void BindGraphService(py::module* m) {
-  py::class_<graph_service>(*m, "graph_service")
-      .def(py::init<>())
-      .def("set_keys", &graph_service::set_keys)
-      .def("get_keys", &graph_service::get_keys);
+  //   py::class_<graph_service>(*m, "graph_service")
+  //       .def(
+  //           py::init<>())
+  //       .def("set_keys", &paddle::distributed::graph_service::set_keys)
+  //       .def("get_keys",&paddle::distributed::graph_service::get_keys);
 }
 
 }  // namespace pybind

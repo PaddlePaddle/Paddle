@@ -20,6 +20,37 @@
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
+int GraphShard::bucket_low_bound = 10;
+std::vector<GraphNode *> GraphShard::get_batch(int start, int total_size) {
+  if (start < 0) start = 0;
+  int size = 0, cur_size;
+  std::vector<GraphNode *> res;
+  if (total_size <= 0) return res;
+  for (int i = 0; i < bucket_size; i++) {
+    cur_size = bucket[i].size();
+    if (size + cur_size <= start) {
+      size += cur_size;
+      continue;
+    }
+    int read = 0;
+    std::list<GraphNode *>::iterator iter = bucket[i].begin();
+    while (size + read < start) {
+      iter++;
+      read++;
+    }
+    read = 0;
+    while (iter != bucket[i].end() && read < total_size) {
+      res.push_back(*iter);
+      iter++;
+      read++;
+    }
+    if (read == total_size) break;
+    size += cur_size;
+    start = size;
+    total_size -= read;
+  }
+  return res;
+}
 size_t GraphShard::get_size() {
   size_t res = 0;
   for (int i = 0; i < bucket_size; i++) {
@@ -47,19 +78,24 @@ GraphNode *GraphShard::find_node(uint64_t id, GraphNodeType type) {
   return *(node_location[{id, type}]);
 }
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
+  VLOG(0) << "in load graph table-->" << path;
   rwlock_->WRLock();
   auto paths = paddle::string::split_string<std::string>(path, ";");
+  VLOG(0) << paths.size();
   for (auto path : paths) {
+    VLOG(0) << "load single path " << path;
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 3) continue;
       auto id = std::stoull(values[0]);
-      size_t shard_id = id % _shard_num;
+      size_t shard_id = id % shard_num;
       if (shard_id >= shard_end || shard_id < shard_start) {
         VLOG(0) << "will not load " << id << " from " << path
                 << ", please check id distribution";
+        VLOG(0) << shard_start << " " << shard_end << " shard_num "
+                << shard_num;
         continue;
       }
       size_t index = shard_id - shard_start;
@@ -79,22 +115,27 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
     }
     for (auto &shard : shards) {
       auto bucket = shard.get_bucket();
+      VLOG(0) << bucket.size() << " bucketsize "
+              << " shard_start" << shard_start << " shard end " << shard_end;
       for (int i = 0; i < bucket.size(); i++) {
         std::list<GraphNode *>::iterator iter = bucket[i].begin();
         while (iter != bucket[i].end()) {
           auto node = *iter;
           node->build_sampler();
+          VLOG(0) << node->get_id() << " bucket " << i << " shard_start"
+                  << shard_start << " shard end " << shard_end;
           iter++;
         }
       }
     }
   }
+  VLOG(0) << "load data done";
   rwlock_->UNLock();
   return 0;
 }
 GraphNode *GraphTable::find_node(uint64_t id, GraphNodeType type) {
-  rwlock_->WRLock();
-  size_t shard_id = id % _shard_num;
+  rwlock_->RDLock();
+  size_t shard_id = id % shard_num;
   if (shard_id >= shard_end || shard_id < shard_start) {
     return NULL;
   }
@@ -107,13 +148,16 @@ GraphNode *GraphTable::find_node(uint64_t id, GraphNodeType type) {
 int32_t GraphTable::random_sample(uint64_t node_id, GraphNodeType type,
                                   int sample_size, char *&buffer,
                                   int &actual_size) {
+  VLOG(0) << "in table random_sample" << node_id << " " << sample_size;
   rwlock_->RDLock();
+  VLOG(0) << "get read rock";
   GraphNode *node = find_node(node_id, type);
   if (node == NULL) {
     actual_size = 0;
     rwlock_->UNLock();
     return 0;
   }
+  VLOG(0) << "find node " << (uint64_t)(&node);
   std::vector<GraphEdge *> res = node->sample_k(sample_size);
   std::vector<GraphNode> node_list;
   int total_size = 0;
@@ -194,20 +238,27 @@ int32_t GraphTable::pull_graph_list(int start, int total_size, char *&buffer,
   return 0;
 }
 int32_t GraphTable::initialize() {
+  VLOG(0) << " init graph table";
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   server_num = _shard_num;
+  VLOG(0) << "in init graph table server num = " << server_num;
   /*
   _shard_num is actually server number here
   when a server initialize its tables, it sets tables' _shard_num to server_num,
   and _shard_idx to server
   rank
   */
-  _shard_num = _config.shard_num();
-  shard_num_per_table = sparse_local_shard_num(_shard_num, server_num);
+  shard_num = _config.shard_num();
+  VLOG(0) << "in init graph table shard num = " << shard_num << " shard_idx"
+          << _shard_idx;
+  shard_num_per_table = sparse_local_shard_num(shard_num, server_num);
   shard_start = _shard_idx * shard_num_per_table;
+  shard_end = shard_start + shard_num_per_table;
+  VLOG(0) << "in init graph table shard idx = " << _shard_idx << " shard_start "
+          << shard_start << " shard_end " << shard_end;
   shards.resize(shard_num_per_table);
   return 0;
 }

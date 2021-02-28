@@ -50,36 +50,7 @@ class GraphShard {
     bucket.resize(bucket_size);
   }
   std::vector<std::list<GraphNode *>> &get_bucket() { return bucket; }
-  std::vector<GraphNode *> get_batch(int start, int total_size) {
-    if (start < 0) start = 0;
-    int size = 0, cur_size;
-    std::vector<GraphNode *> res;
-    if (total_size <= 0) return res;
-    for (int i = 0; i < bucket_size; i++) {
-      cur_size = bucket[i].size();
-      if (size + cur_size <= start) {
-        size += cur_size;
-        continue;
-      }
-      int read = 0;
-      std::list<GraphNode *>::iterator iter = bucket[i].begin();
-      while (size + read < start) {
-        iter++;
-        read++;
-      }
-      read = 0;
-      while (iter != bucket[i].end() && read < total_size) {
-        res.push_back(*iter);
-        iter++;
-        read++;
-      }
-      if (read == total_size) break;
-      size += cur_size;
-      start = size;
-      total_size -= read;
-    }
-    return res;
-  }
+  std::vector<GraphNode *> get_batch(int start, int total_size);
   int init_bucket_size(int shard_num) {
     for (int i = bucket_low_bound;; i++) {
       if (gcd(i, shard_num) == 1) return i;
@@ -99,7 +70,7 @@ class GraphShard {
 };
 class GraphTable : public SparseTable {
  public:
-  GraphTable() {}
+  GraphTable() { rwlock_.reset(new framework::RWLock); }
   virtual ~GraphTable() {}
   virtual int32_t pull_graph_list(int start, int size, char *&buffer,
                                   int &actual_size);
@@ -128,8 +99,7 @@ class GraphTable : public SparseTable {
 
  protected:
   std::vector<GraphShard> shards;
-  std::unordered_set<uint64_t> id_set;
-  size_t shard_start, shard_end, server_num, shard_num_per_table;
+  size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
   const int task_pool_size_ = 7;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;

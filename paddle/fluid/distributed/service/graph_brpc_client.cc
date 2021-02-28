@@ -74,6 +74,7 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
   int type_int = (int)type;
   closure->request(0)->add_params((char *)&node_id, sizeof(uint64_t));
   closure->request(0)->add_params((char *)&type_int, sizeof(int));
+  closure->request(0)->add_params((char *)&sample_size, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
   rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),

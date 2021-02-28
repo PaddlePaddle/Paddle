@@ -25,7 +25,10 @@ std::vector<std::string> graph_service::split(std::string &str,
   }
   return res;
 }
-void graph_service::init(std::string ips_str, int shard_num) {
+void graph_service::set_up(std::string ips_str, int shard_num, int rank,
+                           int client_id) {
+  set_shard_num(shard_num);
+  set_client_Id(client_id);
   std::istringstream stream(ips_str);
   std::string ip, port;
   server_size = 0;
