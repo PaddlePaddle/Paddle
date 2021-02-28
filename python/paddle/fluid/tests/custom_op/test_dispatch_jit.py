@@ -22,15 +22,16 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
-if os.name == 'nt':
-    cmd = 'del {}\\dispatch_op.pyd'.format(get_build_directory())
+file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
+if os.name == 'nt' and os.path.isfile(file):
+    cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
 
 dispatch_op = load(
     name='dispatch_op',
     sources=['dispatch_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,
     verbose=True)
 
 
@@ -54,11 +55,6 @@ class TestJitDispatch(unittest.TestCase):
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_integer, dtype)
 
-    def test_dispatch_complex(self):
-        dtypes = ["complex64", "complex128"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_complex, dtype)
-
     def test_dispatch_float_and_integer(self):
         dtypes = [
             "float32", "float64", "int32", "int64", "int8", "uint8", "int16"
@@ -66,21 +62,6 @@ class TestJitDispatch(unittest.TestCase):
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_float_and_integer,
                                    dtype)
-
-    def test_dispatch_float_and_complex(self):
-        dtypes = ["float32", "float64", "complex64", "complex128"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_complex,
-                                   dtype)
-
-    def test_dispatch_float_and_integer_and_complex(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
-            "complex64", "complex128"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(
-                dispatch_op.dispatch_test_float_and_integer_and_complex, dtype)
 
 
 if __name__ == '__main__':

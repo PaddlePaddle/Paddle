@@ -151,9 +151,12 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
   } else {
 #ifdef PADDLE_WITH_CUDA
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_HIP)
+    hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Not supported GPU, please compile with option WITH_GPU=ON."));
+        "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+        "WITH_ROCM=ON."));
 #endif
   }
 }
@@ -1157,7 +1160,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {
