@@ -930,7 +930,7 @@ def check_abi_compatibility(compiler, verbose=False):
         return True
     warnings.warn(
         ABI_INCOMPATIBILITY_WARNING.format(
-            user_compiler=compiler, version=version.strip()))
+            user_compiler=compiler, version='.'.join(version)))
     return False
 
 
