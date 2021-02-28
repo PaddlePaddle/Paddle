@@ -667,10 +667,6 @@ void RegisterOperatorWithMetaInfo(
 void RegisterOperatorWithMetaInfoMap(
     const paddle::OpMetaInfoMap& op_meta_info_map) {
   auto& meta_info_map = op_meta_info_map.GetMap();
-
-  PADDLE_ENFORCE_EQ(meta_info_map.empty(), false,
-                    platform::errors::PreconditionNotMet(
-                        "No custom operator that needs to be registered."));
   VLOG(1) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
