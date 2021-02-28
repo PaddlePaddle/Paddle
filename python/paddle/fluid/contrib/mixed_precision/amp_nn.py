@@ -97,9 +97,6 @@ def update_loss_scaling(x,
         if e.dtype == core.VarDesc.VarType.FP16:
             assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
                 "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
-        elif e.dtype == core.VarDesc.VarType.BF16:
-            assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
-                "The dtype of prev_loss_scaling should be float32 when the dtype of x is bfloat16."
         else:
             assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
 

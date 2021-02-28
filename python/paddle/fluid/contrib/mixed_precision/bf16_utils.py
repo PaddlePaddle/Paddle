@@ -424,11 +424,9 @@ def cast_model_to_bf16(program, amp_lists=None, use_bf16_guard=True):
             if op.has_attr('dtype') and op.attr(
                     'dtype') == core.VarDesc.VarType.FP32:
                 op._set_attr('dtype', core.VarDesc.VarType.BF16)
-            if op.has_attr('op_namescope') and \
-                    (_bf16_guard_pattern in op.attr("op_namescope")):
-                if op.has_attr('use_mkldnn'):
-                    op._set_attr('use_mkldnn', True)
-                    op._set_attr('mkldnn_data_type', 'bfloat16')
+            if op.has_attr('use_mkldnn'):
+                op._set_attr('use_mkldnn', True)
+                op._set_attr('mkldnn_data_type', 'bfloat16')
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [
@@ -500,7 +498,7 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
             param_t.set(np.uint16(data), place)
 
 
-def rewrite_program(main_prog, amp_lists):
+def rewrite_program(main_prog, amp_lists, use_bf16_guard):
     """
     Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
@@ -586,66 +584,22 @@ def rewrite_program(main_prog, amp_lists):
                                            core.VarDesc.VarType.BF16,
                                            core.VarDesc.VarType.FP32)
         elif op in white_op_set:
-            num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP32,
-                                           core.VarDesc.VarType.BF16)
+            if use_bf16_guard:
+                if not (op.has_attr('op_namescope') and
+                        (_bf16_guard_pattern in op.attr("op_namescope"))):
+                    idx += 1
+                    continue
+                if op.has_attr('use_mkldnn'):
+                    op._set_attr('use_mkldnn', True)
+                    op._set_attr('mkldnn_data_type', 'bfloat16')
+                elif op.has_attr('dtype') and op.attr(
+                        'dtype') == core.VarDesc.VarType.FP32:
+                    op._set_attr('dtype', core.VarDesc.VarType.BF16)
+
+                num_cast_ops = _insert_cast_op(block, op, idx,
+                                               core.VarDesc.VarType.FP32,
+                                               core.VarDesc.VarType.BF16)
         else:
             pass
 
         idx += num_cast_ops + 1
-
-
-def update_role_var_grad(main_prog, params_grads):
-    """
-    Update op_role_var attr for some ops to make sure the gradients
-    transferred across GPUs is BF16.
-    1. Check whether the op that outputs gradient is cast or not.
-    2. If op is cast and gradient is FP32, remove the op_role_var
-       and find the prev op which outputs BF16 gradient
-    3. Update the op_role_var of the prev op.
-
-    Args:
-        main_prog (Program): The main program for training.
-        params_grads (list): A list of params and grads.
-    """
-    block = main_prog.global_block()
-    BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
-    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-    for p, g in params_grads:
-        op = g.op
-        if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
-            role = op.attr('op_role')
-            if role & int(BACKWARD) and op.has_attr('op_role_var'):
-                op.desc.remove_attr("op_role_var")
-            else:
-                raise ValueError("The cast op {0} must be in BACKWARD role "
-                                 "and have op_role_var attr.".format(op))
-
-            bf16_grad_name = op.input(op.input_names[0])[0]
-            op_for_bf16_grad = find_true_prev_op(block.ops, op, bf16_grad_name)
-            op_role_var_attr_name = \
-                core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-            attr_val = [p.name, bf16_grad_name]
-            if op_for_bf16_grad.has_attr(op_role_var_attr_name):
-                attr_val.extend(op_for_bf16_grad.attr(op_role_var_attr_name))
-            op_for_bf16_grad._set_attr(op_role_var_attr_name, attr_val)
-
-            # Maximize the all_reduce overlap, and perform the cast
-            # operation after gradients transfer.
-            op._set_attr('op_role', OPTIMIZE)
-            # optimize op should stay behind forward and backward ops
-            if op == block.ops[-1]:
-                continue
-            post_ops = find_true_post_op(block.ops, op, g.name)
-            if post_ops:
-                raise ValueError("The cast op {0}'s output should not be"
-                                 "used by a non-optimize op, however, it"
-                                 "is used by {1}".format(op, post_ops[0]))
-            new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(op.desc)
-
-            op_idx = find_op_index(block.desc, op.desc)
-            if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
-            block.desc._remove_op(op_idx, op_idx + 1)
-        block._sync_with_cpp()
