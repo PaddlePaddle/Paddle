@@ -61,7 +61,7 @@ class TestCheckCompiler(TestABIBase):
     def test_wrong_compiler_warning(self):
         # clear environ
         self.del_environ()
-        compiler = 'nvcc'  # fake wrong compiler
+        compiler = 'python'  # fake wrong compiler
         with warnings.catch_warnings(record=True) as error:
             flag = utils.check_abi_compatibility(compiler, verbose=True)
             # check return False
