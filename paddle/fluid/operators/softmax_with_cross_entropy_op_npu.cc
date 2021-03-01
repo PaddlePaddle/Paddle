@@ -85,7 +85,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
 
     // SoftmaxCrossEntropyWithLogits
     Tensor tmp_scel(logits->type());
-    tmp_scel.Resize(framework::make_ddim(logits->dims()[0]));
+    tmp_scel.Resize(framework::make_ddim(static_cast<int>(logits->dims()[0])));
     tmp_scel.mutable_data<T>(ctx.GetPlace());
     auto runner_scel = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
                                    {logits, tmp_onehot}, {tmp_scel}, {});
@@ -100,7 +100,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     // tmp_onehot}, {tmp_scel}, {});
     // runner_scel.Run(stream);
     std::vector<int> axes_vec;
-    axes_vec.push(1);
+    axes_vec.push_back(static_cast<int>(1));
     framework::AttributeMap attr_input_unsqueeze = {{"axes", axes_vec}};
     auto runner_unsqueeze =
         NpuOpRunner("Unsqueeze", {tmp_scel}, {*loss}, attr_input_unsqueeze);
