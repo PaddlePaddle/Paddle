@@ -574,6 +574,7 @@ class _BatchNormBase(layers.Layer):
             set_default_dtype('float32')
 
         param_shape = [num_features]
+        self._data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
         # create parameter
         if weight_attr == False:
@@ -638,8 +639,6 @@ class _BatchNormBase(layers.Layer):
         raise NotImplementedError("BatchNorm Base data format error")
 
     def forward(self, input):
-
-        self._check_data_format(self._data_format)
 
         self._check_input_dim(input)
 
