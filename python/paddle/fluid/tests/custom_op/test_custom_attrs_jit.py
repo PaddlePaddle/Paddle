@@ -14,54 +14,53 @@
 
 import os
 import unittest
-import paddle
 import numpy as np
+
+import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_compile_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
+file = '{}\\custom_attrs_jit\\custom_attrs_jit.pyd'.format(get_build_directory(
+))
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
 
-dispatch_op = load(
-    name='dispatch_op',
-    sources=['dispatch_test_op.cc'],
+# Compile and load custom op Just-In-Time.
+custom_attrs = load(
+    name='custom_attrs_jit',
+    sources=['attr_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
     verbose=True)
 
 
-class TestJitDispatch(unittest.TestCase):
-    def setUp(self):
+class TestJitCustomAttrs(unittest.TestCase):
+    def test_attr_value(self):
         paddle.set_device('cpu')
+        # prepare test value
+        bool_attr = True
+        int_attr = 10
+        float_attr = 3.14
+        int64_attr = 10000000000
+        str_attr = "StrAttr"
+        int_vec_attr = [10, 10, 10]
+        float_vec_attr = [3.14, 3.14, 3.14]
+        int64_vec_attr = [10000000000, 10000000000, 10000000000]
+        str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
-    def run_dispatch_test(self, func, dtype):
-        np_x = np.ones([2, 2]).astype(dtype)
-        x = paddle.to_tensor(np_x)
-        out = func(x)
-        np_x = x.numpy()
-        np_out = out.numpy()
-        self.assertTrue(dtype in str(np_out.dtype))
-        self.assertTrue(
-            np.array_equal(np_x, np_out),
-            "custom op x: {},\n custom op out: {}".format(np_x, np_out))
+        x = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        out = custom_attrs.attr_test(
+            x, bool_attr, int_attr, float_attr, int64_attr, str_attr,
+            int_vec_attr, float_vec_attr, int64_vec_attr, str_vec_attr)
+        out.stop_gradient = False
+        out.backward()
 
-    def test_dispatch_integer(self):
-        dtypes = ["int32", "int64", "int8", "uint8", "int16"]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_integer, dtype)
-
-    def test_dispatch_float_and_integer(self):
-        dtypes = [
-            "float32", "float64", "int32", "int64", "int8", "uint8", "int16"
-        ]
-        for dtype in dtypes:
-            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_integer,
-                                   dtype)
+        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
 
 
 if __name__ == '__main__':

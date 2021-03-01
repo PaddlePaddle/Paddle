@@ -24,8 +24,9 @@ limitations under the License. */
 #endif
 #endif
 
-#include "paddle/fluid/extension/include/dispatch.h"
-#include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/op_meta_info.h"
-#include "paddle/fluid/extension/include/place.h"
-#include "paddle/fluid/extension/include/tensor.h"
+#include "ext_dispatch.h"      // NOLINT
+#include "ext_dtype.h"         // NOLINT
+#include "ext_exception.h"     // NOLINT
+#include "ext_op_meta_info.h"  // NOLINT
+#include "ext_place.h"         // NOLINT
+#include "ext_tensor.h"        // NOLINT
