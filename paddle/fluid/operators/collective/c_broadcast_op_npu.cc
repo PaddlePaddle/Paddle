@@ -46,31 +46,33 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
-    //std::string tag = ctx.Attr<std::string>("tag");
+    int ring_id = ctx.Attr<int>("ring_id");
+    std::string group= std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    std::string tag = ctx.Attr<std::string>("tag");
+
     // std::string group = ctx.Attr<std::string>("group");
-    #pragma message("bianyi")
-    VLOG(3) << "begin hccl broadcast, parameter is: "
-            << "root " << root ;
+    // #pragma message("bianyi")
+    VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root ;
 
     if (root == static_cast<int>(comm->rank())) {
-      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast("abc", ptr, numel,
-                                   dtype, root, "hccl_world_group", (void*)stream));
+      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                   dtype, (uint32_t)root, group.c_str(), (void*)stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
+    } else {
+
+        PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                     dtype, (uint32_t)root, group.c_str(), (void*)stream));
+        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+                << framework::product(out->dims());
+    }
       if (out != x) {
         framework::TensorCopy(
             *static_cast<const framework::Tensor*>(x), place,
             *platform::DeviceContextPool::Instance().Get(place),
             static_cast<framework::Tensor*>(out));
       }
-    } else {
-
-        PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast("abc", ptr, numel,
-                                     dtype, root, "hccl_world_group", (void*)stream));
-        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-                << framework::product(out->dims());
-    }
 
     out->Resize(x->dims());
     out->set_lod(x->lod());

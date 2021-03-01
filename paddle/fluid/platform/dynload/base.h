@@ -23,6 +23,8 @@
 #ifndef HCCL_BASE_H_
 #define HCCL_BASE_H_
 
+#define HCOM_GROUP_PREFIX "HCOM_GROUP_"
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus

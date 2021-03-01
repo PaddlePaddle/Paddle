@@ -42,11 +42,11 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
+#if defined(PADDLE_WITH_ASCEND_CL)
     #pragma message("tag")
-    AddAttr<std::string>("tag2", "(int default 0) root id for broadcasting.")
+    AddAttr<std::string>("tag", "(int default 0) root id for broadcasting.")
         .SetDefault("");
-    AddAttr<std::string>("group", "(int default 0) root id for broadcasting.")
-        .SetDefault("");
+#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
