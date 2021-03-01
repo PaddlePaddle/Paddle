@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -611,6 +612,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       config.is_valid(), true,
       platform::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
+
+  // Register custom operators compiled by the user.
+  // This function can only be executed once per process.
+  static std::once_flag custom_operators_registered;
+  std::call_once(custom_operators_registered,
+                 []() { paddle::RegisterAllCustomOperator(); });
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
