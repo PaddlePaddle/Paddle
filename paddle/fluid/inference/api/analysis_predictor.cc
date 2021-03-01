@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -617,6 +618,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     static bool process_level_allocator_enabled;
 
     std::call_once(gflags_initialized, [&]() {
+      paddle::RegisterAllCustomOperator();
       std::vector<std::string> gflags;
       PADDLE_ENFORCE_GE(
           config.memory_pool_init_size_mb(), 0.f,
