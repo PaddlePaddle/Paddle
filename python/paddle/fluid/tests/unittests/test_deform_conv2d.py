@@ -32,6 +32,7 @@ class TestDeformConv2D(TestCase):
         self.padding = [0, 0]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = True
 
@@ -107,7 +108,7 @@ class TestDeformConv2D(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
-                deformable_groups=1,
+                deformable_groups=self.deformable_groups,
                 im2col_step=1,
                 param_attr=I.Assign(self.weight),
                 bias_attr=False if self.no_bias else I.Assign(self.bias),
@@ -123,7 +124,7 @@ class TestDeformConv2D(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
-                deformable_groups=1,
+                deformable_groups=self.deformable_groups,
                 im2col_step=1,
                 param_attr=I.Assign(self.weight),
                 bias_attr=False if self.no_bias else I.Assign(self.bias))
@@ -154,6 +155,7 @@ class TestDeformConv2D(TestCase):
             stride=self.stride,
             padding=self.padding,
             dilation=self.dilation,
+            deformable_groups=self.deformable_groups,
             groups=self.groups,
             weight_attr=I.Assign(self.weight),
             bias_attr=False if self.no_bias else I.Assign(self.bias))
@@ -194,6 +196,7 @@ class TestDeformConv2DFunctional(TestCase):
         self.padding = [0, 0]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = True
 
@@ -269,7 +272,7 @@ class TestDeformConv2DFunctional(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
-                deformable_groups=1,
+                deformable_groups=self.deformable_groups,
                 im2col_step=1,
                 param_attr=I.Assign(self.weight),
                 bias_attr=False if self.no_bias else I.Assign(self.bias),
@@ -285,7 +288,7 @@ class TestDeformConv2DFunctional(TestCase):
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
-                deformable_groups=1,
+                deformable_groups=self.deformable_groups,
                 im2col_step=1,
                 param_attr=I.Assign(self.weight),
                 bias_attr=False if self.no_bias else I.Assign(self.bias))
@@ -317,6 +320,7 @@ class TestDeformConv2DFunctional(TestCase):
             stride=self.stride,
             padding=self.padding,
             dilation=self.dilation,
+            deformable_groups=self.deformable_groups,
             groups=self.groups, )
 
         y_v2 = paddle.vision.ops.deform_conv2d(
@@ -328,6 +332,7 @@ class TestDeformConv2DFunctional(TestCase):
             stride=self.stride,
             padding=self.padding,
             dilation=self.dilation,
+            deformable_groups=self.deformable_groups,
             groups=self.groups, )
 
         out_v1 = y_v1.numpy()
@@ -365,6 +370,7 @@ class TestDeformConv2DFunctional(TestCase):
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
+                deformable_groups=self.deformable_groups,
                 groups=self.groups, )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
@@ -376,6 +382,7 @@ class TestDeformConv2DFunctional(TestCase):
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
+                deformable_groups=self.deformable_groups,
                 groups=self.groups, )
 
         exe = paddle.static.Executor(self.place)
@@ -421,6 +428,7 @@ class TestDeformConv2DWithPadding(TestDeformConv2D):
         self.padding = [2, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = True
 
@@ -433,6 +441,7 @@ class TestDeformConv2DWithBias(TestDeformConv2D):
         self.padding = [2, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -445,6 +454,7 @@ class TestDeformConv2DWithAsynPadding(TestDeformConv2D):
         self.padding = [1, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -457,6 +467,7 @@ class TestDeformConv2DWithDilation(TestDeformConv2D):
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [3, 3]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -469,6 +480,20 @@ class TestDeformConv2DWithStride(TestDeformConv2D):
         self.padding = [1, 1]
         self.stride = [2, 2]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
+        self.groups = 1
+        self.no_bias = False
+
+
+class TestDeformConv2DWithDeformable_Groups(TestDeformConv2D):
+    def setUp(self):
+        self.in_channels = 5
+        self.out_channels = 5
+        self.kernel_size = [3, 3]
+        self.padding = [1, 1]
+        self.stride = [1, 1]
+        self.dilation = [1, 1]
+        self.deformable_groups = 8
         self.groups = 1
         self.no_bias = False
 
@@ -481,6 +506,7 @@ class TestDeformConv2DWithGroups(TestDeformConv2D):
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 5
         self.no_bias = False
 
@@ -494,6 +520,7 @@ class TestDeformConv2DFunctionalWithPadding(TestDeformConv2DFunctional):
         self.padding = [2, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = True
 
@@ -506,6 +533,7 @@ class TestDeformConv2DFunctionalWithBias(TestDeformConv2DFunctional):
         self.padding = [2, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -518,6 +546,7 @@ class TestDeformConv2DFunctionalWithAsynPadding(TestDeformConv2DFunctional):
         self.padding = [1, 2]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -530,6 +559,7 @@ class TestDeformConv2DFunctionalWithDilation(TestDeformConv2DFunctional):
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [3, 3]
+        self.deformable_groups = 1
         self.groups = 1
         self.no_bias = False
 
@@ -542,6 +572,21 @@ class TestDeformConv2DFunctionalWithStride(TestDeformConv2DFunctional):
         self.padding = [1, 1]
         self.stride = [2, 2]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
+        self.groups = 1
+        self.no_bias = False
+
+
+class TestDeformConv2DFunctionalWithDeformable_Groups(
+        TestDeformConv2DFunctional):
+    def setUp(self):
+        self.in_channels = 5
+        self.out_channels = 5
+        self.kernel_size = [3, 3]
+        self.padding = [1, 1]
+        self.stride = [1, 1]
+        self.dilation = [1, 1]
+        self.deformable_groups = 8
         self.groups = 1
         self.no_bias = False
 
@@ -554,6 +599,7 @@ class TestDeformConv2DFunctionalWithGroups(TestDeformConv2DFunctional):
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [1, 1]
+        self.deformable_groups = 1
         self.groups = 5
         self.no_bias = False
 
