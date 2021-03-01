@@ -47,7 +47,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     int ring_id = ctx.Attr<int>("ring_id");
-    std::string group= std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     std::string tag = ctx.Attr<std::string>("tag");
 
     VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
@@ -59,13 +59,11 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
                                    dtype, (uint32_t)root, group.c_str(), (void*)stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
-
     } else {
-
-        PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                     dtype, (uint32_t)root, group.c_str(), (void*)stream));
-        VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-                << framework::product(out->dims());
+      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                    dtype, (uint32_t)root, group.c_str(), (void*)stream));
+      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+              << framework::product(out->dims());
     }
       if (out != x) {
         framework::TensorCopy(
