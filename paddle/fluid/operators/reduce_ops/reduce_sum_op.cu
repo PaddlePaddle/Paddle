@@ -56,13 +56,25 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
+#ifdef __HIPCC__
+          TensorReduceFunctor<T, hipcub::Sum, IdentityFunctor<T>>(
+              *input, output, reduce_dims, static_cast<double>(0.0),
+              hipcub::Sum(), IdentityFunctor<T>(), stream));
+#else
           TensorReduceFunctor<T, cub::Sum, IdentityFunctor<T>>(
               *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
               IdentityFunctor<T>(), stream));
+#endif
     } else {
+#ifdef __HIPCC__
+      TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
+          *input, output, reduce_dims, static_cast<T>(0), hipcub::Sum(),
+          IdentityFunctor<T>(), stream);
+#else
       TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
           *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
           IdentityFunctor<T>(), stream);
+#endif
     }
   }
 };

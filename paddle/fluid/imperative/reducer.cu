@@ -17,7 +17,7 @@
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void Group::DivNRanks(framework::Tensor *tensor, int64_t nranks,
                       const platform::DeviceContext &context) {
   framework::VisitDataTypeSmall(

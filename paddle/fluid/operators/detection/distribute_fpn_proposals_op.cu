@@ -12,8 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/memory/allocation/allocator.h>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+#endif
+
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
@@ -143,24 +149,42 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
+                                                 target_lvls_data, keys_out,
+                                                 idx_in, idx_out, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
                                               target_lvls_data, keys_out,
                                               idx_in, idx_out, roi_num);
+#endif
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-    // Run sorting operation
-    // sort target level to get corresponding index
+// Run sorting operation
+// sort target level to get corresponding index
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(
+        d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
+        idx_in, idx_out, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
+#endif
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
-    // sort current index to get restore index
+// sort current index to get restore index
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(
+        d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
+        restore_idx_data, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
+#endif
 
     int start = 0;
     auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
