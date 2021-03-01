@@ -34,9 +34,9 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* softmax = ctx.Output<Tensor>("Softmax");
     auto* loss = ctx.Output<Tensor>("Loss");
 
-    int cls_num = logits.dims()[1];
+    int cls_num = logits->dims()[1];
 
-    logits_dims = logits.auto stream =
+    auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
