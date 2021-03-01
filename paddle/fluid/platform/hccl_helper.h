@@ -49,17 +49,18 @@ namespace platform {
 
 inline hcclDataType_t ToHCCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
-    return HCCL_DATA_TYPE_FLOAT;
+    return HCCL_DATA_TYPE_FP32;
   } else if (type == framework::proto::VarType::FP16) {
-    return HCCL_DATA_TYPE_HALF;
+    return HCCL_DATA_TYPE_FP16;
   }else if (type == framework::proto::VarType::INT32) {
-    return HCCL_DATA_TYPE_INT;
+    return HCCL_DATA_TYPE_INT32;
   } else if (type == framework::proto::VarType::INT8) {
     return HCCL_DATA_TYPE_INT8;
-  // } 
-  // } else if (type == framework::proto::VarType::FP64) {
+  } 
+  // else if (type == framework::proto::VarType::FP64) {
   //   return HCCL_DATA_TYPE_FP32;
-  }else {
+  // }
+  else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in hccl is not supported."));
   }

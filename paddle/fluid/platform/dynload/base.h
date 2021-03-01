@@ -82,9 +82,12 @@ typedef enum tagHcclRedOp {
  */
 typedef enum tagHcclDataType {
     HCCL_DATA_TYPE_INT8 = 0,  /**< int8 */
-    HCCL_DATA_TYPE_INT = 1,   /**< int32 */
-    HCCL_DATA_TYPE_HALF = 2,  /**< fp16 */
-    HCCL_DATA_TYPE_FLOAT = 3, /**< fp32 */
+    HCCL_DATA_TYPE_INT16 = 1,  /**< int16 */
+    HCCL_DATA_TYPE_INT32 = 2,   /**< int32 */
+    HCCL_DATA_TYPE_FP16 = 3,  /**< fp16 */
+    HCCL_DATA_TYPE_FP32 = 4, /**< fp32 */
+    HCCL_DATA_TYPE_INT64 = 5, /**< fp32 */
+    HCCL_DATA_TYPE_UINT64 = 6, /**< fp32 */
     HCCL_DATA_TYPE_RESERVED   /**< reserved */
 } hcclDataType_t;
 
