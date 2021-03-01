@@ -91,4 +91,9 @@ TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
     CHECK_NE(ps, delete_pass);
   }
 }
+
+#ifdef PADDLE_WITH_CRYPTO
+TEST(paddle_inference_api, crypto) { paddle::MakeCipher(""); }
+#endif
+
 }  // namespace paddle
