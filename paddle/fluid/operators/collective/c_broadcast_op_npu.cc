@@ -31,7 +31,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
     int numel = x->numel();
     hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
-    
+
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
     auto place = ctx.GetPlace();
@@ -50,9 +50,9 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     std::string group= std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     std::string tag = ctx.Attr<std::string>("tag");
 
-    // std::string group = ctx.Attr<std::string>("group");
-    // #pragma message("bianyi")
-    VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root ;
+    VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
+      << ", group is " << group
+      << ", tag is " << tag;
 
     if (root == static_cast<int>(comm->rank())) {
       PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
@@ -89,7 +89,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_broadcast, 
+REGISTER_OP_NPU_KERNEL(c_broadcast,
                         ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<int>,
                         ops::CBroadcastOpASCENDKernel<int8_t>,

@@ -42,6 +42,7 @@ namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_NO_KERNEL_OP(c_comm_init_hccl);
+USE_NO_KERNEL_OP(c_create_group);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
@@ -49,20 +50,26 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   std::string rank_table_file = getenv("RANK_TABLE_FILE");
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
-  
+
   printf("rank_table_file: %s, rank_id = %d, device_id = %d\n", rank_table_file.c_str(), rank_id, device_id);
-  
+
   f::AttributeMap attrs;
-  attrs["rank_table_file"]=rank_table_file;
-  attrs["rank_id"]=rank_id;
-  attrs["device_id"]=device_id;
-  
-  auto op =
+  attrs["rank_table_file"] = rank_table_file;
+  attrs["rank_id"] = rank_id;
+  attrs["device_id"] = device_id;
+  auto comm_init_op =
       f::OpRegistry::CreateOp("c_comm_init_hccl", {}, {}, attrs);
-
   auto place = ctx.GetPlace();
-  op->Run(*scope, place);
+  comm_init_op->Run(*scope, place);
+  ctx.Wait();
 
+  f::AttributeMap create_attrs;
+  create_attrs["group_name"] = HCOM_GROUP_PREFIX + std::to_string(0);
+  create_attrs["nranks"] = 2;
+  std::vector<int> rank_ids{0, 1};
+  create_attrs["rank_ids"] = rank_ids;
+  auto create_group_op = f::OpRegistry::CreateOp("c_create_group", {}, {}, create_attrs);
+  create_group_op->Run(*scope, place);
   ctx.Wait();
 }
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
@@ -94,7 +101,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"]="tagx";
+  attrs["tag"]=std::string("tagx");
   attrs["root"]=0;
   attrs["ring_id"]=0;
 

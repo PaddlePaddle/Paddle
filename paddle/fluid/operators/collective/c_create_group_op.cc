@@ -41,10 +41,11 @@ class CCreateGroupOpNPU : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::string group_name = Attr<std::string>("group_name");
-    uint32_t nranks = Attr<int>("nranks");
-    std::vector<uint32_t> rank_ids = Attr<std::vector<uint32_t>>("rank_ids");
+    int nranks = Attr<int>("nranks");
+    std::vector<int> rank_ids = Attr<std::vector<int>>("rank_ids");
     paddle::platform::HCCLCommContext::Instance().CreateHCCLGroup(
-        group_name, nranks, rank_ids);
+        group_name, (uint32_t)nranks,
+        std::vector<uint32_t>(rank_ids.begin(), rank_ids.end()));
   }
 };
 
@@ -59,7 +60,7 @@ Create collective communication group on NPU
     AddAttr<std::string>("group_name",
         "(string) name of the collective communication group");
     AddAttr<int>("nranks", "(int) number of the group");
-    AddAttr<int>("rank_ids",
+    AddAttr<std::vector<int>>("rank_ids",
                  "(list of int) The world rank id of the group members");
   }
 };

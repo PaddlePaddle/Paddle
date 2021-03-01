@@ -36,4 +36,4 @@ endif()
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COLLECTIVE_DEPS} PARENT_SCOPE)
 set(GLOB_COLLECTIVE_DEPS ${COLLECTIVE_DEPS} CACHE INTERNAL "collective dependency")
 
-cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc DEPS op_registry c_broadcast_op c_comm_init_hccl_op ${COLLECTIVE_DEPS} ascend_hccl dynamic_loader dynload_warpctc scope device_context enforce executor)
+cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc DEPS op_registry c_broadcast_op c_comm_init_hccl_op c_create_group_op ${COLLECTIVE_DEPS} ascend_hccl dynamic_loader dynload_warpctc scope device_context enforce executor)
