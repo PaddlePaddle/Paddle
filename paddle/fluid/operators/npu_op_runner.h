@@ -12,8 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_ASCEND_CL
 #pragma once
 #include <paddle/fluid/framework/operator.h>
+#include <paddle/fluid/framework/type_defs.h>
 
 #include <string>
 #include <vector>
@@ -26,8 +28,8 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
-using Attribute = framework::Attribute;
-using AttributeMap = framework::AttributeMap;
+using NPUAttribute = framework::NPUAttribute;
+using NPUAttributeMap = framework::NPUAttributeMap;
 
 class NpuOpRunner {
  public:
@@ -82,3 +84,4 @@ class NpuOpRunner {
 
 }  // namespace operators
 }  // namespace paddle
+#endif
