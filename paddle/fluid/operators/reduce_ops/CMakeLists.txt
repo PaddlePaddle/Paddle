@@ -13,7 +13,7 @@ else()
     register_operators()
 endif()
 
-if(WITH_GPU)
+if(WITH_GPU OR WITH_ROCM)
     file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.part.cu")
     string(REPLACE ".part.cu" "" OPS "${OPS}")
 
@@ -37,4 +37,8 @@ if(WITH_GPU)
     else()
 	nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
     endif()
+endif()
+
+if(WITH_ROCM)
+    hip_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
 endif()
