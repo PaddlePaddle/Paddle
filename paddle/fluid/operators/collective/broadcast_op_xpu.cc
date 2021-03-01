@@ -71,41 +71,6 @@ class BKCLBroadcastOpKernel : public framework::OpKernel<T> {
     auto ret = bkcl_broadcast(comm, send_recv_buffer, send_recv_buffer,
                               static_cast<size_t>(in->numel()) * scale,
                               data_type, root_dev_id, stream);
-    float* send_cpu = new float[static_cast<size_t>(in->numel()) * scale];
-    VLOG(0) << "after bkcl_broadcast";
-    if (dev_id == 3) {
-      static std::ofstream stored0_buffer;
-      stored0_buffer.open("send_recv_buffer0.log");
-      // recvfile.open("xpu_1_recv.log");
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(send_cpu),
-                   BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                   reinterpret_cast<void*>(send_recv_buffer),
-                   (static_cast<size_t>(in->numel()) * scale) * sizeof(float));
-      VLOG(0) << "stored0_buffer address = " << send_recv_buffer;
-      for (size_t j = 0; j < static_cast<size_t>(in->numel()) * scale; ++j) {
-        if (j % 10 == 0) {
-          stored0_buffer << "\n " << send_cpu[j];
-        } else {
-          stored0_buffer << " " << send_cpu[j];
-        }
-      }
-    } else {
-      static std::ofstream stored1_buffer;
-      stored1_buffer.open("send_recv_buffer1.log");
-      memory::Copy(platform::CPUPlace(), reinterpret_cast<void*>(send_cpu),
-                   BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
-                   reinterpret_cast<void*>(send_recv_buffer),
-                   (static_cast<size_t>(in->numel()) * scale) * sizeof(float));
-      VLOG(0) << "stored1_buffer address = " << send_recv_buffer;
-      for (size_t j = 0; j < static_cast<size_t>(in->numel()) * scale; ++j) {
-        if (j % 10 == 0) {
-          stored1_buffer << "\n " << send_cpu[j];
-        } else {
-          stored1_buffer << " " << send_cpu[j];
-        }
-      }
-    }
-
     PADDLE_ENFORCE_EQ(ret, BKCL_SUCCESS,
                       platform::errors::Unavailable("bkcl_broadcast failed"));
 
