@@ -97,6 +97,10 @@ RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e44
 WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build && python setup.py install
 WORKDIR /home
+RUN python3.8 -m pip uninstall -y pip setuptools && \
+  python3.7 -m pip uninstall -y pip setuptools && \
+  python3.6 -m pip uninstall -y pip setuptools && \
+  python3 -m pip uninstall -y pip setuptools
 RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
 RUN python3.8 setup.py build && python3.8 setup.py install && \
@@ -114,11 +118,7 @@ RUN python setup.py install && \
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
-    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1 && \
-    rm -r /usr/local/lib/python3.8/site-packages/setuptools*.dist-info && rm -r /usr/local/lib/python3.8/site-packages/pip*.dist-info && \
-    rm -r /usr/local/lib/python3.7/site-packages/setuptools*.dist-info && rm -r /usr/local/lib/python3.7/site-packages/pip*.dist-info && \
-    rm -r /usr/local/lib/python3.6/site-packages/setuptools*.dist-info && rm -r /usr/local/lib/python3.6/site-packages/pip*.dist-info && \
-    rm -r /usr/local/python3.5.1/lib/python3.5/site-packages/setuptools*.dist-info && rm -r /usr/local/python3.5.1/lib/python3.5/site-packages/pip*.dist-info
+    rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
 
 # Install Go and glide
 RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
