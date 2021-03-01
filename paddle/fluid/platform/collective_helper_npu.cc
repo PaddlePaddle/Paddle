@@ -75,8 +75,8 @@ HCCLComm* HCCLCommContext::AssignHCCLComm(const std::string& rank_table_file,
       new NPUDeviceContext(NPUPlace(device_id)));
 
   VLOG(3) << "device_id" << device_id;
-  VLOG(3) << "dev_ctx->stream()" << dev_ctx->stream();  
-  
+  VLOG(3) << "dev_ctx->stream()" << dev_ctx->stream();
+
   HCCLCommImpl* c = new HCCLCommImpl;
   c->set_rank_table_file(rank_table_file);
   c->set_rank(rank);
