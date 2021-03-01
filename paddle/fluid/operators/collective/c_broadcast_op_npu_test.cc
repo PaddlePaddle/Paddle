@@ -71,9 +71,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   std::vector<float> init;
+  int rank_id = atoi(getenv("RANK_ID"));
+  std::cout<< "rank_id:" << rank_id<<std::endl;
   for (int64_t i = 0; i < 10 * 10; ++i) {
-    init.push_back(1.0);
+    init.push_back(1.0 + rank_id);
+    std::cout<< init[0];
   }
+  std::cout<<std::endl;
 
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({10, 10});
@@ -86,11 +90,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   tensor_out->Resize({10, 10});
   tensor_out->mutable_data<float>(place);  // allocate
 
+  ctx.Wait();
+
   // run
   f::AttributeMap attrs;
-  //attrs["tag2"]="tagx";
+  attrs["tag"]="tagx";
   attrs["root"]=0;
-  // attrs["group"]="hccl_world_group";
+  attrs["ring_id"]=0;
 
   auto op =
       f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
