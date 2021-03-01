@@ -26,7 +26,7 @@ namespace details {
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
@@ -76,14 +76,10 @@ void FusedAllReduceOpHandle::RunImpl() {
           "handles is %d, and the number of  output variable handles is %d.",
           in_var_handles.size(), out_var_handles.size()));
 
-// Note: some gradient op doesn't have CUDAKernel, so the gradients of
-// those op are in CPUPlace, in this case, the all reduce should not be fused.
-#if defined(PADDLE_WITH_XPU_BKCL)
-  // TODO(liuyuhui): XPU don't support fuse all reduce for now
-  if (InputIsInDifferentPlace(in_var_handles) || true) {
-#else
+  // Note: some gradient op doesn't have CUDAKernel or XPUKernel, so the
+  // gradients of those op are in CPUPlace, in this case, the all reduce
+  // should not be fused.
   if (InputIsInDifferentPlace(in_var_handles)) {
-#endif
     for (size_t j = 0; j < num_of_all_reduce_; ++j) {
       std::vector<VarHandle *> dev_inputs;
       std::vector<VarHandle *> dev_outputs;

@@ -70,7 +70,6 @@ CPU_PARALLEL_JOB = [
     'test_parallel_dygraph_sync_batch_norm',
     'test_origin_info',
     'test_multiclass_nms_op',
-    'test_monitor',
     'test_mkldnn_conv_bias_fuse_pass',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_matrix_nms_op',
