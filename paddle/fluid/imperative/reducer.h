@@ -187,12 +187,13 @@ class Reducer {
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_{false};
   bool all_group_ready_{false};
-
+#ifdef PADDLE_WITH_XPU_BKCL
   // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
   ::ThreadPool comm_pool_;
   uint32_t comm_op_count_;
   std::mutex mutex_;
   std::condition_variable cv_;
+#endif
 };
 
 std::vector<std::vector<size_t>> AssignGroupBySize(
