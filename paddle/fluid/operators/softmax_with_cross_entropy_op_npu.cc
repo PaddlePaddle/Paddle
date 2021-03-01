@@ -48,10 +48,8 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_labels(labels->type());
     tmp_labels.Resize(labels->dims());
     tmp_labels.mutable_data<T>(ctx.GetPlace());
-    framework::AttributeMap attr_input_cast_label = {
-        {"dst_type", static_cast<int>(3)}};
-    auto runner_cast_label =
-        NpuOpRunner("Cast", {*labels}, {tmp_labels}, attr_input_cast_label);
+    auto runner_cast_label = NpuOpRunner("Cast", {*labels}, {tmp_labels},
+                                         {{"dst_type", static_cast<int>(3)}});
     runner_cast_label.Run(stream);
 
     // on and off
