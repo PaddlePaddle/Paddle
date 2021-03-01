@@ -87,7 +87,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     tmp_scel.Resize(framework::make_ddim(dim_vec));
     tmp_scel.mutable_data<T>(ctx.GetPlace());
     auto runner_scel = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
-                                   {logits, tmp_onehot}, {tmp_scel}, {});
+                                   {*logits, tmp_onehot}, {tmp_scel}, {});
     runner_scel.Run(stream);
 
     // to do cast type
