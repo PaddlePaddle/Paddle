@@ -4,6 +4,8 @@ endif()
 
 INCLUDE(ExternalProject)
 SET(XPU_PROJECT                 "extern_xpu")
+SET(XPU_API_LIB_NAME            "libxpuapi.so")
+SET(XPU_RT_LIB_NAME             "libxpurt.so")
 
 if(NOT XPU_SDK_ROOT)
   if (WITH_AARCH64)
@@ -20,8 +22,6 @@ if(NOT XPU_SDK_ROOT)
   SET(XPU_API_INC_DIR             "${THIRD_PARTY_PATH}/install/xpu/include")
   SET(XPU_LIB_DIR                 "${THIRD_PARTY_PATH}/install/xpu/lib")
 
-  SET(XPU_API_LIB_NAME            "libxpuapi.so")
-  SET(XPU_RT_LIB_NAME             "libxpurt.so")
   SET(XPU_API_LIB                 "${XPU_LIB_DIR}/${XPU_API_LIB_NAME}")
   SET(XPU_RT_LIB                  "${XPU_LIB_DIR}/${XPU_RT_LIB_NAME}")
 
@@ -49,6 +49,7 @@ else()
   SET(XPU_API_INC_DIR   "${XPU_SDK_ROOT}/XTDK/include/")
   SET(XPU_API_LIB "${XPU_SDK_ROOT}/XTDK/shlib/libxpuapi.so")
   SET(XPU_RT_LIB "${XPU_SDK_ROOT}/XTDK/runtime/shlib/libxpurt.so")
+  SET(XPU_LIB_DIR "${XPU_SDK_ROOT}/XTDK/shlib/")
 endif()
 
 INCLUDE_DIRECTORIES(${XPU_API_INC_DIR})

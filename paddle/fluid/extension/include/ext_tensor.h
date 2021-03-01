@@ -16,14 +16,37 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/extension/include/dll_decl.h"
-#include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
+
+#include "ext_dll_decl.h"  // NOLINT
+#include "ext_dtype.h"     // NOLINT
+#include "ext_place.h"     // NOLINT
 
 namespace paddle {
 namespace framework {
 class CustomTensorUtils;
 }  // namespace framework
+
+class StreamWrapper {
+ public:
+  StreamWrapper() : stream_(nullptr), is_stream_set_(false) {}
+  void SetStream(void* stream) {
+    stream_ = stream;
+    is_stream_set_ = true;
+  }
+
+  void* GetStream() const { return stream_; }
+
+  bool IsStreamSet() const { return is_stream_set_; }
+
+ private:
+  //  cudaStream_t stream_;
+  void* stream_;
+  bool is_stream_set_;
+};
+
 class PD_DLL_DECL Tensor {
  public:
   /// \brief Construct a Tensor on target Place for CustomOp.
@@ -34,7 +57,7 @@ class PD_DLL_DECL Tensor {
   /// Reshape must be called before calling
   /// mutable_data() or copy_to(const PlaceType& place)
   /// \param shape The shape to set.
-  void reshape(const std::vector<int>& shape);
+  void reshape(const std::vector<int64_t>& shape);
 
   /// \brief Get the memory pointer in CPU or GPU with
   /// specific data type.
@@ -67,7 +90,7 @@ class PD_DLL_DECL Tensor {
   Tensor copy_to(const PlaceType& place) const;
 
   /// \brief Return the shape of the Tensor.
-  std::vector<int> shape() const;
+  std::vector<int64_t> shape() const;
 
   /// \brief Return the data type of the tensor.
   /// It's usually used to get the output tensor data type.
@@ -87,10 +110,16 @@ class PD_DLL_DECL Tensor {
   /// \brief Cast datatype from one to another
   Tensor cast(const DataType& target_type) const;
 
+#ifdef PADDLE_WITH_CUDA
+  /// \bref Get current stream of Tensor
+  cudaStream_t stream() const;
+#endif
+
  private:
   friend class framework::CustomTensorUtils;
   mutable std::shared_ptr<void> tensor_;
   mutable PlaceType place_;
+  StreamWrapper stream_;
 };
 
 }  // namespace paddle

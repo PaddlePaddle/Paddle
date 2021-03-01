@@ -83,7 +83,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   }
 
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
@@ -95,7 +95,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   }
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;

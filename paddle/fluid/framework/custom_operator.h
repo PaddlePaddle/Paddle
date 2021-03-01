@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/extension/include/op_meta_info.h"
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 
 namespace paddle {
 namespace framework {
