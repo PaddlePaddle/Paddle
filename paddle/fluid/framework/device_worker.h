@@ -52,7 +52,7 @@ class DeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -73,11 +73,12 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
-#ifdef PADDLE_WITH_CUDA
-  void AddStream(const cudaStream_t stream) { copy_streams_.push_back(stream); }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void AddStream(const gpuStream_t stream) { copy_streams_.push_back(stream); }
 #endif
 
-#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
   void AddPlace(const paddle::platform::Place place) {
     places_.push_back(place);
   }
@@ -137,8 +138,8 @@ class PullDenseWorker {
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
 
-#ifdef PADDLE_WITH_CUDA
-  std::vector<cudaStream_t> copy_streams_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::vector<gpuStream_t> copy_streams_;
 #endif
   std::vector<paddle::platform::Place> places_;
   std::vector<Scope*> thread_scopes_;
@@ -167,9 +168,9 @@ class DeviceWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
-#ifdef PADDLE_WITH_CUDA
-  virtual void SetStream(const cudaStream_t stream) {}
-  virtual void SetEvent(const cudaEvent_t event) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  virtual void SetStream(const gpuStream_t stream) {}
+  virtual void SetEvent(const gpuEvent_t event) {}
 #endif
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
@@ -437,7 +438,8 @@ class HeterCpuWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
+     defined PADDLE_WITH_XPU) &&                            \
     (defined PADDLE_WITH_PSLIB)
 class HeterBoxWorker : public HogwildWorker {
  public:
@@ -452,8 +454,8 @@ class HeterBoxWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   virtual void ProduceTasks() override;
-  virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
-  virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
+  virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
   void ResetStat();
 
@@ -515,8 +517,8 @@ class HeterBoxWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
-  cudaEvent_t event_;
-  cudaStream_t copy_stream_;
+  gpuEvent_t event_;
+  gpuStream_t copy_stream_;
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
 
@@ -537,7 +539,8 @@ class HeterBoxWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 class PSGPUWorker : public HogwildWorker {
  public:
   PSGPUWorker() {}
@@ -551,8 +554,8 @@ class PSGPUWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   virtual void ProduceTasks() override;
-  virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
-  virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
+  virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
   void ResetStat();
 
@@ -611,8 +614,8 @@ class PSGPUWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
-  cudaEvent_t event_;
-  cudaStream_t copy_stream_;
+  gpuEvent_t event_;
+  gpuStream_t copy_stream_;
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
 
@@ -633,7 +636,7 @@ class PSGPUWorker : public HogwildWorker {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

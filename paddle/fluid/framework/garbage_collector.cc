@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <functional>
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "gflags/gflags.h"
@@ -53,7 +53,7 @@ void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
@@ -82,18 +82,27 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream_));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+#endif
   callback_manager_.reset(new platform::StreamCallbackManager(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
   auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
   platform::CUDADeviceGuard guard(place.device);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamDestroy(stream_));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+#endif
 }
 
-cudaStream_t StreamGarbageCollector::stream() const { return stream_; }
+gpuStream_t StreamGarbageCollector::stream() const { return stream_; }
 
 void StreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
 

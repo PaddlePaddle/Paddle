@@ -311,6 +311,7 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
