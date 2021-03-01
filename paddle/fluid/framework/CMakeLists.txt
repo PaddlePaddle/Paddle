@@ -320,11 +320,17 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
+cc_library(custom_tensor SRCS ../extension/src/tensor.cc DEPS lod_tensor memory enforce)
+cc_library(op_meta_info SRCS ../extension/src/op_meta_info.cc DEPS custom_tensor)
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
+cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
+    SHARED SRCS executor.cc operator.cc custom_operator.cc ../extension/src/tensor.cc
+    ../extension/src/op_meta_info.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
     ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
@@ -339,9 +345,12 @@ if (LINUX)
 endif()
 
 if (WIN32)
+  set(FLUID_FRAMEWORK_IMPORT_LIB
+    ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.lib
+    CACHE INTERNAL "Fluid framework lib")
   set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dll
-      CACHE INTERNAL "Fluid framework lib")
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_framework.dll
+      CACHE INTERNAL "Fluid framework dll")
 endif()
 
 if(APPLE)
@@ -351,4 +360,38 @@ if(APPLE)
 endif()
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
+endif()
+
+# New custom op extension mechanism related
+
+# if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
+set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
+
+cc_library(paddle_custom_op_shared
+    SHARED SRCS custom_operator.cc ../extension/src/tensor.cc ../extension/src/op_meta_info.cc
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
+    DEPS ${PADDLE_CUSTOM_OP_MODULES})
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
+target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
+
+if (LINUX)
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
+      CACHE INTERNAL "Paddle custom op lib")
+endif()
+
+if (WIN32)
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.lib
+      CACHE INTERNAL "Paddle custom op lib")
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/${CMAKE_BUILD_TYPE}/paddle_custom_op.dll
+      CACHE INTERNAL "Paddle custom op dll")
+endif()
+
+if(APPLE)
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
+      CACHE INTERNAL "Paddle custom op lib")
 endif()

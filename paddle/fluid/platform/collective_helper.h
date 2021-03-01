@@ -27,7 +27,7 @@
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 // In order to apply hierarchical communication with NCCL, we need
 // a communication ring contains NCCL communicators associated to a global
 // ncclUniqueId. E.g. for a hierarchical case,
@@ -56,7 +56,7 @@ class NCCLComm {
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
   virtual ncclComm_t comm() const = 0;
-  virtual cudaStream_t stream() const = 0;
+  virtual gpuStream_t stream() const = 0;
   virtual CUDADeviceContext* dev_context() const = 0;
   virtual ~NCCLComm() = default;
 };
