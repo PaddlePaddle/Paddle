@@ -88,6 +88,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
+  attrs["tag"]="tag";
+  attrs["root"]=0;
+  attrs["group"]="hccl_world_group";
+
   auto op =
       f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
                               {{"Out", {"Out"}}}, attrs);
@@ -107,7 +111,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(c_broadcast, NPU) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  char * npu_id=getenv("FLAGS_selected_npus");
+
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
   Prepare(&scope, ctx);
   Compare(&scope, ctx);
 }
