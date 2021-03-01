@@ -36,6 +36,9 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     //PADDLE_ENFORCE_EQ(transpose_y, false, platform::errors::InvalidArgument(
     //            "matmul npu not support transpose_y is true"));
 
+    auto stream =
+            ctx.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
 
     if (x->dims().size() == 2){
       if (transpose_y){
@@ -48,10 +51,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
         tmp_y.Resize(framework::make_ddim({y->dims()[1], y->dims()[0]}));
         tmp_y.mutable_data<T>(ctx.GetPlace());  
         auto runner_tmp = NpuOpRunner("TransposeD", {*y}, {tmp_y}, attr_input_tmp);
-        auto stream_tmp =
-          ctx.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-        runner_tmp.Run(stream_tmp);
+        runner_tmp.Run(stream);
 
         // matmul
         framework::AttributeMap attr_input= {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}};
@@ -59,9 +59,6 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
 
         auto runner = NpuOpRunner("MatMul", {*x, tmp_y}, {*out}, attr_input);
 
-        auto stream =
-            ctx.template device_context<paddle::platform::NPUDeviceContext>()
-                .stream();
         runner.Run(stream);
 
       } else{
