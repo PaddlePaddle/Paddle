@@ -339,10 +339,7 @@ def interpolate(x,
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
-        data_layout = 'NCHW'
-    if data_format == 'NHWC' or data_format == 'NDHWC' or data_format == 'NWC':
-        data_layout = 'NHWC'
+    data_layout = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
     if resample == 'NEAREST':
         align_corners = False
@@ -360,9 +357,10 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
-    if out_shape is not None and scale is not None:
-        raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
+        if scale is not None:
+            raise ValueError(
+                "Only one of size or scale_factor should be defined.")
 
         if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
