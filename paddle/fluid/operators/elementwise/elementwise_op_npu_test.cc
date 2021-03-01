@@ -181,3 +181,9 @@ TEST(elementwise_sub_grad, NPU) {
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   CompareGrad<float>(&scope, ctx, "elementwise_sub_grad");
 }
+
+TEST(elementwise_add_grad, NPU) {
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  CompareGrad<float>(&scope, ctx, "elementwise_add_grad");
+}
