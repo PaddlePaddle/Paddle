@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
+#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -124,3 +125,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::SliceGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SliceGradNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);
+
+#endif
