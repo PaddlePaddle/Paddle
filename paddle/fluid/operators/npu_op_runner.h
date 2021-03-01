@@ -35,15 +35,15 @@ class NpuOpRunner {
   explicit NpuOpRunner(std::string op_type,
                        const std::vector<Tensor> &inputs = {},
                        const std::vector<Tensor> &outputs = {},
-                       const AttributeMap &attrs = {});
+                       const NPUAttributeMap &attrs = {});
 
   ~NpuOpRunner();
 
   const std::string &Type();
 
-  NpuOpRunner &AddAttr(const std::string &name, const Attribute &attr);
+  NpuOpRunner &AddAttr(const std::string &name, const NPUAttribute &attr);
 
-  NpuOpRunner &AddAttrs(const AttributeMap &attrs);
+  NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
   NpuOpRunner &AddInput(const Tensor &tensor);
 
