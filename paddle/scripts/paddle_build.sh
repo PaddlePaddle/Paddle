@@ -616,6 +616,7 @@ EOF
         exec_times=0
         exec_time_array=('first' 'second' 'third')
         exec_retry_threshold=10
+        is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
@@ -650,9 +651,8 @@ EOF
                         exec_times=$[$exec_times+1]
                     done
             else
-                echo "========================================="
-                echo "There are more than 10 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
             fi
 
         fi
@@ -1260,9 +1260,6 @@ set +x
             else 
                 # There are more than 10 failed unit tests, so no unit test retry
                 is_retry_execuate=1
-                echo "========================================="
-                echo "There are more than 10 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
             fi
         fi
 
