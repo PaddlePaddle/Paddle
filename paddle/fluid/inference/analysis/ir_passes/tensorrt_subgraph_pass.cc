@@ -250,7 +250,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
-  bool load_from_memory = Get<bool>("model_from_memory");
   std::string calibration_data = "";
   if (enable_int8 && use_calib_mode) {
     calibration_data = GetTrtCalibTableData(
@@ -323,8 +322,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
 
-  bool need_serialize = (use_static_engine && !load_from_memory);
-  if (need_serialize) {
+  if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
     // we can load the engine info serialized before from the disk.
@@ -352,7 +350,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, trt_engine);
 
-  if (need_serialize) {
+  if (use_static_engine) {
     nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
     trt_engine_serialized_data =
         std::string((const char *)serialized_engine_data->data(),
