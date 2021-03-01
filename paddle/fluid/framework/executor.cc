@@ -291,7 +291,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
+                   const std::string& fetch_holder_name,
+                   const ExecOpCallBack& callback) {
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
   bool has_feed_ops =
@@ -356,7 +357,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   auto ctx = Prepare(*copy_program, 0);
   RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
                      create_local_scope, create_vars, feed_holder_name,
-                     fetch_holder_name);
+                     fetch_holder_name, callback);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
@@ -415,7 +416,8 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          Scope* scope, int64_t start_op_index,
                                          int64_t end_op_index,
                                          bool create_local_scope,
-                                         bool create_vars, bool keep_kids) {
+                                         bool create_vars, bool keep_kids,
+                                         const ExecOpCallBack& callback) {
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope shouldn't be null"));
@@ -459,13 +461,19 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 
   for (int64_t i = start_op_index; i < end_op_index; ++i) {
     auto& op = ctx->ops_[i];
+    if (callback.before) {
+      callback.before(local_scope, op.get(), &place_);
+    }
     op->Run(*local_scope, place_);
+    if (callback.after) {
+      callback.after(local_scope, op.get(), &place_);
+    }
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }
 
-  auto callback = [scope, local_scope, keep_kids]() {
+  auto scope_cleaner = [scope, local_scope, keep_kids]() {
     if (local_scope != scope) {
       VLOG(4) << "Delete scope: " << local_scope;
       scope->DeleteScope(local_scope);
@@ -489,21 +497,23 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 
   if (gc) {
     VLOG(4) << "Async deleting scope";
-    gc->DirectClearCallback(callback);
+    gc->DirectClearCallback(scope_cleaner);
   } else {
     VLOG(4) << "Sync deleting scope";
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    callback();
+    scope_cleaner();
   }
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars,
-                                  bool keep_kids) {
+                                  bool keep_kids,
+                                  const ExecOpCallBack& callback) {
   int64_t start_op_index = 0;
   int64_t end_op_index = ctx->ops_.size();
   RunPartialPreparedContext(ctx, scope, start_op_index, end_op_index,
-                            create_local_scope, create_vars, keep_kids);
+                            create_local_scope, create_vars, keep_kids,
+                            callback);
 }
 
 void Executor::RunPreparedContext(
@@ -511,7 +521,7 @@ void Executor::RunPreparedContext(
     std::map<std::string, const LoDTensor*>* feed_targets,
     std::map<std::string, FetchType*>* fetch_targets, bool create_local_scope,
     bool create_vars, const std::string& feed_holder_name,
-    const std::string& fetch_holder_name) {
+    const std::string& fetch_holder_name, const ExecOpCallBack& callback) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE_EQ(
@@ -533,7 +543,8 @@ void Executor::RunPreparedContext(
     }
   }
 
-  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
+  RunPreparedContext(ctx, scope, create_local_scope, create_vars, false,
+                     callback);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block.AllOps()) {

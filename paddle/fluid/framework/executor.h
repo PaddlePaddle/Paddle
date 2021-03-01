@@ -33,6 +33,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+typedef std::function<bool(const Scope*, const OperatorBase*,
+                           const platform::Place*)>
+    ExecOpCallBackFunc;
+struct ExecOpCallBack {
+  ExecOpCallBackFunc before;
+  ExecOpCallBackFunc after;
+};
+
 class Dataset;
 class ProgramDesc;
 class Scope;
@@ -96,7 +104,8 @@ class Executor {
            std::map<std::string, FetchType*>* fetch_targets,
            bool create_local_scope = true, bool create_vars = true,
            const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+           const std::string& fetch_holder_name = "fetch",
+           const ExecOpCallBack& callback = {});
 
   // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
@@ -105,7 +114,8 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch");
+                          const std::string& fetch_holder_name = "fetch",
+                          const ExecOpCallBack& callback = {});
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
@@ -123,13 +133,14 @@ class Executor {
 
   void RunPartialPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                  int64_t start_op_index, int64_t end_op_index,
-                                 bool create_local_scope = true,
-                                 bool create_vars = true,
-                                 bool keep_kids = false);
+                                 bool create_local_scope, bool create_vars,
+                                 bool keep_kids,
+                                 const ExecOpCallBack& callback);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true, bool keep_kids = false);
+                          bool create_vars = true, bool keep_kids = false,
+                          const ExecOpCallBack& callback = {});
 
   void EnableMKLDNN(const ProgramDesc& program);
 

@@ -215,7 +215,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
                                   end_op_index, /*create_local_scope=*/false,
                                   /*create_vars=*/true,
-                                  /*keep_kids=*/!is_test);
+                                  /*keep_kids=*/!is_test, /*callback=*/{});
 
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
@@ -298,7 +298,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     // Step 3. run ops
     exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
                                   end_op_index, /*create_local_scope=*/false,
-                                  /*create_vars=*/true, /*keep_kids=*/false);
+                                  /*create_vars=*/true, /*keep_kids=*/false,
+                                  /*callback=*/{});
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
