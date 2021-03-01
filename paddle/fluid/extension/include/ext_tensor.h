@@ -57,7 +57,7 @@ class PD_DLL_DECL Tensor {
   /// Reshape must be called before calling
   /// mutable_data() or copy_to(const PlaceType& place)
   /// \param shape The shape to set.
-  void reshape(const std::vector<int>& shape);
+  void reshape(const std::vector<int64_t>& shape);
 
   /// \brief Get the memory pointer in CPU or GPU with
   /// specific data type.
@@ -90,7 +90,7 @@ class PD_DLL_DECL Tensor {
   Tensor copy_to(const PlaceType& place) const;
 
   /// \brief Return the shape of the Tensor.
-  std::vector<int> shape() const;
+  std::vector<int64_t> shape() const;
 
   /// \brief Return the data type of the tensor.
   /// It's usually used to get the output tensor data type.

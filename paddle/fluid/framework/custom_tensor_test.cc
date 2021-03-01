@@ -20,7 +20,7 @@
 
 template <typename T>
 paddle::Tensor InitCPUTensorForTest() {
-  std::vector<int> tensor_shape{5, 5};
+  std::vector<int64_t> tensor_shape{5, 5};
   auto t1 = paddle::Tensor(paddle::PlaceType::kCPU);
   t1.reshape(tensor_shape);
   auto* p_data_ptr = t1.mutable_data<T>(paddle::PlaceType::kCPU);
@@ -54,7 +54,7 @@ void TestCopyTensor() {
 }
 
 void TestAPIPlace() {
-  std::vector<int> tensor_shape = {5, 5};
+  std::vector<int64_t> tensor_shape = {5, 5};
 #ifdef PADDLE_WITH_CUDA
   auto t1 = paddle::Tensor(paddle::PlaceType::kGPU);
   t1.reshape(tensor_shape);
@@ -68,7 +68,7 @@ void TestAPIPlace() {
 }
 
 void TestAPISizeAndShape() {
-  std::vector<int> tensor_shape = {5, 5};
+  std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = paddle::Tensor(paddle::PlaceType::kCPU);
   t1.reshape(tensor_shape);
   CHECK_EQ(t1.size(), 25);
@@ -77,7 +77,7 @@ void TestAPISizeAndShape() {
 
 template <typename T>
 paddle::DataType TestDtype() {
-  std::vector<int> tensor_shape = {5, 5};
+  std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = paddle::Tensor(paddle::PlaceType::kCPU);
   t1.reshape(tensor_shape);
   t1.template mutable_data<T>();
@@ -86,7 +86,7 @@ paddle::DataType TestDtype() {
 
 template <typename T>
 void TestCast(paddle::DataType data_type) {
-  std::vector<int> tensor_shape = {5, 5};
+  std::vector<int64_t> tensor_shape = {5, 5};
   auto t1 = paddle::Tensor(paddle::PlaceType::kCPU);
   t1.reshape(tensor_shape);
   t1.template mutable_data<T>();
