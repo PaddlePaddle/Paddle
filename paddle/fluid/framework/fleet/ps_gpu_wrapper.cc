@@ -242,6 +242,12 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
     HeterPs_->show_one_table(i);
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(build_func, i);
+  }
+  for (std::thread& t : threads) {
+    t.join();
   }
   timeline.Pause();
   VLOG(1) << "GpuPs build table total costs: " << timeline.ElapsedSec()
