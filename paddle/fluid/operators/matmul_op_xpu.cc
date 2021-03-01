@@ -177,7 +177,7 @@ static void MatMulXPUFunction(const Tensor *x, const Tensor *y, Tensor *out,
         m * n,                  // int stride_c,
         nullptr,                // const float* x_maxptr,
         nullptr                 // const float* w_maxptr
-    );
+      );
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(
                           "XPU fc_batched kernel return wrong value[%d %s]", r,
