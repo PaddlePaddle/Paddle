@@ -95,7 +95,7 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
   }                                                     \
   auto *tensor = static_cast<framework::LoDTensor *>(tensor_.get());
 
-void Tensor::reshape(const std::vector<int> &shape) {
+void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   tensor->Resize(framework::make_ddim(shape));
 }
@@ -251,9 +251,9 @@ template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
     const PlaceType &place);
 template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
 
-std::vector<int> Tensor::shape() const {
+std::vector<int64_t> Tensor::shape() const {
   GET_CASTED_TENSOR
-  return framework::vectorize<int>(tensor->dims());
+  return framework::vectorize<int64_t>(tensor->dims());
 }
 
 const PlaceType &Tensor::place() const {
