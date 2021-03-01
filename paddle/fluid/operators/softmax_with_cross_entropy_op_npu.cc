@@ -67,10 +67,9 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     tmp_onehot.Resize(logits->dims());
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
-    framework::AttributeMap attr_input_onehot = {{"depth", cls_num}};
     auto runner_onehot =
         NpuOpRunner("OneHotD", {tmp_labels, on_tensor, off_tensor},
-                    {tmp_onehot}, attr_input_onehot);
+                    {tmp_onehot}, {{"depth", cls_num}});
     runner_onehot.Run(stream);
 
     // to do squeeze, infer shape first
@@ -101,9 +100,8 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     // runner_scel.Run(stream);
     std::vector<int> axes_vec;
     axes_vec.push_back(static_cast<int>(1));
-    framework::AttributeMap attr_input_unsqueeze = {{"axes", axes_vec}};
     auto runner_unsqueeze =
-        NpuOpRunner("Unsqueeze", {tmp_scel}, {*loss}, attr_input_unsqueeze);
+        NpuOpRunner("Unsqueeze", {tmp_scel}, {*loss}, {{"axes", axes_vec}});
     runner_unsqueeze.Run(stream);
   }
 };
