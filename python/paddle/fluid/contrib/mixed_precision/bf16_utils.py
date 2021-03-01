@@ -223,6 +223,15 @@ def find_true_post_op(ops, cur_op, var_name):
     return post_op
 
 
+def find_op_index(block_desc, cur_op_desc):
+    """
+    """
+    for idx in range(block_desc.op_size()):
+        if cur_op_desc == block_desc.op(idx):
+            return idx
+    return -1
+
+
 def _need_keep_fp32(op, unsupported_op_list, use_bf16_guard):
     if op.type in unsupported_op_list:
         # the highest priority condition: If ops don't have bf16 computing kernels,
