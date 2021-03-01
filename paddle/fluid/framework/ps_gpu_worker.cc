@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 #if defined _WIN32 || defined __APPLE__
@@ -242,7 +243,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     total_time += timeline.ElapsedSec();
     timeline.Start();
   }
-  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time 
+  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
           << " seconds, ins_num: " << total_ins_num;
   for (size_t i = 0; i < op_name.size(); ++i) {
     VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]

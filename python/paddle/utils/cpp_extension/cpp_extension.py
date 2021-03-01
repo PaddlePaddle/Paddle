@@ -22,11 +22,14 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag, bootstrap_context
-from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags, add_std_without_repeat, get_build_directory
-from .extension_utils import _import_module_from_library, CustomOpInfo, _write_setup_file, _jit_compile, parse_op_name_from
-from .extension_utils import check_abi_compatibility, log_v, IS_WINDOWS, OS_NAME
-from .extension_utils import use_new_custom_op_load_method, MSVC_COMPILE_FLAGS
+from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
+from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
+from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
+from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
+from .extension_utils import use_new_custom_op_load_method, clean_object_if_change_cflags
+from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
+
+from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -356,6 +359,13 @@ class BuildExtension(build_ext, object):
 
     def build_extensions(self):
         self._check_abi()
+
+        # Note(Aurelius84): If already compiling source before, we should check whether
+        # cflags have changed and delete the built shared library to re-compile the source
+        # even though source file content keep unchanaged.
+        so_name = self.get_ext_fullpath(self.extensions[0].name)
+        clean_object_if_change_cflags(
+            os.path.abspath(so_name), self.extensions[0])
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
