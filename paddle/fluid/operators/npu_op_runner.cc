@@ -139,7 +139,7 @@ NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
     auto a = BOOST_GET_CONST(std::vector<std::vector<int64_t>>, attr);
     std::vector<int64_t *> data;
     std::vector<int> num;
-    for (auto v : a) {
+    for (auto &&v : a) {
       data.push_back(v.data());
       num.push_back(v.size());
     }
