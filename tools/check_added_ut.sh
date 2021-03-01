@@ -34,6 +34,9 @@ if [ "$SYSTEM" == "Linux" ];then
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
+git remote | grep upstream
+if [ $? != 0 ]; then git remote add upstream https://github.com/PaddlePaddle/Paddle.git; fi
+git fetch upstream
 git checkout -b prec_added_ut upstream/${BRANCH}
 mkdir prec_build
 cd prec_build
