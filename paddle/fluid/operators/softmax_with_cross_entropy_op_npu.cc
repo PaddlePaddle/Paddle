@@ -85,7 +85,9 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
 
     // SoftmaxCrossEntropyWithLogits
     Tensor tmp_scel(logits->type());
-    tmp_scel.Resize(framework::make_ddim(static_cast<int>(logits->dims()[0])));
+    std::vector<int> dim_vec;
+    dim_vec.push_back(static_cast<int>(logits->dims()[0]));
+    tmp_scel.Resize(framework::make_ddim(dim_vec));
     tmp_scel.mutable_data<T>(ctx.GetPlace());
     auto runner_scel = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
                                    {logits, tmp_onehot}, {tmp_scel}, {});
@@ -115,8 +117,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     softmax_with_cross_entropy,
-    ops::SoftmaxWithCrossEntropyGNPUKernel<paddle::platform::NPUDeviceContext,
-                                           float>,
-    ops::SoftmaxWithCrossEntropyGNPUKernel<paddle::platform::NPUDeviceContext,
-                                           paddle::platform::float16>);
+    ops::SoftmaxWithCrossEntropyNPUKernel<paddle::platform::NPUDeviceContext,
+                                          float>,
+    ops::SoftmaxWithCrossEntropyNPUKernel<paddle::platform::NPUDeviceContext,
+                                          paddle::platform::float16>);
 #endif
