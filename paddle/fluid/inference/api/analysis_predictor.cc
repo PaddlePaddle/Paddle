@@ -613,12 +613,17 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       platform::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
+  // Register custom operators compiled by the user.
+  // This function can only be executed once per process.
+  static std::once_flag custom_operators_registered;
+  std::call_once(custom_operators_registered,
+                 []() { paddle::RegisterAllCustomOperator(); });
+
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
     static bool process_level_allocator_enabled;
 
     std::call_once(gflags_initialized, [&]() {
-      paddle::RegisterAllCustomOperator();
       std::vector<std::string> gflags;
       PADDLE_ENFORCE_GE(
           config.memory_pool_init_size_mb(), 0.f,
