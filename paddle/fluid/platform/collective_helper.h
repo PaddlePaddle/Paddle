@@ -22,32 +22,37 @@
 #include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/hccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-// In order to apply hierarchical communication with NCCL, we need
-// a communication ring contains NCCL communicators associated to a global
-// ncclUniqueId. E.g. for a hierarchical case,
-//
-//    11 - 12   21 - 22
-//     |    |    |    |
-//    13 - 14 - 23 - 24
-//          |    |
-//    31 - 32 - 41 - 42
-//     |    |    |    |
-//    33 - 34   43 - 44
-//
-// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
-// (31,32,33,34), (41,42,43,44) as bottoms respectively.
-//
-// We could also use a single communication ring for the flatten case
-//
-// The NCCLComm instance is created and reversed in the NCCLCommContext
-// singleton with a global user specified group id.
-class CUDADeviceContext;
+=======
+#if defined(PADDLE_WITH_NCCL)
+>>>>>>> 9fcdaeb... add allreduce and broadcast without test (#31024)
+    // In order to apply hierarchical communication with NCCL, we need
+    // a communication ring contains NCCL communicators associated to a global
+    // ncclUniqueId. E.g. for a hierarchical case,
+    //
+    //    11 - 12   21 - 22
+    //     |    |    |    |
+    //    13 - 14 - 23 - 24
+    //          |    |
+    //    31 - 32 - 41 - 42
+    //     |    |    |    |
+    //    33 - 34   43 - 44
+    //
+    // we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
+    // (31,32,33,34), (41,42,43,44) as bottoms respectively.
+    //
+    // We could also use a single communication ring for the flatten case
+    //
+    // The NCCLComm instance is created and reversed in the NCCLCommContext
+    // singleton with a global user specified group id.
+    class CUDADeviceContext;
 
 class NCCLComm {
  public:
@@ -123,6 +128,68 @@ class NCCLCommContext {
 
   NCCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
+};
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+// In order to apply hierarchical communication with HCCL, we need
+// a communication ring contains HCCL communicators associated to a global
+// HCCLUniqueId. E.g. for a hierarchical case,
+//
+//    11 - 12   21 - 22
+//     |    |    |    |
+//    13 - 14 - 23 - 24
+//          |    |
+//    31 - 32 - 41 - 42
+//     |    |    |    |
+//    33 - 34   43 - 44
+//
+// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
+// (31,32,33,34), (41,42,43,44) as bottoms respectively.
+//
+// We could also use a single communication ring for the flatten case
+//
+// The HCCLComm instance is created and reversed in the HCCLCommContext
+// singleton with a global user specified group id.
+class NPUDeviceContext;
+
+class HCCLComm {
+ public:
+  virtual std::string rank_table_file() const = 0;
+  virtual uint32_t rank() const = 0;
+  virtual uint32_t device_id() const = 0;
+  virtual aclrtStream stream() const = 0;
+  virtual NPUDeviceContext* dev_context() const = 0;
+  virtual ~HCCLComm() = default;
+};
+
+// A singleton HCCL communicator context reserves communication ring ids
+class HCCLCommContext {
+ public:
+  static HCCLCommContext& Instance() {
+    static HCCLCommContext comm_ctx;
+    return comm_ctx;
+  }
+
+  HCCLComm* CreateHCCLComm(const std::string& config_file, uint32_t rank,
+                           uint32_t device_id);
+
+  void CreateHCCLGroup(const std::string& group_name, uint32_t nranks,
+                       const std::vector<uint32_t>& rank_ids);
+
+  // retrieve a communicator by the ring id and place
+  HCCLComm* Get() const { return comm_.get(); }
+
+ private:
+  std::once_flag once_flag_;
+  std::mutex comm_map_mutex_;
+  std::unique_ptr<HCCLComm> comm_;
+
+  HCCLComm* AssignHCCLComm(const std::string& config_file, uint32_t rank,
+                           uint32_t device_id);
+
+  HCCLCommContext() = default;
+  DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
 };
 #endif
 
