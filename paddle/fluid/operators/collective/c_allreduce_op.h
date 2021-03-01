@@ -182,9 +182,13 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     // printf("sendbuff: %p, %d\n", sendbuff, ((int*)sendbuff)[0]);
     // printf("recvbuff: %p, %d\n", recvbuff, ((int*)recvbuff)[0]);
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
-        tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
-
+    // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
+        // tag.c_str(), sendbuff, recvbuff, (u64)numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
+    
+    hcclResult_t ret = platform::dynload::hcom_all_reduce(
+        tag.c_str(), sendbuff, recvbuff, (u64)numel, dtype, hccl_red_type, group.c_str(), (void*)stream);
+    PADDLE_ENFORCE_NPU_SUCCESS(ret);
+    printf("%d\n", ret);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
