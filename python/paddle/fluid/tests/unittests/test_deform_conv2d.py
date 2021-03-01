@@ -493,7 +493,7 @@ class TestDeformConv2DWithDeformable_Groups(TestDeformConv2D):
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [1, 1]
-        self.deformable_groups = 8
+        self.deformable_groups = 5
         self.groups = 1
         self.no_bias = False
 
@@ -586,7 +586,7 @@ class TestDeformConv2DFunctionalWithDeformable_Groups(
         self.padding = [1, 1]
         self.stride = [1, 1]
         self.dilation = [1, 1]
-        self.deformable_groups = 8
+        self.deformable_groups = 5
         self.groups = 1
         self.no_bias = False
 
