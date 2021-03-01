@@ -537,7 +537,7 @@ class RandomHorizontalFlip(BaseTransform):
     """Horizontally flip the input data randomly with a given probability.
 
     Args:
-        prob (float, optional): Probability of the input data being flipped. Default: 0.5
+        prob (float, optional): Probability of the input data being flipped. Should be in [0, 1]. Default: 0.5
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Examples:
@@ -548,7 +548,7 @@ class RandomHorizontalFlip(BaseTransform):
             from PIL import Image
             from paddle.vision.transforms import RandomHorizontalFlip
 
-            transform = RandomHorizontalFlip(224)
+            transform = RandomHorizontalFlip(0.5)
 
             fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
 
