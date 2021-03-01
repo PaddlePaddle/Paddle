@@ -132,10 +132,9 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
-  ctx.Wait()
+  ctx.Wait();
 
-      std::vector<T>
-          dx_vec;
+  std::vector<T> dx_vec;
   TensorToVector(*tensor_dx, ctx, &dx_vec);
 
   std::vector<T> dy_vec;

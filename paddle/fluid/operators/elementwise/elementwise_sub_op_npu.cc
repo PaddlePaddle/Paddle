@@ -23,7 +23,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -42,7 +42,7 @@ class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -54,21 +54,20 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
+    // NOTE(zhiqiu): It seems Ascend Sub follow the broadcast sematics with
+    // default axis=-1?
+    // So, the sub_grad should do reduce if needed.
+    // For example, the shape of each variable in elementwise_sub:
+    // x, dx: [2, 3, 5]
+    // y, dy: [1, 5]
+    // out, dout: [2, 3, 5]
+    // Then, out = x - y  =>  dx = dout, dy = -dout
+    // And, the shape of dy can be computed by two stages reduce,
+    // 1. [2, 3, 5] => [3, 5], ReduceSumD on axis = 0, keep_dims = false.
+    // 2. [3, 5] => [1, 5], ReduceSumD on axis = 0, keep_dims = true.
+
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
-
-      // NOTE(zhiqiu): It seems Ascend Sub follow the broadcast sematics with
-      // default axis=-1?
-      // So, the sub_grad should do reduce if needed.
-      // For example, the shape of each variable in elementwise_sub:
-      // x, dx: [2, 3, 5]
-      // y, dy: [1, 5]
-      // out, dout: [2, 3, 5]
-      // Then, out = x - y  =>  dx = dout, dy = -dout
-      // And, the shape of dy can be computed by two stages reduce,
-      // 1. [2, 3, 5] => [3, 5], ReduceSumD on axis = 0, keep_dims = false.
-      // 2. [3, 5] => [1, 5], ReduceSumD on axis = 0, keep_dims = true.
-
       // For dx
       // stage 1
       auto reduce_ndim = dout->dims().size() - dx->dims().size();
@@ -112,8 +111,12 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       // stage 1
       auto reduce_ndim = dout->dims().size() - dy->dims().size();
       std::vector<int> axes;
-      tmp_dout = const_cast<Tensor*>(dout);
+      for (auto i = 0; i < reduce_ndim; ++i) {
+        axes.push_back(i);
+      }
+      Tensor* tmp_dout = const_cast<Tensor*>(dout);
       Tensor reduced_dy(dy->type());
+      Tensor reduced_dout(dy->type());
 
       if (axes.size() != 0) {
         std::vector<int64_t> reduced_dout_dims;
@@ -156,15 +159,11 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    elementwise_sub,
-    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ElementwiseSubNPUKernel<paddle::platform::NPUDeviceContext,
-                                 paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(elementwise_sub, ops::ElementwiseSubNPUKernel<float>,
+                       ops::ElementwiseSubNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(
-    elementwise_sub_grad,
-    ops::ElementwiseSubGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ElementwiseSubGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                     paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(elementwise_sub_grad,
+                       ops::ElementwiseSubGradNPUKernel<float>,
+                       ops::ElementwiseSubGradNPUKernel<plat::float16>);
