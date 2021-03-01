@@ -68,11 +68,11 @@ class TestDeformConv2D(TestCase):
         self.input_shape = (self.batch_size, self.in_channels
                             ) + self.spatial_shape
 
-        self.offset_shape = (self.batch_size, 2 * filter_shape[0] *
-                             filter_shape[1]) + out_shape
+        self.offset_shape = (self.batch_size, self.deformable_groups * 2 *
+                             filter_shape[0] * filter_shape[1]) + out_shape
 
-        self.mask_shape = (self.batch_size, filter_shape[0] * filter_shape[1]
-                           ) + out_shape
+        self.mask_shape = (self.batch_size, self.deformable_groups *
+                           filter_shape[0] * filter_shape[1]) + out_shape
 
         self.input = np.random.uniform(-1, 1,
                                        self.input_shape).astype(self.dtype)
@@ -90,12 +90,12 @@ class TestDeformConv2D(TestCase):
             x = paddle.static.data(
                 "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
             offset = paddle.static.data(
-                "offset",
-                (-1, 2 * self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "offset", (-1, self.deformable_groups * 2 *
+                           self.filter_shape[0] * self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
             mask = paddle.static.data(
-                "mask",
-                (-1, self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "mask", (-1, self.deformable_groups * self.filter_shape[0] *
+                         self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
 
             y_v1 = paddle.fluid.layers.deformable_conv(
@@ -232,11 +232,11 @@ class TestDeformConv2DFunctional(TestCase):
         self.input_shape = (self.batch_size, self.in_channels
                             ) + self.spatial_shape
 
-        self.offset_shape = (self.batch_size, 2 * filter_shape[0] *
-                             filter_shape[1]) + out_shape
+        self.offset_shape = (self.batch_size, self.deformable_groups * 2 *
+                             filter_shape[0] * filter_shape[1]) + out_shape
 
-        self.mask_shape = (self.batch_size, filter_shape[0] * filter_shape[1]
-                           ) + out_shape
+        self.mask_shape = (self.batch_size, self.deformable_groups *
+                           filter_shape[0] * filter_shape[1]) + out_shape
 
         self.input = np.random.uniform(-1, 1,
                                        self.input_shape).astype(self.dtype)
@@ -254,12 +254,12 @@ class TestDeformConv2DFunctional(TestCase):
             x = paddle.static.data(
                 "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
             offset = paddle.static.data(
-                "offset",
-                (-1, 2 * self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "offset", (-1, self.deformable_groups * 2 *
+                           self.filter_shape[0] * self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
             mask = paddle.static.data(
-                "mask",
-                (-1, self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "mask", (-1, self.deformable_groups * self.filter_shape[0] *
+                         self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
 
             y_v1 = paddle.fluid.layers.deformable_conv(
@@ -348,12 +348,12 @@ class TestDeformConv2DFunctional(TestCase):
             x = paddle.static.data(
                 "input", (-1, self.in_channels, -1, -1), dtype=self.dtype)
             offset = paddle.static.data(
-                "offset",
-                (-1, 2 * self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "offset", (-1, self.deformable_groups * 2 *
+                           self.filter_shape[0] * self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
             mask = paddle.static.data(
-                "mask",
-                (-1, self.filter_shape[0] * self.filter_shape[1], -1, -1),
+                "mask", (-1, self.deformable_groups * self.filter_shape[0] *
+                         self.filter_shape[1], -1, -1),
                 dtype=self.dtype)
 
             weight = paddle.static.data(
