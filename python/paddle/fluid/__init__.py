@@ -218,7 +218,7 @@ def __bootstrap__():
         read_env_flags.append('tracer_mkldnn_ops_on')
         read_env_flags.append('tracer_mkldnn_ops_off')
 
-    if core.is_compiled_with_cuda() or core.is_compiled_with_npu():
+    if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use',
             'initial_gpu_memory_in_mb',
@@ -236,7 +236,13 @@ def __bootstrap__():
         ]
 
     if core.is_compiled_with_npu():
-        read_env_flags += ['selected_npus', ]
+        read_env_flags += [
+            'selected_npus',
+            'fraction_of_gpu_memory_to_use',
+            'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb',
+            'gpu_memory_limit_mb',
+        ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
