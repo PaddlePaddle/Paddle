@@ -113,8 +113,8 @@ template <typename DeviceContext, typename T>
 class ReluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -123,6 +123,25 @@ class ReluNPUKernel : public framework::OpKernel<T> {
                                   *x,
                               },
                               {*out}, {});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReluGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    auto runner = NpuOpRunner("ReluGrad", {*dout, *x}, {*dx}, {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -147,6 +166,12 @@ REGISTER_OP_NPU_KERNEL(
 
 REGISTER_OP_NPU_KERNEL(
     relu, ops::ReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReluNPUKernel<paddle::platform::NPUDeviceContext,
+                       paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu_grad,
+    ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ReluNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 #endif
