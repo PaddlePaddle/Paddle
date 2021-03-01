@@ -149,7 +149,8 @@ static void FullTopKAssign(const Type& input_height, const Type& input_width,
       }
     } else {
       auto e_input = framework::EigenMatrix<T>::Reshape(*input, input_dim - 1);
-      auto e_indices = framework::EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
+      auto e_indices =
+          framework::EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
       for (Type j = 0; j < k; ++j) {
         output_data[i * input_width + e_indices(i, j)] = e_input(i, j);
       }

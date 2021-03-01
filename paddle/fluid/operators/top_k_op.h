@@ -67,7 +67,8 @@ class TopkKernel : public framework::OpKernel<T> {
           vec.push_back(std::pair<T, size_t>(eg_input(j), j));
         }
       } else {
-        auto eg_input = framework::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+        auto eg_input =
+            framework::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
         }
