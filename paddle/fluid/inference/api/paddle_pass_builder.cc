@@ -82,19 +82,21 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       "delete_quant_dequant_filter_op_pass",       //
-      "simplify_with_basic_ops_pass",              //
-      "embedding_eltwise_layernorm_fuse_pass",     //
-      "multihead_matmul_fuse_pass_v2",             //
-      "skip_layernorm_fuse_pass",                  //
-      "unsqueeze2_eltwise_fuse_pass",              //
-      "squeeze2_matmul_fuse_pass",                 //
-      "reshape2_matmul_fuse_pass",                 //
-      "flatten2_matmul_fuse_pass",                 //
-      "map_matmul_to_mul_pass",                    //
-      "fc_fuse_pass",                              //
-      "conv_elementwise_add_fuse_pass",            //
-      "tensorrt_subgraph_pass",                    //
-      "conv_bn_fuse_pass",                         //
+      // "fc_fuse_pass",                                 //
+      "simplify_with_basic_ops_pass",           //
+      "embedding_eltwise_layernorm_fuse_pass",  //
+      "multihead_matmul_fuse_pass_v2",          //
+      "skip_layernorm_fuse_pass",               //
+      "conv_bn_fuse_pass",                      //
+      "unsqueeze2_eltwise_fuse_pass",           //
+      "squeeze2_matmul_fuse_pass",              //
+      "reshape2_matmul_fuse_pass",              //
+      "flatten2_matmul_fuse_pass",              //
+      "map_matmul_to_mul_pass",                 //
+      "fc_fuse_pass",                           //
+      "conv_elementwise_add_fuse_pass",         //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -233,8 +235,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass",
-             // "fc_act_mkldnn_fuse_pass",
+             //"fc_mkldnn_pass",
+             //"fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
