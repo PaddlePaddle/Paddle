@@ -109,8 +109,10 @@ struct SimpleOpTypeSetTeller : public Teller {
   };
 };
 
-bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
-                    bool use_no_calib_int8) {
+bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
+                    bool with_dynamic_shape) {
+  const std::string op_type = node->Op()->Type();
+  const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
        BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
