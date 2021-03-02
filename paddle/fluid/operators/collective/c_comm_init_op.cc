@@ -77,7 +77,7 @@ class CCommInitOp : public framework::OperatorBase {
           rid, 0,
           platform::errors::OutOfRange(
               "Ring id must equal 0 in multi Kunlun cards training, but got %d",
-              ring_id));
+              rid));
       int device_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
