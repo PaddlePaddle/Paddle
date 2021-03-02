@@ -233,6 +233,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         block = self.main_program_list[ring_id - 1]['program'].global_block()
         origin_block = self.main_program.global_block()
         grad = None
+        processed_param_name = set()
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
                     OP_ROLE_VAR_KEY in op.attr_names:
@@ -242,7 +243,10 @@ class PipelineOptimizer(MetaOptimizerBase):
                 assert len(op_role_var) % 2 == 0
                 offset = idx
                 for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
                     param = block.vars[op_role_var[i]]
+                    if param_name in processed_param_name: continue
+                    processed_param_name.add(param_name)
                     grad = block.vars[op_role_var[i + 1]]
                     origin_param = origin_block.vars[op_role_var[i]]
                     if origin_param.is_distributed:
