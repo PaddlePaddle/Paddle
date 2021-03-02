@@ -1194,7 +1194,8 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
 }
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: MatMulWithHead
+    !defined(PADDLE_WITH_HIP)
+// @{ Group Blas MKLML: MatMulWithHead
 /*
  * Multiple two matrixes with multiple heads
  *
