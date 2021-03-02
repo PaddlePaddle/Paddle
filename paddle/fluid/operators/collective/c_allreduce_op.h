@@ -187,6 +187,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     
     hcclResult_t ret = platform::dynload::hcom_all_reduce(
         tag.c_str(), sendbuff, recvbuff, (u64)numel, dtype, hccl_red_type, group.c_str(), (void*)stream);
+    // aclrtCreateStream(&stream);
     PADDLE_ENFORCE_NPU_SUCCESS(ret);
     printf("%d\n", ret);
 #else

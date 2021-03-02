@@ -86,7 +86,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::cout<< "rank_id:" << rank_id<<std::endl;
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(1.0 + rank_id);
-    std::cout<< init[0];
+    std::cout<< init[i];
   }
   std::cout<<std::endl;
 
@@ -115,7 +115,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   op->Run(*scope, place);
   ctx.Wait();
-  
+
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
@@ -143,7 +143,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   for (int64_t i = 0; i < num1 * num2; ++i) {
     init.push_back(1.0);
     // init.push_back(1.0 + rank_id * 3);
-    std::cout<< init[0];
+    std::cout<< init[i];
   }
   std::cout<<std::endl;
 
