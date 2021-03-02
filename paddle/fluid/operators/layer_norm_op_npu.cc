@@ -75,7 +75,7 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     auto runner =
         NpuOpRunner("LayerNorm", {*x, *scale, *bias}, {*y, *mean, *variance},
                     {{"begin_norm_axis", begin_norm_axis},
-                     {"begin_param_axis", begin_norm_axis},
+                     {"begin_params_axis", begin_norm_axis},
                      {"epsilon", epsilon}});
     runner.Run(stream);
   }

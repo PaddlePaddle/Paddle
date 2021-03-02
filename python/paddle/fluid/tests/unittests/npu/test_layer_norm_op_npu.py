@@ -19,7 +19,11 @@ import unittest
 import sys
 sys.path.append("..")
 from op_test import OpTest
+from functools import reduce
+from operator import mul
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from test_layer_norm_op import _reference_layer_norm_naive, _reference_layer_norm_grad
 
 paddle.enable_static()
@@ -27,43 +31,13 @@ paddle.enable_static()
 SEED = 2021
 EPOCH = 100
 
+from op_test import _set_use_system_allocator
+
+_set_use_system_allocator(False)
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSliceOp(OpTest):
-    def setUp(self):
-        self.op_type = "slice"
-        self.set_npu()
-        self.init_dtype()
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags
-        }
-
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-        self.starts = [1, 0, 2]
-        self.ends = [3, 3, 4]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1:3, 0:3, 2:4, :]
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.place = paddle.NPUPlace(0)
-
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
-
-
 class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
@@ -234,18 +208,6 @@ class TestLayerNormOp(unittest.TestCase):
             has_scale=False,
             has_bias=False,
             y_grad_scale=0.1)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestSliceOpFp16(TestSliceOp):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-        self.place = paddle.NPUPlace(0)
 
 
 if __name__ == '__main__':
