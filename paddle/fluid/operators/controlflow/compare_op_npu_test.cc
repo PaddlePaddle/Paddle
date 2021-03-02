@@ -49,7 +49,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   for (int64_t i = 0; i < 10 * 10; ++i) {
     init_x.push_back(static_cast<T>(1.0));
   }
-
   std::vector<T> init_y;
   for (int64_t i = 0; i < 10 * 10; ++i) {
     init_y.push_back(static_cast<T>(1.0));
