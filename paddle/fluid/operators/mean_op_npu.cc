@@ -34,14 +34,14 @@ class MeanNPUKernel : public framework::OpKernel<T> {
     auto* data = cpu_tensor.data<T>();
     auto vec_data = std::vector<T>(data, data + x->numel());
     for(int i=0; i< static_cast<int>(vec_data.size()); ++i){
-        VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
+        VLgrad(3) << " vec_data["<< i << "] = " << vec_data[i];
     } */
 
     auto reduce_ndim = x->dims().size();
     std::vector<int> axes;
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
-      // VLOG(3) << " axes " << i ;
+      // VLgrad(3) << " axes " << i ;
     }
 
     framework::AttributeMap attr_input = {{"keep_dims", false}, {"axes", axes}};
@@ -75,6 +75,59 @@ class MeanNPUKernel : public framework::OpKernel<T> {
 };
 
 
+template <typename DeviceContext, typename T>
+class MeanGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto stream =
+      context.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
+
+    auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
+
+    PADDLE_ENFORCE_EQ(grad->numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "Mean Gradient Input Tensor len should be 1. But "
+                          "received Out@Grad's elements num is %d.",
+                          grad->numel()));
+
+    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    IG->mutable_data<T>(context.GetPlace());
+
+    // ones 
+    Tensor ones(grad->type());
+    std::vector<int64_t> dout_dims;
+    for (auto i = 0; i < IG->dims().size(); ++i) {
+      dout_dims.push_back(IG->dims()[i]);
+    }
+    ones.Resize(framework::make_ddim(dout_dims));
+    ones.mutable_data<T>(context.GetPlace());
+    auto runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
+    runner_ones.Run(stream);
+
+    // means
+    Tensor mean_tensor(grad->type());
+    mean_tensor.Resize({1});
+    mean_tensor.mutable_data<T>(context.GetPlace());
+    std::vector<float> mean_vec;
+    mean_vec.push_back(1.0/static_cast<float>(IG->numel()));
+    framework::TensorFromVector(mean_vec, context.device_context(), &mean_tensor);
+
+    // means mul ones
+    Tensor mean_ma(grad->type());
+    mean_ma.Resize(framework::make_ddim(dout_dims));
+    mean_ma.mutable_data<T>(context.GetPlace());
+    auto runner_mul_1 = NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
+    runner_mul_1.Run(stream);
+
+    // and mul grad
+    auto runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
+    runner_mul_2.Run(stream);
+
+  }
+};
+
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -85,4 +138,11 @@ REGISTER_OP_NPU_KERNEL(
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>)
+
+
+REGISTER_OP_NPU_KERNEL(
+    mean_grad, 
+    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>)
 

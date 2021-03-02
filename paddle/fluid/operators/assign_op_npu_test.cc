@@ -32,10 +32,8 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(mean);
-USE_OP_DEVICE_KERNEL(mean, NPU);
-USE_OP(mean_grad);
-USE_OP_DEVICE_KERNEL(mean_grad, NPU);
+USE_OP(assign);
+USE_OP_DEVICE_KERNEL(assign, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
@@ -64,68 +62,23 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   op->Run(*scope, place);
 
-  std::vector<float> out_vec;
+  std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
-  EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)1);
-  EXPECT_EQ((float)out_vec[0], (float)2.5);
-
-}
-
-template <typename T>
-void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
-                 std::string op_type) {
-
-  // init
-  auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
-  float dvalue = 2.0;
-  tensor_dout->Resize({1});
-  std::vector<T> init_dout;
-  init_dout.push_back(static_cast<T>(dvalue));
-  TensorFromVector(init_dout, ctx, tensor_dout);
-  ctx.Wait();
-
-  auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
-  tensor_x->Resize({4});
-
-  auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
-  tensor_dx->Resize({4});
-
-  ctx.Wait();
-
-  auto op = f::OpRegistry::CreateOp(op_type, {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}}, {{"X@GRAD", {"DX"}}}, {});
-
-  auto place = ctx.GetPlace();
-  op->Run(*scope, place);
-
-  std::vector<float> out_vec;
-  TensorToVector(*tensor_dx, ctx, &out_vec);
-
-  ctx.Wait();
-
   EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)4);
-  EXPECT_EQ((float)out_vec[0], (float)1.0/dvalue);
-  EXPECT_EQ((float)out_vec[1], (float)1.0/dvalue);
-  EXPECT_EQ((float)out_vec[2], (float)1.0/dvalue);
-  EXPECT_EQ((float)out_vec[3], (float)1.0/dvalue);
-
+  EXPECT_EQ(out_vec[0], static_cast<T>(1.0));
+  EXPECT_EQ(out_vec[1], static_cast<T>(2.0));
+  EXPECT_EQ(out_vec[2], static_cast<T>(3.0));
+  EXPECT_EQ(out_vec[3], static_cast<T>(4.0));
 }
 
-TEST(mean, NPU_fp32) {
+
+TEST(assign, NPU_fp32) {
     f::Scope scope;
     p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "mean");
+    Compare<float>(&scope, ctx, "assign");
 }
 
-
-TEST(mean_grad, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    CompareGrad<float>(&scope, ctx, "mean_grad");
-}
 
