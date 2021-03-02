@@ -55,6 +55,7 @@ struct ReservoirValue {
   }
 
   void avg() {
+    if (counter == 0) return;
     auto scale = 1 / static_cast<T>(counter);
     GetBlas<T>().SCAL(values.size(), scale, values.data());
   }
