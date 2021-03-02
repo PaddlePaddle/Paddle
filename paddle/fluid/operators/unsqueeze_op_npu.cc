@@ -30,8 +30,8 @@ class UnsqueezeNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("ExpandDims", {*in}, {*out}, attr_input);
-
+    // auto runner = NpuOpRunner("ExpandDims", {*in}, {*out}, attr_input);
+    auto runner = NpuOpRunner("Unsqueeze", {*in}, {*out}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -48,20 +48,14 @@ REGISTER_OP_NPU_KERNEL(
     unsqueeze,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
     unsqueeze2,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
     ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
 #endif

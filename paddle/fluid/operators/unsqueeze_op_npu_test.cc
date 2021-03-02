@@ -57,7 +57,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({dim0, 1, dim1, dim2});
   tensor_out->mutable_data<T>(place); // allocate
-  // tensor_out->mutable_data<float>(place); // allocate
 
   // run
   std::vector<int> axis;
@@ -80,11 +79,12 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
-  printf("time:%d\n" , micros/100);
-
+  //printf("time:%d\n" , micros/100);
+  VLOG(3) << "time: " <<  micros/100;
 
   for (auto i = 0; i < tensor_out->dims().size(); ++i){
-      printf("dim %d: %ld ; ", i, tensor_out->dims()[i]);
+      //printf("dim %d: %ld ; ", i, tensor_out->dims()[i]);
+      VLOG(3) << "dim: " << i << " " << tensor_out->dims()[i];
   }
   //std::vector<T> out_vec;
   //TensorToVector(*tensor_out, ctx, &out_vec);
@@ -95,8 +95,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 };
 
 
-TEST(unsqueeze, NPU_fp16) {
+TEST(unsqueeze, NPU_fp32) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<paddle::platform::float16>(&scope, ctx);
+  Compare<float>(&scope, ctx);
 }

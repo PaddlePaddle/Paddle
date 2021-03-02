@@ -79,11 +79,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
-  printf("time:%d\n" , micros/100);
+  //printf("time:%d\n" , micros/100);
+  VLOG(3) << "time: " << micros/100;
 
 
   for (auto i = 0; i < tensor_out->dims().size(); ++i){
-      printf("dim%d: %ld", i, tensor_out->dims()[i]);
+      //printf("dim%d: %ld", i, tensor_out->dims()[i]);
+      VLOG(3) << "dim" << i << ": " << tensor_out->dims()[i];
   }
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
