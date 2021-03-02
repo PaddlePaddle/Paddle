@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
@@ -40,16 +41,24 @@ class CCommInitOpNPU : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    std::string rank_table_file = Attr<std::string>("rank_table_file");
-    uint32_t rank_id = Attr<int>("rank_id");
-    uint32_t device_id = Attr<int>("device_id");
+    int rid = Attr<int>("ring_id");
+    int nranks = Attr<int>("nranks");
+    int rank_id = Attr<int>("rank");
+    int device_id = BOOST_GET_CONST(platform::NPUPlace, place).device;
+    if (Attr<int>("device_id") >= 0) {
+      device_id = Attr<int>("device_id");
+    }
+    std::vector<int> rank_ids = Attr<std::vector<int>>("rank_ids");
 
-    VLOG(3) << "begin init hccl, parameter is: "
-            << "rank_table_file " << rank_table_file 
-            << " rank_id " << rank_id
-            << " device_id " << device_id;
-    
-    platform::HCCLCommContext::Instance().CreateHCCLComm(rank_table_file, rank_id, device_id);
+    VLOG(3) << "begin c_comm_init on npu, parameters are: "
+            << "ring id[" << rid
+            << "], nranks[" << nranks
+            << "], rank_id[" << rank_id
+            << "], device_id[" << device_id
+            << "]";
+
+    platform::HCCLCommContext::Instance().CreateHCCLComm(
+        rank_ids, rank_id, device_id, rid);
   }
 };
 
@@ -61,10 +70,17 @@ CCommInit operator on NPU
 
 Initialize collective communication context within this trainer
 )DOC");
-    AddAttr<std::string>("rank_table_file",
-        "(string) path to rank_table_file");
-    AddAttr<int>("rank_id", "(int) world rank id of the process");
-    AddAttr<int>("device_id", "(int) device id of the process/thread");
+    AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
+    AddAttr<std::vector<int>>("rank_ids", "The world rank ids of the group");
+    AddAttr<int>("rank",
+                 "(int) The rank of the trainer in distributed training.");
+    AddAttr<int>("device_id",
+                 "(int) The deivce_id on which to initialize the communicator."
+                 "Now, you only have to set this attr manually for pipeline "
+                 "training. Otherwise, make it as default.")
+        .SetDefault(-1);
+    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
+        .SetDefault(0);
   }
 };
 
@@ -73,7 +89,6 @@ Initialize collective communication context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpNPU,
-   ops::CCommInitOpNPUMaker);
+REGISTER_OPERATOR(c_comm_init_hcom, ops::CCommInitOpNPU, ops::CCommInitOpNPUMaker);
 
 #endif

@@ -135,7 +135,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
      group = "hccl_world_group";// std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
 
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get();
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
