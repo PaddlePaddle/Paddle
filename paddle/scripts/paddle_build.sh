@@ -607,6 +607,7 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
+        export PRECISION_TEST=ON
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
@@ -709,6 +710,7 @@ function get_precision_ut_mac() {
             fi
         done
     fi
+    set +x
 }
 
 function fetch_upstream_develop_if_not_exist() {
