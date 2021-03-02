@@ -120,6 +120,7 @@ int32_t CommonDenseTable::push_dense_param(const float* values, size_t num) {
 }
 
 int32_t CommonDenseTable::pour() {
+  pull_reservoir_.avg();
   _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
   return 0;
