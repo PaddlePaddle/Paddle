@@ -158,7 +158,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     runner_sub.Run(stream);
     // mul
     auto runner_mul =
-        NpuOpRunner("Mul", {*loss_grad, tmp_sub}, {*logit_grad}, {});
+        NpuOpRunner("Mul", {*loss_grad, tmp_sub}, {*logits_grad}, {});
     runner_mul.Run(stream);
   }
 };
