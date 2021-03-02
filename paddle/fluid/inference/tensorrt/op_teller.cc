@@ -153,6 +153,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
     if (op_type == "group_norm") {
+      if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
       if (has_attrs == false) return false;
 
