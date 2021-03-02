@@ -35,6 +35,7 @@ message ShardingConfig {
   optional bool as_outer_parallelism = 4 [ default = false ];
   optional int32 parallelism = 5 [ default = 1 ];
   optional bool use_pipeline = 6 [ default = false ];
+  optional int32 acc_steps = 7 [ default = 1 ];
 }
 
 message AMPConfig {
