@@ -138,46 +138,15 @@ class AclInstance {
  public:
   // NOTE(zhiiu): Commonly, exception in destructor is not recommended, so
   // no PADDLE_ENFORCE here, call acl API directly.
-  ~AclInstance() {}
+  ~AclInstance();
   AclInstance(const AclInstance &o) = delete;
   const AclInstance &operator=(const AclInstance &o) = delete;
-
-  static AclInstance &Instance() {
-    static AclInstance instance;
-    return instance;
-  }
-
-  void Finalize() {
-    // NOTE(zhiqiu): DO NOT perform finalize in destructor
-    // to avoid problems caused by destructor order of static
-    // object.
-    for (size_t i = 0; i < devices_.size(); ++i) {
-      auto status = aclrtResetDevice(devices_[i]);
-      VLOG(4) << "Call aclrtResetDevice " << devices_[i]
-              << " status = " << status;
-    }
-    auto status = aclFinalize();
-    VLOG(4) << "Call aclFinalize, status = " << status;
-  }
+  static AclInstance &Instance();
+  void Finalize();
 
  private:
   // forbid calling default constructor
-  AclInstance() {
-    PADDLE_ENFORCE_NPU_SUCCESS(aclInit(nullptr));
-    VLOG(4) << "Call aclrtSetDevice ";
-    // NOTE(zhiqiu): why set devices here?
-    // Because ACL creates a default context which contains 2 streams
-    // when calling aclrtSetDeviceId, so usually we do not need to
-    // create contexts explicitly. And, for each device, aclrtSetDeviceId
-    // need to call parily with aclrtResetDeviceId to destory the default
-    // context. Here, we use this singleton and static instance to manage
-    // the devices to make sure they will be resetted before program exit.
-    devices_ = platform::GetSelectedNPUDevices();
-    for (auto it = devices_.rbegin(); it != devices_.rend(); ++it) {
-      SetNPUDeviceId(*it);
-      VLOG(4) << "Call aclrtSetDevice " << *it;
-    }
-  }
+  AclInstance();
   std::vector<int> devices_;
 };
 

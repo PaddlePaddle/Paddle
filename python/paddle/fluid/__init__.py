@@ -68,7 +68,8 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor, LoDTensorArray, Scope, _Scope
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -124,6 +125,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
+        'NPUPlace',
         'Tensor',
         'ParamAttr',
         'WeightNormParamAttr',
@@ -232,6 +234,16 @@ def __bootstrap__():
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
         ]
+
+    if core.is_compiled_with_npu():
+        read_env_flags += [
+            'selected_npus',
+            'fraction_of_gpu_memory_to_use',
+            'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb',
+            'gpu_memory_limit_mb',
+        ]
+
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.

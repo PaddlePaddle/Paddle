@@ -243,7 +243,10 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
-        cls._use_system_allocator = _set_use_system_allocator(True)
+        if paddle.is_compiled_with_npu():
+            cls._use_system_allocator = _set_use_system_allocator(False)
+        else:
+            cls._use_system_allocator = _set_use_system_allocator(True)
 
     @classmethod
     def tearDownClass(cls):
@@ -272,6 +275,9 @@ class OpTest(unittest.TestCase):
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
+        def is_npu_op_test():
+            return hasattr(cls, "use_npu") and cls.use_npu == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -292,7 +298,8 @@ class OpTest(unittest.TestCase):
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
                 and not is_xpu_op_test() \
-                and not is_mkldnn_op_test():
+                and not is_mkldnn_op_test() \
+                and not is_npu_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -1183,7 +1190,8 @@ class OpTest(unittest.TestCase):
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest
         # Currently not support ParallelExecutor on XPUPlace.
-        if not paddle.is_compiled_with_xpu():
+        if not paddle.is_compiled_with_xpu(
+        ) and not paddle.is_compiled_with_npu():
             self.check_inplace_output_with_place(
                 place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
