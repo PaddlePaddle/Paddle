@@ -21,16 +21,6 @@ namespace platform {
 
 class HCCLCommImpl : public HCCLComm {
  public:
-<<<<<<< HEAD
-  void set_rank_table_file(const std::string& rank_table_file) { rank_table_file_ = rank_table_file; }
-  std::string rank_table_file() const override { return rank_table_file_; }
-
-  void set_rank(uint32_t rank) { rank_ = rank; }
-  uint32_t rank() const override { return rank_; }
-
-  void set_device_id(uint32_t device_id) { device_id_ = device_id; }
-  uint32_t device_id() const override { return device_id_; }
-=======
   void set_ring_id(int ring_id) { ring_id_ = ring_id; }
   int ring_id() const override { return ring_id_; }
 
@@ -43,7 +33,6 @@ class HCCLCommImpl : public HCCLComm {
   int device_id() const override {
     return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
   }
->>>>>>> 45765d6eb6445ab8ee98ea2306dcfeae4d1f295e
 
   aclrtStream stream() const override { return dev_ctx_->stream(); }
 
@@ -53,73 +42,6 @@ class HCCLCommImpl : public HCCLComm {
   NPUDeviceContext* dev_context() const override { return dev_ctx_.get(); }
 
  private:
-<<<<<<< HEAD
-  std::string rank_table_file_;
-  uint32_t rank_;
-  uint32_t device_id_;
-  std::unique_ptr<NPUDeviceContext> dev_ctx_;
-};
-
-HCCLComm* HCCLCommContext::CreateHCCLComm(const std::string& rank_table_file,
-                                          uint32_t rank, uint32_t device_id) {
-/*
-  PADDLE_ENFORCE_NOT_NULL(rank_table_file,
-                          platform::errors::InvalidArgument(
-                              "The rank table file should not be null."));
-
-  PADDLE_ENFORCE_GE(rank, 0,
-      platform::errors::InvalidArgument(
-          "Expected rank >= 0. But received rank is %d.", rank));
-
-  PADDLE_ENFORCE_GE(device_id, 0,
-      platform::errors::InvalidArgument(
-          "Expected dev_id >= 0. But received dev_id is %d.", device_id));
-*/
-  auto* comm_wrapper = AssignHCCLComm(rank_table_file, rank, device_id);
-
-  platform::dynload::hcom_init(rank_table_file.c_str(), std::to_string(rank).c_str());
-  platform::dynload::hcom_bind_model(comm_wrapper->stream(), comm_wrapper->stream());
-
-  VLOG(1) << "hccl communicator of rank " << rank << " has been created";
-  return comm_wrapper;
-}
-
-HCCLComm* HCCLCommContext::AssignHCCLComm(const std::string& rank_table_file,
-		uint32_t rank, uint32_t device_id)  {
-
-  std::unique_ptr<NPUDeviceContext> dev_ctx(
-      new NPUDeviceContext(NPUPlace(device_id)));
-
-  VLOG(3) << "device_id" << device_id;
-  VLOG(3) << "dev_ctx->stream()" << dev_ctx->stream();
-
-  HCCLCommImpl* c = new HCCLCommImpl;
-  c->set_rank_table_file(rank_table_file);
-  c->set_rank(rank);
-  c->set_device_id(device_id);
-  c->set_dev_ctx(std::move(dev_ctx));
-  // comm_ = c
-  comm_.reset(c);
-  return c;
-}
-
-void HCCLCommContext::CreateHCCLGroup(const std::string& group_name, uint32_t nranks,
-  const std::vector<uint32_t>& rank_ids) {
-/*
-  PADDLE_ENFORCE_NOT_NULL(group_name,
-                          platform::errors::InvalidArgument(
-                              "The group name should not be null."));
-  PADDLE_ENFORCE_GT(nranks, 0,
-                    platform::errors::InvalidArgument(
-                        "Expected nranks > 0. But received nranks is %d.", nranks));
-  PADDLE_ENFORCE_NOT_NULL(rank_ids,
-                          platform::errors::InvalidArgument(
-                              "The rank ids should not be null."));
-*/
-  platform::dynload::hcom_create_group(group_name.c_str(), nranks, (unsigned int*)rank_ids.data());
-
-  VLOG(1) << "hccl group with name " << group_name << " has been created";
-=======
   int ring_id_;
   int nranks_;
   int rank_;
@@ -215,13 +137,8 @@ void HCCLCommContext::ReleaseHCCLComms() {
       q.second.reset();
     }
   }
->>>>>>> 45765d6eb6445ab8ee98ea2306dcfeae4d1f295e
 }
 
 }  // namespace platform
 }  // namespace paddle
-<<<<<<< HEAD
-
-=======
->>>>>>> 45765d6eb6445ab8ee98ea2306dcfeae4d1f295e
 #endif

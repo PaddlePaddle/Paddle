@@ -35,16 +35,12 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
 
-    int nranks = ctx.Attr<int>("nranks");
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     std::string tag = ctx.Attr<std::string>("tag");
     auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get();
-    // PADDLE_ENFORCE_EQ(
-    //     nranks, comm->nranks(),
-    //     platform::errors::InvalidArgument("nranks: %s should equal to %s",
-    //                                       nranks, comm->nranks()));
+    auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
+    int nranks = comm->nranks();
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
