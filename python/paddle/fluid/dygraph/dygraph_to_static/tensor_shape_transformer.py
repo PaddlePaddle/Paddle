@@ -19,36 +19,13 @@ import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 STATIC_CONVERT_VAR_SHAPE_SUFFIX = '__static_convert_var_shape_suffix'
-
-
-def _slice_is_num(slice_node):
-    # A slice can be a:
-    # (1) gast.Index, which is a simple number such as [1], [-2]
-    # (2) gast.Slice, which is represented by bounds such as [2:-1]
-    # (3) gast.Tuple, which includes the above two cases such as [2:-1, 1]
-    #
-    # NOTE: In (1) case, when gast>=0.4.0, gast.Index is replaced with
-    # gast.Constant and gast.Index is not supported. The check of gast.Constant
-    # should be before gast.Index because of gast version compatibility.
-
-    assert isinstance(slice_node, gast.AST)
-
-    if isinstance(slice_node, gast.Tuple):
-        return False
-    if isinstance(slice_node, gast.Slice):
-        return False
-    if isinstance(slice_node, gast.Constant):
-        return True
-    if isinstance(slice_node, gast.Index):
-        return True
-
-    return False
 
 
 def create_convert_shape_node(var_shape_node,
@@ -62,14 +39,14 @@ def create_convert_shape_node(var_shape_node,
         # (2) A slice can also be represented by bounds such as 2:-1, i.e. not gast.Index or gast.Constant
         # In (1) case, we pass the number as 'idx' argument in convert_var_shape
         # In (2) case, we have to make it like `convert_var_shape(x)[slice]`
-        if slice_node is not None and _slice_is_num(slice_node):
+        if slice_node is not None and slice_is_num(slice_node):
             args.append(ast_to_source_code(slice_node).strip())
 
         convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({}, in_control_flow={})".format(
             ",".join(args), in_control_flow)
         api_shape_node = gast.parse(convert_var_shape_func).body[0].value
 
-        if slice_node is not None and not _slice_is_num(slice_node):
+        if slice_node is not None and not slice_is_num(slice_node):
             return gast.Subscript(
                 value=api_shape_node, slice=slice_node, ctx=gast.Load())
         return api_shape_node
@@ -82,16 +59,16 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}')".format(
+    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', locals())".format(
         api_shape_name)
     args = [attr_shape_name, eval_exist_func]
 
-    if slice_node is not None and _slice_is_num(slice_node):
+    if slice_node is not None and slice_is_num(slice_node):
         args.append(ast_to_source_code(slice_node).strip())
     choose_shape_func = "paddle.jit.dy2static.choose_shape_attr_or_api({})".format(
         ",".join(args))
     choose_shape_node = gast.parse(choose_shape_func).body[0].value
-    if slice_node is not None and not _slice_is_num(slice_node):
+    if slice_node is not None and not slice_is_num(slice_node):
         return gast.Subscript(
             value=choose_shape_node, slice=slice_node, ctx=gast.Load())
     return choose_shape_node
@@ -338,14 +315,10 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
                         static_shape_value_name = self.name_to_var_shape[
                             value_node.id]
-                        static_shape_value_node = gast.parse(
-                            static_shape_value_name).body[0].value
-                        index_value_node = gast.Constant(value=idx, kind=None)
-                        slice_index_node = gast.Index(value=index_value_node)
-                        sub_node = gast.Subscript(
-                            value=static_shape_value_node,
-                            slice=slice_index_node,
-                            ctx=gast.Load())
+
+                        sub_node_str = "{}[{}]".format(static_shape_value_name,
+                                                       idx)
+                        sub_node = gast.parse(sub_node_str).body[0].value
 
                         update_static_shape_var_node.append(
                             gast.Assign(
@@ -365,12 +338,11 @@ class TensorShapeTransformer(gast.NodeTransformer):
                         # x.shape becomes convert_var_shape_simple(x)
                         static_shape_value_node = ShapeAttributeTransformer(
                         ).visit(static_shape_value_node)
-                        index_value_node = gast.Constant(value=idx, kind=None)
-                        slice_index_node = gast.Index(value=index_value_node)
-                        sub_node = gast.Subscript(
-                            value=static_shape_value_node,
-                            slice=slice_index_node,
-                            ctx=gast.Load())
+
+                        sub_node_str = "{}[{}]".format(
+                            ast_to_source_code(static_shape_value_node).strip(),
+                            idx)
+                        sub_node = gast.parse(sub_node_str).body[0].value
 
                         update_static_shape_var_node.append(
                             gast.Assign(
