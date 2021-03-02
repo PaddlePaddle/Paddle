@@ -141,21 +141,13 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
 
     // one_hot
     Tensor tmp_onehot(on_tensor.type());
-    tmp_onehot.Resize(logits->dims());
+    tmp_onehot.Resize(logits_grad->dims());
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
     auto runner_onehot =
         NpuOpRunner("OneHotD", {tmp_labels, on_tensor, off_tensor},
                     {tmp_onehot}, {{"depth", cls_num}});
     runner_onehot.Run(stream);
-
-    // to do squeeze, infer shape first
-    PADDLE_ENFORCE_NE(
-        logits->dims()[0], 1,
-        platform::errors::InvalidArgument("logits first dim should not be 1"));
-    PADDLE_ENFORCE_NE(
-        logits->dims()[1], 1,
-        platform::errors::InvalidArgument("logits secend dim should not be 1"));
 
     // sub
     Tensor tmp_sub(softmax->.type());
