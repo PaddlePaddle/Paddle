@@ -576,7 +576,7 @@ def deform_conv2d(x,
             'paddings': padding,
             'dilations': dilation,
             'groups': groups,
-            'deformable_groups': 1,
+            'deformable_groups': deformable_groups,
             'im2col_step': 1,
         }
         helper.append_op(
