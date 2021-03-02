@@ -150,7 +150,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     runner_onehot.Run(stream);
 
     // sub
-    Tensor tmp_sub(softmax->.type());
+    Tensor tmp_sub(softmax->type());
     tmp_sub.Resize(softmax->dims());
     tmp_sub.mutable_data<T>(ctx.GetPlace());
     auto runner_sub = NpuOpRunner("Sub", {*softmax, tmp_onehot}, {tmp_sub}, {});

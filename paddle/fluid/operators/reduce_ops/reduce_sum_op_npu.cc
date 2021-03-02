@@ -34,6 +34,9 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     if (reduce_all) {
       std::vector<int> dim_vec;
       for (int i = 0; i < x->dims().size(); i++) {
@@ -41,15 +44,13 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
       }
       auto runner = NpuOpRunner("ReduceSumD", {*x}, {*out},
                                 {{"axes", dim_vec}, {"keep_dims", keep_dims}});
+      runner.Run(stream);
 
     } else {
       auto runner = NpuOpRunner("ReduceSumD", {*x}, {*out},
                                 {{"axes", dims}, {"keep_dims", keep_dims}});
+      runner.Run(stream);
     }
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
   }
 };
 
