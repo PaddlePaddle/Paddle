@@ -608,7 +608,12 @@ EOF
             echo "========================================="
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        get_precision_ut_mac
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        fi
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -674,6 +679,7 @@ EOF
 }
 
 function get_precision_ut_mac() {
+    on_precision=0
     set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
@@ -688,6 +694,7 @@ function get_precision_ut_mac() {
     fi
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
         UT_list_re=''
+        on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
         for case in $UT_list; do
             flag=$(echo $case|grep -oE $re)
