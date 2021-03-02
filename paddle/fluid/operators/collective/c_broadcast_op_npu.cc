@@ -34,8 +34,9 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     auto out = ctx.Output<framework::LoDTensor>("Out");
 
+    int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = paddle::platform::HCCLCommContext::Instance().Get();
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -46,7 +47,6 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
-    int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     std::string tag = ctx.Attr<std::string>("tag");
 
