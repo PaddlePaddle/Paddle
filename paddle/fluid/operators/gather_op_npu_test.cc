@@ -40,6 +40,7 @@ USE_OP_DEVICE_KERNEL(gather_grad, NPU);
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
              std::string op_type) {
+               
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
