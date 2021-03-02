@@ -74,6 +74,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
                                     {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
+  ctx.Wait();
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -125,57 +126,64 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(op_type,
-    {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
-    {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}, {"Y", {"Y"}}},
+      {{"X@GRAD", {"DX"}}, {"Y@GRAD", {"DY"}}}, attrs);
 
   auto place = ctx.GetPlace();
-    op->Run(*scope, place);
+  op->Run(*scope, place);
+  ctx.Wait();
 
-    std::vector<T> dx_vec;
-    TensorToVector(*tensor_dx, ctx, &dx_vec);
+  std::vector<T> dx_vec;
+  TensorToVector(*tensor_dx, ctx, &dx_vec);
 
-    std::vector<T> dy_vec;
-    TensorToVector(*tensor_dy, ctx, &dy_vec);
+  std::vector<T> dy_vec;
+  TensorToVector(*tensor_dy, ctx, &dy_vec);
 
-    ctx.Wait();
-    float expected_x, expected_y;
-    if (op_type == "elementwise_add_grad") {
-      expected_x = 1.0;
-      expected_y = 6.0;
-    } else if (op_type == "elementwise_sub_grad") {
-      expected_x = 1.0;
-      expected_y = -6.0;
-    }
+  ctx.Wait();
+  float expected_x, expected_y;
+  if (op_type == "elementwise_add_grad") {
+    expected_x = 1.0;
+    expected_y = 6.0;
+  } else if (op_type == "elementwise_sub_grad") {
+    expected_x = 1.0;
+    expected_y = -6.0;
+  }
 
-    for (uint32_t i = 0; i < dx_vec.size(); i++) {
-      EXPECT_EQ(dx_vec[i], static_cast<T>(expected_x));
-    }
-    for (uint32_t i = 0; i < dy_vec.size(); i++) {
-      EXPECT_EQ(dy_vec[i], static_cast<T>(expected_y));
-    }
+  for (uint32_t i = 0; i < dx_vec.size(); i++) {
+    EXPECT_EQ(dx_vec[i], static_cast<T>(expected_x));
+  }
+  for (uint32_t i = 0; i < dy_vec.size(); i++) {
+    EXPECT_EQ(dy_vec[i], static_cast<T>(expected_y));
+  }
 }
 
 TEST(elementwise_add, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "elementwise_add");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "elementwise_add");
 }
 
 TEST(elementwise_sub, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "elementwise_sub");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "elementwise_sub");
 }
 
 TEST(elementwise_sub, NPU_fp16) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<p::float16>(&scope, ctx, "elementwise_sub");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<p::float16>(&scope, ctx, "elementwise_sub");
 }
 
 TEST(elementwise_sub_grad, NPU) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    CompareGrad<float>(&scope, ctx, "elementwise_sub_grad");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  CompareGrad<float>(&scope, ctx, "elementwise_sub_grad");
+}
+
+TEST(elementwise_add_grad, NPU) {
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  CompareGrad<float>(&scope, ctx, "elementwise_add_grad");
 }
