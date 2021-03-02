@@ -19,4 +19,8 @@ else()
     target_link_libraries(conditional_block_infer_op conditional_block_op)
 endif()
 
+if(WITH_ASCEND_CL)
+    cc_test(compare_op_npu_test SRCS compare_op_npu_test.cc DEPS op_registry compare_op scope device_context enforce executor)
+endif()
+
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal_all);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
