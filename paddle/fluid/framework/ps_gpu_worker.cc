@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 #if defined _WIN32 || defined __APPLE__
@@ -32,6 +33,7 @@ namespace framework {
 
 void PSGPUWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
+  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   mpi_rank_ = desc.mpi_rank();
   trainer_desc_ = desc;
   /*
@@ -173,6 +175,81 @@ void PSGPUWorker::TrainFiles() {
   timeline.Pause();
   VLOG(1) << "GpuPs worker " << thread_id_ << " train cost "
           << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
+  return;
+}
+
+void PSGPUWorker::TrainFilesWithProfiler() {
+  platform::SetNumThreads(1);
+  VLOG(1) << "Begin to train files with profiler";
+  device_reader_->Start();
+  std::vector<double> op_total_time;
+  std::vector<std::string> op_name;
+  for (auto& op : ops_) {
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      op_name.push_back(op->Type());
+    }
+  }
+
+  VLOG(3) << "op name size: " << op_name.size();
+  op_total_time.resize(op_name.size());
+  for (size_t i = 0; i < op_total_time.size(); ++i) {
+    op_total_time[i] = 0.0;
+  }
+  platform::Timer timeline;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  int total_ins_num = 0;
+  int cur_batch;
+  timeline.Start();
+  while ((cur_batch = device_reader_->Next()) > 0) {
+    total_ins_num += cur_batch;
+    timeline.Pause();
+    read_time += timeline.ElapsedSec();
+    total_time += timeline.ElapsedSec();
+
+    int run_op_idx = 0;
+    dev_ctx_->Wait();
+    for (auto& op : ops_) {
+      bool need_skip = false;
+      for (auto t = 0u; t < skip_ops_.size(); ++t) {
+        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+          need_skip = true;
+          break;
+        }
+      }
+      if (!need_skip) {
+        timeline.Start();
+        VLOG(3) << "Going to run op " << op_name[run_op_idx];
+        op->Run(*thread_scope_, place_);
+        dev_ctx_->Wait();
+        VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
+        timeline.Pause();
+        op_total_time[run_op_idx++] += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+      }
+    }
+    timeline.Start();
+    PrintFetchVars();
+    thread_scope_->DropKids();
+    dev_ctx_->Wait();
+    timeline.Pause();
+    total_time += timeline.ElapsedSec();
+    timeline.Start();
+  }
+  VLOG(1) << "GpuPs worker " << thread_id_ << " train cost " << total_time
+          << " seconds, ins_num: " << total_ins_num;
+  for (size_t i = 0; i < op_name.size(); ++i) {
+    VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
+            << ", mean time: " << op_total_time[i] / total_ins_num
+            << "s, totol time:" << op_total_time[i] << "sec";
+  }
   return;
 }
 
