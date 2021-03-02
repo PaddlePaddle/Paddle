@@ -52,24 +52,28 @@ def setup(**attr):
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
     and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
     concepts, such as necessary compiling flags, included paths of head files, and linking
-    flags. It also will automatically search and valid local enviromment and versions of ``cc`` and
-    ``nvcc`` , then compiles customized operators supporting CPU or GPU device according to
-    the specified Extension type.
+    flags. It also will automatically search and valid local enviromment and versions of 
+    ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators 
+    supporting CPU or GPU device according to the specified Extension type.
 
     Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
-    will be checked to ensure that compiler version from ``cc``
+    will be checked to ensure that compiler version from ``cc(Linux)`` , ``cl.exe(Windows)``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
-    For example if Paddle with CUDA 10.1 is built with GCC 8.2, then the version of user's
-    local machine should satisfy GCC >= 8.2. Otherwise, a fatal error will occur because of
-    ABI compatibility.
+
+    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
+    then the version of user's local machine should satisfy GCC >= 8.2. 
+    For Windows, Visual Studio version will be checked, and it shoule be greater than or equal to that of 
+    PaddlePaddle (Visual Studio 2015 update3). 
+    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
+    occur because of ABI compatibility.
 
     .. note::
-
-        1. Compiler ABI compatibility is forward compatible. On Linux platform, 
-           we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
-        2. Using ``which cc`` to ensure location of ``cc`` and using ``cc --version`` 
-           to ensure linking GCC version on Linux.
-        3. Currently we support Linux and Windows platfrom. MacOS is supporting...
+        
+        1. Currently we support Linux and Windows platfrom. MacOS is supporting...
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
+           GCC version.
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
 
 
     Compared with Just-In-Time ``load`` interface, it only compiles once by executing
@@ -673,19 +677,23 @@ def load(name,
     append user defined custom operators in background while building models.
 
     It will perform compiling, linking, Python API generation and module loading
-    processes under a individual subprocess. It does not require CMake or Ninja environment
-    and only ``g++/nvcc`` on Linux and clang++ on MacOS. For example it requires
-    GCC compiler with version is greater than 5.4 and linked into ``/usr/bin/cc`` .
-    If compiling Operators supporting GPU device, please make sure ``nvcc`` compiler
-    is installed in local environment.
-    
+    processes under a individual subprocess. It does not require CMake or Ninja 
+    environment. On Linux platform, it requires GCC compiler whose version is 
+    greater than 5.4 and it should be soft linked to ``/usr/bin/cc`` . On Windows 
+    platform, it requires Visual Studio whose version is greater than 2015 update3.
+    On MacOS, clang++ is requited. In addition, if compiling Operators supporting 
+    GPU device, please make sure ``nvcc`` compiler is installed in local environment.
     
     Moreover, `ABI compatibility <https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html>`_ 
-    will be checked to ensure that compiler version from ``cc``
+    will be checked to ensure that compiler version from ``cc(Linux)`` , ``cl.exe(Windows)``
     on local machine is compatible with pre-installed Paddle whl in python site-packages.
-    For example if Paddle with CUDA 10.1 is built with GCC 8.2, then the version of user's
-    local machine should satisfy GCC >= 8.2. Otherwise, a fatal error will occur because of
-    ABI compatibility.
+
+    For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
+    then the version of user's local machine should satisfy GCC >= 8.2. 
+    For Windows, Visual Studio version will be checked, and it shoule be greater than or equal to that of 
+    PaddlePaddle (Visual Studio 2015 update3). 
+    If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
+    occur because of ABI compatibility.
 
     Compared with ``setup`` interface, it doesn't need extra ``setup.py`` and excute
     ``python setup.py install`` command. The interface contains all compiling and installing
@@ -693,11 +701,11 @@ def load(name,
 
     .. note::
 
-        1. Compiler ABI compatibility is forward compatible. On Linux platform, 
-           we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
-        2. Using ``which cc`` to ensure location of ``cc`` and using ``cc --version`` 
-           to ensure linking GCC version on Linux.
-        3. Currenly we support Linux and Windows platfrom. MacOS is supporting...
+        1. Currently we support Linux and Windows platfrom. MacOS is supporting...
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+           Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking 
+           GCC version.
+        3. On Windows platform, we recommend to install `` Visual Studio`` (>=2015 update3).
 
 
     **A simple example:**
