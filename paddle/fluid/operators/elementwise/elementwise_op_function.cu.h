@@ -34,7 +34,7 @@ limitations under the License. */
 #endif
 #endif  // PADDLE_WITH_HIP
 
-#if !defined(PADDLE_WITH_HIP) && CUDA_VERSION < 9000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
 #define __h2div h2div
 #endif
 
