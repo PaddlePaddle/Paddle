@@ -15,11 +15,13 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
+using Tensor = framework::Tensor;
 
 template <typename T>
 class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
@@ -98,12 +100,14 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .Wait();
         framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dx);
       }
     }
+
     if (dy) {
-      dy->mutable_data<T>(ctx.GetPlace());
-      // For dx
+      // For dy
       // stage 1
       auto reduce_ndim = dout->dims().size() - dy->dims().size();
       std::vector<int> axes;
@@ -111,7 +115,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         axes.push_back(i);
       }
       Tensor* tmp_dout = const_cast<Tensor*>(dout);
-      Tensor reduced_dout(dx->type());
+      Tensor reduced_dout(dout->type());
       if (axes.size() != 0) {
         std::vector<int64_t> reduced_dout_dims;
         for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
@@ -123,6 +127,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .Wait();
       }
 
       // stage 2
@@ -133,10 +139,13 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         }
       }
       if (axes.size() != 0) {
+        dy->mutable_data<T>(ctx.GetPlace());
         auto runner = NpuOpRunner("ReduceSumD", {*tmp_dout}, {*dy},
                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .Wait();
         framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dy);
       }
     }
