@@ -22,7 +22,7 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, normalize_extension_kwargs, add_compile_flag
+from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
@@ -30,6 +30,8 @@ from .extension_utils import use_new_custom_op_load_method, clean_object_if_chan
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
+
+from ...fluid import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -39,7 +41,10 @@ if IS_WINDOWS and six.PY3:
     from unittest.mock import Mock
     _du_build_ext.get_export_symbols = Mock(return_value=None)
 
-CUDA_HOME = find_cuda_home()
+if core.is_compiled_with_rocm():
+    ROCM_HOME = find_rocm_home()
+else:
+    CUDA_HOME = find_cuda_home()
 
 
 def setup(**attr):
@@ -390,12 +395,20 @@ class BuildExtension(build_ext, object):
                 original_compiler = self.compiler.compiler_so
                 # ncvv compile CUDA source
                 if is_cuda_file(src):
-                    assert CUDA_HOME is not None
-                    nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                    self.compiler.set_executable('compiler_so', nvcc_cmd)
-                    # {'nvcc': {}, 'cxx: {}}
-                    if isinstance(cflags, dict):
-                        cflags = cflags['nvcc']
+                    if core.is_compiled_with_rocm():
+                        assert ROCM_HOME is not None
+                        hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
+                        self.compiler.set_executable('compiler_so', hipcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['hipcc']
+                    else:
+                        assert CUDA_HOME is not None
+                        nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                        self.compiler.set_executable('compiler_so', nvcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['nvcc']
 
                     cflags = prepare_unix_cudaflags(cflags)
                 # cxx compile Cpp source
