@@ -25,7 +25,7 @@ struct PowFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
 // TODO(wujionghao): A potential speed improvement is supporting different
 // types in C++.
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
     // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
     // it will return a float number like 2.99... , which floor to 2
     // when cast to int by default and it is wrong.
