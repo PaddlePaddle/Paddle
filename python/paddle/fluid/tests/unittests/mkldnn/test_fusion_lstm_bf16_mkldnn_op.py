@@ -48,6 +48,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         self.act_cand = 'tanh'
         self.use_mkldnn = True
         self.force_fp32_output = False
+        self.weights_dtype = 'fp32'
         self.set_confs()
 
         T = sum(self.lod[0])
@@ -93,17 +94,28 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         hidden = hidden.astype('float32')
         hidden_bf16 = convert_float_to_uint16(hidden)
 
-        self.inputs = {
-            'X': (x_bf16, self.lod),
-            'WeightX': wx_bf16,
-            'WeightH': wh_bf16,
-            'Bias': b
-        }
+        if self.weights_dtype == 'bf16':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx_bf16,
+                'WeightH': wh_bf16,
+                'Bias': b
+            }
+        elif self.weights_dtype == 'fp32':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx,
+                'WeightH': wh,
+                'Bias': b
+            }
 
         if self.has_initial_state:
-            self.inputs['H0'] = h0_bf16
-            self.inputs[
-                'C0'] = c0  # in Vanilla LSTM and LSTM with peepholes Cell type is always fp32 
+            if self.weights_dtype == 'bf16':
+                self.inputs['H0'] = h0_bf16
+            elif self.weights_dtype == 'fp32':
+                self.inputs['H0'] = h0
+
+            self.inputs['C0'] = c0
 
         self.outputs = {
             'Hidden': (hidden, self.lod),
@@ -134,6 +146,11 @@ class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
 class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
     def set_confs(self):
         self.is_reverse = True
+
+
+class TestFusionLSTMBF16ONEDNNBF16WeightsOp(TestFusionLSTMBF16ONEDNNOp):
+    def set_confs(self):
+        self.weights_dtype = 'bf16'
 
 
 if __name__ == "__main__":

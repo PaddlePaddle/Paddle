@@ -50,6 +50,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         self.origin_mode = False
         self.use_mkldnn = True
         self.force_fp32_output = False
+        self.weights_dtype = 'fp32'
         self.set_confs()
 
         T = sum(self.lod[0])
@@ -82,17 +83,27 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
 
         hidden_bf16 = convert_float_to_uint16(hidden)
 
-        self.inputs = {
-            'X': (x_bf16, self.lod),
-            'WeightX': wx_bf16,
-            'WeightH': wh_bf16
-        }
+        if self.weights_dtype == 'bf16':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx_bf16,
+                'WeightH': wh_bf16
+            }
+        elif self.weights_dtype == 'fp32':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx_fp32,
+                'WeightH': wh_fp32
+            }
 
         if self.with_bias:
             self.inputs['Bias'] = bias
 
         if self.with_h0:
-            self.inputs['H0'] = h0_bf16
+            if self.weights_dtype == 'bf16':
+                self.inputs['H0'] = h0_bf16
+            elif self.weights_dtype == 'fp32':
+                self.inputs['H0'] = h0_fp32
 
         h0_bf16 = convert_float_to_uint16(h0_fp32)
         self.outputs = {'Hidden': (hidden, self.lod)}
