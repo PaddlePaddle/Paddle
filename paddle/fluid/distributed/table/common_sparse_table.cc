@@ -388,7 +388,6 @@ int32_t CommonSparseTable::pour() {
   for (auto& val : pull_reservoir_) {
     keys.push_back(val.first);
     auto& reservoir = val.second;
-    reservoir.avg();
     std::copy(reservoir.values.begin(), reservoir.values.end(),
               std::back_inserter(values));
   }

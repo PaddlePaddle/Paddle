@@ -60,7 +60,7 @@ struct ReservoirValue {
   }
 
   void reset() {
-    values.resize(dim, 0);
+    std::fill(values.begin(), values.end(), 0);
     counter = 0;
   }
 };
@@ -134,15 +134,15 @@ class BarrierTable : public Table {
     return 0;
   }
   int32_t shrink(const std::string &param) override { return 0; }
-  virtual void clear(){};
-  virtual int32_t flush() { return 0; };
+  virtual void clear() {}
+  virtual int32_t flush() { return 0; }
   virtual int32_t load(const std::string &path, const std::string &param) {
     return 0;
   }
   virtual int32_t save(const std::string &path, const std::string &param) {
     return 0;
   }
-  virtual int32_t initialize_shard() { return 0; };
+  virtual int32_t initialize_shard() { return 0; }
 
   virtual int32_t initialize() override;
   // only for barrier
