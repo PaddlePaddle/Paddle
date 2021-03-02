@@ -17,7 +17,7 @@ set +x
 NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 
-PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
+export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
 else
@@ -223,7 +223,7 @@ fi
 
 if [ ${PRECISION_TEST:-OFF} == "ON"] && [[ "$precision_cases" != ""]];then
     UT_list_prec=''
-    re=^$(cat ut_list| awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}')$
+    re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
     for case in $UT_list; do
         flag=$(echo $case|grep -oE $re)
         if [ -n "$flag" ];then
