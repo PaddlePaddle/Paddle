@@ -317,6 +317,7 @@ endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

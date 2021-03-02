@@ -59,14 +59,14 @@ int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
         paddle::operators::math::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, pool_process, true, adaptive_, odatas[0], stream);
+                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
   } else if (pool_type_ == PoolType::avg) {
     paddle::operators::math::AvgPool<float> pool_process;
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, pool_process, true, adaptive_, odatas[0], stream);
+                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -224,14 +224,14 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
         paddle::operators::math::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   pool_process, true, adaptive_, output, stream);
+                   true, adaptive_, output, stream, pool_process);
   } else if (pool_type_ == "avg") {
     paddle::operators::math::AvgPool<float> pool_process;
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   pool_process, true, adaptive_, output, stream);
+                   true, adaptive_, output, stream, pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;
