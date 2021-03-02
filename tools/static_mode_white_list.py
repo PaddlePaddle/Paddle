@@ -296,6 +296,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_layer_norm_mkldnn_op',
     'test_layer_norm_bf16_mkldnn_op',
     'test_layer_norm_op_v2',
+    'test_layer_norm_fuse_pass',
     'test_learning_rate_scheduler',
     'test_linear_interp_op',
     'test_linear_interp_v2_op',
@@ -589,6 +590,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv2d_int8_mkldnn_op',
     'test_conv2d_mkldnn_op',
     'test_conv2d_transpose_mkldnn_op',
+    'test_conv2d_transpose_bf16_mkldnn_op',
     'test_conv3d_mkldnn_op',
     'test_dequantize_mkldnn_op',
     'test_elementwise_add_mkldnn_op',
@@ -693,4 +695,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_shape_op_xpu',
     'test_slice_op_xpu',
     'test_generate_proposals_v2_op',
+    'test_lamb_op_xpu',
 ]

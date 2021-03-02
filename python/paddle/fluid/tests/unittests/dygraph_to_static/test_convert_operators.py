@@ -15,6 +15,7 @@
 import numpy as np
 import paddle
 import unittest
+from paddle.jit.dy2static.convert_operators import eval_if_exist_else_none
 
 
 class CallNotExist(paddle.nn.Layer):
@@ -134,6 +135,115 @@ class TestConvertShapeCompare(unittest.TestCase):
             np.testing.assert_array_equal(
                 np.array(x_y_not_eq_out), np.array([[False], [True], [True]]))
         paddle.disable_static()
+
+
+class TestChooseShapeAttrOrApi(unittest.TestCase):
+    def test_api_shape_is_none(self):
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([1, 2], None),
+            [1, 2])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([1], None), [1])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([2, 3, 7], None, 0),
+            2)
+
+    def test_attr_shape_is_int(self):
+        x = paddle.zeros([1, 3, 5, 7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape[0],
+                                                          paddle.shape(x)[0]),
+            1)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape[1],
+                                                          paddle.shape(x)[1]),
+            3)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(-1,
+                                                          paddle.shape(x)[0]),
+            paddle.shape(x)[0])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(-1,
+                                                          paddle.shape(x), 0),
+            paddle.shape(x)[0])
+
+    def test_positive_attr_shape(self):
+        x = paddle.zeros([1, 3, 5, 7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape,
+                                                          paddle.shape(x)),
+            x.shape)
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api(x.shape,
+                                                          paddle.shape(x), 3),
+            x.shape[3])
+
+    def test_negative_attr_shape(self):
+        x = paddle.zeros([7])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([-1],
+                                                          paddle.shape(x), 0),
+            paddle.shape(x)[0])
+        self.assertEqual(
+            paddle.jit.dy2static.choose_shape_attr_or_api([-1],
+                                                          paddle.shape(x)),
+            paddle.shape(x))
+
+
+class TestEvaIfExistElseNone(unittest.TestCase):
+    def test_locals(self):
+        x_shape = [1, 2, 3]
+        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), x_shape)
+
+    def test_globals(self):
+        x_shape = [1, 2, 3]
+
+        def foo():
+            x_shape = [2, 3, 4]
+            self.assertEqual(
+                eval_if_exist_else_none('x_shape', locals()), [2, 3, 4])
+
+        foo()
+
+    def test_invisible_of_func(self):
+        x_shape = [1, 2, 3]
+
+        def foo():
+            x_shape = [2, 3, 4]
+            return x_shape
+
+        self.assertEqual(
+            eval_if_exist_else_none('x_shape', locals()), [1, 2, 3])
+
+    def test_none(self):
+        def foo():
+            x_shape = [2, 3, 4]
+            return x_shape
+
+        self.assertEqual(eval_if_exist_else_none('x_shape', locals()), None)
+
+
+class ShapeLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(ShapeLayer, self).__init__()
+
+    @paddle.jit.to_static(input_spec=[paddle.static.InputSpec(shape=[None, 1])])
+    def forward(self, x):
+        x = paddle.reshape(x, [-1, x.shape[1]])
+        bs = x.shape[0]  # -1
+
+        # for trigger choos_shape_attr_or_api
+        out = paddle.zeros([bs, 1], dtype='float32')
+        return out
+
+
+class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
+    def test_tensor_shape(self):
+        x = paddle.zeros(shape=[4, 1], dtype='float32')
+        net = ShapeLayer()
+        out = net(x)
+
+        self.assertTrue(np.array_equal(out.numpy(), x.numpy()))
 
 
 if __name__ == '__main__':

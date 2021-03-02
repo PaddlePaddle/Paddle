@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass_builder.h"
+
 #include <memory>
-#include <utility>
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

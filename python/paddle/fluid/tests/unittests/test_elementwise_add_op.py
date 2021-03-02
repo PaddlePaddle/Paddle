@@ -381,6 +381,16 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
         self.axis = 2
 
 
+class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 0
+
+
 class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):

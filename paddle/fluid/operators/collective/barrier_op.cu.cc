@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/barrier_op.h"
 
-#include <memory>
-
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -28,7 +26,7 @@ template <typename T>
 class BarrierOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -47,7 +45,11 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
     auto comm_stream =
         platform::NCCLCommContext::Instance().Get(rid, place)->stream();
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(comm_stream));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(comm_stream));
+#endif
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should compile with NCCL."));

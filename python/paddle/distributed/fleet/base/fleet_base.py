@@ -196,6 +196,7 @@ class Fleet(object):
         else:
             if isinstance(role_maker, RoleMakerBase):
                 self._role_maker = role_maker
+                self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
@@ -520,7 +521,8 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             export_for_deployment=True):
+                             export_for_deployment=True,
+                             mode=0):
         """
         save inference model for inference.
 
@@ -543,7 +545,7 @@ class Fleet(object):
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment)
+            export_for_deployment, mode)
 
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
@@ -589,6 +591,9 @@ class Fleet(object):
 
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
+
+    def shrink(self, threshold):
+        self._runtime_handle._shrink(threshold)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -1018,9 +1023,22 @@ class Fleet(object):
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                     run_example_code()       
         """
+
         # imitate target optimizer retrieval
-        return self.user_defined_optimizer.amp_init(place, scope, test_program,
-                                                    use_fp16_test)
+        amp_optimizer = None
+        for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
+            if hasattr(optimizer, 'amp_init'):
+                amp_optimizer = optimizer
+                break
+
+        if amp_optimizer is None:
+            if hasattr(self.user_defined_optimizer, 'amp_init'):
+                amp_optimizer = self.user_defined_optimizer
+
+        assert amp_optimizer is not None, \
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+
+        return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
     def _final_strategy(self):
         if "valid_strategy" not in self._context:

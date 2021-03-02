@@ -40,7 +40,26 @@ EmbEltwiseLayernormPluginDynamicImpl<
 inline half fp32tofp16(float x) { return static_cast<half>(x); }
 
 template <typename T>
+void EmbEltwiseLayernormPluginDynamicImpl<T>::shareGPUData(
+    const EmbEltwiseLayernormPluginDynamicImplBase *anthor) {
+  auto *ptr =
+      dynamic_cast<const EmbEltwiseLayernormPluginDynamicImpl<T> *>(anthor);
+  if (!ptr->is_initialized_) {
+    return;
+  }
+  embs_gpu_ = ptr->embs_gpu_;
+  scale_gpu_ = ptr->scale_gpu_;
+  bias_gpu_ = ptr->bias_gpu_;
+  int input_num = embs_.size();
+  in_ptr_tensor_.Resize({input_num});
+  emb_ptr_tensor_.ShareDataWith(ptr->emb_ptr_tensor_);
+}
+
+template <typename T>
 int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
+  if (is_initialized_) {
+    return 0;
+  }
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
     if (embs_[i]) {
@@ -77,13 +96,12 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
   int input_num = embs_.size();
   in_ptr_tensor_.Resize({input_num});
   emb_ptr_tensor_.Resize({input_num});
-
   cudaGetDevice(&device_id_);
   auto emb_ptr_gpu_d =
       emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
   cudaMemcpy(emb_ptr_gpu_d, embs_gpu_.data(), sizeof(uintptr_t) * input_num,
              cudaMemcpyHostToDevice);
-
+  is_initialized_ = true;
   return 0;
 }
 

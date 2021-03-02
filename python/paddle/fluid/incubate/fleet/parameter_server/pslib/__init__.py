@@ -385,6 +385,28 @@ class PSLib(Fleet):
                                                       whitelist_path)
         self._role_maker._barrier_worker()
 
+    def save_multi_table_one_path(self, table_ids, model_dir, **kwargs):
+        """
+        save pslib multi sparse table in one path.
+        Args:
+            table_ids(list): table ids
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+                          prefix(str): the parts to save can have prefix,
+                                       for example, part-prefix-000-00000
+        Examples:
+            .. code-block:: python
+              fleet.save_multi_table_one_path("[0, 1]", "afs:/user/path/")
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir,
+                                                      mode)
+        self._role_maker._barrier_worker()
+
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
         """
         save sparse cache table,

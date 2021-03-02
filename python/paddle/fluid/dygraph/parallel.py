@@ -55,9 +55,12 @@ def prepare_context(strategy=None):
         if isinstance(place, core.CUDAPlace):
             parallel_helper._set_parallel_ctx(
                 core.NCCLParallelContext(strategy, place))
+        elif isinstance(place, core.XPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.BKCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -108,9 +111,13 @@ class ParallelEnv(object):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
 
-        # imperative only support one gpu
-        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-        self._device_id = int(selected_gpus[0])
+        # imperative only support one gpu or xpu
+        if core.is_compiled_with_cuda():
+            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+            self._device_id = int(selected_gpus[0])
+        elif core.is_compiled_with_xpu():
+            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+            self._device_id = int(selected_xpus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
@@ -301,6 +308,7 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 
 
 def scale_loss(loss):
+    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
     if not ParallelEnv().world_size > 1:
         return loss
 

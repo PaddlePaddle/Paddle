@@ -15,11 +15,8 @@
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
 
 #include <string>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -96,10 +93,12 @@ void recompute_bias_and_weights(const Scope* scope,
   variance_array = variance_array.sqrt();
   variance_array = scale_array / variance_array;
   for (int i = 0; i < variance_tensor->numel(); i++) {
-    PADDLE_ENFORCE_EQ(
-        isfinite(variance_array[i]), true,
-        platform::errors::InvalidArgument("fuse batch norm variance should be "
-                                          "finite. Found nonfinite values!"));
+    PADDLE_ENFORCE_EQ(std::isfinite(variance_array[i]), true,
+                      platform::errors::InvalidArgument(
+                          "The inverse of Fused batch norm variance "
+                          "should be finite. Found nonfinite values! "
+                          "Please check %s ",
+                          bn_variance.Name()));
   }
   EigenVectorArrayMap eltwise_y_in_array(
       eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
@@ -108,10 +107,12 @@ void recompute_bias_and_weights(const Scope* scope,
   eltwise_y_in_array =
       ((eltwise_y_in_array - mean_array) * variance_array) + bn_bias_array;
   for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
-    PADDLE_ENFORCE_EQ(
-        isfinite(eltwise_y_in_array[i]), true,
-        platform::errors::InvalidArgument("fused batch norm bias should be "
-                                          "finite. Found nonfinite values!"));
+    PADDLE_ENFORCE_EQ(std::isfinite(eltwise_y_in_array[i]), true,
+                      platform::errors::InvalidArgument(
+                          "Fused batch norm bias should be "
+                          "finite. Found nonfinite values! "
+                          "Please check %s and related variables.",
+                          bn_variance.Name()));
   }
 
   // Re-compute weight of conv2d from BN

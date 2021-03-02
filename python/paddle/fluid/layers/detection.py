@@ -2214,17 +2214,18 @@ def multi_box_head(inputs,
     Examples 1: set min_ratio and max_ratio:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
 
-          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
-          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
-          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
-          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
-          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
-          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
-          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
+          images = paddle.static.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = paddle.static.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = paddle.static.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = paddle.static.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = paddle.static.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = paddle.static.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = paddle.static.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
 
-          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
+          mbox_locs, mbox_confs, box, var = paddle.static.nn.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
             num_classes=21,
@@ -2239,17 +2240,18 @@ def multi_box_head(inputs,
     Examples 2: set min_sizes and max_sizes:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
+          paddle.enable_static()
 
-          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
-          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
-          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
-          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
-          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
-          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
-          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
+          images = paddle.static.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = paddle.static.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = paddle.static.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = paddle.static.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = paddle.static.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = paddle.static.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = paddle.static.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
 
-          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
+          mbox_locs, mbox_confs, box, var = paddle.static.nn.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
             image=images,
             num_classes=21,
