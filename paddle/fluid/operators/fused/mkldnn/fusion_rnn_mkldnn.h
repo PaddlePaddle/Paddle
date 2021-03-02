@@ -179,6 +179,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   // TODO(grygielski) H0 is for now persistable
   // TODO(jczaja) H0 should be updated each iter and of T type (Fusion pass does
   // not support in yet)
+  template <typename U>
   std::shared_ptr<dnnl::memory> AcquireH0Memory(const Tensor* h0) {
     const std::string h0_key = memory_key_ + "@h0";
     auto memory_p =
@@ -189,15 +190,15 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       if (h0) {
         user_h0_memory =
             dnnl::memory({{1, 1, N, OC},
-                          MKLDNNGetDataType<T>(),
+                          MKLDNNGetDataType<U>(),
                           MKLDNNMemoryFormat::ldnc},
-                         this->engine_, to_void_cast(h0->data<T>()));
+                         this->engine_, to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory({{1, 1, N, OC},
-                                       MKLDNNGetDataType<T>(),
+                                       MKLDNNGetDataType<U>(),
                                        MKLDNNMemoryFormat::ldnc},
                                       this->engine_);
-        memset(user_h0_memory.get_data_handle(), 0, sizeof(T) * N * OC);
+        memset(user_h0_memory.get_data_handle(), 0, sizeof(U) * N * OC);
       }
       memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
                                                 this->engine_);
