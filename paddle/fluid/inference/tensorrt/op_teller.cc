@@ -109,6 +109,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transpose",
       "flatten2",
       "flatten",
+      "affine_channel"
   };
 };
 
