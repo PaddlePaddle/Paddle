@@ -81,8 +81,11 @@ class LSTMMKLDNNHandler
                                      MKLDNNMemoryFormat::tnc);
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(), // Vanilla LSTM and LSTM with peepoles has c0 as fp32
-                                 MKLDNNMemoryFormat::ldnc);
+      auto c0_md = MKLDNNMemDesc(
+          {L, D, N, OC}, MKLDNNGetDataType<float>(),  // Vanilla LSTM and LSTM
+                                                      // with peepoles has c0 as
+                                                      // fp32
+          MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -138,8 +141,7 @@ class LSTMMKLDNNHandler
                         MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_x_data =
-          reinterpret_cast<U*>(user_memory.get_data_handle());
+      auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
       memcpy(weight_x_data, weight_x->data<U>(),
              sizeof(U) * this->IC * this->G * this->OC);
 
@@ -169,8 +171,7 @@ class LSTMMKLDNNHandler
                         MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_h_data =
-          reinterpret_cast<U*>(user_memory.get_data_handle());
+      auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
       memcpy(weight_h_data, weight_h->data<U>(),
              sizeof(U) * this->OC * this->G * this->OC);
 
@@ -261,8 +262,8 @@ class LSTMMKLDNNHandler
         memset(user_c0_memory.get_data_handle(), 0,
                sizeof(float) * this->N * this->OC);
       }
-      memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_c_desc(),
-                                                this->engine_);
+      memory_p = std::make_shared<dnnl::memory>(
+          this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_c0_memory, *memory_p, this->attr_)
@@ -336,22 +337,30 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
         is_reverse, N, Ti, IC, OC,
         ctx.InputName("X") + ctx.InputName("WeightH"));
 
-
     auto input_memory_p =
         handler.AcquireInputMemoryWithReorder(input, is_reverse);
     auto c0_memory_p = handler.AcquireC0Memory(c0);
 
-    std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p, weight_x_memory_p;
+    std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
+        weight_x_memory_p;
 
-    if(weight_h->type() == paddle::framework::proto::VarType_Type_FP32){
-      h0_memory_p = handler.template AcquireH0Memory<float>(h0); 
-      weight_x_memory_p = handler.template AcquireWeightXMemory<float>(weight_x);
-      weight_h_memory_p = handler.template AcquireWeightHMemory<float>(weight_h);
-    } else if(weight_h->type() == paddle::framework::proto::VarType_Type_BF16){
-      h0_memory_p = handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0); 
-      weight_x_memory_p = handler.template AcquireWeightXMemory<paddle::platform::bfloat16>(weight_x);
-      weight_h_memory_p = handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(weight_h);
-    } 
+    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+      h0_memory_p = handler.template AcquireH0Memory<float>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<float>(weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<float>(weight_h);
+    } else if (weight_h->type() ==
+               paddle::framework::proto::VarType_Type_BF16) {
+      h0_memory_p =
+          handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<paddle::platform::bfloat16>(
+              weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
+              weight_h);
+    }
 
     auto bias_memory_p = handler.AcquireBiasMemory(bias);
     auto hidden_onednn_memory_p = handler.AcquireOutputMemory();

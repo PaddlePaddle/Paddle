@@ -278,14 +278,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     auto input_memory_p =
         handler.AcquireInputMemoryWithReorder(input, is_reverse);
 
-        
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p, weight_x_memory_p;
-
-    //h0_memory_p = handler.template AcquireH0Memory<float>(h0); 
-    //weight_x_memory_p =
-    //    handler.template AcquireWeightXMemory<float>(weight_x, origin_mode);
-    //weight_h_memory_p =
-    //    handler.template AcquireWeightHMemory<float>(weight_h, origin_mode);
 
     if(weight_h->type() == paddle::framework::proto::VarType_Type_FP32){
       h0_memory_p = handler.template AcquireH0Memory<float>(h0); 

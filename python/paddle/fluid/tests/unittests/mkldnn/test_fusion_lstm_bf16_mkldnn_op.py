@@ -34,7 +34,6 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             self.attrs['use_seq'] = use_seq
             self.check_output(check_dygraph=False, no_check_set=["Cell"])
 
-
     def setUp(self):
         self.op_type = 'fusion_lstm'
         self.lod = [[2, 3, 5, 4]]
@@ -86,10 +85,10 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
         b[0, 0:4 * self.D] += bx[0, :]
 
-
         hidden, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
-                           self.is_reverse, ACTIVATION[self.act_gate],
-                           ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
+                                self.is_reverse, ACTIVATION[self.act_gate],
+                                ACTIVATION[self.act_cell],
+                                ACTIVATION[self.act_cand])
 
         hidden = hidden.astype('float32')
         hidden_bf16 = convert_float_to_uint16(hidden)
@@ -103,8 +102,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
         if self.has_initial_state:
             self.inputs['H0'] = h0_bf16
-            self.inputs['C0'] = c0 # in Vanilla LSTM and LSTM with peepholes Cell type is always fp32 
-
+            self.inputs[
+                'C0'] = c0  # in Vanilla LSTM and LSTM with peepholes Cell type is always fp32 
 
         self.outputs = {
             'Hidden': (hidden, self.lod),
@@ -135,7 +134,6 @@ class TestFusionLSTMBF16ONEDNNInitializedStateOp(TestFusionLSTMBF16ONEDNNOp):
 class TestFusionLSTMBF16ONEDNNReverseOp(TestFusionLSTMBF16ONEDNNOp):
     def set_confs(self):
         self.is_reverse = True
-
 
 
 if __name__ == "__main__":
