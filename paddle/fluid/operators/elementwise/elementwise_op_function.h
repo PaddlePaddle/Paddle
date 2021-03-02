@@ -205,31 +205,21 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
 #ifdef __NVCC__
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int n,
-                                  int post, int total, Functor func) {
-  int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int idx = tid / post % n;
-  if (tid < total) {
-    out[tid] = func(x[tid], y[idx]);
-  }
-}
-
-template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernelSharedMemory(const T *__restrict__ x_data,
-                                              const T *__restrict__ y_data,
-                                              OutType *__restrict__ out_data,
-                                              int n, int post,
-                                              const size_t total,
-                                              Functor func) {
-  const int share_size = 1024;
+__global__ void ElementwiseKernel(const T *__restrict__ x_data,
+                                  const T *__restrict__ y_data,
+                                  OutType *__restrict__ out_data, int n,
+                                  int post, const size_t total, Functor func) {
+  const int share_size = 512;
+  const int mod_value = share_size - 1;
   __shared__ T s_data[share_size];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
+  int stride = blockDim.x * blockIdx.x;
 
-  if (tid < total) {
+  for (; tid < total; tid += stride) {
     int idx = tid / post % n;
-    s_data[idx % share_size] = y_data[idx];
+    s_data[idx & mod_value] = y_data[idx];
     __syncthreads();
-    out_data[tid] = func(x_data[tid], s_data[idx % share_size]);
+    out_data[tid] = func(x_data[tid], s_data[idx & mod_value]);
   }
 }
 
@@ -251,17 +241,11 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
         x_data, y_data, out_data, n, post, numel, func);
-    // ElementwiseKernelSharedMemory<
-    //     Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
-    //     x_data, y_data, out_data, n, post, numel, func);
 
   } else {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
         y_data, x_data, out_data, n, post, numel, func);
-    // ElementwiseKernelSharedMemory<
-    //     Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
-    //     y_data, x_data, out_data, n, post, numel, func);
   }
 }
 
@@ -288,21 +272,6 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     } else {
       out[out_index] = func(y[y_index], x[x_index]);
     }
-  }
-}
-
-template <typename Functor, typename T, typename OutType>
-__global__ void CommonForwardBroadcastCUDAKernel2(const T *x_data,
-                                                  const T *y_data,
-                                                  OutType *out_data, int pre,
-                                                  int n, int post, int m,
-                                                  Functor func) {
-  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
-  int small_arr_idx =
-      (large_arr_idx / n / post / m) * post + large_arr_idx / m % post;
-  if (large_arr_idx / n / post / m < pre) {
-    out_data[large_arr_idx] =
-        func(x_data[large_arr_idx], y_data[small_arr_idx]);
   }
 }
 
