@@ -80,7 +80,7 @@ git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
-    if %ERRORLEVEL% EQU 0 (
+    if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
     git branch -D last_pr
@@ -252,16 +252,16 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party_GPU/ /s/q
-        rmdir %cache_dir%\third_party/ /s/q
+        rmdir %cache_dir%\third_party_GPU /s/q
+        rmdir %cache_dir%\third_party /s/q
     )
 )
 
@@ -475,6 +475,7 @@ setlocal enabledelayedexpansion
 :: if %errorlevel% NEQ 0 exit /b 8
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
+set FLAGS_fraction_of_gpu_memory_to_use=0.92
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
 

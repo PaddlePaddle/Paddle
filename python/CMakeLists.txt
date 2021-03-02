@@ -18,10 +18,10 @@ set(FLUID_CORE_NAME "core")
 if(WITH_AVX AND AVX_FOUND)
   set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
   if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
-    message(STATUS "WARNING: This is just a warning for publishing release.
+    message(STATUS "MESSAGE: This is just a message for publishing release.
       You are building AVX version without NOAVX core.
       So the wheel package may fail on NOAVX machine.
-      You can add -DFLUID_CORE_NAME=/path/to/your/core_noavx.* in cmake command
+      You can add -DNOAVX_CORE_FILE=/path/to/your/core_noavx.* in cmake command
       to get a full wheel package to resolve this warning.
       While, this version will still work on local machine.")
   endif()
