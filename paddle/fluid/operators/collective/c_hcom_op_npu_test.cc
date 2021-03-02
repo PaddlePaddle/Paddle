@@ -43,8 +43,7 @@ namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_OP(c_allreduce_sum);
-USE_NO_KERNEL_OP(c_comm_init_hccl);
-USE_NO_KERNEL_OP(c_create_group);
+USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);
 
@@ -56,12 +55,15 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   printf("rank_table_file: %s, rank_id = %d, device_id = %d\n",
          rank_table_file.c_str(), rank_id, device_id);
 
-  f::AttributeMap attrs;
-  attrs["rank_table_file"] = rank_table_file;
-  attrs["rank_id"] = rank_id;
-  attrs["device_id"] = device_id;
+  std::vector<int> rank_ids{0, 1};
+  f::AttributeMap comm_init_attrs;
+  comm_init_attrs["ring_id"] = 0;
+  comm_init_attrs["nranks"] = 2;
+  comm_init_attrs["rank"] = rank_id;
+  comm_init_attrs["device_id"] = device_id;
+  comm_init_attrs["rank_ids"] = rank_ids;
   auto comm_init_op =
-      f::OpRegistry::CreateOp("c_comm_init_hccl", {}, {}, attrs);
+      f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
   ctx.Wait();
@@ -186,6 +188,6 @@ TEST(c_broadcast, NPU) {
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
 
   Prepare(&scope, ctx);
-  // TestHCCLBroadcastOp(&scope, ctx);
-  TestHCCLAllReduceOp(&scope, ctx);
+  TestHCCLBroadcastOp(&scope, ctx);
+  // TestHCCLAllReduceOp(&scope, ctx);
 }

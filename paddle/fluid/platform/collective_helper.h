@@ -28,31 +28,27 @@
 namespace paddle {
 namespace platform {
 
-<<<<<<< HEAD
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-=======
-#if defined(PADDLE_WITH_NCCL)
->>>>>>> 9fcdaeb... add allreduce and broadcast without test (#31024)
-    // In order to apply hierarchical communication with NCCL, we need
-    // a communication ring contains NCCL communicators associated to a global
-    // ncclUniqueId. E.g. for a hierarchical case,
-    //
-    //    11 - 12   21 - 22
-    //     |    |    |    |
-    //    13 - 14 - 23 - 24
-    //          |    |
-    //    31 - 32 - 41 - 42
-    //     |    |    |    |
-    //    33 - 34   43 - 44
-    //
-    // we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
-    // (31,32,33,34), (41,42,43,44) as bottoms respectively.
-    //
-    // We could also use a single communication ring for the flatten case
-    //
-    // The NCCLComm instance is created and reversed in the NCCLCommContext
-    // singleton with a global user specified group id.
-    class CUDADeviceContext;
+// In order to apply hierarchical communication with NCCL, we need
+// a communication ring contains NCCL communicators associated to a global
+// ncclUniqueId. E.g. for a hierarchical case,
+//
+//    11 - 12   21 - 22
+//     |    |    |    |
+//    13 - 14 - 23 - 24
+//          |    |
+//    31 - 32 - 41 - 42
+//     |    |    |    |
+//    33 - 34   43 - 44
+//
+// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
+// (31,32,33,34), (41,42,43,44) as bottoms respectively.
+//
+// We could also use a single communication ring for the flatten case
+//
+// The NCCLComm instance is created and reversed in the NCCLCommContext
+// singleton with a global user specified group id.
+class CUDADeviceContext;
 
 class NCCLComm {
  public:
@@ -153,11 +149,16 @@ class NCCLCommContext {
 // singleton with a global user specified group id.
 class NPUDeviceContext;
 
+#define ENV_RANK_TABLE_FILE "RANK_TABLE_FILE"
+#define ENV_RANK_ID "RANK_ID"
+#define ENV_DEV_ID "DEV_ID"
+
 class HCCLComm {
  public:
-  virtual std::string rank_table_file() const = 0;
-  virtual uint32_t rank() const = 0;
-  virtual uint32_t device_id() const = 0;
+  virtual int ring_id() const = 0;
+  virtual int nranks() const = 0;
+  virtual int rank() const = 0;
+  virtual int device_id() const = 0;
   virtual aclrtStream stream() const = 0;
   virtual NPUDeviceContext* dev_context() const = 0;
   virtual ~HCCLComm() = default;
@@ -171,24 +172,57 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(const std::string& config_file, uint32_t rank,
-                           uint32_t device_id);
+  HCCLComm* CreateHCCLComm(const std::vector<int>& world_rank_ids, int rank,
+                           int dev_id, int ring_id = 0);
 
-  void CreateHCCLGroup(const std::string& group_name, uint32_t nranks,
-                       const std::vector<uint32_t>& rank_ids);
+  // a latter comm with the same dev_id and the same ring_id
+  // will override the former
+  HCCLComm* AssignHCCLComm(int nranks, int rank, int dev_id, int ring_id = 0);
+
+  // retrieve a communicator by the ring id in multiprocessing mode
+  HCCLComm* Get(int ring_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator in ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+                      platform::errors::InvalidArgument(
+                          "One device id should be specified to retrieve from "
+                          "multiple communicators."));
+    return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  // retrieve a communicator by the ring id and the device id
+  HCCLComm* Get(int ring_id, int dev_id) const {
+    PADDLE_ENFORCE_GT(
+        comm_map_.count(ring_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator of ring id %d has not been initialized.", ring_id));
+    PADDLE_ENFORCE_GT(
+        comm_map_.at(ring_id).count(dev_id), 0,
+        platform::errors::InvalidArgument(
+            "Communicator at device id %d has not been initialized in ring %d.",
+            dev_id, ring_id));
+    return comm_map_.at(ring_id).at(dev_id).get();
+  }
 
   // retrieve a communicator by the ring id and place
-  HCCLComm* Get() const { return comm_.get(); }
+  HCCLComm* Get(int ring_id, Place place) const {
+    return Get(ring_id, BOOST_GET_CONST(NPUPlace, place).device);
+  }
 
  private:
+  // Init global hcom
+  HCCLCommContext() { InitHcomWorldGroup(); }
+
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
-  std::unique_ptr<HCCLComm> comm_;
+  // ring id to dev-HCCLComm
+  std::map<int, std::map<int, std::unique_ptr<HCCLComm>>> comm_map_;
 
-  HCCLComm* AssignHCCLComm(const std::string& config_file, uint32_t rank,
-                           uint32_t device_id);
+  void InitHcomWorldGroup();
+  void ReleaseHCCLComms();
 
-  HCCLCommContext() = default;
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
 };
 #endif
