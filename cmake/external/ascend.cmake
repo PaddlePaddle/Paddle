@@ -76,7 +76,11 @@ if(WITH_ASCEND_CL)
 
   ADD_LIBRARY(ascend_hccl SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ascend_hccl PROPERTY IMPORTED_LOCATION ${ascend_hccl_lib})
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> cec9f1531dd391e175b423e332b94a36840bad02
   ADD_LIBRARY(acl_op_compiler SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET acl_op_compiler PROPERTY IMPORTED_LOCATION ${acl_op_compiler_lib})
   add_custom_target(extern_ascend_cl DEPENDS ascendcl acl_op_compiler)
