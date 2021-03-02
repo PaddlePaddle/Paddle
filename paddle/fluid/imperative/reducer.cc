@@ -292,26 +292,19 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  std::shared_ptr<imperative::ParallelContext> parallel_ctx,
                  const std::vector<size_t> &group_size_limits,
                  bool find_unused_vars)
-#ifdef PADDLE_WITH_XPU_BKCL
-    : vars_(vars),
-      group_indices_(group_indices),
-      is_sparse_gradient_(is_sparse_gradient),
-      parallel_ctx_(parallel_ctx),
-      group_size_limits_(group_size_limits),
-      find_unused_vars_(find_unused_vars),
-      comm_pool_(1),
-      comm_op_count_(0) {
-#else
     : vars_(vars),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
       group_size_limits_(group_size_limits),
       find_unused_vars_(find_unused_vars) {
-#endif
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
+#ifdef PADDLE_WITH_XPU_BKCL
+  comm_pool_.reset(new ::ThreadPool(1));
+  comm_op_count_ = 0;
+#endif
   // initialize groups
   InitializeGroups(group_indices);
   for (size_t global_var_index = 0; global_var_index < vars_.size();
@@ -645,6 +638,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   }
 }
 
+// TODO(liuyuhui): If BKCL support non-blocking communication, it should be
+// fixed
+// as same as multi gpus card trainging.
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
     VLOG(3) << "It will adjust the order of group in next batch automatically";
@@ -656,103 +652,84 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
 
-// For CUDA or XPU, compute_stream --> comm_stream.
-// For CPU, do nothing.
-// NOTE. Because concat uses the comm_stream,
-// so we expose WaitCompute() interface and call
-// it here.
+    auto place = parallel_ctx_->GetDeviceContext(run_order)->GetPlace();
+
+    // For CUDA or XPU, compute_stream --> comm_stream.
+    // For CPU, do nothing.
+    // NOTE. Because concat uses the comm_stream,
+    // so we expose WaitCompute() interface and call
+    // it here.
+    parallel_ctx_->WaitCompute(run_order);
+    if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      comm_op_count_ += 1;  // lock
-    }
-
-    comm_pool_.enqueue([&] {
-      parallel_ctx_->WaitCompute(run_order);
-
-      if (group.is_sparse_) {
-        if (group.sparse_contents_ != nullptr) {
-          VLOG(3) << "sparse group [" << next_group_
-                  << "] start allreduce in ring[" << run_order << "]";
-          parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
-                                           group.sparse_contents_, run_order,
-                                           false);
-        } else {
-          VLOG(3) << "The sparse group[" << next_group_
-                  << "] has no var to allreduce";
-        }
-      } else {
-        if (!group.dense_tensors_.empty()) {
-          VLOG(3) << "dense group [" << next_group_
-                  << "] start allreduce in ring[" << run_order << "]";
-          // Select common commstream to concat tensors
-          // group.dense_tensors ---> group.dense_contents_
-          group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
-
-          // NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL
-          // only support
-          // default stream for communicating, so there exist some problems in
-          // synchronization. And need to add a WaitComm there.
-          // TODO(liuyuhui): If BKCL support events, it should be fixed as
-          // non-blocking
-          // communication.
-          if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
-            parallel_ctx_->WaitComm(run_order);
-          }
-
-          group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
-
-          // Start allreduce
-          parallel_ctx_->AllReduceByStream(group.dense_contents_,
-                                           &(group.dense_contents_), run_order,
-                                           false);
-
-          // Select common commstream to split tensors
-          // group.dense_contents_ ---> group.dense_tensors
-          group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
-        } else {
-          VLOG(3) << "The dense group[" << next_group_
-                  << "] has no var to allreduce";
-        }
-      }
-
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        comm_op_count_ -= 1;  // lock
-        cv_.notify_all();
+        comm_op_count_ += 1;  // lock
       }
-    });
+
+      comm_pool_->enqueue([&] {
+        auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+        platform::SetXPUDeviceId(dev_id);
+        FusedAllReduceSchedule(run_order, group);
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          comm_op_count_ -= 1;  // lock
+          cv_.notify_all();
+        }
+      });
 #else
-    parallel_ctx_->WaitCompute(run_order);
-    if (group.is_sparse_) {
-      if (group.sparse_contents_ != nullptr) {
-        VLOG(3) << "sparse group [" << next_group_
-                << "] start allreduce in ring[" << run_order << "]";
-        group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
-        parallel_ctx_->AllReduceByStream(
-            *group.sparse_contents_, group.sparse_contents_, run_order, false);
-      } else {
-        VLOG(3) << "The sparse group[" << next_group_
-                << "] has no var to allreduce";
-      }
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+#endif
     } else {
-      VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+#ifdef PADDLE_WITH_NCCL
+      FusedAllReduceSchedule(run_order, group);
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+#endif
+    }
+  }
+}
+
+void Reducer::FusedAllReduceSchedule(int run_order, Group group) {
+  if (group.is_sparse_) {
+    if (group.sparse_contents_ != nullptr) {
+      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
               << run_order << "]";
-      // Select common commstream to concat tensors
-      // group.dense_tensors ---> group.dense_contents_
-      group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
-
       group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
-
-      // Start allreduce
       parallel_ctx_->AllReduceByStream(
-          group.dense_contents_, &(group.dense_contents_), run_order, false);
+          *group.sparse_contents_, group.sparse_contents_, run_order, false);
+    } else {
+      VLOG(3) << "The sparse group[" << next_group_
+              << "] has no var to allreduce";
+    }
+  } else {
+    VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
+            << run_order << "]";
+    // Select common commstream to concat tensors
+    // group.dense_tensors ---> group.dense_contents_
+    group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
 
-      // Select common commstream to split tensors
-      // group.dense_contents_ ---> group.dense_tensors
-      group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+// NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
+// default stream for communicating, so there exist some problems in
+// synchronization. And need to add a WaitComm there.
+// TODO(liuyuhui): If BKCL support non-blocking communication, it should be
+// fixed as multi gpus card trainging.
+#ifdef PADDLE_WITH_XPU_BKCL
+    if (platform::is_xpu_place(group.dense_tensors_[0].place())) {
+      parallel_ctx_->WaitComm(run_order);
     }
 #endif
+    group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+
+    // Start allreduce
+    parallel_ctx_->AllReduceByStream(
+        group.dense_contents_, &(group.dense_contents_), run_order, false);
+
+    // Select common commstream to split tensors
+    // group.dense_contents_ ---> group.dense_tensors
+    group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
   }
 }
 

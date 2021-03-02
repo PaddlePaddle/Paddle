@@ -153,6 +153,8 @@ class Reducer {
 
   void MarkGroupReady(size_t group_index);
 
+  void FusedAllReduceSchedule(int run_order, Group group);
+
   void FinalizeBackward();
 
   std::vector<std::vector<size_t>> RebuildGruops();
@@ -189,7 +191,7 @@ class Reducer {
   bool all_group_ready_{false};
 #ifdef PADDLE_WITH_XPU_BKCL
   // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
-  ::ThreadPool comm_pool_;
+  std::unique_ptr<::ThreadPool> comm_pool_{nullptr};
   uint32_t comm_op_count_;
   std::mutex mutex_;
   std::condition_variable cv_;
