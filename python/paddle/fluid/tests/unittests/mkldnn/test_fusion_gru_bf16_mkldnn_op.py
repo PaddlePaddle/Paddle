@@ -126,6 +126,7 @@ class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUBF16MKLDNNOp):
 class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.with_bias = False
+        
 
 class TestFusionGRUINT8MKLDNNBF16WeightsOp(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
