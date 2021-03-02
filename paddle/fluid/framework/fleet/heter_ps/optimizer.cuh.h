@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <curand_kernel.h>
 #include <vector>
 #include "optimizer_conf.h"
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
@@ -106,9 +107,12 @@ class Optimizer {
               optimizer_config::clk_coeff * val.clk) {
         val.mf_size = MF_DIM + 1;
         val.mf[0] = 0;
+        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+        curandState state;
+        curand_init(clock64(), tid_x, 0, &state);
         for (int i = 0; i < MF_DIM; ++i) {
-          val.mf[i + 1] = (cuda_normal_random((int)grad.show) * 2 - 1) *
-                          optimizer_config::mf_initial_range;
+          val.mf[i + 1] =
+              (curand_uniform(&state)) * optimizer_config::mf_initial_range;
         }
       }
     } else {

@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/timer.h"
 #ifdef PADDLE_WITH_PSLIB
+#include "paddle/fluid/framework/device_worker.h"
 
 namespace paddle {
 namespace framework {

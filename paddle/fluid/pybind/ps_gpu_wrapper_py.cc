@@ -37,6 +37,16 @@ void BindPSGPUWrapper(py::module* m) {
       *m, "PSGPU")
       .def(py::init([]() { return framework::PSGPUWrapper::GetInstance(); }))
       .def("set_slot_vector", &framework::PSGPUWrapper::SetSlotVector,
+           py::call_guard<py::gil_scoped_release>())
+      .def("init_GPU_server", &framework::PSGPUWrapper::InitializeGPUServer,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_dataset", &framework::PSGPUWrapper::SetDataset,
+           py::call_guard<py::gil_scoped_release>())
+      .def("init_gpu_ps", &framework::PSGPUWrapper::InitializeGPU,
+           py::call_guard<py::gil_scoped_release>())
+      .def("end_pass", &framework::PSGPUWrapper::EndPass,
+           py::call_guard<py::gil_scoped_release>())
+      .def("build_gpu_ps", &framework::PSGPUWrapper::BuildGPUPS,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
 #endif
