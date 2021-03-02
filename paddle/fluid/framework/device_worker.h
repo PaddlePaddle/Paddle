@@ -451,7 +451,7 @@ class HeterBoxWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
@@ -550,7 +550,7 @@ class PSGPUWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
@@ -654,6 +654,8 @@ class SectionWorker : public DeviceWorker {
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
@@ -666,6 +668,8 @@ class SectionWorker : public DeviceWorker {
   int section_id_;
   int thread_id_;
   int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
   std::vector<Scope*> microbatch_scopes_;
   std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
