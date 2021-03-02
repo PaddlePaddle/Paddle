@@ -60,6 +60,11 @@ class GraphShard {
   std::list<GraphNode *>::iterator add_node(GraphNode *node);
   GraphNode *find_node(uint64_t id, GraphNodeType type);
   void add_neighboor(uint64_t id, GraphNodeType type, GraphEdge *edge);
+  std::unordered_map<std::pair<uint64_t, GraphNodeType>,
+                     std::list<GraphNode *>::iterator, pair_hash>
+  get_node_location() {
+    return node_location;
+  }
 
  private:
   std::unordered_map<std::pair<uint64_t, GraphNodeType>,

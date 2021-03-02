@@ -263,15 +263,12 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
                       "pull_graph_list request requires at least 2 arguments");
     return 0;
   }
-  uint64_t node_id = *(uint64_t *)(request.params(0).c_str());
-  std::string type_str = request.params(1);
-  GraphNodeType type = GraphNode::get_graph_node_type(type_str);
-  int start = *(int *)(request.params(2).c_str());
-  int size = *(int *)(request.params(3).c_str());
+  int start = *(int *)(request.params(0).c_str());
+  int size = *(int *)(request.params(1).c_str());
   std::vector<float> res_data;
   char *buffer;
   int actual_size;
-  table->pull_graph_list(node_id, type, start, size, buffer, actual_size);
+  table->pull_graph_list(start, size, buffer, actual_size);
   cntl->response_attachment().append(buffer, actual_size);
   return 0;
 }

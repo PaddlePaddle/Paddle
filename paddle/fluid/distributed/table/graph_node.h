@@ -33,6 +33,7 @@ class GraphNode {
   GraphNode(uint64_t id, GraphNodeType type, std::string feature)
       : id(id), type(type), feature(feature), sampler(NULL) {}
   virtual ~GraphNode() {}
+  std::vector<GraphEdge *> get_graph_edge() { return edges; }
   static int enum_size, id_size, int_size, double_size;
   uint64_t get_id() { return id; }
   void set_id(uint64_t id) { this->id = id; }
@@ -45,6 +46,7 @@ class GraphNode {
   virtual void to_buffer(char *buffer);
   virtual void recover_from_buffer(char *buffer);
   virtual void add_edge(GraphEdge *edge) { edges.push_back(edge); }
+  std::string get_type_string() { return node_type_to_string(this->type); }
   static GraphNodeType get_graph_node_type(std::string &str) {
     GraphNodeType type;
     if (str == "user")
@@ -57,6 +59,23 @@ class GraphNode {
     else
       type = GraphNodeType::unknown;
     return type;
+  }
+  static std::string node_type_to_string(GraphNodeType type) {
+    std::string res;
+    switch (type) {
+      case GraphNodeType::user:
+        res = "user";
+        break;
+      case GraphNodeType::item:
+        res = "item";
+        break;
+      case GraphNodeType::query:
+        res = "query";
+        break;
+      default:
+        res = "unKnown";
+    }
+    return res;
   }
   std::vector<GraphEdge *> sample_k(int k) {
     std::vector<GraphEdge *> v;

@@ -15,8 +15,8 @@
 #include "paddle/fluid/distributed/service/graph_py_service.h"
 namespace paddle {
 namespace distributed {
-std::vector<std::string> graph_service::split(std::string &str,
-                                              const char pattern) {
+std::vector<std::string> GraphPyService::split(std::string &str,
+                                               const char pattern) {
   std::vector<std::string> res;
   std::stringstream input(str);
   std::string temp;
@@ -25,12 +25,16 @@ std::vector<std::string> graph_service::split(std::string &str,
   }
   return res;
 }
-void graph_service::set_up(std::string ips_str, int shard_num, int rank,
-                           int client_id) {
+
+void GraphPyService::set_up(std::string ips_str, int shard_num, int rank,
+                            int client_id, uint32_t table_id) {
   set_shard_num(shard_num);
   set_client_Id(client_id);
+  set_rank(rank);
+  this->table_id = table_id;
+  server_thread = client_thread = NULL;
   std::istringstream stream(ips_str);
-  std::string ip, port;
+  std::string ip;
   server_size = 0;
   std::vector<std::string> ips_list = split(ips_str, ';');
   int index = 0;
@@ -38,12 +42,15 @@ void graph_service::set_up(std::string ips_str, int shard_num, int rank,
     auto ip_and_port = split(ips, ':');
     server_list.push_back(ip_and_port[0]);
     port_list.push_back(ip_and_port[1]);
-    // auto ph_host = paddle::distributed::PSHost(ip_and_port[0],
-    // ip_and_port[1], index);
-    // host_sign_list_.push_back(ph_host.serialize_to_string());
+    uint32_t port = stoul(ip_and_port[1]);
+    auto ph_host = paddle::distributed::PSHost(ip_and_port[0], port, index);
+    host_sign_list.push_back(ph_host.serialize_to_string());
     index++;
   }
+  VLOG(0) << "IN set up rank = " << rank;
   start_client();
+  start_server(server_list[rank], std::stoul(port_list[rank]));
+  sleep(1);
 }
 }
 }

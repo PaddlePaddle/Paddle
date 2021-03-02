@@ -88,8 +88,7 @@ class Table {
   }
 
   // only for graph table
-  virtual int32_t pull_graph_list(uint64_t id, GraphNodeType type, int start,
-                                  int total_size, char *&buffer,
+  virtual int32_t pull_graph_list(int start, int total_size, char *&buffer,
                                   int &actual_size) {
     return 0;
   }

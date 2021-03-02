@@ -39,9 +39,8 @@ class GraphBrpcClient : public BrpcPsClient {
                                       GraphNodeType type, int sample_size,
                                       std::vector<GraphNode> &res);
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
-                                               uint64_t node_id,
-                                               GraphNodeType type, int start,
-                                               int end,
+                                               int server_index, int start,
+                                               int size,
                                                std::vector<GraphNode> &res);
   virtual int32_t initialize();
   int get_shard_num() { return shard_num; }

@@ -20,7 +20,7 @@
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
-int GraphShard::bucket_low_bound = 10;
+int GraphShard::bucket_low_bound = 11;
 std::vector<GraphNode *> GraphShard::get_batch(int start, int total_size) {
   if (start < 0) start = 0;
   int size = 0, cur_size;
@@ -78,12 +78,10 @@ GraphNode *GraphShard::find_node(uint64_t id, GraphNodeType type) {
   return *(node_location[{id, type}]);
 }
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
-  VLOG(0) << "in load graph table-->" << path;
   rwlock_->WRLock();
   auto paths = paddle::string::split_string<std::string>(path, ";");
   VLOG(0) << paths.size();
   for (auto path : paths) {
-    VLOG(0) << "load single path " << path;
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
@@ -94,20 +92,27 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
       if (shard_id >= shard_end || shard_id < shard_start) {
         VLOG(0) << "will not load " << id << " from " << path
                 << ", please check id distribution";
-        VLOG(0) << shard_start << " " << shard_end << " shard_num "
-                << shard_num;
         continue;
       }
       size_t index = shard_id - shard_start;
       GraphNodeType type = GraphNode::get_graph_node_type(values[1]);
-      shards[index].add_node(new GraphNode(id, type, values[2]));
-      for (size_t i = 3; i < values.size(); i++) {
+      // VLOG(0)<<"shards's size = "<<shards.size()<<" values' size =
+      // "<<values.size();
+      // VLOG(0)<<"add to index "<<index<<" table rank = "<<_shard_idx;
+      auto xx = shards[index].add_node(new GraphNode(id, type, values[2]));
+      GraphNode *cc = *xx;
+      // VLOG(0)<<"checking added of rank "<<_shard_idx<<" shard "<<index<<"
+      // "<<cc->get_id();
+      for (size_t i = 2; i < values.size(); i++) {
         auto edge_arr =
             paddle::string::split_string<std::string>(values[i], ";");
-        if (edge_arr.size() < 3) {
+        if (edge_arr.size() == 3) {
+          // VLOG(0)<<"edge content "<<edge_arr[0]<<" "<<edge_arr[1]<<"
+          // "<<edge_arr[2];
           auto edge_id = std::stoull(edge_arr[0]);
           GraphNodeType edge_type = GraphNode::get_graph_node_type(edge_arr[1]);
           auto weight = std::stod(edge_arr[2]);
+          // VLOG(0)<<"edge_id "<<edge_id<<" weight "<<weight;
           GraphEdge *edge = new GraphEdge(edge_id, edge_type, weight);
           shards[index].add_neighboor(id, type, edge);
         }
@@ -115,21 +120,26 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
     }
     for (auto &shard : shards) {
       auto bucket = shard.get_bucket();
-      VLOG(0) << bucket.size() << " bucketsize "
-              << " shard_start" << shard_start << " shard end " << shard_end;
       for (int i = 0; i < bucket.size(); i++) {
         std::list<GraphNode *>::iterator iter = bucket[i].begin();
         while (iter != bucket[i].end()) {
           auto node = *iter;
           node->build_sampler();
-          VLOG(0) << node->get_id() << " bucket " << i << " shard_start"
-                  << shard_start << " shard end " << shard_end;
+          // VLOG(0) << node->get_id() << " bucket " << i << " shard_start"
+          //         << shard_start << " shard end " << shard_end<<" shard idx
+          //         "<<_shard_idx;
+          // for(auto edge:(*iter)->get_graph_edge()){
+          //   VLOG(0)<<(*iter)->get_id()<<" has a neighboor "<<edge->id;
+          // }
+          // auto p =
+          // shard.get_node_location()[{node->get_id(),node->get_graph_node_type()}];
+          // VLOG(0)<<"check iter equal "<<(*p)->get_id()<<" --- "<<(*p ==
+          // *iter);
           iter++;
         }
       }
     }
   }
-  VLOG(0) << "load data done";
   rwlock_->UNLock();
   return 0;
 }
@@ -137,10 +147,12 @@ GraphNode *GraphTable::find_node(uint64_t id, GraphNodeType type) {
   rwlock_->RDLock();
   size_t shard_id = id % shard_num;
   if (shard_id >= shard_end || shard_id < shard_start) {
+    rwlock_->UNLock();
     return NULL;
   }
   size_t index = shard_id - shard_start;
-
+  //  VLOG(0)<<"try to find node-id "<<id<<" type "<<(int)type<<"in "<<index<<"
+  //  of rank "<<_shard_idx;
   GraphNode *node = shards[index].find_node(id, type);
   rwlock_->UNLock();
   return node;
@@ -148,16 +160,13 @@ GraphNode *GraphTable::find_node(uint64_t id, GraphNodeType type) {
 int32_t GraphTable::random_sample(uint64_t node_id, GraphNodeType type,
                                   int sample_size, char *&buffer,
                                   int &actual_size) {
-  VLOG(0) << "in table random_sample" << node_id << " " << sample_size;
   rwlock_->RDLock();
-  VLOG(0) << "get read rock";
   GraphNode *node = find_node(node_id, type);
   if (node == NULL) {
     actual_size = 0;
     rwlock_->UNLock();
     return 0;
   }
-  VLOG(0) << "find node " << (uint64_t)(&node);
   std::vector<GraphEdge *> res = node->sample_k(sample_size);
   std::vector<GraphNode> node_list;
   int total_size = 0;
@@ -238,13 +247,12 @@ int32_t GraphTable::pull_graph_list(int start, int total_size, char *&buffer,
   return 0;
 }
 int32_t GraphTable::initialize() {
-  VLOG(0) << " init graph table";
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   server_num = _shard_num;
-  VLOG(0) << "in init graph table server num = " << server_num;
+  // VLOG(0) << "in init graph table server num = " << server_num;
   /*
   _shard_num is actually server number here
   when a server initialize its tables, it sets tables' _shard_num to server_num,
@@ -259,7 +267,8 @@ int32_t GraphTable::initialize() {
   shard_end = shard_start + shard_num_per_table;
   VLOG(0) << "in init graph table shard idx = " << _shard_idx << " shard_start "
           << shard_start << " shard_end " << shard_end;
-  shards.resize(shard_num_per_table);
+  // shards.resize(shard_num_per_table);
+  shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
   return 0;
 }
 }

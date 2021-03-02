@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/graph_py_service.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/service.h"
@@ -49,7 +50,9 @@ namespace distributed = paddle::distributed;
 void testGraphToBuffer();
 std::string nodes[] = {
     std::string("37\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),
-    std::string("96\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21")};
+    std::string("96\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21"),
+    std::string("59\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),
+    std::string("97\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21")};
 char file_name[] = "nodes.txt";
 void prepare_file(char file_name[]) {
   std::ofstream ofile;
@@ -79,16 +82,14 @@ void GetDownpourSparseTableProto(
   sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
   ::paddle::distributed::TableAccessorParameter* accessor_proto =
       sparse_table_proto->mutable_accessor();
-  // ::paddle::distributed::CommonAccessorParameter* common_proto =
-  //     sparse_table_proto->mutable_common();
   accessor_proto->set_accessor_class("CommMergeAccessor");
 }
 
 distributed::GraphNodeType get_graph_node_type(std::string str) {
   distributed::GraphNodeType type;
-  if (str == "user")
+  if (str == "user") {
     type = distributed::GraphNodeType::user;
-  else if (str == "item")
+  } else if (str == "item")
     type = distributed::GraphNodeType::item;
   else if (str == "query")
     type = distributed::GraphNodeType::query;
@@ -230,7 +231,6 @@ void RunBrpcPushSparse() {
   RunClient(dense_regions);
 
   /*-----------------------Test Server Init----------------------------------*/
-  LOG(INFO) << "Run pull_sparse_param";
   auto pull_status =
       worker_ptr_->load(0, std::string(file_name), std::string(""));
 
@@ -239,80 +239,56 @@ void RunBrpcPushSparse() {
   pull_status = worker_ptr_->sample(
       0, 37, get_graph_node_type(std::string("user")), 4, v);
   pull_status.wait();
+  // for (auto g : v) {
+  //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
+  // }
+  ASSERT_EQ(v.size(), 3);
+  v.clear();
+  pull_status = worker_ptr_->sample(
+      0, 96, get_graph_node_type(std::string("user")), 4, v);
+  pull_status.wait();
   for (auto g : v) {
     std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
   }
-  /*-----------------------Test Push Param----------------------------------*/
+  // ASSERT_EQ(v.size(),3);
+  v.clear();
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, v);
+  pull_status.wait();
+  ASSERT_EQ(v.size(), 1);
+  ASSERT_EQ(v[0].get_id(), 37);
+  // for (auto g : v) {
+  //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
+  // }
+  // ASSERT_EQ(v.size(),1);
+  v.clear();
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, v);
+  pull_status.wait();
+  ASSERT_EQ(v.size(), 1);
+  ASSERT_EQ(v[0].get_id(), 59);
+  for (auto g : v) {
+    std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
+  }
 
-  //   LOG(INFO) << "Run push_sparse_param";
-  //   paddle::distributed::DownpourBrpcClosure* closure_push_param =
-  //       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
-  //         int ret = 0;
-  //         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
-  //         for (size_t i = 0; i < 2; ++i) {
-  //   LOG(INFO) << "check response" <<i;
-  //           if (closure->check_response(
-  //                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM) != 0) {
-  //             ret = -1;
-  //             break;
-  //           }
-  //           VLOG(0)<<i<<" push_sparse_param response
-  //           "<<closure->check_response(
-  //                   i, paddle::distributed::PS_PUSH_SPARSE_PARAM);
-  //         }
-  //         closure->set_promise_value(ret);
-  //       });
-  //   VLOG(0)<<"begin to push_sparse_param";
-  //   auto push_status = worker_ptr_->push_sparse_param(
-  //       0, fea_keys.data(), (const float**)fea_value_ptr.data(),
-  //       fea_keys.size(),
-  //       closure_push_param);
-  //   push_status.wait();
-
-  //   auto pull_param_status = worker_ptr_->pull_sparse(
-  //       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
-  //   pull_param_status.wait();
-
-  //   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-  //     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx]);
-  //   }
-  // LOG(INFO) << "first stage done";
-  //   /*-----------------------Test Push
-  //   Grad----------------------------------*/
-
-  //   paddle::distributed::DownpourBrpcClosure* closure_push_grad =
-  //       new paddle::distributed::DownpourBrpcClosure(2, [&](void* done) {
-  //         int ret = 0;
-  //         auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
-  //         for (size_t i = 0; i < 2; ++i) {
-  //           if (closure->check_response(
-  //                   i, paddle::distributed::PS_PUSH_SPARSE_TABLE) != 0) {
-  //             ret = -1;
-  //             break;
-  //           }
-  //         }
-  //         closure->set_promise_value(ret);
-  //       });
-
-  //   LOG(INFO) << "Run pull_sparse_grad";
-  //   std::vector<float*> push_g_vec;
-  //   for (auto i = 0; i < static_cast<int>(fea_keys.size()); ++i) {
-  //     push_g_vec.push_back(tensor->data<float>() + i * 10);
-  //   }
-  //   auto push_grad_status = worker_ptr_->push_sparse_raw_gradient(
-  //       0, fea_keys.data(), (const float**)push_g_vec.data(),
-  //       fea_keys.size(),
-  //       closure_push_grad);
-  //   push_grad_status.wait();
-
-  //   auto pull_update_status = worker_ptr_->pull_sparse(
-  //       fea_temp_value_ptr.data(), 0, fea_keys.data(), fea_keys.size());
-  //   pull_update_status.wait();
-
-  //   for (size_t idx = 0; idx < tensor->numel(); ++idx) {
-  //     EXPECT_FLOAT_EQ(fea_temp_values[idx], fea_values[idx] - 1.0);
-  //   }
-
+  distributed::GraphPyService gps1, gps2;
+  std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
+  gps1.set_up(ips_str, 127, 0, 0, 0);
+  gps2.set_up(ips_str, 127, 1, 1, 0);
+  gps1.load_file(std::string(file_name));
+  v.clear();
+  v = gps2.pull_graph_list(0, 1, 4);
+  ASSERT_EQ(v[0].get_id(), 59);
+  // for (auto g : v) {
+  //    std::cout << g.get_id() << " service-test " << g.get_graph_node_type()
+  //    << std::endl;
+  // }
+  v.clear();
+  v = gps2.sample_k(96, std::string("user"), 4);
+  ASSERT_EQ(v.size(), 3);
+  // for (auto g : v) {
+  //    std::cout << g.get_id() << " service-test--neighboor " <<
+  //    g.get_graph_node_type() << std::endl;
+  // }
+  std::remove(file_name);
   LOG(INFO) << "Run stop_server";
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
