@@ -79,8 +79,8 @@ class ScaleOpConverter : public OpConverter {
       nvinfer1::Dims expand_shape;
       expand_shape.nbDims = 3 + dynamic_shape_offset;
       for (int i = 0; i < 3 + dynamic_shape_offset; i++) {
-        if (i < input_dim.nbDims + dynamic_shape_offset) {
-          expand_shape.d[i] = input_dim.d[i];
+        if (i < input_dim.nbDims) {
+          expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
         } else {
           expand_shape.d[i] = 1;
         }
@@ -109,9 +109,14 @@ class ScaleOpConverter : public OpConverter {
                       platform::errors::Fatal("Create scale layer failed."));
 
     if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+      nvinfer1::Dims squeeze_shape;
+      squeeze_shape.nbDims = input_dim.nbDims;
+      for (int i = 0; i < squeeze_shape.nbDims; i++) {
+        squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+      }
       squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
-      squeeze_layer->setReshapeDimensions(input_dim);
+      squeeze_layer->setReshapeDimensions(squeeze_shape);
       layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
     }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
