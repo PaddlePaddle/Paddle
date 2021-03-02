@@ -20,14 +20,43 @@ limitations under the License. */
 #include "paddle/fluid/operators/range_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-class NPURangeKernel : public framework::OpKernel<T> {
+void GetSizeNPURange(T start, T end, T step, int64_t* size) {
+  PADDLE_ENFORCE_NE(step, 0, platform::errors::InvalidArgument(
+                                 "The step of range op should not be 0."));
+
+  if (start < end) {
+    PADDLE_ENFORCE_GT(
+        step, 0, platform::errors::InvalidArgument(
+                     "The step should be greater than 0 while start < end."));
+  }
+
+  if (start > end) {
+    PADDLE_ENFORCE_LT(step, 0,
+                      platform::errors::InvalidArgument(
+                          "step should be less than 0 while start > end."));
+  }
+
+  *size = std::is_integral<T>::value
+              ? ((std::abs(end - start) + std::abs(step) - 1) / std::abs(step))
+              : std::ceil(std::abs((end - start) / step));
+}
+
+template <typename DeviceContext, typename T>
+class RangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+
     auto* start_t = context.Input<framework::Tensor>("Start");
     auto* end_t = context.Input<framework::Tensor>("End");
     auto* step_t = context.Input<framework::Tensor>("Step");
@@ -41,76 +70,44 @@ class NPURangeKernel : public framework::OpKernel<T> {
     framework::TensorCopySync(*step_t, platform::CPUPlace(), &n);
     T step = n.data<T>()[0];
 
-    //std::cout << "start>>>>>>>>>>>>>>>"<<  start << "----------" <<std::endl;
-    //std::cout << "end>>>>>>>>>>>>>>>"  <<  end << "----------" <<std::endl ;
-    //std::cout << "step>>>>>>>>>>>>>>>" <<  step << "----------"  <<std::endl;
-
     int64_t size = 0;
-    GetSize(start, end, step, &size);
+    GetSizeNPURange(start, end, step, &size);
+
     out->Resize(framework::make_ddim({size}));
-    //std::cout << "dims>>>>>>>>>>>>>>>" <<  out->dims()[0] << "----------"  <<std::endl;
     out->mutable_data<T>(context.GetPlace());
 
-    //std::cout << "start dims>>>>>>>>>>>>>>>" <<  start_t->dims()[0] << "----------"  <<std::endl;
-    //((framework::Tensor*) start_t)->Resize(framework::make_ddim({}));
-    //((framework::Tensor*) end_t)->Resize(framework::make_ddim({}));
-    //((framework::Tensor*) step_t)->Resize(framework::make_ddim({}));
-    //((framework::Tensor*) start_t)->Resize({});
-    //((framework::Tensor*) end_t)->Resize({});
-    //((framework::Tensor*) step_t)->Resize({});
+    std::vector<T> odata;
+    T value = start;
+    for (int64_t i = 0; i < size; ++i) {
+      odata.push_back(value);
+      value += step;
+    }
 
-    auto runner = NpuOpRunner("Range", {*start_t, *end_t, *step_t}, {*out}, {});
+    framework::TensorFromVector(odata, context.device_context(), out);
+    /*
+     *
+    auto runner = NpuOpRunner("Assign", {*out, out_tmp_tensor}, {*out}, {});
     auto stream =
-        context.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+      context.template device_context<paddle::platform::NPUDeviceContext>()
+                .stream();
     runner.Run(stream);
+    */
+
 
   }
 };
+
+
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(range, 
-                       ops::NPURangeKernel<float>,
-                       ops::NPURangeKernel<int>,
-                       ops::NPURangeKernel<int64_t>,
-                       ops::NPURangeKernel<double>);
+
+REGISTER_OP_NPU_KERNEL(
+    range, 
+    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, double>)
 
 #endif
-
-/*
-framework::Tensor cpu_tensor;
-TensorCopySync(*start_t, platform::CPUPlace(), &cpu_tensor);
-
-auto* data = cpu_tensor.data<T>();
-
-auto vec_data = std::vector<T>(data, data + start_t->numel());
-for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
-    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
-}
-
-
-TensorCopySync(*end_t, platform::CPUPlace(), &cpu_tensor);
-data = cpu_tensor.data<T>();
-vec_data = std::vector<T>(data, data + start_t->numel());
-for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
-    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
-}
-
-TensorCopySync(*step_t, platform::CPUPlace(), &cpu_tensor);
-data = cpu_tensor.data<T>();
-vec_data = std::vector<T>(data, data + start_t->numel());
-for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
-    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
-}
-
-
-TensorCopySync(*out, platform::CPUPlace(), &cpu_tensor);
-data = cpu_tensor.data<T>();
-vec_data = std::vector<T>(data, data + start_t->numel());
-for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
-    VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
-}
-*/

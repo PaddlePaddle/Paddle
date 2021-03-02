@@ -39,80 +39,53 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
              std::string op_type) {
 
-  std::cout << "aaaaaaaaaaaaaaaaaaa";
   // init
   auto start = scope->Var("Start");
   auto tensor_start = start->GetMutable<f::LoDTensor>();
-
-  std::cout << "bbbbbbbbbbbbbbbbbbbbb";
+  std::vector<T> init_start;
+  init_start.push_back(static_cast<T>(1));
+  TensorFromVector(init_start, ctx, tensor_start);
+  tensor_start->Resize({1});
 
   auto end = scope->Var("End");
   auto tensor_end = end->GetMutable<f::LoDTensor>();
+  std::vector<T> init_end;
+  init_end.push_back(static_cast<T>(10));
+  TensorFromVector(init_end, ctx, tensor_end);
+  tensor_end->Resize({1});
 
   auto step = scope->Var("Step");
   auto tensor_step = step->GetMutable<f::LoDTensor>();
-
-  std::cout << "cccccccccccccccccccc";
-  std::vector<T> init_start;
-  init_start.push_back(static_cast<T>(1));
-
-  std::vector<T> init_end;
-  init_end.push_back(static_cast<T>(10));
-
   std::vector<T> init_step;
   init_step.push_back(static_cast<T>(2));
-
-  std::cout << "dddddddddddddddddddddd";
-  TensorFromVector(init_start, ctx, tensor_start);
-  //tensor_start->Resize({});
-  TensorFromVector(init_end, ctx, tensor_end);
-  //tensor_end->Resize({});
   TensorFromVector(init_step, ctx, tensor_step);
-  //tensor_step->Resize({});
+  tensor_step->Resize({1});
 
   ctx.Wait();
 
-  std::cout << "eeeeeeeeeeeeeeeeeeeeee";
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   // run
-  f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(op_type, {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+                                    {{"Out", {"Out"}}}, {});
 
-  std::cout << "fffffffffffffffffffffffff";
   op->Run(*scope, place);
-  std::cout << "hhhhhhhhhhhhhhhhhhhhhhhhhh";
 
   std::vector<T> out_vec;
-  std::cout << "iiiiiiiiiiiiiiiiiiiiiii";
   TensorToVector(*tensor_out, ctx, &out_vec);
-
-  std::cout << "gggggggggggggggggggggggg";
   ctx.Wait();
 
-  std::vector<T> expected_vec;
-  expected_vec.push_back(static_cast<T>(1.0));
-  expected_vec.push_back(static_cast<T>(3.0));
-  expected_vec.push_back(static_cast<T>(5.0));
-  expected_vec.push_back(static_cast<T>(7.0));
-  expected_vec.push_back(static_cast<T>(9.0));
+  EXPECT_EQ(static_cast<T>(out_vec.size()), static_cast<T>(5));
+  EXPECT_EQ(static_cast<T>(out_vec[0]), static_cast<T>(1.0));
+  EXPECT_EQ(static_cast<T>(out_vec[1]), static_cast<T>(3.0));
+  EXPECT_EQ(static_cast<T>(out_vec[2]), static_cast<T>(5.0));
+  EXPECT_EQ(static_cast<T>(out_vec[3]), static_cast<T>(7.0));
+  EXPECT_EQ(static_cast<T>(out_vec[4]), static_cast<T>(9.0));
 
-
-  EXPECT_EQ(expected_vec.size(), out_vec.size());
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], static_cast<T>(expected_vec[i]));
-  }
 }
 
-
-TEST(range, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "range");
-}
 
 TEST(range, NPU) {
     f::Scope scope;
