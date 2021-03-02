@@ -75,10 +75,13 @@ namespace platform {
  *    }
  *
 */
-#define CUDA_KERNEL_LOOP(i, num)                             \
+
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (int i = __index__; __index__ < (num);                 \
+  for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
+
+#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 
 class CublasHandleHolder {
  public:
@@ -105,6 +108,8 @@ class CublasHandleHolder {
   }
 #endif
 
+  const cublasHandle_t& GetCublasHandle() const { return handle_; }
+
   ~CublasHandleHolder() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_HIP
     PADDLE_RETRY_CUDA_SUCCESS(dynload::rocblas_destroy_handle(handle_));
@@ -114,7 +119,7 @@ class CublasHandleHolder {
   }
 
   template <typename Callback>
-  inline void Call(Callback &&callback) const {
+  inline void Call(Callback&& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }

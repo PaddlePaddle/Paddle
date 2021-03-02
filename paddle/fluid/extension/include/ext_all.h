@@ -13,27 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
-#include "paddle/fluid/platform/float16.h"
 
-namespace paddle {
+#if !defined(_MSC_VER) && __cplusplus < 199711L
+#error C++11 or later compatible compiler is required to use Paddle.
+#endif
 
-enum DataType {
-  FLOAT32,
-  FLOAT64,
-  BFLOAT16,
-  COMPLEX128,
-  COMPLEX64,
-  FLOAT16,
-  INT64,
-  INT32,
-  INT16,
-  UINT8,
-  INT8,
-  BOOL,
-  // TODO(JiabinYang) support more data types if needed.
-};
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
+#endif
 
-}  // namespace paddle
+#include "ext_dispatch.h"      // NOLINT
+#include "ext_dtype.h"         // NOLINT
+#include "ext_exception.h"     // NOLINT
+#include "ext_op_meta_info.h"  // NOLINT
+#include "ext_place.h"         // NOLINT
+#include "ext_tensor.h"        // NOLINT

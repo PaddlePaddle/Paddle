@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import os
+import sys
+
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -98,6 +100,35 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         # compare results before and after saving
         for key, value in save_dict.items():
             self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+
+
+class TestSaveLoadPickle(unittest.TestCase):
+    def test_pickle_protocol(self):
+        # create network
+        layer = LinearNet()
+        save_dict = layer.state_dict()
+
+        path = os.path.join("test_paddle_save_load_pickle_protocol",
+                            "layer.pdparams")
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 2.0)
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 1)
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 5)
+
+        protocols = [2, ]
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
+            protocols += [3, 4]
+        for protocol in protocols:
+            paddle.save(save_dict, path, protocol)
+            dict_load = paddle.load(path)
+            # compare results before and after saving
+            for key, value in save_dict.items():
+                self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoad(unittest.TestCase):

@@ -127,6 +127,7 @@ def count_convNd(op):
     bias_ops = 1 if len(op.inputs("Bias")) > 0 else 0
     output_numel = np.product(op.outputs("Output")[0].shape()[1:])
     total_ops = output_numel * (filter_ops + bias_ops)
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -138,6 +139,7 @@ def count_leaky_relu(op):
 def count_bn(op):
     output_numel = np.product(op.outputs("Y")[0].shape()[1:])
     total_ops = 2 * output_numel
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -145,6 +147,7 @@ def count_linear(op):
     total_mul = op.inputs("Y")[0].shape()[0]
     numel = np.product(op.outputs("Out")[0].shape()[1:])
     total_ops = total_mul * numel
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -157,12 +160,14 @@ def count_pool2d(op):
     kernel_ops = total_add + total_div
     num_elements = np.product(output_shape[1:])
     total_ops = kernel_ops * num_elements
+    total_ops = abs(total_ops)
     return total_ops
 
 
 def count_element_op(op):
     input_shape = op.inputs("X")[0].shape()
     total_ops = np.product(input_shape[1:])
+    total_ops = abs(total_ops)
     return total_ops
 
 

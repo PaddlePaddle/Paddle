@@ -587,8 +587,16 @@ void BindImperative(py::module *m_ptr) {
                                        ? PyTuple_Pack(1, _index.ptr())
                                        : _index.ptr();
              // 1. Check argumnets
-             // 1.1 Check whether _index can be parsed.
+             // 1.1 Check whether value obj is a tensor.
+             bool value_is_tensor = true;
              bool parse_index = true;
+             if (py::isinstance<py::array>(value_obj) ||
+                 py::isinstance<py::int_>(value_obj) ||
+                 py::isinstance<py::float_>(value_obj)) {
+               value_is_tensor = false;
+             }
+
+             // 1.2 Check whether _index can be parsed.
              const int size = PyTuple_GET_SIZE(index_ptr);
              for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
@@ -598,34 +606,20 @@ void BindImperative(py::module *m_ptr) {
                }
              }
 
-             // 1.2 Check whether stride is 1.
-             std::vector<int> axes, starts, ends, strides, decrease_axis,
-                 infer_flags;
-
-             bool stride_is_1 = true;
-             if (parse_index) {
-               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                  &strides, &decrease_axis, &infer_flags);
-               stride_is_1 =
-                   std::all_of(strides.cbegin(), strides.cend(),
-                               [](int64_t stride) { return stride == 1; });
-             }
-
-             // 1.3 Check whether value obj is a tensor.
-             bool value_is_tensor = true;
-             if (py::isinstance<py::array>(value_obj) ||
-                 py::isinstance<py::int_>(value_obj) ||
-                 py::isinstance<py::float_>(value_obj)) {
-               value_is_tensor = false;
-             }
-
              // 2. Call op set_value to speed up if the condition is met,
              // otherwise call TensorToPyArray.
              // TODO(liym27): Try not to call TensorToPyArray because it always
              // copys data to cpu place, which reduces performance.
-             if (parse_index && stride_is_1 && value_is_tensor) {
-               framework::AttributeMap attrs = {
-                   {"axes", axes}, {"starts", starts}, {"ends", ends}};
+             if (parse_index && value_is_tensor) {
+               std::vector<int> axes, starts, ends, steps, decrease_axis,
+                   infer_flags;
+               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
+                                  &steps, &decrease_axis, &infer_flags);
+
+               framework::AttributeMap attrs = {{"axes", axes},
+                                                {"starts", starts},
+                                                {"ends", ends},
+                                                {"steps", steps}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
@@ -972,7 +966,7 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self,
               const imperative::ParallelStrategy &strategy) {
              if (strategy.nranks_ > 1) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2212
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
@@ -1022,7 +1016,7 @@ void BindImperative(py::module *m_ptr) {
               )DOC")
       .def("pin_memory",
            [](const std::shared_ptr<imperative::VarBase> &self) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to pinned memory in CPU version "
                  "Paddle, "
@@ -1056,7 +1050,7 @@ void BindImperative(py::module *m_ptr) {
       .def("cuda",
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
               bool blocking) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
@@ -1418,7 +1412,8 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
