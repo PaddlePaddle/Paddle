@@ -27,16 +27,6 @@ class MeanNPUKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
-    // DEBUG
-    /*
-    framework::Tensor cpu_tensor;
-    TensorCopySync(*x, platform::CPUPlace(), &cpu_tensor);
-    auto* data = cpu_tensor.data<T>();
-    auto vec_data = std::vector<T>(data, data + x->numel());
-    for(int i=0; i< static_cast<int>(vec_data.size()); ++i){
-        VLgrad(3) << " vec_data["<< i << "] = " << vec_data[i];
-    } */
-
     auto reduce_ndim = x->dims().size();
     std::vector<int> axes;
     for (auto i = 0; i < reduce_ndim; ++i) {
@@ -44,7 +34,8 @@ class MeanNPUKernel : public framework::OpKernel<T> {
       // VLgrad(3) << " axes " << i ;
     }
 
-    framework::AttributeMap attr_input = {{"keep_dims", false}, {"axes", axes}};
+    // framework::AttributeMap attr_input = {{"keep_dims", false}, {"axes", axes}};
+    framework::NPUAttributeMap attr_input = {{"keep_dims", false}, {"axes", axes}};
 
     std::vector<int64_t> out_dims;
     out_dims.push_back(1);

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-//#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/range_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
@@ -84,20 +83,8 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     }
 
     framework::TensorFromVector(odata, context.device_context(), out);
-    /*
-     *
-    auto runner = NpuOpRunner("Assign", {*out, out_tmp_tensor}, {*out}, {});
-    auto stream =
-      context.template device_context<paddle::platform::NPUDeviceContext>()
-                .stream();
-    runner.Run(stream);
-    */
-
-
   }
 };
-
-
 
 }  // namespace operators
 }  // namespace paddle
