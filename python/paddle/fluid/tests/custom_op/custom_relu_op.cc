@@ -39,8 +39,8 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
 
+  out.reshape(x.shape());
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
@@ -79,7 +79,7 @@ std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_forward(x);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 
@@ -92,7 +92,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_backward(x, out, grad_out);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 

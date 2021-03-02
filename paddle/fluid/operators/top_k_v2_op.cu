@@ -150,7 +150,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
       if (k > input_width) k = input_width;
 
-      if ((input_width <= 1024 || k >= 128 || k == input_width)) {
+      if (((input_width <= 1024 && input_height <= 2048) || k >= 128 ||
+           k == input_width)) {
         if (SortTopk<T>(dev_ctx, &trans_input, input_width, input_height, k,
                         &trans_out, &trans_ind, largest)) {
           // last step, tranpose back the indices and output

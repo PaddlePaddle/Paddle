@@ -23,12 +23,13 @@ set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
 py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
 set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
 
+py_test(test_check_abi SRCS test_check_abi.py)
+
+cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)
+
 if(NOT LINUX)
     return()
 endif()
-
-# TODO(zhouwei): support test_check_abi and abi check on Windows
-py_test(test_check_abi SRCS test_check_abi.py)
 
 # Old custom OP only support Linux, only run on Linux
 py_test(test_custom_op SRCS test_custom_op.py)

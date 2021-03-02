@@ -484,7 +484,7 @@ class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_if_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 19
+        self.expected_op_num = 28
         self.expected_shape_op_num = 4
         self.expected_slice_op_num = 2
 
