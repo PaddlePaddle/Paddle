@@ -127,6 +127,10 @@ class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.with_bias = False
 
+class TestFusionGRUINT8MKLDNNBF16WeightsOp(TestFusionGRUBF16MKLDNNOp):
+    def set_confs(self):
+        self.weights_dtype = 'bf16'
+
 
 if __name__ == "__main__":
     from paddle import enable_static

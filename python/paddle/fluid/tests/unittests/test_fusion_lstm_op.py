@@ -121,7 +121,6 @@ class TestFusionLSTMOp(OpTest):
             self.check_output(check_dygraph=False)
 
 
-
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
     def set_conf(self):
         self.has_initial_state = True
@@ -191,6 +190,7 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
         self.use_peepholes = True
         self.lod = [[2]]
         self.D = 8
+
 
 if __name__ == '__main__':
     from paddle import enable_static
