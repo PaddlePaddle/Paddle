@@ -95,13 +95,11 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 if(NOT APPLE)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
-  if(NOT WIN32)
-    if(WITH_PSLIB OR WITH_DISTRIBUTE)
-      set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
-    else()
-      set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
-    endif()
-  endif(NOT WIN32)
+  if(WITH_PSLIB OR WITH_DISTRIBUTE)
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+  else()
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
+  endif()
 endif(NOT APPLE)
 
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
@@ -494,9 +492,6 @@ function(nv_library TARGET_NAME)
         message(FATAL "Please specify source file or library in nv_library.")
       endif()
     endif(nv_library_SRCS)
-    if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-      set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
-    endif()
   endif()
 endfunction(nv_library)
 
@@ -755,6 +750,7 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      # Set `EXTERN_PROTOBUF_DEPEND` only if need to compile `protoc.exe`.
       DEPENDS ${ABS_FIL} ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )

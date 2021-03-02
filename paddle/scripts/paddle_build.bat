@@ -31,6 +31,7 @@ wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
 rem ------initialize common variable------
+set GENERATOR=Ninja
 if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
 if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
@@ -146,10 +147,14 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 rem clcache.exe -M 21474836480
 
-:: install ninja
-pip uninstall -y ninja
-pip install ninja
-set GENERATOR=Ninja
+:: install ninja if GENERATOR is Ninja
+if "%GENERATOR%" == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
 
 rem ------show summary of current environment----------
 cmake --version
@@ -322,7 +327,11 @@ for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
-ninja third_party
+if "%GENERATOR%" == "Ninja" (
+    ninja third_party
+) else (
+    msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+)
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 2 (
@@ -340,10 +349,14 @@ set build_times=1
 rem clcache.exe -z
 
 echo Build Paddle the %build_times% time:
-if "%WITH_CLCACHE%"=="OFF" (
+if "%GENERATOR%" == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    if "%WITH_CLCACHE%"=="OFF" (
+        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    ) else (
+        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    )
 )
 
 if %ERRORLEVEL% NEQ 0 (

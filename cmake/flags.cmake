@@ -28,7 +28,6 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-if(NOT WIN32)
 if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
@@ -38,7 +37,6 @@ if(WITH_GPU)
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
-endif(NOT WIN32)
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
