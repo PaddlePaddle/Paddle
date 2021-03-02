@@ -164,7 +164,7 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, plat::float16,
                                ops::AssignKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                 ops::AssignKernel, int, ops::AssignKernel,
                                 int64_t, ops::AssignKernel, bool,
