@@ -16,21 +16,24 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
-#include <stdio.h>
-
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include <stdio.h>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/math/math_function.h"
+
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
+#include "paddle/fluid/operators/collective/c_allgather_op.h"
+#include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -43,9 +46,13 @@ namespace m = paddle::operators::math;
 
 USE_OP(c_broadcast);
 USE_OP(c_allreduce_sum);
+USE_OP(c_allgather);
+USE_OP(c_reducescatter);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 USE_OP_DEVICE_KERNEL(c_allreduce_sum, NPU);
+USE_OP_DEVICE_KERNEL(c_allgather, NPU);
+USE_OP_DEVICE_KERNEL(c_reducescatter, NPU);
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 
@@ -171,6 +178,115 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
     EXPECT_EQ(out_vec[i], 2.0);
   }
 }
+
+void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
+  std::cout<< "BEGIN TEST:" << __FUNCTION__ <<std::endl;
+  // init
+  auto x = scope->Var("X");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+
+  std::vector<float> init;
+  int rank_id = atoi(getenv("RANK_ID"));
+  std::cout<< "rank_id:" << rank_id<<std::endl;
+  int num1 = 1;
+  int num2 = 4;
+
+  for (int64_t i = 0; i < num1 * num2; ++i) {
+    init.push_back(1.0);
+    // init.push_back(1.0 + rank_id * 3);
+    std::cout<< init[i];
+  }
+  std::cout<<std::endl;
+
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({num1, num2});
+
+  ctx.Wait();
+
+  auto place = ctx.GetPlace();
+  auto out = scope->Var("Out");
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({num1, num2});
+  tensor_out->mutable_data<float>(place);  // allocate
+
+  ctx.Wait();
+
+  // run
+  f::AttributeMap attrs;
+  attrs["tag"]=std::string("tagx");
+  attrs["ring_id"]=0;
+
+  auto op =
+      f::OpRegistry::CreateOp("c_allgather", {{"X", {"X"}}},
+                              {{"Out", {"Out"}}}, attrs);
+
+  op->Run(*scope, place);
+
+  std::vector<float> out_vec;
+  TensorToVector(*tensor_out, ctx, &out_vec);
+
+  ctx.Wait();
+
+  EXPECT_EQ(out_vec.size(), init.size() * 2);
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    EXPECT_EQ(out_vec[i], 2.0);
+  }
+}
+
+void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
+  std::cout<< "BEGIN TEST:" << __FUNCTION__ <<std::endl;
+  // init
+  auto x = scope->Var("X");
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
+
+  std::vector<float> init;
+  int rank_id = atoi(getenv("RANK_ID"));
+  std::cout<< "rank_id:" << rank_id<<std::endl;
+  int num1 = 1;
+  int num2 = 4;
+
+  for (int64_t i = 0; i < num1 * num2; ++i) {
+    init.push_back(1.0);
+    // init.push_back(1.0 + rank_id * 3);
+    std::cout<< init[i];
+  }
+  std::cout<<std::endl;
+
+  TensorFromVector(init, ctx, tensor_x);
+  tensor_x->Resize({num1, num2});
+
+  ctx.Wait();
+
+  auto place = ctx.GetPlace();
+  auto out = scope->Var("Out");
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  tensor_out->Resize({num1, num2});
+  tensor_out->mutable_data<float>(place);  // allocate
+
+  ctx.Wait();
+
+  // run
+  f::AttributeMap attrs;
+  attrs["tag"]=std::string("tagx");
+  attrs["ring_id"]=0;
+
+  auto op =
+      f::OpRegistry::CreateOp("c_reducescatter", {{"X", {"X"}}},
+                              {{"Out", {"Out"}}}, attrs);
+
+  op->Run(*scope, place);
+
+  std::vector<float> out_vec;
+  TensorToVector(*tensor_out, ctx, &out_vec);
+
+  ctx.Wait();
+
+  EXPECT_EQ(out_vec.size(), init.size() * 2);
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    EXPECT_EQ(out_vec[i], 2.0);
+  }
+}
+
 TEST(c_broadcast, NPU) {
   f::Scope scope;
   char * npu_id=getenv("FLAGS_selected_npus");
@@ -179,5 +295,7 @@ TEST(c_broadcast, NPU) {
 
   Prepare(&scope, ctx);
   TestHCCLBroadcastOp(&scope, ctx);
-  // TestHCCLAllReduceOp(&scope, ctx);
+  TestHCCLAllReduceOp(&scope, ctx);
+  TestHCCLAllGatherOp(&scope, ctx);
+  TestHCCLReduceScatterOp(&scope, ctx);
 }
