@@ -31,6 +31,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         auto runner =
@@ -38,19 +41,18 @@ class MulNPUKernel : public framework::OpKernel<T> {
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         out->mutable_data<T>(ctx.GetPlace());
 
-        auto stream =
-            ctx.template device_context<paddle::platform::NPUDeviceContext>()
-                .stream();
         runner.Run(stream);
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
         // flatten
         Tensor tmp_flatten(x->type());
-        tmp_flatten.Resize(x->dims()[1] * x->dims()[2]);
+        int64_t size = x->dims()[1] * x->dims()[2];
+        std::vector<int64_t> vec_flatten;
+        vec_flatten.push_back(size);
+        tmp_flatten.Resize(framework::make_ddim(vec_flatten));
         tmp_flatten.mutable_data<T>(ctx.GetPlace());
         auto runner_flatten = NpuOpRunner("Flatten", {*x}, {tmp_flatten}, {});
         runner_flatten.Run(stream);
-        //
-
+        // matmul
         auto runner_matmul =
             NpuOpRunner("MatMul", {tmp_flatten, *y}, {*out}, {});
         runner_matmul.Run(stream);
