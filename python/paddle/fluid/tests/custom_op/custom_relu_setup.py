@@ -17,12 +17,14 @@ import os
 from utils import paddle_includes, extra_compile_args
 from paddle.utils.cpp_extension import CUDAExtension, setup
 
+# custom_relu_op_dup.cc is only used for multi ops test,
+# not a new op, if you want to test only one op, remove this
+# source file
 setup(
-    name='simple_setup_relu2',
-    ext_modules=[
-        CUDAExtension(
-            name='simple_setup_relu2',
-            sources=['relu_op_simple.cc', 'relu_op_simple.cu'],
-            include_dirs=paddle_includes,
-            extra_compile_args=extra_compile_args)
-    ])
+    name='custom_relu_module_setup',
+    ext_modules=CUDAExtension(  # test for not specific name here.
+        sources=[
+            'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
+        ],  # test for multi ops
+        include_dirs=paddle_includes,
+        extra_compile_args=extra_compile_args))

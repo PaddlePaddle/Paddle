@@ -26,7 +26,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <algorithm>
 #include <deque>
@@ -64,9 +65,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
     for (int j = 0; j < thread_keys_shard_num_; j++) {
-      thread_keys_[i][j].reserve(2 * max_fea_num_per_pass_ /
-                                 thread_keys_shard_num_ /
-                                 thread_keys_thread_num_);
     }
   }
   const std::deque<Record>& vec_data = input_channel->GetData();
@@ -83,7 +81,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
       for (const auto feasign : feasign_v) {
         uint64_t cur_key = feasign.sign().uint64_feasign_;
         int shard_id = cur_key % thread_keys_shard_num_;
-        this->thread_keys_[i][shard_id].push_back(cur_key);
+        this->thread_keys_[i][shard_id].insert(cur_key);
       }
     }
   };
@@ -122,7 +120,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
     VLOG(3) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
     local_ptr[i].resize(local_keys[i].size());
   }
-
+  timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &table_id,
                    &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
@@ -148,7 +146,8 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
     t.join();
   }
   timeline.Pause();
-  VLOG(1) << "GpuPs pull sparse cost " << timeline.ElapsedSec() << " seconds.";
+  VLOG(1) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
+          << " seconds.";
 
   timeline.Start();
   auto build_func = [device_num, &local_keys, &local_ptr, &device_keys,
@@ -224,6 +223,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   size_t size_max = 0;
   for (int i = 0; i < device_num; i++) {
     feature_keys_count[i] = gpu_task->device_keys_[i].size();
+    VLOG(1) << i << " card contains feasign nums: " << feature_keys_count[i];
     size_max = std::max(size_max, feature_keys_count[i]);
   }
   if (HeterPs_) {
@@ -232,6 +232,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   }
   std::vector<std::thread> threads(device_num);
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
+  HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     std::cout << "building table: " << i << std::endl;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
@@ -312,7 +313,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
         "GpuPs: PullSparse Only Support CUDAPlace Now."));
   }
   all_timer.Pause();
-  VLOG(1) << "GpuPs PullSparse total costs: " << all_timer.ElapsedSec()
+  VLOG(3) << "GpuPs PullSparse total costs: " << all_timer.ElapsedSec()
           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PullSparse";
@@ -358,7 +359,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
         "GPUPS: PushSparseGrad Only Support CUDAPlace Now."));
   }
   all_timer.Pause();
-  VLOG(1) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
+  VLOG(3) << "PushSparseGrad total cost: " << all_timer.ElapsedSec()
           << " s, of which GPUPS cost: " << push_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PushSparseGrad";
