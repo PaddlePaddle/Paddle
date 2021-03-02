@@ -251,6 +251,78 @@ function run_unittest() {
     wait;
 }
 
+function unittests_retry(){
+    parallel_job=1
+    is_retry_execuate=0
+    wintest_error=1
+    retry_time=3
+    exec_times=0
+    exec_retry_threshold=10
+    retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+    need_retry_ut_counts=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
+    retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+
+    if [ $need_retry_ut_counts -lt $exec_retry_threshold ];then
+            retry_unittests_record=''
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    if ( [[ "$exec_times" == "0" ]] );then
+                        cur_order='first'
+                    elif ( [[ "$exec_times" == "1" ]] );then
+                        cur_order='second'
+                    elif ( [[ "$exec_times" == "1" ]] );then
+                        cur_order='third'
+                    fi
+                    echo "========================================="
+                    echo "This is the ${cur_order} time to re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo "${retry_unittests}"
+                    echo "========================================="
+                    rm -f $tmp_dir/*
+                    failed_test_lists=''
+                    ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile
+                    collect_failed_tests
+                    exec_times=$(echo $exec_times | awk '{print $0+1}')
+                done
+    else
+        # There are more than 10 failed unit tests, so no unit test retry
+        is_retry_execuate=1
+    fi
+    rm -f $tmp_dir/*
+}
+
+function show_ut_retry_result() {
+    if [[ "$is_retry_execuate" != "0" ]];then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "========================================="
+        echo "${failed_test_lists_ult}"
+        exit 8;
+    else
+        retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+        if [ -z "${retry_unittests_record_judge}" ];then
+            echo "========================================"
+            echo "There are failed tests, which have been successful after re-run:"
+            echo "========================================"
+            echo "The following tests have been re-ran:"
+            echo "${retry_unittests_record}"
+        else
+            failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"|"$1}} END{print all_str}')
+            echo "========================================"
+            echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+            exit 8;
+        fi
+    fi
+}
+
 set +e
 run_unittest $eight_parallel_job 8
 run_unittest $tetrad_parallel_jog 4
@@ -260,10 +332,6 @@ collect_failed_tests
 set -e
 rm -f $tmp_dir/*
 if [[ "$failed_test_lists" != "" ]]; then
-    echo "========================================"
-    echo "Summary Failed Tests... "
-    echo "========================================"
-    echo "The following tests FAILED: "
-    echo "${failed_test_lists}"
-    exit 8
+    unittests_retry
+    show_ut_retry_result
 fi
