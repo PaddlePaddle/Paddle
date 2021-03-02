@@ -163,12 +163,17 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    if(WITH_STATIC_LIB)
-        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_inference.lib
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.*)
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+        set(paddle_inference_lib_path ${PADDLE_BINARY_DIR}/paddle/fluid/inference)
     else()
-        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.dll
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.lib)
+        set(paddle_inference_lib_path ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE})
+    endif()
+    if(WITH_STATIC_LIB)
+        set(paddle_inference_lib ${paddle_inference_lib_path}/libpaddle_inference.lib
+                             ${paddle_inference_lib_path}/paddle_inference.*)
+    else()
+        set(paddle_inference_lib ${paddle_inference_lib_path}/paddle_inference.dll
+                             ${paddle_inference_lib_path}/paddle_inference.lib)
     endif()
     copy(inference_lib_dist
             SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
@@ -200,9 +205,14 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-  set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_inference_c.*)
+  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    set(paddle_inference_c_lib_path ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi)
+  else()
+    set(paddle_inference_c_lib_path ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE})
+  endif()
+  set(paddle_inference_c_lib ${paddle_inference_c_lib_path}/paddle_inference_c.*)
 else(WIN32)
-  set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_inference_c.*)
+  set(paddle_inference_c_lib ${paddle_inference_c_lib_path}/libpaddle_inference_c.*)
 endif(WIN32)
 
 copy(inference_lib_dist
