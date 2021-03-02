@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
@@ -28,14 +27,26 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
+class PSClient;
+class PSServer;
+class PsRequestMessage;
+class PsResponseMessage;
+class PsService;
+
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
+using paddle::distributed::PsService;
+
 class PSCore {
  public:
   explicit PSCore() {}
   virtual ~PSCore() {}
 
-  virtual int init_server(const std::string& dist_desc,
-                          const std::vector<std::string>* host_sign_list,
-                          int node_num, int index);
+  virtual int init_server(
+      const std::string& dist_desc,
+      const std::vector<std::string>* host_sign_list, int node_num, int index,
+      int trainers,
+      const std::vector<framework::ProgramDesc>& server_sub_program = {});
   virtual int init_worker(
       const std::string& dist_desc,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>&

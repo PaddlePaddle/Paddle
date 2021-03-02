@@ -13,11 +13,10 @@
 # limitations under the License.
 """Fleet Metrics"""
 
-import paddle.fluid as fluid
 import math
 import numpy as np
-from paddle.fluid.framework import Variable
-import paddle.distributed.fleet as fleet
+from paddle.static import Variable
+import paddle
 
 
 def sum(input, scope=None, util=None):
@@ -46,9 +45,9 @@ def sum(input, scope=None, util=None):
           print("sum array: ", paddle.distributed.fleet.sum(res))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
     elif isinstance(input, str):
@@ -86,9 +85,9 @@ def max(input, scope=None, util=None):
           print("max array: ", paddle.distributed.fleet.max(res))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
     elif isinstance(input, str):
@@ -126,9 +125,9 @@ def min(input, scope=None, util=None):
           print("min array: ", paddle.distributed.fleet.min(res))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
     if isinstance(input, Variable):
         input = np.array(scope.find_var(input.name).get_tensor())
     elif isinstance(input, str):
@@ -168,9 +167,9 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
           print("auc: ", paddle.distributed.fleet.auc(pos, neg))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
 
     if isinstance(stat_pos, Variable):
         stat_pos = np.array(scope.find_var(stat_pos.name).get_tensor())
@@ -229,7 +228,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
 
     Args:
         abserr(numpy.array|Variable|string): abserr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -246,14 +245,19 @@ def mae(abserr, total_ins_num, scope=None, util=None):
           print("mae: ", paddle.distributed.fleet.mae(res, total_ins_num))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
 
     if isinstance(abserr, Variable):
         abserr = np.array(scope.find_var(abserr.name).get_tensor())
     elif isinstance(abserr, str):
         abserr = np.array(scope.find_var(abserr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
 
     old_metric_shape = np.array(abserr.shape)
     abserr = abserr.reshape(-1)
@@ -261,8 +265,9 @@ def mae(abserr, total_ins_num, scope=None, util=None):
 
     global_metric = util.all_reduce(abserr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    mae_value = global_metric[0] / total_ins_num
+    mae_value = float(global_metric[0]) / float(global_total_num[0])
     return mae_value
 
 
@@ -272,7 +277,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -289,22 +294,29 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
           print("rmse: ", paddle.distributed.fleet.rmse(res, total_ins_num))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
 
     if isinstance(sqrerr, Variable):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
     elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
     global_metric = np.copy(sqrerr) * 0
 
     global_metric = util.all_reduce(sqrerr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    rmse_value = math.sqrt(global_metric[0] / total_ins_num)
+    rmse_value = math.sqrt(float(global_metric[0]) / float(global_total_num[0]))
+
     return rmse_value
 
 
@@ -314,7 +326,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
 
     Args:
         sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
-        total_ins_num(int|float): total train/infer instance count
+        total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
     Returns:
@@ -331,22 +343,28 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
           print("mse: ", paddle.distributed.fleet.mse(metric, total_ins_num))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
 
     if isinstance(sqrerr, Variable):
         sqrerr = np.array(scope.find_var(sqrerr.name).get_tensor())
     elif isinstance(sqrerr, str):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
+    if isinstance(total_ins_num, Variable):
+        total_ins_num = np.array(
+            scope.find_var(total_ins_num.name).get_tensor())
+    elif isinstance(total_ins_num, str):
+        total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
     sqrerr = sqrerr.reshape(-1)
     global_metric = np.copy(sqrerr) * 0
 
     global_metric = util.all_reduce(sqrerr, "sum")
     global_metric = global_metric.reshape(old_metric_shape)
+    global_total_num = util.all_reduce(total_ins_num, "sum")
 
-    mse_value = global_metric[0] / total_ins_num
+    mse_value = float(global_metric[0]) / float(global_total_num[0])
     return mse_value
 
 
@@ -384,9 +402,9 @@ def acc(correct, total, scope=None, util=None):
           print("accuracy: ", paddle.distributed.fleet.acc(correct_num, total_num))
     """
     if scope is None:
-        scope = fluid.global_scope()
+        scope = paddle.static.global_scope()
     if util is None:
-        util = fleet.util
+        util = paddle.distributed.fleet.util
 
     if isinstance(correct, Variable):
         correct = np.array(scope.find_var(correct.name).get_tensor())

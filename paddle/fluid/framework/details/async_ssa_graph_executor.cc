@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/variable_helper.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
@@ -138,7 +138,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
     if (strategy_.thread_barrier_) {
       paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
           places_.size());

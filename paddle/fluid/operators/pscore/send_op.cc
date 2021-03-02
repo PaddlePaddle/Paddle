@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -32,10 +31,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-namespace distributed {
-class RPCClient;
-}  // namespace distributed
-
 class SendOp : public framework::OperatorBase {
  public:
   SendOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -52,8 +47,9 @@ class SendOp : public framework::OperatorBase {
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
     auto* communicator = paddle::distributed::Communicator::GetInstance();
-    communicator->Check(send_varnames);
-    communicator->Send(ins, scope);
+    if (communicator->Check(send_varnames)) {
+      communicator->Send(ins, scope);
+    }
 
     // auto fleet = paddle::distributed::FleetWrapper::GetInstance();
     // if (is_sparse == 0) {

@@ -93,7 +93,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
       auto y_v = framework::EigenVector<T>::Flatten(*y);
       auto &dev = *dev_ctx.eigen_device();
       if (act_type == "relu") {
-        ReluFunctor<T>()(dev, x_v, y_v);
+        ReluCUDAFunctor<T>()(dev, x_v, y_v);
       } else {
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));

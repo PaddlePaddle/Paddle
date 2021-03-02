@@ -30,6 +30,9 @@ def conv_indent(indent):
     return "".join([" "] * indent)
 
 
+PSERVER_SAVE_SUFFIX = "_txt"
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
@@ -55,6 +58,7 @@ class CommonAccessor:
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
+        self.entry = None
         self.attrs = []
         self.params = []
         self.dims = []
@@ -89,6 +93,24 @@ class CommonAccessor:
         self.opt_attr_map = opt_attr_map
         self.opt_input_map = opt_input_map
         self.opt_init_map = opt_init_map
+
+    def parse_entry(self, varname, o_main_program):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_distributed_sparse_op
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import is_sparse_op
+
+        for op in o_main_program.global_block().ops:
+            if not is_distributed_sparse_op(op) and not is_sparse_op(op):
+                continue
+
+            param_name = op.input("W")[0]
+
+            if param_name == varname and op.type == "lookup_table":
+                self.entry = op.attr('entry')
+                break
+
+            if param_name == varname and op.type == "lookup_table_v2":
+                self.entry = "none"
+                break
 
     def get_shard(self, total_dim, shard_num, pserver_id):
         # remainder = total_dim % shard_num
@@ -165,11 +187,7 @@ class CommonAccessor:
                     shape = self.get_shard(total_dims, pserver_num, pserver_id)
             dims.append(shape)
 
-            if formal_name == "Param":
-                initializer = "uniform_random&0&-1.0&1.0"
-            else:
-                initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+            initializer = self.get_initializer_attr(param.name, startup_program)
             initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
@@ -189,6 +207,8 @@ class CommonAccessor:
         if self.table_name:
             attrs += "table_name: \"{}\" ".format(self.table_name)
 
+        if self.entry:
+            attrs += "entry: \"{}\" ".format(self.entry)
         attrs += "trainer_num: {} ".format(self.trainer_num)
         attrs += "sync: {} ".format(self.sync)
 
@@ -206,6 +226,28 @@ class CommonAccessor:
             conv_indent(indent), attrs, conv_indent(indent))
 
 
+class Tensor:
+    def __init__(self):
+        self.main_program_id = None
+        self.startup_program_id = None
+        self.feed_var_name = None
+        self.fetch_var_name = None
+        self.tensor_table_class = False
+
+    def to_string(self, indent):
+        program_str = "{}tensor {{{}\n{}}}"
+        attrs = ""
+        attrs += "feed_var_name: \"{}\" ".format(str(self.feed_var_name))
+        attrs += "fetch_var_name: \"{}\" ".format(str(self.fetch_var_name))
+        attrs += "startup_program_id: {} ".format(str(self.startup_program_id))
+        attrs += "main_program_id: {} ".format(str(self.main_program_id))
+        attrs += "tensor_table_class: \"{}\" ".format(
+            str(self.tensor_table_class))
+        attrs += "\n"
+        return program_str.format(
+            conv_indent(indent), attrs, conv_indent(indent))
+
+
 class Table:
     def __init__(self):
         self.id = -1
@@ -214,6 +256,7 @@ class Table:
         self.type = None
         self.accessor = None
         self.common = None
+        self.tensor = None
 
     def to_string(self, indent):
         table_str = "{}downpour_table_param {{{}\n{}}}"
@@ -230,6 +273,10 @@ class Table:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
 
+        if self.tensor is not None:
+            attrs += self.tensor.to_string(indent)
+            attrs += "\n"
+
         if self.common is not None:
             attrs += self.common.to_string(indent)
             attrs += "\n"
@@ -241,7 +288,7 @@ class Service:
     def __init__(self):
         self.server_class = "BrpcPsServer"
         self.client_class = "BrpcPsClient"
-        self.service_class = "PsService"
+        self.service_class = "BrpcPsService"
         self.start_server_port = 0
         self.server_thread_num = 12
 
@@ -355,6 +402,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
+        self._server_sub_program = []
         self._heter_client = None
 
     def _set_basic_info(self, context):
@@ -569,39 +617,90 @@ class TheOnePSRuntime(RuntimeBase):
             table.common = common
             return table
 
+        def _build_tensor_table(idx, tensor_dict):
+            table = Table()
+            table.id = idx
+            table.type = "PS_OTHER_TABLE"
+            table.table_class = tensor_dict["tensor_table_class"]
+            table.shard_num = 256
+
+            accessor = Accessor()
+            accessor.accessor_class = "CommMergeAccessor"
+            accessor.optimizer = None
+            accessor.feature_dim = 0
+            accessor.embedding_dim = 0
+            table.accessor = accessor
+
+            common = CommonAccessor()
+            common.table_name = tensor_dict["feed_var_name"]
+            common.trainer_num = self.compiled_strategy.get_trainers()
+            common.attrs = ""
+            common.dims = []
+            common.params = []
+            table.common = common
+
+            tensor = Tensor()
+            tensor.main_program_id = tensor_dict["main_program_id"]
+            tensor.startup_program_id = tensor_dict["startup_program_id"]
+            tensor.feed_var_name = tensor_dict["feed_var_name"]
+            tensor.fetch_var_name = tensor_dict["fetch_var_name"]
+            tensor.tensor_table_class = tensor_dict["tensor_table_class"]
+            table.tensor = tensor
+
+            return table
+
+        def _add_tensor_table(tables):
+            tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
+            program_idx = 0
+            for table_name in tensor_table_dict:
+                if tensor_table_dict[table_name]["startup_program"] != None:
+                    tensor_table_dict[table_name][
+                        "startup_program_id"] = program_idx
+                    self._server_sub_program.append(tensor_table_dict[
+                        table_name]["startup_program"].desc)
+                    program_idx += 1
+                if tensor_table_dict[table_name]["main_program"] != None:
+                    tensor_table_dict[table_name][
+                        "main_program_id"] = program_idx
+                    self._server_sub_program.append(tensor_table_dict[
+                        table_name]["main_program"].desc)
+                    program_idx += 1
+                # Todo: Hard code for lr_decay table apply table id
+                new_table = _build_tensor_table(
+                    len(tables), tensor_table_dict[table_name])
+                tables.append(new_table)
+            return tables
+
         def _get_tables():
             send_ctx = self.compiled_strategy.get_the_one_send_context(
                 use_origin_program=True,
                 split_dense_table=self.role_maker.
                 _is_heter_parameter_server_mode)
-            tables = [i for i in range(len(send_ctx) + 1)]
 
+            tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
+                if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
+                    continue
+
                 table = Table()
                 table.id = ctx.table_id()
+                common = CommonAccessor()
 
                 if ctx.is_sparse():
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
                     table.type = "PS_SPARSE_TABLE"
+                    table.shard_num = 256
 
                     if self.compiled_strategy.is_geo_mode():
                         table.table_class = "SparseGeoTable"
                     else:
                         table.table_class = "CommonSparseTable"
-                    table.shard_num = 256
-                else:
-                    if len(ctx.origin_varnames()) < 1:
-                        continue
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
 
-                common = CommonAccessor()
-                if ctx.is_sparse():
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
                 else:
+                    table.type = "PS_DENSE_TABLE"
+                    table.table_class = "CommonDenseTable"
+                    table.shard_num = 256
                     common.table_name = "MergedDense"
 
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
@@ -609,6 +708,10 @@ class TheOnePSRuntime(RuntimeBase):
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
                                           self.compiled_strategy)
+
+                if ctx.is_sparse():
+                    common.parse_entry(common.table_name,
+                                       self.origin_main_program)
 
                 if is_sync:
                     common.sync = "true"
@@ -619,10 +722,17 @@ class TheOnePSRuntime(RuntimeBase):
 
                 accessor = _build_merge_accessor(ctx)
                 table.accessor = accessor
-                tables[table.id] = table
+                tables.append(table)
 
-            barrier_table = _build_barrier_table(len(send_ctx))
-            tables[-1] = barrier_table
+            tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
+            if len(tensor_table_dict) > 0:
+                tables = _add_tensor_table(tables)
+            else:
+                empty_porgram = Program()
+                self._server_sub_program.append(empty_porgram.desc)
+
+            barrier_table = _build_barrier_table(len(tables))
+            tables.append(barrier_table)
             return tables
 
         if is_server:
@@ -652,6 +762,7 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = self.compiled_strategy.get_role_id()
         endpoints = self.compiled_strategy.get_ps_endpoints()
         is_sync = self.compiled_strategy.is_sync_mode()
+        trainers = self.compiled_strategy.get_trainers()
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
@@ -667,7 +778,8 @@ class TheOnePSRuntime(RuntimeBase):
             string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id)
+        self._server.init_server(proto_txt, string_hosts, role_id, trainers,
+                                 self._server_sub_program)
 
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 
@@ -701,9 +813,9 @@ class TheOnePSRuntime(RuntimeBase):
         begin = time.time()
         for var_name in load_varnames:
             table_id = sparse_table_maps[var_name]
-            path = os.path.join(dirname, var_name,
+            path = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.txt".format(var_name, pserver_id))
-            meta = os.path.join(dirname, var_name,
+            meta = os.path.join(dirname, var_name + PSERVER_SAVE_SUFFIX,
                                 "{}.block{}.meta".format(var_name, pserver_id))
             self._server.load_sparse(path, meta, table_id)
         end = time.time()
@@ -759,15 +871,26 @@ class TheOnePSRuntime(RuntimeBase):
 
         return is_valid
 
-    def _save_sparse_params(self, executor, dirname, context, main_program):
+    def _save_sparse_params(self, executor, dirname, context, main_program,
+                            mode):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+        distributed_varnames = get_sparse_tablenames(
+            self.compiled_strategy.origin_main_program, True)
         values = []
         for id, names in context.items():
+            if names not in distributed_varnames:
+                # only save sparse param to local
+                self._worker.recv_and_save_model(id, dirname)
+            # save sparse & distributed param on server
+            self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
-            self._worker.save_one_model(id, dirname, 0)
         return values
 
-    def _save_distributed_persistables(self, executor, dirname, main_program,
-                                       mode):
+    def _save_distributed_persistables(self,
+                                       executor,
+                                       dirname,
+                                       main_program,
+                                       mode=0):
 
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
@@ -778,14 +901,14 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             use_origin_program=True)
 
-        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
-                                                        sparses, main_program)
+        sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
+                                                   main_program, mode)
 
         recv_dense_varnames = []
         for id, names in denses.items():
             recv_dense_varnames.extend(names)
 
-        saved_varnames = recv_sparse_varnames
+        saved_varnames = sparse_varnames
 
         remaining_vars = list(
             filter(
@@ -833,6 +956,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
+        # Todo(MrChengmo): Save optimizer status
         self._save_distributed_persistables(executor, dirname, main_program,
                                             mode)
 
@@ -842,7 +966,8 @@ class TheOnePSRuntime(RuntimeBase):
                                            feeded_var_names,
                                            target_vars,
                                            main_program=None,
-                                           export_for_deployment=True):
+                                           export_for_deployment=True,
+                                           mode=0):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -879,11 +1004,25 @@ class TheOnePSRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(
-                executor, dirname, program, mode=0)
+            self._ps_inference_save_persistables(executor, dirname, program,
+                                                 mode)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
 
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
+
+    def _shrink(self, threshold):
+        import paddle.distributed.fleet as fleet
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            sparses = self.compiled_strategy.get_the_one_recv_context(
+                is_dense=False,
+                split_dense_table=self.role_maker.
+                _is_heter_parameter_server_mode,
+                use_origin_program=True)
+
+            for id, names in sparses.items():
+                self._worker.shrink_sparse_table(id, threshold)
+        fleet.util.barrier()

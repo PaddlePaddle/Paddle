@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
@@ -360,7 +360,7 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
 
 void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (strategy_.thread_barrier_) {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }

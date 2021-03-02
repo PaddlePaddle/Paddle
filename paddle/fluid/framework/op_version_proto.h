@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <string>
+
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {

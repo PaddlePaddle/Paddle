@@ -30,7 +30,7 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
     int64_t trainer_id = 0;
     auto* trainer_id_data = trainer_id_t->data<int64_t>();
     if (platform::is_gpu_place(context.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto stream = context.cuda_device_context().stream();
       memory::Copy<>(platform::CPUPlace(), &trainer_id,
                      BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),

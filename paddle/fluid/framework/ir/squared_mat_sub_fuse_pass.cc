@@ -13,10 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/framework/ir/squared_mat_sub_fuse_pass.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -394,5 +393,5 @@ REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
             .EQ("square", 0)
             .LE("elementwise_mul", 1)
             .LE("elementwise_sub", 1)
-            .EQ("fill_constant", 1)
+            .LE("fill_constant", 2)
             .EQ("fusion_squared_mat_sub", 0));

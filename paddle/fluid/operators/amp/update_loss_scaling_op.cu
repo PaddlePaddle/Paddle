@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -83,8 +84,10 @@ class LazyZeros<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 using GPU = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(update_loss_scaling,
                         ops::UpdateLossScalingKernel<GPU, float>,
-                        ops::UpdateLossScalingKernel<GPU, double>);
+                        ops::UpdateLossScalingKernel<GPU, double>,
+                        ops::UpdateLossScalingKernel<GPU, plat::float16>);

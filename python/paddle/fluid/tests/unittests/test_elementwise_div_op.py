@@ -320,6 +320,21 @@ class TestComplexElementwiseDivOp(OpTest):
             user_defined_grad_outputs=[self.grad_out])
 
 
+class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.y = np.random.random(
+            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
+                (2, 3, 4, 5)).astype(self.dtype)
+        self.out = self.x / self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1J * np.ones(
+            (2, 3, 4, 5), self.dtype)
+        self.grad_x = np.real(self.grad_out / np.conj(self.y))
+        self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

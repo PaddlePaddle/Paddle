@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
@@ -275,7 +274,12 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if (WITH_DISTRIBUTE)
+if(WITH_ASCEND)
+    include(external/ascend)
+    list(APPEND third_party_deps extern_ascend)
+endif (WITH_ASCEND)
+
+if (WITH_PSCORE)
     include(external/snappy)
     list(APPEND third_party_deps extern_snappy)
 
@@ -307,11 +311,13 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

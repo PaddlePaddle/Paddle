@@ -442,7 +442,7 @@ void TestConcatMain() {
 TEST(math, concat) {
   TestConcatMain<paddle::platform::CPUDeviceContext,
                  paddle::platform::CPUPlace>();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestConcatMain<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>();
 #endif

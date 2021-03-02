@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
@@ -33,10 +34,19 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 typedef std::function<void(void*)> HeterRpcCallbackFunc;
 

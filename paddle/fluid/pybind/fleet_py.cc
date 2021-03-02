@@ -58,11 +58,13 @@ void BindDistFleetWrapper(py::module* m) {
       .def("pull_dense_params", &FleetWrapper::PullDenseVarsSync)
       .def("save_all_model", &FleetWrapper::SaveModel)
       .def("save_one_model", &FleetWrapper::SaveModelOneTable)
+      .def("recv_and_save_model", &FleetWrapper::RecvAndSaveTable)
       .def("sparse_table_stat", &FleetWrapper::PrintTableStat)
       .def("stop_server", &FleetWrapper::StopServer)
       .def("stop_worker", &FleetWrapper::FinalizeWorker)
-      .def("barrier", &FleetWrapper::BarrierWithTable);
-}  // end BindDistFleetWrapper
+      .def("barrier", &FleetWrapper::BarrierWithTable)
+      .def("shrink_sparse_table", &FleetWrapper::ShrinkSparseTable);
+}
 
 void BindPSHost(py::module* m) {
   py::class_<distributed::PSHost>(*m, "PSHost")
@@ -79,8 +81,8 @@ void BindCommunicatorContext(py::module* m) {
       .def(
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
-                   const std::vector<std::string>&, int, bool, bool, bool,
-                   int>())
+                   const std::vector<std::string>&, int, bool, bool, bool, int,
+                   bool>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
@@ -97,6 +99,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.is_distributed; })
       .def("origin_varnames",
            [](const CommContext& self) { return self.origin_varnames; })
+      .def("is_tensor_table",
+           [](const CommContext& self) { return self.is_tensor_table; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 

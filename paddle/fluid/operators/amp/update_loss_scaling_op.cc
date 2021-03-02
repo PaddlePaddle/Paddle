@@ -54,8 +54,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "PrevLossScaling"),
-        ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -107,6 +106,9 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "the received is %f",
                                 decr_ratio));
         });
+    AddAttr<bool>("stop_update",
+                  "Stop updating loss scaling, and just zero inputs.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Update loss scaling according to overall gradients. If all gradients is 
 finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 

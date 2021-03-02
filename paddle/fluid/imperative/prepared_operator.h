@@ -50,7 +50,7 @@ void SetForwardDataTypeOfGradVar<VariableWrapper>(
     const std::shared_ptr<VariableWrapper>& var) {
   if (var->HasGradVar()) {
     auto grad_var = var->GetGradVar();
-    VLOG(6) << "Set grad var (" << grad_var->Name() << ") dtype to ("
+    VLOG(6) << "Set grad var (" << grad_var->Name() << ")'s forward dtype to ("
             << framework::DataTypeToString(var->DataType()) << ").";
     grad_var->SetForwardDataType(var->DataType());
   }
@@ -64,66 +64,21 @@ void SetForwardDataTypeOfGradVar<VarBase>(const std::shared_ptr<VarBase>& var) {
   }
 }
 
-#ifdef PADDLE_WITH_XPU
-static void ReplaceXPUKernelIfNotExists(
-    const framework::OperatorWithKernel& op,
-    framework::OpKernelType* expected_kernel_key) {
-  auto& all_op_kernels = op.AllOpKernels();
-  auto kernels_iter = all_op_kernels.find(op.Type());
-  PADDLE_ENFORCE_NE(
-      kernels_iter, all_op_kernels.end(),
-      platform::errors::NotFound(
-          "There are no kernels which are registered in the %s operator.",
-          op.Type()));
-
-  auto& kernels = kernels_iter->second;
-  auto kernel_iter = kernels.find(*expected_kernel_key);
-  if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key->place_)) {
-    expected_kernel_key->place_ = platform::CPUPlace();
-  }
-}
-#endif
+extern const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<paddle::imperative::VarBase>& var);
+extern const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
+    const std::shared_ptr<VariableWrapper>& var);
 
 template <typename VarType>
-framework::OpKernelType GetExpectedKernelKey(
-    const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
-    const framework::OperatorWithKernel& op, const platform::Place& place,
-    const framework::AttributeMap& attrs) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
-  framework::RuntimeContext ctx({}, {});
-
-#ifdef PADDLE_WITH_MKLDNN
-  // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
-  // GetKernelType functions, so we need to copy the attributes there.
-  // Const qualifier of Attrs had to be discarded to overwrite it.
-  if (FLAGS_use_mkldnn) {
-    auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
-    mutable_op_attrs = attrs;
-  }
-#endif
-
-  auto expected_kernel_key =
-      op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
-          op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
-#ifdef PADDLE_WITH_XPU
-  ReplaceXPUKernelIfNotExists(op, &expected_kernel_key);
-#endif
-  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
-
-  return expected_kernel_key;
-}
-
-template <typename VarType>
-NameVarMap<VarType> PrepareData(
+std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
     const framework::OpKernelType& expected_kernel_key) {
-  NameVarMap<VarType> tmp_ins(ins);
-  for (auto& name_pair : tmp_ins) {
-    for (auto& var_base : name_pair.second) {
-      const auto* tensor = GetTensorFromVar(var_base->Var());
+  std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
+  for (const auto& name_pair : ins) {
+    for (size_t i = 0; i < name_pair.second.size(); ++i) {
+      auto& var_base = name_pair.second[i];
       SetForwardDataTypeOfGradVar(var_base);
+      const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
@@ -132,18 +87,56 @@ NameVarMap<VarType> PrepareData(
         } else {
           VLOG(3) << "Transform Variable " << var_base->Name() << " from "
                   << kernel_type_for_var << " to " << expected_kernel_key;
-          framework::Tensor out;
-          auto tmp_var = std::make_shared<VarType>(var_base->Name());
-          tmp_var->SetType(var_base->Type());
-          TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
-                        &out);
-          SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
-          var_base = tmp_var;
+
+          if (GetVariableWrapper(var_base)->hasCacheKey(expected_kernel_key)) {
+            VLOG(3) << "Hit variable_wrapper cache: key="
+                    << expected_kernel_key;
+            std::shared_ptr<VariableWrapper> cache_var =
+                GetVariableWrapper(var_base)->getCacheValue(
+                    expected_kernel_key);
+            if (tmp_ins_ptr == nullptr) {
+              tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
+            }
+
+            const auto* tensor = GetTensorFromVar(cache_var->Var());
+            auto tmp_var = std::make_shared<VarType>(var_base->Name());
+            tmp_var->SetType(var_base->Type());
+            SetTensorToVariable(cache_var->Var(), *tensor,
+                                tmp_var->MutableVar());
+            (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
+          } else {
+            framework::Tensor out;
+            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
+                          &out);
+            if (NeedTransformDataType(kernel_type_for_var,
+                                      expected_kernel_key)) {
+              // To avoid NameVarMap copy construction overhead in general
+              // scenarios, if inplace transformed, return original input
+              // directly
+              if (tmp_ins_ptr == nullptr) {
+                tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
+              }
+              auto tmp_var = std::make_shared<VarType>(var_base->Name());
+              tmp_var->SetType(var_base->Type());
+              SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
+              (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
+
+              GetVariableWrapper(var_base)->setCacheValue(
+                  expected_kernel_key, GetVariableWrapper(tmp_var));
+              VLOG(3) << "Set cache to variable_wrapper: key="
+                      << expected_kernel_key;
+            } else {
+              // if dtype is same, transform inplace will not change the
+              // original
+              // value, transform inplace to avoid multiple copy
+              SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
+            }
+          }
         }
       }
     }
   }
-  return tmp_ins;
+  return tmp_ins_ptr;
 }
 
 class PreparedOp {
@@ -154,8 +147,17 @@ class PreparedOp {
              const framework::OperatorWithKernel::OpKernelFunc& func,
              platform::DeviceContext* dev_ctx);
 
-  static PreparedOp Prepare(const framework::OperatorWithKernel& op,
-                            const framework::OpKernelType& expected_kernel_key);
+  static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
+                            const NameVarMap<VarBase>& outs,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place,
+                            const framework::AttributeMap& attrs);
+
+  static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
+                            const NameVarMap<VariableWrapper>& outs,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place,
+                            const framework::AttributeMap& attrs);
 
   void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs);
@@ -163,6 +165,8 @@ class PreparedOp {
   void Run(const NameVarMap<VariableWrapper>& ins,
            const NameVarMap<VariableWrapper>& outs,
            const framework::AttributeMap& attrs);
+
+  const framework::OpKernelType& kernel_type() const { return kernel_type_; }
 
  private:
   const framework::OperatorBase& op_;

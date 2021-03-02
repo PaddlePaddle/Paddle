@@ -35,14 +35,31 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 class HeterService;
+
 typedef int32_t (HeterService::*serviceHandlerFunc)(
     const PsRequestMessage& request, PsResponseMessage& response,
     brpc::Controller* cntl);
@@ -51,7 +68,7 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
     HeterServiceHandler;
 
-class HeterService : public ::paddle::PsService {
+class HeterService : public ::paddle::distributed::PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
@@ -62,8 +79,8 @@ class HeterService : public ::paddle::PsService {
   virtual ~HeterService() {}
 
   virtual void service(::google::protobuf::RpcController* controller,
-                       const ::paddle::PsRequestMessage* request,
-                       ::paddle::PsResponseMessage* response,
+                       const PsRequestMessage* request,
+                       PsResponseMessage* response,
                        ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string log_label("ReceiveCmd-");
@@ -136,7 +153,7 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
-    VLOG(0) << "HeterServer Stop()";
+    VLOG(3) << "HeterServer Stop()";
     std::unique_lock<std::mutex> lock(mutex_);
     stoped_ = true;
     cv_.notify_all();

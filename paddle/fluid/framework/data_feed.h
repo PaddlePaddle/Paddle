@@ -418,6 +418,7 @@ class MultiSlotType {
   void AppendValues(const float* input, size_t size) {
     CheckFloat();
     offset_.push_back(offset_.back() + size);
+
     float_feasign_.insert(float_feasign_.end(), input, input + size);
   }
   const std::vector<float>& GetFloatData() const { return float_feasign_; }
@@ -715,7 +716,7 @@ class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
   int pv_batch_size_;
 };
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
 class PrivateInstantDataFeed : public DataFeed {
  public:

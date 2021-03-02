@@ -14,28 +14,27 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-
-#include <algorithm>
 #include <sstream>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
@@ -194,7 +193,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CUDA support.",
@@ -1040,21 +1039,23 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
-bool OperatorWithKernel::SupportsMKLDNN() const {
+bool OperatorWithKernel::SupportsMKLDNN(
+    const proto::VarType::Type data_type) const {
   auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
   return std::any_of(op_kernels.begin(), op_kernels.end(),
-                     [](OpKernelMap::const_reference kern_pair) {
+                     [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
                               kern_pair.first.library_type_ ==
-                                  LibraryType::kMKLDNN;
+                                  LibraryType::kMKLDNN &&
+                              kern_pair.first.data_type_ == data_type;
                      });
 }
 
-bool OperatorWithKernel::CanMKLDNNBeUsed(
-    const framework::ExecutionContext& ctx) const {
+bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                                         proto::VarType::Type data_type) const {
   bool use_mkldnn_ctx =
       ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
-  return use_mkldnn_ctx && this->SupportsMKLDNN();
+  return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -1164,6 +1165,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
 #if defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
 #endif
   }

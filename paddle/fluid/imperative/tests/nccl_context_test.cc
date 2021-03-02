@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thread>  // NOLINT
+
 #include "paddle/fluid/imperative/nccl_context.h"
 
 #include "gtest/gtest.h"
@@ -31,7 +33,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
   return strategy;
 }
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
   auto strategy = GetStrategy(local_rank);
   platform::CUDAPlace gpu(local_rank);

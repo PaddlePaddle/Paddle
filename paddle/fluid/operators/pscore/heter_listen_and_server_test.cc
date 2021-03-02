@@ -14,30 +14,22 @@ limitations under the License. */
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <chrono>  // NOLINT
-#include <memory>
 #include <string>
 #include <thread>  // NOLINT
-#include <unordered_map>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include "paddle/fluid/distributed/service/heter_server.h"
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/pscore/heter_listen_and_serv_op.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::distributed;
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 DECLARE_double(eager_delete_tensor_gb);
 
 USE_OP(scale);

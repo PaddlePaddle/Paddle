@@ -136,7 +136,7 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   LOG(WARNING)
       << "The function \"UpdateDllFlag\" is only used to update the flag "
          "on the Windows shared library";
-  ret = google::SetCommandLineOption(name, value);
+  ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
 
   PADDLE_ENFORCE_EQ(
       ret.empty(), false,
@@ -145,5 +145,11 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   LOG(INFO) << ret;
   return ret;
 }
+
+#ifdef PADDLE_WITH_CRYPTO
+std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
+  return framework::CipherFactory::CreateCipher(config_file);
+}
+#endif
 
 }  // namespace paddle

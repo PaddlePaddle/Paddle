@@ -95,7 +95,7 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
 template <typename T>
 class PreluOpGradFunctor {
  public:
-  void operator()(cudaStream_t stream, const T* x, const T* alpha, const T* dy,
+  void operator()(gpuStream_t stream, const T* x, const T* alpha, const T* dy,
                   T* dx, T* dalpha, const framework::DDim& input_dims,
                   PRELU_MODE mode) {
     size_t numel = 1;
@@ -174,9 +174,15 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
+#ifdef __HIPCC__
+    TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
+        dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), hipcub::Sum(),
+        IdentityFunctor<T>(), stream);
+#else
     TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
         dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
         IdentityFunctor<T>(), stream);
+#endif
   }
 };
 

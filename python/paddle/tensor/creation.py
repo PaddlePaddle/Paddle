@@ -15,9 +15,10 @@
 from __future__ import print_function
 import numpy as np
 
+from ..fluid.layers import tensor
 from ..fluid.framework import Variable
 from ..fluid.framework import unique_name
-from ..fluid.framework import _current_expected_place
+from ..fluid.framework import _current_expected_place, _get_paddle_place
 from ..fluid.framework import dygraph_only
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
@@ -25,7 +26,6 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
 from paddle.common_ops_import import *
-
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  #DEFINE_ALIAS
 import paddle
@@ -69,8 +69,9 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data`` 
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
-            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be  
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is 
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs. 
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -80,7 +81,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         TypeError: If the data type of ``data`` is not scalar, list, tuple, numpy.ndarray, paddle.Tensor
         ValueError: If ``data`` is tuple|list, it can't contain nested tuple|list with different lengths , such as: [[1, 2], [3, 4, 5]]
         TypeError: If ``dtype`` is not bool, float16, float32, float64, int8, int16, int32, int64, uint8, complex64, complex128
-        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace
+        ValueError: If ``place`` is not paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace or specified pattern string. 
 
     Examples:
 
@@ -118,10 +119,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #         [(3+2j), (4+0j)]])
     """
 
+    place = _get_paddle_place(place)
     if place is None:
         place = _current_expected_place()
-    elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace)):
+    elif not isinstance(
+            place,
+        (core.Place, core.CPUPlace, core.CUDAPinnedPlace, core.CUDAPlace)):
         raise ValueError(
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace"
         )
@@ -555,8 +558,8 @@ def _tril_triu_op(helper):
     x = helper.kwargs.get('x', None)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
     if len(x.shape) < 2:
         raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)
@@ -1055,46 +1058,5 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    helper = LayerHelper('assign', **locals())
     check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
-    if isinstance(x, Variable):
-        check_dtype(
-            x.dtype, 'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
-            'assign', '(When the type of input in assign is Variable.)')
-        if output is None:
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='assign', inputs={'X': [x]}, outputs={'Out': [output]})
-    elif isinstance(x, numpy.ndarray):
-        dtype = convert_np_dtype_to_dtype_(x.dtype)
-        if dtype == VarDesc.VarType.BOOL:
-            value_name = "bool_values"
-            values = [bool(v) for v in x.flat]
-        elif dtype == VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in x.flat]
-        elif dtype == VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in x.flat]
-        elif dtype == VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [int(v) for v in x.flat]
-        else:
-            raise TypeError(
-                "When the type of 'x' in assign is numpy.ndarray, "
-                "the data type of 'x' must be bool, float32, int32 or int64, but "
-                "received %s." % convert_dtype(dtype))
-        if x.size > 1024 * 1024:
-            raise ValueError("The size of input is too big. Please consider "
-                             "saving it to file and 'load_op' to load it")
-        if output is None:
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={'dtype': dtype,
-                   'shape': list(x.shape),
-                   value_name: values})
-
-    return output
+    return tensor.assign(x, output)

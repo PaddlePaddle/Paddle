@@ -14,27 +14,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_desc.h"
 
-#include <algorithm>
-#include <functional>
-#include <mutex>  // NOLINT
 #include <string>
-#include <unordered_map>
-#include <utility>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
 
-class OpDesc;
-class BlockDesc;
 class CompileTimeInferShapeContext : public InferShapeContext {
  public:
   CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
@@ -712,6 +704,10 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
 
   void operator()(const std::vector<int64_t> &v) const {
     VectorToRepeated(v, attr_->mutable_longs());
+  }
+
+  void operator()(const std::vector<double> &v) const {
+    VectorToRepeated(v, attr_->mutable_float64s());
   }
 
   void operator()(boost::blank) const {

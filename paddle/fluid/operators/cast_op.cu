@@ -19,6 +19,43 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+// aligned vector generates vectorized load/store on CUDA
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) AlignedVector {
+  T val[Size];
+};
+
+template <typename T>
+inline int VectorizedSize(const T* pointer) {
+  uint64_t address = reinterpret_cast<uint64_t>(pointer);
+  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
+  if (address % vec4 == 0) {
+    return 4;
+  }
+  return 1;
+}
+
+template <typename InT, typename OutT, int VecSize>
+__global__ void VecCastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
+  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  using LoadT = AlignedVector<InT, VecSize>;
+  using StoreT = AlignedVector<OutT, VecSize>;
+  for (int i = idx * VecSize; i < N; i += blockDim.x * gridDim.x * VecSize) {
+    InT in_vec[VecSize];
+    LoadT* in_value = reinterpret_cast<LoadT*>(&in_vec);
+    *in_value = *reinterpret_cast<const LoadT*>(&in[i]);
+
+    OutT out_vec[VecSize];
+#pragma unroll
+    for (int ii = 0; ii < VecSize; ii++) {
+      out_vec[ii] = static_cast<OutT>(in_vec[ii]);
+    }
+
+    *(reinterpret_cast<StoreT*>(&out[i])) =
+        *reinterpret_cast<StoreT*>(&out_vec[0]);
+  }
+}
+
 template <typename InT, typename OutT>
 __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
   CUDA_KERNEL_LOOP(index, N) { out[index] = static_cast<OutT>(in[index]); }
@@ -40,8 +77,16 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
     auto* out = out_->mutable_data<OutT>(ctx_.GetPlace());
     platform::GpuLaunchConfig config =
         platform::GetGpuLaunchConfig1D(ctx_, size);
-    CastCUDAKernel<InT, OutT><<<config.block_per_grid, config.thread_per_block,
-                                0, ctx_.stream()>>>(in, size, out);
+    int vec_size = VectorizedSize<OutT>(out);
+    if (!std::is_same<InT, OutT>::value && vec_size == 4 && size % 4 == 0) {
+      VecCastCUDAKernel<InT, OutT, 4><<<
+          config.block_per_grid, config.thread_per_block, 0, ctx_.stream()>>>(
+          in, size, out);
+    } else {
+      CastCUDAKernel<InT, OutT><<<config.block_per_grid,
+                                  config.thread_per_block, 0, ctx_.stream()>>>(
+          in, size, out);
+    }
   }
 };
 

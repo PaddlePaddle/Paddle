@@ -148,6 +148,23 @@ class _ConvNd(layers.Layer):
             self._op_type = 'depthwise_conv2d'
             self._use_cudnn = False
 
+    def extra_repr(self):
+        main_str = '{_in_channels}, {_out_channels}, kernel_size={_kernel_size}'
+        if self._stride != [1] * len(self._stride):
+            main_str += ', stride={_stride}'
+        if self._padding != 0:
+            main_str += ', padding={_padding}'
+        if self._padding_mode is not 'zeros':
+            main_str += ', padding_mode={_padding_mode}'
+        if self.output_padding != 0:
+            main_str += ', output_padding={_output_padding}'
+        if self._dilation != [1] * len(self._dilation):
+            main_str += ', dilation={_dilation}'
+        if self._groups != 1:
+            main_str += ', groups={_groups}'
+        main_str += ', data_format={_data_format}'
+        return main_str.format(**self.__dict__)
+
 
 class Conv1D(_ConvNd):
     r"""

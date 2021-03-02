@@ -186,6 +186,20 @@ class TestComplexKronOp(OpTest):
             user_defined_grad_outputs=[self.grad_out])
 
 
+class TestKronOpTypePromotion(TestComplexKronOp):
+    def init_input_output(self):
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(
+            self.dtype) + 1J * np.random.random(self.y_shape).astype(self.dtype)
+        self.out = np.kron(self.x, self.y)
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.out_shape, self.dtype) + 1J * np.ones(
+            self.out_shape, self.dtype)
+        self.grad_x = self.get_grad_x_by_numpy().real
+        self.grad_y = self.get_grad_y_by_numpy()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

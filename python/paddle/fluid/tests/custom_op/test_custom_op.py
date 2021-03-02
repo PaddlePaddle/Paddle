@@ -20,11 +20,16 @@ import contextlib
 
 import paddle
 import paddle.fluid as fluid
-
 paddle.enable_static()
 
-file_dir = os.path.dirname(os.path.abspath(__file__))
-fluid.load_op_library(os.path.join(file_dir, 'librelu2_op.so'))
+
+def load_so(so_name):
+    """
+    Load .so file and parse custom op into OpInfoMap.
+    """
+    file_dir = os.path.dirname(os.path.abspath(__file__))
+    fluid.load_op_library(os.path.join(file_dir, so_name))
+
 
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -111,4 +116,5 @@ class CustomOpTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    load_so(so_name='librelu2_op.so')
     unittest.main()

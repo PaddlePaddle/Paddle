@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pixel_shuffle_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -185,3 +186,10 @@ REGISTER_OP_CPU_KERNEL(
     pixel_shuffle_grad,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(pixel_shuffle)
+    .AddCheckpoint(
+        R"ROC(
+               Compatible upgrade of pixel_shuffle, add a new attribute [data_format])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "data_format", "Specify the data format of the input data", true));

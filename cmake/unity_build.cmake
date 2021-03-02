@@ -1,11 +1,29 @@
 # Add the following code before all include to avoid compilation failure.
-set(UNITY_BEFORE_CODE [[
+set(UNITY_CC_BEFORE_CODE [[
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif]])
+set(UNITY_CU_BEFORE_CODE [[
+#ifndef __CUDACC_VER_MAJOR__
+#define __CUDACC_VER_MAJOR__ CUDA_COMPILER_MAJOR_VERSION
+#endif
+#ifndef __CUDACC_VER_MINOR__
+#define __CUDACC_VER_MINOR__ CUDA_COMPILER_MINOR_VERSION
+#endif]])
+if(WITH_GPU)
+    string(REPLACE "." ";" CUDA_COMPILER_VERSION ${CMAKE_CUDA_COMPILER_VERSION})
+    list(GET CUDA_COMPILER_VERSION 0 CUDA_COMPILER_MAJOR_VERSION)
+    list(GET CUDA_COMPILER_VERSION 1 CUDA_COMPILER_MINOR_VERSION)
+    string(REPLACE
+        "CUDA_COMPILER_MAJOR_VERSION" ${CUDA_COMPILER_MAJOR_VERSION}
+        UNITY_CU_BEFORE_CODE ${UNITY_CU_BEFORE_CODE})
+    string(REPLACE
+        "CUDA_COMPILER_MINOR_VERSION" ${CUDA_COMPILER_MINOR_VERSION}
+        UNITY_CU_BEFORE_CODE ${UNITY_CU_BEFORE_CODE})
+endif()
 
 # Group a list of source files that can be included together.
 # This combination is just a guiding rule, and the source file of group
@@ -83,7 +101,10 @@ function(compose_unity_target_sources TARGET TYPE)
                     if(NOT ${set_unity_file_sources})
                         # Add macro before include source files.
                         set_property(GLOBAL PROPERTY ${unity_file_sources} "// Generate by Unity Build")
-                        set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} ${UNITY_BEFORE_CODE})
+                        set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} ${UNITY_CC_BEFORE_CODE})
+                        if(WITH_GPU AND "${TYPE}" STREQUAL "cu")
+                            set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} ${UNITY_CU_BEFORE_CODE})
+                        endif()
                     endif()
                     set_property(GLOBAL APPEND PROPERTY ${unity_file_sources} "#include \"${src_absolute_path}\"")
                     set(unity_target_sources ${unity_target_sources} ${unity_file})

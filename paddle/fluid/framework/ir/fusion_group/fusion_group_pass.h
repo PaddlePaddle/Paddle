@@ -25,6 +25,7 @@ namespace framework {
 namespace ir {
 
 class Graph;
+
 namespace fusion_group {
 class SubGraph;
 }  // namespace fusion_group

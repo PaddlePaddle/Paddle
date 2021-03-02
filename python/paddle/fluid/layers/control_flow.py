@@ -2278,9 +2278,13 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    parent_block_var = parent_block.create_var(
-        dtype=var.dtype, shape=var.shape, type=var.type)
-    assign(var, parent_block_var)
+    if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            and parent_block._find_var_recursive(var.name):
+        parent_block_var = var
+    else:
+        parent_block_var = parent_block.create_var(
+            dtype=var.dtype, shape=var.shape, type=var.type)
+        assign(var, parent_block_var)
     return parent_block_var
 
 

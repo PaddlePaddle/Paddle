@@ -46,7 +46,6 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check
 
 from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
@@ -976,7 +975,7 @@ def sparse_embedding(input,
                              'fluid.contrib.layers.sparse_embedding')
 
     check_dtype(dtype, 'dtype', ['float32'],
-                'fluid.contrib.layers.sparse_embedding')
+                'paddle.static.nn.sparse_embedding')
 
     w = helper.create_parameter(
         attr=helper.param_attr,
@@ -993,11 +992,13 @@ def sparse_embedding(input,
     entry_str = "none"
 
     if entry is not None:
-        if not isinstance(entry, ProbabilityEntry) and not isinstance(
-                entry, CountFilterEntry):
+        if entry.__class__.__name__ not in [
+                "ProbabilityEntry", "CountFilterEntry"
+        ]:
             raise ValueError(
-                "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
-        entry_str = entry.to_attr()
+                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
+            )
+        entry_str = entry._to_attr()
 
     helper.append_op(
         type='lookup_table',

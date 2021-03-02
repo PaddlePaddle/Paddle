@@ -15,6 +15,7 @@
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Variable
+from paddle.fluid import core
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
@@ -35,7 +36,7 @@ def check_finite_and_unscale(x, scale, name=None):
     """
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float32', 'float64'],
+        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'check_finite_and_unscale')
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
@@ -58,6 +59,7 @@ def update_loss_scaling(x,
                         decr_every_n_nan_or_inf,
                         incr_ratio,
                         decr_ratio,
+                        stop_update=False,
                         name=None):
     """
     Update loss scaling according to overall gradients. If all gradients is 
@@ -90,9 +92,13 @@ def update_loss_scaling(x,
                              ['float32', 'float64'], "update_loss_scaling")
     check_type(x, 'x', (tuple, list), 'update_loss_scaling')
     for e in x:
-        check_variable_and_dtype(e, "x", ['float32', 'float64'],
+        check_variable_and_dtype(e, "x", ['float16', 'float32', 'float64'],
                                  'update_loss_scaling')
-        assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
+        if e.dtype == core.VarDesc.VarType.FP16:
+            assert prev_loss_scaling.dtype == core.VarDesc.VarType.FP32, \
+                "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+        else:
+            assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
     helper = LayerHelper("update_loss_scaling", **locals())
 
@@ -116,6 +122,7 @@ def update_loss_scaling(x,
         'decr_every_n_nan_or_inf': decr_every_n_nan_or_inf,
         'incr_ratio': incr_ratio,
         'decr_ratio': decr_ratio,
+        'stop_update': stop_update
     }
 
     helper.append_op(

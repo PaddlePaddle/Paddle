@@ -25,6 +25,7 @@ import six
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid import compiler
 from paddle.fluid import Program, program_guard
 
@@ -121,7 +122,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         bn_fetches = exe.run(program=main,
@@ -141,7 +142,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         for nm in fetch_names:
@@ -242,6 +243,35 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                 if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
+
+
+class TestConvertSyncBatchNormCase2(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        class Net(nn.Layer):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv1 = nn.Conv2D(3, 5, 3)
+                self.bn = []
+                bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
+                self.bn.append(bn)
+
+            def forward(self, x):
+                x = self.conv1(x)
+                for bn in self.bn:
+                    x = bn(x)
+                return x
+
+        model = nn.Sequential()
+        model.add_sublayer('net1', Net())
+        model.add_sublayer('net2', Net())
+        compare_model = nn.Sequential()
+        compare_model.add_sublayer('net1', Net())
+        compare_model.add_sublayer('net2', Net())
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        self.assertEqual(len(compare_model.sublayers()), len(model.sublayers()))
 
 
 if __name__ == '__main__':
