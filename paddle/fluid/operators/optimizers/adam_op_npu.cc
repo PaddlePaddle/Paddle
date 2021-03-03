@@ -37,15 +37,15 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
-    auto* param_out = ctx.Input<framework::Tensor>("ParamOut");
+    auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
     param_out->mutable_data<T>(ctx.GetPlace());
     // reshape
-    Tensor beta1_tensor(T);
-    beta1_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    Tensor beta1_tensor(framework::proto::VarType::FP32);
+    beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{bata1}, ctx.device_context(),
                      &beta1_tensor);
-    Tensor beta2_tensor(T);
-    beta2_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    Tensor beta2_tensor(framework::proto::VarType::FP32);
+    beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
     Tensor epsilon_tensor(T);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
