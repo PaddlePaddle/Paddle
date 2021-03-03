@@ -92,7 +92,7 @@ class PD_INFER_DECL Tensor {
   DataType type() const;
 
  protected:
-  explicit Tensor(void* scope) : scope_{scope} {}
+  explicit Tensor(void* scope);
   void* FindTensor() const;
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);

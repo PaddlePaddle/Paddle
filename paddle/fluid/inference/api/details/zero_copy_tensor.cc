@@ -29,8 +29,6 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(input_or_output_, true,
                     paddle::platform::errors::PermissionDenied(
                         "Can't reshape the output tensor, it is readonly"));
-  PADDLE_ENFORCE_NOT_NULL(scope_, paddle::platform::errors::PreconditionNotMet(
-                                      "The scope should not be nullptr."));
   auto *scope = static_cast<paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
@@ -62,9 +60,14 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kGPU): {
       return tensor->mutable_data<T>(paddle::platform::CUDAPlace(device_));
     }
+    case static_cast<int>(PlaceType::kXPU): {
+      return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Unsupported place: %d", static_cast<int>(place)));
+          "Only CPU / CUDA / XPU places is supported. The place `%d` is not "
+          "supported.",
+          static_cast<int>(place)));
       break;
   }
   return nullptr;
@@ -129,7 +132,8 @@ void Tensor::CopyFromCpu(const T *data) {
                          dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Not compiled with CUDA, should not reach here."));
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
@@ -139,7 +143,8 @@ void Tensor::CopyFromCpu(const T *data) {
                  paddle::platform::CPUPlace(), data, ele_size);
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Not compiled with XPU, should not reach here."));
+        "Can not create tensor with XPU place because paddle is not compiled "
+        "with XPU."));
 #endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -173,7 +178,8 @@ void Tensor::CopyToCpu(T *data) {
 #endif
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Not compile with CUDA, should not reach here."));
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
@@ -182,7 +188,8 @@ void Tensor::CopyToCpu(T *data) {
                  xpu_place, t_data, ele_num * sizeof(T));
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
-        "Not compile with XPU, should not reach here."));
+        "Can not create tensor with XPU place because paddle is not compiled "
+        "with XPU."));
 #endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -218,14 +225,19 @@ template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
 template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 
+Tensor::Tensor(void *scope) : scope_{scope} {
+  PADDLE_ENFORCE_NOT_NULL(scope_,
+                          paddle::platform::errors::PreconditionNotMet(
+                              "The `scope` can not be nullptr. It should be "
+                              "set to the pointer of scope."));
+}
+
 void *Tensor::FindTensor() const {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
           "Need to SetName first, so that the corresponding tensor can "
           "be retrieved."));
-  PADDLE_ENFORCE_NOT_NULL(scope_, paddle::platform::errors::PreconditionNotMet(
-                                      "The scope should not be nullptr."));
   auto *scope = static_cast<paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
