@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace operators {
 
@@ -53,7 +53,13 @@ __global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
-      assert(index_value >= 0 && index_value < input_dims[j]);
+      PADDLE_ENFORCE(
+          index_value >= 0 && index_value < input_dims[j],
+          "The index is out of bounds, "
+          "please check whether the dimensions of index and "
+          "input meet the requirements. It should "
+          "be less than [%d] and greater or equal to 0, but received [%d]",
+          input_dims[j], index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -165,14 +171,16 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
                                 int out_index_dim_size,
                                 int input_index_dim_size, int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int outer_size = outer_dim_size * out_index_dim_size;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
-    int inner_dim_index = idx / (outer_dim_size * out_index_dim_size);
-    int next_idx = idx % (outer_dim_size * out_index_dim_size);
-    int index_dim_index = next_idx / (outer_dim_size);
-    int out_dim_index = next_idx % outer_dim_size;
+    int inner_dim_index = idx / outer_size;
+    int next_idx = idx - outer_size * inner_dim_index;
+    int index_dim_index = next_idx / outer_dim_size;
+    int index_val = index[index_dim_index];
+    int out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int input_index =
         inner_dim_index * (outer_dim_size * input_index_dim_size) +
-        index[index_dim_index] * outer_dim_size + out_dim_index;
+        index_val * outer_dim_size + out_dim_index;
     out[idx] = input[input_index];
   }
 }
@@ -234,10 +242,11 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
   auto* out_data = out->mutable_data<T>(place);
   int out_size = out->numel();
 
-  int threads = 512;
-  int grid = (out_size + threads - 1) / threads;
+  platform::GpuLaunchConfig config =
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), out_size);
   auto stream = ctx.cuda_device_context().stream();
-  GatherGPUKernel<T, U><<<grid, threads, 0, stream>>>(
+  GatherGPUKernel<
+      T, U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
       input_data, index_data, out_data, outer_dim_size, inner_dim_size,
       index_size, index_dim_size, out_size);
 }
@@ -280,10 +289,11 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
   int out_index_dim_size = out_dim[axis_index];
   operators::math::set_constant(*dev_ctx, out, 0.0);
 
-  int threads = 512;
-  int grid = (input_size + threads - 1) / threads;
+  platform::GpuLaunchConfig config =
+      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_size);
   auto stream = ctx.cuda_device_context().stream();
-  GatherGradGPUKernel<T, U><<<grid, threads, 0, stream>>>(
+  GatherGradGPUKernel<
+      T, U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
       input_data, index_data, out_data, outer_dim_size, inner_dim_size,
       input_index_dim_size, out_index_dim_size, input_size);
 }

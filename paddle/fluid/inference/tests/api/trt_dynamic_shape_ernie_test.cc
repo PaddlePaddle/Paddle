@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -83,19 +83,20 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   output_t->copy_to_cpu(out_data->data());
 }
 
-void trt_ernie(bool with_fp16, std::vector<float> result) {
+void trt_ernie(bool with_fp16, std::vector<float> result,
+               float near_tolerance) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
-  SetConfig(&config, model_dir, true /* use_gpu */);
+  SetConfig(&config, model_dir, true);
 
   config.SwitchUseFeedFetchOps(false);
 
-  int batch = 1;
+  int batch = 32;
   int min_seq_len = 1;
   int max_seq_len = 128;
   int opt_seq_len = 128;
 
-  std::vector<int> min_shape = {batch, min_seq_len, 1};
+  std::vector<int> min_shape = {1, min_seq_len, 1};
   std::vector<int> max_shape = {batch, max_seq_len, 1};
   std::vector<int> opt_shape = {batch, opt_seq_len, 1};
   // Set the input's min, max, opt shape
@@ -103,17 +104,17 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
       {"read_file_0.tmp_0", min_shape},
       {"read_file_0.tmp_1", min_shape},
       {"read_file_0.tmp_2", min_shape},
-      {"matmul_0.tmp_0", {batch, min_seq_len, min_seq_len}}};
+      {"read_file_0.tmp_4", min_shape}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"read_file_0.tmp_0", max_shape},
       {"read_file_0.tmp_1", max_shape},
       {"read_file_0.tmp_2", max_shape},
-      {"matmul_0.tmp_0", {batch, max_seq_len, max_seq_len}}};
+      {"read_file_0.tmp_4", max_shape}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"read_file_0.tmp_0", opt_shape},
       {"read_file_0.tmp_1", opt_shape},
       {"read_file_0.tmp_2", opt_shape},
-      {"matmul_0.tmp_0", {batch, opt_seq_len, opt_seq_len}}};
+      {"read_file_0.tmp_4", opt_shape}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
@@ -124,20 +125,21 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
                                 opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
+
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-5);
+    EXPECT_NEAR(result[i], out_data[i], near_tolerance);
   }
 }
 
 TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result);
+  trt_ernie(false, result, 1e-5);
 }
 
 TEST(AnalysisPredictor, fp16) {
-#ifdef SUPPORTS_CUDA_FP16
-  std::vector<float> result = {0.598336, 0.219558, 0.182106};
-  trt_ernie(true, result);
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+  std::vector<float> result = {0.598, 0.219, 0.182};
+  trt_ernie(true, result, 4e-3);
 #endif
 }
 

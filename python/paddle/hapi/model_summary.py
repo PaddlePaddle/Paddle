@@ -244,6 +244,9 @@ def summary_string(model, input_size, dtypes=None):
             (not (layer == model) or depth < 1)):
 
             hooks.append(layer.register_forward_post_hook(hook))
+        # For rnn, gru and lstm layer
+        elif hasattr(layer, 'could_use_cudnn') and layer.could_use_cudnn:
+            hooks.append(layer.register_forward_post_hook(hook))
 
     if isinstance(input_size, tuple):
         input_size = [input_size]

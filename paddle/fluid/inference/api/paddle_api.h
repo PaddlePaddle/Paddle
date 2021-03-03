@@ -39,6 +39,7 @@ enum PaddleDType {
   INT64,
   INT32,
   UINT8,
+  INT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -161,7 +162,7 @@ struct PD_INFER_DECL PaddleTensor {
   std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
 };
 
-enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
+enum class PaddlePlace { kUNK = -1, kCPU, kGPU, kXPU };
 
 /// \brief Represents an n-dimensional array of values.
 /// The ZeroCopyTensor is used to store the input or output of the network.
@@ -307,7 +308,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// This will save the IO copy for transfering inputs and outputs to predictor
   /// workspace
   /// and get some performance improvement.
-  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(true)
+  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(false)
   /// and then use the `GetInputTensor` and `GetOutputTensor`
   /// to directly write or read the input/output tensors.
   /// \return Whether the run is successful
@@ -318,6 +319,17 @@ class PD_INFER_DECL PaddlePredictor {
   ///
   ///
   virtual void ClearIntermediateTensor() {}
+
+  ///
+  /// \brief Release all tmp tensor to compress the size of the memory pool.
+  /// The memory pool is considered to be composed of a list of chunks, if
+  /// the chunk is not occupied, it can be released.
+  ///
+  /// \return Number of bytes released. It may be smaller than the actual
+  /// released memory, because part of the memory is not managed by the
+  /// MemoryPool.
+  ///
+  virtual uint64_t TryShrinkMemory() { return 0; }
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
@@ -349,6 +361,7 @@ class PD_INFER_DECL PaddlePredictor {
 struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   NativeConfig();
   /// GPU related fields.
+  bool use_xpu{false};
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{
@@ -438,5 +451,8 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 PD_INFER_DECL std::string get_version();
 
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
 
 }  // namespace paddle

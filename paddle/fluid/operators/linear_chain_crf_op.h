@@ -47,9 +47,6 @@ struct ScalarMul {
 using framework::LoDTensor;
 using framework::LoD;
 using framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
@@ -127,16 +124,16 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         platform::CPUPlace());
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto x = EigenMatrix<T>::From(emission_weights_tmp);
-    auto x_row_max = EigenMatrix<T>::From(emission_row_max);
+    auto x = framework::EigenMatrix<T>::From(emission_weights_tmp);
+    auto x_row_max = framework::EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
             .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
-    auto x_exps = EigenMatrix<T>::From(emission_exps_tmp);
+    auto x_exps = framework::EigenMatrix<T>::From(emission_exps_tmp);
     x_exps.device(place) =
         (x - x_row_max.broadcast(Eigen::DSizes<int, 2>(1, tag_num))).exp();
-    auto w = EigenMatrix<T>::From(*transition_weights);
-    auto w_exps = EigenMatrix<T>::From(*transition_exps);
+    auto w = framework::EigenMatrix<T>::From(*transition_weights);
+    auto w_exps = framework::EigenMatrix<T>::From(*transition_exps);
     w_exps.device(place) = w.exp();
     T* log_likelihood = ll->data<T>();
     for (int64_t i = 0; i < seq_num; ++i) {
@@ -355,9 +352,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       NormalizeL1<T>(beta_value + k * tag_num, tag_num);
     }
 
-    auto x_grad_mat = EigenMatrix<T>::From(*emission_grad);
-    auto alpha_mat = EigenMatrix<T>::From(alpha);
-    auto beta_mat = EigenMatrix<T>::From(*beta);
+    auto x_grad_mat = framework::EigenMatrix<T>::From(*emission_grad);
+    auto alpha_mat = framework::EigenMatrix<T>::From(alpha);
+    auto beta_mat = framework::EigenMatrix<T>::From(*beta);
 
     auto* place = ctx.eigen_device();
     auto prob = alpha_mat * beta_mat;
@@ -381,13 +378,13 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
             x_grad_mat(/*to end state*/ seq_length - 1, k);
       }
 
-      auto x_exps_mat = EigenMatrix<T>::From(emission_exps);
+      auto x_exps_mat = framework::EigenMatrix<T>::From(emission_exps);
 
       // TODO(caoying): Fix this to avoid using this local variable if we can
       // profile the training process.
       Tensor tmp;
       tmp.mutable_data<T>(beta->dims(), platform::CPUPlace());
-      auto tmp_mat = EigenMatrix<T>::From(tmp);
+      auto tmp_mat = framework::EigenMatrix<T>::From(tmp);
       auto prob = beta_mat * x_exps_mat;
       auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
                          .reshape(Eigen::DSizes<int, 2>(seq_length, 1))

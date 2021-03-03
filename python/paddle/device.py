@@ -14,7 +14,7 @@
 
 # TODO: define the functions to manipulate devices 
 import re
-
+import os
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
@@ -82,7 +82,7 @@ def get_cudnn_version():
             
             import paddle
 
-            cudnn_version = get_cudnn_version()
+            cudnn_version = paddle.get_cudnn_version()
 
 
 
@@ -117,7 +117,7 @@ def set_device(device):
      .. code-block:: python
             
         import paddle
-        paddle.disable_static()
+
         paddle.set_device("cpu")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
@@ -137,7 +137,9 @@ def set_device(device):
             raise ValueError(
                 "The device should not be 'xpu', " \
                 "since PaddlePaddle is not compiled with XPU")
-        place = core.XPUPlace(ParallelEnv().dev_id)
+        selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+        device_id = int(selected_xpus[0])
+        place = core.XPUPlace(device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -179,7 +181,6 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        paddle.disable_static()
         device = paddle.get_device()
 
     """

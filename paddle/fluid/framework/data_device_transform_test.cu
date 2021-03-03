@@ -103,7 +103,7 @@ static void BuildVar(const std::string& param_name,
 }
 
 TEST(Operator, CPUtoGPU) {
-  paddle::framework::InitDevices(true);
+  paddle::framework::InitDevices();
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;

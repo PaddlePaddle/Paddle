@@ -153,7 +153,7 @@ def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
     if len(var.shape) == 0:
         # currently, shape = [], i.e., scaler tensor is not supported.
         # If it is supported, it should be formatted like this.
-        return _format_item(var.item(0), max_width, signed)
+        return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         if sumary and var.shape[0] > 2 * edgeitems:
             items = [

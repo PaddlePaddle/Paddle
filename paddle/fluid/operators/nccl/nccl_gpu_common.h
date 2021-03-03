@@ -23,7 +23,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 

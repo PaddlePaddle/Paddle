@@ -32,3 +32,21 @@ REGISTER_OP_CUDA_KERNEL(
                                            double>,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
                                            paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    fused_elemwise_add_activation,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
+                                       float>,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
+                                       double>,
+    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
+                                       paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    fused_elemwise_add_activation_grad,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
+                                           float>,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
+                                           double>,
+    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
+                                           paddle::platform::float16>);

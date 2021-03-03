@@ -96,7 +96,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         import paddle
         import numpy as np
 
-        paddle.disable_static()
         # vector * vector
         x_data = np.random.random([10]).astype(np.float32)
         y_data = np.random.random([10]).astype(np.float32)
@@ -174,8 +173,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
 def norm(x, p='fro', axis=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.norm
-	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
 
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
@@ -207,7 +204,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             
             import paddle
             import numpy as np
-            paddle.disable_static()
             shape=[2, 3, 4]
             np_input = np.arange(24).astype('float32') - 12
             np_input = np_input.reshape(shape)
@@ -453,9 +449,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
 
 def dist(x, y, p=2):
-    """
-	:alias_main: paddle.dist
-	:alias: paddle.dist,paddle.tensor.dist,paddle.tensor.linalg.dist
+    r"""
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -510,34 +504,32 @@ def dist(x, y, p=2):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
-        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
 
     Returns:
-        Variable: Tensor that is the p-norm of (x - y).
+        Tensor: Tensor that is the p-norm of (x - y).
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
-                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
-                out = paddle.dist(x, y, 0)
-                print(out.numpy()) # out = [1.]
+            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
+            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            out = paddle.dist(x, y, 0)
+            print(out) # out = [1.]
 
-                out = paddle.dist(x, y, 2)
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, 2)
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("inf"))
-                print(out.numpy()) # out = [2.]
+            out = paddle.dist(x, y, float("inf"))
+            print(out) # out = [2.]
 
-                out = paddle.dist(x, y, float("-inf"))
-                print(out.numpy()) # out = [0.]
+            out = paddle.dist(x, y, float("-inf"))
+            print(out) # out = [0.]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
@@ -567,7 +559,7 @@ def dot(x, y, name=None):
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
-        Variable: the calculated result Tensor.
+        Tensor: the calculated result Tensor.
 
     Examples:
 
@@ -576,13 +568,12 @@ def dot(x, y, name=None):
         import paddle
         import numpy as np
 
-        paddle.disable_static()
         x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
         y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         z = paddle.dot(x, y)
-        print(z.numpy())
+        print(z)
 
     """
     op_type = 'dot'
@@ -613,45 +604,45 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
-	:alias_main: paddle.t
-	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
-
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
-    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    the paddle.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
+        input (Tensor): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
+
         .. code-block:: text
-        # Example 1 (0-D tensor)
-         x = tensor([0.79])
-         paddle.t(x) = tensor([0.79])
-         # Example 2 (1-D tensor)
-         x = tensor([0.79, 0.84, 0.32])
-         paddle.t(x) = tensor([0.79, 0.84, 0.32])
-        
-         # Example 3 (2-D tensor)
-         x = tensor([0.79, 0.84, 0.32],
-                    [0.64, 0.14, 0.57])
-         paddle.t(x) = tensor([0.79, 0.64],
-                              [0.84, 0.14],
-                              [0.32, 0.57])
-    
+
+             # Example 1 (0-D tensor)
+             x = tensor([0.79])
+             paddle.t(x) = tensor([0.79])
+
+             # Example 2 (1-D tensor)
+             x = tensor([0.79, 0.84, 0.32])
+             paddle.t(x) = tensor([0.79, 0.84, 0.32])
+
+             # Example 3 (2-D tensor)
+             x = tensor([0.79, 0.84, 0.32],
+                        [0.64, 0.14, 0.57])
+             paddle.t(x) = tensor([0.79, 0.64],
+                                  [0.84, 0.14],
+                                  [0.32, 0.57])
+
      Examples:
+
         .. code-block:: python
+
             import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 3],
-                            dtype='float32')
+            x = paddle.ones(shape=[2, 3], dtype='int32')
             x_transposed = paddle.t(x)
-            print x_transposed.shape
-            #(3L, 2L)
+            print(x_transposed.shape)
+            # [3, 2]
     """
     if len(input.shape) > 2:
         raise ValueError(
@@ -744,7 +735,7 @@ def cross(x, y, axis=None, name=None):
 
 
 def cholesky(x, upper=False, name=None):
-    """
+    r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -754,7 +745,7 @@ def cholesky(x, upper=False, name=None):
     :math:`L` is lower-triangular.
 
     Args:
-        x (Variable): The input tensor. Its shape should be `[*, M, M]`,
+        x (Tensor): The input tensor. Its shape should be `[*, M, M]`,
             where * is zero or more batch dimensions, and matrices on the
             inner-most 2 dimensions all should be symmetric positive-definite.
             Its data type should be float32 or float64.
@@ -762,7 +753,7 @@ def cholesky(x, upper=False, name=None):
             triangular matrices. Default: False.
 
     Returns:
-        Variable: A Tensor with same shape and data type as `x`. It represents \
+        Tensor: A Tensor with same shape and data type as `x`. It represents \
             triangular matrices generated by Cholesky decomposition.
         
     Examples:
@@ -771,13 +762,12 @@ def cholesky(x, upper=False, name=None):
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             a = np.random.rand(3, 3)
             a_t = np.transpose(a, [1, 0])
             x_data = np.matmul(a, a_t) + 1e-03
             x = paddle.to_tensor(x_data)
             out = paddle.cholesky(x, upper=False)
-            print(out.numpy())
+            print(out)
             # [[1.190523   0.         0.        ]
             #  [0.9906703  0.27676893 0.        ]
             #  [1.25450498 0.05600871 0.06400121]]
@@ -799,9 +789,6 @@ def cholesky(x, upper=False, name=None):
 
 def bmm(x, y, name=None):
     """
-	:alias_main: paddle.bmm
-	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
-
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dementional and share the same batch size.
@@ -921,13 +908,11 @@ def mv(x, vec, name=None):
             import numpy as np
             import paddle
 
-            paddle.disable_static()
             x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
             x = paddle.to_tensor(x_data)
             vec_data = np.array([3, 5, 1])
             vec = paddle.to_tensor(vec_data).astype("float64")
             out = paddle.mv(x, vec)
-            paddle.enable_static()
     """
     if in_dygraph_mode():
         out = core.ops.mv(x, vec)

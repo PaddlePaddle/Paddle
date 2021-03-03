@@ -19,6 +19,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -183,7 +184,7 @@ class DataNormOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
@@ -389,7 +390,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %d", data_layout));
+            "Unknown storage order: %d, please use NCHW or NHWC", data_layout));
     }
   }
 };
@@ -482,18 +483,17 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
 #endif
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -700,7 +700,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
       }
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown storage order: %s", data_layout_str));
+            "Unknown storage order: %s, please use NCHW or NHWC",
+            data_layout_str));
     }
   }
 };
@@ -755,3 +756,10 @@ REGISTER_OP_CPU_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_VERSION(data_norm)
+    .AddCheckpoint(
+        R"ROC(
+              upgrad data_norm op by adding scale_w to support scale and shift.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "scale_w",
+            "scale_w is used to do scale duirng data_norm like batchnorm "));

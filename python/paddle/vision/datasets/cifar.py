@@ -17,6 +17,7 @@ from __future__ import print_function
 import tarfile
 import numpy as np
 import six
+from PIL import Image
 from six.moves import cPickle as pickle
 
 import paddle
@@ -46,11 +47,14 @@ class Cifar10(Dataset):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
         mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        transform(callable): transform to perform on image, None for no transform.
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
+        backend(str, optional): Specifies which type of image to be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Returns:
         Dataset: instance of cifar-10 dataset
@@ -72,13 +76,13 @@ class Cifar10(Dataset):
                         nn.Softmax())
 
                 def forward(self, image, label):
-                    image = paddle.reshape(image, (3, -1))
+                    image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
-            paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
             cifar10 = Cifar10(mode='train', transform=normalize)
 
             for i in range(10):
@@ -96,10 +100,19 @@ class Cifar10(Dataset):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
+                 download=True,
+                 backend=None):
         assert mode.lower() in ['train', 'test', 'train', 'test'], \
             "mode should be 'train10', 'test10', 'train100' or 'test100', but got {}".format(mode)
         self.mode = mode.lower()
+
+        if backend is None:
+            backend = paddle.vision.get_image_backend()
+        if backend not in ['pil', 'cv2']:
+            raise ValueError(
+                "Expected backend are one of ['pil', 'cv2'], but got {}"
+                .format(backend))
+        self.backend = backend
 
         self._init_url_md5_flag()
 
@@ -143,8 +156,16 @@ class Cifar10(Dataset):
     def __getitem__(self, idx):
         image, label = self.data[idx]
         image = np.reshape(image, [3, 32, 32])
+        image = image.transpose([1, 2, 0])
+
+        if self.backend == 'pil':
+            image = Image.fromarray(image.astype('uint8'))
         if self.transform is not None:
             image = self.transform(image)
+
+        if self.backend == 'pil':
+            return image, np.array(label).astype('int64')
+
         return image.astype(self.dtype), np.array(label).astype('int64')
 
     def __len__(self):
@@ -158,11 +179,14 @@ class Cifar100(Cifar10):
 
     Args:
         data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/cifar
         mode(str): 'train', 'test' mode. Default 'train'.
-        transform(callable): transform to perform on image, None for on transform.
-        download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+        transform(callable): transform to perform on image, None for no transform.
+        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
+        backend(str, optional): Specifies which type of image to be returned: 
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+            default backend is 'pil'. Default: None.
 
     Returns:
         Dataset: instance of cifar-100 dataset
@@ -184,13 +208,13 @@ class Cifar100(Cifar10):
                         nn.Softmax())
 
                 def forward(self, image, label):
-                    image = paddle.reshape(image, (3, -1))
+                    image = paddle.reshape(image, (1, -1))
                     return self.fc(image), label
 
-            paddle.disable_static()
 
             normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                std=[0.5, 0.5, 0.5])
+                                  std=[0.5, 0.5, 0.5],
+                                  data_format='HWC')
             cifar100 = Cifar100(mode='train', transform=normalize)
 
             for i in range(10):
@@ -208,8 +232,10 @@ class Cifar100(Cifar10):
                  data_file=None,
                  mode='train',
                  transform=None,
-                 download=True):
-        super(Cifar100, self).__init__(data_file, mode, transform, download)
+                 download=True,
+                 backend=None):
+        super(Cifar100, self).__init__(data_file, mode, transform, download,
+                                       backend)
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL

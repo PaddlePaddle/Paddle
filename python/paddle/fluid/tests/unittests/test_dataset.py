@@ -65,8 +65,10 @@ class TestDataset(unittest.TestCase):
         dataset = fluid.InMemoryDataset()
         dataset.set_parse_ins_id(True)
         dataset.set_parse_content(True)
+        dataset._set_trainer_num(1)
         self.assertTrue(dataset.parse_ins_id)
         self.assertTrue(dataset.parse_content)
+        self.assertEqual(dataset.trainer_num, 1)
 
     def test_run_with_dump(self):
         """

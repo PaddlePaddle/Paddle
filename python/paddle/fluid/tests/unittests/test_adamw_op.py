@@ -29,10 +29,12 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01)
-        out = linear(a)
-        out.backward()
-        adam.step()
-        adam.clear_gradients()
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
 
     def test_adamw_op_coverage(self):
         paddle.disable_static()
@@ -47,6 +49,7 @@ class TestAdamWOp(unittest.TestCase):
         assert (adam.__str__() is not None)
 
     def test_adamw_op(self):
+        paddle.enable_static()
         place = fluid.CPUPlace()
         shape = [2, 3, 8, 8]
         exe = fluid.Executor(place)
@@ -75,6 +78,7 @@ class TestAdamWOp(unittest.TestCase):
         data_np = np.random.random(shape).astype('float32')
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
+        paddle.disable_static()
 
     def test_adamw_op_invalid_input(self):
         paddle.disable_static()
@@ -88,6 +92,33 @@ class TestAdamWOp(unittest.TestCase):
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters())
+
+    def test_adamw_lr_decay(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+
+        lr = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=10)
+        wd = 0.1
+        adam = paddle.optimizer.AdamW(
+            learning_rate=lr,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=wd)
+
+        for _ in range(2):
+            out = linear(a)
+            out.backward()
+            lr_to_coeff = adam._lr_to_coeff
+            adam.step()
+
+            for i, value in enumerate(lr_to_coeff.values()):
+                self.assertAlmostEqual(value.numpy()[0], 1.0 - lr() * wd)
+            self.assertEqual(len(adam._lr_to_coeff), 0)
+
+            lr.step()
+            adam.clear_gradients()
 
 
 if __name__ == "__main__":

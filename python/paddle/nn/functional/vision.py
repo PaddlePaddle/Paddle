@@ -54,11 +54,7 @@ import numpy as np
 # from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
 # from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
 
-__all__ = [
-    'affine_grid',
-    'grid_sample',
-    'pixel_shuffle'
-]
+__all__ = ['affine_grid', 'grid_sample', 'pixel_shuffle']
 
 
 def affine_grid(theta, out_shape, align_corners=True, name=None):
@@ -90,7 +86,6 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-            paddle.disable_static()
             # theta shape = [1, 2, 3]
             theta = np.array([[[-0.7, -0.4, 0.3],
                                [ 0.6,  0.5, 1.5]]]).astype("float32")
@@ -99,7 +94,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     theta_t,
                     [1, 2, 3, 3],
                     align_corners=False)
-            print(y_t.numpy())
+            print(y_t)
             
             #[[[[ 1.0333333   0.76666665]
             #   [ 0.76666665  1.0999999 ]
@@ -274,7 +269,7 @@ def grid_sample(x,
                 mode='bilinear',
                 padding_mode='border',
                 align_corners=True)
-            print(y_t.numpy())
+            print(y_t)
             
             # output shape = [1, 1, 3, 4]
             # [[[[ 0.34   0.016  0.086 -0.448]
@@ -306,6 +301,9 @@ def grid_sample(x,
     if (cudnn_version is not None
         ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
         use_cudnn = True
+        # CUDNN always computes gradients for all inputs
+        x.stop_gradient = False
+        grid.stop_gradient = False
     ipts = {'X': x, 'Grid': grid}
     attrs = {
         'mode': mode,
@@ -343,15 +341,14 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         ValueError: If the square of upscale_factor cannot divide the channels of input.
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
             x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            paddle.disable_static()
             x_var = paddle.to_tensor(x)
             out_var = F.pixel_shuffle(x_var, 3)
             out = out_var.numpy()
-            print(out.shape) 
             # (2, 1, 12, 12)
     """
     if not in_dygraph_mode():

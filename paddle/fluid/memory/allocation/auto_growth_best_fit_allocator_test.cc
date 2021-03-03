@@ -15,7 +15,6 @@
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 
 #include <cstdlib>
-#include <vector>
 
 #include "gtest/gtest.h"
 
@@ -65,6 +64,7 @@ static void TestFreeIdleChunk(bool free_idle_chunk,
     } else {
       ASSERT_EQ(recorded_allocator->AllocatedSize(), memory_size + alignment);
     }
+    ag_allocator->Release(platform::CPUPlace());
   }
 }
 

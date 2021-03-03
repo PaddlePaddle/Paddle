@@ -73,7 +73,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
         feed_dict = {"image": img, "label": label}
         res = exe.run(binary, feed_dict)
 
-    def test_fw_bw(self):
+    def test_check_op_times(self):
         if core.is_compiled_with_cuda():
             self.check_backward(use_cuda=True)
         self.check_backward(use_cuda=False)

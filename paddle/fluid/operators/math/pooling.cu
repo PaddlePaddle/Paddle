@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -126,7 +127,7 @@ __global__ void KernelPool2DGrad(
       phend = min(h_offset / stride_height + 1, output_height);
       pwend = min(w_offset / stride_width + 1, output_width);
     }
-    T gradient = 0;
+    T gradient = static_cast<T>(0.0);
     T input = input_data[index];
 
     int output_stride;
@@ -236,8 +237,8 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     const T* input, const std::vector<int>& input_shape,
     const std::vector<int>& output_shape, const std::vector<int>& ksize,
     const std::vector<int>& strides, const std::vector<int>& paddings,
-    PoolProcess pool_compute, bool exclusive, bool adaptive, T* output,
-    cudaStream_t stream) {
+    bool exclusive, bool adaptive, T* output, gpuStream_t stream,
+    PoolProcess pool_compute) {
   const int batch_size = input_shape[0];
   const int input_channels = input_shape[1];
   const int input_height = input_shape[2];
@@ -264,20 +265,21 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
 }
 
 /*
-* Tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -310,8 +312,8 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
     const int batch_size = input.dims()[0];
 
@@ -351,12 +353,12 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
   }
 };
 /*
-* Tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, typename T>
 class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
@@ -366,9 +368,9 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive,
-                  framework::Tensor* input_grad) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* input_grad,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -398,13 +400,15 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
         ksize_width, stride_height, stride_width, padding_height, padding_width,
         pool_process, exclusive, adaptive, input_grad_data);
   }
-  void operator()(
-      const platform::CUDADeviceContext& context,
-      const framework::Tensor& input, const framework::Tensor& output,
-      const framework::Tensor& output_grad, const std::vector<int>& ksize,
-      const std::vector<int>& strides, const std::vector<int>& paddings,
-      const std::string data_format, PoolProcess pool_process, bool exclusive,
-      bool adaptive, framework::Tensor* input_grad) {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* input_grad, PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
 
     const int batch_size = input.dims()[0];
@@ -448,12 +452,12 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 };
 
 /*
-* Tensors are in NCHW or NHWC format.
-* Ksize, strides are two elements. These two elements represent height
-* and width, respectively.
-* Paddings are four elements. These four elements represent height_up,
-* height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCHW or NHWC format.
+ * Ksize, strides are two elements. These two elements represent height
+ * and width, respectively.
+ * Paddings are four elements. These four elements represent height_up,
+ * height_down, width_left and width_right, respectively.
+ */
 template <typename T>
 class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
  public:
@@ -549,6 +553,8 @@ template class Pool2dDirectCUDAFunctor<paddle::operators::math::AvgPool<float>,
 
 template class MaxPool2dGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxPool2dGradFunctor<platform::CUDADeviceContext, double>;
+template class MaxPool2dGradFunctor<platform::CUDADeviceContext,
+                                    paddle::platform::float16>;
 
 template class Pool2dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
@@ -570,6 +576,23 @@ template class Pool2dGradFunctor<platform::CUDADeviceContext,
 template class Pool2dGradFunctor<platform::CUDADeviceContext,
                                  paddle::operators::math::AvgPoolGrad<double>,
                                  double>;
+
+template class Pool2dFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::MaxPool<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool2dFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::AvgPool<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool2dGradFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::MaxPoolGrad<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool2dGradFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::AvgPoolGrad<paddle::platform::float16>,
+    paddle::platform::float16>;
 
 template <typename PoolProcess, typename T>
 __global__ void KernelPool3D(
@@ -712,7 +735,7 @@ __global__ void KernelPool3DGrad(
       pwend = min((w_offset) / stride_width + 1, output_width);
     }
 
-    T gradient = 0;
+    T gradient = static_cast<T>(0.0);
     T input = input_data[index];
 
     int output_stride;
@@ -848,21 +871,22 @@ __global__ void KernelMaxPool3DGrad(
 }
 
 /*
-* Tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -902,8 +926,8 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NDHWC");
     const int batch_size = input.dims()[0];
 
@@ -952,13 +976,13 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 };
 
 /*
-* Tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * Tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
  public:
@@ -968,9 +992,9 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive,
-                  framework::Tensor* input_grad) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* input_grad,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_depth = input.dims()[2];
@@ -1008,13 +1032,15 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
         stride_height, stride_width, padding_depth, padding_height,
         padding_width, pool_process, exclusive, adaptive, input_grad_data);
   }
-  void operator()(
-      const platform::CUDADeviceContext& context,
-      const framework::Tensor& input, const framework::Tensor& output,
-      const framework::Tensor& output_grad, const std::vector<int>& ksize,
-      const std::vector<int>& strides, const std::vector<int>& paddings,
-      const std::string data_format, PoolProcess pool_process, bool exclusive,
-      bool adaptive, framework::Tensor* input_grad) {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& output,
+                  const framework::Tensor& output_grad,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* input_grad, PoolProcess pool_process) {
     bool channel_last = (data_format == "NDHWC");
 
     const int batch_size = input.dims()[0];
@@ -1064,13 +1090,13 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 };
 
 /*
-* tensors are in NCDHW or NDHWC format.
-* Ksize, strides, paddings are three elements. These three elements represent
-* depth, height and width, respectively.
-* Paddings are six elements. These six elements represent depth_forth,
-* depth_back,
-* height_up, height_down, width_left and width_right, respectively.
-*/
+ * tensors are in NCDHW or NDHWC format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ * Paddings are six elements. These six elements represent depth_forth,
+ * depth_back,
+ * height_up, height_down, width_left and width_right, respectively.
+ */
 template <class T>
 class MaxPool3dGradFunctor<platform::CUDADeviceContext, T> {
  public:
@@ -1174,6 +1200,8 @@ class MaxPool3dGradFunctor<platform::CUDADeviceContext, T> {
 
 template class MaxPool3dGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxPool3dGradFunctor<platform::CUDADeviceContext, double>;
+template class MaxPool3dGradFunctor<platform::CUDADeviceContext,
+                                    paddle::platform::float16>;
 
 template class Pool3dFunctor<platform::CUDADeviceContext,
                              paddle::operators::math::MaxPool<float>, float>;
@@ -1195,6 +1223,23 @@ template class Pool3dGradFunctor<platform::CUDADeviceContext,
 template class Pool3dGradFunctor<platform::CUDADeviceContext,
                                  paddle::operators::math::AvgPoolGrad<double>,
                                  double>;
+
+template class Pool3dFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::MaxPool<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool3dFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::AvgPool<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool3dGradFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::MaxPoolGrad<paddle::platform::float16>,
+    paddle::platform::float16>;
+template class Pool3dGradFunctor<
+    platform::CUDADeviceContext,
+    paddle::operators::math::AvgPoolGrad<paddle::platform::float16>,
+    paddle::platform::float16>;
 
 template <typename T1, typename T2>
 __global__ void KernelMaxPool2dWithIdx(

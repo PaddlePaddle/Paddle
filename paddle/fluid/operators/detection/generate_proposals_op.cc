@@ -18,6 +18,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/detection/bbox_util.h"
+#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -26,18 +28,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-
-static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
-
-static void AppendProposals(Tensor *dst, int64_t offset, const Tensor &src) {
-  auto *out_data = dst->data<void>();
-  auto *to_add_data = src.data<void>();
-  size_t size_of_t = framework::SizeOfType(src.type());
-  offset *= size_of_t;
-  std::memcpy(
-      reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(out_data) + offset),
-      to_add_data, src.numel() * size_of_t);
-}
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
@@ -76,225 +66,6 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
 };
-
-template <class T>
-static inline void BoxCoder(const platform::DeviceContext &ctx,
-                            Tensor *all_anchors, Tensor *bbox_deltas,
-                            Tensor *variances, Tensor *proposals) {
-  T *proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
-
-  int64_t row = all_anchors->dims()[0];
-  int64_t len = all_anchors->dims()[1];
-
-  auto *bbox_deltas_data = bbox_deltas->data<T>();
-  auto *anchor_data = all_anchors->data<T>();
-  const T *variances_data = nullptr;
-  if (variances) {
-    variances_data = variances->data<T>();
-  }
-
-  for (int64_t i = 0; i < row; ++i) {
-    T anchor_width = anchor_data[i * len + 2] - anchor_data[i * len] + 1.0;
-    T anchor_height = anchor_data[i * len + 3] - anchor_data[i * len + 1] + 1.0;
-
-    T anchor_center_x = anchor_data[i * len] + 0.5 * anchor_width;
-    T anchor_center_y = anchor_data[i * len + 1] + 0.5 * anchor_height;
-
-    T bbox_center_x = 0, bbox_center_y = 0;
-    T bbox_width = 0, bbox_height = 0;
-
-    if (variances) {
-      bbox_center_x =
-          variances_data[i * len] * bbox_deltas_data[i * len] * anchor_width +
-          anchor_center_x;
-      bbox_center_y = variances_data[i * len + 1] *
-                          bbox_deltas_data[i * len + 1] * anchor_height +
-                      anchor_center_y;
-      bbox_width = std::exp(std::min<T>(variances_data[i * len + 2] *
-                                            bbox_deltas_data[i * len + 2],
-                                        kBBoxClipDefault)) *
-                   anchor_width;
-      bbox_height = std::exp(std::min<T>(variances_data[i * len + 3] *
-                                             bbox_deltas_data[i * len + 3],
-                                         kBBoxClipDefault)) *
-                    anchor_height;
-    } else {
-      bbox_center_x =
-          bbox_deltas_data[i * len] * anchor_width + anchor_center_x;
-      bbox_center_y =
-          bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
-      bbox_width = std::exp(std::min<T>(bbox_deltas_data[i * len + 2],
-                                        kBBoxClipDefault)) *
-                   anchor_width;
-      bbox_height = std::exp(std::min<T>(bbox_deltas_data[i * len + 3],
-                                         kBBoxClipDefault)) *
-                    anchor_height;
-    }
-
-    proposals_data[i * len] = bbox_center_x - bbox_width / 2;
-    proposals_data[i * len + 1] = bbox_center_y - bbox_height / 2;
-    proposals_data[i * len + 2] = bbox_center_x + bbox_width / 2 - 1;
-    proposals_data[i * len + 3] = bbox_center_y + bbox_height / 2 - 1;
-  }
-  // return proposals;
-}
-
-template <class T>
-static inline void ClipTiledBoxes(const platform::DeviceContext &ctx,
-                                  const Tensor &im_info, Tensor *boxes) {
-  T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
-  const T *im_info_data = im_info.data<T>();
-  T zero(0);
-  for (int64_t i = 0; i < boxes->numel(); ++i) {
-    if (i % 4 == 0) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
-    } else if (i % 4 == 1) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
-    } else if (i % 4 == 2) {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), zero);
-    } else {
-      boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), zero);
-    }
-  }
-}
-
-template <class T>
-static inline void FilterBoxes(const platform::DeviceContext &ctx,
-                               Tensor *boxes, float min_size,
-                               const Tensor &im_info, Tensor *keep) {
-  const T *im_info_data = im_info.data<T>();
-  T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
-  T im_scale = im_info_data[2];
-  keep->Resize({boxes->dims()[0]});
-  min_size = std::max(min_size, 1.0f);
-  int *keep_data = keep->mutable_data<int>(ctx.GetPlace());
-
-  int keep_len = 0;
-  for (int i = 0; i < boxes->dims()[0]; ++i) {
-    T ws = boxes_data[4 * i + 2] - boxes_data[4 * i] + 1;
-    T hs = boxes_data[4 * i + 3] - boxes_data[4 * i + 1] + 1;
-    T ws_origin_scale =
-        (boxes_data[4 * i + 2] - boxes_data[4 * i]) / im_scale + 1;
-    T hs_origin_scale =
-        (boxes_data[4 * i + 3] - boxes_data[4 * i + 1]) / im_scale + 1;
-    T x_ctr = boxes_data[4 * i] + ws / 2;
-    T y_ctr = boxes_data[4 * i + 1] + hs / 2;
-    if (ws_origin_scale >= min_size && hs_origin_scale >= min_size &&
-        x_ctr <= im_info_data[1] && y_ctr <= im_info_data[0]) {
-      keep_data[keep_len++] = i;
-    }
-  }
-  keep->Resize({keep_len});
-}
-
-template <class T>
-static inline std::vector<std::pair<T, int>> GetSortedScoreIndex(
-    const std::vector<T> &scores) {
-  std::vector<std::pair<T, int>> sorted_indices;
-  sorted_indices.reserve(scores.size());
-  for (size_t i = 0; i < scores.size(); ++i) {
-    sorted_indices.emplace_back(scores[i], i);
-  }
-  // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
-                   [](const std::pair<T, int> &a, const std::pair<T, int> &b) {
-                     return a.first < b.first;
-                   });
-  return sorted_indices;
-}
-
-template <class T>
-static inline T BBoxArea(const T *box, bool normalized) {
-  if (box[2] < box[0] || box[3] < box[1]) {
-    // If coordinate values are is invalid
-    // (e.g. xmax < xmin or ymax < ymin), return 0.
-    return static_cast<T>(0.);
-  } else {
-    const T w = box[2] - box[0];
-    const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
-      // If coordinate values are not within range [0, 1].
-      return (w + 1) * (h + 1);
-    }
-  }
-}
-
-template <class T>
-static inline T JaccardOverlap(const T *box1, const T *box2, bool normalized) {
-  if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
-      box2[3] < box1[1]) {
-    return static_cast<T>(0.);
-  } else {
-    const T inter_xmin = std::max(box1[0], box2[0]);
-    const T inter_ymin = std::max(box1[1], box2[1]);
-    const T inter_xmax = std::min(box1[2], box2[2]);
-    const T inter_ymax = std::min(box1[3], box2[3]);
-    const T inter_w = std::max(T(0), inter_xmax - inter_xmin + 1);
-    const T inter_h = std::max(T(0), inter_ymax - inter_ymin + 1);
-    const T inter_area = inter_w * inter_h;
-    const T bbox1_area = BBoxArea<T>(box1, normalized);
-    const T bbox2_area = BBoxArea<T>(box2, normalized);
-    return inter_area / (bbox1_area + bbox2_area - inter_area);
-  }
-}
-
-template <typename T>
-static inline Tensor VectorToTensor(const std::vector<T> &selected_indices,
-                                    int selected_num) {
-  Tensor keep_nms;
-  keep_nms.Resize({selected_num});
-  auto *keep_data = keep_nms.mutable_data<T>(platform::CPUPlace());
-  for (int i = 0; i < selected_num; ++i) {
-    keep_data[i] = selected_indices[i];
-  }
-  return keep_nms;
-}
-
-template <class T>
-static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
-                         Tensor *scores, T nms_threshold, float eta) {
-  int64_t num_boxes = bbox->dims()[0];
-  // 4: [xmin ymin xmax ymax]
-  int64_t box_size = bbox->dims()[1];
-
-  std::vector<T> scores_data(num_boxes);
-  std::copy_n(scores->data<T>(), num_boxes, scores_data.begin());
-  std::vector<std::pair<T, int>> sorted_indices =
-      GetSortedScoreIndex<T>(scores_data);
-
-  std::vector<int> selected_indices;
-  int selected_num = 0;
-  T adaptive_threshold = nms_threshold;
-  const T *bbox_data = bbox->data<T>();
-  while (sorted_indices.size() != 0) {
-    int idx = sorted_indices.back().second;
-    bool flag = true;
-    for (int kept_idx : selected_indices) {
-      if (flag) {
-        T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
-                                      bbox_data + kept_idx * box_size, false);
-        flag = (overlap <= adaptive_threshold);
-      } else {
-        break;
-      }
-    }
-    if (flag) {
-      selected_indices.push_back(idx);
-      ++selected_num;
-    }
-    sorted_indices.erase(sorted_indices.end() - 1);
-    if (flag && eta < 1 && adaptive_threshold > 0.5) {
-      adaptive_threshold *= eta;
-    }
-  }
-  return VectorToTensor(selected_indices, selected_num);
-}
 
 template <typename T>
 class GenerateProposalsKernel : public framework::OpKernel<T> {
@@ -434,10 +205,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
-    ClipTiledBoxes<T>(ctx, im_info_slice, &proposals);
+    ClipTiledBoxes<T>(ctx, im_info_slice, proposals, &proposals, false);
 
     Tensor keep;
-    FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
+    FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, true, &keep);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
       math::SetConstant<platform::CPUDeviceContext, T> set_zero;
@@ -532,6 +303,13 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);
 REGISTER_OP_VERSION(generate_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Incompatible upgrade of output [RpnRoisLod])ROC",
+        paddle::framework::compatible::OpVersionDesc().DeleteOutput(
+            "RpnRoisLod",
+            "Delete RpnRoisLod due to incorrect output name and "
+            "it is not used in object detection models yet."))
     .AddCheckpoint(
         R"ROC(
               Upgrade generate_proposals add a new output [RpnRoisNum])ROC",

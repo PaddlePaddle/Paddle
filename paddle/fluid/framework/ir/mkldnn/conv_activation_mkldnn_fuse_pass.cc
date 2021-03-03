@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -107,7 +109,7 @@ REGISTER_PASS(conv_relu_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_relu_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("relu", 0));
 
 REGISTER_PASS(conv_leaky_relu_mkldnn_fuse_pass,
@@ -115,7 +117,7 @@ REGISTER_PASS(conv_leaky_relu_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_leaky_relu_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .LE("leaky_relu", 1));
 
 REGISTER_PASS(conv_relu6_mkldnn_fuse_pass,
@@ -123,7 +125,7 @@ REGISTER_PASS(conv_relu6_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_relu6_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("relu6", 0));
 
 REGISTER_PASS(conv_swish_mkldnn_fuse_pass,
@@ -131,5 +133,13 @@ REGISTER_PASS(conv_swish_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_swish_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
+            .LE("conv2d", 1)
             .EQ("swish", 0));
+
+REGISTER_PASS(conv_hard_swish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DHardSwishFusePass);
+REGISTER_PASS_CAPABILITY(conv_hard_swish_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("hard_swish", 0));

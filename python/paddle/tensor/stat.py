@@ -14,7 +14,7 @@
 
 # TODO: define statistical functions of a tensor  
 
-__all__ = ['mean', 'std', 'var', 'numel']
+__all__ = ['mean', 'std', 'var', 'numel', 'median']
 
 import numpy as np
 from ..fluid.framework import Variable
@@ -56,17 +56,13 @@ def mean(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-
-            x = np.array([[[1, 2, 3, 4],
-                           [5, 6, 7, 8],
-                           [9, 10, 11, 12]],
-                          [[13, 14, 15, 16],
-                           [17, 18, 19, 20],
-                           [21, 22, 23, 24]]], 'float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[[1., 2., 3., 4.],
+                                   [5., 6., 7., 8.],
+                                   [9., 10., 11., 12.]],
+                                  [[13., 14., 15., 16.],
+                                   [17., 18., 19., 20.],
+                                   [21., 22., 23., 24.]]])
             out1 = paddle.mean(x)
             # [12.5]
             out2 = paddle.mean(x, axis=-1)
@@ -145,12 +141,8 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
-            paddle.disable_static()
 
-            x = np.array([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.var(x)
             # [2.66666667]
             out2 = paddle.var(x, axis=1)
@@ -208,12 +200,8 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
-            paddle.disable_static()
 
-            x = np.array([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.std(x)
             # [1.63299316]
             out2 = paddle.std(x, axis=1)
@@ -242,7 +230,6 @@ def numel(x, name=None):
 
             import paddle
             
-            paddle.disable_static()
             x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
             numel = paddle.numel(x) # 140
 
@@ -258,3 +245,89 @@ def numel(x, name=None):
         dtype=core.VarDesc.VarType.INT64)
     helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
     return out
+
+
+def median(x, axis=None, keepdim=False, name=None):
+    """
+    Compute the median along the specified axis.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+        axis (int, optional): The axis along which to perform median calculations ``axis`` should be int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of median along ``axis`` of ``x``. If data type of ``x`` is float64, data type of results will be float64, otherwise data type will be float32.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(12).reshape([3, 4])
+            # x is [[0 , 1 , 2 , 3 ],
+            #       [4 , 5 , 6 , 7 ],
+            #       [8 , 9 , 10, 11]]
+
+            y1 = paddle.median(x)
+            # y1 is [5.5]
+
+            y2 = paddle.median(x, axis=0)
+            # y2 is [4., 5., 6., 7.]
+
+            y3 = paddle.median(x, axis=1)
+            # y3 is [1.5, 5.5, 9.5]
+
+            y4 = paddle.median(x, axis=0, keepdim=True)
+            # y4 is [[4., 5., 6., 7.]]
+
+    """
+    if not isinstance(x, Variable):
+        raise TypeError("In median, the input x should be a Tensor.")
+    is_flatten = axis is None
+    dims = len(x.shape)
+    if is_flatten:
+        x = paddle.flatten(x)
+        axis = 0
+    else:
+        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
+            raise ValueError(
+                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
+            )
+        if axis < 0:
+            axis += dims
+    sz = x.shape[axis]
+    kth = sz >> 1
+    tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
+    dtype = 'float64' if x.dtype == core.VarDesc.VarType.FP64 else 'float32'
+    if sz & 1 == 0:
+        out_tensor = paddle.slice(
+            tensor_topk, axes=[axis], starts=[kth - 1],
+            ends=[kth]) + paddle.slice(
+                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1])
+        out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
+    else:
+        out_tensor = paddle.cast(
+            paddle.slice(
+                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
+            dtype=dtype)
+    if not keepdim or is_flatten:
+        if not is_flatten:
+            newshape = x.shape[:axis] + x.shape[axis + 1:]
+        elif not keepdim:
+            newshape = [1]
+        else:
+            newshape = [1] * dims
+    else:
+        newshape = out_tensor.shape
+    out_tensor = out_tensor.reshape(newshape, name=name)
+    return out_tensor

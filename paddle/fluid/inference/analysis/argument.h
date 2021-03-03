@@ -199,14 +199,19 @@ struct Argument {
   DECL_ARGUMENT_FIELD(disable_trt_plugin_fp16, CloseTrtPluginFp16, bool);
 
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_disabled_ops, TensorRtDisabledOPs,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
                       std::vector<std::string>);

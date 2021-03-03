@@ -21,7 +21,7 @@ import os
 os.environ['FLAGS_enable_parallel_graph'] = str(1)
 import paddle.fluid.core as core
 import os
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 from simple_nets import simple_fc_net, init_data
 
 
@@ -31,8 +31,8 @@ class TestMNIST(TestParallelExecutorBase):
         os.environ['CPU_NUM'] = str(4)
 
     # simple_fc
-    def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def check_simple_fc_convergence(self, use_device, use_reduce=False):
+        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
         img, label = init_data()
@@ -40,15 +40,15 @@ class TestMNIST(TestParallelExecutorBase):
             simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_reduce=use_reduce)
 
     def test_simple_fc(self):
-        # use_cuda
+        # use_device
         self.check_simple_fc_convergence(True)
 
-    def check_simple_fc_parallel_accuracy(self, use_cuda):
-        if use_cuda and not core.is_compiled_with_cuda():
+    def check_simple_fc_parallel_accuracy(self, use_device):
+        if use_device and not core.is_compiled_with_cuda():
             return
 
         img, label = init_data()
@@ -56,13 +56,13 @@ class TestMNIST(TestParallelExecutorBase):
             method=simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda,
+            use_device=use_device,
             use_parallel_executor=True)
 
         self.assertAlmostEquals(
@@ -73,7 +73,7 @@ class TestMNIST(TestParallelExecutorBase):
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
-        self.check_simple_fc_parallel_accuracy(True)
+        self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)
 
 
 if __name__ == '__main__':

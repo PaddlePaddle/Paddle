@@ -38,6 +38,7 @@ void SetAnalysisConfig(AnalysisConfig *cfg,
   cfg->SwitchSpecifyInputNames(false);
   cfg->SetCpuMathLibraryNumThreads(num_threads);
   cfg->EnableMKLDNN();
+  cfg->pass_builder()->AppendPass("mkldnn_placement_pass");
 }
 
 std::vector<size_t> ReadSentenceLod(std::ifstream &file, size_t offset,
@@ -190,7 +191,7 @@ std::vector<double> Lexical_Test(
     // return acc_res;
   } else {
     EXPECT_GT(outputs->size(), 0UL);
-    EXPECT_EQ(outputs[0].size(), 1UL);
+    EXPECT_GT(outputs[0].size(), 0UL);
     LOG(INFO) << "No accuracy result. To get accuracy result provide a model "
                  "with accuracy layers in it and use --with_accuracy_layer "
                  "option.";
@@ -210,7 +211,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
   if (FLAGS_use_analysis) {
     AnalysisConfig analysis_cfg;
     SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
-    analysis_cfg.pass_builder()->AppendPass("mkldnn_placement_pass");
+    if (FLAGS_enable_bf16) analysis_cfg.EnableMkldnnBfloat16();
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {

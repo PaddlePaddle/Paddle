@@ -115,8 +115,8 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
   if (place_ == PaddlePlace::kCPU) {
     auto *t_data = tensor->mutable_data<T>(platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
-  } else {
-#ifdef PADDLE_WITH_CUDA
+  } else if (place_ == PaddlePlace::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     platform::CUDAPlace gpu_place(device_);
     auto *t_data = tensor->mutable_data<T>(gpu_place);
@@ -129,6 +129,19 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Not compiled with CUDA, should not reach here."));
 #endif
+  } else if (place_ == PaddlePlace::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    platform::XPUPlace xpu_place(device_);
+    auto *t_data = tensor->mutable_data<T>(xpu_place);
+    memory::Copy(xpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
+                 data, ele_size);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Not compiled with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
 
@@ -141,20 +154,35 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 
   if (platform::is_cpu_place(t_place)) {
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
-  } else {
-#ifdef PADDLE_WITH_CUDA
+  } else if (place_ == PaddlePlace::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(dev_ctx->stream());
+#else
     cudaStreamSynchronize(dev_ctx->stream());
+#endif
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "Not compile with CUDA, should not reach here."));
 #endif
+  } else if (place_ == PaddlePlace::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, t_place);
+    memory::Copy(platform::CPUPlace(), static_cast<void *>(data), xpu_place,
+                 t_data, ele_num * sizeof(T));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Not compile with XPU, should not reach here."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
 template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<float>(
@@ -165,10 +193,14 @@ template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int32_t>(
     const int32_t *data);
 template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<uint8_t>(
     const uint8_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int8_t>(
+    const int8_t *data);
+
 template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<float>(float *data);
 template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
 template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
 template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
+template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int8_t>(int8_t *data);
 
 template PD_INFER_DECL float *ZeroCopyTensor::data<float>(PaddlePlace *place,
                                                           int *size) const;
@@ -178,6 +210,9 @@ template PD_INFER_DECL int32_t *ZeroCopyTensor::data<int32_t>(
     PaddlePlace *place, int *size) const;
 template PD_INFER_DECL uint8_t *ZeroCopyTensor::data<uint8_t>(
     PaddlePlace *place, int *size) const;
+template PD_INFER_DECL int8_t *ZeroCopyTensor::data<int8_t>(PaddlePlace *place,
+                                                            int *size) const;
+
 template PD_INFER_DECL float *ZeroCopyTensor::mutable_data<float>(
     PaddlePlace place);
 template PD_INFER_DECL int64_t *ZeroCopyTensor::mutable_data<int64_t>(
@@ -185,6 +220,8 @@ template PD_INFER_DECL int64_t *ZeroCopyTensor::mutable_data<int64_t>(
 template PD_INFER_DECL int32_t *ZeroCopyTensor::mutable_data<int32_t>(
     PaddlePlace place);
 template PD_INFER_DECL uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(
+    PaddlePlace place);
+template PD_INFER_DECL int8_t *ZeroCopyTensor::mutable_data<int8_t>(
     PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {

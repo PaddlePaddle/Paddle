@@ -16,25 +16,28 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "xpu/refactor/math.h"
+
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct XPUSubFunctor {
-  int operator()(xpu::Context* ctx, const T* x, const T* y, T* z, int len) {
-    return xpu::elementwise_sub(ctx, x, y, z, len);
-  }
-};
 
 template <typename DeviceContext, typename T>
 class ElementwiseSubXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T, XPUSubFunctor<T>>(ctx);
+    XPUElementwise<T>(ctx, xpu::sub<float>);
   }
 };
 
-DEFINE_XPU_GRAD_KERNEL(Sub, sub, false);
+template <typename DeviceContext, typename T>
+class ElementwiseSubGradXPUKernel : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    XPUElementwiseGrad<T>(ctx, xpu::sub_grad<float>, false);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 

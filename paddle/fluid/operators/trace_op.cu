@@ -43,9 +43,15 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
+#ifdef __HIPCC__
+      TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
+          diag, out, reduce_dims, static_cast<T>(0), hipcub::Sum(),
+          IdentityFunctor<T>(), stream);
+#else
       TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
           diag, out, reduce_dims, static_cast<T>(0), cub::Sum(),
           IdentityFunctor<T>(), stream);
+#endif
     }
   }
 };
@@ -60,11 +66,19 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
                          platform::float16>,
     ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex64>,
+    ops::TraceCUDAKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     trace_grad, ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
                          platform::float16>,
     ops::TraceGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TraceGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex64>,
+    ops::TraceGradKernel<paddle::platform::CUDADeviceContext,
+                         paddle::platform::complex128>);

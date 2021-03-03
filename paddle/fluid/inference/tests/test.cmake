@@ -27,7 +27,7 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%./\\]" "_" FILENAME_EX ${FILENAME})
   string(REGEX MATCH "[^/\\]+$" DOWNLOAD_NAME ${FILENAME})
-  set(EXTERNAL_PROJECT_NAME "extern_inference_download_${FILENAME_EX}")
+  set(EXTERNAL_PROJECT_NAME "extern_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
   ExternalProject_Add(
       ${EXTERNAL_PROJECT_NAME}
@@ -50,6 +50,12 @@ if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
   inference_download_and_uncompress(${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL} "word2vec.inference.model.tar.gz")
 endif()
 set(WORD2VEC_MODEL_DIR "${WORD2VEC_INSTALL_DIR}/word2vec.inference.model")
+
+set(IMG_CLS_RESNET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/image_classification_resnet")
+if(NOT EXISTS ${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model.tgz)
+  inference_download_and_uncompress(${IMG_CLS_RESNET_INSTALL_DIR} ${INFERENCE_URL} "image_classification_resnet.inference.model.tgz")
+endif()
+set(IMG_CLS_RESNET_MODEL_DIR "${IMG_CLS_RESNET_INSTALL_DIR}/image_classification_resnet.inference.model")
 
 function (inference_base_test_build TARGET)
    set(options "")

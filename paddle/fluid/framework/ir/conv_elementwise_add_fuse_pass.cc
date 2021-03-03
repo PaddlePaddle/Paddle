@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
-#include <string>
 
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -61,6 +59,14 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", false);
+    auto* elementwise_add_op_desc = elementwise_add_op->Op();
+    auto out_threshold_attr =
+        elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    // set the out_threshold of the elementwise add op to be the out_threshold
+    // of the conv2d_fusion
+    if (out_threshold_attr.which()) {
+      new_op_desc.SetAttr("out_threshold", out_threshold_attr);
+    }
     new_op_desc.Flush();
 
     // Create a new node for the fused op.
@@ -93,5 +99,5 @@ REGISTER_PASS(conv_elementwise_add_fuse_pass,
 REGISTER_PASS_CAPABILITY(conv_elementwise_add_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0));
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));

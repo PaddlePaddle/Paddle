@@ -15,10 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
 
 #include <string>
-#include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -134,6 +141,14 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               fused_pattern);
 
+    // check if is in ernie or not
+    if (!graph->Has(kEmbEltwiseLayernormPass) ||
+        !graph->Has(kMultiheadMatmulPass)) {
+      LOG(INFO) << "The skip_layernorm_fuse_pass is only supported in "
+                << "Ernie/Bert model. Just skip this pass.";
+      return;
+    }
+
     std::unordered_set<const Node *> del_node_set;
 
     // Create an SkipLayerNorm op node
@@ -185,5 +200,5 @@ REGISTER_PASS(skip_layernorm_fuse_pass,
 REGISTER_PASS_CAPABILITY(skip_layernorm_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("layer_norm", 0));

@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker_factory.h"
+
+#include <stdlib.h>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 namespace paddle {
 namespace framework {
@@ -67,7 +68,18 @@ REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 #ifdef PADDLE_WITH_PSLIB
 REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
-#if defined(PADDLE_WITH_NCCL)
+
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
+#endif
+
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
 }  // namespace framework

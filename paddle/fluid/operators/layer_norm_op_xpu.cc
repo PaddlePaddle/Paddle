@@ -45,15 +45,13 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
     auto* mean_data = mean->mutable_data<T>(ctx.GetPlace());
     auto* variance_data = variance->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::layer_norm(dev_ctx.x_context(), left, right, x_data, y_data,
-                            scale_data, bias_data, epsilon, mean_data,
-                            variance_data, false);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU API(layer_norm) return wrong "
-                                   "value[%d], please check whether Baidu "
-                                   "Kunlun Card is properly installed.",
-                                   r));
+    int r = xpu::layer_norm(dev_ctx.x_context(), x_data, y_data, left, right,
+                            epsilon, scale_data, bias_data, mean_data,
+                            variance_data);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU layer_norm kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 
@@ -87,15 +85,14 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
     auto* dx_data =
         (dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::layer_norm_backward(
-        dev_ctx.x_context(), left, right, x_data, scale_data, variance_data,
-        mean_data, dy_data, dx_data, dscale_data, dbias_data, epsilon);
+    int r = xpu::layer_norm_grad(dev_ctx.x_context(), x_data, dy_data, dx_data,
+                                 left, right, epsilon, scale_data, mean_data,
+                                 variance_data, dscale_data, dbias_data);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
-        platform::errors::External("XPU API(layer_norm_backward) return wrong "
-                                   "value[%d], please check whether Baidu "
-                                   "Kunlun Card is properly installed.",
-                                   r));
+        platform::errors::External(
+            "XPU layer_norm_grad kernel return wrong value[%d %s]", r,
+            XPUAPIErrorMsg[r]));
   }
 };
 

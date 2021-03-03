@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto
@@ -96,6 +97,10 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   const std::vector<int> paddings =
       BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+  std::string padding_algorithm = "EXPLICIT";
+  if (op_desc.HasAttr("padding_algorithm"))
+    padding_algorithm =
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
@@ -105,8 +110,18 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
                                 static_cast<size_t>(Y_t->numel())};
+  float* bias_data = nullptr;
+  size_t bias_size = 0;
+  if (op_desc.Type() == "conv2d_fusion") {
+    auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
+    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+    bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
+                                         bias_tensor_data, false);
+    bias_size = static_cast<size_t>(bias_tensor_data->numel());
+  }
 
-  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
+  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
+                              static_cast<void*>(bias_data), bias_size};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
                            nv_ksize, weight, bias);
   PADDLE_ENFORCE_NOT_NULL(layer,
@@ -115,6 +130,9 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->setStride(nv_strides);
   layer->setPadding(nv_paddings);
   layer->setNbGroups(groups);
+  if (padding_algorithm == "SAME") {
+    layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+  }
   // set dilations
   fset_dilation(layer, nv_dilations);
 
@@ -184,4 +202,5 @@ class Deconv2dOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
+REGISTER_TRT_OP_CONVERTER(conv2d_fusion, Conv2dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv2d_transpose, Deconv2dOpConverter);

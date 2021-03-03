@@ -28,6 +28,29 @@ std::vector<int> GetXPUSelectedDevices();
 //! Set the XPU device id for next execution.
 void SetXPUDeviceId(int device_id);
 
+class XPUDeviceGuard {
+ public:
+  explicit inline XPUDeviceGuard(int dev_id) {
+    int prev_id = platform::GetXPUCurrentDeviceId();
+    if (prev_id != dev_id) {
+      prev_id_ = prev_id;
+      platform::SetXPUDeviceId(dev_id);
+    }
+  }
+
+  inline ~XPUDeviceGuard() {
+    if (prev_id_ != -1) {
+      platform::SetXPUDeviceId(prev_id_);
+    }
+  }
+
+  XPUDeviceGuard(const XPUDeviceGuard& o) = delete;
+  XPUDeviceGuard& operator=(const XPUDeviceGuard& o) = delete;
+
+ private:
+  int prev_id_{-1};
+};
+
 }  // namespace platform
 }  // namespace paddle
 #endif

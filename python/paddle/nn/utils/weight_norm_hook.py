@@ -18,7 +18,6 @@ from ...fluid import dygraph
 from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...tensor.math import multiply
 
 __all__ = ['weight_norm', 'remove_weight_norm']
 
@@ -86,7 +85,8 @@ def _weight_norm(v, g, dim):
         v_normalized = F.l2_normalize(p_matrix, axis=1)
         v_normalized = F.reshape(v_normalized, transposed_shape)
         v_normalized = F.transpose(v_normalized, perm)
-    weight = multiply(v_normalized, g, axis=dim if dim is not None else -1)
+    weight = F.elementwise_mul(
+        v_normalized, g, axis=dim if dim is not None else -1)
     return weight
 
 
@@ -153,7 +153,7 @@ class WeightNorm(object):
 
 
 def weight_norm(layer, name='weight', dim=0):
-    """
+    r"""
     This weight_norm layer applies weight normalization to a parameter according to the 
     following formula:
 
@@ -188,7 +188,6 @@ def weight_norm(layer, name='weight', dim=0):
           from paddle.nn.utils import weight_norm
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          paddle.disable_static()
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           print(conv.weight_g.shape)
@@ -213,11 +212,11 @@ def remove_weight_norm(layer, name='weight'):
 
     Examples:
         .. code-block:: python
+          
           import paddle
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm, remove_weight_norm
 
-          paddle.disable_static()
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           remove_weight_norm(conv)

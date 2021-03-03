@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/imperative/tracer.h"
+#include <map>
 #include <set>
 #include <unordered_set>
 #include <utility>
@@ -38,18 +39,101 @@ void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
 }
 
 static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
-  for (const auto& name_pair : outs) {
-    for (const auto& vb : name_pair.second) {
-      VLOG(6) << "Set output: " << vb->Name() << "'s OverridedStopGradient as "
+  for (const auto& pair : outs) {
+    for (const auto& var : pair.second) {
+      // NOTE(zhiqiu): this happends when None output are passed from python
+      // side. For example, fake_quantize_dequantize_moving_average_abs_max may
+      // pass None OutAccum in eval mode.
+      // It can be refined by generate several different pybind interface for
+      // one operator with different function signature.
+      if (var == nullptr) {
+        VLOG(4) << pair.first << " is NULL";
+        continue;
+      }
+      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
               << generate_grad;
-      vb->InnerSetOverridedStopGradient(generate_grad);
+      var->InnerSetOverridedStopGradient(generate_grad);
     }
   }
 }
 
+void IncreaseVarbaseReferenceCountUntilCopyComplete(
+    const std::shared_ptr<imperative::VarBase>& var,
+    const platform::Place& place) {
+  // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
+  // need to add callback, see tensor_utils.cc:245
+  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
+
+  auto tracer = imperative::GetCurrentTracer();
+  auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
+
+  // Note(zhiqiu): This is an empty callback, the only way is to "reference"
+  // var, so it will not be destructed until the kernels launched at current
+  // stream of given place is finished.
+  auto callback = [var, place_]() {
+    VLOG(4) << "Run callback of var:" << var->Name() << " at place " << place_;
+  };
+
+  gc->DirectClearCallback(callback);
+}
+
+paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
+    const platform::Place& place) {
+  // if not exists, create a new GarbageCollector at given place
+  if (gcs_.count(place) == 0) {
+    std::unique_ptr<framework::GarbageCollector> gc;
+    if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+      gc.reset(new framework::DefaultStreamGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPlace, place), 0));
+
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
+#endif
+    } else if (platform::is_cuda_pinned_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+      gc.reset(new framework::CUDAPinnedGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPinnedPlace, place), 0));
+
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDAPinned device since it's not compiled with "
+          "CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      gc.reset(new framework::XPUGarbageCollector(
+          BOOST_GET_CONST(platform::XPUPlace, place), 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use XPU device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      gc.reset(new framework::CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place), 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Unsupported place for garbage collection"));
+    }
+    gcs_.emplace(place, std::move(gc));
+  }
+
+  return gcs_.at(place).get();
+}
+
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const platform::Place& place, bool trace_backward) {
+                     const platform::Place& place, bool trace_backward,
+                     const std::map<std::string, std::string>& inplace_map) {
+  platform::RecordEvent op_type_record_event(type);
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
@@ -78,6 +162,23 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   try {
+    if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::SetDeviceId(BOOST_GET_CONST(platform::CUDAPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+      platform::SetXPUDeviceId(
+          BOOST_GET_CONST(platform::XPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+    }
+
     OpBase::Run(*op, new_ins, outs, attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
@@ -101,16 +202,21 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, new_ins, outs, attrs, place);
+    CreateGradOpNode(*op, new_ins, outs, attrs, place, inplace_map);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
 }
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs,
-                     framework::AttributeMap attrs) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_);
+                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const std::map<std::string, std::string>& inplace_map) {
+  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_,
+          inplace_map);
+}
+
+void Tracer::SetExpectedPlace(platform::Place place) {
+  expected_place_ = place;
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,

@@ -42,7 +42,7 @@ def simple_img_conv_pool(input,
                          bias_attr=None,
                          act=None,
                          use_cudnn=True):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
@@ -333,7 +333,7 @@ def sequence_conv_pool(input,
 
 
 def glu(input, dim=-1):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
@@ -384,7 +384,7 @@ def scaled_dot_product_attention(queries,
                                  values,
                                  num_heads=1,
                                  dropout_rate=0.):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.

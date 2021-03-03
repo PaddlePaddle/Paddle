@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import os
-from paddle.check_import_scipy import check_import_scipy
-
-check_import_scipy(os.name)
 
 try:
     from paddle.version import full_version as __version__
@@ -27,8 +24,6 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.reader
-import paddle.dataset
 import paddle.batch
 batch = batch.batch
 from .fluid import monkey_patch_variable
@@ -37,7 +32,6 @@ monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
-from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -48,8 +42,8 @@ import paddle.distributed.fleet
 import paddle.optimizer
 import paddle.metric
 import paddle.device
-import paddle.incubate.complex as complex
 import paddle.regularizer
+import paddle.incubate
 
 # TODO: define alias in tensor and framework directory
 
@@ -58,6 +52,8 @@ from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
+from .tensor.attribute import real  #DEFINE_ALIAS
+from .tensor.attribute import imag  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
@@ -117,19 +113,23 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
+from .tensor.manipulation import reshape_  #DEFINE_ALIAS
 from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
+from .tensor.manipulation import scatter_  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS
 from .tensor.manipulation import shard_index  #DEFINE_ALIAS
 from .tensor.manipulation import slice  #DEFINE_ALIAS
 from .tensor.manipulation import split  #DEFINE_ALIAS
 from .tensor.manipulation import squeeze  #DEFINE_ALIAS
+from .tensor.manipulation import squeeze_  #DEFINE_ALIAS
 from .tensor.manipulation import stack  #DEFINE_ALIAS
 from .tensor.manipulation import strided_slice  #DEFINE_ALIAS
 from .tensor.manipulation import transpose  #DEFINE_ALIAS
 from .tensor.manipulation import unique  #DEFINE_ALIAS
 from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
+from .tensor.manipulation import unsqueeze_  #DEFINE_ALIAS
 from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
@@ -141,6 +141,7 @@ from .tensor.math import asin  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
+from .tensor.math import tan  #DEFINE_ALIAS
 from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
 # from .tensor.math import elementwise_add  #DEFINE_ALIAS
@@ -153,6 +154,8 @@ from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
 from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
+from .tensor.math import log2  #DEFINE_ALIAS
+from .tensor.math import log10  #DEFINE_ALIAS
 from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
@@ -173,6 +176,7 @@ from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
+from .tensor.math import tanh_  #DEFINE_ALIAS
 from .tensor.math import add_n  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS
@@ -186,12 +190,12 @@ from .tensor.math import mod  #DEFINE_ALIAS
 from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
+from .tensor.math import subtract  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
-# from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
@@ -200,6 +204,9 @@ from .tensor.math import isfinite  #DEFINE_ALIAS
 from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
+from .tensor.math import broadcast_shape  #DEFINE_ALIAS
+from .tensor.math import conj  #DEFINE_ALIAS
+
 from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
@@ -220,7 +227,7 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 
-from .tensor.to_string import set_printoptions
+from .tensor.to_string import set_printoptions  #DEFINE_ALIAS
 
 from .framework.random import seed  #DEFINE_ALIAS
 from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
@@ -248,6 +255,7 @@ from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 # from .fluid.data import data
 from .tensor.stat import numel  #DEFINE_ALIAS
+from .tensor.stat import median  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
@@ -261,17 +269,18 @@ from .device import XPUPlace
 from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
-from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 from .fluid.layers import crop_tensor as crop  #DEFINE_ALIAS
 
 from . import jit
 from . import static
 from . import amp
+from . import onnx
 
 # high-level api
 from .hapi import Model
 from .hapi import callbacks
 from .hapi import summary
+from .hapi import flops
 import paddle.text
 import paddle.vision
 

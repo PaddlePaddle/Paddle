@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
+
 #include <functional>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -147,12 +149,19 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
-REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
-              paddle::framework::ir::Conv2DTransposeBiasFusePass);
-REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
-              paddle::framework::ir::Conv3DBiasFusePass);
 REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("conv2d", 0)
-            .EQ("elementwise_add", 0));
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));
+
+REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DTransposeBiasFusePass);
+REGISTER_PASS_CAPABILITY(conv_transpose_bias_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d_transpose", 2)
+            .LE("elementwise_add", 1));
+
+REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv3DBiasFusePass);

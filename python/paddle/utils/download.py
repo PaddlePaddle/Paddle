@@ -123,7 +123,7 @@ def get_weights_path_from_url(url, md5sum=None):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.download import get_weights_path_from_url
+            from paddle.utils.download import get_weights_path_from_url
 
             resnet18_pretrained_weight_url = 'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams'
             local_weight_path = get_weights_path_from_url(resnet18_pretrained_weight_url)
@@ -138,6 +138,21 @@ def _map_path(url, root_dir):
     fname = osp.split(url)[-1]
     fpath = fname
     return osp.join(root_dir, fpath)
+
+
+def _get_unique_endpoints(trainer_endpoints):
+    # Sorting is to avoid different environmental variables for each card
+    trainer_endpoints.sort()
+    ips = set()
+    unique_endpoints = set()
+    for endpoint in trainer_endpoints:
+        ip = endpoint.split(":")[0]
+        if ip in ips:
+            continue
+        ips.add(ip)
+        unique_endpoints.add(endpoint)
+    logger.info("unique_endpoints {}".format(unique_endpoints))
+    return unique_endpoints
 
 
 def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
@@ -161,17 +176,20 @@ def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
     fullpath = _map_path(url, root_dir)
-
+    # Mainly used to solve the problem of downloading data from different 
+    # machines in the case of multiple machines. Different ips will download 
+    # data, and the same ip will only download data once.
+    unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
         logger.info("Found {}".format(fullpath))
     else:
-        if ParallelEnv().local_rank == 0:
+        if ParallelEnv().current_endpoint in unique_endpoints:
             fullpath = _download(url, root_dir, md5sum)
         else:
             while not os.path.exists(fullpath):
                 time.sleep(1)
 
-    if ParallelEnv().local_rank == 0:
+    if ParallelEnv().current_endpoint in unique_endpoints:
         if tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath):
             fullpath = _decompress(fullpath)
 
@@ -335,8 +353,16 @@ def _is_a_single_file(file_list):
 
 
 def _is_a_single_dir(file_list):
-    file_name = file_list[0].split(os.sep)[0]
-    for i in range(1, len(file_list)):
-        if file_name != file_list[i].split(os.sep)[0]:
+    new_file_list = []
+    for file_path in file_list:
+        if '/' in file_path:
+            file_path = file_path.replace('/', os.sep)
+        elif '\\' in file_path:
+            file_path = file_path.replace('\\', os.sep)
+        new_file_list.append(file_path)
+
+    file_name = new_file_list[0].split(os.sep)[0]
+    for i in range(1, len(new_file_list)):
+        if file_name != new_file_list[i].split(os.sep)[0]:
             return False
     return True

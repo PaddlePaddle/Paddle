@@ -122,8 +122,8 @@ class SliceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(end, start,
                         platform::errors::InvalidArgument(
                             "Attr(ends) should be greater than attr(starts) in "
-                            "slice op. But received ends = %d, starts = %d.",
-                            end, start));
+                            "slice op. But received end = %d, start = %d.",
+                            ends[0], starts[0]));
       int64_t out_size = end - start;
 
       if (out_is_tensor_array) {
@@ -181,8 +181,8 @@ class SliceKernel : public framework::OpKernel<T> {
               end, start,
               platform::errors::InvalidArgument(
                   "Attr(ends) should be greater than attr(starts) in "
-                  "slice op. But received ends = %d, starts = %d.",
-                  end, start));
+                  "slice op. But received end = %d, start = %d.",
+                  ends[i], starts[i]));
           out_dims[axes[i]] = end - start;
         }
       }

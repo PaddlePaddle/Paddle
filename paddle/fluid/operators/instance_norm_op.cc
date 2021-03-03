@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -701,3 +702,20 @@ REGISTER_OP_CPU_KERNEL(
                                       float>,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                       double>);
+
+REGISTER_OP_VERSION(instance_norm)
+    .AddCheckpoint(
+        R"ROC(
+      Change dispensable of attribute from False to True in instance_norm.
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .ModifyAttr(
+                "Bias",
+                "The arg 'dispensable' of Input 'Bias' is changed: from "
+                "'False' to 'True'.",
+                true)
+            .ModifyAttr(
+                "Scale",
+                "The arg 'dispensable' of Input 'Scale' is changed: from "
+                "'False' to 'True'.",
+                true));

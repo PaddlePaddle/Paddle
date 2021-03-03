@@ -93,6 +93,15 @@ def create_paddle_case(op_type, callback):
                                fetch_list=[out])
             self.assertEqual((res == self.real_result).all(), True)
 
+        def test_dynamic_api(self):
+            paddle.disable_static()
+            x = paddle.to_tensor(self.input_x)
+            y = paddle.to_tensor(self.input_y)
+            op = eval("paddle.%s" % (self.op_type))
+            out = op(x, y)
+            self.assertEqual((out.numpy() == self.real_result).all(), True)
+            paddle.enable_static()
+
         def test_broadcast_api_1(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):

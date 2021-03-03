@@ -103,6 +103,9 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("refer_scale",
                  "The referring scale of FPN layer with"
                  " specified level");
+    AddAttr<bool>("pixel_offset", "(bool, default True),",
+                  "If true, im_shape pixel offset is 1.")
+        .SetDefault(true);
     AddComment(R"DOC(
 This operator distribute all proposals into different fpn level,
  with respect to scale of the proposals, the referring scale and
@@ -130,8 +133,12 @@ REGISTER_OP_VERSION(distribute_fpn_proposals)
               Upgrade distribute_fpn_proposals add a new input
               [RoisNum] and add a new output [MultiLevelRoIsNum].)ROC",
         paddle::framework::compatible::OpVersionDesc()
-            .NewInput("RoIsNum", "The number of RoIs in each image.")
+            .NewInput("RoisNum", "The number of RoIs in each image.")
             .NewOutput("MultiLevelRoisNum",
                        "The RoIs' number of each image on multiple "
                        "levels. The number on each level has the shape of (B),"
-                       "B is the number of images."));
+                       "B is the number of images."))
+    .AddCheckpoint(
+        R"ROC(Register distribute_fpn_proposals for adding the attribute of pixel_offset)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "pixel_offset", "If true, im_shape pixel offset is 1.", true));

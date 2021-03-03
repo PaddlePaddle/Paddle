@@ -13,13 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/embedding_eltwise_layernorm_fuse_pass.h"
-#include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -326,6 +331,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
+  if (fusion_count > 0) {
+    graph->Set(kEmbEltwiseLayernormPass, new bool(true));
+  }
   AddStatis(fusion_count);
 }
 

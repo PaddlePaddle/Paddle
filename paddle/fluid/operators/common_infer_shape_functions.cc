@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include <algorithm>
-#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -28,6 +26,7 @@ class InferShapeContext;
 namespace paddle {
 namespace operators {
 namespace details {
+
 inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    const framework::DDim &y_dims,
                                    int *x_dims_array, int *y_dims_array,
@@ -76,6 +75,20 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
     }
   }
 }
+
+framework::DDim BroadcastTwoDims(const framework::DDim &x_dims,
+                                 const framework::DDim &y_dims, int axis) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                         y_dims_array.data(), out_dims_array.data(), max_dim,
+                         axis);
+  return framework::make_ddim(out_dims_array);
+}
+
 }  // namespace details
 
 // shape input(0) -> output(0) without change.
@@ -153,16 +166,9 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
     ctx->ShareDim(x_name, /*->*/ out_name);
     ctx->ShareLoD(x_name, /*->*/ out_name);
   } else {
-    int max_dim = std::max(x_dims.size(), y_dims.size());
     int axis = ctx->Attrs().Get<int>("axis");
-    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
-    details::GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                                    y_dims_array.data(), out_dims_array.data(),
-                                    max_dim, axis);
-    ctx->SetOutputDim(out_name, framework::make_ddim(out_dims_array));
+    auto out_dims = details::BroadcastTwoDims(x_dims, y_dims, axis);
+    ctx->SetOutputDim(out_name, out_dims);
     ctx->ShareLoD(x_name, /*->*/ out_name);
   }
 }

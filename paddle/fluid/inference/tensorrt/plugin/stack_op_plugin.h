@@ -28,7 +28,7 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class StackPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit StackPluginDynamic(int axis, int num_stack);
+  explicit StackPluginDynamic(int axis, int num_stack, bool with_fp16);
   StackPluginDynamic(void const* serial_data, size_t serial_length);
   ~StackPluginDynamic();
   nvinfer1::IPluginV2DynamicExt* clone() const override;

@@ -17,8 +17,11 @@ import paddle
 import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid.core as core
+import paddle.fluid as fluid
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
 paddle.enable_static()
 
@@ -167,19 +170,19 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(ops, [
             'cast', 'cast', 'cast', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_sync_comm_stream', 'cast', 'cast',
-            'mul', 'cast', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
-            'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'elementwise_add',
-            'softmax', 'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'fill_constant', 'scale', 'elementwise_mul_grad', 'mean_grad',
-            'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul', 'cast',
-            'elementwise_add', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul', 'cast',
-            'elementwise_add', 'cast', 'tanh_grad', 'cast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
+            'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast', 'tanh',
+            'cast', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
+            'mul', 'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
+            'mean', 'elementwise_mul', 'fill_constant', 'scale',
+            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2', 'cast',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast',
+            'cast', 'mul', 'cast', 'elementwise_add', 'cast', 'tanh_grad',
+            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
+            'cast', 'elementwise_add', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
             'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
             'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
@@ -268,6 +271,25 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'elementwise_max', 'elementwise_div', 'elementwise_mul',
             'elementwise_mul', 'elementwise_mul', 'momentum', 'momentum',
             'momentum'
+        ])
+
+    def test_sharding_clone_for_test(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'sharding')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        sharding.utils.comm_analyse(train_prog)
+        test_prog = train_prog.clone(for_test=True)
+        sharding.utils.add_sync_comm(test_prog, strategy)
+        ops = [op.type for op in test_prog.global_block().ops]
+
+        self.assertEqual(ops, [
+            'fill_constant', 'fill_constant', 'fill_constant',
+            'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
+            'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean'
         ])
 
 

@@ -180,11 +180,11 @@ class DistributedBatchSampler(BatchSampler):
         batch_size(int): sample indice number in a mini-batch indices.
         num_replicas(int, optional): porcess number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
-            retrieved from :code:`paddle.fluid.dygraph.parallel.ParallenEnv`.
+            retrieved from :code:`paddle.distributed.ParallenEnv`.
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
-            :code:`paddle.fluid.dygraph.parallel.ParallenEnv`. Default None.
+            :code:`paddle.distributed.ParallenEnv`. Default None.
         shuffle(bool): whther to shuffle indices order before genrating
             batch indices. Default False.
         drop_last(bool): whether drop the last incomplete batch dataset size

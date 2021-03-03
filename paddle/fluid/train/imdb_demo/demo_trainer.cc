@@ -80,7 +80,7 @@ bool IsPersistable(const paddle::framework::VarDesc* var) {
 }  // namespace paddle
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
 
   std::cerr << "filelist: " << FLAGS_filelist << std::endl;
   std::cerr << "data_proto_desc: " << FLAGS_data_proto_desc << std::endl;
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
       platform::errors::InvalidArgument(
           "At least one file to train, but received number of file is %d.",
           file_vec.size()));
-  paddle::framework::InitDevices(false);
+  paddle::framework::InitDevices();
   const auto cpu_place = paddle::platform::CPUPlace();
   paddle::framework::Executor executor(cpu_place);
   paddle::framework::Scope scope;

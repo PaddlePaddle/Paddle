@@ -314,7 +314,7 @@ class ScopedRNNTensorDescriptor {
   inline cudnnRNNDataDescriptor_t descriptor(
       const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
       int input_size, bool time_major, const std::vector<int>& seq_length) {
-    static float padding_fill = 0.0f;
+    static double padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
     if (time_major) {
@@ -361,6 +361,12 @@ class ScopedDropoutDescriptor {
                                              float dropout_prob_,
                                              framework::Tensor* dropout_state_,
                                              int seed, size_t state_size) {
+    if (dropout_state_ == nullptr) {  // for no dropout or test
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
+          0 /* seed */));
+      return desc_;
+    }
     auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(

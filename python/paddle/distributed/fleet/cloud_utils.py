@@ -17,9 +17,12 @@ import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
 
-def get_cloud_cluster(args_node_ips, selected_gpus, args_port=6170):
+def get_cloud_cluster(args_node_ips,
+                      device_mode,
+                      devices_per_proc,
+                      args_port=6170):
     """
-    args_node_ips:string, selected_gpus:list, args_port: int
+    args_node_ips:string, device_mode:DeviceMode(Int), device_per_proc:list, args_port: int
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
@@ -55,7 +58,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
                 paddle_port = int(os.getenv("PADDLE_PORT", ""))
 
                 if paddle_ports_num >= len(
-                        selected_gpus) and paddle_port != args_port:
+                        devices_per_proc) and paddle_port != args_port:
                     logger.warning("Use Cloud specified port:{}.".format(
                         paddle_port))
                     started_port = paddle_port
@@ -67,7 +70,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         if started_port is None:
             started_port = 6170
         ports = [
-            x for x in range(started_port, started_port + len(selected_gpus))
+            x for x in range(started_port, started_port + len(devices_per_proc))
         ]
         trainer_endpoints = []
         for ip in node_ips:
@@ -85,7 +88,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
                  .format(node_ips, node_ip, node_rank, trainer_endpoints))
 
     cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
-                               selected_gpus)
+                               device_mode, devices_per_proc)
     return cluster, cluster.pods[node_rank]
 
 

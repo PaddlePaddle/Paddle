@@ -21,7 +21,7 @@ __all__ = ["RMSProp"]
 
 
 class RMSProp(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .

@@ -36,9 +36,15 @@ namespace pybind {
 
 static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
     const std::string& op_type, const std::string& arg_name, int arg_idx,
-    const py::handle& handle) {
+    const py::handle& handle, bool dispensable = false) {
   PyObject* py_obj = handle.ptr();  // get underlying PyObject
   if (!py_obj || py_obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be Tensor, but got "
+          "%s",
+          op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+    }
     return nullptr;
   }
   try {
@@ -54,9 +60,15 @@ static inline std::shared_ptr<imperative::VarBase> CastPyHandleToVarBase(
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 CastPyHandleToVarBaseList(const std::string& op_type,
                           const std::string& arg_name, int arg_idx,
-                          const py::handle& handle) {
+                          const py::handle& handle, bool dispensable = false) {
   PyObject* py_obj = handle.ptr();  // get underlying PyObject
   if (!py_obj || py_obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be Tensor, but got "
+          "%s",
+          op_type, arg_name, arg_idx, Py_TYPE(py_obj)->tp_name));
+    }
     return {};
   }
   std::vector<std::shared_ptr<imperative::VarBase>> result;
@@ -134,6 +146,32 @@ ConstructDuplicableOutput(const size_t num) {
     res.emplace_back(new imperative::VarBase(var_base_name));
   }
   return res;
+}
+
+static inline void HandleViewBetweenInputAndOutput(
+    const std::shared_ptr<imperative::VarBase>& input_var,
+    const std::shared_ptr<imperative::VarBase>& view_output_var) {
+  PADDLE_ENFORCE_EQ(
+      input_var->Var().IsInitialized(), true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        input_var->Name()));
+
+  if (input_var->Var().IsType<framework::LoDTensor>()) {
+    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        input_tensor.IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "LoDTensor %s has not been initialized!", input_var->Name()));
+
+    auto* view_output_tensor =
+        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    view_output_tensor->ShareDataWith(input_tensor);
+    view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
+
+    VLOG(3) << "Perform View between Output Var(" << view_output_var->Name()
+            << ") and Input Var(" << input_var->Name()
+            << "), share allocation and inplace version.";
+  }
 }
 }  // namespace pybind
 }  // namespace paddle

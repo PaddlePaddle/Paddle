@@ -118,7 +118,7 @@ TEST(OpRegistry, IllegalAttr) {
     paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
-    std::string msg = "OutOfRangeError";
+    std::string msg = "OutOfRange";
     std::string err_msg = err.what();
     ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }
@@ -152,7 +152,7 @@ TEST(OpRegistry, CustomChecker) {
     paddle::framework::OpRegistry::CreateOp(op_desc);
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
-    std::string msg = "InvalidArgumentError";
+    std::string msg = "InvalidArgument";
     std::string err_msg = err.what();
     ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }

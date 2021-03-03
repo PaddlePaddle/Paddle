@@ -4,6 +4,7 @@ cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(naive_best_fit_allocator SRCS naive_best_fit_allocator.cc DEPS allocator buddy_allocator profiler)
+cc_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc DEPS naive_best_fit_allocator)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allocator buffered_allocator cpu_allocator best_fit_allocator)
 
 if (WITH_MKLDNN)
@@ -15,13 +16,20 @@ endif()
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
   nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
+  nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
+  cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
+endif()
+
+if (WITH_ROCM)
+  hip_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
+  hip_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
+  hip_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
   cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
-nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
-if (WITH_GPU)
+if (WITH_GPU OR WITH_ROCM)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
 elseif(WITH_XPU)
     set(AllocatorFacadeDeps xpu_info)
@@ -31,6 +39,16 @@ endif()
 
 if (WITH_GPU)
     nv_test(best_fit_allocator_test
+            SRCS best_fit_allocator_test.cc
+                best_fit_allocator_test.cu
+            DEPS best_fit_allocator
+                locked_allocator
+                cpu_allocator
+                cuda_allocator
+                device_context
+                memcpy)
+elseif (WITH_ROCM)
+    hip_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc
                 best_fit_allocator_test.cu
             DEPS best_fit_allocator
@@ -56,11 +74,13 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator locked_allocator cpu_allocator)
 if (WITH_TESTING)
-  if (WITH_GPU)
+  if ((WITH_GPU OR WITH_ROCM) AND TARGET retry_allocator_test)
     target_link_libraries(retry_allocator_test cuda_allocator)
   endif()
 
-  set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  if (TEST retry_allocator_test)
+    set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  endif()
 endif()
 
 cc_test(allocator_facade_abs_flags_test SRCS allocator_facade_abs_flags_test.cc DEPS allocator_facade)

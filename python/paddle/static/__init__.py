@@ -14,15 +14,52 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
-    'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
-    'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
-    'default_main_program', 'default_startup_program', 'Program', 'data',
-    'InputSpec', 'save', 'load', 'save_inference_model', 'load_inference_model',
-    'load_program_state', 'set_program_state', 'cpu_places', 'cuda_places', 'Variable'
+    'append_backward',
+    'gradients',
+    'Executor',
+    'global_scope',
+    'scope_guard',
+    'BuildStrategy',
+    'CompiledProgram',
+    'Print',
+    'py_func',
+    'ExecutionStrategy',
+    'name_scope',
+    'ParallelExecutor',
+    'program_guard',
+    'WeightNormParamAttr',
+    'default_main_program',
+    'default_startup_program',
+    'Program',
+    'data',
+    'InputSpec',
+    'save',
+    'load',
+    'save_inference_model',
+    'load_inference_model',
+    'load_program_state',
+    'set_program_state',
+    'cpu_places',
+    'cuda_places',
+    'xpu_places',
+    'Variable',
+    'load_vars',
+    'save_vars',
+    'auc',
+    'accuracy',
 ]
 
 from . import nn
+from . import amp
+from .io import save_inference_model  #DEFINE_ALIAS
+from .io import load_inference_model  #DEFINE_ALIAS
+from .io import deserialize_persistables  #DEFINE_ALIAS
+from .io import serialize_persistables  #DEFINE_ALIAS
+from .io import deserialize_program  #DEFINE_ALIAS
+from .io import serialize_program  #DEFINE_ALIAS
+from .io import load_from_file  #DEFINE_ALIAS
+from .io import save_to_file  #DEFINE_ALIAS
+from .io import normalize_program  #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
@@ -36,11 +73,13 @@ from ..fluid.compiler import CompiledProgram  #DEFINE_ALIAS
 from ..fluid.compiler import ExecutionStrategy  #DEFINE_ALIAS
 from ..fluid.framework import default_main_program  #DEFINE_ALIAS
 from ..fluid.framework import default_startup_program  #DEFINE_ALIAS
+from ..fluid.framework import device_guard  #DEFINE_ALIAS
 from ..fluid.framework import Program  #DEFINE_ALIAS
 from ..fluid.framework import name_scope  #DEFINE_ALIAS
 from ..fluid.framework import program_guard  #DEFINE_ALIAS
 from ..fluid.framework import cpu_places  #DEFINE_ALIAS
 from ..fluid.framework import cuda_places  #DEFINE_ALIAS
+from ..fluid.framework import xpu_places  #DEFINE_ALIAS
 from ..fluid.framework import Variable  #DEFINE_ALIAS
 from ..fluid.layers.control_flow import Print  #DEFINE_ALIAS
 from ..fluid.layers.nn import py_func  #DEFINE_ALIAS
@@ -48,9 +87,13 @@ from ..fluid.parallel_executor import ParallelExecutor  #DEFINE_ALIAS
 from ..fluid.param_attr import WeightNormParamAttr  #DEFINE_ALIAS
 from ..fluid.io import save  #DEFINE_ALIAS
 from ..fluid.io import load  #DEFINE_ALIAS
-from ..fluid.io import save_inference_model  #DEFINE_ALIAS
-from ..fluid.io import load_inference_model  #DEFINE_ALIAS
 from ..fluid.io import load_program_state  #DEFINE_ALIAS
 from ..fluid.io import set_program_state  #DEFINE_ALIAS
+
+from ..fluid.io import load_vars  #DEFINE_ALIAS
+from ..fluid.io import save_vars  #DEFINE_ALIAS
+
 from ..fluid.layers import create_parameter  #DEFINE_ALIAS
 from ..fluid.layers import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import auc  #DEFINE_ALIAS
+from ..fluid.layers.metric_op import accuracy  #DEFINE_ALIAS

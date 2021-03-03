@@ -224,7 +224,7 @@ def less_than_ver(a, b):
     import operator
 
     def to_list(s):
-        s = re.sub('(\.0+)+$', '', s)
+        s = re.sub(r'(\.0+)+$', '', s)
         return [int(x) for x in s.split('.')]
 
     return operator.lt(to_list(a), to_list(b))
@@ -272,6 +272,7 @@ if avx_supported():
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
         from .core_avx import _cuda_synchronize
+        from .core_avx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -282,16 +283,24 @@ if avx_supported():
             from .core_avx import _remove_tensor_list_mmap_fds
     except Exception as e:
         if has_avx_core:
+            sys.stderr.write(
+                'Error: Can not import avx core while this file exists: ' +
+                current_path + os.sep + 'core_avx.' + core_suffix + '\n')
             raise e
         else:
             from .. import compat as cpt
             sys.stderr.write(
-                'WARNING: Do not have avx core. You may not build with AVX, '
-                'but AVX is supported on local machine.\n You could build paddle '
-                'WITH_AVX=ON to get better performance.\n'
-                'The original error is: %s\n' % cpt.get_exception_message(e))
+                "WARNING: AVX is supported on local machine, but you have installed "
+                "paddlepaddle without avx core. Hence, no_avx core which has worse "
+                "preformance will be imported.\nYou could reinstall paddlepaddle by "
+                "'python -m pip install -U paddlepaddle-gpu[==version]' or rebuild "
+                "paddlepaddle WITH_AVX=ON to get better performance.\n"
+                "The original error is: %s\n" % cpt.get_exception_message(e))
             load_noavx = True
 else:
+    sys.stderr.write(
+        "WARNING: AVX is not support on your machine. Hence, no_avx core will be imported, "
+        "It has much worse preformance than avx core.\n")
     load_noavx = True
 
 if load_noavx:
@@ -317,6 +326,7 @@ if load_noavx:
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
         from .core_noavx import _cuda_synchronize
+        from .core_noavx import _promote_types_if_complex_exists
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
@@ -328,8 +338,14 @@ if load_noavx:
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(
-                'Error: Can not import noavx core while this file exists ' +
+                'Error: Can not import noavx core while this file exists: ' +
                 current_path + os.sep + 'core_noavx.' + core_suffix + '\n')
+        else:
+            sys.stderr.write(
+                "Error: AVX is not support on your machine, but you have installed "
+                "paddlepaddle with avx core, you should reinstall paddlepaddle by "
+                "'python -m pip install -U paddlepaddle-gpu[==version] -f "
+                "https://paddlepaddle.org.cn/whl/stable_noavx.html'\n")
         raise e
 
 

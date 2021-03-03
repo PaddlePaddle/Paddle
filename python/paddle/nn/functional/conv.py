@@ -95,6 +95,68 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+def _conv_nd(x,
+             weight,
+             bias=None,
+             stride=1,
+             padding=0,
+             padding_algorithm=None,
+             dilation=1,
+             groups=1,
+             data_format="NCHW",
+             channel_dim=1,
+             op_type="conv2d",
+             use_cudnn=True,
+             use_mkldnn=False,
+             name=None):
+
+    if in_dygraph_mode():
+        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
+                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn',
+                 use_mkldnn, 'fuse_relu_before_depthwise_conv', False,
+                 "padding_algorithm", padding_algorithm, "data_format",
+                 data_format)
+        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
+        if bias is not None:
+            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+        else:
+            out = pre_bias
+    else:
+        inputs = {'Input': [x], 'Filter': [weight]}
+        attrs = {
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn,
+            'fuse_relu_before_depthwise_conv': False,
+            "padding_algorithm": padding_algorithm,
+            "data_format": data_format
+        }
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pre_bias = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Output": [pre_bias]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        if bias is not None:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [bias]},
+                outputs={'Out': [out]},
+                attrs={'axis': channel_dim,
+                       'use_mkldnn': use_mkldnn})
+        else:
+            out = pre_bias
+
+    return out
+
+
 def conv1d(x,
            weight,
            bias=None,
@@ -104,7 +166,7 @@ def conv1d(x,
            groups=1,
            data_format='NCL',
            name=None):
-    """
+    r"""
     The convolution1D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCL format, where N is batch size, C is the number of
@@ -120,7 +182,7 @@ def conv1d(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -147,7 +209,7 @@ def conv1d(x,
 
         .. math::
 
-            L_{out}&= \\frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type 
@@ -211,7 +273,7 @@ def conv1d(x,
            [[0, 3, 4],
             [2, 9, 7],
             [5, 6, 8]]]).astype(np.float32)
-          paddle.disable_static()
+          
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d(x_var, w_var)
@@ -310,7 +372,7 @@ def conv1d(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d')
         helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -330,7 +392,7 @@ def conv2d(x,
            groups=1,
            data_format="NCHW",
            name=None):
-    """
+    r"""
 
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
@@ -472,11 +534,12 @@ def conv2d(x,
             "received: the number of filters is {}, the shape of weight is {}"
             ", the groups is {}".format(num_filters, weight.shape, groups))
 
-    # use_cudnn = True if core.is_compiled_with_cuda() else False
     cudnn_version = get_cudnn_version()
 
     use_cudnn = True if (core.is_compiled_with_cuda() and
                          cudnn_version is not None) else False
+
+    use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -489,56 +552,9 @@ def conv2d(x,
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    inputs = {'Input': [x], 'Filter': [weight]}
-    attrs = {
-        'strides': stride,
-        'paddings': padding,
-        'dilations': dilation,
-        'groups': groups,
-        'use_cudnn': use_cudnn,
-        'use_mkldnn': False,
-        'fuse_relu_before_depthwise_conv': False,
-        "padding_algorithm": padding_algorithm,
-        "data_format": data_format
-    }
-
-    if in_dygraph_mode():
-        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
-                 'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
-                 padding_algorithm, "data_format", data_format)
-        pre_bias = getattr(core.ops, l_type)(x, weight, *attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-    else:
-        inputs = {'Input': [x], 'Filter': [weight]}
-        attrs = {
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
-            'fuse_relu_before_depthwise_conv': False,
-            "padding_algorithm": padding_algorithm,
-            "data_format": data_format
-        }
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'conv2d')
-        helper = LayerHelper(l_type, **locals())
-        dtype = helper.input_dtype()
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-        outputs = {"Output": [pre_bias]}
-        helper.append_op(
-            type=l_type, inputs=inputs, outputs=outputs, attrs=attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-
-    return out
+    return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
+                    dilation, groups, data_format, channel_dim, l_type,
+                    use_cudnn, use_mkldnn, name)
 
 
 def conv1d_transpose(x,
@@ -552,7 +568,7 @@ def conv1d_transpose(x,
                      output_size=None,
                      data_format="NCL",
                      name=None):
-    """
+    r"""
     The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
     are in 'NCL' format or 'NLC' where N is batch size, C is the number of channels,
@@ -567,7 +583,7 @@ def conv1d_transpose(x,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
@@ -673,18 +689,16 @@ def conv1d_transpose(x,
           import paddle.nn.functional as F
           import numpy as np
           
-          paddle.disable_static()
           # shape: (1, 2, 4)
           x=np.array([[[4, 0, 9, 7],
                        [8, 0, 9, 2,]]]).astype(np.float32)
           # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
+          w=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
           y_var = F.conv1d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
-          print y_np
+          print(y_var)
           
           # [[[60. 16. 99. 75.  4.]]]
     """
@@ -790,7 +804,7 @@ def conv1d_transpose(x,
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d_transpose')
         helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
         helper.append_op(
@@ -813,7 +827,7 @@ def conv2d_transpose(x,
                      output_size=None,
                      data_format='NCHW',
                      name=None):
-    """
+    r"""
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1053,7 +1067,7 @@ def conv3d(x,
            groups=1,
            data_format="NCDHW",
            name=None):
-    """
+    r"""
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -1101,7 +1115,7 @@ def conv3d(x,
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
             type of input is float16 or float32 or float64.
-        weight (Variable): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
+        weight (Tensor): The convolution kernel, a Tensor with shape [M, C/g, kD, kH, kW],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
@@ -1137,21 +1151,9 @@ def conv3d(x,
 
     Returns:
         A Tensor representing the conv3d, whose data type is 
-        the same with input. If act is None, the tensor variable storing the 
-        convolution result, and if act is not None, the tensor variable storing 
+        the same with input. If act is None, the tensor storing the 
+        convolution result, and if act is not None, the tensor storing 
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimension of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1202,44 +1204,9 @@ def conv3d(x,
     dilation = utils.convert_to_list(dilation, 3, 'dilation')
     op_type = "conv3d"
 
-    if in_dygraph_mode():
-        attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
-                 "padding_algorithm", padding_algorithm, "data_format",
-                 data_format)
-        pre_bias = getattr(core.ops, op_type)(x, weight, *attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-    else:
-        inputs = {'Input': [x], 'Filter': [weight]}
-        attrs = {
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
-            "padding_algorithm": padding_algorithm,
-            "data_format": data_format
-        }
-        helper = LayerHelper(op_type, **locals())
-        dtype = helper.input_dtype()
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'conv3d')
-
-        pre_bias = helper.create_variable_for_type_inference(dtype)
-        outputs = {"Output": [pre_bias]}
-
-        helper.append_op(
-            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
-        if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
-
-    return out
+    return _conv_nd(x, weight, bias, stride, padding, padding_algorithm,
+                    dilation, groups, data_format, channel_dim, op_type,
+                    use_cudnn, False, name)
 
 
 def conv3d_transpose(x,
@@ -1253,7 +1220,7 @@ def conv3d_transpose(x,
                      output_size=None,
                      data_format='NCDHW',
                      name=None):
-    """
+    r"""
     The convolution3d transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,

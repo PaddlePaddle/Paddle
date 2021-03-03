@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle.fluid import core
 
 
@@ -149,6 +150,45 @@ class TestYoloBoxOpScaleXY(TestYoloBoxOp):
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
         self.scale_x_y = 1.2
+
+
+class TestYoloBoxDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
+        img_size = np.ones((2, 2)).astype('int32')
+
+        x = paddle.to_tensor(x)
+        img_size = paddle.to_tensor(img_size)
+
+        boxes, scores = paddle.vision.ops.yolo_box(
+            x,
+            img_size=img_size,
+            anchors=[10, 13, 16, 30],
+            class_num=2,
+            conf_thresh=0.01,
+            downsample_ratio=8,
+            clip_bbox=True,
+            scale_x_y=1.)
+        assert boxes is not None and scores is not None
+        paddle.enable_static()
+
+
+class TestYoloBoxStatic(unittest.TestCase):
+    def test_static(self):
+        x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
+        img_size = paddle.static.data('img_size', [2, 2], 'int32')
+
+        boxes, scores = paddle.vision.ops.yolo_box(
+            x,
+            img_size=img_size,
+            anchors=[10, 13, 16, 30],
+            class_num=2,
+            conf_thresh=0.01,
+            downsample_ratio=8,
+            clip_bbox=True,
+            scale_x_y=1.)
+        assert boxes is not None and scores is not None
 
 
 if __name__ == "__main__":

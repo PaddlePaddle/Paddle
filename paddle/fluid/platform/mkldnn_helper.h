@@ -23,6 +23,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
@@ -134,11 +135,6 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return mkldnn::memory::desc({dims}, data_type, format);
 }
 
-inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
-  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
-}
-
 inline void ClearMKLDNNCache(const platform::Place& place) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
@@ -192,7 +188,9 @@ MKLDNNGetDataType<paddle::platform::bfloat16>() {
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
-  mkldnn::stream astream(engine);
+  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  platform::RecordEvent record_reorder("int_reorder",
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }
@@ -278,6 +276,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb8a;
+        }
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::Abcde8a;
         }
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
@@ -433,13 +435,39 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
   }
 }
 
+// If MKLDNN build and CPU place then register suffix in DeviceContext
+inline void AttachPointerHashToMKLDNNKey(void* ptr,
+                                         const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->SetKeySuffix("E" +
+                          std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    // When NaiveExecutor/Executor is used no info on thread id is needed in a
+    // key
+    dev_ctx->DisableThreadInfoInKey();
+  }
+}
+
 template <typename... ArgTypes>
-inline std::string CreateKey(ArgTypes&&... args) {
+inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
+                             ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  key += dev_ctx.GetKeySuffix();
   return key;
+}
+
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
+  return ((dev_ctx.IsThreadIdUsedInKey() == true) &&
+          (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
+           platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
+             ? key + "-t:" + ThreadIDasStr()
+             : key;
 }
 
 inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
@@ -461,6 +489,19 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
     int padding_right = paddings[3];
 
     return {{padding_top, padding_left}, {padding_bottom, padding_right}};
+  }
+}
+
+// The function adjusts the vector of weight dimensions for group convolutions
+inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                                  const int groups) {
+  if (groups > 1) {
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
   }
 }
 

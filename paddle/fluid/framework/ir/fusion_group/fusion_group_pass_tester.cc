@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {

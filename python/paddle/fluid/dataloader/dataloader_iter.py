@@ -24,6 +24,7 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
+from paddle.fluid.framework import _set_expected_place, _current_expected_place
 
 # NOTE: queue has a different name in python2 and python3
 if six.PY2:
@@ -36,6 +37,7 @@ from .. import core, layers
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
+from .batch_sampler import _InfiniteIterableSampler
 
 __all__ = ['get_worker_info']
 
@@ -100,11 +102,14 @@ class _DatasetKind(object):
     ITER = 1
 
     @staticmethod
-    def create_fetcher(kind, dataset, collate_fn, drop_last):
+    def create_fetcher(kind, dataset, auto_collate_batch, collate_fn,
+                       drop_last):
         if kind == _DatasetKind.MAP:
-            return _MapDatasetFetcher(dataset, collate_fn, drop_last)
+            return _MapDatasetFetcher(dataset, auto_collate_batch, collate_fn,
+                                      drop_last)
         elif kind == _DatasetKind.ITER:
-            return _IterableDatasetFetcher(dataset, collate_fn, drop_last)
+            return _IterableDatasetFetcher(dataset, auto_collate_batch,
+                                           collate_fn, drop_last)
         else:
             raise NotImplementedError("unknown Dataset kind {}".format(kind))
 
@@ -149,8 +154,8 @@ def get_worker_info():
         .. code-block:: python
 
             import math
+            import paddle
             import numpy as np
-            import paddle.fluid as fluid
             from paddle.io import IterableDataset, DataLoader, get_worker_info
 
             class SplitedIterableDataset(IterableDataset):
@@ -174,18 +179,18 @@ def get_worker_info():
                     for i in range(iter_start, iter_end):
                         yield np.array([i])
 
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                dataset = SplitedIterableDataset(start=2, end=9)
-                dataloader = DataLoader(
-                    dataset,
-                    places=place,
-                    num_workers=2,
-                    batch_size=1,
-                    drop_last=True)
+            place = paddle.CPUPlace()
+            dataset = SplitedIterableDataset(start=2, end=9)
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=2,
+                batch_size=1,
+                drop_last=True)
 
-                print(list(dataloader))
-                # outputs: [2, 5, 3, 6, 4, 7]
+            for data in dataloader:
+                print(data)
+            # outputs: [2, 5, 3, 6, 4, 7]
 
     """
     return _worker_info
@@ -221,8 +226,7 @@ class _DataLoaderIterBase(object):
         self._places = loader.places
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
-        self._sampler_iter = iter(loader.batch_sampler)
-        self._collate_fn = loader.collate_fn or default_collate_fn
+        self._auto_collate_batch = loader.auto_collate_batch
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
         self._use_shared_memory = loader.use_shared_memory
@@ -230,6 +234,17 @@ class _DataLoaderIterBase(object):
         self._worker_init_fn = loader.worker_init_fn
         self._dataset_kind = loader.dataset_kind
         self._pin_memory = loader.pin_memory
+
+        if self._auto_collate_batch:
+            self._sampler_iter = iter(loader.batch_sampler)
+            self._collate_fn = loader.collate_fn or default_collate_fn
+        else:
+            if self._dataset_kind == _DatasetKind.MAP:
+                self._sampler_iter = iter(list(range(len(self._dataset))))
+            else:
+                self._sampler_iter = iter(
+                    _InfiniteIterableSampler(self._dataset, 1))
+            self._collate_fn = loader.collate_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data
@@ -257,7 +272,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         super(_DataLoaderIterSingleProcess, self).__init__(loader)
 
         self._dataset_fetcher = _DatasetKind.create_fetcher(
-            self._dataset_kind, self._dataset, self._collate_fn, True)
+            self._dataset_kind, self._dataset, self._auto_collate_batch,
+            self._collate_fn, True)
 
         # NOTE: len(self._places) batch data compose as an output
         # iteration, set blocking_queue can cache 2 iteration datas
@@ -282,12 +298,20 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._need_check_feed, self._places, self._use_buffer_reader, True,
             self._pin_memory)
 
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
         try:
+            #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+            # and it will call platform::SetDeviceId() in c++ internally.
+            # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+            # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+            # APIs in this thread.
+            _set_expected_place(legacy_expected_place)
+
             for indices in self._sampler_iter:
                 # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(indices)
@@ -296,7 +320,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 array = core.LoDTensorArray()
                 for slot in batch:
                     if not isinstance(slot, core.LoDTensor):
-                        self._check_input_array(slot)
                         # FIXME(dkp): blocking_queue only support
                         #             core.LoDTensorArray as input now, read
                         #             numpy data into a LoDTensorArray here,
@@ -321,19 +344,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._thread = None
             logging.warning("DataLoader reader thread raised an exception.")
             six.reraise(*sys.exc_info())
-
-    @classmethod
-    def _check_input_array(cls, item):
-        if isinstance(item, paddle.Tensor):
-            return
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError((
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
     def __next__(self):
         try:
@@ -367,8 +377,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 # NOTE(chenweihang): _worker_loop must be top level method to be pickled
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
-                 collate_fn, init_fn, worker_id, num_workers,
-                 use_shared_memory):
+                 auto_collate_batch, collate_fn, init_fn, worker_id,
+                 num_workers, use_shared_memory):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
@@ -387,8 +397,8 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             if init_fn is not None:
                 init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(dataset_kind, dataset,
-                                                  collate_fn, True)
+            fetcher = _DatasetKind.create_fetcher(
+                dataset_kind, dataset, auto_collate_batch, collate_fn, True)
         except:
             init_exception = Exception("init_fn failed in worker {}: " \
                                     "{}".format(worker_id, sys.exc_info()))
@@ -430,11 +440,16 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                 if use_shared_memory:
                     # FIXME(dkp): _convert_to_tensor_list only support np.array
                     #             list now, should support paddle.Tensor list
-                    if isinstance(batch[0][0], paddle.Tensor):
-                        np_batch = []
-                        for sample in batch:
-                            np_batch.append([s.numpy() for s in sample])
-                        batch = np_batch
+                    new_batch = []
+                    for sample in batch:
+                        new_sample = []
+                        for s in sample:
+                            if isinstance(s, paddle.Tensor):
+                                new_sample.append(s.numpy())
+                            else:
+                                new_sample.append(s)
+                        new_batch.append(new_sample)
+                    batch = new_batch
 
                     tensor_list = core._convert_to_tensor_list(batch)
                     out_queue.put((idx, tensor_list))
@@ -511,8 +526,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 target=_worker_loop,
                 args=(self._dataset, self._dataset_kind, indices_queue,
                       self._data_queue, self._workers_done_event,
-                      self._collate_fn, self._worker_init_fn, i,
-                      self._num_workers, self._use_shared_memory))
+                      self._auto_collate_batch, self._collate_fn,
+                      self._worker_init_fn, i, self._num_workers,
+                      self._use_shared_memory))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -547,7 +563,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._pin_memory)
 
         self._thread_done_event = threading.Event()
-        self._thread = threading.Thread(target=self._thread_loop)
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(), ))
         self._thread.daemon = True
         self._thread.start()
 
@@ -587,7 +604,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
 
-    def _thread_loop(self):
+    def _thread_loop(self, legacy_expected_place):
+        #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+        # and it will call platform::SetDeviceId() in c++ internally.
+        # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # APIs in this thread.
+        _set_expected_place(legacy_expected_place)
+
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():

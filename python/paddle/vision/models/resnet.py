@@ -245,7 +245,7 @@ class ResNet(nn.Layer):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        if self.with_pool > 0:
+        if self.with_pool:
             x = self.avgpool(x)
 
         if self.num_classes > 0:

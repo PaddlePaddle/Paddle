@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
-#include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <mutex>               // NOLINT
 #include <random>
 #include <thread>  // NOLINT
+#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_int64(gpu_allocator_retry_time);
@@ -40,7 +39,7 @@ static inline size_t AlignTo(size_t size, size_t alignment) {
 }
 
 TEST(allocator, allocator) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
   FLAGS_gpu_allocator_retry_time = 500;
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
@@ -62,7 +61,7 @@ TEST(allocator, allocator) {
     ASSERT_EQ(cpu_allocation->size(), AlignedSize(size, 1024));
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP)
   {
     place = platform::CUDAPlace(0);
     size = 1024;
@@ -101,7 +100,7 @@ TEST(allocator, allocator) {
 
 TEST(multithread_allocate, test_segfault) {
   FLAGS_allocator_strategy = "auto_growth";
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::mutex mtx;
   std::condition_variable cv;
   bool flag = false;

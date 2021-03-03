@@ -27,6 +27,7 @@ __all__ = ['amp_guard']
 WHITE_LIST = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
