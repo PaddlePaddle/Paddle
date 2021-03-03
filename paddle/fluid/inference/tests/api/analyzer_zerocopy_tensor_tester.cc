@@ -45,7 +45,7 @@ TEST(test_zerocopy_tensor, zerocopy_tensor) {
 
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu<float>(input);
+  input_t->CopyFromCpu<float>(input);
   input_t->data<float>(place, &size);
   input_t->mutable_data<float>(p);
 
@@ -58,7 +58,7 @@ TEST(test_zerocopy_tensor, zerocopy_tensor) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
   out_data.resize(out_num);
-  output_t->copy_to_cpu<float>(out_data.data());
+  output_t->CopyToCpu<float>(out_data.data());
 }
 
 }  // namespace inference

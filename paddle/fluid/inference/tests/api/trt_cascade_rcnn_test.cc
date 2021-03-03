@@ -49,11 +49,11 @@ TEST(TensorRT, cascade_rcnn) {
 
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   auto input_t1 = predictor->GetInputTensor(input_names[1]);
   input_t1->Reshape({batch_size, 3});
-  input_t1->copy_from_cpu(im_shape);
+  input_t1->CopyFromCpu(im_shape);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 }

@@ -56,21 +56,21 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   // first input
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({run_batch, run_seq_len, 1});
-  input_t->copy_from_cpu(i0);
+  input_t->CopyFromCpu(i0);
 
   // second input
   auto input_t2 = predictor->GetInputTensor(input_names[1]);
   input_t2->Reshape({run_batch, run_seq_len, 1});
-  input_t2->copy_from_cpu(i1);
+  input_t2->CopyFromCpu(i1);
 
   // third input.
   auto input_t3 = predictor->GetInputTensor(input_names[2]);
   input_t3->Reshape({run_batch, run_seq_len, 1});
-  input_t3->copy_from_cpu(i2);
+  input_t3->CopyFromCpu(i2);
 
   auto input_t4 = predictor->GetInputTensor(input_names[3]);
   input_t4->Reshape({run_batch, run_seq_len, 1});
-  input_t4->copy_from_cpu(i3);
+  input_t4->CopyFromCpu(i3);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -80,7 +80,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
   out_data->resize(out_num);
-  output_t->copy_to_cpu(out_data->data());
+  output_t->CopyToCpu(out_data->data());
 }
 
 void trt_ernie(bool with_fp16, std::vector<float> result,

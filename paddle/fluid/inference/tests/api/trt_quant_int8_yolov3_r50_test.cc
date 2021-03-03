@@ -41,11 +41,11 @@ TEST(quant_int8, yolov3_resnet50) {
   memset(input, 1.0, input_num * sizeof(float));
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({1, channels, height, width});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   auto input_t1 = predictor->GetInputTensor(input_names[1]);
   input_t1->Reshape({1, 2});
-  input_t1->copy_from_cpu(im_shape);
+  input_t1->CopyFromCpu(im_shape);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -56,7 +56,7 @@ TEST(quant_int8, yolov3_resnet50) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
   out_data.resize(out_num);
-  output_t->copy_to_cpu(out_data.data());
+  output_t->CopyToCpu(out_data.data());
 }
 
 }  // namespace inference

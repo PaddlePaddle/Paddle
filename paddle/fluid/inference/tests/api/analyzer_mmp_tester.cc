@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
-
-#include <random>
 
 // Here add missing commands
 DEFINE_string(infer_model2, "", "model path");
@@ -35,7 +34,8 @@ void SetConfig(AnalysisConfig* config, const std::string& infer_model) {
 }
 
 std::unique_ptr<PaddlePredictor> InitializePredictor(
-    const std::string& infer_model, std::vector<float>& data, bool use_mkldnn) {
+    const std::string& infer_model, std::vector<float>& data,  // NOLINT
+    bool use_mkldnn) {
   AnalysisConfig cfg;
   SetConfig(&cfg, infer_model);
   if (use_mkldnn) {
@@ -47,7 +47,7 @@ std::unique_ptr<PaddlePredictor> InitializePredictor(
   auto input = predictor->GetInputTensor(input_name);
   std::vector<int> shape{N, C, H, W};
   input->Reshape(std::move(shape));
-  input->copy_from_cpu(data.data());
+  input->CopyFromCpu(data.data());
 
   return predictor;
 }
@@ -75,7 +75,7 @@ void compare(bool use_mkldnn = false) {
   int numel = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                               std::multiplies<int>());
   std::vector<float> xx_output(numel);
-  output->copy_to_cpu(xx_output.data());
+  output->CopyToCpu(xx_output.data());
 
   // Initialize xx model's predictor to trigger oneDNN cache clearing
   predictor_xx =
@@ -89,7 +89,7 @@ void compare(bool use_mkldnn = false) {
   // Get again output of xx model , but when all three models were executed
   std::vector<float> xx2_output(numel);
   output = predictor_xx->GetOutputTensor(predictor_xx->GetOutputNames()[0]);
-  output->copy_to_cpu(xx2_output.data());
+  output->CopyToCpu(xx2_output.data());
 
   // compare results
   auto result = std::equal(

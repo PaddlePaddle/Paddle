@@ -54,7 +54,7 @@ void TestDynamic(bool with_dynamic = true) {
   memset(input, 0, input_num * sizeof(float));
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({1, channels, height, width});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -65,7 +65,7 @@ void TestDynamic(bool with_dynamic = true) {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
   out_data.resize(out_num);
-  output_t->copy_to_cpu(out_data.data());
+  output_t->CopyToCpu(out_data.data());
 }
 
 void TestDynamic2() {
@@ -100,17 +100,17 @@ void TestDynamic2() {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   auto input_t1 = predictor->GetInputTensor(input_names[1]);
   input_t1->Reshape({batch_size, 2, 1, 1});
   std::vector<float> first;
   for (int i = 0; i < batch_size * 2; i++) first.push_back(1.0);
-  input_t1->copy_from_cpu(first.data());
+  input_t1->CopyFromCpu(first.data());
 
   auto input_t2 = predictor->GetInputTensor(input_names[2]);
   input_t2->Reshape({batch_size, 2, 1, 1});
-  input_t2->copy_from_cpu(first.data());
+  input_t2->CopyFromCpu(first.data());
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -121,7 +121,7 @@ void TestDynamic2() {
   int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
                                 std::multiplies<int>());
   out_data.resize(out_num);
-  output_t->copy_to_cpu(out_data.data());
+  output_t->CopyToCpu(out_data.data());
   std::vector<float> result = {0.617728, 1.63504, 2.15771, 0.535556};
   for (size_t i = 0; i < out_data.size(); i++) {
     EXPECT_NEAR(result[i], out_data[i], 1e-5);

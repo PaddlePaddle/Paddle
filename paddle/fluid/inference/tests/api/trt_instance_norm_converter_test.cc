@@ -41,7 +41,7 @@ TEST(TensorRT, instance_norm) {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, length});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 }

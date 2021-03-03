@@ -69,7 +69,7 @@ struct PD_ZeroCopyFunctor {
         std::accumulate(output_i->shape, output_i->shape + output_i->shape_size,
                         1, std::multiplies<int>());
     out_data.resize(out_num);
-    output_t->copy_to_cpu(out_data.data());
+    output_t->CopyToCpu(out_data.data());
     output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
     memmove(static_cast<OutT*>(output_i->data), out_data.data(),
             out_num * sizeof(OutT));
@@ -142,16 +142,16 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     input_t->Reshape(tensor_shape);
     switch (inputs[i].dtype) {
       case PD_FLOAT32:
-        input_t->copy_from_cpu(static_cast<float*>(inputs[i].data));
+        input_t->CopyFromCpu(static_cast<float*>(inputs[i].data));
         break;
       case PD_INT32:
-        input_t->copy_from_cpu(static_cast<int32_t*>(inputs[i].data));
+        input_t->CopyFromCpu(static_cast<int32_t*>(inputs[i].data));
         break;
       case PD_INT64:
-        input_t->copy_from_cpu(static_cast<int64_t*>(inputs[i].data));
+        input_t->CopyFromCpu(static_cast<int64_t*>(inputs[i].data));
         break;
       case PD_UINT8:
-        input_t->copy_from_cpu(static_cast<uint8_t*>(inputs[i].data));
+        input_t->CopyFromCpu(static_cast<uint8_t*>(inputs[i].data));
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::InvalidArgument(
@@ -226,16 +226,16 @@ void PD_SetZeroCopyInput(PD_Predictor* predictor,
   input->Reshape(std::move(shape));
   switch (tensor->dtype) {
     case PD_FLOAT32:
-      input->copy_from_cpu(static_cast<float*>(tensor->data.data));
+      input->CopyFromCpu(static_cast<float*>(tensor->data.data));
       break;
     case PD_INT32:
-      input->copy_from_cpu(static_cast<int32_t*>(tensor->data.data));
+      input->CopyFromCpu(static_cast<int32_t*>(tensor->data.data));
       break;
     case PD_INT64:
-      input->copy_from_cpu(static_cast<int64_t*>(tensor->data.data));
+      input->CopyFromCpu(static_cast<int64_t*>(tensor->data.data));
       break;
     case PD_UINT8:
-      input->copy_from_cpu(static_cast<uint8_t*>(tensor->data.data));
+      input->CopyFromCpu(static_cast<uint8_t*>(tensor->data.data));
       break;
     default:
       PADDLE_THROW(
@@ -294,16 +294,16 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   }
   switch (tensor->dtype) {
     case PD_FLOAT32:
-      output->copy_to_cpu(reinterpret_cast<float*>(tensor->data.data));
+      output->CopyToCpu(reinterpret_cast<float*>(tensor->data.data));
       break;
     case PD_INT32:
-      output->copy_to_cpu(reinterpret_cast<int32_t*>(tensor->data.data));
+      output->CopyToCpu(reinterpret_cast<int32_t*>(tensor->data.data));
       break;
     case PD_INT64:
-      output->copy_to_cpu(reinterpret_cast<int64_t*>(tensor->data.data));
+      output->CopyToCpu(reinterpret_cast<int64_t*>(tensor->data.data));
       break;
     case PD_UINT8:
-      output->copy_to_cpu(reinterpret_cast<uint8_t*>(tensor->data.data));
+      output->CopyToCpu(reinterpret_cast<uint8_t*>(tensor->data.data));
       break;
     default:
       PADDLE_THROW(

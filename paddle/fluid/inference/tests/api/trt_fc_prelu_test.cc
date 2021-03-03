@@ -49,7 +49,7 @@ TEST(ZeroCopyTensor, uint8) {
   memset(input, 1, input_num * sizeof(uint8_t));
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, length});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
   input_t->type();
   input_t->mutable_data<uint8_t>(PaddlePlace::kGPU);
 

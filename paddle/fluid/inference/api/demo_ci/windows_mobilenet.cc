@@ -62,7 +62,7 @@ void RunAnalysis() {
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu(input);
+  input_t->CopyFromCpu(input);
 
   // 4. run predictor
   predictor->ZeroCopyRun();
@@ -76,7 +76,7 @@ void RunAnalysis() {
                                 std::multiplies<int>());
 
   out_data.resize(out_num);
-  output_t->copy_to_cpu(out_data.data());
+  output_t->CopyToCpu(out_data.data());
   delete[] input;
 }
 

@@ -147,7 +147,7 @@ void ZeroCopyTensorCreate(
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
   tensor.Reshape(std::move(shape));
-  tensor.copy_from_cpu(static_cast<const T *>(data.data()));
+  tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
 template <typename T>
@@ -188,19 +188,19 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
 
   switch (tensor.type()) {
     case PaddleDType::INT32:
-      tensor.copy_to_cpu(static_cast<int32_t *>(array.mutable_data()));
+      tensor.CopyToCpu(static_cast<int32_t *>(array.mutable_data()));
       break;
     case PaddleDType::INT64:
-      tensor.copy_to_cpu(static_cast<int64_t *>(array.mutable_data()));
+      tensor.CopyToCpu(static_cast<int64_t *>(array.mutable_data()));
       break;
     case PaddleDType::FLOAT32:
-      tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
+      tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
-      tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
+      tensor.CopyToCpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
     case PaddleDType::INT8:
-      tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
+      tensor.CopyToCpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
