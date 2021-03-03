@@ -480,6 +480,7 @@ def get_filenames():
                 continue
             if len(module.split('.')) > 1:
                 filename = '../python/'
+                # work for .so?
                 module_py = '%s.py' % module.split('.')[-1]
                 for i in range(0, len(module.split('.')) - 1):
                     filename = filename + '%s/' % module.split('.')[i]
@@ -488,8 +489,12 @@ def get_filenames():
                 filename = ''
                 print("\nWARNING:----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
-            if filename != '' and filename not in filenames:
+            if filename != '' and filename not in filenames and os.path.exists(
+                    filename):
                 filenames.append(filename)
+            else:
+                print("skip file: {}".format(filename))
+                continue
             # get all methods
             method = ''
             if inspect.isclass(eval(api)):
