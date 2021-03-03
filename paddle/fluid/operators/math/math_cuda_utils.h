@@ -211,6 +211,20 @@ __inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
   return val;
 }
 
+template <typename T>
+__inline__ __device__ T PartialWarpReduceMin(T val, unsigned lane_mask) {
+  T warp_val = __shfl(val, 0, warpSize);
+  warp_val = val;
+  for (int offset = HALF_WARP; offset > 0; offset >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    warp_val =
+        min(warp_val, __shfl_down_sync(lane_mask, warp_val, offset, warpSize));
+#else
+    warp_val = min(warp_val, __shfl_down(warp_val, offset, warpSize));
+#endif
+  return warp_val;
+}
+
 /* Calculate the maximum of all elements in a block */
 template <typename T>
 __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
@@ -233,37 +247,41 @@ __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
 }
 
 /* Calculate the minimum of all elements in a block */
-template <typename T>
-__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
-  static __shared__ T shared[WARP_SIZE];
-  static __shared__ T shared_last_val;
-  static __shared__ int shared_last_idx;
+template <typename T_>
+__inline__ __device__ T_ blockReduceMin(T_ val, unsigned mask) {
+  static __shared__ T_ shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
-  int total_num = blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
-  int threshold = (total_num >> 5) << 5;
 
-  if (threadIdx.x < threshold) {
-    shared_last_idx = (threshold >> 5) - 1;
-    val = warpReduceMin(val, mask);
-    if (lane == 0) shared[wid] = val;
-  } else {
-    shared_last_idx = threadIdx.x >> 5;
-    shared_last_val = 1e10;
-    paddle::platform::CudaAtomicMin(&shared_last_val, val);
-    shared[shared_last_idx] = shared_last_val;
-  }
+  val = warpReduceMin(val, mask);
+  if (lane == 0) shared[wid] = val;
   __syncthreads();
 
-  if (threadIdx.x < threshold) {
-    val = (lane <= shared_last_idx) ? shared[lane] : 1e10f;
-    val = warpReduceMin(val, mask);
-    shared_last_val = val;
-  }
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = warpReduceMin(val, mask);
+
+  return val;
+}
+
+/* Calculate the minimum of all elements in a block */
+template <typename T_>
+__inline__ __device__ T_ PartialBlockReduceMin(T_ val, size_t thread_num,
+                                               unsigned mask) {
+  static __shared__ T_ shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = PartialWarpReduceMin(val, mask);
+  if (lane == 0) shared[wid] = val;
   __syncthreads();
-  if (threadIdx.x >= threshold) {
-    val = shared_last_val;
-  }
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = warpReduceMin(val, mask);
+
   return val;
 }
 
