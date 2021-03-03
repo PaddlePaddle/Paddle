@@ -474,6 +474,10 @@ def get_filenames():
             except AttributeError:
                 whl_error.append(api)
                 continue
+            except SyntaxError:
+                print('line:{}, api:{}'.format(line, api))
+                # paddle.Tensor.<lambda>
+                continue
             if len(module.split('.')) > 1:
                 filename = '../python/'
                 module_py = '%s.py' % module.split('.')[-1]
