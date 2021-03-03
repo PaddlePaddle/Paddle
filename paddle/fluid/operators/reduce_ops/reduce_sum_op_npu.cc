@@ -63,9 +63,9 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     Tensor shape_tensor(framework::proto::VarType::INT32);
-    shape_tensor.mutable_data<float>(framework::vectorize<int32_t>(x->dims()),
-                                     ctx.GetPlace());
-    TensorFromVector(x->dims(), ctx.device_context(), &shape_tensor);
+    shape_tensor.mutable_data<int32_t>(x->dims(), ctx.GetPlace());
+    TensorFromVector(framework::vectorize<int32_t>(x->dims()),
+                     ctx.device_context(), &shape_tensor);
 
     x_grad->mutable_data<T>(ctx.GetPlace());
 
