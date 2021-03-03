@@ -15,9 +15,7 @@ add_subdirectory(detection)
 add_subdirectory(elementwise)
 add_subdirectory(fused)
 add_subdirectory(metrics)
-if(NOT ON_INFER)
-    add_subdirectory(optimizers)
-endif()
+add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
@@ -70,13 +68,8 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-if(ON_INFER)
-    file(GLOB LOSS_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*loss_op.cc")
-    string(REPLACE ".cc" "" LOSS_OPS "${LOSS_OPS}")
-endif()
-
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op ${OP_MKL_DEPS} ${LOSS_OPS} DEPS ${OP_HEADER_DEPS})
+        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 

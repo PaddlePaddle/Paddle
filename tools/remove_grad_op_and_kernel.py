@@ -42,6 +42,25 @@ def remove_grad_op_and_kernel(content, pattern1, pattern2):
     return res, len(res)
 
 
+def update_operator_cmake(cmake_file):
+    pat1 = 'add_subdirectory(optimizers)'
+    pat2 = 'register_operators\(EXCLUDES.*?py_func_op.*?\)'
+
+    code1 = 'if(ON_INFER)\nadd_subdirectory(optimizers)\nendif()'
+    code2 = 'if(ON_INFER)\nfile(GLOB LOSS_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*loss_op.cc")\nstring(REPLACE ".cc" "" LOSS_OPS "${LOSS_OPS}")\nendif()'
+
+    with open(cmake_file, 'r') as f:
+        content = ''.join(f.readlines())
+        content = content.replace(pat1, code1)
+
+        match = re.findall(pat2, content, flags=re.DOTALL)
+        content = content.replace(match[0], code2 + '\n' + match[0].replace(
+            'py_func_op', 'py_func_op ${LOSS_OPS}'))
+
+    with open(cmake_file, 'w') as f:
+        f.write(content)
+
+
 if __name__ == '__main__':
 
     tool_dir = os.path.dirname(os.path.abspath(__file__))
@@ -64,6 +83,7 @@ if __name__ == '__main__':
     register_op_count, register_op_cpu_kernel_count, register_op_cuda_kernel_count, register_op_xpu_kernel_count = 0, 0, 0, 0
     register_op_kernel_count, register_op_kernel_with_custom_type_count = 0, 0
 
+    # 1. remove all grad op and kernel
     for op_file in all_op:
         # remove all grad op
         op_pattern1 = 'REGISTER_OPERATOR\(.*?\);?'
@@ -139,6 +159,11 @@ if __name__ == '__main__':
 
         with open(op_file, 'w') as f:
             f.write(content)
+
+    # 2. update operators/CMakeLists.txt
+    cmake_file = os.path.join(tool_dir,
+                              '../paddle/fluid/operators/CMakeLists.txt')
+    update_operator_cmake(cmake_file)
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
     print('%50s%10s' % ('type', 'count'))
