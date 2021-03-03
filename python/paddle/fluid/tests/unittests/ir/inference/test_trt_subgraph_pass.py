@@ -414,6 +414,34 @@ class TensorRTSubgraphPassElementwiseMulTest(
         return fluid.layers.elementwise_mul(x=data1, y=data2)
 
 
+class TensorRTSubgraphPassElementwiseSerializeTest(
+        TensorRTSubgraphPassElementwiseTest):
+    def setUp(self):
+        super(TensorRTSubgraphPassElementwiseSerializeTest, self).setUp()
+        self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+
+    def test_check_output(self):
+        if os.path.exists(self.path + "_opt_cache"):
+            shutil.rmtree(self.path + "_opt_cache")
+        super(TensorRTSubgraphPassElementwiseSerializeTest,
+              self).test_check_output()
+
+
+class TensorRTSubgraphPassElementwiseDynamicSerializeTest(
+        TensorRTSubgraphPassElementwiseSerializeTest):
+    def setUp(self):
+        super(TensorRTSubgraphPassElementwiseDynamicSerializeTest, self).setUp()
+        self.dynamic_shape_params = TensorRTSubgraphPassElementwiseDynamicSerializeTest.DynamicShapeParam(
+            {
+                'data1': [1, 3, 8, 64],
+                'data2': [1, 3, 8, 64]
+            }, {'data1': [1, 3, 512, 64],
+                'data2': [1, 3, 512, 64]},
+            {'data1': [1, 3, 256, 64],
+             'data2': [1, 3, 256, 64]}, False)
+
+
 class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
