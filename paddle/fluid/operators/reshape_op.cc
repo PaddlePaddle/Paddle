@@ -654,7 +654,7 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
     ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
     ops::ReshapeDoubleGradKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 uint8_t, ops::ReshapeKernel, int64_t,
