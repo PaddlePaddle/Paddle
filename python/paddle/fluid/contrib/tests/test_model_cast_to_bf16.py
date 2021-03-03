@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 import paddle.fluid.layers as layers
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision.bf16_utils import cast_model_to_bf16,\
+from paddle.fluid.contrib.mixed_precision.bf16_utils import rewrite_program_bf16,\
     convert_float_to_uint16, convert_uint16_to_float
 
 paddle.enable_static()
@@ -58,7 +58,7 @@ class TestModelCastBF16(unittest.TestCase):
         exe = fluid.Executor(core.CPUPlace())
         exe.run(fluid.default_startup_program())
         prog = fluid.default_main_program()
-        cast_model_to_bf16(prog, use_bf16_guard=True)
+        rewrite_program_bf16(prog, use_bf16_guard=True)
         return exe.run(prog,
                        feed=feed,
                        fetch_list=fetch_list,
@@ -95,8 +95,7 @@ class TestModelCastBF16(unittest.TestCase):
                 },
                 fetch_list=[ret_bf16, ret])
 
-        stt = convert_uint16_to_float(static_ret_bf16)
-        self.assertTrue(np.allclose(stt, static_ret, 1e-2))
+        self.assertTrue(np.allclose(static_ret_bf16, static_ret, 1e-2))
 
 
 if __name__ == '__main__':
