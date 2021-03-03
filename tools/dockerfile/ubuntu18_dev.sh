@@ -33,7 +33,7 @@ function ref_whl(){
   fi
 
   if [[ ${WITH_GPU} != "ON" ]]; then
-    ref_gcc = ""
+    ref_gcc=""
   elif [[ ${gcc_version} == "8.2.0" ]];then
     ref_gcc=_gcc8.2
   fi
