@@ -11,7 +11,7 @@
 
 #include "paddle/fluid/operators/bmm_op.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     bmm, ops::BmmKernel<paddle::platform::CUDADeviceContext, float>,

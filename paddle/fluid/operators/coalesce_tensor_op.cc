@@ -289,7 +289,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     coalesce_tensor,
     ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext,
