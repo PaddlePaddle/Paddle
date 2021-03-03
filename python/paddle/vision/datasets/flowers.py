@@ -73,7 +73,6 @@ class Flowers(Dataset):
                 print(sample[0].size, sample[1])
 
     """
-
     def __init__(self,
                  data_file=None,
                  label_file=None,
@@ -83,14 +82,14 @@ class Flowers(Dataset):
                  download=True,
                  backend=None):
         assert mode.lower() in ['train', 'valid', 'test'], \
-                "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+            "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}"
-                .format(backend))
+                    .format(backend))
         self.backend = backend
 
         self.flag = MODE_FLAG_MAP[mode.lower()]
@@ -115,40 +114,27 @@ class Flowers(Dataset):
 
         self.transform = transform
 
-        # read dataset into memory
-        self._load_anno()
-
-        self.dtype = paddle.get_default_dtype()
-
-    def _load_anno(self):
-        self.name2mem = {}
         self.data_tar = tarfile.open(self.data_file)
-        for ele in self.data_tar.getmembers():
-            self.name2mem[ele.name] = ele
+        self.data_path = self.data_file.replace(".tgz", "/")
+        if not os.path.exists(self.data_path):
+            os.mkdir(self.data_path)
+        self.data_tar.extractall(self.data_path)
 
         scio = try_import('scipy.io')
-
-        # double check data download
-        self.label_file = _check_exists_and_download(self.label_file, LABEL_URL,
-                                                     LABEL_MD5, 'flowers', True)
-
-        self.setid_file = _check_exists_and_download(self.setid_file, SETID_URL,
-                                                     SETID_MD5, 'flowers', True)
-
         self.labels = scio.loadmat(self.label_file)['labels'][0]
         self.indexes = scio.loadmat(self.setid_file)[self.flag][0]
+
+        self.dtype = paddle.get_default_dtype()
 
     def __getitem__(self, idx):
         index = self.indexes[idx]
         label = np.array([self.labels[index - 1]])
         img_name = "jpg/image_%05d.jpg" % index
-        img_ele = self.name2mem[img_name]
-        image = self.data_tar.extractfile(img_ele).read()
-
+        image = os.path.join(self.data_path, img_name)
         if self.backend == 'pil':
-            image = Image.open(io.BytesIO(image))
+            image = Image.open(image)
         elif self.backend == 'cv2':
-            image = np.array(Image.open(io.BytesIO(image)))
+            image = np.array(Image.open(image))
 
         if self.transform is not None:
             image = self.transform(image)
