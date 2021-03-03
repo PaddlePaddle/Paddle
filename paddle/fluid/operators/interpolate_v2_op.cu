@@ -314,16 +314,35 @@ __inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
   return val;
 }
 
-/* Calculate the minimum of all elements in a block */
 template <typename T>
-__inline__ __device__ T PartialBlockReduceMin(T val, unsigned mask) {
+__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceMin(val, mask);
+  if (lane == 0) shared[wid] = val;
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = warpReduceMin(val, mask);
+
+  return val;
+}
+
+/* Calculate partial minimum of all elements in a block */
+template <typename T>
+__inline__ __device__ T PartialBlockReduceMin(T val,
+                                              size_t threads_num_in_block,
+                                              unsigned mask) {
   __shared__ T shared[WARP_SIZE];
   __shared__ T shared_last_val;
   __shared__ int shared_last_idx;
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
-  int total_num = math::blockReduceMax(threadIdx.x, FINAL_MASK) + 1;
-  int threshold = (total_num >> 5) << 5;
+  int threshold = (threads_num_in_block >> 5) << 5;
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
@@ -399,14 +418,22 @@ __global__ void KeBilinearInterpBw(
       s_data[1][threadIdx.x] = 0;
 
       // top_left_index is just input_index.
+      int in_top_min_index, in_bot_min_index;
+      int remain = threads_total - blockDim.x * blockIdx.x;
       int top_right_index = input_index + w_id;
       int bot_left_index = input_index + h_id * in_img_w;
       int bot_right_index = input_index + h_id * in_img_w + w_id;
       int in_top_max_index = math::blockReduceMax(top_right_index, FINAL_MASK);
       int in_bot_max_index = math::blockReduceMax(bot_right_index, FINAL_MASK);
-      int in_top_min_index = PartialBlockReduceMin(input_index, FINAL_MASK);
-      int in_bot_min_index = PartialBlockReduceMin(bot_left_index, FINAL_MASK);
-
+      if (remain > blockDim.x) {
+        in_top_min_index = blockReduceMin(input_index, FINAL_MASK);
+        in_bot_min_index = blockReduceMin(bot_left_index, FINAL_MASK);
+      } else {
+        in_top_min_index =
+            PartialBlockReduceMin(input_index, remain, FINAL_MASK);
+        in_bot_min_index =
+            PartialBlockReduceMin(bot_left_index, remain, FINAL_MASK);
+      }
       platform::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
                               h2lambda * w2lambda * out_pos);
       platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
