@@ -96,6 +96,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             "use_pipeline"]
         self.acc_steps = self.user_defined_strategy.sharding_configs[
             "acc_steps"]
+        self.schedule_mode = self.user_defined_strategy.sharding_configs[
+            "schedule_mode"]
 
         if self.inner_opt is None:
             raise ValueError(
@@ -105,6 +107,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                                                              self.acc_steps)
             main_program = loss.block.program
             main_program._pipeline_opt = dict()
+            main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
             pp_rank = self.role_maker._worker_index() // (
                 self.user_defined_strategy.sharding_configs[
                     'sharding_group_size'] * self._inner_parallelism_size)
@@ -409,20 +412,33 @@ class ShardingOptimizer(MetaOptimizerBase):
             print("pp_group_endpoints:", self.pp_group_endpoints)
             print("pp_rank:", self.pp_rank)
             print("pp_ring_id:", self.pp_ring_id)
-            for pair in self.pipeline_pair:
-                if self.pp_rank not in pair: continue
-                pp_group_endpoints = [
-                    self.pp_group_endpoints[pair[0]],
-                    self.pp_group_endpoints[pair[1]],
-                ]
-                if pair[0] < pair[1]:
-                    start_ring_id = self.pp_ring_id + pair[1] - pair[0] - 1
-                else:
-                    start_ring_id = self.pp_ring_id + 2 + pair[0] - pair[1] - 1
-                pp_rank = 0 if self.pp_rank == pair[0] else 1
+            if self.schedule_mode == 0:  # GPipe
                 self._collective_helper._init_communicator(
                     self._startup_program, self.current_endpoint,
-                    pp_group_endpoints, pp_rank, start_ring_id, False)
+                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id,
+                    False)
+                self._collective_helper._init_communicator(
+                    self._startup_program, self.current_endpoint,
+                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id + 2,
+                    False)
+            else:
+                for pair in self.pipeline_pair:
+                    print("pp pair:{}".format(pair))
+                    if self.pp_rank not in pair: continue
+                    pp_group_endpoints = [
+                        self.pp_group_endpoints[pair[0]],
+                        self.pp_group_endpoints[pair[1]],
+                    ]
+                    if pair[0] < pair[1]:
+                        start_ring_id = self.pp_ring_id + pair[1] - pair[0] - 1
+                    else:
+                        start_ring_id = self.pp_ring_id + 2 + pair[0] - pair[
+                            1] - 1
+                    pp_rank = 0 if self.pp_rank == pair[0] else 1
+                    self._collective_helper._init_communicator(
+                        self._startup_program, self.current_endpoint,
+                        pp_group_endpoints, pp_rank, start_ring_id, False,
+                        False)
 
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
