@@ -129,7 +129,7 @@ class TestElementwiseOpGradGrad {
 #ifdef PADDLE_WITH_HIP
       auto is_equal = std::equal(
           out_ptr, out_ptr + numel, expected_outs_[out_name].data(),
-          [](const float &l, const float &r) { return fabs(l - r) < 1e-7; });
+          [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
 #else
       auto is_equal =
           std::equal(out_ptr, out_ptr + numel, expected_outs_[out_name].data());
