@@ -45,7 +45,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
                   const Tensor* tensor_dout, Tensor* tensor_dx,
                   Tensor* tensor_dy,
                   const paddle::framework::ExecutionContext& ctx) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_dout->dims().size()) {
       auto dout = framework::EigenVector<T>::Flatten(*tensor_dout);
 
@@ -249,7 +249,7 @@ class DotKernel : public framework::OpKernel<T> {
     auto* tensor_out = ctx.Output<Tensor>("Out");
     tensor_out->mutable_data<T>(ctx.GetPlace());
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == tensor_out->dims().size()) {
       auto out = framework::EigenScalar<T>::From(*tensor_out);
       auto x = framework::EigenVector<T>::Flatten(*tensor_x);
