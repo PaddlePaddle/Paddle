@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
+from paddle.fluid.contrib import AutoMixedPrecisionListsBF16
+from paddle.fluid.contrib import rewrite_program_bf16
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
 import unittest
 import os
 import numpy as np
@@ -102,6 +104,7 @@ def train(target, is_sparse, is_parallel, save_dirname, is_local=True):
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
+    rewrite_program_bf16(fluid.default_main_program())
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
@@ -282,21 +285,10 @@ def inject_test_method(target, is_sparse, is_parallel):
                 main(
                     target=target, is_sparse=is_sparse, is_parallel=is_parallel)
 
-    if (not fluid.core.is_compiled_with_cuda() or
-            target == "cuda") and is_sparse:
-        fn = __impl__
-    else:
-        # skip the other test when on CI server
-        fn = unittest.skipUnless(
-            condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
-
-    setattr(W2VTest, fn_name, fn)
+    setattr(W2VTest, fn_name, __impl__)
 
 
-for target in ("cuda", "cpu", "xpu"):
-    for is_sparse in (False, True):
-        for is_parallel in (False, ):
-            inject_test_method(target, is_sparse, is_parallel)
+inject_test_method("cpu", False, False)
 
 if __name__ == '__main__':
     unittest.main()

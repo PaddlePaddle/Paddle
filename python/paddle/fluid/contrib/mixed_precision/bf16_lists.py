@@ -34,7 +34,12 @@ class AutoMixedPrecisionListsBF16(AutoMixedPrecisionListsCommon):
             custom_black_varnames=custom_black_varnames)
 
 
-white_list = {'elementwise_add', }
+white_list = {
+    'elementwise_add',
+    # 'elementwise_mul',
+    # 'reshape',
+    'lookup_table',
+}
 
 black_list = black_list_fp16.copy().copy()
 black_list |= white_list_fp16

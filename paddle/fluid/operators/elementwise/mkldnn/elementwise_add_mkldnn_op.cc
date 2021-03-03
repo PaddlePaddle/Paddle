@@ -40,7 +40,6 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-
     auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
     memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
     std::string key = platform::CreateKey(dev_ctx, tz, dout->format(),
@@ -64,14 +63,29 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     }
 
     if (dy) {
-      auto reorder_dst_memory_p =
-          handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
-      auto reorder_p =
-          handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-      astream.wait();
+      // Direct copy
+      if (dout->dims() == dy->dims()) {
+        auto reorder_dst_memory_p =
+            handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
+        auto reorder_p =
+            handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, *reorder_src_memory_p,
+                           *reorder_dst_memory_p);
+        astream.wait();
+      } else {
+        // Broadcasting
+        platform::ReductionMKLDNNHandler<T> handler_sum(
+            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
+            ctx.GetPlace(), dout, dy,
+            ctx.InputName(framework::GradVarName("Out")));
+        auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
+        auto reduction_p = handler_sum.AcquireForwardPrimitive();
+        reduction_p->execute(astream, {{DNNL_ARG_SRC, *reorder_src_memory_p},
+                                       {DNNL_ARG_DST, *dy_memory_p}});
+        astream.wait();
+      }
     }
   }
 };
