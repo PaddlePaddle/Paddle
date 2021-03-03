@@ -340,8 +340,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
                         static_shape_value_node = copy.deepcopy(value_node)
                         # x.shape becomes convert_var_shape_simple(x)
-                        ShapeAttributeTransformer().visit(
-                            static_shape_value_node)
+                        static_shape_value_node = ShapeAttributeTransformer(
+                        ).visit(static_shape_value_node)
                         index_value_node = gast.Constant(value=idx, kind=None)
                         slice_index_node = gast.Index(value=index_value_node)
                         sub_node = gast.Subscript(
@@ -382,7 +382,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                     0].value
                 static_shape_value_node = copy.deepcopy(value_node)
                 # x.shape becomes convert_var_shape_simple(x)
-                ShapeAttributeTransformer().visit(static_shape_value_node)
+                static_shape_value_node = ShapeAttributeTransformer().visit(
+                    static_shape_value_node)
                 update_static_shape_var_node = [
                     gast.Assign(
                         targets=[static_shape_var_node],
