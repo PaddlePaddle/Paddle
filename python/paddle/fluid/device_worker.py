@@ -415,6 +415,7 @@ class Section(DeviceWorker):
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
         section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
         section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
+        section_param.schedule_mode = pipeline_opt["schedule_mode"]
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(program["program"]._get_desc()

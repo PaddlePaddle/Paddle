@@ -65,8 +65,14 @@ class CollectiveHelper(object):
                 self.role_maker._worker_index(), ring_id, self.wait_port)
         self._broadcast_params()
 
-    def _init_communicator(self, program, current_endpoint, endpoints, rank,
-                           ring_id, wait_port):
+    def _init_communicator(self,
+                           program,
+                           current_endpoint,
+                           endpoints,
+                           rank,
+                           ring_id,
+                           wait_port,
+                           sync=True):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
@@ -75,7 +81,7 @@ class CollectiveHelper(object):
 
         block = program.global_block()
         if core.is_compiled_with_cuda():
-            if not wait_port:
+            if not wait_port and sync:
                 temp_var = block.create_var(
                     name=unique_name.generate('temp_var'),
                     dtype=core.VarDesc.VarType.INT32,
