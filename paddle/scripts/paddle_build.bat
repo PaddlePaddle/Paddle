@@ -326,7 +326,7 @@ for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
-if "%GENERATOR%" == "Ninja" (
+if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
     msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
