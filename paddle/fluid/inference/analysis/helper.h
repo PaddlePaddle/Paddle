@@ -256,7 +256,7 @@ static std::string GetTrtEngineSerializedData(
 static void SaveTrtEngineSerializedDataToFile(
     const std::string &trt_serialized_path,
     const std::string &engine_serialized_data) {
-  std::ofstream outfile(trt_serialized_path);
+  std::ofstream outfile(trt_serialized_path, std::ios::binary);
   outfile << engine_serialized_data;
   outfile.close();
 }
