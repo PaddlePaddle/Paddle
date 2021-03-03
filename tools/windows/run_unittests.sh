@@ -13,7 +13,7 @@
 # limitations under the License.
 
 set -e
-set +x
+set -x
 NIGHTLY_MODE=$1
 
 PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
