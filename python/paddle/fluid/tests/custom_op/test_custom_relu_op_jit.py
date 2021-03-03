@@ -19,7 +19,7 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_compile_args, IS_WINDOWS
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
 # Because Windows don't use docker, the shared lib already exists in the 
@@ -40,7 +40,8 @@ custom_module = load(
         'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
     ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
     verbose=True)
 
 
@@ -82,6 +83,40 @@ class TestJITLoad(unittest.TestCase):
                         np.array_equal(x_grad, pd_x_grad),
                         "custom op x grad: {},\n paddle api x grad: {}".format(
                             x_grad, pd_x_grad))
+
+    def test_exception(self):
+        caught_exception = False
+        try:
+            x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
+            custom_relu_dynamic(custom_module.custom_relu, 'cpu', 'float32', x)
+        except OSError as e:
+            caught_exception = True
+            self.assertTrue(
+                "function \"relu_cpu_forward\" is not implemented for data type `int32_t`"
+                in str(e))
+            if IS_WINDOWS:
+                self.assertTrue(
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:48"
+                    in str(e))
+            else:
+                self.assertTrue(
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:48"
+                    in str(e))
+        self.assertTrue(caught_exception)
+
+        caught_exception = False
+        try:
+            x = np.random.uniform(-1, 1, [4, 8]).astype('int64')
+            custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'float32', x)
+        except OSError as e:
+            caught_exception = True
+            self.assertTrue(
+                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int64_t`"
+                in str(e))
+            self.assertTrue(
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:49" in
+                str(e))
+        self.assertTrue(caught_exception)
 
 
 if __name__ == '__main__':

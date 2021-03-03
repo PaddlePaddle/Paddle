@@ -13,7 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_fp16.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#endif
+
 #include <algorithm>
 
 namespace paddle {
@@ -96,7 +103,7 @@ __device__ __forceinline__ float exp_func<float>(float a) {
 
 template <>
 __device__ __forceinline__ half exp_func<half>(half a) {
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(__HIPCC__) || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   return hexp(a);
 #else
   return FromFloat<half>(expf(ToFloat<half>(a)));
@@ -137,6 +144,7 @@ struct KeyValuePair<half> {
   operator+(const KeyValuePair &a) const {
     const half2 a2 = __halves2half2(key, value);
     const half2 b2 = __halves2half2(a.key, a.value);
+#ifdef PADDLE_WITH_CUDA
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     const half2 res = __hadd2(a2, b2);
 #else
@@ -149,6 +157,10 @@ struct KeyValuePair<half> {
     const half2 res = __floats2half2_rn(r1, r2);
 #endif
     return KeyValuePair(res.x, res.y);
+#else  // PADDLE_WITH_HIP
+    const half2 res = __hadd2(a2, b2);
+    return KeyValuePair(__low2half(res), __high2half(res));
+#endif
   }
 };
 
@@ -159,7 +171,7 @@ struct KeyValuePair<half> {
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
 #else
     val += __shfl_xor(val, mask, warpSize);
@@ -191,7 +203,7 @@ __inline__ __device__ T blockReduceSum(T val, unsigned mask) {
 template <typename T>
 __inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
     val = max(val, __shfl_xor(val, mask, warpSize));

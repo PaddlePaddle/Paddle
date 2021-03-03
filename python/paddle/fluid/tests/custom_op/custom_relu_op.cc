@@ -39,8 +39,8 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU);
-  out.reshape(x.shape());
 
+  out.reshape(x.shape());
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
@@ -79,7 +79,7 @@ std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_forward(x);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 
@@ -92,25 +92,16 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
   } else if (x.place() == paddle::PlaceType::kGPU) {
     return relu_cuda_backward(x, out, grad_out);
   } else {
-    throw std::runtime_error("Not implemented.");
+    PD_THROW("Not implemented.");
   }
 }
 
-std::vector<std::vector<int64_t>> ReluInferShape(std::vector<int64_t> x_shape) {
-  return {x_shape};
-}
-
-std::vector<paddle::DataType> ReluInferDType(paddle::DataType x_dtype) {
-  return {x_dtype};
-}
-
-PD_BUILD_OP("custom_relu")
+PD_BUILD_OP(custom_relu)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(ReluForward))
-    .SetInferShapeFn(PD_INFER_SHAPE(ReluInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(ReluInferDType))
-    .SetBackwardOp("relu2_grad")
+    .SetKernelFn(PD_KERNEL(ReluForward));
+
+PD_BUILD_GRAD_OP(custom_relu)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackward));

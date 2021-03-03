@@ -311,11 +311,13 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
