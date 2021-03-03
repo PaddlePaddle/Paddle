@@ -464,6 +464,39 @@ def find_cuda_home():
     return cuda_home
 
 
+def find_rocm_home():
+    """
+    Use heuristic method to find rocm path
+    """
+    # step 1. find in $ROCM_HOME or $ROCM_PATH
+    rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
+
+    # step 2.  find path by `which nvcc`
+    if rocm_home is None:
+        which_cmd = 'where' if IS_WINDOWS else 'which'
+        try:
+            with open(os.devnull, 'w') as devnull:
+                hipcc_path = subprocess.check_output(
+                    [which_cmd, 'hipcc'], stderr=devnull)
+                if six.PY3:
+                    hipcc_path = hipcc_path.decode()
+                hipcc_path = hipcc_path.rstrip('\r\n')
+
+                # for example: /opt/rocm/bin/hipcc
+                rocm_home = os.path.dirname(os.path.dirname(hipcc_path))
+        except:
+            rocm_home = "/opt/rocm"
+    # step 3. check whether path is valid
+    if rocm_home and not os.path.exists(
+            rocm_home) and core.is_compiled_with_rocm():
+        rocm_home = None
+        warnings.warn(
+            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+        )
+
+    return rocm_home
+
+
 def find_cuda_includes():
     """
     Use heuristic method to find cuda include path
@@ -477,6 +510,19 @@ def find_cuda_includes():
     return [os.path.join(cuda_home, 'include')]
 
 
+def find_rocm_includes():
+    """
+    Use heuristic method to find rocm include path
+    """
+    rocm_home = find_rocm_home()
+    if rocm_home is None:
+        raise ValueError(
+            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+        )
+
+    return [os.path.join(rocm_home, 'include')]
+
+
 def find_paddle_includes(use_cuda=False):
     """
     Return Paddle necessary include dir path.
@@ -487,8 +533,12 @@ def find_paddle_includes(use_cuda=False):
     include_dirs = [paddle_include_dir, third_party_dir]
 
     if use_cuda:
-        cuda_include_dir = find_cuda_includes()
-        include_dirs.extend(cuda_include_dir)
+        if core.is_compiled_with_rocm():
+            rocm_include_dir = find_rocm_includes()
+            include_dirs.extend(rocm_include_dir)
+        else:
+            cuda_include_dir = find_cuda_includes()
+            include_dirs.extend(cuda_include_dir)
 
     return include_dirs
 
@@ -510,6 +560,20 @@ def find_cuda_libraries():
     return cuda_lib_dir
 
 
+def find_rocm_libraries():
+    """
+    Use heuristic method to find rocm dynamic lib path
+    """
+    rocm_home = find_rocm_home()
+    if rocm_home is None:
+        raise ValueError(
+            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specific it."
+        )
+    rocm_lib_dir = [os.path.join(rocm_home, 'lib')]
+
+    return rocm_lib_dir
+
+
 def find_paddle_libraries(use_cuda=False):
     """
     Return Paddle necessary library dir path.
@@ -518,8 +582,12 @@ def find_paddle_libraries(use_cuda=False):
     paddle_lib_dirs = [get_lib()]
 
     if use_cuda:
-        cuda_lib_dir = find_cuda_libraries()
-        paddle_lib_dirs.extend(cuda_lib_dir)
+        if core.is_compiled_with_rocm():
+            rocm_lib_dir = find_rocm_libraries()
+            paddle_lib_dirs.extend(rocm_lib_dir)
+        else:
+            cuda_lib_dir = find_cuda_libraries()
+            paddle_lib_dirs.extend(cuda_lib_dir)
 
     return paddle_lib_dirs
 
