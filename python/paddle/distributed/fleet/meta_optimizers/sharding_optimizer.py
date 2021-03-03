@@ -115,8 +115,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt[
                 'global_rank'] = self.role_maker._worker_index()
             main_program._pipeline_opt['use_sharding'] = True
-            main_program._pipeline_opt['ring_id'] = 2
-            optimize_ops, params_grads, program_list, self.pipeline_pair = pp_optimizer.minimize(
+            main_program._pipeline_opt['ring_id'] = 20
+            optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
             self.pipeline_nodes = len(program_list)
         else:
@@ -423,7 +423,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                     False)
             else:
                 for pair in self.pipeline_pair:
-                    print("pp pair:{}".format(pair))
+                    pair_key = pair[0] * 1000 + pair[1]
+                    ring_id = self.pp_ring_map[pair_key]
+                    print("pp pair:{}, ring_id: {}".format(pair, ring_id))
                     if self.pp_rank not in pair: continue
                     pp_group_endpoints = [
                         self.pp_group_endpoints[pair[0]],
@@ -437,8 +439,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     pp_rank = 0 if self.pp_rank == pair[0] else 1
                     self._collective_helper._init_communicator(
                         self._startup_program, self.current_endpoint,
-                        pp_group_endpoints, pp_rank, start_ring_id, False,
-                        False)
+                        pp_group_endpoints, pp_rank, ring_id, False, False)
 
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
@@ -869,7 +870,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self.sharding_rank = self.global_rank % self.sharding_group_size
                     assert self.sharding_group_size * self.pipeline_nodes * self._inner_parallelism_size == self.role_maker._worker_num(
                     )
-                    self.pp_ring_id = 2
+                    self.pp_ring_id = 20
                     self.pp_rank = self.global_rank // (
                         self.sharding_group_size * self._inner_parallelism_size)
                     self.sharding_group_endpoints = [
@@ -885,7 +886,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 else:
                     self.mp_group_id = 0
                     self.sharding_ring_id = 1
-                    self.pp_ring_id = 2
+                    self.pp_ring_id = 20
                     self.mp_rank = self.global_rank % self._inner_parallelism_size
                     self.mp_group = self.global_rank // self._inner_parallelism_size
                     self.mp_group_endpoints = [
