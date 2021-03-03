@@ -639,8 +639,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 }
 
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
-// fixed
-// as same as multi gpus card trainging.
+// fixed as same as multi gpus card trainging.
 void Reducer::MarkGroupReady(size_t group_index) {
   if (group_index > next_group_) {
     VLOG(3) << "It will adjust the order of group in next batch automatically";
@@ -652,47 +651,40 @@ void Reducer::MarkGroupReady(size_t group_index) {
     auto &group = groups_[next_group_];
     int run_order = next_group_ % nrings_;
 
-    auto place = parallel_ctx_->GetDeviceContext(run_order)->GetPlace();
-
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
     // NOTE. Because concat uses the comm_stream,
     // so we expose WaitCompute() interface and call
     // it here.
     parallel_ctx_->WaitCompute(run_order);
-    if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_BKCL
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      comm_op_count_ += 1;  // lock
+    }
+    // TODO(liuyuhui): Add try catch to deal with exception later,
+    // otherwise the main thread will continue to run when an exception is
+    // thrown in comm_pool_.
+    auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
+    platform::SetXPUDeviceId(dev_id);
+    comm_pool_->enqueue([&] {
+      FusedAllReduceSchedule(run_order, group);
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        comm_op_count_ += 1;  // lock
+        comm_op_count_ -= 1;  // lock
+        cv_.notify_all();
       }
-
-      comm_pool_->enqueue([&] {
-        auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
-        platform::SetXPUDeviceId(dev_id);
-        FusedAllReduceSchedule(run_order, group);
-        {
-          std::lock_guard<std::mutex> lock(mutex_);
-          comm_op_count_ -= 1;  // lock
-          cv_.notify_all();
-        }
-      });
+    });
+#elif defined(PADDLE_WITH_NCCL)
+    FusedAllReduceSchedule(run_order, group);
 #else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Not compiled with BKCL or NCCL."));
 #endif
-    } else {
-#ifdef PADDLE_WITH_NCCL
-      FusedAllReduceSchedule(run_order, group);
-#else
-      PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
-#endif
-    }
   }
 }
 
-void Reducer::FusedAllReduceSchedule(int run_order, Group group) {
+void Reducer::FusedAllReduceSchedule(int run_order, Group &group) {
   if (group.is_sparse_) {
     if (group.sparse_contents_ != nullptr) {
       VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["

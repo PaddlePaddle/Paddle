@@ -153,7 +153,7 @@ class Reducer {
 
   void MarkGroupReady(size_t group_index);
 
-  void FusedAllReduceSchedule(int run_order, Group group);
+  void FusedAllReduceSchedule(int run_order, Group& group);  // NOLINT
 
   void FinalizeBackward();
 
