@@ -16,7 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#else
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
@@ -388,18 +392,30 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
       ScopedTensorDescriptor desc;
       std::vector<int> tensor_dims = {N, dim, D, 1};
       DataLayout layout = DataLayout::kNCHW;
+#ifdef PADDLE_WITH_HIP
+      miopenTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+#else
       cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+#endif
 
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto handle = dev_ctx.cudnn_handle();
+
+#ifdef PADDLE_WITH_HIP
+      auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
+                                   : MIOPEN_SOFTMAX_MODE_CHANNEL;
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward(
+          handle, platform::CudnnDataType<T>::kOne(), desc_, x->data<T>(),
+          platform::CudnnDataType<T>::kZero(), desc_, out_data));
+#else
       auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                    : CUDNN_SOFTMAX_MODE_CHANNEL;
-
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, x->data<T>(),
           platform::CudnnDataType<T>::kZero(), desc_, out_data));
+#endif
     }
   }
 };
@@ -496,19 +512,32 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       ScopedTensorDescriptor desc;
       std::vector<int> tensor_dims = {N, dim, D, 1};
       DataLayout layout = DataLayout::kNCHW;
+#ifdef PADDLE_WITH_HIP
+      miopenTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+#else
       cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+#endif
 
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto handle = dev_ctx.cudnn_handle();
+
+#ifdef PADDLE_WITH_HIP
+      auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
+                                   : MIOPEN_SOFTMAX_MODE_CHANNEL;
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward(
+          handle, platform::CudnnDataType<T>::kOne(), desc_, out->data<T>(),
+          desc_, dout->data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
+          dx_data));
+#else
       auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                    : CUDNN_SOFTMAX_MODE_CHANNEL;
-
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
           handle, CUDNN_SOFTMAX_ACCURATE, mode,
           platform::CudnnDataType<T>::kOne(), desc_, out->data<T>(), desc_,
           dout->data<T>(), platform::CudnnDataType<T>::kZero(), desc_,
           dx_data));
+#endif
     }
   }
 };
@@ -518,6 +547,15 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxCUDNNKernel<float>,
+                   ops::SoftmaxCUDNNKernel<plat::float16>);
+REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
+                   ops::SoftmaxGradCUDNNKernel<float>,
+                   ops::SoftmaxGradCUDNNKernel<plat::float16>);
+#else
 REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxCUDNNKernel<float>,
                    ops::SoftmaxCUDNNKernel<double>,
@@ -526,3 +564,4 @@ REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxGradCUDNNKernel<float>,
                    ops::SoftmaxGradCUDNNKernel<double>,
                    ops::SoftmaxGradCUDNNKernel<plat::float16>);
+#endif

@@ -50,7 +50,7 @@ class lstm {
     *state_atv = activation(*state, active_state);
     *output = (*value_og) * (*state_atv);
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM FWD
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else
@@ -87,7 +87,7 @@ class lstm {
     *output = _mm256_mul_ps(*value_og, *state_atv);
   }
 #endif
-#endif
+#endif  // @} End Group LSTM FWD
 };
 
 }  // namespace forward
@@ -132,7 +132,7 @@ class lstm {
     *checkFGrad = (*grad_fg) * (*prev_state);
     *checkOGrad = (*grad_og) * (*state);
   }
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group LSTM BWD
 #ifndef __AVX__  // If not compiled with AVX instructs. Disable AVX by default
   static const bool avx = false;
 #else
@@ -177,7 +177,7 @@ class lstm {
     *checkOGrad = _mm256_mul_ps(*grad_og, *state);
   }
 #endif
-#endif
+#endif  // @} End Group LSTM BWD
 };
 
 }  // namespace backward

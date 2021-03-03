@@ -51,7 +51,8 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = False
         self.soft_label = False
-        self.dtype = np.float64
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = -1
         self.ignore_index = -1
         self.shape = [41, 37]
@@ -104,6 +105,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.check_grad(["Logits"], "Loss", max_relative_error=5e-1)
         else:
             self.check_grad(["Logits"], "Loss", numeric_grad_delta=0.001)
+
 
 
 class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_SoftLabel_1D(
@@ -326,6 +328,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
         self.softmax_switch = True
 
 
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
@@ -343,9 +346,10 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
+        date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
         logits = getattr(
             self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(np.float64))
+            np.random.uniform(0.1, 1.0, self.shape).astype(date_type))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         axis_dim = self.shape[self.axis]
@@ -397,7 +401,7 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = -1
         self.ignore_index = -1
         self.shape = [41, 37]
@@ -407,7 +411,11 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss")
+        if core.is_compiled_with_rocm():
+            # HIP will have accuracy fail when using float32 in CPU place
+            self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+        else:
+            self.check_grad(["Logits"], "Loss")
 
 
 class TestSoftmaxWithCrossEntropyOp3(TestSoftmaxWithCrossEntropyOp):
@@ -426,6 +434,7 @@ class TestSoftmaxWithCrossEntropyOp3(TestSoftmaxWithCrossEntropyOp):
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOp3NoCudnn(TestSoftmaxWithCrossEntropyOp3):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
@@ -438,6 +447,7 @@ class TestSoftmaxWithCrossEntropyOp3NoCudnn(TestSoftmaxWithCrossEntropyOp3):
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOpAxis1(TestSoftmaxWithCrossEntropyOp):
     """
     Test softmax with cross entropy operator with discreate one-hot labels.
@@ -448,7 +458,7 @@ class TestSoftmaxWithCrossEntropyOpAxis1(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = 0
         self.ignore_index = -1
         self.shape = [3, 5, 7, 11]
@@ -465,7 +475,7 @@ class TestSoftmaxWithCrossEntropyOpAxis2(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = 1
         self.ignore_index = -1
         self.shape = [3, 5, 7, 11]
@@ -482,7 +492,7 @@ class TestSoftmaxWithCrossEntropyOpAxis3(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = 2
         self.ignore_index = -1
         self.shape = [3, 5, 7, 11]
@@ -499,7 +509,7 @@ class TestSoftmaxWithCrossEntropyOpAxis4(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = 3
         self.ignore_index = -1
         self.shape = [3, 5, 7, 11]
@@ -517,7 +527,7 @@ class TestSoftmaxWithCrossEntropyOpAxisDimEqualOne(
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.axis = -1
         self.ignore_index = -1
         self.shape = [3, 5, 7, 1]
@@ -576,6 +586,7 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis1(
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOpSoftLabelAxis2(
         TestSoftmaxWithCrossEntropyOp2):
     def initParams(self):
@@ -589,6 +600,7 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis2(
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOpSoftLabelAxis3(
         TestSoftmaxWithCrossEntropyOp2):
     def initParams(self):
@@ -600,6 +612,7 @@ class TestSoftmaxWithCrossEntropyOpSoftLabelAxis3(
         self.ignore_index = -1
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.softmax_switch = True
+
 
 
 class TestSoftmaxWithCrossEntropyOpSoftLabelAxis4(
@@ -628,6 +641,7 @@ class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis1(
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis2(
         TestSoftmaxWithCrossEntropyOp3):
     def initParams(self):
@@ -641,6 +655,7 @@ class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis2(
         self.softmax_switch = True
 
 
+
 class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis3(
         TestSoftmaxWithCrossEntropyOp3):
     def initParams(self):
@@ -652,6 +667,7 @@ class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis3(
         self.axis = 2
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.softmax_switch = True
+
 
 
 class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
@@ -680,7 +696,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary0(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.logits = np.full(self.shape, -500.0).astype(self.dtype)
         self.softmax_switch = True
 
@@ -698,7 +714,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
         self.softmax_switch = True
