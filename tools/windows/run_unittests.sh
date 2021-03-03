@@ -259,8 +259,9 @@ function unittests_retry(){
     exec_times=0
     exec_retry_threshold=10
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-    need_retry_ut_counts=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
+    need_retry_ut_counts=$(echo "$retry_unittests" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+    tmpfile=$tmp_dir/$RANDOM
 
     if [ $need_retry_ut_counts -lt $exec_retry_threshold ];then
             retry_unittests_record=''
@@ -271,7 +272,7 @@ function unittests_retry(){
                         cur_order='first'
                     elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
-                    elif ( [[ "$exec_times" == "1" ]] );then
+                    elif ( [[ "$exec_times" == "2" ]] );then
                         cur_order='third'
                     fi
                     echo "========================================="
