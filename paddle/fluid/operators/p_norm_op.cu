@@ -13,7 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/operators/p_norm_op.h"
 
 namespace paddle {
