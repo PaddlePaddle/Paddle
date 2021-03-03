@@ -212,10 +212,6 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False, use_pe=True)
             custom_relu_train_pe_out = self.train_model(
                 device, use_custom_op=True, use_pe=True)
-            print(original_relu_train_out)
-            print(custom_relu_train_out)
-            print(original_relu_train_pe_out)
-            print(custom_relu_train_pe_out)
 
             self.assertTrue(
                 np.array_equal(original_relu_train_out, custom_relu_train_out))
@@ -232,10 +228,6 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False, use_pe=True)
             custom_relu_eval_pe_out = self.eval_model(
                 device, use_custom_op=True, use_pe=True)
-            print(original_relu_eval_out)
-            print(custom_relu_eval_out)
-            print(original_relu_eval_pe_out)
-            print(custom_relu_eval_pe_out)
 
             self.assertTrue(
                 np.array_equal(original_relu_eval_out, custom_relu_eval_out))

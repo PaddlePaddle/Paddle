@@ -328,7 +328,7 @@ def prepare_unix_cudaflags(cflags):
     """
     cflags = COMMON_NVCC_FLAGS + [
         '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
-        '-DNVCC'
+        '-DNVCC', '-w'
     ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags

@@ -27,7 +27,6 @@ use_new_custom_op_load_method(False)
 custom_module = load(
     name='custom_relu2',
     sources=['relu_op.cc', 'relu_op.cu', 'relu_op3.cc', 'relu_op3.cu'],
-    interpreter='python',  # add for unittest
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
