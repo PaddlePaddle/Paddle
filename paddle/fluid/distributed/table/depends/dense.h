@@ -239,7 +239,7 @@ class DAdagrad : public DenseOptimizer {
     SQRT<float>(update_numel, moment + begin, tmp_);
     ADD<float>(update_numel, tmp_, epsilon, tmp_);
 
-    blas.VDIV(update_numel, grad.data() + begin, tmp_, tmp_);
+    blas.VDIV(update_numel, grad.data(), tmp_, tmp_);
     blas.SCAL(update_numel, lr_, tmp_);
     blas.VSUB(update_numel, param + begin, tmp_, param + begin);
   }
@@ -297,7 +297,7 @@ class DDecayedAdagrad : public DenseOptimizer {
     SQRT<float>(update_numel, moment + begin, tmp_);
     ADD<float>(update_numel, tmp_, epsilon, tmp_);
 
-    blas.VDIV(update_numel, grad.data() + begin, tmp_, tmp_);
+    blas.VDIV(update_numel, grad.data(), tmp_, tmp_);
     blas.SCAL(update_numel, lr_, tmp_);
     blas.VSUB(update_numel, param + begin, tmp_, param + begin);
   }
