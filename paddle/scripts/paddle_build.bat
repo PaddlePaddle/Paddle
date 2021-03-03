@@ -147,7 +147,7 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 :: install ninja if GENERATOR is Ninja
-if "%GENERATOR%" == "Ninja" (
+if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
