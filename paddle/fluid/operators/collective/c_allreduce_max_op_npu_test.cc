@@ -84,7 +84,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   for (int64_t i = 0; i < num1 * num2; ++i) {
     // init.push_back(1.0);
     init.push_back(1.0 + rank_id * 3);
-    std::cout<< init[0];
+    std::cout<< init[i];
   }
   std::cout<<std::endl;
 

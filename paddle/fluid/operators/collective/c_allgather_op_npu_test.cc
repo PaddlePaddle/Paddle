@@ -82,8 +82,7 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
   int num2 = 4;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(1.0);
-    // init.push_back(1.0 + rank_id * 3);
+    init.push_back(1.0 + rank_id);
     std::cout<< init[i];
   }
   std::cout<<std::endl;
@@ -119,8 +118,11 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   EXPECT_EQ(out_vec.size(), init.size() * 2);
-  for (uint32_t i = 0; i < out_vec.size(); i++) {
+  for (uint32_t i = 0; i < out_vec.size() / 2; i++) {
     EXPECT_EQ(out_vec[i], 1.0);
+  }
+  for (uint32_t i = out_vec.size() / 2; i < out_vec.size(); i++) {
+    EXPECT_EQ(out_vec[i], 2.0);
   }
 }
 

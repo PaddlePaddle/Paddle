@@ -66,17 +66,18 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   ctx.Wait();
 }
 void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
-  std::cout<< "BEGIN TEST:" << __FUNCTION__ <<std::endl;
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
   int num = 2;
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
-  std::cout<< "rank_id:" << rank_id<<std::endl;
+  
+  VLOG(3)<< "rank_id:" << rank_id;
+
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(1.0 + rank_id);
-    std::cout<< init[0];
+    std::cout<< init[i];
   }
   std::cout<<std::endl;
 
@@ -116,8 +117,6 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 }
 
-
-  
 TEST(c_broadcast, NPU) {
   f::Scope scope;
   char * npu_id=getenv("FLAGS_selected_npus");

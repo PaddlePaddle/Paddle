@@ -79,9 +79,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   int num2 = 4;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(1.0);
-    // init.push_back(1.0 + rank_id * 3);
-    std::cout<< init[0];
+    init.push_back(1.0 + rank_id);
+    std::cout<< init[i];
   }
   std::cout<<std::endl;
 
@@ -116,7 +115,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], 2.0);
+    EXPECT_EQ(out_vec[i], 3.0);
   }
 }
 
