@@ -38,11 +38,11 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::Tensor>();
+  auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   std::vector<T> init;
-  for (int64_t i = 0; i < 6; ++i) {
-    init.push_back(static_cast<T>(0.1 * i));
+  for (int i = 0; i < 6; ++i) {
+    init.push_back(static_cast<T>(i));
   }
 
   TensorFromVector(init, ctx, tensor_x);
@@ -52,10 +52,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::Tensor>();
+  auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({2, 3});
   tensor_out->mutable_data<T>(place); // allocate
-  // tensor_out->mutable_data<float>(place); // allocate
 
   // run
   int axis = 1;
@@ -76,7 +75,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
   gettimeofday(&end, NULL);
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
-  printf("time:%d\n" , micros/100);
+  //printf("time:%d\n" , micros/100);
+  VLOG(3) << "time: " << micros/100;
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -96,3 +96,4 @@ TEST(softmax, NPU_fp32) {
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   Compare<float>(&scope, ctx);
 }
+
