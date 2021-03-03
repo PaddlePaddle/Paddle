@@ -223,9 +223,11 @@ class TestNameVisitor(unittest.TestCase):
             while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none,
             for_loop_dufunc_with_listcomp
         ]
-        self.loop_var_names = [["x", "i"], ["max_len", "ret", "i"], ["x", "i"],
-                               ["j", "res", "x", "array"]]
-        self.create_var_names = [[], ["ret"], [], ["res", "x"]]
+        self.loop_var_names = [
+            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"]),
+            set(["j", "array", "res", "x"])
+        ]
+        self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
@@ -239,10 +241,8 @@ class TestNameVisitor(unittest.TestCase):
                 if isinstance(node, (gast.While, gast.For)):
                     loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                         node)
-                    self.assertEqual(
-                        set(loop_var_names), set(self.loop_var_names[i]))
-                    self.assertEqual(
-                        set(create_var_names), set(self.create_var_names[i]))
+                    self.assertEqual(loop_var_names, self.loop_var_names[i])
+                    self.assertEqual(create_var_names, self.create_var_names[i])
 
     def test_nested_loop_vars(self):
         func = self.nested_for_loop_func
@@ -251,11 +251,9 @@ class TestNameVisitor(unittest.TestCase):
         name_visitor = NameVisitor(gast_root)
 
         self.loop_var_names = [
-            ["j", "two"],
-            ["i", "three", "b"],
-            ["i", "j"],
+            set(["j", "two"]), set(["i", "three", "b"]), set(["i", "j"])
         ]
-        self.create_var_names = [[], ["b"], []]
+        self.create_var_names = [set(), set(["b"]), set()]
 
         i = 0
         for node in gast.walk(gast_root):
@@ -263,13 +261,13 @@ class TestNameVisitor(unittest.TestCase):
                 loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                     node)
                 self.assertEqual(
-                    set(loop_var_names),
-                    set(self.loop_var_names[i]),
+                    loop_var_names,
+                    self.loop_var_names[i],
                     msg="loop_var_names : {}, \nexpected loop_var_names : {}".
                     format(loop_var_names, self.loop_var_names[i]))
                 self.assertEqual(
-                    set(create_var_names),
-                    set(self.create_var_names[i]),
+                    create_var_names,
+                    self.create_var_names[i],
                     msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".
                     format(i, create_var_names, self.create_var_names[i]))
                 i += 1

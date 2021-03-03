@@ -148,8 +148,8 @@ class NameVisitor(gast.NodeVisitor):
     def get_loop_var_names(self, node):
         assert isinstance(
             node, (gast.While, gast.For)), "Input node is not gast loop node"
-        loop_var_names = []
-        create_var_names = []
+        loop_var_names = set()
+        create_var_names = set()
         read_context = {type(gast.Load()), type(gast.AugLoad())}
 
         in_loop_vars_list = self.in_loop_vars[node]
@@ -194,7 +194,7 @@ class NameVisitor(gast.NodeVisitor):
                         not name in write_names
                 ) and self._node_var_type_is_basic(name_to_type[name]):
                     continue
-                loop_var_names.append(name)
+                loop_var_names.add(name)
 
             elif name in after_loop_name_strs:
                 # If a variable is created in the while loop and read after
@@ -203,8 +203,8 @@ class NameVisitor(gast.NodeVisitor):
                 # because name in after_loop_name must be initialized in loop
                 # So it is write-only, we don't have to filter read-only basic
                 # vars out
-                loop_var_names.append(name)
-                create_var_names.append(name)
+                loop_var_names.add(name)
+                create_var_names.add(name)
             else:
                 # If a variable is used and created in loop, but used before created,
                 # it should be in loop_var and we should create it.
@@ -225,8 +225,8 @@ class NameVisitor(gast.NodeVisitor):
 
                 if isinstance(var_name_to_ctxs[name][0],
                               gast.Load) and is_created:
-                    loop_var_names.append(name)
-                    create_var_names.append(name)
+                    loop_var_names.add(name)
+                    create_var_names.add(name)
 
         return loop_var_names, create_var_names
 
