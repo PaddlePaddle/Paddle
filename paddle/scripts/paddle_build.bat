@@ -348,7 +348,7 @@ set build_times=1
 rem clcache.exe -z
 
 echo Build Paddle the %build_times% time:
-if "%GENERATOR%" == "Ninja" (
+if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (

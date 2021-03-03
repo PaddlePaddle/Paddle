@@ -26,7 +26,4 @@ cc_library(paddle_inference_c_shared SHARED SRCS ${C_API_SRCS} DEPS paddle_infer
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME paddle_inference_c)
 if(WIN32)
     target_link_libraries(paddle_inference_c_shared shlwapi.lib)
-    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-        target_link_libraries(paddle_inference_c_shared analysis_predictor)
-    endif()
 endif()
