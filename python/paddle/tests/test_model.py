@@ -622,6 +622,8 @@ class TestModelFunction(unittest.TestCase):
             paddle.enable_static()
 
     def test_dygraph_export_deploy_model_about_inputs(self):
+        self.set_seed()
+        np.random.seed(201)
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         # without inputs
@@ -662,6 +664,30 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
+
+    def test_amp_training(self):
+        self.set_seed()
+        np.random.seed(201)
+        for dynamic in [True, False]:
+            paddle.enable_static() if not dynamic else None
+            device = paddle.set_device('gpu')
+            use_amp = True
+            net = LeNet()
+            mnist_data = MnistDataset(mode='train', sample_num=2048)
+            input = InputSpec([None, 1, 28, 28], "float32", 'x')
+            label = InputSpec([None, 1], "int64", "y")
+            model = paddle.hapi.Model(net, input, label)
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters())
+            amp_config = {"incr_ratio": 2}
+            amp_custom_lists = {"custom_black_list": {'conv2d'}}
+            model.prepare(
+                optimizer=optim,
+                loss=paddle.nn.CrossEntropyLoss(reduction="sum"),
+                use_amp=use_amp,
+                amp_config=amp_config,
+                amp_custom_lists=amp_custom_lists)
+            model.fit(mnist_data, batch_size=64, verbose=0)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):
