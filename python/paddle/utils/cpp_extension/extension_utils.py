@@ -801,14 +801,11 @@ def _jit_compile(file_path, verbose=False):
     interpreter = sys.executable
 
     try:
-        which = 'where' if IS_WINDOWS else 'which'
-        py_path = subprocess.check_output([which, interpreter])
         py_version = subprocess.check_output([interpreter, '-V'])
         if six.PY3:
-            py_path = py_path.decode()
             py_version = py_version.decode()
         log_v("Using Python interpreter: {}, version: {}".format(
-            py_path.strip(), py_version.strip()), verbose)
+            interpreter, py_version.strip()), verbose)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(
