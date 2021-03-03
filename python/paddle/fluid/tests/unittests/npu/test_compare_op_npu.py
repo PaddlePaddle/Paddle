@@ -76,5 +76,15 @@ class TestEqual2(TestEqual):
         self.outputs = {'Out': out}
 
 
+class TestEqual2FP16(TestEqual2):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestEqual2Int(TestEqual2):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
 if __name__ == '__main__':
     unittest.main()
