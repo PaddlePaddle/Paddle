@@ -119,12 +119,13 @@ class ListTransformer(gast.NodeTransformer):
     def _transform_slice_to_tensor_write(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
+
         target_name = target_node.value.id
         slice_node = target_node.slice
 
         if isinstance(slice_node, gast.Slice):
             pass
-        elif slice_is_num(slice_node):
+        elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
             i = "paddle.cast(" \
                 "x=paddle.jit.dy2static.to_static_variable({})," \

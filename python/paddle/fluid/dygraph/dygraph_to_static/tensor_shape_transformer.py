@@ -40,7 +40,7 @@ def create_convert_shape_node(var_shape_node,
         # In (1) case, we pass the number as 'idx' argument in convert_var_shape
         # In (2) case, we have to make it like `convert_var_shape(x)[slice]`
         if slice_node is not None and slice_is_num(slice_node):
-            args.append(ast_to_source_code(slice_node).strip())
+            args.append(ast_to_source_code(slice_node.slice).strip())
 
         convert_var_shape_func = "paddle.jit.dy2static.convert_var_shape({}, in_control_flow={})".format(
             ",".join(args), in_control_flow)
@@ -48,13 +48,13 @@ def create_convert_shape_node(var_shape_node,
 
         if slice_node is not None and not slice_is_num(slice_node):
             return gast.Subscript(
-                value=api_shape_node, slice=slice_node, ctx=gast.Load())
+                value=api_shape_node, slice=slice_node.slice, ctx=gast.Load())
         return api_shape_node
 
     if isinstance(var_shape_node, gast.Subscript):
         result_node = copy.deepcopy(var_shape_node)
-        result_node = create_convert_shape_node(
-            result_node.value, result_node.slice, in_control_flow)
+        result_node = create_convert_shape_node(result_node.value, result_node,
+                                                in_control_flow)
         return result_node
 
 
@@ -64,13 +64,13 @@ def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
     args = [attr_shape_name, eval_exist_func]
 
     if slice_node is not None and slice_is_num(slice_node):
-        args.append(ast_to_source_code(slice_node).strip())
+        args.append(ast_to_source_code(slice_node.slice).strip())
     choose_shape_func = "paddle.jit.dy2static.choose_shape_attr_or_api({})".format(
         ",".join(args))
     choose_shape_node = gast.parse(choose_shape_func).body[0].value
     if slice_node is not None and not slice_is_num(slice_node):
         return gast.Subscript(
-            value=choose_shape_node, slice=slice_node, ctx=gast.Load())
+            value=choose_shape_node, slice=slice_node.slice, ctx=gast.Load())
     return choose_shape_node
 
 
@@ -133,17 +133,15 @@ class TensorShapeTransformer(gast.NodeTransformer):
             if value_node.id in self.name_to_var_shape and self._used_by_paddle_api(
                     value_node):
                 return create_choose_shape_node(
-                    value_node.id, self.name_to_var_shape[value_node.id],
-                    slice_node)
+                    value_node.id, self.name_to_var_shape[value_node.id], node)
         elif isinstance(value_node, gast.Attribute):
             if self._used_by_paddle_api(value_node):
                 value_name = ast_to_source_code(value_node).strip()
                 if value_name in self.name_to_var_shape:
                     return create_choose_shape_node(
-                        value_name, self.name_to_var_shape[value_name],
-                        slice_node)
+                        value_name, self.name_to_var_shape[value_name], node)
                 if self._is_var_shape(value_node):
-                    return create_convert_shape_node(value_node, slice_node)
+                    return create_convert_shape_node(value_node, node)
         return node
 
     def visit_Attribute(self, node):
