@@ -278,6 +278,9 @@ class OpTest(unittest.TestCase):
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
+        def is_rocm_op_test():
+            return core.is_compiled_with_rocm()
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -298,7 +301,8 @@ class OpTest(unittest.TestCase):
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
                 and not is_xpu_op_test() \
-                and not is_mkldnn_op_test():
+                and not is_mkldnn_op_test() \
+                and not is_rocm_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
