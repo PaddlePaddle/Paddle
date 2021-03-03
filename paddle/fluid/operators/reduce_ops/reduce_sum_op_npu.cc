@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class ReduceSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dims = ctx.Attr<bool>("keep_dim");
     auto dims = ctx.Attr<std::vector<int>>("dim");
@@ -54,6 +54,29 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    Tensor shape_tensor(framework::proto::VarType::INT32);
+    shape_tensor.mutable_data<float>(x->dims(), place);
+    TensorFromVector(x->dims(), ctx.device_context(), &shape_tensor);
+
+    x_grad->mutable_data<T>(ctx.GetPlace());
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    auto runner =
+        NpuOpRunner("BroadcastTo", {*out_grad, shape_tensor}, {*x_grad}, {});
+    runner.Run(stream);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -65,4 +88,10 @@ REGISTER_OP_NPU_KERNEL(
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(
+    reduce_sum_grad,
+    ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                paddle::platform::float16>);
 #endif
