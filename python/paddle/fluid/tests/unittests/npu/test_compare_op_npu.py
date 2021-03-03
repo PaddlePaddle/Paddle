@@ -38,7 +38,7 @@ class TestEqual(OpTest):
         np.random.seed(SEED)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = x == y
+        out = x == y  # all elements are not equal
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
@@ -65,8 +65,9 @@ class TestEqual2(TestEqual):
         self.init_dtype()
         np.random.seed(SEED)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = x
-        out = x == y
+        y = x.copy()
+        y[0][1] = 1
+        out = x == y  # all elements are equal, except position [0][1]
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
