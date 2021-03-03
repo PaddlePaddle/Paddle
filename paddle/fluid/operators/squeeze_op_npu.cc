@@ -16,52 +16,26 @@ limitations under the License. */
 #include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename DeviceContext, typename T>
-class SqueezeNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto axes = ctx.Attr<std::vector<int>>("axes");
-    framework::AttributeMap attr_input = {{"axis", axes}};
-
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    auto runner = NpuOpRunner("Squeeze", {*in}, {*out}, attr_input);
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     squeeze,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, bool>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, uint8_t>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
     squeeze2,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::SqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, bool>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, uint8_t>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::SqueezeKernel<paddle::platform::NPUDeviceContext, int64_t>);
 #endif

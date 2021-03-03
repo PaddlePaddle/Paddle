@@ -44,7 +44,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   std::vector<T> init;
   for (int64_t i = 0; i < dim0 * dim1 * dim2; ++i) {
-    init.push_back(static_cast<T>(0.1));
+    init.push_back(static_cast<T>(10.1));
   }
 
   TensorFromVector(init, ctx, tensor_x);
@@ -52,11 +52,21 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   ctx.Wait();
 
+
+  f::Tensor cpu_tensor1;
+  TensorCopySync(*tensor_x, p::CPUPlace(), &cpu_tensor1);
+  auto data1 = cpu_tensor1.data<T>();
+  auto vec_data1 = std::vector<T>(data1, data1 + tensor_x->numel());
+  for(int i=0; i<static_cast<int>(vec_data1.size()); ++i){
+    VLOG(3) << "squeeze vec_data_in["<< i << "] = " << vec_data1[i];
+  }
+
+
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
-  tensor_out->Resize({dim0, dim1});
-  tensor_out->mutable_data<T>(place); // allocate
+  //tensor_out->Resize({dim0, dim1});
+  //tensor_out->mutable_data<T>(place); // allocate
   // tensor_out->mutable_data<float>(place); // allocate
 
   // run
@@ -71,6 +81,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   op->Run(*scope, place);
   ctx.Wait();
 
+  /*
   struct timeval start, end;
   gettimeofday(&start, NULL);
   for(int i=0; i<100; i++){
@@ -81,7 +92,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   int micros = (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   //printf("time:%d\n" , micros/100);
   VLOG(3) << "time: " << micros/100;
+  */
 
+  f::Tensor cpu_tensor;
+  TensorCopySync(*tensor_out, p::CPUPlace(), &cpu_tensor);
+  auto data = cpu_tensor.data<T>();
+  auto vec_data = std::vector<T>(data, data + tensor_out->numel());
+  for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
+    VLOG(3) << "squeeze vec_data_out["<< i << "] = " << vec_data[i];
+  }
 
   for (auto i = 0; i < tensor_out->dims().size(); ++i){
       //printf("dim%d: %ld", i, tensor_out->dims()[i]);

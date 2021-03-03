@@ -16,46 +16,20 @@ limitations under the License. */
 #include "paddle/fluid/operators/unsqueeze_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename DeviceContext, typename T>
-class UnsqueezeNPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
-    auto axes = ctx.Attr<std::vector<int>>("axes");
-    framework::AttributeMap attr_input = {{"axis", axes}};
-
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    // auto runner = NpuOpRunner("ExpandDims", {*in}, {*out}, attr_input);
-    auto runner = NpuOpRunner("Unsqueeze", {*in}, {*out}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     unsqueeze,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
     unsqueeze2,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::UnsqueezeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int8_t>,
+    ops::UnsqueezeKernel<paddle::platform::NPUDeviceContext, int64_t>);
 #endif
