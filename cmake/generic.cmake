@@ -260,8 +260,8 @@ function(merge_static_libs TARGET_NAME)
     # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
-      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      COMMAND cmake -E make_directory $<TARGET_FILE_DIR:${TARGET_NAME}>
+      COMMAND lib /OUT:$<TARGET_FILE:${TARGET_NAME}> ${libfiles}
       )
   endif(WIN32)
 endfunction(merge_static_libs)
@@ -755,7 +755,8 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
-      DEPENDS ${ABS_FIL} protoc
+      # Set `EXTERN_PROTOBUF_DEPEND` only if need to compile `protoc.exe`.
+      DEPENDS ${ABS_FIL} ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
   endforeach()
