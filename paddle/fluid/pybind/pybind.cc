@@ -1125,7 +1125,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_fetch_list",
            [](Variable &self) { return self.GetMutable<FetchList>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_NCCL))
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();

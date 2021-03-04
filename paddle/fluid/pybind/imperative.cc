@@ -984,7 +984,7 @@ void BindImperative(py::module *m_ptr) {
                PADDLE_THROW(platform::errors::Unimplemented(
                    "Imperative allreduce is not supported when paddle is "
                    "not compiled with NCCL."));
-#endif  // PADDLE_WITH_NCCL
+#endif  // PADDLE_WITH_NCCL or PADDLE_WITH_RCCL
              }
            },
            py::call_guard<py::gil_scoped_release>())
@@ -1435,7 +1435,7 @@ void BindImperative(py::module *m_ptr) {
         py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")
