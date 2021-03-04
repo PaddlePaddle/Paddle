@@ -459,9 +459,15 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
   return context()->CudnnHandle();
 }
 
+#ifdef PADDLE_WITH_HIP
+rocblas_handle CUDADeviceContext::cublas_handle() const {
+  return context()->CublasHandle()->GetCublasHandle();
+}
+#else
 cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return context()->CublasHandle()->GetCublasHandle();
 }
+#endif
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
