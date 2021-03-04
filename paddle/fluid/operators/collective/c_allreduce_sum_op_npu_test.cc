@@ -122,7 +122,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
   std::cout<<std::endl;
 
-  for (uint32_t i = 128; i < out_vec.size() - 128; i++) {
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], 3.0);
   }
 }

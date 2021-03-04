@@ -151,8 +151,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    memory::Copy(place, sendbuff, 
-                 place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+
+    memory::Copy(npu_place, sendbuff, 
+                 npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
                  numel * sizeof(T),
                  stream);
     dev_ctx->Wait();
@@ -197,8 +199,8 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     dev_ctx->Wait();
 
-    memory::Copy(place, reinterpret_cast<void*>(const_cast<T*>(out->data<T>())),
-                 place, recvbuff, 
+    memory::Copy(npu_place, reinterpret_cast<void*>(const_cast<T*>(out->data<T>())),
+                 npu_place, recvbuff, 
                  numel * sizeof(T),
                  stream);
     dev_ctx->Wait();
