@@ -75,21 +75,22 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
   std::cout<< "rank_id:" << rank_id<<std::endl;
-  int num1 = 1;
-  int num2 = 4;
+  int num1 = 3;
+  int num2 = 128;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
     init.push_back(1.0 + rank_id);
     std::cout<< init[i];
   }
   std::cout<<std::endl;
-
+  
+  auto place = ctx.GetPlace();
+  
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
 
   ctx.Wait();
 
-  auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
@@ -107,6 +108,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
                               {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
+  ctx.Wait();
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -114,7 +116,13 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   EXPECT_EQ(out_vec.size(), init.size());
+  std::cout<< "out" <<std::endl;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
+    std::cout<< out_vec[i];
+  }
+  std::cout<<std::endl;
+
+  for (uint32_t i = 128; i < out_vec.size() - 128; i++) {
     EXPECT_EQ(out_vec[i], 3.0);
   }
 }
