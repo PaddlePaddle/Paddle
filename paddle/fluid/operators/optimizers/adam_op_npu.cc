@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
