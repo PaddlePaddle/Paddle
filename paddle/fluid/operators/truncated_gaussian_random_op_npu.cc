@@ -34,33 +34,33 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     TensorFromVector(std::vector<int>{shape}, ctx.device_context(),
                      &shape_tensor);
 
-    auto* mean = ctx.Attr<float>("mean");
+    float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(framework::proto::VarType::FP32);
     mean_tensor.mutable_data<float>({1}, ctx.device_context());
     TensorFromVector(std::vector<float>{mean}, ctx.device_context(),
                      &mean_tensor);
 
-    auto* std = ctx.Attr<float>("std");
+    float std = ctx.Attr<float>("std");
     Tensor std_tensor(framework::proto::VarType::FP32);
     std_tensor.mutable_data<float>({1}, ctx.device_context());
     TensorFromVector(std::vector<float>{std}, ctx.device_context(),
                      &std_tensor);
 
-    auto* seed = ctx.Attr<int32_t>("seed");
+    int32_t seed = ctx.Attr<int32_t>("seed");
     Tensor seed_tensor(framework::proto::VarType::INT32);
     seed_tensor.mutable_data<int32_t>({1}, ctx.device_context());
     TensorFromVector(std::vector<int32_t>{seed}, ctx.device_context(),
                      &seed_tensor);
 
     Tensor min_tensor(framework::proto::VarType::FP32);
-    max_tensor.mutable_data<T>({1}, ctx.device_context());
-    TensorFromVector(std::vector<T>{(mean - std * 2.0)}, ctx.device_context(),
-                     &min_tensor);
+    max_tensor.mutable_data<float>({1}, ctx.device_context());
+    TensorFromVector(std::vector<float>{(mean - std * 2.0)},
+                     ctx.device_context(), &min_tensor);
 
     Tensor max_tensor(framework::proto::VarType::FP32);
-    max_tensor.mutable_data<T>({1}, ctx.device_context());
-    TensorFromVector(std::vector<T>{(mean + std * 2.0)}, ctx.device_context(),
-                     &max_tensor);
+    max_tensor.mutable_data<float>({1}, ctx.device_context());
+    TensorFromVector(std::vector<float>{(mean + std * 2.0)},
+                     ctx.device_context(), &max_tensor);
 
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
