@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -38,6 +37,7 @@ class ShapeNPUKernel : public framework::OpKernel<T> {
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
+    // to do: cpuplace?
     auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
     for (int i = 0; i < in_dims.size(); ++i) {
       out_data[i] = in_dims[i];
