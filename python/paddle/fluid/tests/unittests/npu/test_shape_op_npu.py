@@ -39,7 +39,7 @@ class TestShape(OpTest):
         x = np.random.uniform(1, 2, [5, 10]).astype(self.dtype)
         out = np.array([5, 10])
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {}
         self.outputs = {'Out': out}
 
