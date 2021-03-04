@@ -1458,8 +1458,8 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03
             fp32_grads.append(grad)
-            max_relative_error = 0.03
         analytic_grads = fp32_grads
 
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
