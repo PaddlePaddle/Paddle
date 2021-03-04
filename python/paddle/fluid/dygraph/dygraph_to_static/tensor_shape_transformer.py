@@ -58,7 +58,8 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}')".format(
+    # Note(Aurelius84): Add `locals()` to help `eval` to locate the variable correctly.
+    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', locals())".format(
         api_shape_name)
     args = [attr_shape_name, eval_exist_func]
 
@@ -339,8 +340,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
                         static_shape_value_node = copy.deepcopy(value_node)
                         # x.shape becomes convert_var_shape_simple(x)
-                        ShapeAttributeTransformer().visit(
-                            static_shape_value_node)
+                        static_shape_value_node = ShapeAttributeTransformer(
+                        ).visit(static_shape_value_node)
                         index_value_node = gast.Constant(value=idx, kind=None)
                         slice_index_node = gast.Index(value=index_value_node)
                         sub_node = gast.Subscript(
@@ -381,7 +382,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                     0].value
                 static_shape_value_node = copy.deepcopy(value_node)
                 # x.shape becomes convert_var_shape_simple(x)
-                ShapeAttributeTransformer().visit(static_shape_value_node)
+                static_shape_value_node = ShapeAttributeTransformer().visit(
+                    static_shape_value_node)
                 update_static_shape_var_node = [
                     gast.Assign(
                         targets=[static_shape_var_node],

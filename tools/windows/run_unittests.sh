@@ -208,6 +208,7 @@ long_time_test="^best_fit_allocator_test$|\
 failed_test_lists=''
 tmp_dir=`mktemp -d`
 function collect_failed_tests() {
+  set +e
     for file in `ls $tmp_dir`; do
         grep -q 'The following tests FAILED:' $tmp_dir/$file
         exit_code=$?
@@ -219,6 +220,7 @@ function collect_failed_tests() {
             ${failuretest}"
         fi
     done
+    set -e
 }
 
 function run_unittest() {
@@ -237,6 +239,7 @@ function run_unittest() {
     (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
+
 
 function run_unittest_gpu() {
     export FLAGS_call_stack_level=2
@@ -287,7 +290,6 @@ function unittests_retry(){
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
     need_retry_ut_counts=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-    
     if [ $need_retry_ut_counts -lt $exec_retry_threshold ];then
             retry_unittests_record=''
             while ( [ $exec_times -lt $retry_time ] )

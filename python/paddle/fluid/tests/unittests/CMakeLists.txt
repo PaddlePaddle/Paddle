@@ -653,7 +653,7 @@ if(NOT WIN32 AND NOT APPLE)
 endif()
 
 if (NOT WIN32)
-    set_tests_properties(test_multiprocess_reader_exception PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_multiprocess_reader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
     set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT 120)
 endif()

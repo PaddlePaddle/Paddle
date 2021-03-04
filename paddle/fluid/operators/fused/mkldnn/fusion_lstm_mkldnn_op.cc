@@ -81,8 +81,11 @@ class LSTMMKLDNNHandler
                                      MKLDNNMemoryFormat::tnc);
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
-                                 MKLDNNMemoryFormat::ldnc);
+      auto c0_md = MKLDNNMemDesc(
+          {L, D, N, OC}, MKLDNNGetDataType<float>(),  // Vanilla LSTM and LSTM
+                                                      // with peepoles has c0 as
+                                                      // fp32
+          MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -110,13 +113,14 @@ class LSTMMKLDNNHandler
   // needed
   // PaddlePaddle:  {c, i, f, o}
   // oneDNN:        {i, f, c, o}
-  void ReorderGates(float* weights, int64_t I) {
+  template <typename U>
+  void ReorderGates(U* weights, int64_t I) {
     size_t inner_block_size = this->OC;
     size_t block_size = inner_block_size * this->G;
     for (size_t i = 0; i < (size_t)I; ++i) {
       size_t offset = i * block_size;
 
-      float* base_pos = weights + offset;
+      U* base_pos = weights + offset;
       std::swap_ranges(base_pos, base_pos + inner_block_size,
                        base_pos + inner_block_size);  // c <-> i
       std::swap_ranges(base_pos + inner_block_size,
@@ -125,6 +129,7 @@ class LSTMMKLDNNHandler
     }
   }
 
+  template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightXMemory(const Tensor* weight_x) {
     const std::string wx_key = this->memory_key_ + "@weight_x";
     auto memory_p =
@@ -133,13 +138,12 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_x_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_x_data, weight_x->data<float>(),
-             sizeof(float) * this->IC * this->G * this->OC);
+      auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
+      memcpy(weight_x_data, weight_x->data<U>(),
+             sizeof(U) * this->IC * this->G * this->OC);
 
       ReorderGates(weight_x_data, this->IC);
 
@@ -155,6 +159,7 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
+  template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightHMemory(const Tensor* weight_h) {
     const std::string wh_key = this->memory_key_ + "@weight_h";
     auto memory_p =
@@ -163,13 +168,12 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_h_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_h_data, weight_h->data<float>(),
-             sizeof(float) * this->OC * this->G * this->OC);
+      auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
+      memcpy(weight_h_data, weight_h->data<U>(),
+             sizeof(U) * this->OC * this->G * this->OC);
 
       ReorderGates(weight_h_data, this->OC);
 
@@ -258,8 +262,8 @@ class LSTMMKLDNNHandler
         memset(user_c0_memory.get_data_handle(), 0,
                sizeof(float) * this->N * this->OC);
       }
-      memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_iter_desc(),
-                                                this->engine_);
+      memory_p = std::make_shared<dnnl::memory>(
+          this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
       dnnl::reorder(user_c0_memory, *memory_p, this->attr_)
@@ -275,7 +279,15 @@ template <typename T>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    RunKernel<float>(ctx);
+    const bool is_bf16 = std::is_same<T, paddle::platform::bfloat16>::value;
+    const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+
+    // BF16 does not support force output
+    if (!is_bf16 && force_fp32_output) {
+      RunKernel<float>(ctx);
+    } else {
+      RunKernel<T>(ctx);
+    }
   }
 
   template <typename Tout = T>
@@ -327,10 +339,29 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     auto input_memory_p =
         handler.AcquireInputMemoryWithReorder(input, is_reverse);
-    auto h0_memory_p = handler.AcquireH0Memory(h0);
     auto c0_memory_p = handler.AcquireC0Memory(c0);
-    auto weight_x_memory_p = handler.AcquireWeightXMemory(weight_x);
-    auto weight_h_memory_p = handler.AcquireWeightHMemory(weight_h);
+
+    std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
+        weight_x_memory_p;
+
+    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+      h0_memory_p = handler.template AcquireH0Memory<float>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<float>(weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<float>(weight_h);
+    } else if (weight_h->type() ==
+               paddle::framework::proto::VarType_Type_BF16) {
+      h0_memory_p =
+          handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<paddle::platform::bfloat16>(
+              weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
+              weight_h);
+    }
+
     auto bias_memory_p = handler.AcquireBiasMemory(bias);
     auto hidden_onednn_memory_p = handler.AcquireOutputMemory();
 
@@ -374,4 +405,5 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>);
+                   ops::FusionLSTMMKLDNNKernel<float>,
+                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>);

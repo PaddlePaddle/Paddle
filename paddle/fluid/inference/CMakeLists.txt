@@ -73,7 +73,8 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
-    ${mkldnn_quantizer_src_file})
+    ${mkldnn_quantizer_src_file}
+    ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
 set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)
