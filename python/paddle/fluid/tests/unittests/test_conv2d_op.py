@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -1327,6 +1328,16 @@ class TestConv2DAPI(unittest.TestCase):
             dilation=[1, 1],
             groups=1,
             data_format="NCHW")
+
+    def test_depthwise_conv2d(self):
+        x_var = paddle.uniform((2, 8, 8, 4), dtype='float32', min=-1., max=1.)
+        conv = paddle.nn.Conv2D(
+            in_channels=4,
+            out_channels=4,
+            kernel_size=(3, 3),
+            groups=4,
+            data_format='NHWC')
+        y_var = conv(x_var)
 
 
 class TestConv2DAPI_Error(unittest.TestCase):
