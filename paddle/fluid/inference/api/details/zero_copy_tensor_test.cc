@@ -35,6 +35,7 @@ struct TensorWrapper : public Tensor {
       : Tensor{static_cast<void*>(scope)} {
     SetPlace(place, 0 /*device_id*/);
     SetName(name);
+    input_or_output_ = true;
   }
 };
 
@@ -45,30 +46,25 @@ std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
 }
 
 template <typename T>
-struct UniformRealGenerator {
-  std::function<T()> operator()() const {
-    static std::uniform_real_distribution<T> distribution(
-        std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
-    static std::default_random_engine generator;
-    return []() { return distribution(generator); };
-  }
+struct RandomGenerator {
+  RandomGenerator(double min = (std::numeric_limits<T>::min)(),
+                  double max = (std::numeric_limits<T>::max)())
+      : dist_{static_cast<double>(min), static_cast<double>(max)} {}
+  T operator()() { return static_cast<T>(dist_(random_engine_)); }
+
+ private:
+  static std::mt19937_64 random_engine_;
+  std::uniform_real_distribution<double> dist_;
 };
 
 template <typename T>
-struct UniformIntGenerator {
-  std::function<T()> operator()() const {
-    static std::uniform_int_distribution<T> distribution(
-        std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
-    static std::default_random_engine generator;
-    return []() { return distribution(generator); };
-  }
-};
+std::mt19937_64 RandomGenerator<T>::random_engine_{std::random_device()()};
 
 template <typename T, template <typename> typename G>
-bool FillRandomDataAndCheck(paddle_infer::PlaceType place, size_t length,
-                            const G<T>& generator, float threshold = 10e-5) {
+bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
+                            float threshold = 10e-5) {
   std::vector<T> data_in(length);
-  std::generate(data_in.begin(), data_in.end(), generator());
+  std::generate(data_in.begin(), data_in.end(), std::forward<G<T>>(generator));
   paddle::framework::Scope scope;
   const std::string name{"name"};
   scope.Var(name);
@@ -88,21 +84,52 @@ bool FillRandomDataAndCheck(paddle_infer::PlaceType place, size_t length,
   return true;
 }
 
+template <typename T>
+bool SetPlaceAndCheck(PlaceType place, size_t length) {
+  paddle::framework::Scope scope;
+  const std::string name{"name"};
+  scope.Var(name);
+  auto tensor = CreateTensor(place, &scope, name);
+  tensor->Reshape({static_cast<int>(length)});
+  tensor->mutable_data<T>(place);
+
+  PlaceType place_out{PlaceType::kUNK};
+  int length_out{-1};
+  tensor->data<T>(&place_out, &length_out);
+  if (length_out != static_cast<int>(length) || place_out != place) {
+    return false;
+  }
+  return true;
+}
+
 bool FillRandomDataAndCheck(PlaceType place) {
-  return FillRandomDataAndCheck<float>(place, 100,
-                                       UniformRealGenerator<float>()) &&
-         FillRandomDataAndCheck<int64_t>(place, 100,
-                                         UniformIntGenerator<int64_t>()) &&
-         FillRandomDataAndCheck<int32_t>(place, 100,
-                                         UniformIntGenerator<int32_t>()) &&
-         FillRandomDataAndCheck<uint8_t>(place, 100,
-                                         UniformIntGenerator<uint8_t>());
+  const size_t length{RandomGenerator<size_t>{1, 1000}()};
+  VLOG(3) << "FillRandomDataAndCheck: length = " << length;
+  return FillRandomDataAndCheck<float>(place, length,
+                                       RandomGenerator<float>{}) &&
+         FillRandomDataAndCheck<int64_t>(place, length,
+                                         RandomGenerator<int64_t>{}) &&
+         FillRandomDataAndCheck<int32_t>(place, length,
+                                         RandomGenerator<int32_t>{}) &&
+         FillRandomDataAndCheck<uint8_t>(place, length,
+                                         RandomGenerator<uint8_t>{});
+}
+
+bool SetPlaceAndCheck(PlaceType place) {
+  const size_t length{RandomGenerator<size_t>{1, 1000}()};
+  VLOG(3) << "SetPlaceAndCheck: length = " << length;
+  return SetPlaceAndCheck<float>(place, length) &&
+         SetPlaceAndCheck<int64_t>(place, length) &&
+         SetPlaceAndCheck<int32_t>(place, length) &&
+         SetPlaceAndCheck<uint8_t>(place, length);
 }
 
 TEST(Tensor, FillRandomDataAndCheck) {
   ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kCPU));
+  ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kCPU));
 #ifdef PADDLE_WITH_CUDA
   ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kGPU));
+  ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kGPU));
 #endif
 }
 

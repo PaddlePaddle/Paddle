@@ -82,6 +82,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kCPU;
   } else if (paddle::platform::is_gpu_place(tensor->place())) {
     *place = PlaceType::kGPU;
+  } else if (paddle::platform::is_xpu_place(tensor->place())) {
+    *place = PlaceType::kXPU;
   } else {
     *place = PlaceType::kUNK;
   }
