@@ -47,19 +47,15 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int srcRank = ctx.Attr<int>("peer");
     int srTag = ctx.Attr<int>("srTag");
     VLOG(3) << "recv_v2_npu attr get";
-    platform::dynload::hcom_receive(
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_receive(
         tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(out->data<T>())), numel, dtype, srcRank,
-          srTag, group.c_str(), stream);
-      VLOG(3) << "dtype " << dtype ;
-      VLOG(3) << "numel " << numel ;
-      VLOG(3) << "srTag " << srTag ;
-      VLOG(3) << "srcRank " << srcRank << " invoke hcom receive. receiving "
-              << out->numel();
+          srTag, group.c_str(), stream));
+     VLOG(3) << "Source Rank: " << srcRank << " Invoke hcom receive. receiving ";
     out->Resize(out->dims());
     out->set_lod(out->lod());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with Ascend."));
 #endif
   }
 };

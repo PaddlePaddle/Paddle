@@ -107,17 +107,19 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx){
     std::vector<float> out_vec;
     TensorToVector(*tensor_out, ctx, &out_vec);
     ctx.Wait();
-    for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], i*1.0 + atoi(getenv("DEST_RANK")));
-  }
+    std::vector<float> init(num*num, 1.0 * atoi(getenv("DEST_RANK")));
+    EXPECT_EQ(out_vec == init, true);
 }
 
 
 TEST(recv_v2, NPU){
     f::Scope scope;
     char * npu_id=getenv("FLAGS_selected_npus");
+    VLOG(3) << "Select npu:" << npu_id;
     p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
+    VLOG(3) << "Place over";
     Prepare(&scope, ctx);
+    VLOG(3) << "Prepare over";
     TestHcomRecvOp(&scope, ctx);
-
+    VLOG(3) << "Test over";
 }

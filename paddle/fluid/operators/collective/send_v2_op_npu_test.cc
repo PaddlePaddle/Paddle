@@ -47,15 +47,12 @@ USE_OP_DEVICE_KERNEL(send_v2, NPU);
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 
     std::string rank_table_file = getenv("RANK_TABLE_FILE");
-    VLOG(3) << "get rank_table_file";
-
     int rank_id = atoi(getenv("RANK_ID"));
     int device_id = atoi(getenv("DEVICE_ID"));
     int src_rank = atoi(getenv("SRC_RANK"));
     int dest_rank = atoi(getenv("DEST_RANK"));
+    VLOG(3)<<"rank_id "<< rank_id << "src_rank"<< src_rank <<"dest_rank" <<dest_rank;
 
-    printf("rank_table_file: %s, rank_id = %d, device_id = %d\n, src_rank = %d\n, dest_rank = %d\n", rank_table_file.c_str(), rank_id, device_id, src_rank, dest_rank);
-    VLOG(3) << "get all envs";
     std::vector<int> rank_ids = {0, 1};
     f::AttributeMap comm_init_attrs;
     comm_init_attrs["ring_id"] = 0;
@@ -63,16 +60,11 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
     comm_init_attrs["rank"] = rank_id;
     comm_init_attrs["device_id"] = device_id;
     comm_init_attrs["rank_ids"] = rank_ids;
-    VLOG(3) << "comm_init_attrs map over";
     auto comm_init_op =
         f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
-    VLOG(3) << "CreateOp c_comm_init_hcom";
     auto place = ctx.GetPlace();
-    VLOG(3) << "get place over";
-
     comm_init_op->Run(*scope, place);
     ctx.Wait();
-
 }
 
 void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx){
@@ -82,23 +74,13 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx){
     int num = atoi(getenv("DATA_SIZE"));;
     EXPECT_GT(num, 0);
     EXPECT_LT(num, 1 << 15);
-    std::vector<float> init;
+    std::vector<float> init(num*num, 1.0 * atoi(getenv("DEST_RANK")));
     int rank_id = atoi(getenv("RANK_ID"));
-    std::cout<< "rank_id:" << rank_id<<std::endl;
-
-    for (uint32_t i = 0; i < num * num; ++i) {
-    init.push_back(i*1.0 + atoi(getenv("DEST_RANK")));
-    std::cout<< init[i];
-    }
-
-    std::cout<<std::endl;
+    VLOG(3)<<"rank id:"<<rank_id;
     TensorFromVector(init, ctx, tensor_x);
     tensor_x->Resize({num, num});
-
     ctx.Wait();
-
     auto place = ctx.GetPlace();
-
     ctx.Wait();
 
     f::AttributeMap attrs;
@@ -111,20 +93,18 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx){
     
     op->Run(*scope, place);
     VLOG(3)<<"send run over";
-    ctx.Wait();
-  
-    
+    ctx.Wait();    
 }
 
 TEST(send_v2, NPU){
-    VLOG(3) << "TEST ENTRY";
     f::Scope scope;
-    VLOG(3) << "scope ";
     char * npu_id=getenv("FLAGS_selected_npus");
-    VLOG(3) << "select npu";
+    VLOG(3) << "Select npu:" << npu_id;
     p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
     VLOG(3) << "Place over";
     Prepare(&scope, ctx);
+    VLOG(3) << "Prepare over";
     TestHcomSendOp(&scope, ctx);
+    VLOG(3) << "Test over";
 
 }

@@ -47,16 +47,16 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     int destRank = ctx.Attr<int>("peer");
     int srTag = ctx.Attr<int>("srTag");
 
-    platform::dynload::hcom_send(
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_send(
         tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype, destRank,
-          srTag, group.c_str(), stream);
-
-      VLOG(3) << "destRank" << destRank << " invoke hcom send. sent "
+          srTag, group.c_str(), stream));
+    
+      VLOG(3) << "Dest rank:" << destRank << " Invoke hcom send. Sent "
               << x->numel();
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with Ascend."));
 #endif
   }
 };
