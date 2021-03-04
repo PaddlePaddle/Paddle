@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
@@ -53,7 +52,7 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
                      &seed_tensor);
 
     Tensor min_tensor(framework::proto::VarType::FP32);
-    max_tensor.mutable_data<float>({1}, ctx.GetPlace());
+    min_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float min_value = mean - std * 2.0;
     TensorFromVector(std::vector<float>{min_value}, ctx.device_context(),
                      &min_tensor);
