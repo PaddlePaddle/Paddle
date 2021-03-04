@@ -36,6 +36,11 @@ RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
 
+# install cmake
+WORKDIR /home
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
+
 RUN apt-get update && \
   apt-get install -y python2.7-dev \
   python3.5 python3.5-dev \
@@ -76,12 +81,6 @@ RUN python setup.py install
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-20.0.1.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 pip-20.0.1
-
-
-# install cmake
-WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 
 
 # remove them when apt-get support 2.27 and higher version
