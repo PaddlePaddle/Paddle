@@ -58,4 +58,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ShapeNPUKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
