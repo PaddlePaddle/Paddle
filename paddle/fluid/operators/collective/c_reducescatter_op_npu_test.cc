@@ -129,7 +129,6 @@ TEST(c_reducescatter, NPU) {
   char * npu_id=getenv("FLAGS_selected_npus");
 
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
-
   Prepare(&scope, ctx);
   TestHCCLReduceScatterOp(&scope, ctx);
 }
