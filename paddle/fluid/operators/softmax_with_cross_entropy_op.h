@@ -23,9 +23,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
@@ -144,7 +141,7 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     if (!softmax_switch) {
       // softmax_switch step1
       if (soft_label) {
-        auto lbl_mat = EigenMatrix<T>::From(labels_2d);
+        auto lbl_mat = framework::EigenMatrix<T>::From(labels_2d);
         logit_grad_mat.device(place) =
             (-lbl_mat / logit_grad_mat);  // for each sample ,i  is sample id
         logit_grad_mat.device(place) =
