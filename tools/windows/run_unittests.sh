@@ -222,6 +222,7 @@ non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
 failed_test_lists=''
 tmp_dir=`mktemp -d`
 function collect_failed_tests() {
+    set +e
     for file in `ls $tmp_dir`; do
         grep -q 'The following tests FAILED:' $tmp_dir/$file
         exit_code=$?
@@ -233,6 +234,7 @@ function collect_failed_tests() {
             ${failuretest}"
         fi
     done
+    set -e
 }
 
 function run_unittest() {
