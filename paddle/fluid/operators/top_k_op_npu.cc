@@ -25,22 +25,32 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* k = ctx.Input<framework::Tensor>("K");
-    //k->Resize(framework::make_ddim({}));
+    //auto* k = ctx.Input<framework::Tensor>("K");
+    //size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    auto* k_t = ctx.Input<Tensor>("K");
+    //if (k_t) {
+    //  k = k_t->data<int>()[0];
+    //}
 
-    framework::AttributeMap attr_input = {{"sorted", true}, {"T", "int32"}};
+    //framework::Tensor k_t;
+    //framework::TensorCopySync(*k_t, platform::CPUPlace(), &k);
+
+    //const auto& sorted = static_cast<bool>(ctx.Attr<bool>("sorted"));
+
+    framework::AttributeMap attr_input = {{"sorted", false}};
     auto* output = ctx.Output<framework::LoDTensor>("Out");
     auto* indices = ctx.Output<framework::LoDTensor>("Indices");
     output->mutable_data<T>(ctx.GetPlace());
     indices->mutable_data<int>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("TopK", {*input, *k}, {*output, *indices}, attr_input);
+    auto runner = NpuOpRunner("TopK", {*input, *k_t}, {*output, *indices}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
     runner.Run(stream);
+    /*
     std::cout << "after run "<<std::endl;
     framework::Tensor cpu_tensor;
     framework::TensorCopySync(*indices, platform::CPUPlace(), &cpu_tensor);
@@ -49,6 +59,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
        VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
     }
+    */
   }
 };
 

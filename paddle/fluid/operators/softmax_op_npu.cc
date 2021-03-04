@@ -46,10 +46,14 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<framework::LoDTensor>("Out");
+    auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    framework::LoDTensor dX_;
+    dX = (dX == nullptr) ? &dX_ : dX;
+
+    dX->Resize(out->dims());
     dX->mutable_data<T>(ctx.GetPlace());
 
     auto runner = NpuOpRunner("SoftmaxGrad", {*out, *dOut}, {*dX}, {});
@@ -68,7 +72,8 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(softmax,
+REGISTER_OP_NPU_KERNEL(
+    softmax,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, float>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, double>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, plat::float16>);
