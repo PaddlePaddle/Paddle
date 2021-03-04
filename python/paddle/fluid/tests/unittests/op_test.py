@@ -235,6 +235,19 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     return new_output
 
 
+def copy_bits_from_uint16_to_float(i):
+    i = np.uint32(i) << 16
+    return struct.unpack('<f', struct.pack('<I', i))[0]
+
+
+def convert_uint16_to_float(uint16_list):
+    new_output = []
+    for x in np.nditer(uint16_list):
+        new_output.append(np.float32(copy_bits_from_uint16_to_float(x)))
+
+    return np.reshape(new_output, uint16_list.shape).view(np.float32)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1143,8 +1156,14 @@ class OpTest(unittest.TestCase):
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
+
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+
+                if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
+                    actual_t = convert_uint16_to_float(actual_t)
+                    atol = 0.03
+
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
