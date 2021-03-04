@@ -28,7 +28,6 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
     hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
 
@@ -55,15 +54,6 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
       VLOG(3) << "destRank" << destRank << " invoke hcom send. sent "
               << x->numel();
 
-      if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
-      }
-
-    out->Resize(x->dims());
-    out->set_lod(x->lod());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

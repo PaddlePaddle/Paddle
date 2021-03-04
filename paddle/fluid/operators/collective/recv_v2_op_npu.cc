@@ -27,10 +27,9 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = x->numel();
-    hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
+    int numel = out->numel();
+    hcclDataType_t dtype = platform::ToHCCLDataType(out->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -47,23 +46,17 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     int srcRank = ctx.Attr<int>("peer");
     int srTag = ctx.Attr<int>("srTag");
-
+    VLOG(3) << "recv_v2_npu attr get";
     platform::dynload::hcom_receive(
-        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype, srcRank,
+        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(out->data<T>())), numel, dtype, srcRank,
           srTag, group.c_str(), stream);
-
+      VLOG(3) << "dtype " << dtype ;
+      VLOG(3) << "numel " << numel ;
+      VLOG(3) << "srTag " << srTag ;
       VLOG(3) << "srcRank " << srcRank << " invoke hcom receive. receiving "
-              << x->numel();
-
-      if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
-      }
-
-    out->Resize(x->dims());
-    out->set_lod(x->lod());
+              << out->numel();
+    out->Resize(out->dims());
+    out->set_lod(out->lod());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
