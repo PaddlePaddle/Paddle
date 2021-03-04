@@ -78,8 +78,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
   std::cout<< "rank_id:" << rank_id<<std::endl;
-  int num1 = 1;
-  int num2 = 4;
+  int num1 = 100;
+  int num2 = 100;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
     // init.push_back(1.0);
@@ -118,9 +118,12 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   EXPECT_EQ(out_vec.size(), init.size());
+  std::cout<<"out"<<std::endl;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
+    std::cout<< out_vec[i];
     EXPECT_EQ(out_vec[i], 4.0);
   }
+  std::cout<<std::endl;
 }
 
 TEST(c_allreduce_max, NPU) {
