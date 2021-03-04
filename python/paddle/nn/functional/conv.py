@@ -110,6 +110,7 @@ def _conv_nd(x,
              use_mkldnn=False,
              name=None):
 
+    # Due to the poor performance of NHWC, we transpose the input to NCHW.
     origin_format = data_format
     if origin_format == "NHWC" and op_type == "depthwise_conv2d":
         x = nn.transpose(x, perm=[0, 3, 1, 2])
