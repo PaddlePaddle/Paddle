@@ -249,7 +249,7 @@ function run_unittest() {
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
-    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job --repeat until-pass:4 after-timeout:4 | tee $tmpfile ) &
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
 }
 
@@ -284,7 +284,8 @@ function unittests_retry(){
                     echo "========================================="
                     rm -f $tmp_dir/*
                     failed_test_lists=''
-                    ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile
+                    (ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile ) &
+                    wait;
                     collect_failed_tests
                     exec_times=$(echo $exec_times | awk '{print $0+1}')
                 done
