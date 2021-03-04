@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include <cuda_fp16.h>
 #include <algorithm>
-#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -211,10 +210,18 @@ __inline__ __device__ T warpReduceMin(T val, unsigned lane_mask) {
   return val;
 }
 
+/* Calculate the minimum of all elements in a warp when actual quantity of
+ * threads are less than warpSize.*/
 template <typename T>
 __inline__ __device__ T PartialWarpReduceMin(T val, unsigned lane_mask) {
-  T warp_val = __shfl(val, 0, warpSize);
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+  T warp_val = __shfl_sync(lane_mask, val, 0, warpSize);
+#else
+  T warp_val = __shfl(
+      val, 0, warpSize);  // To fullfill the data in each thread of this warp.
+#endif
   warp_val = val;
+
   for (int offset = HALF_WARP; offset > 0; offset >>= 1)
 #if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
     warp_val =
@@ -247,9 +254,9 @@ __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
 }
 
 /* Calculate the minimum of all elements in a block */
-template <typename T_>
-__inline__ __device__ T_ blockReduceMin(T_ val, unsigned mask) {
-  static __shared__ T_ shared[WARP_SIZE];
+template <typename T>
+__inline__ __device__ T blockReduceMin(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
@@ -265,11 +272,12 @@ __inline__ __device__ T_ blockReduceMin(T_ val, unsigned mask) {
   return val;
 }
 
-/* Calculate the minimum of all elements in a block */
-template <typename T_>
-__inline__ __device__ T_ PartialBlockReduceMin(T_ val, size_t thread_num,
-                                               unsigned mask) {
-  static __shared__ T_ shared[WARP_SIZE];
+/* Calculate the minimum of all elements in a warp when actual quantity of
+ * threads are less than warpSize.*/
+template <typename T>
+__inline__ __device__ T PartialBlockReduceMin(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  static __shared__ T min_value;
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
@@ -277,11 +285,14 @@ __inline__ __device__ T_ PartialBlockReduceMin(T_ val, size_t thread_num,
   if (lane == 0) shared[wid] = val;
   __syncthreads();
 
-  // align block_span to warpSize
-  int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : 1e10f;
-  val = warpReduceMin(val, mask);
+  shared[lane] = PartialWarpReduceMin(shared[lane], mask);
+  __syncwarp();
 
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+  val = __shfl_sync(mask, shared[lane], 0, warpSize);
+#else
+  val = __shfl(shared[lane], 0, warpSize);
+#endif
   return val;
 }
 
