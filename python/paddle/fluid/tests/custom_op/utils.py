@@ -28,6 +28,6 @@ paddle_includes = [
 ]
 
 # Test for extra compile args
-extra_cc_args = ['-w', '-g']
-extra_nvcc_args = ['-O2']
+extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']
+extra_nvcc_args = ['-O3']
 extra_compile_args = {'cc': extra_cc_args, 'nvcc': extra_nvcc_args}

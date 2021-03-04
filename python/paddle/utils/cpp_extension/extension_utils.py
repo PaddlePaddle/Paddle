@@ -328,7 +328,7 @@ def prepare_unix_cudaflags(cflags):
     """
     cflags = COMMON_NVCC_FLAGS + [
         '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
-        '-DNVCC', '-w'
+        '-DNVCC'
     ] + cflags + get_cuda_arch_flags(cflags)
 
     return cflags
@@ -398,6 +398,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
+        add_compile_flag(extra_compile_args, ['-w'])  # disable warning
         # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
         # We align it automatially with pre-installed Paddle.
         if core.is_compiled_with_mkldnn():
