@@ -54,8 +54,8 @@ def create_while_nodes(condition_name, body_name, loop_var_names):
 
     where a, b, c are in loop_var_names.
 
-    However, if loop_var_names contains attribute such as foo.x, we cannot
-    assign the attribute as output of convert_while_loop because Python
+    However, if loop_var_names contains property such as foo.x, we cannot
+    assign the property as output of convert_while_loop because Python
     property is a kind of read-only attribute. To handle the case, we replace
     the attributes which are output of convert_while_loop with generated
     variables, then if we know the attribute is not read-only at runtime, we
