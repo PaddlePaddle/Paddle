@@ -34,15 +34,17 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     TensorFromVector(std::vector<int>{shape}, ctx.device_context(),
                      &shape_tensor);
 
-    auto* mean = ctx.Attr<T>("mean");
+    auto* mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(framework::proto::VarType::FP32);
-    mean_tensor.mutable_data<T>({1}, ctx.device_context());
-    TensorFromVector(std::vector<T>{mean}, ctx.device_context(), &mean_tensor);
+    mean_tensor.mutable_data<float>({1}, ctx.device_context());
+    TensorFromVector(std::vector<float>{mean}, ctx.device_context(),
+                     &mean_tensor);
 
-    auto* std = ctx.Attr<T>("std");
+    auto* std = ctx.Attr<float>("std");
     Tensor std_tensor(framework::proto::VarType::FP32);
-    std_tensor.mutable_data<T>({1}, ctx.device_context());
-    TensorFromVector(std::vector<T>{std}, ctx.device_context(), &std_tensor);
+    std_tensor.mutable_data<float>({1}, ctx.device_context());
+    TensorFromVector(std::vector<float>{std}, ctx.device_context(),
+                     &std_tensor);
 
     auto* seed = ctx.Attr<int32_t>("seed");
     Tensor seed_tensor(framework::proto::VarType::INT32);
