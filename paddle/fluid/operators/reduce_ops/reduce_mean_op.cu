@@ -56,9 +56,15 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
     }
 
     auto stream = context.cuda_device_context().stream();
+#ifdef PADDLE_WITH_HIP
+    TensorReduce<T, T, hipcub::Sum, DivideFunctor<T>>(
+        *input, output, reduce_dims, static_cast<T>(0), hipcub::Sum(),
+        DivideFunctor<T>(reduce_num), stream);
+#else
     TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
         *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
         DivideFunctor<T>(reduce_num), stream);
+#endif
   }
 };
 

@@ -51,7 +51,7 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
     if (std::is_same<Place, platform::CPUPlace>::value) {
       Apply(static_cast<platform::CPUDeviceContext *>(pool.Get(place)));
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(

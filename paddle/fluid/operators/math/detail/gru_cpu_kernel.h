@@ -28,8 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-#ifndef __NVCC__
-
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>
 void hl_naive_gru_forward_reset_output(
     OpResetOutput op_reset_output, T *gate_value, T *reset_output_value,
@@ -799,7 +798,7 @@ inline void cpu_gru_backward(const platform::CPUDeviceContext &context,
   }
 }
 
-#endif
+#endif  // @} End Group for GRU CPU
 
 }  // namespace detail
 }  // namespace math

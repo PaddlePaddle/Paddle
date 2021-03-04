@@ -17,6 +17,7 @@ from __future__ import print_function
 import gast
 import inspect
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import unittest
 
@@ -157,6 +158,16 @@ def while_loop_class_var(x):
     return foo.c
 
 
+def loop_var_contains_property(x):
+    a = paddle.zeros(shape=[1], dtype='float32')
+    i = paddle.to_tensor(x)
+    s = i.shape
+    while i < 10 and s[0] >= 1:
+        a += i.shape[0]
+        i += 1
+    return a
+
+
 def for_loop_class_var(max_len):
     class Foo(object):
         def __init__(self):
@@ -240,9 +251,7 @@ class TestNameVisitor(unittest.TestCase):
         name_visitor = NameVisitor(gast_root)
 
         self.loop_var_names = [
-            set(["j", "two"]),
-            set(["i", "three", "b"]),
-            set(["i", "j"]),
+            set(["j", "two"]), set(["i", "three", "b"]), set(["i", "j"])
         ]
         self.create_var_names = [set(), set(["b"]), set()]
 
@@ -324,6 +333,11 @@ class TestWhileLoopBoolOp2(TestTransformWhileLoop):
 class TestWhileLoopClassVar(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_class_var
+
+
+class TestLoopVarContainsProperty(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = loop_var_contains_property
 
 
 class TestTransformForLoop(unittest.TestCase):

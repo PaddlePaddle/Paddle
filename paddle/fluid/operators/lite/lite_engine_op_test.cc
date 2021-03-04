@@ -67,7 +67,7 @@ TEST(LiteEngineOp, engine_op) {
   *block_->add_ops() = *elt_add->Proto();
   *block_->add_ops() = *fetch->Proto();
   framework::Scope scope;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
@@ -84,11 +84,11 @@ TEST(LiteEngineOp, engine_op) {
   std::vector<std::string> repetitive_params{"x", "y"};
   inference::lite::EngineConfig config;
   config.valid_places = {
-#ifdef PADDLE_WITH_CUDA
-      paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
-      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
-      paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
+    paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+    paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
   serialize_params(&(config.param), &scope, repetitive_params);
   config.model = program.Proto()->SerializeAsString();

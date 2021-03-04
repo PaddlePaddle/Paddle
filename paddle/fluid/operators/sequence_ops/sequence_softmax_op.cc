@@ -36,7 +36,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     bool use_cudnn = ctx.Attr<bool>("use_cudnn");
     bool runtime_cudnn_support = false;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
@@ -132,7 +132,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     bool use_cudnn = ctx.Attr<bool>("use_cudnn");
     bool runtime_cudnn_support = false;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();

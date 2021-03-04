@@ -55,7 +55,8 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.dtype = np.float64
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()
@@ -338,8 +339,13 @@ class TestSoftmaxAPI(unittest.TestCase):
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-        out = self.softmax(x, dtype=np.float64)
-        out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        if core.is_compiled_with_rocm():
+            out = self.softmax(x, dtype=np.float32)
+            out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float32)
+        else:
+            out = self.softmax(x, dtype=np.float64)
+            out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
         self.assertEqual(np.allclose(out_ref, out.numpy()), True)
 
         paddle.enable_static()

@@ -602,8 +602,10 @@ STATIC_MODE_TESTING_LIST = [
     'test_nearest_interp_mkldnn_op',
     'test_bilinear_interp_mkldnn_op',
     'test_fusion_gru_int8_mkldnn_op',
+    'test_fusion_gru_bf16_mkldnn_op',
     'test_fusion_gru_mkldnn_op',
     'test_fusion_lstm_mkldnn_op',
+    'test_fusion_lstm_bf16_mkldnn_op',
     'test_gaussian_random_mkldnn_op',
     'test_lrn_mkldnn_op',
     'test_matmul_mkldnn_op',
@@ -695,4 +697,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_shape_op_xpu',
     'test_slice_op_xpu',
     'test_generate_proposals_v2_op',
+    'test_lamb_op_xpu',
 ]
