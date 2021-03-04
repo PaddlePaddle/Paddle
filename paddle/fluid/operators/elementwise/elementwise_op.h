@@ -275,7 +275,17 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    // If broadcasting is needed, use native implementation
+    auto CanMKLDNNElementwiseAddGradBeUsed = [&]() {
+      auto dx_dims = ctx.Input<Tensor>("X")->dims();
+      auto dy_dims = ctx.Input<Tensor>("Y")->dims();
+      // No broadcast or broadcasting of data on inner dims is supported
+      return (dx_dims[dx_dims.size()-1] == dy_dims[dy_dims.size()-1]);
+    };
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        (ctx.Type() != "elementwise_add_grad" ||
+         CanMKLDNNElementwiseAddGradBeUsed())) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
