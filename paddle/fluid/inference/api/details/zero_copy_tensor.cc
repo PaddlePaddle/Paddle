@@ -50,7 +50,7 @@ T *Tensor::mutable_data(PlaceType place) {
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
       paddle::platform::errors::PreconditionNotMet(
-          "You should call ZeroCopyTensor::Reshape(const std::vector<int> "
+          "You should call Tensor::Reshape(const std::vector<int> "
           "&shape)"
           "function before retrieving mutable_data from input tensor."));
   switch (static_cast<int>(place)) {
@@ -110,7 +110,7 @@ void Tensor::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
-                        "You should call ZeroCopyTensor::Reshape(const "
+                        "You should call Tensor::Reshape(const "
                         "std::vector<int> &shape)"
                         "function before copying data from cpu."));
   size_t ele_size = tensor->numel() * sizeof(T);
@@ -137,10 +137,10 @@ void Tensor::CopyFromCpu(const T *data) {
 #endif
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
-    platform::XPUPlace xpu_place(device_);
+    paddle::platform::XPUPlace xpu_place(device_);
     auto *t_data = tensor->mutable_data<T>(xpu_place);
-    memory::Copy(xpu_place, static_cast<void *>(t_data),
-                 paddle::platform::CPUPlace(), data, ele_size);
+    paddle::memory::Copy(xpu_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size);
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "Can not create tensor with XPU place because paddle is not compiled "
@@ -184,8 +184,9 @@ void Tensor::CopyToCpu(T *data) {
   } else if (place_ == PlaceType::kXPU) {
 #ifdef PADDLE_WITH_XPU
     auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
-    memory::Copy(paddle::platform::CPUPlace(), static_cast<void *>(data),
-                 xpu_place, t_data, ele_num * sizeof(T));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), xpu_place, t_data,
+                         ele_num * sizeof(T));
 #else
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "Can not create tensor with XPU place because paddle is not compiled "
