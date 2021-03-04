@@ -164,11 +164,11 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
     if(WITH_STATIC_LIB)
-        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_inference.lib
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.*)
+        set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
+                             $<TARGET_FILE_DIR:paddle_inference>/paddle_inference.*)
     else()
-        set(paddle_inference_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.dll
-                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_inference.lib)
+        set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference_shared>/paddle_inference.dll
+                             $<TARGET_FILE_DIR:paddle_inference_shared>/paddle_inference.lib)
     endif()
     copy(inference_lib_dist
             SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
@@ -189,6 +189,10 @@ copy(inference_lib_dist
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+
 # CAPI inference library for only inference
 set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING
 "A path setting CAPI paddle inference shared")
@@ -196,7 +200,7 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-  set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_inference_c.*)
+  set(paddle_inference_c_lib $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c.*)
 else(WIN32)
   set(paddle_inference_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_inference_c.*)
 endif(WIN32)

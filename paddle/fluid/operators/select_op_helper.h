@@ -37,7 +37,7 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
   }
   // when platform::is_gpu_place(mask.place()) is ture
   std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(

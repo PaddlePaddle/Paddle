@@ -489,6 +489,12 @@ class FCPrimitiveFactory {
       constexpr float beta = 0.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_logistic,
                                      alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_hardswish, alpha, beta);
     }
 
     attributes.set_post_ops(post_operations);

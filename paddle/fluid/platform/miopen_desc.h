@@ -37,9 +37,9 @@ namespace platform {
 using framework::Tensor;
 
 template <typename T>
-inline miopenDataType_t ToMIOpenDataType(const T& t) {
+inline miopenDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToMIOpenDataType(type);
+  return ToCudnnDataType(type);
 }
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
@@ -66,7 +66,7 @@ inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
 }
 
 template <>
-inline miopenDataType_t ToMIOpenDataType(
+inline miopenDataType_t ToCudnnDataType(
     const framework::proto::VarType::Type& t) {
   miopenDataType_t type = miopenFloat;
   switch (t) {
@@ -84,37 +84,54 @@ inline miopenDataType_t ToMIOpenDataType(
 
 class ActivationDescriptor {
  public:
+  using T = miopenActivationDescriptor;
+  struct Deleter {
+    void operator()(T* t) {
+      if (t != nullptr) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            dynload::miopenDestroyActivationDescriptor(t));
+        t = nullptr;
+      }
+    }
+  };
   ActivationDescriptor() {
+    T* raw_ptr;
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenCreateActivationDescriptor(&desc_));
-  }
-  ~ActivationDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenDestroyActivationDescriptor(desc_));
+        dynload::miopenCreateActivationDescriptor(&raw_ptr));
+    desc_.reset(raw_ptr);
   }
   template <typename T>
   void set(miopenActivationMode_t mode, const T& coef) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetActivationDescriptor(
-        desc_, mode, static_cast<double>(coef), 0.0, 0.0));
+        desc_.get(), mode, static_cast<double>(coef), 0.0, 0.0));
   }
 
-  miopenActivationDescriptor_t desc() { return desc_; }
-  miopenActivationDescriptor_t desc() const { return desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
 
  private:
-  miopenActivationDescriptor_t desc_;
+  std::unique_ptr<T, Deleter> desc_;
 };
 
 class TensorDescriptor {
  public:
+  using T = miopenTensorDescriptor;
+  struct Deleter {
+    void operator()(T* t) {
+      if (t != nullptr) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
+        t = nullptr;
+      }
+    }
+  };
   TensorDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    T* raw_ptr;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::miopenCreateTensorDescriptor(&raw_ptr));
+    desc_.reset(raw_ptr);
   }
-  ~TensorDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
-  }
-  miopenTensorDescriptor_t desc() { return desc_; }
-  miopenTensorDescriptor_t desc() const { return desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
 
   void set(const Tensor& tensor, const int groups = 1) {
     auto dims = framework::vectorize<int>(tensor.dims());
@@ -128,7 +145,7 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
-        desc_, ToMIOpenDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -136,6 +153,9 @@ class TensorDescriptor {
 
   void set(const Tensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
+    PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
+                      platform::errors::InvalidArgument(
+                          "format should ONLY be NCHW in MIOPEN."));
     auto dims = framework::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -147,26 +167,35 @@ class TensorDescriptor {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
-        desc_, ToMIOpenDataType(tensor.type()),
+        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
   }
 
  private:
-  miopenTensorDescriptor_t desc_;
+  std::unique_ptr<T, Deleter> desc_;
 };
 
 class FilterDescriptor {
  public:
+  using T = miopenTensorDescriptor;
+  struct Deleter {
+    void operator()(T* t) {
+      if (t != nullptr) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(t));
+        t = nullptr;
+      }
+    }
+  };
   FilterDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreateTensorDescriptor(&desc_));
+    T* raw_ptr;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::miopenCreateTensorDescriptor(&raw_ptr));
+    desc_.reset(raw_ptr);
   }
-  ~FilterDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroyTensorDescriptor(desc_));
-  }
-  miopenTensorDescriptor_t desc() { return desc_; }
-  miopenTensorDescriptor_t desc() const { return desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
 
   void set(const Tensor& tensor, const miopenTensorFormat_t format,
            const int groups = 1) {
@@ -176,45 +205,55 @@ class FilterDescriptor {
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
     transformed_dims = dims;
-    if (groups > 1) {
-      transformed_dims[1] = transformed_dims[1] / groups;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
-        desc_, ToMIOpenDataType(tensor.type()),
-        static_cast<int>(transformed_dims.size()),
-        const_cast<int*>(transformed_dims.data()), nullptr));
+    // if (groups > 1) {
+    //   transformed_dims[1] = transformed_dims[1] / groups;
+    // }
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSet4dTensorDescriptor(
+        (miopenTensorDescriptor_t)desc_.get(), ToCudnnDataType(tensor.type()),
+        transformed_dims[0], transformed_dims[1], transformed_dims[2],
+        transformed_dims[3]));
   }
 
  private:
-  miopenTensorDescriptor_t desc_;
+  std::unique_ptr<T, Deleter> desc_;
 };
 
 class ConvolutionDescriptor {
  public:
+  using T = miopenConvolutionDescriptor;
+  struct Deleter {
+    void operator()(T* t) {
+      if (t != nullptr) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            dynload::miopenDestroyConvolutionDescriptor(t));
+        t = nullptr;
+      }
+    }
+  };
   ConvolutionDescriptor() {
+    T* raw_ptr;
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenCreateConvolutionDescriptor(&desc_));
+        dynload::miopenCreateConvolutionDescriptor(&raw_ptr));
+    desc_.reset(raw_ptr);
   }
-  ~ConvolutionDescriptor() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::miopenDestroyConvolutionDescriptor(desc_));
-  }
-  miopenConvolutionDescriptor_t desc() { return desc_; }
-  miopenConvolutionDescriptor_t desc() const { return desc_; }
+  T* desc() { return desc_.get(); }
+  T* desc() const { return desc_.get(); }
 
   void set(miopenDataType_t dtype, const std::vector<int>& pads,
            const std::vector<int>& strides, const std::vector<int>& dilations,
            bool allow_tf32, const int groups = 1) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenInitConvolutionNdDescriptor(
-        desc_, static_cast<int>(pads.size()), const_cast<int*>(pads.data()),
+        (miopenConvolutionDescriptor_t)desc_.get(),
+        static_cast<int>(pads.size()), const_cast<int*>(pads.data()),
         const_cast<int*>(strides.data()), const_cast<int*>(dilations.data()),
         miopenConvolution));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::miopenSetConvolutionGroupCount(desc_, groups));
+        platform::dynload::miopenSetConvolutionGroupCount(
+            (miopenConvolutionDescriptor_t)desc_.get(), groups));
   }
 
  private:
-  miopenConvolutionDescriptor_t desc_;
+  std::unique_ptr<T, Deleter> desc_;
 };
 
 }  // namespace platform

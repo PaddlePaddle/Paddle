@@ -30,6 +30,11 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
     def set_confs(self):
         self.mkldnn_data_type = False
 
+    def test_check_output(self):
+        for use_seq in {True, False}:
+            self.attrs['use_seq'] = use_seq
+            self.check_output(check_dygraph=False)
+
     def setUp(self):
         self.op_type = "fusion_gru"
         self.lod = [[2, 4, 3]]
@@ -45,6 +50,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         self.origin_mode = False
         self.use_mkldnn = True
         self.force_fp32_output = False
+        self.weights_dtype = 'fp32'
         self.set_confs()
 
         T = sum(self.lod[0])
@@ -57,6 +63,9 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
 
         wx_fp32 = np.random.rand(self.M, 3 * self.D).astype('float32')
         wh_fp32 = np.random.rand(self.D, 3 * self.D).astype('float32')
+
+        wx_bf16 = convert_float_to_uint16(wx_fp32)
+        wh_bf16 = convert_float_to_uint16(wh_fp32)
 
         # bias is fp32 despite other inputs being in bf16
         bias = np.random.rand(
@@ -74,20 +83,30 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
 
         hidden_bf16 = convert_float_to_uint16(hidden)
 
-        self.inputs = {
-            'X': (x_bf16, self.lod),
-            'WeightX': wx_fp32,
-            'WeightH': wh_fp32
-        }
+        if self.weights_dtype == 'bf16':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx_bf16,
+                'WeightH': wh_bf16
+            }
+        elif self.weights_dtype == 'fp32':
+            self.inputs = {
+                'X': (x_bf16, self.lod),
+                'WeightX': wx_fp32,
+                'WeightH': wh_fp32
+            }
 
         if self.with_bias:
             self.inputs['Bias'] = bias
 
         if self.with_h0:
-            self.inputs['H0'] = h0_bf16
+            if self.weights_dtype == 'bf16':
+                self.inputs['H0'] = h0_bf16
+            elif self.weights_dtype == 'fp32':
+                self.inputs['H0'] = h0_fp32
 
         h0_bf16 = convert_float_to_uint16(h0_fp32)
-        self.outputs = {'Hidden': (hidden_bf16, self.lod)}
+        self.outputs = {'Hidden': (hidden, self.lod)}
 
         self.attrs = {
             'activation': self.act_state,
@@ -107,6 +126,11 @@ class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUBF16MKLDNNOp):
 class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUBF16MKLDNNOp):
     def set_confs(self):
         self.with_bias = False
+
+
+class TestFusionGRUINT8MKLDNNBF16WeightsOp(TestFusionGRUBF16MKLDNNOp):
+    def set_confs(self):
+        self.weights_dtype = 'bf16'
 
 
 if __name__ == "__main__":

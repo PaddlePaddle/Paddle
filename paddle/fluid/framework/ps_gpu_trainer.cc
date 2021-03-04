@@ -24,7 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {
@@ -130,8 +131,13 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 
 void PSGPUTrainer::Run() {
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
-    threads_.push_back(
-        std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    if (!debug_) {
+      threads_.push_back(
+          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+    } else {
+      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                     workers_[thidx].get()));
+    }
   }
 }
 
