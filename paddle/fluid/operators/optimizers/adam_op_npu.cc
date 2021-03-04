@@ -59,6 +59,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
         *param, *moment1,     *moment2,     *beta1_pow,     *beta2_pow,
         *lr,    beta1_tensor, beta2_tensor, epsilon_tensor, *grad};
     // inputs_vec.push_back(*param, *moment1, *moment2, *beta1_pow, *beta2_pow);
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     auto runner = NpuOpRunner("ApplyAdam", inputs_vec, {*param_out}, {});
     runner.Run(stream);
   }
