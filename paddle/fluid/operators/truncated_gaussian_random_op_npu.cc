@@ -30,9 +30,7 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
     Tensor shape_tensor(framework::proto::VarType::INT32);
     shape_tensor.mutable_data<int32_t>({shape.size()}, ctx.GetPlace());
-    TensorFromVector(shape, ctx.device_context(),
-                     &shape_tensor);
-
+    TensorFromVector(shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(framework::proto::VarType::FP32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
