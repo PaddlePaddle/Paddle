@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
  public:
@@ -33,27 +35,27 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
                      &shape_tensor);
 
     auto* mean = ctx.Attr<T>("mean");
-    Tensor mean_tensor(T);
+    Tensor mean_tensor(framework::proto::VarType::FP32);
     mean_tensor.mutable_data<T>({1}, ctx.device_context());
     TensorFromVector(std::vector<T>{mean}, ctx.device_context(), &mean_tensor);
 
     auto* std = ctx.Attr<T>("std");
-    Tensor std_tensor(T);
+    Tensor std_tensor(framework::proto::VarType::FP32);
     std_tensor.mutable_data<T>({1}, ctx.device_context());
     TensorFromVector(std::vector<T>{std}, ctx.device_context(), &std_tensor);
 
     auto* seed = ctx.Attr<int32_t>("seed");
-    Tensor seed_tensor(T);
+    Tensor seed_tensor(framework::proto::VarType::INT32);
     seed_tensor.mutable_data<int32_t>({1}, ctx.device_context());
     TensorFromVector(std::vector<int32_t>{seed}, ctx.device_context(),
                      &seed_tensor);
 
-    Tensor min_tensor(T);
+    Tensor min_tensor(framework::proto::VarType::FP32);
     max_tensor.mutable_data<T>({1}, ctx.device_context());
     TensorFromVector(std::vector<T>{(mean - std * 2.0)}, ctx.device_context(),
                      &min_tensor);
 
-    Tensor max_tensor(T);
+    Tensor max_tensor(framework::proto::VarType::FP32);
     max_tensor.mutable_data<T>({1}, ctx.device_context());
     TensorFromVector(std::vector<T>{(mean + std * 2.0)}, ctx.device_context(),
                      &max_tensor);
