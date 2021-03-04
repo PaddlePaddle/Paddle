@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -90,8 +89,8 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     // factor.
     Tensor factor_bc_tensor(framework::proto::VarType::FP32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
-    auto runner_bc = NpuOpRunner("BroadcastTo", {factor_tensor, x_shape},
-                                 {factor_bc_tensor}, {});
+    auto runner_bc = NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
+                                 {{"dims", x_dims}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
@@ -123,5 +122,3 @@ REGISTER_OP_NPU_KERNEL(
     pow_grad, ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
-
-#endif
