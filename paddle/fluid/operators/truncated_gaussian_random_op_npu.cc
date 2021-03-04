@@ -27,10 +27,10 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // to do: select_rows
-    auto* shape = ctx.Attr<std::vector<int>>("shape");
+    std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
     Tensor shape_tensor(framework::proto::VarType::INT32);
     shape_tensor.mutable_data<int32_t>({shape.size()}, ctx.GetPlace());
-    TensorFromVector(std::vector<int>{shape}, ctx.device_context(),
+    TensorFromVector(shape, ctx.device_context(),
                      &shape_tensor);
 
     float mean = ctx.Attr<float>("mean");
@@ -65,6 +65,9 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
 
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     auto runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
         {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
