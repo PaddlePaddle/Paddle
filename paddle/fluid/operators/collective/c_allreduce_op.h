@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -115,36 +117,47 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+    #define PRE_MALLOC_SIZE_BYTES 512
+
     auto in = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-
     auto place = ctx.GetPlace();
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    int64_t numel = in->numel();
 
-    int64_t numel = 128;
-    // int64_t numel = in->numel();
-    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>() + 128));
-    // void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->mutable_data<T>(place)));
+    int64_t pre_tmp_size = PRE_MALLOC_SIZE_BYTES / sizeof(T);
+    int64_t tmp_numel = numel + pre_tmp_size * 2;
 
-    out->Resize(in->dims());
-    void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>() + 128));
-    // void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->mutable_data<T>(place)));
-    // void* recvbuff = sendbuff;
+    paddle::framework::LoDTensor tmp_in, tmp_out;
+    tmp_in.Resize({1, tmp_numel});
+    tmp_out.Resize({1, tmp_numel});
+    tmp_in.mutable_data<T>(place);  // allocate
+    tmp_out.mutable_data<T>(place);  // allocate
+    // ctx.wait();
+
+    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_in.data<T>() + pre_tmp_size));
+    void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_out.data<T>() + pre_tmp_size));
+
     std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
-    // s他的：
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-     group = "hccl_world_group";// std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
+
+    memory::Copy(place, sendbuff, 
+                 place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
+                 numel * sizeof(T),
+                 stream);
+    dev_ctx->Wait();
+
+    //  group = "hccl_world_group";// std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
 
     hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
     switch (red_type) {
@@ -169,7 +182,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-
     VLOG(3) << "begin hccl allreduce, parameter is: "
       << "input num: " << numel
       << "dtype: " << dtype
@@ -180,12 +192,18 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     printf("sendbuff: %p\n", sendbuff);
     printf("recvbuff: %p\n", recvbuff);
 
-    // printf("sendbuff: %p, %d\n", sendbuff, ((int*)sendbuff)[0]);
-    // printf("recvbuff: %p, %d\n", recvbuff, ((int*)recvbuff)[0]);
-
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
         tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
 
+    dev_ctx->Wait();
+
+    memory::Copy(place, reinterpret_cast<void*>(const_cast<T*>(out->data<T>())),
+                 place, recvbuff, 
+                 numel * sizeof(T),
+                 stream);
+    dev_ctx->Wait();
+    
+    out->Resize(in->dims());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

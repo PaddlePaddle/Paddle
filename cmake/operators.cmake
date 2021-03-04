@@ -19,7 +19,7 @@ function(op_library TARGET)
     set(MKLDNN_FILE)
     set(op_common_deps operator op_registry math_function layer common_infer_shape_functions)
     if (WITH_ASCEND_CL)
-      set(op_common_deps ${op_common_deps} npu_op_runner)
+      set(op_common_deps ${op_common_deps} npu_op_runner memory)
     endif()
     # Option `UNITY` is used to specify that operator `TARGET` will compiles with Unity Build.
     set(options UNITY)
