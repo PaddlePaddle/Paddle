@@ -863,7 +863,8 @@ class Model(object):
           from paddle.static import InputSpec
   
           device = paddle.set_device('cpu') # or 'gpu'
-  
+          use_amp = False
+
           net = nn.Sequential(
               nn.Flatten(1),
               nn.Linear(784, 200),
@@ -879,7 +880,8 @@ class Model(object):
               parameters=model.parameters())
           model.prepare(optim,
                         paddle.nn.CrossEntropyLoss(),
-                        paddle.metric.Accuracy())
+                        paddle.metric.Accuracy(),
+                        use_amp=use_amp)
           
           transform = T.Compose([
               T.Transpose(),
