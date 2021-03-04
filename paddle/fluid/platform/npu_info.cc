@@ -268,6 +268,7 @@ class RecordedNPUMallocHelper {
     }
 
     NPUDeviceGuard guard(dev_id_);
+    // auto result = aclrtMalloc(ptr, size, ACL_MEM_MALLOC_NORMAL_ONLY);
     auto result = aclrtMalloc(ptr, size, ACL_MEM_MALLOC_HUGE_FIRST);
     if (result == ACL_ERROR_NONE) {
       if (NeedRecord()) {

@@ -121,13 +121,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
 
-    int64_t numel = in->numel();
-    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
+    int64_t numel = 128;
+    // int64_t numel = in->numel();
+    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>() + 128));
     // void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->mutable_data<T>(place)));
 
     out->Resize(in->dims());
-    // void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
-    void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->mutable_data<T>(place)));
+    void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>() + 128));
+    // void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->mutable_data<T>(place)));
     // void* recvbuff = sendbuff;
     std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");

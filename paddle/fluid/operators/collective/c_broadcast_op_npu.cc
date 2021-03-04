@@ -54,23 +54,18 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       << ", group is " << group
       << ", tag is " << tag;
 
-    if (root == static_cast<int>(comm->rank())) {
-      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                   dtype, (uint32_t)root, group.c_str(), (void*)stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
-              << x->numel();
-    } else {
-      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                    dtype, (uint32_t)root, group.c_str(), (void*)stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                  dtype, (uint32_t)root, group.c_str(), (void*)stream));
+
+    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+            << framework::product(out->dims());
+
+    if (out != x) {
+      framework::TensorCopy(
+          *static_cast<const framework::Tensor*>(x), place,
+          *platform::DeviceContextPool::Instance().Get(place),
+          static_cast<framework::Tensor*>(out));
     }
-      if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
-      }
 
     out->Resize(x->dims());
     out->set_lod(x->lod());
