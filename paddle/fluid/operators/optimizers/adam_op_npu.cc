@@ -47,16 +47,17 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     Tensor beta2_tensor(framework::proto::VarType::FP32);
     beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
+                     &beta2_tensor);
+
     Tensor epsilon_tensor(framework::proto::VarType::FP32);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{epsilon}, ctx.device_context(),
+                     &epsilon_tensor);
     std::vector<Tensor> inputs_vec;
     inputs_vec.push_back(*param, *moment1, *moment2, *beta1_pow, *beta2_pow);
     inputs_vec.push_back(*lr, *beta1_tensor, *beta2_tensor);
     inputs_vec.push_back(*epsilon_tensor, *grad);
-    auto runner =
-            NpuOpRunner("ApplyAdam", input_vec, {*param_out},
-                        {});
+    auto runner = NpuOpRunner("ApplyAdam", input_vec, {*param_out}, {});
     runner.Run(stream);
   }
 };
