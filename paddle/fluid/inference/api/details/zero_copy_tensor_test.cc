@@ -17,7 +17,9 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <memory>
+#include <random>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
