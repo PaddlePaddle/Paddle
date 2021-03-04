@@ -111,7 +111,8 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
                               {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
-
+  ctx.Wait();
+  
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
