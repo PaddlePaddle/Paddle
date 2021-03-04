@@ -42,12 +42,12 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     // reshape
     Tensor beta1_tensor(framework::proto::VarType::FP32);
     beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{bata1}, ctx.device_context(),
+    TensorFromVector(std::vector<T>{beta1}, ctx.device_context(),
                      &beta1_tensor);
     Tensor beta2_tensor(framework::proto::VarType::FP32);
     beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
-    Tensor epsilon_tensor(T);
+    Tensor epsilon_tensor(framework::proto::VarType::FP32);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
     TensorFromVector(std::vector<T>{epsilon}, ctx.device_context(),
     std::vector<Tensor> inputs_vec;
