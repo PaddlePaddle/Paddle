@@ -34,6 +34,7 @@ for example, you can run cpu version python2 testing like this:
 
 """
 
+RUN_ON_DEVICE = 'cpu'
 
 def find_all(srcstr, substr):
     """
@@ -165,9 +166,9 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
                 sampcd_to_write.append(cdline[min_indent:])
 
         sampcd = '\n'.join(sampcd_to_write)
-        if sys.argv[1] == "cpu":
+        if RUN_ON_DEVICE == "cpu":
             sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
-        if sys.argv[1] == "gpu":
+        if RUN_ON_DEVICE == "gpu":
             sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
         sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
 
@@ -614,6 +615,7 @@ if __name__ == '__main__':
         print("Unrecognized argument:'", args.mode, "' , 'cpu' or 'gpu' is ",
               "desired\n")
         sys.exit("Invalid arguments")
+    RUN_ON_DEVICE = args.mode
     print("API check -- Example Code")
     print("sample_test running under python", platform.python_version())
     if not os.path.isdir("./samplecode_temp"):
