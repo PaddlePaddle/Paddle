@@ -66,7 +66,8 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(recv_v2, ops::CRecvOpASCENDKernel<float>,
+REGISTER_OP_NPU_KERNEL(recv_v2, 
                         ops::CRecvOpASCENDKernel<int>,
                         ops::CRecvOpASCENDKernel<int8_t>,
+                        ops::CRecvOpASCENDKernel<float>,
                         ops::CRecvOpASCENDKernel<plat::float16>);

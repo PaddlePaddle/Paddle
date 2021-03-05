@@ -79,7 +79,8 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<float>,
+REGISTER_OP_NPU_KERNEL(c_allgather, 
+                        ops::CAllGatherOpASCENDKernel<int8_t>,
                         ops::CAllGatherOpASCENDKernel<int>,
-                        ops::CAllGatherOpASCENDKernel<int64_t>,
+                        ops::CAllGatherOpASCENDKernel<float>,
                         ops::CAllGatherOpASCENDKernel<plat::float16>);

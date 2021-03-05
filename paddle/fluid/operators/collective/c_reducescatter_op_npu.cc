@@ -82,8 +82,8 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_reducescatter, ops::CReduceScatterOpAscendKernel<float>,
-                        ops::CReduceScatterOpAscendKernel<double>,
+REGISTER_OP_NPU_KERNEL(c_reducescatter, 
+                        ops::CReduceScatterOpAscendKernel<int8_t>,
                         ops::CReduceScatterOpAscendKernel<int>,
-                        ops::CReduceScatterOpAscendKernel<int64_t>,
+                        ops::CReduceScatterOpAscendKernel<float>,
                         ops::CReduceScatterOpAscendKernel<plat::float16>);

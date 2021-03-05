@@ -61,7 +61,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
             << framework::product(out->dims());
 
     dev_ctx->Wait();
-    
+
     if (out != x) {
       framework::TensorCopy(
           *static_cast<const framework::Tensor*>(x), place,
@@ -86,7 +86,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_broadcast,
-                        ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<int>,
                         ops::CBroadcastOpASCENDKernel<int8_t>,
+                        ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<plat::float16>);

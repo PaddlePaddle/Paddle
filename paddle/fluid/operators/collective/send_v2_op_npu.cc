@@ -67,7 +67,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(send_v2, ops::CSendOpASCENDKernel<float>,
+REGISTER_OP_NPU_KERNEL(send_v2, 
                         ops::CSendOpASCENDKernel<int>,
                         ops::CSendOpASCENDKernel<int8_t>,
+                        ops::CSendOpASCENDKernel<float>,
                         ops::CSendOpASCENDKernel<plat::float16>);
