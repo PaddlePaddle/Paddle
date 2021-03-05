@@ -61,8 +61,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
     comm_init_attrs["rank"] = rank_id;
     comm_init_attrs["device_id"] = device_id;
     comm_init_attrs["rank_ids"] = rank_ids;
-    auto comm_init_op =
-    f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
+    auto comm_init_op = f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
     VLOG(3) << "CreateOp c_comm_init_hcom";
     auto place = ctx.GetPlace();
     comm_init_op->Run(*scope, place);
@@ -77,7 +76,6 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx){
     EXPECT_LT(num, 1 << 15);
     int rank_id = atoi(getenv("RANK_ID"));
     VLOG(3) << "rank_id:" << rank_id<<std::endl;
-    std::cout<<std::endl;
 
     ctx.Wait();
     auto place = ctx.GetPlace();
@@ -98,8 +96,7 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx){
     out_shape.push_back(num);
     attrs["out_shape"]=out_shape;
 
-    auto op =
-        f::OpRegistry::CreateOp("recv_v2", {}, {{"Out", {"Out"}}}, attrs);
+    auto op = f::OpRegistry::CreateOp("recv_v2", {}, {{"Out", {"Out"}}}, attrs);
     VLOG(3) << "CreateOp recv_v2";
 
     op->Run(*scope, place);

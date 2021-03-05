@@ -60,8 +60,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
     comm_init_attrs["rank"] = rank_id;
     comm_init_attrs["device_id"] = device_id;
     comm_init_attrs["rank_ids"] = rank_ids;
-    auto comm_init_op =
-        f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
+    auto comm_init_op = f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
     auto place = ctx.GetPlace();
     comm_init_op->Run(*scope, place);
     ctx.Wait();

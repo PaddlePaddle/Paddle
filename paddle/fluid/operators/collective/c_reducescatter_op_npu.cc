@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,11 +38,12 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
 
     auto out_dims = in->dims();
-    // PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
-    //                   platform::errors::InvalidArgument(
-    //                       "The input tensor X's "
-    //                       "dim[0] (%d) should be divisible by nranks(%d)",
-    //                       out_dims[0], nranks));
+    PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
+                      platform::errors::InvalidArgument(
+                          "The input tensor X's "
+                          "dim[0] (%d) should be divisible by nranks(%d)",
+                          out_dims[0], nranks));
+    
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
@@ -50,8 +51,6 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 
     void* inputPtr = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     void* outputPtr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
-    // const T* send_buff = in->data<T>();
-    // T* recv_buff = out->data<T>();
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
 
     aclrtStream stream = nullptr;
@@ -67,24 +66,12 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
       << "hccl_red_type: " << HCCL_REP_OP_SUM
       << ", group is: " << group
       << ", tag is " << tag;
-
-    printf("inputPtr: %p\n", inputPtr);
-    printf("outputPtr: %p\n", outputPtr);
-
-    // printf("inputPtr: %p, %d\n", inputPtr, ((int*)inputPtr)[0]);
-    // printf("outputPtr: %p, %d\n", outputPtr, ((int*)outputPtr)[0]);
-
-    // PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
-        // tag.c_str(), sendbuff, recvbuff, (u64)numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
     
-    hcclResult_t ret = platform::dynload::hcom_reduce_scatter(
-        tag.c_str(), inputPtr, outputPtr, (u64)recv_numel, dtype, HCCL_REP_OP_SUM, group.c_str(), (void*)stream);
-    // aclrtCreateStream(&stream);
-    PADDLE_ENFORCE_NPU_SUCCESS(ret);
-    printf("%d\n", ret);
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_reduce_scatter(
+        tag.c_str(), inputPtr, outputPtr, (u64)recv_numel, dtype, HCCL_REP_OP_SUM, group.c_str(), (void*)stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with NPU."));
 #endif
   }
 };

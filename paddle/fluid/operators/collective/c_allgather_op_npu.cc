@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,9 +28,7 @@ template <typename T>
 class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("compile CAllGatherOpASCENDKernel")
-    
+#if defined(PADDLE_WITH_ASCEND_CL) 
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
@@ -49,8 +47,6 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
     int64_t send_numel = in->numel();
     void *send_buff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     void *recv_buff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
-    // const T* send_buff = in->data<T>();
-    // T* recv_buff = out->data<T>();
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -72,7 +68,7 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with NPU."));
 #endif
   }
 };

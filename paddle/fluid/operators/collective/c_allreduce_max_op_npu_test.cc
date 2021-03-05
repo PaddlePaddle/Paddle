@@ -48,13 +48,25 @@ USE_OP(c_allreduce_max);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_allreduce_max, NPU);
 
+template<typename T>
+void PrintDebugInfo(std::string preStr, std::vector<T> &data){
+  std::string debugstring = "";
+  for (auto ele : data) {
+    debugstring += std::to_string(ele) + std::string(",");
+  }
+  VLOG(2) << preStr << ":" << std::endl <<debugstring; 
+}
+
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  printf("rank_id = %d, device_id = %d\n", rank_id, device_id);
-
+  VLOG(2) << "rank_id = " << rank_id
+  << "; device_id = " << device_id  
+  << "; rank_id = " << rank_id  
+  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));  
+  
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
@@ -70,27 +82,23 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 }
 
 void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
-  std::cout<< "BEGIN TEST:" << __FUNCTION__ <<std::endl;
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
-  std::cout<< "rank_id:" << rank_id<<std::endl;
+  
   int num1 = 100;
   int num2 = 100;
 
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    // init.push_back(1.0);
     init.push_back(1.0 + rank_id * 3);
-    std::cout<< init[i];
   }
-  std::cout<<std::endl;
+  PrintDebugInfo("input data", init);
 
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
-
   ctx.Wait();
 
   auto place = ctx.GetPlace();
@@ -98,7 +106,6 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<float>(place);  // allocate
-
   ctx.Wait();
 
   // run
@@ -106,8 +113,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["tag"]=std::string("tagx");
   attrs["ring_id"]=0;
 
-  auto op =
-      f::OpRegistry::CreateOp("c_allreduce_max", {{"X", {"X"}}},
+  auto op = f::OpRegistry::CreateOp("c_allreduce_max", {{"X", {"X"}}},
                               {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
@@ -115,16 +121,14 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
-
   ctx.Wait();
 
+  PrintDebugInfo("output data", out_vec);
+  
   EXPECT_EQ(out_vec.size(), init.size());
-  std::cout<<"out"<<std::endl;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    std::cout<< out_vec[i];
     EXPECT_EQ(out_vec[i], 4.0);
   }
-  std::cout<<std::endl;
 }
 
 TEST(c_allreduce_max, NPU) {

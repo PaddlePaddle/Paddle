@@ -23,7 +23,7 @@
 #define HCOM_H_
 
 // #include <runtime/rt.h>
-#include "paddle/fluid/platform/dynload/base.h"
+#include "paddle/fluid/platform/dynload/hcom_type.h"
 
 #ifdef __cplusplus
 extern "C" {

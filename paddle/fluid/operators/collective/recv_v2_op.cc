@@ -63,10 +63,8 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
 #if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("tag")
     AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
         .SetDefault("tag");
-    #pragma message("srTag")
     AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
         .SetDefault(0);
 #endif

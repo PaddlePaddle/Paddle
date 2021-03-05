@@ -45,13 +45,25 @@ USE_OP(c_broadcast);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
+template<typename T>
+void PrintDebugInfo(std::string preStr, std::vector<T> &data){
+  std::string debugstring = "";
+  for (auto ele : data) {
+    debugstring += std::to_string(ele) + std::string(",");
+  }
+  VLOG(2) << preStr << ":" << std::endl <<debugstring; 
+}
+
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  printf("rank_id = %d, device_id = %d\n", rank_id, device_id);
-
+  VLOG(2) << "rank_id = " << rank_id
+  << "; device_id = " << device_id  
+  << "; rank_id = " << rank_id  
+  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));  
+  
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
@@ -65,6 +77,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   comm_init_op->Run(*scope, place);
   ctx.Wait();
 }
+
 void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
@@ -73,17 +86,13 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
   
-  VLOG(3)<< "rank_id:" << rank_id;
-
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(1.0 + rank_id);
-    std::cout<< init[i];
   }
-  std::cout<<std::endl;
+  PrintDebugInfo("input data", init);
 
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num, num});
-
   ctx.Wait();
 
   auto place = ctx.GetPlace();
@@ -91,7 +100,6 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num, num});
   tensor_out->mutable_data<float>(place);  // allocate
-
   ctx.Wait();
 
   // run
@@ -100,8 +108,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["root"]=0;
   attrs["ring_id"]=0;
 
-  auto op =
-      f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
+  auto op = f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
                               {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
@@ -109,9 +116,9 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
-
   ctx.Wait();
 
+  PrintDebugInfo("output data", out_vec);
   EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], 1.0);

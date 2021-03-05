@@ -50,7 +50,6 @@ class CReduceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Total trainer count of the distributed training job")
         .SetDefault(1);
 #if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("tag")
     AddAttr<std::string>("tag", "(string default tag) tag for reduce scatter.")
         .SetDefault("tag");
 #endif

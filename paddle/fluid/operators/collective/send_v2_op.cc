@@ -51,10 +51,8 @@ class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for receiver.").SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("tag")
     AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
         .SetDefault("tag");
-    #pragma message("srTag")
     AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
         .SetDefault(0);
 #endif

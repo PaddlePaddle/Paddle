@@ -133,7 +133,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     tmp_out.Resize({1, tmp_numel});
     tmp_in.mutable_data<T>(place);  // allocate
     tmp_out.mutable_data<T>(place);  // allocate
-    // ctx.wait();
 
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_in.data<T>() + pre_tmp_size));
     void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_out.data<T>() + pre_tmp_size));
@@ -158,8 +157,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
                  numel * sizeof(T),
                  stream);
     dev_ctx->Wait();
-
-    //  group = "hccl_world_group";// std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
 
     hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
     switch (red_type) {
@@ -191,9 +188,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       << ", group is: " << group
       << ", tag is " << tag;
 
-    printf("sendbuff: %p\n", sendbuff);
-    printf("recvbuff: %p\n", recvbuff);
-
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
         tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
 
@@ -208,7 +202,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with NPU."));
 #endif
   }
 };
@@ -279,7 +273,6 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("hccl CAllReduceOpMaker need tag attr")
     AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
         .SetDefault("tag");
 #endif

@@ -43,7 +43,6 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
-    #pragma message("tag")
     AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
         .SetDefault("tag");
 #endif
