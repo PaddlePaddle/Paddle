@@ -89,7 +89,7 @@ class Test_single_defcom_extract(unittest.TestCase):
         def foo():
             pass
         '''
-        comm = single_defcom_extract(0, defstr.splitlines(True), is_class_begin=False)
+        comm = single_defcom_extract(0, defstr.splitlines(True), is_class_begin=True)
         rcomm = r"""            foo is a class.
             second line.
 """
@@ -105,8 +105,14 @@ class Test_single_defcom_extract(unittest.TestCase):
         def foo():
             pass
         '''
-        comm = single_defcom_extract(0, defstr.splitlines(True), is_class_begin=False)
+        comm = single_defcom_extract(0, defstr.splitlines(True), is_class_begin=True)
         self.assertEqual('', comm)
+
+class Test_srccoms_extract(unittest.TestCase):
+    def test_with_empty_wlist():
+        pass
+    def test_with_wlist():
+        pass
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py
 # why? unabled to use the ast module. emmmmm
