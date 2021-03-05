@@ -37,6 +37,7 @@ message ShardingConfig {
   optional bool use_pipeline = 6 [ default = false ];
   optional int32 acc_steps = 7 [ default = 1 ];
   optional int32 schedule_mode = 8 [ default = 0 ];
+  optional int32 pp_bz = 9 [ default = 1 ];
 }
 
 message AMPConfig {

@@ -98,6 +98,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "acc_steps"]
         self.schedule_mode = self.user_defined_strategy.sharding_configs[
             "schedule_mode"]
+        self.pp_bz = self.user_defined_strategy.sharding_configs["pp_bz"]
 
         if self.inner_opt is None:
             raise ValueError(
@@ -108,6 +109,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program = loss.block.program
             main_program._pipeline_opt = dict()
             main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
+            main_program._pipeline_opt['pp_bz'] = self.pp_bz
             pp_rank = self.role_maker._worker_index() // (
                 self.user_defined_strategy.sharding_configs[
                     'sharding_group_size'] * self._inner_parallelism_size)
