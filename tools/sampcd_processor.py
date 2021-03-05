@@ -22,6 +22,7 @@ import inspect
 import paddle
 import paddle.fluid
 import json
+import argparse
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -575,22 +576,42 @@ def get_wlist():
                 wlist = wlist + load_dict[key]
     return wlist, wlist_file, gpu_not_white
 
+arguments = [
+# flags, dest, type, default, help
+]
+def parse_args():
+    """
+    Parse input arguments
+    """
+    global arguments
+    parser = argparse.ArgumentParser(description='run Sample Code Test')
+    # parser.add_argument('--cpu', dest='cpu_mode', action="store_true",
+    #                     help='Use CPU mode (overrides --gpu)')
+    # parser.add_argument('--gpu', dest='gpu_mode', action="store_true")
+    parser.add_argument('--debug', dest='debug', action="store_true")
+    parser.add_argument('mode', type=str, help='run on device', default='cpu')
+    for item in arguments:
+        parser.add_argument(item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
 
-wlist, wlist_file, gpu_not_white = get_wlist()
+    if len(sys.argv) == 1:
+        args = parser.parse_args(['cpu'])
+        return args
+    #    parser.print_help()
+    #    sys.exit(1)
 
-if len(sys.argv) < 2:
-    print("Error: inadequate number of arguments")
-    print('''If you are going to run it on 
-        "CPU: >>> python sampcd_processor.py cpu
-        "GPU: >>> python sampcd_processor.py gpu
-        ''')
-    sys.exit("lack arguments")
-else:
-    if sys.argv[1] == "gpu":
+    args = parser.parse_args()
+    return args
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    wlist, wlist_file, gpu_not_white = get_wlist()
+
+    if args.mode  == "gpu":
         for _gnw in gpu_not_white:
             wlist.remove(_gnw)
-    elif sys.argv[1] != "cpu":
-        print("Unrecognized argument:'", sys.argv[1], "' , 'cpu' or 'gpu' is ",
+    elif args.mode != "cpu":
+        print("Unrecognized argument:'", args.mode, "' , 'cpu' or 'gpu' is ",
               "desired\n")
         sys.exit("Invalid arguments")
     print("API check -- Example Code")
@@ -627,10 +648,11 @@ else:
     result = results.get()
 
     # delete temp files
-    for root, dirs, files in os.walk("./samplecode_temp"):
-        for fntemp in files:
-            os.remove("./samplecode_temp/" + fntemp)
-    os.rmdir("./samplecode_temp")
+    if not args.debug:
+        for root, dirs, files in os.walk("./samplecode_temp"):
+            for fntemp in files:
+                os.remove("./samplecode_temp/" + fntemp)
+        os.rmdir("./samplecode_temp")
 
     print("----------------End of the Check--------------------")
     if len(whl_error) != 0:
