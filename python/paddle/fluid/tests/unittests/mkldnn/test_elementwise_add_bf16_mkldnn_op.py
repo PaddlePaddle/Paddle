@@ -91,7 +91,8 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             "Out",
             check_dygraph=False,
             user_defined_grads=[
-                self.x, self.compute_reduced_gradients(self.x)],
+                self.x, self.compute_reduced_gradients(self.x)
+            ],
             user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
