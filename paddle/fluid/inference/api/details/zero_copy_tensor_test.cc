@@ -53,12 +53,9 @@ struct RandomGenerator {
   T operator()() { return static_cast<T>(dist_(random_engine_)); }
 
  private:
-  static std::mt19937_64 random_engine_;
+  std::mt19937_64 random_engine_{std::random_device()()};
   std::uniform_real_distribution<double> dist_;
 };
-
-template <typename T>
-std::mt19937_64 RandomGenerator<T>::random_engine_{std::random_device()()};
 
 template <typename T, template <typename> typename G>
 bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
