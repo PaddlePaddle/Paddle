@@ -25,6 +25,9 @@ from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper impo
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 import logging
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 from functools import reduce
 
 __all__ = ["ShardingOptimizer"]
@@ -78,6 +81,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         # TODO: (JZ-LIANG) support multiple comm in future
         # self._nrings = self.user_defined_strategy.nccl_comm_num
+        logging.info("########### into sharding minimize: wait at end")
         self._nrings_sharding = 1
         self._nrings_dp = 1
         self._fuse_broadcast_MB = self.user_defined_strategy.sharding_configs[
@@ -95,6 +99,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "self.inner_opt of ShardingOptimizer should not be None.")
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
+        logging.info("########### after inner opt")
 
         if startup_program is None:
             startup_program = default_startup_program()
@@ -105,14 +110,17 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # step1: set_up
         self._set_up(params_grads)
+        logging.info("########### after inner _set_up")
 
         # step2: split_program
         self._split_program(main_block)
+        logging.info("########### after inner _split_program")
 
         # step3: add broadcast and reduce ops
         self._add_broadcast_allreduce(main_block)
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
+        logging.info("########### after inner _add_broadcast_allreduce")
 
         # step4: insert reduce_sum for grad
         grad_scale_coeff = self.role_maker._worker_num()
@@ -126,12 +134,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._prune_startup_program(startup_block)
         if self.hybrid_dp:
             self._initialization_broadcast(startup_program)
-
+        logging.info("########### after inner prune")
         # check op dependecy
         check_broadcast(main_block)
         check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
                             self.dp_ring_id)
+        logging.info("########### after inner check")
         self._wait()
+        logging.info("########### after inner wait")
         return optimize_ops, params_grads
 
     def _set_up(self, params_grads):
@@ -148,20 +158,20 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._collective_helper._init_communicator(
             self._startup_program, self.current_endpoint,
             self.sharding_group_endpoints, self.sharding_rank,
-            self.sharding_ring_id, True)
+            self.sharding_ring_id, False)
 
         # inner & outer model parallelism
         if self._as_outer_parallelism:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.mp_group_endpoints, self.mp_rank,
-                self.mp_group_id, True)
+                self.mp_group_id, False)
 
         # dp
         if self.hybrid_dp:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
-                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, True)
+                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, False)
 
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
@@ -176,9 +186,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._main_program.global_block())
 
     def _wait(self, ):
-        endpoints = self.role_maker._get_trainer_endpoints()
+        # only the first parallelsm group that init nccl need to be wait. 
+        endpoints = self.sharding_group_endpoints[:]
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        if self.role_maker._worker_index() == 0:
+        if self.sharding_rank == 0:
             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
