@@ -55,6 +55,7 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)

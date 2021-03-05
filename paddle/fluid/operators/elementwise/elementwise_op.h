@@ -280,7 +280,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
       auto dy_dims = ctx.Input<Tensor>("Y")->dims();
       // No broadcast or broadcasting of data on inner dims is supported
-      return (dx_dims[dx_dims.size()-1] == dy_dims[dy_dims.size()-1]);
+      return (dx_dims[dx_dims.size() - 1] == dy_dims[dy_dims.size() - 1]);
     };
 
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
