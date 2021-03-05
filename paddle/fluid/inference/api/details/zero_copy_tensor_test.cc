@@ -85,15 +85,20 @@ template <typename T>
 bool SetPlaceAndCheck(PlaceType place, size_t length) {
   paddle::framework::Scope scope;
   const std::string name{"name"};
+  const std::vector<std::vector<size_t>> lod{{0, length}};
   scope.Var(name);
   auto tensor = CreateTensor(place, &scope, name);
   tensor->Reshape({static_cast<int>(length)});
   tensor->mutable_data<T>(place);
+  tensor->SetLoD(lod);
 
   PlaceType place_out{PlaceType::kUNK};
   int length_out{-1};
   tensor->data<T>(&place_out, &length_out);
   if (length_out != static_cast<int>(length) || place_out != place) {
+    return false;
+  }
+  if (tensor->name() != name || tensor->lod() != lod) {
     return false;
   }
   return true;
