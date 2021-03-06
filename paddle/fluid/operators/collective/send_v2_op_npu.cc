@@ -48,7 +48,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     int srTag = ctx.Attr<int>("srTag");
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_send(
-        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype, destRank,
+        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), (u64)numel, dtype, destRank,
           srTag, group.c_str(), stream));
     
       VLOG(3) << "Dest rank:" << destRank << " Invoke hcom send. Sent "

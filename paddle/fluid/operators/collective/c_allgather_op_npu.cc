@@ -46,7 +46,7 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 
     int64_t send_numel = in->numel();
     void *send_buff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    void *recv_buff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
+    void *recv_buff = reinterpret_cast<void*>(out->data<T>());
 
     aclrtStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

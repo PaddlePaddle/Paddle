@@ -48,8 +48,10 @@ USE_OP(c_allgather);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_allgather, NPU);
 
+DECLARE_string(selected_npus);
+
 template<typename T>
-void PrintDebugInfo(std::string preStr, std::vector<T> &data){
+void PrintDebugInfo(const std::string preStr, const std::vector<T> &data){
   std::string debugstring = "";
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
@@ -65,7 +67,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   VLOG(2) << "rank_id = " << rank_id
   << "; device_id = " << device_id  
   << "; rank_id = " << rank_id  
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));  
+  << "; RANK_TABLE_FILE = " << atoi(getenv("RANK_TABLE_FILE"));  
   
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
@@ -138,9 +140,9 @@ void TestHCCLAllGatherOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(c_allgather, NPU) {
   f::Scope scope;
-  char * npu_id=getenv("FLAGS_selected_npus");
 
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
+  // only support one device, if more than one device, use first default  
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   Prepare(&scope, ctx);
   TestHCCLAllGatherOp(&scope, ctx);

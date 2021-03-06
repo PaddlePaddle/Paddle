@@ -48,8 +48,10 @@ USE_OP(c_reducescatter);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_reducescatter, NPU);
 
+DECLARE_string(selected_npus);
+
 template<typename T>
-void PrintDebugInfo(std::string preStr, std::vector<T> &data){
+void PrintDebugInfo(const std::string preStr, const  std::vector<T> &data){
   std::string debugstring = "";
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
@@ -133,9 +135,10 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(c_reducescatter, NPU) {
   f::Scope scope;
-  char * npu_id=getenv("FLAGS_selected_npus");
 
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
+  // only support one device, if more than one device, use first default  
+  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+
   Prepare(&scope, ctx);
   TestHCCLReduceScatterOp(&scope, ctx);
 }

@@ -48,7 +48,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     int srTag = ctx.Attr<int>("srTag");
     VLOG(3) << "recv_v2_npu attr get";
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_receive(
-        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(out->data<T>())), numel, dtype, srcRank,
+        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(out->data<T>())), (u64)numel, dtype, srcRank,
           srTag, group.c_str(), stream));
      VLOG(3) << "Source Rank: " << srcRank << " Invoke hcom receive. receiving ";
     out->Resize(out->dims());

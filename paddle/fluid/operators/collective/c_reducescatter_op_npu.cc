@@ -50,7 +50,7 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     int64_t recv_numel = in->numel() / nranks;
 
     void* inputPtr = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    void* outputPtr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
+    void* outputPtr = reinterpret_cast<void*>(out->data<T>());
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
 
     aclrtStream stream = nullptr;

@@ -117,6 +117,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+
+    // we need to pre-allocate 512 Bytes before the data 
+    // and 512 Bytes after the data, so the hccl allreduce
+    // can work. This is a must acooding to huawei peer.
     #define PRE_MALLOC_SIZE_BYTES 512
 
     auto in = ctx.Input<framework::LoDTensor>("X");
@@ -129,13 +133,13 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     int64_t tmp_numel = numel + pre_tmp_size * 2;
 
     paddle::framework::LoDTensor tmp_in, tmp_out;
-    tmp_in.Resize({1, tmp_numel});
-    tmp_out.Resize({1, tmp_numel});
+    tmp_in.Resize({tmp_numel});
+    tmp_out.Resize({tmp_numel});
     tmp_in.mutable_data<T>(place);  // allocate
     tmp_out.mutable_data<T>(place);  // allocate
 
-    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_in.data<T>() + pre_tmp_size));
-    void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(tmp_out.data<T>() + pre_tmp_size));
+    void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
+    void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
 
     std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
@@ -156,7 +160,6 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
                  npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
                  numel * sizeof(T),
                  stream);
-    dev_ctx->Wait();
 
     hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
     switch (red_type) {
@@ -191,13 +194,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
         tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
 
-    dev_ctx->Wait();
-
-    memory::Copy(npu_place, reinterpret_cast<void*>(const_cast<T*>(out->data<T>())),
+    memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
                  npu_place, recvbuff, 
                  numel * sizeof(T),
                  stream);
-    dev_ctx->Wait();
     
     out->Resize(in->dims());
 #else
@@ -257,7 +257,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+        sendbuff, recvbuff, (u64)numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
