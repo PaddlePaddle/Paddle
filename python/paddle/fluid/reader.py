@@ -167,9 +167,9 @@ class DataLoader(object):
 
     .. note::
         GPU tensor operation is not supported in subprocess currently,
-        please don't use GPU tensor operation in pipeline which will
-        be performed in subprocess, such as dataset transforms,
-        collte_fn, etc.
+        please don't use GPU tensor operations in pipeline which will
+        be performed in subprocess, such as dataset transforms, collte_fn,
+        etc. Numpy array and CPU tensor operation is supported.
 
     **Disable automatic batching**
 
