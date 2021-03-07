@@ -5013,7 +5013,7 @@ class PipelineOptimizer(object):
                         #        self._op_role_key: self._op_role.Backward,
                         #        # self._op_role_var_key: op_role_var
                         #    })
-        return first_optimize_op_index, accumulated_grad_names
+        return accumulated_grad_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
