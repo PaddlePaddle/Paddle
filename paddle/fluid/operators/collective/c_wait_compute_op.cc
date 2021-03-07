@@ -44,9 +44,10 @@ class CWaitComputeOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
-    auto calc_stream = static_cast<platform::CUDADeviceContext*>(
-                           platform::DeviceContextPool::Instance().Get(place))
-                           ->stream();
+    auto compute_stream =
+        static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(place))
+            ->stream();
     auto comm_stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
