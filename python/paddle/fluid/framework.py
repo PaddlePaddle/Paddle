@@ -5854,9 +5854,6 @@ def device_guard(device=None):
 
 def set_flags(flags):
     """
-    **Notes**:
-        **The API only supports static mode.**
-
     This function sets the GFlags value in Paddle.
 
     Args:
@@ -5868,7 +5865,7 @@ def set_flags(flags):
                 import paddle
 
                 paddle.enable_static()
-                paddle.static.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+                paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
@@ -5882,9 +5879,6 @@ def set_flags(flags):
 
 def get_flags(flags):
     """
-    **Notes**:
-        **The API only supports static mode.**
-
     This function gets the GFlags value in Paddle.
 
     Args:
@@ -5900,7 +5894,7 @@ def get_flags(flags):
 
             paddle.enable_static()
             flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            res = paddle.static.get_flags(flags)
+            res = paddle.get_flags(flags)
             print(res)
             # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
     """

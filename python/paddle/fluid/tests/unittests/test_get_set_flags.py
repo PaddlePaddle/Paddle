@@ -15,8 +15,6 @@
 import paddle
 import unittest as unittest
 
-paddle.enable_static()
-
 
 class TestGetAndSetFlags(unittest.TestCase):
     def test_api(self):
@@ -25,13 +23,13 @@ class TestGetAndSetFlags(unittest.TestCase):
             'FLAGS_check_nan_inf': True
         }
 
-        paddle.static.set_flags(flags)
+        paddle.set_flags(flags)
 
         flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
         flag = 'FLAGS_eager_delete_tensor_gb'
 
-        res_list = paddle.static.get_flags(flags_list)
-        res = paddle.static.get_flags(flag)
+        res_list = paddle.get_flags(flags_list)
+        res = paddle.get_flags(flag)
 
         self.assertTrue(res_list['FLAGS_eager_delete_tensor_gb'], 1.0)
         self.assertTrue(res_list['FLAGS_check_nan_inf'], True)
@@ -46,26 +44,26 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
 
         # flags type of set_flags should be dict.
         def test_set_flags_input_type():
-            paddle.static.set_flags(flags_list)
+            paddle.set_flags(flags_list)
 
         self.assertRaises(TypeError, test_set_flags_input_type)
 
         # flags in set_flags should be public flags.
         def test_set_private_flag():
 
-            paddle.static.set_flags(flag_private)
+            paddle.set_flags(flag_private)
 
         self.assertRaises(ValueError, test_set_private_flag)
 
         # flags type of set_flags should be list, tuple or string
         def test_get_flags_input_type():
-            paddle.static.get_flags(flag)
+            paddle.get_flags(flag)
 
         self.assertRaises(TypeError, test_get_flags_input_type)
 
         # flags in get_flags should be public flags.
         def test_get_private_flag():
-            paddle.static.get_flags('FLAGS_free_idle_chunk')
+            paddle.get_flags('FLAGS_free_idle_chunk')
 
         self.assertRaises(ValueError, test_get_private_flag)
 
