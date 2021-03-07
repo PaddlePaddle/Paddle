@@ -244,7 +244,7 @@ class Adam(Optimizer):
             if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
                 warnings.warn(
                     "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
-                    "Consider using multi_precision=True option of the Momentum optimizer."
+                    "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
 

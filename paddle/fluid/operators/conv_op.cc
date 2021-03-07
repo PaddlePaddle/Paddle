@@ -21,9 +21,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -149,13 +153,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       "AnyLayout";  // todo enable data layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain && this->CanMKLDNNBeUsed(ctx)) {
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -556,15 +561,16 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
@@ -572,9 +578,8 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto type = framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_, customized_type_value);
+  auto type = framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
+                                      library_, customized_type_value);
   return type;
 }
 
@@ -743,7 +748,7 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }

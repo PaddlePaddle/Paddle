@@ -22,13 +22,19 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
-#endif  // PADDLE_WITH_CUDA
-
 #ifdef PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
 #endif
+#endif  // PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 9000
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#ifdef PADDLE_CUDA_FP16
+#include <hip/hip_fp16.h>
+#endif
+#endif  // PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
 #define __h2div h2div
 #endif
 
@@ -101,7 +107,7 @@ struct DivRangeFunctor<
 
 #ifdef PADDLE_CUDA_FP16
 inline DEVICE half2 half2_add(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hadd2(a, b);
 #else
   float a1 = __low2float(a);
@@ -115,7 +121,7 @@ inline DEVICE half2 half2_add(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hsub2(a, b);
 #else
   float a1 = __low2float(a);
@@ -129,7 +135,7 @@ inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hmul2(a, b);
 #else
   float a1 = __low2float(a);
@@ -143,7 +149,7 @@ inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_div(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __h2div(a, b);
 #else
   float a1 = __low2float(a);

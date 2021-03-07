@@ -22,7 +22,7 @@ foreach (src ${OPS})
     set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 endforeach ()
 
-register_operators()
+register_operators(DEPS ${DISTRIBUTE_DEPS})
 
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${DISTRIBUTE_DEPS} PARENT_SCOPE)
 

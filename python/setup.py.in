@@ -139,6 +139,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/f
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.cpp_extension',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
@@ -334,11 +335,23 @@ if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
 
-# copy libfuild_framework.so to libs
-if os.name != 'nt' and sys.platform != 'darwin':
-    paddle_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
-    shutil.copy(paddle_framework_lib, libs_path)
-    package_data['paddle.libs'] += [('libpaddle_framework' if os.name != 'nt' else 'paddle_framework') + ext_name]
+### Old custom op extension mechanism related, will be removed in 2.1.0 ###
+# copy libpaddle_framework.so to libs on linux
+if sys.platform.startswith('linux'):
+    shutil.copy('${FLUID_FRAMEWORK_SHARED_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_framework.so']
+
+### New custom op extension mechanism related ###
+# copy libpaddle_custom_op.so to libs on linux
+if sys.platform.startswith('linux'):
+    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_custom_op.so']
+
+# copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
+if os.name == 'nt':
+    shutil.copy('${PADDLE_CUSTOM_OP_IMPORT_LIB}', libs_path)
+    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
+    package_data['paddle.libs'] += ['paddle_custom_op.lib', 'paddle_custom_op.dll']
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -379,6 +392,8 @@ def find_files(pattern, root):
           yield os.path.join(dirpath, filename)
 
 headers = (
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
@@ -401,15 +416,15 @@ headers = (
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
-if '${WITH_GPU}' == 'ON':
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}'))   # errorMessage.pb for errormessage
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
-        self.install_headers = os.path.join(self.install_purelib, 'paddle',
-                                            'include')
         self.install_lib = self.install_platlib
+        self.install_headers = os.path.join(self.install_platlib, 'paddle',
+                                            'include')
         return ret
 
 
@@ -460,11 +475,6 @@ class InstallHeaders(Command):
         return self.copy_file(header, install_dir)
 
     def run(self):
-        # only copy third_party/cudaErrorMessage.pb for cudaErrorMessage on mac or windows
-        if os.name == 'nt' or sys.platform == 'darwin':
-            if '${WITH_GPU}' == 'ON':
-                self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
-            return
         hdrs = self.distribution.headers
         if not hdrs:
             return
@@ -495,12 +505,30 @@ else:
     def redirect_stdout():
         yield
 
+# Log for PYPI
+if sys.version_info > (3,0):
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+        long_description = f.read()
+else:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r")as f:
+        long_description = unicode(f.read(), 'UTF-8')
+
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
         description='Parallel Distributed Deep Learning',
-        install_requires=setup_requires,
+        long_description=long_description,
+        long_description_content_type="text/markdown",
+        author_email="Paddle-better@baidu.com",
+        maintainer="PaddlePaddle",
+        maintainer_email="Paddle-better@baidu.com",
+        project_urls = {
+            'Homepage': 'https://www.paddlepaddle.org.cn/',
+            'Downloads': 'https://github.com/paddlepaddle/paddle'
+        }, 
+        license='Apache Software License',
         packages=packages,
+        install_requires=setup_requires,
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
@@ -515,7 +543,21 @@ with redirect_stdout():
             'console_scripts': [
                 'fleetrun = paddle.distributed.fleet.launch:launch'
             ]
-        }
+        },
+        classifiers=[
+            'Development Status :: 5 - Production/Stable',
+            'Operating System :: OS Independent',
+            'Intended Audience :: Developers',
+            'Intended Audience :: Education',
+            'Intended Audience :: Science/Research',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: C++',
+            'Programming Language :: Python :: 2.7',
+            'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+        ],
     )
 
 # As there are a lot of files in purelib which causes many logs,

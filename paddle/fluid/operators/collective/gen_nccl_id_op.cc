@@ -19,18 +19,41 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
-#include "paddle/fluid/operators/collective/gen_nccl_id_op_helper.h"
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
+  for (size_t i = 0; i < nccl_ids->size(); ++i) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::ncclGetUniqueId(&(*nccl_ids)[i]));
+  }
+}
+
+static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
+                            std::function<std::string(size_t)> func,
+                            const framework::Scope& scope) {
+  for (size_t i = 0; i < nccl_ids.size(); ++i) {
+    std::string var_name = func(i);
+    auto var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable with name %s is not found",
+                                        var_name.c_str()));
+    auto nccl_id = var->GetMutable<ncclUniqueId>();
+    memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
+  }
+}
 
 class GenNCCLIdOp : public framework::OperatorBase {
  public:
@@ -98,19 +121,25 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", trainers:" << ss.str();
 
     int server_fd = -1;
+    std::vector<ncclUniqueId> nccl_ids;
+    nccl_ids.resize(nccl_comm_num);
 
     /// 1. init flat
     std::function<std::string(size_t)> func = platform::GetFlatNCCLVarName;
+    // broadcast unique id
     if (trainer_id == 0) {
+      GenNCCLID(&nccl_ids);
+
       // server endpoints
       std::vector<std::string> flat_endpoints;
       flat_endpoints.insert(flat_endpoints.begin(), trainers.begin() + 1,
                             trainers.end());
-      SendBroadCastNCCLID(flat_endpoints, nccl_comm_num, func, scope);
+      platform::SendBroadCastCommID(flat_endpoints, &nccl_ids);
     } else {
-      server_fd = CreateListenSocket(endpoint);
-      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
+      server_fd = platform::CreateListenSocket(endpoint);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
+    CopyNCCLIDToVar(nccl_ids, func, scope);
 
     /// 2. hierarchical inter ncclid
     func = platform::GetHierarchicalInterNCCLVarName;
@@ -127,10 +156,13 @@ class GenNCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical inter ring endpoints:" << ss.str();
 
-      SendBroadCastNCCLID(inter_endpoints, nccl_comm_num, func, scope);
+      GenNCCLID(&nccl_ids);
+      platform::SendBroadCastCommID(inter_endpoints, &nccl_ids);
+      CopyNCCLIDToVar(nccl_ids, func, scope);
     } else if (inter_trainer_id > 0) {
       VLOG(1) << "Hierarchical inter ring";
-      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
+      CopyNCCLIDToVar(nccl_ids, func, scope);
     }
 
     /// 3. hierarchical exter ncclid
@@ -146,15 +178,18 @@ class GenNCCLIdOp : public framework::OperatorBase {
       }
       VLOG(1) << "Hierarchical exter ring endpoints:" << ss.str();
 
-      SendBroadCastNCCLID(exter_endpoints, nccl_comm_num, func, scope);
+      GenNCCLID(&nccl_ids);
+      platform::SendBroadCastCommID(exter_endpoints, &nccl_ids);
+      CopyNCCLIDToVar(nccl_ids, func, scope);
     } else if (exter_trainer_id > 0) {
       VLOG(1) << "Hierarchical exter ring";
-      RecvBroadCastNCCLID(server_fd, endpoint, nccl_comm_num, func, scope);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
+      CopyNCCLIDToVar(nccl_ids, func, scope);
     }
 
     // close socket server
     if (trainer_id != 0) {
-      CloseSocket(server_fd);
+      platform::CloseSocket(server_fd);
     }
   }
 };

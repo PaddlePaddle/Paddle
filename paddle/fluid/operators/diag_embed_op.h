@@ -100,7 +100,7 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     strides.push_back(stride[dim1_] + stride[dim2_]);
     const auto dims = vectorize(input->dims());
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> dims_vec(dims);
     const int64_t* dims_arr = thrust::raw_pointer_cast(dims_vec.data());
     thrust::device_vector<int64_t> strides_vec(strides);

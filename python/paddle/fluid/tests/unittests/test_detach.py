@@ -162,7 +162,8 @@ class Test_Detach(unittest.TestCase):
                 "in imperative mode, please run it in dygraph mode. You can "
                 "turn off paddle.enable_static() if you are in static mode, "
                 "or turn off ProgramTranslator if you are using "
-                "@paddle.jit.to_static")
+                "@paddle.jit.to_static. If you have to run ProgramTranslator, "
+                "please use other API to replace 'detach'")
 
 
 class TestInplace(unittest.TestCase):

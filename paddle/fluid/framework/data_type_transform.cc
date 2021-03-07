@@ -47,7 +47,7 @@ struct CastDataType {
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     } else if (platform::is_gpu_place(in_.place())) {
       platform::Transform<platform::CUDADeviceContext> trans;
       auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
@@ -97,10 +97,10 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     case proto::VarType::INT16:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int16_t>(in, out, ctx));
       break;
     case proto::VarType::UINT8:
-      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
+      framework::VisitDataType(dst_type, CastDataType<uint8_t>(in, out, ctx));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

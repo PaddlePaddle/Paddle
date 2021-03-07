@@ -95,6 +95,18 @@ def test_set_value(x):
     return x
 
 
+class LayerWithSetValue(paddle.nn.Layer):
+    def __init__(self, input_dim, hidden):
+        super(LayerWithSetValue, self).__init__()
+        self.linear = paddle.nn.Linear(input_dim, hidden)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x = self.linear(x)
+        x[0] = 1
+        return x
+
+
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.init_input()
@@ -150,6 +162,18 @@ class TestSetValue(TestSliceWithoutControlFlow):
 
     def init_dygraph_func(self):
         self.dygraph_func = test_set_value
+
+
+class TestSetValueWithLayerAndSave(unittest.TestCase):
+    def test_set_value_with_save(self):
+        prog_trans.enable(True)
+        model = LayerWithSetValue(input_dim=10, hidden=1)
+        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+        paddle.jit.save(
+            layer=model,
+            path="./layer_use_set_value",
+            input_spec=[x],
+            output_spec=None)
 
 
 if __name__ == '__main__':

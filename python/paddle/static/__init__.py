@@ -59,6 +59,7 @@ from .io import deserialize_program  #DEFINE_ALIAS
 from .io import serialize_program  #DEFINE_ALIAS
 from .io import load_from_file  #DEFINE_ALIAS
 from .io import save_to_file  #DEFINE_ALIAS
+from .io import normalize_program  #DEFINE_ALIAS
 from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS

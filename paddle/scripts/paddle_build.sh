@@ -253,8 +253,9 @@ function cmake_base() {
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
-        -DLITE_GIT_TAG=develop
+        -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -287,10 +288,11 @@ EOF
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
-        -DLITE_GIT_TAG=develop \
+        -DLITE_GIT_TAG=release/v2.8 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -613,18 +615,19 @@ EOF
         retry_time=3
         exec_times=0
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
+        is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
-                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -648,9 +651,8 @@ EOF
                         exec_times=$[$exec_times+1]
                     done
             else
-                echo "========================================="
-                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
             fi
 
         fi
@@ -663,24 +665,10 @@ EOF
         set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
-        set -x
         if [ "$mactest_error" != 0 ];then
-            if [[ "$failed_test_lists" == "" ]]; then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                failed_test_lists_ult=`echo "${failed_test_lists}"`
-                echo "========================================"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${failed_test_lists_ult}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
+        set -x
     fi
 }
 
@@ -714,6 +702,10 @@ function generate_upstream_develop_api_spec() {
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
 }
 
 function generate_api_spec() {
@@ -989,19 +981,20 @@ function card_test() {
     fi
 
     testcases=$1
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if (( $# > 1 )); then
         cardnumber=$2
         if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
             cardnumber=$CUDA_DEVICE_COUNT
         fi
         if (( $# > 2 )); then
-            parallel_job=$3
+            parallel_job=`expr $3 \* $parallel_level_base`
         else
-            parallel_job=1
+            parallel_job=$parallel_level_base
         fi
     else
         cardnumber=$CUDA_DEVICE_COUNT
-        parallel_job=1
+        parallel_job=$parallel_level_base
     fi
 
     if [[ "$testcases" == "" ]]; then
@@ -1069,6 +1062,18 @@ set -x
                 set +x
                 echo "PREC length: "`wc -l ut_list`
                 precision_cases=`cat ut_list`
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
                 set -x
             fi
         fi
@@ -1185,18 +1190,18 @@ set +x
         retry_unittests_record=''
         retry_time=3
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
+        is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
-                        
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -1251,33 +1256,48 @@ set +x
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry=''
-                        retry_unittests=''
                     done
             else 
-                echo "========================================="
-                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
             fi
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
-            if [[ "$failed_test_lists" == "" ]]; then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                echo "========================================"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${failed_test_lists_ult}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
 set -ex
+    fi
+}
+
+function show_ut_retry_result() {
+    if [[ "$is_retry_execuate" != "0" ]];then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "========================================="
+        echo "The following tests FAILED: "
+        echo "${failed_test_lists_ult}"
+        exit 8;
+    else
+        read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+        if [ -z "${retry_unittests_record_judge}" ];then
+            echo "========================================"
+            echo "There are failed tests, which have been successful after re-run:"
+            echo "========================================"
+            echo "The following tests have been re-ran:"
+            echo "${retry_unittests_record}"
+        else
+            failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+            echo "========================================"
+            echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+            exit 8;
+        fi
     fi
 }
 
@@ -1858,6 +1878,8 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train

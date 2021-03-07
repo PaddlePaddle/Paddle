@@ -1,163 +1,144 @@
 # A image for building paddle binaries
 # Use rocm-terminal base image for both rocm environment
 # When you modify it, please be aware of rocm version
-FROM ubuntu:18.04
+# 
+# Build: ROCM 3.9
+# cd Paddle/tools/dockerfile
+# docker build -f Dockerfile.rocm  \
+#        --build-arg ROCM_VERSION=3.9  \
+#        -t paddlepaddle/paddle-centos-rocm39-dev:latest .
+# 
+# docker run -it --device=/dev/kfd --device=/dev/dri \
+# --security-opt seccomp=unconfined --group-add video \
+# paddlepaddle/paddle-centos-rocm39-dev:latest /bin/bash
+
+FROM centos:7.8.2003
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
-# ENV variables
-ARG WITH_GPU
-ARG WITH_ROCM_PLATFORM
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
 
-ENV WITH_GPU=${WITH_GPU:-OFF}
-ENV WITH_ROCM_PLATFORM=${WITH_ROCM_PLATFORM:-ON}
+RUN yum install -y epel-release deltarpm sudo openssh-server gettext-devel sqlite-devel \
+        zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel \
+        make bzip2 git patch unzip bison yasm diffutils automake which file kernel-headers kernel-devel
 
-ENV HOME /root
-ENV DEBIAN_FRONTEND=noninteractive
+# Install devtoolset-7
+RUN yum install -y yum-utils centos-release-scl && \
+    yum-config-manager --enable rhel-server-rhscl-7-rpms && \
+    yum-config-manager --enable rhel-7-server-rpms && \
+    yum-config-manager --enable rhel-7-server-optional-rpms && \
+    INSTALL_PKGS="devtoolset-7-binutils devtoolset-7-gcc devtoolset-7-gcc-c++ devtoolset-7-gcc-gfortran devtoolset-7-gdb" && \
+    yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
+    rpm -V $INSTALL_PKGS && \
+    yum -y clean all --enablerepo='*'
+ENV PATH=/opt/rh/devtoolset-7/root/usr/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/rh/devtoolset-7/root/usr/lib64:/opt/rh/devtoolset-7/root/usr/lib:$LD_LIBRARY_PATH
+RUN echo "source scl_source enable devtoolset-7" > "/etc/profile.d/devtoolset-7.sh"
 
-# Add bash enhancements
-COPY paddle/scripts/docker/root/ /root/
-
-# Update Environment
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get update && apt-get install -y apt-utils sudo
-
-# Update Timezone
-RUN apt install tzdata && \
-    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' > /etc/timezone && \
-    dpkg-reconfigure -f noninteractive tzdata
-
-# Location
-RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
-    ENV LANG="en_US.UTF-8"
-    ENV LANGUAGE="en_US.UTF-8"
-    ENV LC_ALL="en_US.UTF-8"
-
-RUN apt-get update && \
-    apt-get install -y make cmake build-essential libssl-dev zlib1g-dev libbz2-dev \
-    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev \
-    git vim texinfo patchelf openssl unzip pciutils net-tools python-pip python-dev \
-    python-opencv python-matplotlib
-
-# Downgrade gcc&&g++
-WORKDIR /usr/bin
-COPY tools/dockerfile/build_scripts /build_scripts
-RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
-RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++  && \
-    ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc  && \
-    ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++  && \
-    ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc  && \
-    ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
-ENV PATH=/usr/local/gcc-8.2/bin:$PATH
-
-# install cmake
+# cmake 3.16.0
 WORKDIR /opt
-RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
-ENV PATH=/opt/cmake-3.16.0-Linux-x86_64/bin:$PATH
-RUN echo "export PATH=/opt/cmake-3.16.0-Linux-x86_64/bin:\${PATH}" >> ~/.bashrc
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && \
+    tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz && \
+    mv cmake-3.16.0-Linux-x86_64 cmake-3.16
+ENV PATH=/opt/cmake-3.16/bin:${PATH}
 
-# Install Go and glide
-RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
+# ROCM
+ARG ROCM_VERSION
+RUN yum install -y kmod wget openblas-devel epel-release
+RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
+    echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
+    echo "baseurl=http://repo.radeon.com/rocm/yum/${ROCM_VERSION}" >> /etc/yum.repos.d/rocm.repo && \
+    echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
+    echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo
+RUN yum install -y rocm-dev rocm-utils rocfft miopen-hip rocblas hipsparse rocrand rccl hipcub rocthrust rocprofiler-dev roctracer-dev
+# fix rocthrust
+RUN sed -i '21 a #include <thrust/system/hip/config.h>' /opt/rocm/include/thrust/system/hip/detail/error.inl
+# export ROCM env
+ENV ROCM_PATH=/opt/rocm
+ENV HIP_PATH=/opt/rocm/hip
+ENV HIP_CLANG_PATH=/opt/rocm/llvm/bin
+ENV PATH=/opt/rocm/bin:$PATH
+ENV PATH=/opt/rocm/opencl/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+
+# git 2.17.1
+RUN cd /opt && wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --with-openssl --prefix=/usr/local && \
+  make -j8 && make install && \
+  cd .. && rm -rf git-2.17.1.tar.gz && rm -rf git-2.17.1
+
+ENV GOROOT=/usr/local/go 
+ENV GOPATH=/root/gopath
+ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
+
+# go 1.8.1
+RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
     mkdir /root/gopath/src
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-# should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
-ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
-RUN echo "GOROOT=/usr/local/go" >> ~/.bashrc && \
-    echo "GOPATH=/root/gopath" >> ~/.bashrc && \
-    echo "export PATH=\${PATH}:\${GOROOT}/bin:\${GOPATH}/bin" >> ~/.bashrc
 
-# install glide
-RUN curl -s -q https://glide.sh/get | sh
+# protobuf 3.6.1
+RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 
+    tar xzf protobuf-cpp-3.6.1.tar.gz && \
+    cd protobuf-3.6.1 && ./configure && make -j4 && make install && \
+    cd .. && rm -f protobuf-cpp-3.6.1.tar.gz && rm -rf protobuf-3.6.1
 
-# git credential to skip password typing
-RUN git config --global credential.helper store
+# conda
+RUN cd /opt && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && chmod +x Miniconda3-latest-Linux-x86_64.sh
+RUN mkdir /opt/conda && ./Miniconda3-latest-Linux-x86_64.sh -b -f -p "/opt/conda" && rm -rf Miniconda3-latest-Linux-x86_64.sh
+ENV PATH=/opt/conda/bin:${PATH}
+RUN conda init bash && \
+    conda create -n python2.7 python=2.7 && \
+    conda create -n python3.7 python=3.7
 
-# Fix locales to en_US.UTF-8
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+# install paddle requirement
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
+RUN /opt/conda/bin/pip install -r /root/requirements.txt && \
+    /opt/conda/envs/python2.7/bin/pip install -r /root/requirements.txt && \
+    /opt/conda/envs/python3.7/bin/pip install -r /root/requirements.txt && \
+    rm -rf /root/requirements.txt
 
-RUN apt-get update && \
-    apt-get install -y python2.7 python2.7-dev \
-    python3.6 python3.6-dev \
-    python3.7 python3.7-dev \
-    python3.8 python3.8-dev \
-    python3-distutils && \
-    curl https://bootstrap.pypa.io/get-pip.py -o - | python2.7 && \
-    curl https://bootstrap.pypa.io/get-pip.py -o - | python3.6 && \
-    curl https://bootstrap.pypa.io/get-pip.py -o - | python3.7 && \
-    curl https://bootstrap.pypa.io/get-pip.py -o - | python3.8 && \
-    rm /usr/bin/python && ln -s /usr/bin/python2.7 /usr/bin/python && \
-    rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3 && \
-    rm /usr/local/bin/pip && ln -s /usr/local/bin/pip2.7 /usr/local/bin/pip && \
-    rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O /root/requirements.txt
+RUN /opt/conda/bin/pip install -r /root/requirements.txt && \
+    /opt/conda/envs/python2.7/bin/pip install -r /root/requirements.txt && \
+    /opt/conda/envs/python3.7/bin/pip install -r /root/requirements.txt && \
+    rm -rf /root/requirements.txt
 
-RUN pip3 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip3 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip3.6 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip3.6 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip3.8 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip --no-cache-dir install ipykernel==4.6.0 wheel 
+# configure ssh
+RUN sed -i "s/^#PermitRootLogin/PermitRootLogin/" /etc/ssh/sshd_config && \
+    sed -i "s/^#PubkeyAuthentication/PubkeyAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/^#RSAAuthentication/RSAAuthentication/" /etc/ssh/sshd_config
 
-#For docstring checker
-RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.6 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.8 --no-cache-dir install pylint pytest astroid isort && \
-    pip --no-cache-dir install pylint pytest astroid isort
+# patchelf
+RUN yum install -y patchelf && \
+    yum clean all && \
+    rm -rf /var/cache/yum && \
+    rm -rf /var/lib/yum/yumdb && \
+    rm -rf /var/lib/yum/history
 
-COPY ./python/requirements.txt /root/
-RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.6 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip --no-cache-dir install -r /root/requirements.txt
-
-RUN apt-get install libprotobuf-dev -y
-
-
-# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-RUN apt-get update && apt-get install -y openssh-server
-RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && \
-    sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-CMD source ~/.bashrc
+# swig 2.0.12
+RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-2.0.12/swig-2.0.12.tar.gz/download && \
+    cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && \
+    cd /opt && rm swig-2.0.12.tar.gz && rm -rf swig-2.0.12
 
 # ccache 3.7.9
-RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+RUN cd /opt && wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
     ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
+    cd .. && rm -rf ccache-3.7.9.tar.gz && rm -rf ccache-3.7.9
 
-# Install ROCM Package
-RUN wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
-RUN echo 'deb [arch=amd64] https://repo.radeon.com/rocm/apt/<rocm_repo_version>/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
-RUN apt-get update && apt install rocm-dkms -y
+# configure ssh
+RUN sed -i "s/^#PermitRootLogin/PermitRootLogin/" /etc/ssh/sshd_config && \
+    sed -i "s/^#PubkeyAuthentication/PubkeyAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/^#RSAAuthentication/RSAAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/#UseDNS .*/UseDNS no/" /etc/ssh/sshd_config
 
-# Install ROCM Libs
-RUN apt-get update && apt-get install rocblas miopen-hip rocrand rccl -y
-# rocPRIM
-RUN wget https://github.com/ROCmSoftwarePlatform/rocPRIM/archive/rocm-<rocprim_version>.tar.gz && tar zxf rocm-<rocprim_version>.tar.gz && rm -rf rocm-<rocprim_version>.tar.gz && \
-    cd rocPRIM-rocm-<rocprim_version> && mkdir build && cd build  && \
-    CXX=/opt/rocm/hip/bin/hipcc cmake .. && \
-    make -j8 && make install && \
-    cd .. && rm -rf rocPRIM-rocm-<rocprim_version>/
-# rocThrust
-RUN wget https://github.com/ROCmSoftwarePlatform/rocThrust/archive/rocm-<rocthrust_version>.tar.gz && tar zxf rocm-<rocthrust_version>.tar.gz && rm -rf rocm-<rocthrust_version>.tar.gz && \
-    cd rocThrust-rocm-<rocthrust_version> && mkdir build && cd build && \
-    CXX=/opt/rocm/hip/bin/hipcc cmake .. && \
-    make -j8 && make install && \
-    cd .. && rm -rf rocThrust-rocm-<rocthrust_version>/
-# hipCUB
-RUN wget https://github.com/ROCmSoftwarePlatform/hipCUB/archive/rocm-<hipcub_version>.tar.gz && tar zxf rocm-<hipcub_version>.tar.gz && rm -rf rocm-<hipcub_version>.tar.gz && \
-    cd hipCUB-rocm-<hipcub_version>  && mkdir build && cd build && \
-    CXX=/opt/rocm/hip/bin/hipcc cmake .. && \
-    make -j8 && make install && \
-    cd .. && rm -rf hipCUB-rocm-<hipcub_version>/
-
-ENV PATH=/opt/rocm/bin:$PATH
-RUN echo "export PATH=/opt/rocm/bin:\${PATH}" >> ~/.bashrc
+RUN ssh-keygen -A
 
 EXPOSE 22

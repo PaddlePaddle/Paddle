@@ -333,10 +333,9 @@ class ImperativeCalcOutScale(object):
         super(ImperativeCalcOutScale, self).__init__()
         self._moving_rate = moving_rate
         self._out_scale_layer_type_list = (
-            BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D,
-            Conv2DTranspose, LeakyReLU, Linear, PReLU, Pool2D, MaxPool1D,
-            MaxPool2D, ReLU, ReLU6, Sigmoid, Softmax, SyncBatchNorm, Tanh,
-            Swish)
+            BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D, LeakyReLU,
+            Linear, PReLU, Pool2D, MaxPool1D, MaxPool2D, ReLU, ReLU6, Sigmoid,
+            Softmax, SyncBatchNorm, Tanh, Swish)
         self._register_hook_handle_list = []
         self._out_scale_dict = collections.OrderedDict()
 
@@ -443,7 +442,6 @@ class ImperativeCalcOutScale(object):
 
         assert isinstance(
             layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
-        print(layer)
         self._layer = layer
         is_dynamic_mode = False
         with dygraph.guard():
@@ -546,7 +544,7 @@ class ImperativeCalcOutScale(object):
                                 self._out_scale_dict[ops_list[op_count]])
                             op_count += 1
 
-# Save the processed program.
+        # Save the processed program.
         save_inference_model(
             dirname=dirname,
             feeded_var_names=feed_target_names,
@@ -560,7 +558,6 @@ class ImperativeCalcOutScale(object):
             paddle.disable_static()
 
     def _forward_post_hook(self, layer, input, output):
-        #print("-----Now run in post hook -----")
         assert isinstance(
             output, (core.VarBase, framework.Variable)
         ), "Multiple outputs are not currently supported in ImperativeOutScale."

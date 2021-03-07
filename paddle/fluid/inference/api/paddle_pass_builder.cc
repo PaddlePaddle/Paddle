@@ -16,7 +16,11 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
+#ifdef PADDLE_WITH_HIP
+#include <miopen/miopen.h>
+#endif
 #include <glog/logging.h>
+#include <sstream>
 
 namespace paddle {
 
@@ -95,9 +99,13 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
+// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
+// disable the pass.
+#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
       "conv_elementwise_add_act_fuse_pass",   //
       "conv_elementwise_add2_act_fuse_pass",  //
-#endif                                        //
+#endif
+#endif
       "transpose_flatten_concat_fuse_pass",
 });
 
@@ -126,11 +134,15 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
+// cudnn8.0 has memory leak problem in conv + eltwise + act, so we
+// disable the pass.
+#if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
-        "conv_elementwise_add_fuse_pass",       //
-#endif                                          //
-        "transpose_flatten_concat_fuse_pass",   //
+#endif
+        "conv_elementwise_add_fuse_pass",      //
+#endif                                         //
+        "transpose_flatten_concat_fuse_pass",  //
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
@@ -161,7 +173,8 @@ void GpuPassStrategy::EnableMkldnnBfloat16() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"simplify_with_basic_ops_pass",   //
+  passes_.assign({"simplify_with_basic_ops_pass",  //
+                  "layer_norm_fuse_pass",
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
@@ -217,19 +230,19 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_leaky_relu_mkldnn_fuse_pass",           //
              "conv_relu6_mkldnn_fuse_pass",                //
              "conv_swish_mkldnn_fuse_pass",                //
+             "conv_hard_swish_mkldnn_fuse_pass",           //
              "scale_matmul_fuse_pass",                     //
              "reshape_transpose_matmul_mkldnn_fuse_pass",  //
              "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass",
-             // "fc_act_mkldnn_fuse_pass",
+             //"fc_mkldnn_pass",
+             //"fc_act_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
-#ifndef _WIN32
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
-             "mkldnn_inplace_pass",  // This pass should be activated after
-                                     // fuses
-#endif
+             // "mkldnn_inplace_pass",  // This pass should be activated after
+             // fuses. Disabled by default due to
+             // little gain and lots of problems
          })) {
       passes_.push_back(pass);
     }
@@ -256,6 +269,7 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
   if (!use_mkldnn_bfloat16_) {
     passes_.push_back("cpu_bfloat16_placement_pass");
     passes_.push_back("cpu_bfloat16_pass");
+    passes_.push_back("cpu_quantize_squash_pass");
   }
   use_mkldnn_bfloat16_ = true;
 #else

@@ -118,7 +118,7 @@ TEST(Tensor, MutableData) {
     EXPECT_EQ(static_cast<int>(p2[0]), 1);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
     float* p1 = nullptr;
@@ -174,7 +174,7 @@ TEST(Tensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
     framework::Tensor dst_tensor;
@@ -212,7 +212,7 @@ TEST(Tensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     framework::Tensor src_tensor;
     src_tensor.mutable_data<double>(framework::make_ddim({6, 9}),
