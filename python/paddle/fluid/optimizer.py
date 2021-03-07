@@ -4739,7 +4739,7 @@ class PipelineOptimizer(object):
                     extra_index += 1
 
                     fill_shape = list(var.shape)
-                    fill_shape[0] = 4
+                    fill_shape[0] = self.pp_bz
                     block._insert_op_without_sync(
                         index=index + extra_index,
                         type='fill_constant',
@@ -4933,14 +4933,14 @@ class PipelineOptimizer(object):
                             index=index + 1,
                             type='sum',
                             inputs={'X': [grad_var, param_grad_var]},
-                            outputs={'Out': real_grad_var},
+                            outputs={'Out': param_grad_var},
                             attrs={
                                 #self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
                                 #self._op_role_var_key: op_role_var
                             })
                         #offset += 1
-                        accumulated_gradient_names.append(real_grad_var.name)
+                        accumulated_gradient_names.append(param_grad_var.name)
                     else:
                         grad_name = op_role_var[i + 1]  # with _0 suffix
                         grad_var = block.vars[grad_name]
@@ -4970,14 +4970,14 @@ class PipelineOptimizer(object):
                             index=index + 2,
                             type='sum',
                             inputs={'X': [param_grad_var, cast_grad_var]},
-                            outputs={'Out': fp32_grad_var},
+                            outputs={'Out': param_grad_var},
                             attrs={
                                 # self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
                                 # self._op_role_var_key: op_role_var
                             })
                         offset += 1
-                        accumulated_gradient_names.append(fp32_grad_var.name)
+                        accumulated_gradient_names.append(param_grad_var.name)
                         #real_grad_name = grad_name[0:grad_name.find(
                         #    '@GRAD')] + '@GRAD'
                         #real_grad_var = block.vars[
@@ -5019,7 +5019,7 @@ class PipelineOptimizer(object):
                         #        # self._op_role_var_key: op_role_var
                         #    })
 
-        return first_optimize_op_index, accumulated_grad_names
+        return accumulated_grad_names
 
 
     def _add_sub_blocks(self, main_block, program_list):

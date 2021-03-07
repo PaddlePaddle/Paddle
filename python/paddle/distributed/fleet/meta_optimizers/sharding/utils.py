@@ -383,6 +383,15 @@ def insert_reduce_ops(block, insert_idx, ring_id, reduce_vars, shard, op_role, u
     return
 
 
+def get_first_check_finite_and_unscale_op_idx(block):
+
+    for idx, op in enumerate(block.ops):
+        if op.type == "check_finite_and_unscale":
+            return idx
+
+    raise ValueError("check_finite_and_unscale does not exist in block")
+    
+
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     """
     _add_broadcast_ops

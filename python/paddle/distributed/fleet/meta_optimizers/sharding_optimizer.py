@@ -206,7 +206,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             #    if self._shard.has_param(param_name):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
-            first_optimize_op_index, accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block)
+            accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block)
+            first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(main_block) 
             insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, OpRole.Optimize, use_calc_stream = True)
             #if not self._shard.has_param(param_name): continue
             ##if not main_block.has_var(grad_name): continue
@@ -387,7 +388,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.global_group_endpoints, self.global_rank,
-                self.global_group_id, False)
+                self.global_group_id, True)
 
         if self._as_outer_parallelism:
             print("mp_group_endpoints:", self.mp_group_endpoints)
@@ -464,8 +465,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             endpoints = self.sharding_group_endpoints[:]
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        if self.sharding_rank == 0:
-            self._collective_helper._wait(current_endpoint, endpoints)
+
+        if self._as_outer_parallelism:
+            if self.global_rank == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
+        else:
+            if self.sharding_rank == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
         for op_idx, op in reversed(list(enumerate(block.ops))):
