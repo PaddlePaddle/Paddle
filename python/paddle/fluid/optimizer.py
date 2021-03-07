@@ -4723,7 +4723,7 @@ class PipelineOptimizer(object):
                     extra_index += 1
 
                     fill_shape = list(var.shape)
-                    fill_shape[0] = 4
+                    fill_shape[0] = self.pp_bz
                     block._insert_op_without_sync(
                         index=index + extra_index,
                         type='fill_constant',
