@@ -206,8 +206,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             #    if self._shard.has_param(param_name):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
-            accumulated_gradient_names, first_optimize_op_index = pp_optimizer._accumulate_gradients(main_block)
-            insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_gradient_names, self._shard, OpRole.Optimize, use_calc_stream = True)
+            first_optimize_op_index, accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block)
+            insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, OpRole.Optimize, use_calc_stream = True)
             #if not self._shard.has_param(param_name): continue
             ##if not main_block.has_var(grad_name): continue
             #assert main_block.has_var(grad_name)

@@ -4661,143 +4661,128 @@ class PipelineOptimizer(object):
 
                 if var_name not in input_var_to_device:
                     input_var_to_device[var_name] = []
-                if cur_device in input_var_to_device[var_name]:
+                if (cur_device, prev_device) in input_var_to_device[var_name]:
                     continue
-                input_var_to_device[var_name].append(cur_device)
 
-                op_role = op.all_attrs()[self._op_role_key]
-                var = block.vars[var_name]
-                prev_device_index = int(prev_device.split(':')[1])
-                cur_device_index = int(cur_device.split(':')[1])
-                pair = (prev_device_index, cur_device_index)
-                pair_key = prev_device_index * 1000 + cur_device_index
-                if cur_device_index > prev_device_index:
-                    ring_id = self.ring_id + cur_device_index - prev_device_index - 1
-                else:
-                    ring_id = self.ring_id + 2 + prev_device_index - cur_device_index - 1
-                print("call xx_insert, schedule_mode:", self.schedule_mode)
-                if self.schedule_mode == 0:  # GPipe
+                device_type = cur_device.split(':')[0] + ':'
+
+                def _insert_send_recv(cur_id, prev_id):
+                    nonlocal extra_index
+
+                    cur_dev = device_type + str(cur_id)
+                    prev_dev = device_type + str(prev_id)
+                    if (cur_dev, prev_dev) in input_var_to_device[var_name]:
+                        return
+
+                    if cur_id - prev_id > 1:
+                        _insert_send_recv(cur_id - 1, prev_id)
+                        _insert_send_recv(cur_id, cur_id - 1)
+                        input_var_to_device[var_name].append(
+                            (cur_dev, prev_dev))
+                        return
+                    elif cur_id - prev_id < -1:
+                        _insert_send_recv(cur_id + 1, prev_id)
+                        _insert_send_recv(cur_id, cur_id + 1)
+                        input_var_to_device[var_name].append(
+                            (cur_dev, prev_dev))
+                        return
+
+                    assert abs(cur_id - prev_id) == 1
+
+                    input_var_to_device[var_name].append((cur_dev, prev_dev))
+
+                    op_role = op.all_attrs()[self._op_role_key]
+                    var = block.vars[var_name]
+
+                    pair = (prev_id, cur_id)
+                    pair_key = prev_id * 1000 + cur_id
+                    if cur_id > prev_id:
+                        ring_id = self.ring_id + cur_id - prev_id - 1
+                    else:
+                        ring_id = self.ring_id + 2 + prev_id - cur_id - 1
+
+                    print("call xx_insert, schedule_mode:", self.schedule_mode)
+                    assert self.schedule_mode == 1
+                    if pair not in self._pipeline_pair:
+                        self._pipeline_pair.append(pair)
+                        self._pp_ring_map[pair_key] = self.ring_id
+                        ring_id = self.ring_id
+                        self.ring_id += 1
+                    else:
+                        ring_id = self._pp_ring_map[pair_key]
+
+                    print("opt: pp_pair: {}, ring_id: {}".format(pair, ring_id))
+
                     block._insert_op_without_sync(
                         index=index + extra_index,
-                        type='send_v2',
-                        inputs={'X': var},
-                        attrs={
-                            self._op_device_key: prev_device,
-                            self._op_role_key: op_role,
-                            'use_calc_stream': True,
-                            'peer': cur_device_index,
-                            'ring_id': self.ring_id
-                            if cur_device_index > prev_device_index else
-                            self.ring_id + 2,
-                        })
-                    extra_index += 1
-                    block._insert_op_without_sync(
-                        index=index + extra_index,
-                        type='recv_v2',
+                        type='c_sync_calc_stream',
+                        inputs={'X': [var]},
                         outputs={'Out': [var]},
                         attrs={
-                            'out_shape': var.shape,
-                            'dtype': var.dtype,
-                            self._op_device_key: cur_device,
+                            self._op_device_key: prev_dev,
                             self._op_role_key: op_role,
-                            'use_calc_stream': True,
-                            'peer': prev_device_index,
-                            'ring_id': self.ring_id
-                            if cur_device_index > prev_device_index else
-                            self.ring_id + 2,
                         })
                     extra_index += 1
-                    continue
-                assert self.schedule_mode == 1
-                if pair not in self._pipeline_pair:
-                    self._pipeline_pair.append(pair)
-                    self._pp_ring_map[pair_key] = self.ring_id
-                    ring_id = self.ring_id
-                    self.ring_id += 1
-                else:
-                    ring_id = self._pp_ring_map[pair_key]
-                print("opt: pp_pair: {}, ring_id: {}".format(pair, ring_id))
-                block._insert_op_without_sync(
-                    index=index + extra_index,
-                    #type='send_v2',
-                    type='c_broadcast',
-                    inputs={'X': var},
-                    outputs={'Out': var},
-                    attrs={
-                        self._op_device_key: prev_device,
-                        self._op_role_key: op_role,
-                        'use_calc_stream': False,
-                        #'peer': cur_device_index,
-                        #'ring_id': self.ring_id if cur_device_index > prev_device_index else self.ring_id + 2,
-                        'ring_id': ring_id,
-                        #'ring_id': self.ring_id,
-                        #'root': prev_device_index,
-                        'root': 0,
-                    })
-                extra_index += 1
-                #block._insert_op(
-                #    index=index + extra_index,
-                #    type='c_sync_comm_stream',
-                #    inputs={'X': [var]},
-                #    outputs={'Out': [var]},
-                #    attrs={
-                #        self._op_device_key: cur_device,
-                #        self._op_role_key:
-                #        core.op_proto_and_checker_maker.OpRole.Backward,
-                #        'ring_id': self.ring_id,
-                #        #'ring_id': self.ring_id if prev_device_index > cur_device_index else self.ring_id + 2,
-                #    })
-                #extra_index += 1
-                fill_shape = list(var.shape)
-                fill_shape[0] = 1
-                block._insert_op_without_sync(
-                    index=index + extra_index,
-                    #type='recv_v2',
-                    type='fill_constant',
-                    inputs={},
-                    outputs={'Out': [var]},
-                    attrs={
-                        'shape': fill_shape,
-                        'dtype': var.dtype,
-                        self._op_device_key: cur_device,
-                        self._op_role_key: op_role,
-                        'value': float(0.0),
-                    })
-                extra_index += 1
-                block._insert_op_without_sync(
-                    index=index + extra_index,
-                    #type='recv_v2',
-                    type='c_broadcast',
-                    inputs={'X': var},
-                    outputs={'Out': var},
-                    attrs={
-                        #'out_shape': var.shape,
-                        #'dtype': var.dtype,
-                        self._op_device_key: cur_device,
-                        self._op_role_key: op_role,
-                        'use_calc_stream': False,
-                        #'peer': prev_device_index,
-                        #'root': prev_device_index,
-                        'root': 0,
-                        #'ring_id': self.ring_id,
-                        'ring_id': ring_id,
-                        #'ring_id': self.ring_id if cur_device_index > prev_device_index else self.ring_id + 2,
-                        #'ring_id': self.ring_id if prev_device_index < cur_device_index else self.ring_id + 2,
-                    })
-                extra_index += 1
-                block._insert_op_without_sync(
-                    index=index + extra_index,
-                    type='c_sync_comm_stream',
-                    inputs={'X': [var]},
-                    outputs={'Out': [var]},
-                    attrs={
-                        self._op_device_key: cur_device,
-                        #self._op_role_key: core.op_proto_and_checker_maker.OpRole.Backward,
-                        self._op_role_key: op_role,
-                        'ring_id': ring_id,
-                        #'ring_id': self.ring_id if prev_device_index > cur_device_index else self.ring_id + 2,
-                    })
-                extra_index += 1
+
+                    block._insert_op_without_sync(
+                        index=index + extra_index,
+                        type="c_broadcast",
+                        inputs={'X': var},
+                        outputs={'Out': var},
+                        attrs={
+                            self._op_device_key: prev_dev,
+                            self._op_role_key: op_role,
+                            'use_calc_stream': False,
+                            'ring_id': ring_id,
+                            'root': 0,
+                        })
+                    extra_index += 1
+
+                    fill_shape = list(var.shape)
+                    fill_shape[0] = 4
+                    block._insert_op_without_sync(
+                        index=index + extra_index,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': [var]},
+                        attrs={
+                            'shape': fill_shape,
+                            'dtype': var.dtype,
+                            self._op_device_key: cur_dev,
+                            self._op_role_key: op_role,
+                            'value': float(0.0),
+                        })
+                    extra_index += 1
+                    block._insert_op_without_sync(
+                        index=index + extra_index,
+                        type='c_broadcast',
+                        inputs={'X': var},
+                        outputs={'Out': var},
+                        attrs={
+                            self._op_device_key: cur_dev,
+                            self._op_role_key: op_role,
+                            'use_calc_stream': True,
+                            'root': 0,
+                            'ring_id': ring_id,
+                        })
+                    extra_index += 1
+
+                    # block._insert_op_without_sync(
+                    #     index=index + extra_index,
+                    #     type='c_sync_comm_stream',
+                    #     inputs={'X': [var]},
+                    #     outputs={'Out': [var]},
+                    #     attrs={
+                    #         self._op_device_key: cur_dev,
+                    #         self._op_role_key: op_role,
+                    #         'ring_id': ring_id,
+                    #     })
+                    # extra_index += 1
+
+                _insert_send_recv(
+                    int(cur_device.split(':')[1]),
+                    int(prev_device.split(':')[1]))
+
         block._sync_with_cpp()
 
     def _clear_gradients(self, main_block, param_names):
@@ -4877,8 +4862,8 @@ class PipelineOptimizer(object):
         accumulated_gradient_names = []
 
         first_optimize_op_index = None
+        accumulated_grad_names = []
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
-            # device = op.attr(self._op_device_key)
             # remove the cast op of fp16 grad to fp32 grad
             if self._is_optimize_op(op) and op.type == 'cast':
                 in_name = op.input_arg_names[0]
@@ -4907,9 +4892,11 @@ class PipelineOptimizer(object):
                     offset = 0
                     param_name = op_role_var[i]
                     if not block.has_var(param_name): continue
+                    if '@BroadCast' in param_name:
+                        param_name = param_name[0:param_name.find('@BroadCast')]
                     # clear gradient
                     param_grad_name = self._append_grad_suffix(param_name)
-                    # if not main_block.has_var(grad_name): continue
+                    accumulated_grad_names.append(param_grad_name)
                     if not block.has_var(param_grad_name):
                         self._create_var(block, block.vars[param_name],
                                          param_grad_name)
@@ -4932,10 +4919,10 @@ class PipelineOptimizer(object):
                     #offset += 1
                     grad_name = op_role_var[i + 1]  # with _0 suffix
                     grad_var = block.vars[grad_name]
-                    real_grad_name = grad_name[0:grad_name.find(
-                        '@GRAD')] + '@GRAD'  # without _0 suffix
-                    real_grad_var = block.vars[
-                        real_grad_name]  # without _0 suffix
+                    #real_grad_name = grad_name[0:grad_name.find(
+                    #    '@GRAD')] + '@GRAD'  # without _0 suffix
+                    #real_grad_var = block.vars[
+                    #    real_grad_name]  # without _0 suffix
                     # new_grad_var_name = unique_name.generate(grad_name)
                     # new_var = self._create_var(block, grad_var,
                     #                            new_grad_var_name)
@@ -4945,7 +4932,7 @@ class PipelineOptimizer(object):
                         block._insert_op(
                             index=index + 1,
                             type='sum',
-                            inputs={'X': [grad_var, real_grad_var]},
+                            inputs={'X': [grad_var, param_grad_var]},
                             outputs={'Out': real_grad_var},
                             attrs={
                                 #self._op_device_key: device,
@@ -4957,13 +4944,13 @@ class PipelineOptimizer(object):
                     else:
                         grad_name = op_role_var[i + 1]  # with _0 suffix
                         grad_var = block.vars[grad_name]
-                        fp32_grad_var_name = param_name + core.grad_var_suffix(
-                        )  # without _0 suffix
-                        fp32_grad_var = block.vars[fp32_grad_var_name]
-                        fp32_grad_var.persistable = True
+                        #fp32_grad_var_name = param_name + core.grad_var_suffix(
+                        #)  # without _0 suffix
+                        #fp32_grad_var = block.vars[fp32_grad_var_name]
+                        #fp32_grad_var.persistable = True
                         cast_grad_var_name = unique_name.generate(
-                            fp32_grad_var_name)
-                        cast_grad_var = self._create_var(block, fp32_grad_var,
+                            param_grad_name)
+                        cast_grad_var = self._create_var(block, param_grad_var,
                                                          cast_grad_var_name)
                         cast_grad_var.persistable = False
                         block._insert_op(
@@ -4982,7 +4969,7 @@ class PipelineOptimizer(object):
                         block._insert_op(
                             index=index + 2,
                             type='sum',
-                            inputs={'X': [fp32_grad_var, cast_grad_var]},
+                            inputs={'X': [param_grad_var, cast_grad_var]},
                             outputs={'Out': fp32_grad_var},
                             attrs={
                                 # self._op_device_key: device,
@@ -5031,7 +5018,8 @@ class PipelineOptimizer(object):
                         #        self._op_role_key: self._op_role.Backward,
                         #        # self._op_role_var_key: op_role_var
                         #    })
-        return accumulated_gradient_names, first_optimize_op_index 
+
+        return first_optimize_op_index, accumulated_grad_names
 
 
     def _add_sub_blocks(self, main_block, program_list):
