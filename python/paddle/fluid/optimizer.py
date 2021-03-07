@@ -4874,8 +4874,8 @@ class PipelineOptimizer(object):
         Accumulate the gradients generated in microbatch to the one in mini-batch.
         """
         first_optimize_op_index = None
+        accumulated_grad_names = []
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
-            # device = op.attr(self._op_device_key)
             # remove the cast op of fp16 grad to fp32 grad
             if self._is_optimize_op(op) and op.type == 'cast':
                 in_name = op.input_arg_names[0]
@@ -4903,13 +4903,15 @@ class PipelineOptimizer(object):
                 for i in range(0, len(op_role_var), 2):
                     offset = 0
                     param_name = op_role_var[i]
-                    if not block.has_var(param_name): continue
+                    # if not block.has_var(param_name): continue
+                    if '@BroadCast' in param_name:
+                        param_name = param_name[0:param_name.find('@BroadCast')]
                     # clear gradient
                     param_grad_name = self._append_grad_suffix(param_name)
-                    # if not main_block.has_var(grad_name): continue
-                    if not block.has_var(param_grad_name):
-                        self._create_var(block, block.vars[param_name],
-                                         param_grad_name)
+                    accumulated_grad_names.append(param_grad_name)
+                    #if not block.has_var(param_grad_name):
+                    #    self._create_var(block, block.vars[param_name],
+                    #                     param_grad_name)
                     assert block.has_var(param_grad_name)
                     param_grad_var = block.var(param_grad_name)
                     param_grad_var.persistable = True
@@ -4929,10 +4931,10 @@ class PipelineOptimizer(object):
                     #offset += 1
                     grad_name = op_role_var[i + 1]  # with _0 suffix
                     grad_var = block.vars[grad_name]
-                    real_grad_name = grad_name[0:grad_name.find(
-                        '@GRAD')] + '@GRAD'  # without _0 suffix
-                    real_grad_var = block.vars[
-                        real_grad_name]  # without _0 suffix
+                    #real_grad_name = grad_name[0:grad_name.find(
+                    #    '@GRAD')] + '@GRAD'  # without _0 suffix
+                    #real_grad_var = block.vars[
+                    #    real_grad_name]  # without _0 suffix
                     # new_grad_var_name = unique_name.generate(grad_name)
                     # new_var = self._create_var(block, grad_var,
                     #                            new_grad_var_name)
@@ -4942,7 +4944,7 @@ class PipelineOptimizer(object):
                         block._insert_op(
                             index=index + 1,
                             type='sum',
-                            inputs={'X': [grad_var, real_grad_var]},
+                            inputs={'X': [grad_var, param_grad_var]},
                             outputs={'Out': real_grad_var},
                             attrs={
                                 #self._op_device_key: device,
@@ -4953,13 +4955,13 @@ class PipelineOptimizer(object):
                     else:
                         grad_name = op_role_var[i + 1]  # with _0 suffix
                         grad_var = block.vars[grad_name]
-                        fp32_grad_var_name = param_name + core.grad_var_suffix(
-                        )  # without _0 suffix
-                        fp32_grad_var = block.vars[fp32_grad_var_name]
-                        fp32_grad_var.persistable = True
+                        #fp32_grad_var_name = param_name + core.grad_var_suffix(
+                        #)  # without _0 suffix
+                        #fp32_grad_var = block.vars[fp32_grad_var_name]
+                        #fp32_grad_var.persistable = True
                         cast_grad_var_name = unique_name.generate(
-                            fp32_grad_var_name)
-                        cast_grad_var = self._create_var(block, fp32_grad_var,
+                            param_grad_name)
+                        cast_grad_var = self._create_var(block, param_grad_var,
                                                          cast_grad_var_name)
                         cast_grad_var.persistable = False
                         block._insert_op(
@@ -4978,7 +4980,7 @@ class PipelineOptimizer(object):
                         block._insert_op(
                             index=index + 2,
                             type='sum',
-                            inputs={'X': [fp32_grad_var, cast_grad_var]},
+                            inputs={'X': [param_grad_var, cast_grad_var]},
                             outputs={'Out': fp32_grad_var},
                             attrs={
                                 # self._op_device_key: device,
@@ -5026,6 +5028,7 @@ class PipelineOptimizer(object):
                         #        self._op_role_key: self._op_role.Backward,
                         #        # self._op_role_var_key: op_role_var
                         #    })
+        return first_optimize_op_index, accumulated_grad_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
