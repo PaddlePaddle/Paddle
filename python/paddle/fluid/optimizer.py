@@ -4873,6 +4873,9 @@ class PipelineOptimizer(object):
         """
         Accumulate the gradients generated in microbatch to the one in mini-batch.
         """
+        # the name of real grad vars that should be allreduce
+        accumulated_gradient_names = []
+
         first_optimize_op_index = None
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # device = op.attr(self._op_device_key)
@@ -4950,6 +4953,7 @@ class PipelineOptimizer(object):
                                 #self._op_role_var_key: op_role_var
                             })
                         #offset += 1
+                        accumulated_gradient_names.append(real_grad_var.name)
                     else:
                         grad_name = op_role_var[i + 1]  # with _0 suffix
                         grad_var = block.vars[grad_name]
@@ -4986,6 +4990,7 @@ class PipelineOptimizer(object):
                                 # self._op_role_var_key: op_role_var
                             })
                         offset += 1
+                        accumulated_gradient_names.append(fp32_grad_var.name)
                         #real_grad_name = grad_name[0:grad_name.find(
                         #    '@GRAD')] + '@GRAD'
                         #real_grad_var = block.vars[
@@ -5026,6 +5031,8 @@ class PipelineOptimizer(object):
                         #        self._op_role_key: self._op_role.Backward,
                         #        # self._op_role_var_key: op_role_var
                         #    })
+        return accumulated_gradient_names, first_optimize_op_index 
+
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
