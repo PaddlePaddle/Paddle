@@ -4930,7 +4930,7 @@ class PipelineOptimizer(object):
                             index=index + 1,
                             type='sum',
                             inputs={'X': [grad_var, param_grad_var]},
-                            outputs={'Out': real_grad_var},
+                            outputs={'Out': param_grad_var},
                             attrs={
                                 #self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
@@ -4966,7 +4966,7 @@ class PipelineOptimizer(object):
                             index=index + 2,
                             type='sum',
                             inputs={'X': [param_grad_var, cast_grad_var]},
-                            outputs={'Out': fp32_grad_var},
+                            outputs={'Out': param_grad_var},
                             attrs={
                                 # self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
