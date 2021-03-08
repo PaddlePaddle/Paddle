@@ -24,6 +24,24 @@ OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OP_ROLE_VAR_KEY = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 
 
+class Topology:
+    """A 4-D structure to describe the process group."""
+
+    def __init__(self, axes, dims):
+        pass
+
+
+class ParallelGrid:
+    """Initialize each process group."""
+
+    def __init__(self, topology):
+        self.build_global_group()
+        self.build_mp_group()
+        self.build_sharding_group()
+        self.build_pp_group()
+        self.build_dp_group()
+
+
 def is_update_op(op):
     return 'Param' in op.input_names and 'Grad' in op.input_names and \
             "LearningRate" in op.input_names
