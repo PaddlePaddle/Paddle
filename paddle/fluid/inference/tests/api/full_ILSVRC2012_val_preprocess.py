@@ -188,8 +188,7 @@ def run_convert():
     try_limit = 3
 
     while not (os.path.exists(output_file) and
-               os.path.getsize(output_file) == FULL_SIZE_BYTES and
-               check_integrity(output_file, TARGET_HASH)):
+               os.path.getsize(output_file) == FULL_SIZE_BYTES):
         if os.path.exists(output_file):
             sys.stderr.write(
                 "\n\nThe existing binary file is broken. Start to generate new one...\n\n".
