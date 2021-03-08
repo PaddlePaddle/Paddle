@@ -15,12 +15,18 @@
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+import paddle
 import paddle.fluid as fluid
 
+paddle.enable_static()
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscaleOp(OpTest):
     def setUp(self):
+        self.set_npu()
         self.op_type = "check_finite_and_unscale"
+        self.place = paddle.NPUPlace(0)
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         scale = np.random.random((1)).astype(self.dtype)
@@ -31,16 +37,26 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
             'Out': [('out0', x / scale)],
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_kernel_type(self):
+        self.use_mkldnn = False    
+
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
     def setUp(self):
+        self.set_npu()
         self.op_type = "check_finite_and_unscale"
+        self.place = paddle.NPUPlace(0)
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
@@ -52,18 +68,28 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
             'Out': [('out0', x)],
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_kernel_type(self):
+        self.use_mkldnn = False  
+
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         # When input contains nan, do not check the output, 
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'])
+        self.check_output_with_place(self.place, check_dygraph=False, no_check_set=['Out'])
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
     def setUp(self):
+        self.set_npu()
         self.op_type = "check_finite_and_unscale"
+        self.place = paddle.NPUPlace(0)
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf
@@ -75,13 +101,19 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
             'Out': [('out0', x)],
         }
 
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         # When input contains inf, do not check the output, 
         # since the output may be nondeterministic and will be discarded.
-        self.check_output(no_check_set=['Out'])
+        self.check_output_with_place(self.place, check_dygraph=False, no_check_set=['Out'])
 
 
 if __name__ == '__main__':
