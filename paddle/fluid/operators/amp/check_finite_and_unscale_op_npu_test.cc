@@ -61,20 +61,16 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   
   // Initialize input data
   const int num_inputs = input_names.size();
-  std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
-                                         static_cast<T>(20.0));
-  std::mt19937 engine;
   size_t numel = static_cast<size_t>(f::product(dims));
 
   for (int i = 0; i < num_inputs; ++i) {
     std::vector<T> init_xs;
     for (size_t j = 0; j < numel; ++j) {
-      //if ( j == 0) {
-      //  init_xs.push_back(static_cast<T>(NAN));
-      //} else {
-      //  init_xs.push_back(static_cast<T>(dist(engine)));
-      //}
-      init_xs.push_back(static_cast<T>(dist(engine)));
+      if ( j == 0) {
+        init_xs.push_back(static_cast<T>(NAN));
+      } else {
+        init_xs.push_back(static_cast<T>(j + 1));
+      }
     }
     f::TensorFromVector(init_xs, ctx, input_names[i].tensor);
     input_names[i].tensor->Resize(dims);
@@ -85,7 +81,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   //auto* scale_ptr = scale_tensor.mutable_data<T>(paddle::platform::CPUPlace());
   //*scale_ptr = static_cast<T>(0.1234);
   //f::TensorCopy(scale_tensor, ctx.GetPlace(), scale);
-  f::TensorFromVector(std::vector<T>{0.5}, ctx, scale);	
+  f::TensorFromVector(std::vector<T>{static_cast<T>(0.5)}, ctx, scale);	
 
   ctx.Wait();
 
@@ -95,7 +91,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
                                     {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
                                     {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}}, 
                                     attrs);
-  std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
   op->Run(*scope, place);
   ctx.Wait();
  
@@ -131,8 +126,8 @@ TEST(check_finite_and_unscale, NPU_fp32) {
   Compare<float>(&scope, ctx);
 }
 
-TEST(check_finite_and_unscale, NPU_double) {
+TEST(check_finite_and_unscale, NPU_fp16) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<double>(&scope, ctx);
+  Compare<p::float16>(&scope, ctx);
 }

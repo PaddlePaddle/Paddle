@@ -44,7 +44,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // step1: inverse scale(RealDiv)
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{1}, ctx.device_context(), &const_tensor);	
+    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(), &const_tensor);	
                  
     ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .Wait();             
@@ -75,7 +75,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         runner_checknumerics.Run(stream);
         tmp_checkxout = &check_xout;
       } catch (platform::EnforceNotMet& exception) {
-        LOG(WARNING) << exception.what();
+        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
         tmp_checkxout = nullptr;
         found_inf_data = true;
       }
@@ -111,6 +111,5 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(check_finite_and_unscale,
                         ops::CheckFiniteAndUnscaleNPUKernel<float>,
-                        ops::CheckFiniteAndUnscaleNPUKernel<double>,
                         ops::CheckFiniteAndUnscaleNPUKernel<plat::float16>);
 
