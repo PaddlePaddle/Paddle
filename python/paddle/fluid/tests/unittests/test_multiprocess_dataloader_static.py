@@ -158,7 +158,7 @@ class TestStaticDataLoader(unittest.TestCase):
         return ret
 
     def test_main(self):
-        for p in prepare_places(True):
+        for p in prepare_places(False):
             results = []
             for num_workers in [0, 2]:
                 print(self.__class__.__name__, p, num_workers)

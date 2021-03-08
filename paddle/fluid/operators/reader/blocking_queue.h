@@ -45,7 +45,10 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
-    EnforceNotKilled();
+    if (killed_) {
+      VLOG(3) << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      return false;
+    }
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
@@ -66,7 +69,10 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
-    EnforceNotKilled();
+    if (killed_) {
+      VLOG(3) << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      return false;
+    }
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
@@ -87,7 +93,10 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     receive_cv_.wait(lock,
                      [&] { return !queue_.empty() || closed_ || killed_; });
-    EnforceNotKilled();
+    if (killed_) {
+      VLOG(3) << "WARNING:: Receiving an element to a killed reader::BlokcingQueue";
+      return false;
+    }
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(
           elem, platform::errors::InvalidArgument(
