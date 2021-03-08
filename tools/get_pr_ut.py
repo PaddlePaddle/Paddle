@@ -211,6 +211,7 @@ class PRChecker(object):
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
             if f not in file_ut_map:
+                continue
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):
