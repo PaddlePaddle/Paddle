@@ -513,7 +513,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             label_data = np.random.rand(3,3).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
-            output = paddle.nn.functioanl.smooth_l1_loss(input, label)
+            output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
     """
     fluid.data_feeder.check_variable_and_dtype(
@@ -767,23 +767,20 @@ def nll_loss(input,
 
     Examples:
         .. code-block:: python
+
                 import paddle
-                import numpy as np
                 from paddle.nn.functional import nll_loss
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
-                input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
-                                     [0.53331435, 0.07999352, 0.8549948 ],
-                                     [0.25879037, 0.39530203, 0.698465  ],
-                                     [0.73427284, 0.63575995, 0.18827209],
-                                     [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
-
-                input = paddle.to_tensor(input_np)
+                input = paddle.to_tensor([[0.88103855, 0.9908683 , 0.6226845 ],
+                          [0.53331435, 0.07999352, 0.8549948 ],
+                          [0.25879037, 0.39530203, 0.698465  ],
+                          [0.73427284, 0.63575995, 0.18827209],
+                          [0.05689114, 0.0862954 , 0.6325046 ]], "float32")
                 log_out = log_softmax(input)
-                label = paddle.to_tensor(label_np)
+                label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 result = nll_loss(log_out, label)
-                print(result) # [1.0720209]
+                print(result) # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True, [1.07202101])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -799,14 +796,14 @@ def nll_loss(input,
     c = input_shape[1]
     if in_dygraph_mode():
         if input_dims != 2 and input_dims != 4:
-            input, _ = core.ops.reshape2(input, 'shape', [n, c, 1, -1])
-            label, _ = core.ops.reshape2(label, 'shape', [n, 1, -1])
+            input, _ = core.ops.reshape2(input, None, 'shape', [n, c, 1, -1])
+            label, _ = core.ops.reshape2(label, None, 'shape', [n, 1, -1])
             out_shape = [n] + input_shape[2:]
         out, total_weight = core.ops.nll_loss(input, label, weight,
                                               'ignore_index', ignore_index,
                                               'reduction', reduction)
         if input_dims != 2 and input_dims != 4 and reduction == 'none':
-            out, _ = core.ops.reshape2(out, 'shape', out_shape)
+            out, _ = core.ops.reshape2(out, None, 'shape', out_shape)
         return out
 
     helper = LayerHelper('nll_loss', **locals())
@@ -1190,12 +1187,16 @@ def cross_entropy(input,
         .. code-block:: python
 
             import paddle
+            import numpy as np
+
             input_data = np.random.random([5, 100]).astype("float64")
             label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
             weight_data = np.random.random([100]).astype("float64")
+
             input =  paddle.to_tensor(input_data)
             label =  paddle.to_tensor(label_data)
             weight = paddle.to_tensor(weight_data)
+
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
             print(loss)
             # [4.28546723]
@@ -1222,29 +1223,60 @@ def cross_entropy(input,
             ignore_index=ignore_index,
             axis=axis)
         if weight is not None:
-            weight_gather = core.ops.gather_nd(weight, label)  #trans to sample
+            weight_gather = core.ops.gather_nd(
+                weight, label)  #trans weight from class to sample, shape:N
             input_shape = list(label.shape)
-            weight_gather_reshape, _ = core.ops.reshape2(weight_gather, 'shape',
-                                                         input_shape)
+            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
             out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
+            #   because of softmax_with_cross_entropy op's inner logic, 
+            #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
+            #   so, reduce_sum all directly is ok
             return core.ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == "mean":
-            if weight is not None:
+            #1. if weight==none, 
+            #    numerator: reduce_sum all loss directly is ok causeof softmax_with_cross_entropy's inner logic
+            #    denominator: count sample num with class_index!=ignore_index
+            #2. else
+            #    numerator: loss's weighted sum 
+            #    denominator: cal the sum of weight where the sample's class_index!=ignore_index
+            if ignore_index != -100:
+                out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
+                #for each label[i],set 1 or 0, according to ignore_index
+                #mask[i]=0, if label[i]==ignore_index
+                #mask[i]=1, otherwise 
+                mask = (label != ignore_index)
+                if (weight is None):
+                    mask = paddle.cast(mask, dtype=out_sum.dtype)
+                    count = core.ops.reduce_sum(mask, 'reduce_all', True)
+                    ret = out_sum / count
+                else:
+                    mask = paddle.cast(mask, weight_gather_reshape.dtype)
+                    weight_ignored = core.ops.elementwise_mul(
+                        mask, weight_gather_reshape)
+                    weight_sum = core.ops.reduce_sum(weight_ignored,
+                                                     'reduce_all', True)
+                    ret = out_sum / weight_sum
+                return ret
+            elif weight is not None:
                 out_sum = core.ops.reduce_sum(out, 'reduce_all', True)
                 total_weight = core.ops.reduce_sum(weight_gather_reshape,
                                                    'reduce_all', True)
                 return out_sum / total_weight
             else:
                 return core.ops.mean(out)
+
         else:
+            if input_dims - 1 == label_dims:
+                out = paddle.squeeze(out, axis=axis)
             return out
 
     fluid.data_feeder.check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'softmax_cross_entropy')
     fluid.data_feeder.check_variable_and_dtype(
-        label, 'label', ['int32', 'int64'], 'softmax_cross_entropy')
+        label, 'label', ['int32', 'int64', 'float32', 'float64'],
+        'softmax_cross_entropy')
     out = softmax_with_cross_entropy(
         input,
         label,
@@ -1255,7 +1287,8 @@ def cross_entropy(input,
         fluid.data_feeder.check_variable_and_dtype(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
         weight_name = name if reduction == 'none' else None
-        weight_gather = paddle.gather_nd(weight, label)  #trans to sample
+        weight_gather = paddle.gather_nd(
+            weight, label)  #trans weight from class to sample, shape:N
         input_shape = list(label.shape)
         weight_gather_reshape = reshape(weight_gather, shape=input_shape)
         out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
@@ -1263,13 +1296,33 @@ def cross_entropy(input,
     if reduction == "sum":
         return paddle.sum(out, name=name)
     elif reduction == "mean":
-        if weight is not None:
+        if ignore_index != -100:
+            out_sum = paddle.sum(out, name=name)
+            #for each label[i],set 1 or 0, according to ignore_index
+            #mask[i]=0, if label[i]==ignore_index
+            #mask[i]=1, otherwise 
+            mask = (label != ignore_index)
+            if (weight is None):
+                mask = paddle.cast(mask, dtype=out_sum.dtype)
+                count = paddle.sum(mask, name=name)
+                ret = out_sum / count
+            else:
+                mask = paddle.cast(mask, weight_gather_reshape.dtype)
+                weight_ignored = paddle.multiply(mask, weight_gather_reshape)
+                weight_sum = paddle.sum(weight_ignored, name=name)
+                ret = out_sum / weight_sum
+            return ret
+        elif weight is not None:
             out_sum = paddle.sum(out, name=name)
             total_weight = paddle.sum(weight_gather_reshape)
             return out_sum / total_weight
         else:
             return paddle.mean(out, name=name)
+
     else:
+        if input_dims - 1 == label_dims:
+            out = paddle.squeeze(out, axis=axis)
+
         return out
 
 

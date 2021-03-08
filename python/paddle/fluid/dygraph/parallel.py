@@ -24,8 +24,9 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-from paddle.fluid.dygraph import nn
 import warnings
+import paddle
+import itertools
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -54,9 +55,12 @@ def prepare_context(strategy=None):
         if isinstance(place, core.CUDAPlace):
             parallel_helper._set_parallel_ctx(
                 core.NCCLParallelContext(strategy, place))
+        elif isinstance(place, core.XPUPlace):
+            parallel_helper._set_parallel_ctx(
+                core.BKCLParallelContext(strategy, place))
         else:
             # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert ("Only support CUDAPlace for now.")
+            assert ("Only support CUDAPlace or XPUPlace for now.")
         parallel_helper._init_parallel_ctx()
     return strategy
 
@@ -107,13 +111,22 @@ class ParallelEnv(object):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
 
-        # imperative only support one gpu
-        selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
-        self._device_id = int(selected_gpus[0])
+        # imperative only support one gpu or xpu
+        if core.is_compiled_with_cuda():
+            selected_gpus = os.getenv("FLAGS_selected_gpus", "0").split(",")
+            self._device_id = int(selected_gpus[0])
+        elif core.is_compiled_with_xpu():
+            selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
+            self._device_id = int(selected_xpus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
+        self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
+        assert self._nrings > 0, \
+            "nccl_nrings must be an integer greater than 0."
+        assert self._nrings < 9, \
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
 
     @property
     def rank(self):
@@ -211,6 +224,25 @@ class ParallelEnv(object):
         """
         return self._trainer_endpoints
 
+    @property
+    def nrings(self):
+        """
+        Nrings of current trainer.
+
+        Its value is equal to the value of the environment variable ``FLAGS_nccl_nrings`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_nccl_nrings=1
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The nrings is %d" % env.nrings)
+            # the number of ring is 1
+        """
+        return self._nrings
+
     # [aliases] Compatible with old method names
     local_rank = rank
     nranks = world_size
@@ -276,6 +308,7 @@ def _split_tensors(coalesced_grads_and_grad_vars):
 
 
 def scale_loss(loss):
+    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
     if not ParallelEnv().world_size > 1:
         return loss
 
@@ -395,11 +428,10 @@ class DataParallel(layers.Layer):
                                              1024)
             self.init_reducer()
         else:
-            warnings.warn(
-                "nranks is less than 2, "
-                "maybe you need to check the current system environment."
-                " Need to use spawn or fleetrun to "
-                "start distributed programs.")
+            warnings.warn("The program will return to single-card operation. "
+                          "Please check 1, whether you use spawn or fleetrun "
+                          "to start the program. 2, Whether it is a multi-card "
+                          "program. 3, Is the current environment multi-card.")
 
     def init_reducer(self):
         layers_param = []
@@ -420,9 +452,13 @@ class DataParallel(layers.Layer):
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
-        # we should add the layer here like "nn.Embedding".
+        # we should add the layer here like "paddle.nn.layer.common.Embedding".
         def check_layer_sparse(sublayer):
-            if isinstance(sublayer, nn.Embedding):
+            if isinstance(sublayer, paddle.nn.layer.common.Embedding):
+                return sublayer._sparse
+            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding 
+            # is removed in the future, the check will also be removed here.
+            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
                 return sublayer._is_sparse
             return False
 
@@ -438,16 +474,32 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        self._reducer = core.Reducer(trainable_parameters,
-                                     list(reversed(self.group_indices)),
-                                     is_sparse_gradient,
-                                     parallel_helper.__parallel_ctx__clz__)
+        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
+        # to handle control flow to process unused parameters
+        find_unused_vars = True
+        self._reducer = core.Reducer(
+            trainable_parameters,
+            list(reversed(self.group_indices)), is_sparse_gradient,
+            parallel_helper.__parallel_ctx__clz__,
+            [self.last_comm_buffer_size, self.comm_buffer_size],
+            find_unused_vars)
+
+    def _find_varbase(self, obj):
+        if isinstance(obj, core.VarBase):
+            return [obj]
+        if isinstance(obj, (list, tuple)):
+            return itertools.chain(*map(self._find_varbase, obj))
+        if isinstance(obj, dict):
+            return itertools.chain(*map(self._find_varbase, obj.values()))
+        return []
 
     def forward(self, *inputs, **kwargs):
+        outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward()
+            self._reducer.prepare_for_backward(
+                list(self._find_varbase(outputs)))
 
-        return self._layers(*inputs, **kwargs)
+        return outputs
 
     @deprecated(
         since="2.0.0", reason="This method does not need to be called anymore.")

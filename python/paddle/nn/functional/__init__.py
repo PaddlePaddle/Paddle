@@ -30,6 +30,7 @@ __all__ += pooling.__all__
 from . import loss
 __all__ += loss.__all__
 from .activation import elu  #DEFINE_ALIAS
+from .activation import elu_  #DEFINE_ALIAS
 # from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
@@ -41,16 +42,19 @@ from .activation import log_sigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
 from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
+from .activation import relu_  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
 from .activation import sigmoid  #DEFINE_ALIAS
 # from .activation import soft_relu  #DEFINE_ALIAS
 from .activation import softmax  #DEFINE_ALIAS
+from .activation import softmax_  #DEFINE_ALIAS
 from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
 from .activation import softsign  #DEFINE_ALIAS
 from .activation import swish  #DEFINE_ALIAS
 from .activation import tanh  #DEFINE_ALIAS
+from .activation import tanh_  #DEFINE_ALIAS
 from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
@@ -68,7 +72,6 @@ from .common import pad  #DEFINE_ALIAS
 from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
-from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
 from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
@@ -88,7 +91,6 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import multiclass_nms  #DEFINE_ALIAS
 # from .extension import polygon_box_transform  #DEFINE_ALIAS
 # from .extension import random_crop  #DEFINE_ALIAS
-# from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign  #DEFINE_ALIAS
 # from .extension import similarity_focus  #DEFINE_ALIAS
 # from .extension import target_assign  #DEFINE_ALIAS

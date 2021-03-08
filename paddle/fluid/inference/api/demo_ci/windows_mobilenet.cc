@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <algorithm>
 #include <fstream>
@@ -20,6 +19,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/include/paddle_inference_api.h"
 
@@ -84,7 +84,7 @@ void RunAnalysis() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::RunAnalysis();
   std::cout << "=========================Runs successfully===================="
             << std::endl;

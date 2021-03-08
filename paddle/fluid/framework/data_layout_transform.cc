@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/platform/profiler.h"
-#include <string>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -181,8 +179,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key =
-        platform::CreateKey(in_tz, in_format, out_format, in_type);
+    std::string key =
+        platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
@@ -193,10 +191,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
-    mkldnn::stream astream(cpu_engine);
-    #ifdef PADDLE_WITH_MKLDNN
-    platform::RecordEvent record_reorder("ext_reorder", platform::EventRole::kUniqueOp);
-    #endif
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    platform::RecordEvent record_reorder("ext_reorder",
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {

@@ -14,13 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
-#include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+
+namespace paddle {
+namespace platform {
+struct complex128;
+struct complex64;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -178,3 +181,13 @@ REGISTER_OP_CPU_KERNEL(
                               paddle::platform::complex64>,
     ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_add)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_add for adding the attribute of
+       Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_add.",
+            1.0f));

@@ -22,10 +22,16 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
-message RecomputeConfig { repeated string checkpoints = 1; }
+message RecomputeConfig {
+  repeated string checkpoints = 1;
+  optional bool enable_offload = 2 [ default = false ];
+  repeated int32 checkpoint_shape = 3;
+}
 
 message ShardingConfig {
   optional float fuse_broadcast_MB = 1 [ default = 32.0 ];
+  optional bool hybrid_dp = 2 [ default = false ];
+  optional int32 sharding_group_size = 3 [ default = 8 ];
 }
 
 message AMPConfig {
@@ -38,6 +44,8 @@ message AMPConfig {
   repeated string custom_white_list = 7;
   repeated string custom_black_list = 8;
   repeated string custom_black_varnames = 9;
+  optional bool use_pure_fp16 = 10 [ default = false ];
+  optional bool use_fp16_guard = 11 [ default = true ];
 }
 
 message LocalSGDConfig {
@@ -83,6 +91,9 @@ message BuildStrategy {
   optional bool enable_inplace = 7 [ default = false ];
   optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
   optional bool cache_runtime_context = 9 [ default = false ];
+  optional bool fuse_bn_add_act_ops = 10 [ default = true ];
+  optional bool enable_auto_fusion = 11 [ default = false ];
+  optional bool enable_addto = 12 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -103,6 +114,7 @@ message AsyncConfig {
   optional bool runtime_split_send_recv = 8 [ default = false ];
   optional bool launch_barrier = 9 [ default = true ];
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
+  optional int32 lr_decay_steps = 11 [ default = 10 ];
 }
 
 message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
@@ -129,9 +141,9 @@ message DistributedStrategy {
   optional bool fuse_all_reduce_ops = 18 [ default = true ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
-  optional bool cudnn_exhaustive_search = 21 [ default = true ];
-  optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
-  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
+  optional bool cudnn_exhaustive_search = 21 [ default = false ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 512 ];
+  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = false ];
   optional bool adaptive_localsgd = 24 [ default = false ];
   optional bool fp16_allreduce = 25 [ default = false ];
   optional bool sharding = 26 [ default = false ];

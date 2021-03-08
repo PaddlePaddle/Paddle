@@ -43,20 +43,32 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
-#ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
-#endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
+#ifdef PADDLE_WITH_MKLDNN
+  dst->set_format(src.format());
+  // oneDNN tensors due to padding may be of bigger size
+  // than numel()*size(type())
+  auto dst_ptr =
+      src.layout() == DataLayout::kMKLDNN
+          ? dst->mutable_data(dst_place, src.type(), src.memory_size())
+          : dst->mutable_data(dst_place, src.type());
+#else
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
-
+#endif
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
             << dst_place;
     return;
   }
 
+#ifdef PADDLE_WITH_MKLDNN
+  auto size = src.layout() == DataLayout::kMKLDNN
+                  ? src.memory_size()
+                  : src.numel() * SizeOfType(src.type());
+#else
   auto size = src.numel() * SizeOfType(src.type());
+#endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
@@ -85,7 +97,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
@@ -292,7 +304,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
@@ -583,7 +595,7 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
   return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
   CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
@@ -606,7 +618,7 @@ struct BothFalseVisitor : public boost::static_visitor<> {
   }
 
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
     constexpr int MAX_BLOCK_DIM = 512;
     const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
@@ -691,7 +703,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx =
@@ -790,7 +802,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace())) {
-#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(shape));
       framework::VisitDataType(
@@ -847,7 +860,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace())) {
-#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(dims));
       framework::VisitDataType(
@@ -942,7 +956,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
   if (dl_tensor.ctx.device_type == kDLCPU) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (dl_tensor.ctx.device_type == kDLGPU) {
     platform::CUDAPlace dst_place =
         platform::CUDAPlace(dl_tensor.ctx.device_id);
@@ -1000,9 +1014,10 @@ std::ostream& print_tensor<paddle::platform::complex64>(
 
   os << "  - data: [";
   if (element_num > 0) {
-    os << signed(inspect[0].real) << signed(inspect[0].imag) << "j";
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
     for (int j = 1; j < element_num; ++j) {
-      os << signed(inspect[j].real) << signed(inspect[j].imag) << "j";
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
     }
   }
   os << "]";
@@ -1017,9 +1032,10 @@ std::ostream& print_tensor<paddle::platform::complex128>(
 
   os << "  - data: [";
   if (element_num > 0) {
-    os << signed(inspect[0].real) << signed(inspect[0].imag) << "j";
+    os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
     for (int j = 1; j < element_num; ++j) {
-      os << signed(inspect[j].real) << signed(inspect[j].imag) << "j";
+      os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
+         << "j";
     }
   }
   os << "]";

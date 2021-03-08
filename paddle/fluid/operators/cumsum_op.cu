@@ -14,10 +14,15 @@ limitations under the License. */
 
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
-#include <thrust/gather.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-#include "cub/cub.cuh"
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
@@ -95,8 +100,6 @@ struct BlockPrefixCallbackOp {
 };
 
 // No bank-conflict transpose
-// Same as transposeCoalesced except the first tile dimension is padded
-// to avoid shared memory bank conflicts.
 template <typename T, int TILE_DIM, int BLOCK_ROWS>
 __global__ void MatrixTranspose(T* odata, const T* idata, size_t height,
                                 size_t width) {

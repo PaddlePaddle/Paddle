@@ -90,7 +90,7 @@ make -j8
    compiling docker building script. it use alpine linux 3.10 as musl linux build enironment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
     
     environment variables:
-
+   - PYTHON_VERSION: the version of python used for image building, default=3.7.
    - WITH_PRUNE_DAYS: prune old docker images, with days limitation.
    - WITH_REBUILD: force to rebuild the image, default=0.
    - WITH_REQUIREMENT: build with the python requirements, default=1.
@@ -101,12 +101,13 @@ make -j8
    - HTTPS_PROXY: use https proxy.
 
 2. **build_paddle.sh** automatically or manually paddle building script. it will mount the root directory of paddle source to /paddle, and run compile procedure in /root/build directory. the output wheel package will save to the ./output directory relative to working directory.
-    
-    environment variables:
 
+    environment variables:
     - BUILD_MAN: build the paddle manually, default=0.
     - WITH_TEST: build with unitest, and run unitest check, default=0.
-    - WITH_PRUNE_CONTAINER: remove the container after building, default=0.
+    - WITH_PRUNE_CONTAINER: remove the container after building, default=1.
+    - CTEST_*: CTEST flages used for unit test.
+    - FLAGS_*: build flages used for paddle building.
     - HTTP_PROXY: use http proxy.
     - HTTPS_PROXY: use https proxy.
 

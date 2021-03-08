@@ -28,8 +28,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-#ifndef __NVCC__
-
+#if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>
 void hl_naive_gru_forward_reset_output(
     OpResetOutput op_reset_output, T *gate_value, T *reset_output_value,
@@ -276,7 +275,7 @@ inline void forward_reset_output(
       // use eigen
       forward_reset_outputV2(*context, value, frame_size);
     } else {
-      if (OpResetOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
+      if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_reset_output(
             op_reset_output, value.gate_value, value.reset_output_value,
@@ -329,7 +328,7 @@ inline void forward_final_output(
       // eigen
       forward_final_outputV2(*context, value, frame_size);
     } else {
-      if (OpFinalOutput::avx && (frame_size & static_cast<int>(8 - 1)) &&
+      if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
           (sizeof(T) == 4)) {
         hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                         value.prev_out_value,
@@ -799,7 +798,7 @@ inline void cpu_gru_backward(const platform::CPUDeviceContext &context,
   }
 }
 
-#endif
+#endif  // @} End Group for GRU CPU
 
 }  // namespace detail
 }  // namespace math

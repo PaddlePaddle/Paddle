@@ -21,13 +21,14 @@ import six
 import sys
 import warnings
 
-from paddle.distributed.utils import _print_arguments, _prepare_trainer_env
+from paddle.distributed.utils import _print_arguments, _prepare_trainer_env, get_host_name_ip
 from paddle.distributed.cloud_utils import get_cluster_and_pod
+from paddle.distributed.fleet.cloud_utils import use_paddlecloud
 from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _cpu_num
+from paddle.fluid.framework import _cpu_num, set_flags
 
 
 class ParallelEnvArgs(object):
@@ -49,10 +50,10 @@ class ParallelEnvArgs(object):
         self.print_config = True
 
         # It's for gpu training and the training process will run 
-        # on the selected_gpus, each process is bound to a single GPU. 
+        # on the selected_devices, each process is bound to a single GPU. 
         # And if it's not set, this module will use all the gpu cards 
         # for training.
-        self.selected_gpus = None
+        self.selected_devices = None
 
 
 def _py_supported_check():
@@ -65,15 +66,33 @@ def _py_supported_check():
 
 
 def _options_valid_check(options):
-    supported_options = [
-        'start_method', 'cluster_node_ips', 'node_ip', 'started_port',
-        'selected_gpus', 'print_config', 'use_paddlecloud'
+    # `print_config` keeped as a debug options, not show to users
+    supported_options = ['start_method', 'ips', 'gpus', 'xpus', 'print_config']
+    deprecated_options = [
+        'selected_devices', 'started_port', 'cluster_node_ips', 'node_ip',
+        'use_paddlecloud'
     ]
     for key in options:
         if key not in supported_options:
-            raise ValueError(
-                "The config option (%s) of `paddle.distributed.spawn` is not supported."
-                % key)
+            if key in deprecated_options:
+                warnings.warn(
+                    "The config option (%s) of `paddle.distributed.spawn` is deprecated. "
+                    "Please use the latest config options stated in the `spawn` API documentation."
+                    % key, DeprecationWarning)
+            else:
+                raise ValueError(
+                    "The config option (%s) of `paddle.distributed.spawn` is not supported."
+                    % key)
+
+
+def _get_node_ip(ips):
+    node_ip = None
+    node_ips = [x.strip() for x in ips.split(',')]
+    if len(node_ips) == 1:
+        node_ip = node_ips[0]
+    else:
+        _, node_ip = get_host_name_ip()
+    return node_ip
 
 
 def _get_subprocess_env_list(nprocs, options):
@@ -83,62 +102,111 @@ def _get_subprocess_env_list(nprocs, options):
     # get args from kwargs
     args = ParallelEnvArgs()
 
-    # set default `node_ip` and `cluster_node_ips`
-    args.cluster_node_ips = options.get('cluster_node_ips', None)
-    args.node_ip = options.get('node_ip', None)
-    if args.cluster_node_ips is not None and args.node_ip is None:
-        raise ValueError("please input current node ip, "
-                         "cannot only give `cluster_node_ips`.")
-    default_node_ip = "127.0.0.1"
-    if args.node_ip is None:
-        args.node_ip = default_node_ip
+    # deal with `ips`
+    args.cluster_node_ips = options.get('ips', None)
     if args.cluster_node_ips is None:
-        args.cluster_node_ips = default_node_ip
+        args.cluster_node_ips = options.get('cluster_node_ips', None)
+        if args.cluster_node_ips is None:
+            args.cluster_node_ips = "127.0.0.1"
 
-    # set default selected gpus
+    # deal with `gpus` or `xpus`
+    # set default selected devices(gpus or xpus)
     # e.g. if the nprocs is 4, the selected gpus is "0,1,2,3"
-    # NOTE(chenweihang): [ why not use FLAGS_selected_gpus directly? ]
-    # because the FLAGS_selected_gpus may be used in other place,
-    # if we set FLAGS_selected_gpus to be `0,1,2,3`, it may cause error
+    # NOTE(chenweihang): [ why not use FLAGS_selected_gpus or FLAGS_selected_xpus directly? ]
+    # because the FLAGS_selected_gpus or FLAGS_selected_xpus may be used in other place,
+    # if we set FLAGS_selected_gpus or FLAGS_selected_xpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
-    # NOTE(chenweihang): use absolute gpu card id
-    args.selected_gpus = options.get('selected_gpus', None)
-    env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
-    if env_devices is None or env_devices == "":
-        env_devices_list = [
-            str(x) for x in six.moves.range(core.get_cuda_device_count())
-        ]
-    else:
-        env_devices_list = env_devices.split(',')
-    if args.selected_gpus is None:
-        if len(env_devices_list) < nprocs:
-            raise RuntimeError(
-                "the number of visible devices(%d) is less than the number "
-                "of spawn processes(%d), please ensure that the correct "
-                "`nprocs` argument is passed or the environment variable "
-                "`CUDA_VISIBLE_DEVICES` is correctly configured." %
-                (len(env_devices_list), nprocs))
-        args.selected_gpus = ",".join(
-            [str(env_devices_list[x]) for x in range(0, nprocs)])
-    else:
-        for card_id in args.selected_gpus.split(','):
-            if card_id not in env_devices_list:
-                raise ValueError("The selected gpu card %s cannot found in "
-                                 "CUDA_VISIBLE_DEVICES (%s)." %
-                                 (card_id, ",".join(env_devices_list)))
+    # NOTE(chenweihang): use absolute gpu or xpu card id
+    if core.is_compiled_with_cuda():
+        args.selected_devices = options.get('gpus', None)
+        if args.selected_devices is None:
+            args.selected_devices = options.get('selected_devices', None)
+        env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x) for x in six.moves.range(core.get_cuda_device_count())
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+        if args.selected_devices is None:
+            if len(env_devices_list) < nprocs:
+                raise RuntimeError(
+                    "the number of visible devices(%d) is less than the number "
+                    "of spawn processes(%d), please ensure that the correct "
+                    "`nprocs` argument is passed or the environment variable "
+                    "`CUDA_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+        else:
+            selected_device_list = args.selected_devices.split(',')
+            if len(selected_device_list) != nprocs:
+                raise ValueError(
+                    "The number of selected devices(%s) is not equal to "
+                    "the number of spawn processes(%d), please ensure that the "
+                    "correct `nprocs` and `gpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected gpu card %s cannot found in "
+                                     "CUDA_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
 
-    # set other arguments
+    elif core.is_compiled_with_xpu():
+        args.selected_devices = options.get('xpus', None)
+        if args.selected_devices is None:
+            args.selected_devices = options.get('selected_devices', None)
+        env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x) for x in six.moves.range(core.get_xpu_device_count())
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+        if args.selected_devices is None:
+            if len(env_devices_list) < nprocs:
+                raise RuntimeError(
+                    "the number of visible devices(%d) is less than the number "
+                    "of spawn processes(%d), please ensure that the correct "
+                    "`nprocs` argument is passed or the environment variable "
+                    "`XPU_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+        else:
+            selected_device_list = args.selected_devices.split(',')
+            if len(selected_device_list) != nprocs:
+                raise ValueError(
+                    "The number of selected devices(%s) is not equal to "
+                    "the number of spawn processes(%d), please ensure that the "
+                    "correct `nprocs` and `xpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected xpu card %s cannot found in "
+                                     "XPU_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
+
+    # set other inner args
+    args.node_ip = options.get('node_ip', None)
+    if args.node_ip is None:
+        args.node_ip = _get_node_ip(args.cluster_node_ips)
+
     args.started_port = options.get('started_port', None)
-    args.use_paddlecloud = options.get('use_paddlecloud', False)
-    args.print_config = options.get('print_config', False)
 
+    args.use_paddlecloud = options.get('use_paddlecloud', None)
+    if args.use_paddlecloud is None:
+        args.use_paddlecloud = use_paddlecloud()
+
+    # get cluster and pod config
     cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
     for trainer in pod.trainers:
         processes_env_list.append(_prepare_trainer_env(cluster, trainer))
 
-    # print config
+    # [Debug] print config
+    args.print_config = options.get('print_config', False)
     if args.print_config:
         _print_arguments(args)
 
@@ -153,6 +221,17 @@ def _remove_risky_env():
 
 
 def _set_trainer_env(env_dict):
+    # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus or FLAGS_selected_xpus here? ]
+    # When the child process starts, it will inherit the configuration of the 
+    # main process and set the FLAGS once, but the environment variable has 
+    # not been set at this time, which leads to the FLAGS_selected_gpus or FLAGS_selected_xpus
+    # is keep same with mainprocess(usually empty), so manually update the flags here
+    if core.is_compiled_with_cuda():
+        set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
+    elif core.is_compiled_with_xpu():
+        set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
+    else:
+        raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 
@@ -239,6 +318,9 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     """
     Start multiple processes with ``spawn`` method for parallel training.
 
+    .. note::
+        ``spawn`` now only supports GPU collective mode.
+
     Args:
         func (function): The target function is called by spawned process.
             This function need to be able to pickled, so it must be defined
@@ -263,17 +345,10 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             Because the CUDA runtime does not support the ``fork`` start method, 
             when use CUDA in subprocesses, we should start process by ``spawn`` 
             or ``forkserver`` method. Default: "spawn" ; 
-            (2) cluster_node_ips (string): Paddle cluster nodes ips, such as 
-            "192.168.0.16,192.168.0.17". Default: "127.0.0.1"; 
-            (3) node_ip (string): The current node ip, such as "192.168.0.16". 
-            Default: "127.0.0.1"; 
-            (4) started_port (int): The trainer's started port on a single node,
-            such as 6170. Default: None; 
-            (5) selected_gpus (string): The training process will run on the 
-            selected_gpus, such as "0,1,2,3". Default: None; 
-            (6) print_config (bool): Print current parallel training config. Default: False;
-            (7) use_paddlecloud (bool): Whether to use paddlecloud platform to run your 
-            multi-process job. Default: False.
+            (2) gpus (string): The training process will run on the 
+            selected gpus, such as "0,1,2,3". Default: None; 
+            (3) ips (string): Paddle cluster nodes ips, such as 
+            "192.168.0.16,192.168.0.17". Default: "127.0.0.1" . 
 
     Returns:
         ``MultiprocessContext`` object, it hold the spawned processes.
@@ -345,16 +420,16 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             if __name__ == '__main__':
                 dist.spawn(train, args=(True,), nprocs=2)
 
-            # Usage 4: pass function, arguments, nprocs and selected_gpus.
+            # Usage 4: pass function, arguments, nprocs and gpus.
             # If your training method need some arguments, and 
             # only use part of visible devices for parallel training,
             # but you can't set your machine's environment variable 
             # CUDA_VISIBLE_DEVICES, such as it is None or all cards
-            # {0,1,2,3,4,5,6,7}, you can pass `selected_gpus` to 
+            # {0,1,2,3,4,5,6,7}, you can pass `gpus` to 
             # select the GPU cards you want to use. For example,
             # this case will use cards {4,5} if your machine hold 8 cards.
             if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2, selected_gpus='4,5')
+                dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
     # NOTE(chenweihang): [ why only supports python3.4+ ? ]
     # Python supported setting the child process startup method
@@ -373,8 +448,14 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         if device == 'cpu':
             # TODO: not supports cpu parallel now
             nprocs = _cpu_num()
-        else:
+        elif device == 'gpu':
             nprocs = core.get_cuda_device_count()
+        elif device == 'xpu':
+            nprocs = core.get_xpu_device_count()
+        else:
+            raise ValueError(
+                "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
+                format(device))
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
     # when using `paddle.distributed.spawn` start parallel training, 

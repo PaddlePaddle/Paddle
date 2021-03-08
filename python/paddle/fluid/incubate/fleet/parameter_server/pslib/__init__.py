@@ -101,15 +101,16 @@ class PSLib(Fleet):
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            if self._role_maker.is_worker():
-                info = self._fleet_ptr.get_clients_info()
-                all_info = self._role_maker._worker_gather(info[0])
-                self._fleet_ptr.gather_clients(all_info)
-                self._fleet_ptr.set_client2client_config(
-                    self._client2client_request_timeout_ms,
-                    self._client2client_connect_timeout_ms,
-                    self._client2client_max_retry)
-                self._fleet_ptr.create_client2client_connection()
+            if not self._opt_info["use_ps_gpu"]:
+                if self._role_maker.is_worker():
+                    info = self._fleet_ptr.get_clients_info()
+                    all_info = self._role_maker._worker_gather(info[0])
+                    self._fleet_ptr.gather_clients(all_info)
+                    self._fleet_ptr.set_client2client_config(
+                        self._client2client_request_timeout_ms,
+                        self._client2client_connect_timeout_ms,
+                        self._client2client_max_retry)
+                    self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -137,9 +138,10 @@ class PSLib(Fleet):
                                     "var " + var_name + " not found in scope, "
                                     + "you should run startup program first")
                             var_name_list.append(var_name)
-                        self._fleet_ptr.init_model(scope,
-                                                   int(table.table_id),
-                                                   var_name_list)
+                        if not self._opt_info["use_ps_gpu"]:
+                            self._fleet_ptr.init_model(scope,
+                                                       int(table.table_id),
+                                                       var_name_list)
             # barrier for init model done
             self._role_maker._barrier_worker()
         else:
@@ -381,6 +383,28 @@ class PSLib(Fleet):
         if self._role_maker.is_first_worker():
             self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
                                                       whitelist_path)
+        self._role_maker._barrier_worker()
+
+    def save_multi_table_one_path(self, table_ids, model_dir, **kwargs):
+        """
+        save pslib multi sparse table in one path.
+        Args:
+            table_ids(list): table ids
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+                          prefix(str): the parts to save can have prefix,
+                                       for example, part-prefix-000-00000
+        Examples:
+            .. code-block:: python
+              fleet.save_multi_table_one_path("[0, 1]", "afs:/user/path/")
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_multi_table_one_path(table_ids, model_dir,
+                                                      mode)
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):

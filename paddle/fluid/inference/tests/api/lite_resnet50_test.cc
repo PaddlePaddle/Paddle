@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <cmath>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -26,11 +25,7 @@ namespace inference {
 TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-#if defined(PADDLE_WITH_CUDA)
   config.EnableUseGpu(100, 0);
-#elif defined(LITE_SUBGRAPH_WITH_XPU)
-  config.EnableXpu(100);
-#endif
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 
@@ -86,6 +81,7 @@ TEST(Predictor, use_gpu) {
   config.EnableLiteEngine(PrecisionType::kFloat32);
 
   auto predictor = CreatePredictor(config);
+
   const int batch = 1;
   const int channel = 3;
   const int height = 318;

@@ -28,12 +28,12 @@ export PADDLE_PORT=35789
 export TRAINER_PORTS_NUM=2
 
 distributed_args="--ips=${cluster_node_ips} --gpus=0,1 --log_dir=testlog"
-CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetrun
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.fleet.launch ${distributed_args} multi_process.py fleetlaunchcloud
 
 str1="selected_gpus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35789 trainer_id:0"
 str2="selected_gpus:1 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790,127.0.0.2:35789,127.0.0.2:35790 trainers_num:4 current_endpoint:127.0.0.1:35790 trainer_id:1"
-file_0="multi_process_fleetrun.check_0.log"
-file_1="multi_process_fleetrun.check_1.log"
+file_0="multi_process_fleetlaunchcloud.check_0.log"
+file_1="multi_process_fleetlaunchcloud.check_1.log"
 
 echo "paddlecloud params test"
 if grep -q "$str1" "$file_0"; then

@@ -679,7 +679,7 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
 void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::Matmul matmul_pattern{pattern, name_scope_};
+  patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
   matmul_pattern();
 
   int quantize_matmul_count = 0;

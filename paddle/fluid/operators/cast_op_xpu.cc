@@ -49,6 +49,12 @@ class CastXPUKernel : public framework::OpKernel<InT> {
       auto* out_data = out->mutable_data<int64_t>(context.GetPlace());
       r = xpu::cast_v2<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
                                      numel);
+    } else if ((out_type == framework::proto::VarType::BOOL) &&
+               (in_type == framework::proto::VarType::FP32)) {
+      auto* out_data = out->mutable_data<bool>(context.GetPlace());
+      r = xpu::cast_v2<float, int8_t>(
+          dev_ctx.x_context(), (const float*)in_data,
+          reinterpret_cast<int8_t*>(out_data), numel);
     } else {
       PADDLE_THROW(platform::errors::Unavailable("Not supported cast %d -> %d",
                                                  in_type, out_type));

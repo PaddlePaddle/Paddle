@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/float16.h"
@@ -31,17 +32,6 @@ struct NoNesterov;
 struct UseNesterov;
 
 namespace details {
-
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-template <>
-class MPTypeTrait<platform::float16> {
- public:
-  using Type = float;
-};
 
 template <typename T>
 struct CPUDenseUpdater {

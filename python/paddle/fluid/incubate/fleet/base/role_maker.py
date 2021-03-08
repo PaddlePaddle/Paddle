@@ -599,6 +599,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 3600)
         self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 9999999)
         ip_port = kwargs.get("http_ip_port", "")
+        self._use_ps_gpu = kwargs.get("use_ps_gpu", False)
         self._http_ip_port = []
         self._http_server = None
         # if ip_port is not empty, it will use http instead of hdfs
@@ -666,6 +667,18 @@ class GeneralRoleMaker(RoleMakerBase):
                                             self._hdfs_name, self._hdfs_ugi)
                     gloo.init()
                     self._node_type_comm = gloo
+                    if self._use_ps_gpu:
+                        Gloo_strategy = fluid.core.GlooParallelStrategy()
+                        Gloo_strategy.rank = current_id
+                        Gloo_strategy.rank_num = len(worker_endpoints)
+                        Gloo_strategy.ip_address = self._http_ip_port[0]
+                        Gloo_strategy.ip_port = int(self._http_ip_port[1])
+                        Default_init_timeout_seconds = 3600
+                        Default_run_timeout_seconds = 9999999
+                        Gloo_strategy.init_seconds = Default_init_timeout_seconds
+                        Gloo_strategy.run_seconds = Default_run_timeout_seconds
+                        Gloo = fluid.core.GlooParallelContext(Gloo_strategy)
+                        Gloo.init()
                 else:
                     self._all_comm = MockBarrier()
             elif training_role == "PSERVER":

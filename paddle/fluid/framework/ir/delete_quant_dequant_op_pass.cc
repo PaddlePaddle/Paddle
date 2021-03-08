@@ -13,7 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/delete_quant_dequant_op_pass.h"
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -49,10 +56,10 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     std::string input_scale_var_name =
         quant_dequant_op->Op()->Input("InScale").front();
     const LoDTensor& input_scale_tensor =
-        scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
+        scope->GetVar(input_scale_var_name)->Get<LoDTensor>();
 
     const float* input_scale_data = input_scale_tensor.data<float>();
-    float input_scale = input_scale_data[0];
+    float input_scale = input_scale_data[0] / 127.;
     auto* any_op2_desc = any_op2->Op();
     // auto input_args_names = any_op2_desc->InputArgumentNames();
     auto var_map = any_op2_desc->Inputs();

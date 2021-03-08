@@ -54,7 +54,8 @@ class SumMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::sum> {
 
       : platform::MKLDNNHandlerT<T, dnnl::sum>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(framework::vectorize(z->dims()), uniq_name)),
+            platform::CreateKey(dev_ctx, framework::vectorize(z->dims()),
+                                uniq_name)),
         num_inputs_(0) {
     for (size_t i = 0; i < in_vars.size(); i++) {
       srcs_suffix_.push_back(std::string("-") + std::to_string(i));
@@ -177,15 +178,16 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     args.insert({MKLDNN_ARG_DST, *dst_mem});
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     sum_p->execute(astream, args);
     astream.wait();
 
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
-      const std::string reorder_key = platform::CreateKey(
-          framework::vectorize(output->dims()), ctx.OutputName("Out") + "-I");
+      const std::string reorder_key =
+          platform::CreateKey(dev_ctx, framework::vectorize(output->dims()),
+                              ctx.OutputName("Out") + "-I");
 
       auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
       auto output_tz = framework::vectorize<int64_t>(output->dims());
@@ -197,8 +199,12 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           output, in_out.format(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(target_mem, dst_mem);
-      reorder_p->execute(astream, *dst_mem, *target_mem);
-      astream.wait();
+      {
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, *dst_mem, *target_mem);
+        astream.wait();
+      }
     }
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_mem));

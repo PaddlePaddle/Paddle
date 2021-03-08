@@ -34,7 +34,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 6d2b2a4028a58715b01887b04eb9bff8432eb184)
+    set(LITE_GIT_TAG d3a3a6931b6d22d504d21ba32b3ae972770e9204)
   endif()
 
   if(NOT CUDA_ARCH_NAME)
@@ -58,6 +58,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DLITE_BUILD_EXTRA=ON
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
     ExternalProject_Add(
       ${LITE_PROJECT}
@@ -65,7 +66,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       GIT_REPOSITORY      "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
-      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
+      PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -99,6 +100,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                            -DLITE_WITH_XPU=${LITE_WITH_XPU}
                            -DXPU_SDK_ROOT=${XPU_SDK_ROOT}
+                           -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
 
     ExternalProject_Add(
@@ -132,7 +134,11 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
 endif()
 
 if (WITH_ARM)
-  set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
+  if(LITE_WITH_XPU)
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
+  else()
+    set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8)
+  endif()
 else()
   set(LITE_OUTPUT_BIN_DIR inference_lite_lib)
 endif()

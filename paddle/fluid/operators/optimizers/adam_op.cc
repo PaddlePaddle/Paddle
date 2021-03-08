@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/adam_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -150,12 +151,17 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "as beta2, this has a higher priority than attr(beta2), the "
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -183,6 +189,10 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
                      "inner_op_parallelism is larger then 0, sparse update "
                      "will run in multithread mode")
         .SetDefault(1000);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Adam Optimizer.
@@ -213,3 +223,13 @@ REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
 REGISTER_OP_CPU_KERNEL(
     adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(adam)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam add 1 attribute [multi_precision].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "multi_precision",
+            "(bool) Whether to use multi-precision during weight updating.",
+            false));

@@ -600,9 +600,13 @@ def _construct_program_holders(model_path, model_filename=None):
                 model_file_path = os.path.join(model_path, model_filename)
             elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
                     model_name):
-                func_name = filename[len(model_name) + 1:-len(
-                    INFER_MODEL_SUFFIX)]
-                model_file_path = os.path.join(model_path, filename)
+                parsing_names = filename[len(model_name):-len(
+                    INFER_MODEL_SUFFIX) + 1].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                    model_file_path = os.path.join(model_path, filename)
+                else:
+                    continue
             else:
                 continue
             program_holder_dict[func_name] = _ProgramHolder(
@@ -636,10 +640,14 @@ def _construct_params_and_buffers(model_path,
         model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
         #Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
-            if file_name.endswith(INFER_PARAMS_SUFFIX) and file_name.startswith(
-                    model_name) and file_name != params_filename:
-                func_name = file_name[len(model_name) + 1:-len(
-                    INFER_PARAMS_SUFFIX)]
+            if file_name.startswith(model_name) and file_name.endswith(
+                    INFER_PARAMS_SUFFIX):
+                parsing_names = file_name[len(model_name):-len(
+                    INFER_PARAMS_SUFFIX) + 1].split('.')
+                if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
+                    func_name = parsing_names[1]
+                else:
+                    continue
             else:
                 continue
             var_info_path = os.path.join(model_path, var_info_filename)
@@ -1139,6 +1147,10 @@ class TranslatedLayer(layers.Layer):
 
         # 4. create TranslatedLayer's execution method
         for method_name, program_holder in programs.items():
+            if translated_layer._input_args_names is None:
+                translated_layer._input_args_names = [
+                    ins.name() for ins in program_holder.input_descs
+                ]
             setattr(TranslatedLayer, method_name,
                     TranslatedLayer._execution_method_creator(method_name,
                                                               program_holder))

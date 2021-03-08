@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
 from . import core
@@ -45,7 +46,7 @@ class ProgramStats(object):
         input_names = []
         for name in self.var_op_deps:
             if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
-                len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                    len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
                 input_names.append(name)
@@ -98,7 +99,31 @@ class ProgramStats(object):
                 max_op_idx = max(max_op_idx, idx)
         if min_op_idx >= max_op_idx:
             return False, min_op_idx, max_op_idx
+
         return True, min_op_idx, max_op_idx
+
+    def _update_segment_start(self, min_idx, pre_segment_end_idx):
+        """
+        persist vars of amp-related cast should be included in recompute segment
+        """
+
+        def is_amp_cast(op):
+            return op.desc.type() == 'cast' and self.block.var(
+                op.desc.input_arg_names()[0]).persistable
+
+        idx_ = min_idx - 1
+        updated_min_idx = min_idx
+        while idx_ > pre_segment_end_idx:
+            if is_amp_cast(self.ops[idx_]):
+                _logger.debug("found amp-cast op: {}, : {}".format(self.ops[
+                    idx_].desc.type(), self.ops[idx_].desc.input_arg_names()[
+                        0]))
+                updated_min_idx = idx_
+                idx_ -= 1
+            else:
+                break
+
+        return updated_min_idx
 
     def build_stats(self):
         for i, op in enumerate(self.ops):
@@ -191,7 +216,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         return []
     result_descs = []
     op_role_attr_name = \
-            core.op_proto_and_checker_maker.kOpRoleAttrName()
+        core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
@@ -376,21 +401,29 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
-                                     op_idx):
+def _accumulate_gradients_by_sum_op_(var_name,
+                                     renamed_vars,
+                                     pending_sum_ops,
+                                     op_idx,
+                                     op_device=""):
     """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
     if op_idx not in pending_sum_ops.keys():
         pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
-        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
-                         {"Out": [var_name]}, {"use_mkldnn": False}))
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]}, {
+            "Out": [var_name]
+        }, {"use_mkldnn": False,
+            "op_device": op_device}))
     renamed_vars[var_name] = [var_name]
 
 
-def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
-                                      op_idx):
+def _accumulate_gradients_by_add_ops_(var_name,
+                                      renamed_vars,
+                                      pending_sum_ops,
+                                      op_idx,
+                                      op_device=""):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
@@ -407,7 +440,8 @@ def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
         pending_sum_ops[op_idx].append(
             _create_op_desc_("grad_add", {"X": [x_name],
                                           "Y": [y_name]}, {"Out": [out_name]},
-                             {"use_mkldnn": False}))
+                             {"use_mkldnn": False,
+                              "op_device": op_device}))
     renamed_vars[var_name] = [var_name]
 
 
@@ -425,23 +459,28 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
     for idx, op_desc in enumerate(op_descs):
+        op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+        )
+        op_device = ""
+        if op_desc.has_attr(op_device_attr_name):
+            op_device = op_desc.attr(op_device_attr_name)
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                     pending_sum_ops, idx)
+                    _accumulate_gradients_by_sum_op_(
+                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
                 else:
-                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                      pending_sum_ops, idx)
+                    _accumulate_gradients_by_add_ops_(
+                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
                 if "@GRAD" not in var_name:
                     continue
-                #if "@RENAME@" in var_name:
+                # if "@RENAME@" in var_name:
                 #    continue
                 if var_name == core.empty_var_name(
                 ) or var_name in op_desc.input_arg_names():
@@ -480,7 +519,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         ] + arg_names[arg_idx:]
 
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                               str(var_rename_count[var_name])
+                        str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
@@ -677,9 +716,6 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
     return not_need_op_descs_set
 
 
-from .proto import framework_pb2
-
-
 def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
     proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
@@ -739,20 +775,29 @@ def _append_backward_ops_with_checkpoints_(
             if name not in program_stat.var_op_deps:
                 break
             op_idx = program_stat.var_op_deps[name]["var_as_output_ops"]
+            # only count the last generate op
             for idx in op_idx:
                 max_op_idx = max(max_op_idx, idx)
         if max_op_idx > 0:
             segments.append([0, max_op_idx + 1])
     else:
         start_idx = 0
+        pre_segment_end_idx = -1
         while True:
+            _logger.debug("FW op range[0] - [{}]".format(len(ops)))
             if start_idx >= len(checkpoints_name) - 1:
                 break
+            # min_idx: checkpoint_1' s input op
+            # max_idx: checkpoint_2' s output op
             flag, min_idx, max_idx = program_stat.is_subgraph(
                 [checkpoints_name[start_idx]],
                 [checkpoints_name[start_idx + 1]])
             if flag:
+                # max_idx + 1 since the exact and used segment end idx is max_idx
+                min_idx = program_stat._update_segment_start(
+                    min_idx, pre_segment_end_idx)
                 segments.append([min_idx, max_idx + 1])
+
             start_idx += 1
 
     if segments != [] and segments[0][0] != 0:
@@ -760,12 +805,31 @@ def _append_backward_ops_with_checkpoints_(
     else:
         recompute_segments = segments
 
+    for i, (idx1, idx2) in enumerate(recompute_segments):
+        _logger.debug("recompute segment[{}]".format(i))
+        _logger.debug("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        ), ops[idx1].desc.input_arg_names()))
+        _logger.debug("segment end op: [{}]: [{}]".format(ops[
+            idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+        _logger.debug("recompute segment[{}]".format(i))
+        _logger.debug("segment start op: [{}]: [{}]".format(ops[idx1].desc.type(
+        ), ops[idx1].desc.input_arg_names()))
+        _logger.debug("segment end op: [{}]: [{}]".format(ops[
+            idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+
     # 2) go through all forward ops and induct all variables that will be hold in memory
     vars_should_be_hold = []
     # a. variables that are used across segments will be held in memory
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
+
+    cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
+    _logger.debug("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
+    len(cross_vars), cross_vars))
+    _logger.debug("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
+    len(cross_vars), cross_vars))
+
     # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
@@ -780,8 +844,6 @@ def _append_backward_ops_with_checkpoints_(
 
     max_calculated_op_position = len(ops)
     if recompute_segments == []:
-        # if there is no recompute segment, add backward ops like
-        # _append_backward_ops_ function
         gap_ops = ops[0:max_calculated_op_position]
         for op in reversed(gap_ops):
             if op.has_attr("sub_block"):
@@ -795,7 +857,6 @@ def _append_backward_ops_with_checkpoints_(
             grad_to_var.update(op_grad_to_var)
 
     for i, segment in enumerate(recompute_segments[::-1]):
-        # add grad op for ops not in any segments
         gap_ops = ops[segment[1]:max_calculated_op_position]
         max_calculated_op_position = segment[0]
         for op in reversed(gap_ops):
@@ -839,7 +900,7 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops of current recomputation ops
+        # 3.c. add backward ops for all ops in current segment 
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -1468,12 +1529,14 @@ def append_backward(loss,
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
+        is_recompute = False
         if checkpoints != None and \
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
+            is_recompute = True
             program_stat, checkpoint_names, \
-            vars_should_be_hold, \
-            recompute_segments = \
+                vars_should_be_hold, \
+                recompute_segments = \
                 _append_backward_ops_with_checkpoints_(
                     root_block,
                     op_path,
@@ -1565,7 +1628,10 @@ def append_backward(loss,
             attr_val.extend(g.op.attr(op_role_var_attr_name))
         g.op._set_attr(op_role_var_attr_name, attr_val)
 
-    return params_and_grads
+    if is_recompute:
+        return params_and_grads, checkpoint_names
+    else:
+        return params_and_grads
 
 
 def _as_list(x):
@@ -1710,7 +1776,7 @@ def _find_op_path_(block,
         # TODO(liym27): Consider special types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
             if relevant_op_flags[i] == False \
-                    and _some_in_set_(op.desc.output_arg_names(),output_names):
+                    and _some_in_set_(op.desc.output_arg_names(), output_names):
                 relevant_op_flags[i] = True
 
     op_path = [
@@ -1866,7 +1932,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
     :api_attr: Static Graph
-    
+
     Backpropagate the gradients of targets to inputs.
 
     Args:

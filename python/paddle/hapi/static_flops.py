@@ -127,6 +127,7 @@ def count_convNd(op):
     bias_ops = 1 if len(op.inputs("Bias")) > 0 else 0
     output_numel = np.product(op.outputs("Output")[0].shape()[1:])
     total_ops = output_numel * (filter_ops + bias_ops)
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -138,6 +139,7 @@ def count_leaky_relu(op):
 def count_bn(op):
     output_numel = np.product(op.outputs("Y")[0].shape()[1:])
     total_ops = 2 * output_numel
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -145,6 +147,7 @@ def count_linear(op):
     total_mul = op.inputs("Y")[0].shape()[0]
     numel = np.product(op.outputs("Out")[0].shape()[1:])
     total_ops = total_mul * numel
+    total_ops = abs(total_ops)
     return total_ops
 
 
@@ -157,25 +160,21 @@ def count_pool2d(op):
     kernel_ops = total_add + total_div
     num_elements = np.product(output_shape[1:])
     total_ops = kernel_ops * num_elements
+    total_ops = abs(total_ops)
     return total_ops
 
 
 def count_element_op(op):
     input_shape = op.inputs("X")[0].shape()
     total_ops = np.product(input_shape[1:])
+    total_ops = abs(total_ops)
     return total_ops
 
 
 def _graph_flops(graph, detail=False):
     assert isinstance(graph, GraphWrapper)
     flops = 0
-    try:
-        from prettytable import PrettyTable
-    except ImportError:
-        raise ImportError(
-            "paddle.flops() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
-        )
-    table = PrettyTable(["OP Type", 'Param name', "Flops"])
+    table = Table(["OP Type", 'Param name', "Flops"])
     for op in graph.ops():
         param_name = ''
         if op.type() in ['conv2d', 'depthwise_conv2d']:
@@ -200,10 +199,55 @@ def _graph_flops(graph, detail=False):
             table.add_row([op.type(), param_name, op_flops])
         op_flops = 0
     if detail:
-        print(table)
+        table.print_table()
     return flops
 
 
 def static_flops(program, print_detail=False):
     graph = GraphWrapper(program)
     return _graph_flops(graph, detail=print_detail)
+
+
+class Table(object):
+    def __init__(self, table_heads):
+        self.table_heads = table_heads
+        self.table_len = []
+        self.data = []
+        self.col_num = len(table_heads)
+        for head in table_heads:
+            self.table_len.append(len(head))
+
+    def add_row(self, row_str):
+        if not isinstance(row_str, list):
+            print('The row_str should be a list')
+        if len(row_str) != self.col_num:
+            print(
+                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.
+                format(len(row_str), self.col_num))
+        for i in range(self.col_num):
+            if len(str(row_str[i])) > self.table_len[i]:
+                self.table_len[i] = len(str(row_str[i]))
+        self.data.append(row_str)
+
+    def print_row(self, row):
+        string = ''
+        for i in range(self.col_num):
+            string += '|' + str(row[i]).center(self.table_len[i] + 2)
+        string += '|'
+        print(string)
+
+    def print_shelf(self):
+        string = ''
+        for length in self.table_len:
+            string += '+'
+            string += '-' * (length + 2)
+        string += '+'
+        print(string)
+
+    def print_table(self):
+        self.print_shelf()
+        self.print_row(self.table_heads)
+        self.print_shelf()
+        for data in self.data:
+            self.print_row(data)
+        self.print_shelf()

@@ -32,7 +32,6 @@ monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
-from .framework import ComplexVariable as ComplexTensor
 import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
@@ -43,8 +42,8 @@ import paddle.distributed.fleet
 import paddle.optimizer
 import paddle.metric
 import paddle.device
-import paddle.incubate.complex as complex
 import paddle.regularizer
+import paddle.incubate
 
 # TODO: define alias in tensor and framework directory
 
@@ -53,6 +52,8 @@ from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
+from .tensor.attribute import real  #DEFINE_ALIAS
+from .tensor.attribute import imag  #DEFINE_ALIAS
 from .tensor.creation import to_tensor  #DEFINE_ALIAS
 from .tensor.creation import diag  #DEFINE_ALIAS
 from .tensor.creation import eye  #DEFINE_ALIAS
@@ -112,19 +113,23 @@ from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
 from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
+from .tensor.manipulation import reshape_  #DEFINE_ALIAS
 from .tensor.manipulation import flip as reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
+from .tensor.manipulation import scatter_  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS
 from .tensor.manipulation import shard_index  #DEFINE_ALIAS
 from .tensor.manipulation import slice  #DEFINE_ALIAS
 from .tensor.manipulation import split  #DEFINE_ALIAS
 from .tensor.manipulation import squeeze  #DEFINE_ALIAS
+from .tensor.manipulation import squeeze_  #DEFINE_ALIAS
 from .tensor.manipulation import stack  #DEFINE_ALIAS
 from .tensor.manipulation import strided_slice  #DEFINE_ALIAS
 from .tensor.manipulation import transpose  #DEFINE_ALIAS
 from .tensor.manipulation import unique  #DEFINE_ALIAS
 from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
+from .tensor.manipulation import unsqueeze_  #DEFINE_ALIAS
 from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 from .tensor.manipulation import unbind  #DEFINE_ALIAS
@@ -136,6 +141,7 @@ from .tensor.math import asin  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import ceil  #DEFINE_ALIAS
 from .tensor.math import cos  #DEFINE_ALIAS
+from .tensor.math import tan  #DEFINE_ALIAS
 from .tensor.math import cosh  #DEFINE_ALIAS
 from .tensor.math import cumsum  #DEFINE_ALIAS
 # from .tensor.math import elementwise_add  #DEFINE_ALIAS
@@ -170,6 +176,7 @@ from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
+from .tensor.math import tanh_  #DEFINE_ALIAS
 from .tensor.math import add_n  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
 from .tensor.math import maximum  #DEFINE_ALIAS
@@ -189,7 +196,6 @@ from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
-# from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
@@ -199,6 +205,7 @@ from .tensor.math import isinf  #DEFINE_ALIAS
 from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
 from .tensor.math import broadcast_shape  #DEFINE_ALIAS
+from .tensor.math import conj  #DEFINE_ALIAS
 
 from .tensor.random import multinomial  #DEFINE_ALIAS
 from .tensor.random import standard_normal

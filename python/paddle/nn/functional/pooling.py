@@ -198,11 +198,14 @@ def avg_pool1d(x,
 
     Examples:
         .. code-block:: python
-          import paddle
-          import paddle.nn.functional as F
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
-          # out shape: [1, 3, 16]
+          
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
+            # out shape: [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
@@ -302,23 +305,28 @@ def avg_pool2d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+    
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
+    
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
+    
     Examples:
         .. code-block:: python
-          import paddle
-          import paddle.nn.functional as F
-          import numpy as np
-          # avg pool2d
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          out = F.avg_pool2d(x,
-                                kernel_size=2,
-                                stride=2, padding=0)
-          # out.shape [1, 3, 16, 16]
+          
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+            
+            # avg pool2d
+            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            out = F.avg_pool2d(x,
+                            kernel_size=2,
+                            stride=2, padding=0)
+            # out.shape [1, 3, 16, 16]
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
@@ -415,16 +423,21 @@ def avg_pool3d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+    
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
+    
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
+    
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
+          
           import paddle
+          import numpy as np
+
           x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
           # avg pool3d
           out = paddle.nn.functional.avg_pool3d(
@@ -537,6 +550,8 @@ def max_pool1d(x,
 
           import paddle
           import paddle.nn.functional as F
+          import numpy as np
+
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           pool_out = F.max_pool1d(data, kernel_size=2, stride=2, padding=0)
           # pool_out shape: [1, 3, 16]
@@ -650,31 +665,35 @@ def max_pool2d(x,
                              None by default.
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    Raises:
+   
+   Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
+    
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
-          import numpy as np
-          # max pool2d
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          out = F.max_pool2d(x,
-                                kernel_size=2,
-                                stride=2, padding=0)
-          # output.shape [1, 3, 16, 16]
-          # for return_mask=True
-          out, max_indices = F.max_pool2d(x,
-                                             kernel_size=2,
-                                             stride=2,
-                                             padding=0,
-                                             return_mask=True)
-          # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+            
+            # max pool2d
+            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            out = F.max_pool2d(x,
+                                  kernel_size=2,
+                                  stride=2, padding=0)
+            # output.shape [1, 3, 16, 16]
+            # for return_mask=True
+            out, max_indices = F.max_pool2d(x,
+                                               kernel_size=2,
+                                               stride=2,
+                                               padding=0,
+                                               return_mask=True)
+            # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool2d')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'max_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
@@ -778,33 +797,36 @@ def max_pool3d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+    
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
+    
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
+    
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
-          import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-          # max pool3d
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-          output = F.max_pool2d(x,
-                                kernel_size=2,
-                                stride=2, padding=0)
-          output.shape [1, 3, 16, 16, 16]
-          # for return_mask=True
-          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-          output, max_indices = paddle.nn.functional.max_pool3d(x,
-                                        kernel_size = 2,
-                                        stride = 2,
-                                        padding=0,
-                                        return_mask=True)
-          # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
+            # max pool3d
+            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+            output = F.max_pool2d(x,
+                                  kernel_size=2,
+                                  stride=2, padding=0)
+            output.shape [1, 3, 16, 16, 16]
+            # for return_mask=True
+            x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+            output, max_indices = paddle.nn.functional.max_pool3d(x,
+                                          kernel_size = 2,
+                                          stride = 2,
+                                          padding=0,
+                                          return_mask=True)
+            # output.shape [None, 3, 16, 16, 16], max_indices.shape [None, 3, 16, 16, 16],
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
@@ -905,13 +927,15 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               #
               import paddle
               import paddle.nn.functional as F
+              import numpy as np
 
               data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_average_pool1d(data, output_size=16)
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'adaptive_pool2d')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'adaptive_pool2d')
     _check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
@@ -993,7 +1017,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             # out.shape is [2, 3, 3, 3]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_avg_pool2d')
     check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
@@ -1187,6 +1211,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               #
               import paddle
               import paddle.nn.functional as F
+              import numpy as np
 
               data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
               pool_out = F.adaptive_max_pool1d(data, output_size=16)

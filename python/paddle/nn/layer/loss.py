@@ -207,6 +207,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
 
@@ -491,28 +492,28 @@ class L1Loss(fluid.dygraph.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
 
-            l1_loss = paddle.nn.loss.L1Loss()
+            l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
             print(output.numpy())
             # [0.35]
 
-            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+            l1_loss = paddle.nn.L1Loss(reduction='sum')
             output = l1_loss(input, label)
             print(output.numpy())
             # [1.4]
 
-            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+            l1_loss = paddle.nn.L1Loss(reduction='none')
             output = l1_loss(input, label)
-            print(output.numpy())
+            print(output)
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
     """
@@ -596,12 +597,11 @@ class BCELoss(fluid.dygraph.Layer):
             input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
-            paddle.disable_static()
             input = paddle.to_tensor(input_data)
             label = paddle.to_tensor(label_data)
-            bce_loss = paddle.nn.loss.BCELoss()
+            bce_loss = paddle.nn.BCELoss()
             output = bce_loss(input, label)
-            print(output.numpy())  # [0.65537095]
+            print(output)  # [0.65537095]
 
     """
 
@@ -690,25 +690,19 @@ class NLLLoss(fluid.dygraph.Layer):
         .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                nll_loss = paddle.nn.layer.NLLLoss()
+                nll_loss = paddle.nn.loss.NLLLoss()
                 log_softmax = paddle.nn.LogSoftmax(axis=1)
 
-                input_np = np.array([[0.88103855, 0.9908683 , 0.6226845 ],
-                                 [0.53331435, 0.07999352, 0.8549948 ],
-                                 [0.25879037, 0.39530203, 0.698465  ],
-                                 [0.73427284, 0.63575995, 0.18827209],
-                                 [0.05689114, 0.0862954 , 0.6325046 ]]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
-
-                place = paddle.CPUPlace()
-                paddle.disable_static(place)
-                input = paddle.to_tensor(input_np)
+                input = paddle.to_tensor([[0.88103855, 0.9908683 , 0.6226845 ],
+                                          [0.53331435, 0.07999352, 0.8549948 ],
+                                          [0.25879037, 0.39530203, 0.698465  ],
+                                          [0.73427284, 0.63575995, 0.18827209],
+                                          [0.05689114, 0.0862954 , 0.6325046 ]], "float32")
                 log_out = log_softmax(input)
-                label = paddle.to_tensor(label_np)
+                label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 result = nll_loss(log_out, label)
-                print(result.numpy()) # [1.0720209]
+                print(result) # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True, [1.07202101])
 
     """
 
@@ -856,8 +850,8 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
             import paddle
 
-            input = paddle.to_tensor([[1, 2], [3, 4]]), dtype="float32")
-            other = paddle.to_tensor([[2, 1], [2, 4]]), dtype="float32")
+            input = paddle.to_tensor([[1, 2], [3, 4]], dtype="float32")
+            other = paddle.to_tensor([[2, 1], [2, 4]], dtype="float32")
             label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)

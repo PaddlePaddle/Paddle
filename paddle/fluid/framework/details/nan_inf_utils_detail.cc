@@ -14,15 +14,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-
-#include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/selected_rows.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -326,12 +318,39 @@ void CheckVarHasNanOrInf(const std::string& op_type,
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
   if (platform::is_gpu_place(tensor->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
                                               place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
+        var_name));
+#endif
+    return;
+  } else if (platform::is_xpu_place(tensor->place())) {
+#ifdef PADDLE_WITH_XPU
+    if (tensor->type() != proto::VarType::FP32) {
+      return;
+    }
+
+    float* cpu_data = new float[tensor->numel()];
+    xpu_memcpy(cpu_data, tensor->data<float>(), tensor->numel() * sizeof(float),
+               XPU_DEVICE_TO_HOST);
+    bool flag = false;
+    for (int i = 0; i < tensor->numel(); i++) {
+      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
+        flag = true;
+        break;
+      }
+    }
+    delete[] cpu_data;
+    PADDLE_ENFORCE_NE(
+        flag, true,
+        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                                op_type, var_name));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
         var_name));
 #endif
     return;

@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 unset https_proxy http_proxy
 export FLAGS_rpc_disable_reuse_port=1
 
@@ -50,14 +65,30 @@ do
     cat -n ${log}
 done
 
+# check CUDA or ROCM env
+GPU_SYS_INFO_CMD=nvidia-smi
+
+which ${GPU_SYS_INFO_CMD}
+exit_code=$?
+if [[ $exit_code -ne 0 ]]; then
+    GPU_SYS_INFO_CMD=rocm-smi
+fi
+
+which ${GPU_SYS_INFO_CMD}
+exit_code=$?
+if [[ $exit_code -ne 0 ]]; then
+    echo "nvidia-smi or rocm-smi faild with ${exit_code}"
+    exit ${exit_code}
+fi
+
 #display system context
 for i in {1..2}; do 
     sleep 3
     ps -aux
     netstat -anlp
 
-    if hash "nvidia-smi" > /dev/null; then
-        nvidia-smi
+    if hash "${GPU_SYS_INFO_CMD}" > /dev/null; then
+        ${GPU_SYS_INFO_CMD}
     fi
 done
 

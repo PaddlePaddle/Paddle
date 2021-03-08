@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -32,18 +33,6 @@ using mkldnn::reorder;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
-
-inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                         const int groups) {
-  if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
 
 inline MKLDNNMemoryFormat GetWeightsFormat(const MKLDNNMemoryFormat format,
                                            const int groups,
@@ -95,7 +84,7 @@ class ConvMKLDNNHandlerT
                      const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, mkldnn::convolution_forward>(
             dev_ctx, mkldnn_engine, cpu_place,
-            platform::CreateKey(framework::vectorize(input->dims()),
+            platform::CreateKey(dev_ctx, framework::vectorize(input->dims()),
                                 unique_name)) {
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
@@ -198,7 +187,7 @@ class ConvMKLDNNHandlerT
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
       auto weights_tz = paddle::framework::vectorize(filter->dims());
-      GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       const auto dst_tz = paddle::framework::vectorize(output->dims());
 
@@ -282,6 +271,10 @@ class ConvMKLDNNHandlerT
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "hard_swish") {
+      constexpr float scale = 1.0f;
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -322,7 +315,7 @@ class ConvMKLDNNHandlerT
     } else {
       const K* filter_data = filter->data<K>();
       auto weights_tz = framework::vectorize(filter->dims());
-      GetWeightsTz(weights_tz, groups);
+      platform::GetGroupConvWeightsTz(weights_tz, groups);
 
       auto user_src_md = platform::MKLDNNMemDesc(
           weights_tz, platform::MKLDNNGetDataType<K>(),
@@ -471,7 +464,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
     }
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     conv_p->execute(astream, args);
     astream.wait();
 
@@ -521,8 +514,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
 
-    std::string key = platform::CreateKey(
-        src_tz, src_dt, ctx.InputName("Input") + ctx.InputName("Filter"));
+    std::string key =
+        platform::CreateKey(dev_ctx, src_tz, src_dt,
+                            ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     bool need_s8_to_u8 = false;
@@ -537,26 +531,22 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // This is workaround for hacky implementation
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
-    std::string key_tid = "";
-    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
-        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
-      key_tid = "-t:" + platform::ThreadIDasStr();
-    }
+    auto key_tid = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
-    auto prim_key = key + key_tid + "@conv_p";
-    auto dst_key = key + key_tid + "@dst_mem_p";
-    auto src_key = key + key_tid + "@src_mem_p";
-    auto weights_key = key + key_tid + "@weights_mem_p";
-    auto bias_key = key + key_tid + "@bias_mem_p";
-    auto user_src_key = key + key_tid + "@user_src_mem_p";
-    auto user_residual_key = key + key_tid + "@user_residual_data_mem_p";
-    auto src_reorder_key = key + key_tid + "@src_mem_preorder_p";
-    auto residual_reorder_key = key + key_tid + "@residual_data_mem_preorder_p";
+    auto prim_key = key_tid + "@conv_p";
+    auto dst_key = key_tid + "@dst_mem_p";
+    auto src_key = key_tid + "@src_mem_p";
+    auto weights_key = key_tid + "@weights_mem_p";
+    auto bias_key = key_tid + "@bias_mem_p";
+    auto user_src_key = key_tid + "@user_src_mem_p";
+    auto user_residual_key = key_tid + "@user_residual_data_mem_p";
+    auto src_reorder_key = key_tid + "@src_mem_preorder_p";
+    auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
 
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     if (conv_p == nullptr || !is_test) {
       float fuse_alpha = ctx.Attr<float>("fuse_alpha");
@@ -643,7 +633,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto weights_tz = paddle::framework::vectorize(filter->dims());
       int g = std::max(groups, 1);
 
-      GetWeightsTz(weights_tz, g);
+      platform::GetGroupConvWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
       std::transform(dilations.begin(), dilations.end(), dilations.begin(),
@@ -808,9 +798,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         user_src_memory_p = std::static_pointer_cast<mkldnn::memory>(
             dev_ctx.GetBlob(user_src_key));
         user_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
-        src_memory_reorder_p->execute(astream, *user_src_memory_p,
-                                      *src_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          src_memory_reorder_p->execute(astream, *user_src_memory_p,
+                                        *src_memory_p);
+          astream.wait();
+        }
       } else if (src_memory_p) {
         src_memory_p->set_data_handle(to_void_cast<T>(input_data));
       }
@@ -840,9 +834,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (residual_reorder_p) {
         auto user_residual_data_p = std::static_pointer_cast<mkldnn::memory>(
             dev_ctx.GetBlob(user_residual_key));
-        residual_reorder_p->execute(astream, *user_residual_data_p,
-                                    *dst_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          residual_reorder_p->execute(astream, *user_residual_data_p,
+                                      *dst_memory_p);
+          astream.wait();
+        }
       }
 
       auto bias_memory_p =
@@ -954,7 +952,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_tz = paddle::framework::vectorize(filter->dims());
 
     int g = std::max(groups, 1);
-    GetWeightsTz(weights_tz, g);
+    platform::GetGroupConvWeightsTz(weights_tz, g);
     auto dst_tz = paddle::framework::vectorize(output_grad->dims());
 
     auto src_format = input->format();
@@ -964,10 +962,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::CreateKey(
-        src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@fwd_pd";
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     std::vector<primitive> pipeline;
 
     // Create user memory descriptors
@@ -982,8 +981,12 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-
-    auto chosen_memory_format = MKLDNNMemoryFormat::any;
+    // TODO: NHWC is preferred starting from oneDNN 2.1 . Any may crash
+    auto chosen_memory_format =
+        platform::MayIUse(platform::cpu_isa_t::avx512_core) &&
+                is_conv3d == false
+            ? MKLDNNMemoryFormat::nhwc
+            : MKLDNNMemoryFormat::any;
     weights_format = MKLDNNMemoryFormat::any;
 
     auto src_md = platform::MKLDNNMemDesc(
@@ -1039,7 +1042,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         user_weights_md, to_void_cast<T>(filter_data));
     auto user_diff_dst_memory_p = handler.AcquireDiffDstMemory(
         user_diff_dst_md, to_void_cast<T>(output_grad_data));
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (filter_grad) {
       auto src_memory_p = handler.AcquireSrcMemoryFromWeightsPrimitive(
           user_src_memory_p, pipeline);
@@ -1082,8 +1085,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                    : mkldnn::memory::format_tag::goihw;
-        const std::string key =
-            platform::CreateKey(weights_tz, filter_fmt, out_format, in_type);
+        std::string key = platform::CreateKey(dev_ctx, weights_tz, filter_fmt,
+                                              out_format, in_type);
+        key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
         platform::ReorderMKLDNNHandler handler(weights_tz, filter_grad->type(),
                                                in_type, dev_ctx, mkldnn_engine,
@@ -1094,9 +1098,13 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
 
-        reorder_p->execute(astream, *diff_weights_memory_p,
-                           *reorder_dst_memory_p);
-        astream.wait();
+        {
+          platform::RecordEvent record_reorder("int_reorder",
+                                               platform::EventRole::kUniqueOp);
+          reorder_p->execute(astream, *diff_weights_memory_p,
+                             *reorder_dst_memory_p);
+          astream.wait();
+        }
 
         // So here we have a data in goihw , which can be interpreted as OIHW
         // (OIDHW for conv3d)

@@ -15,8 +15,9 @@
 from __future__ import print_function
 
 import numpy as np
-import paddle.fluid as fluid
 
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 
@@ -156,9 +157,55 @@ class Test_Detach(unittest.TestCase):
         except Exception as e:
             # Here is to check
             assert type(e) == AssertionError
-            assert str(
-                e
-            ) == "'detach' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            assert str(e) == (
+                "'detach' should be called by imperative Varible "
+                "in imperative mode, please run it in dygraph mode. You can "
+                "turn off paddle.enable_static() if you are in static mode, "
+                "or turn off ProgramTranslator if you are using "
+                "@paddle.jit.to_static. If you have to run ProgramTranslator, "
+                "please use other API to replace 'detach'")
+
+
+class TestInplace(unittest.TestCase):
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            self.assertEqual(var.inplace_version, 0)
+            detach_var_1 = var.detach()
+            self.assertEqual(detach_var_1.inplace_version, 0)
+
+            var[0] = 1.1
+            self.assertEqual(var.inplace_version, 1)
+
+            detach_var_2 = var.detach()
+            self.assertEqual(detach_var_2.inplace_version, 1)
+
+            var[0] = 3
+            self.assertEqual(detach_var_1.inplace_version, 2)
+            self.assertEqual(detach_var_2.inplace_version, 2)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            detach_var_b = var_b.detach()
+            detach_var_b[1:2] = 3.3  # var_b is modified inplace
+
+            var_d = var_b**2
+
+            loss = paddle.nn.functional.relu(var_c + var_d)
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
 
 if __name__ == '__main__':

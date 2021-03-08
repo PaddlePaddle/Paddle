@@ -40,6 +40,17 @@ int SkipLayerNormPluginDynamic::initialize() {
   return 0;
 }
 
+void SkipLayerNormPluginDynamic::terminate() {
+  if (bias_gpu_) {
+    cudaFree(bias_gpu_);
+    bias_gpu_ = nullptr;
+  }
+  if (scale_gpu_) {
+    cudaFree(scale_gpu_);
+    scale_gpu_ = nullptr;
+  }
+}
+
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {

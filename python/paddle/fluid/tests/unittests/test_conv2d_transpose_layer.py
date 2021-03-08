@@ -219,6 +219,7 @@ def add_cases(suite):
     suite.addTest(
         Conv2DTransposeTestCase(
             methodName='runTest', padding="valid"))
+    suite.addTest(Conv2DTransposeTestCase(methodName='runTest', padding="same"))
     suite.addTest(
         Conv2DTransposeTestCase(
             methodName='runTest', filter_size=1, padding=(2, 3)))

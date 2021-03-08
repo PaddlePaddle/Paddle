@@ -112,7 +112,9 @@ static void CallPythonFunc(py::object *callable,
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The %d-th output must be LoDTensor.", i));
+          "py::cast to LoDTensor error. The %d-th output expection is "
+          "LoDTensor",
+          i));
     }
   }
 }

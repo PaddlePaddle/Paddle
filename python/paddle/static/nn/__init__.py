@@ -38,6 +38,7 @@ __all__ = [
     'spectral_norm',
     'switch_case',
     'while_loop',
+    'sparse_embedding',
 ]
 
 from .common import fc  #DEFINE_ALIAS
@@ -67,3 +68,4 @@ from ...fluid.layers import switch_case  #DEFINE_ALIAS
 from ...fluid.layers import while_loop  #DEFINE_ALIAS
 
 from ...fluid.input import embedding  #DEFINE_ALIAS
+from ...fluid.contrib.layers import sparse_embedding  #DEFINE_ALIAS

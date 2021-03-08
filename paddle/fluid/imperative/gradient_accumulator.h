@@ -45,6 +45,7 @@ class GradientAccumulator {
       inner_var_ = std::make_shared<VariableWrapper>(var->Name());
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
+      inner_var_->SetForwardDataType(var->ForwardDataType());
       inner_var_->InnerSetOverridedStopGradient(
           var->InnerOverridedStopGradient());
       VLOG(6) << " Create inner grad var for (" << var->Name()

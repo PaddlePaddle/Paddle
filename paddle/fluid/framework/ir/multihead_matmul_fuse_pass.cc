@@ -15,12 +15,15 @@
 #include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"
 
 #include <string>
-#include <unordered_set>
-#include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/errors.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -716,9 +719,9 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_fuse_pass_v2)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("softmax", 0));

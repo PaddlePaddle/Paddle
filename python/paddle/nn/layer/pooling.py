@@ -90,6 +90,7 @@ class AvgPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
@@ -117,6 +118,10 @@ class AvgPool1D(layers.Layer):
         out = F.avg_pool1d(x, self.kernel_size, self.stride, self.padding,
                            self.exclusive, self.ceil_mode, self.name)
         return out
+
+    def extra_repr(self):
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
 
 
 class AvgPool2D(layers.Layer):
@@ -185,7 +190,7 @@ class AvgPool2D(layers.Layer):
           input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
           AvgPool2D = nn.AvgPool2D(kernel_size=2,
                                 stride=2, padding=0)
-          output = AvgPoo2d(input)
+          output = AvgPool2D(input)
           # output.shape [1, 3, 16, 16]
 
     """
@@ -220,6 +225,10 @@ class AvgPool2D(layers.Layer):
             divisor_override=self.divisor,
             data_format=self.data_format,
             name=self.name)
+
+    def extra_repr(self):
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
 
 
 class AvgPool3D(layers.Layer):
@@ -312,6 +321,10 @@ class AvgPool3D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
 
+    def extra_repr(self):
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
+
 
 class MaxPool1D(layers.Layer):
     """
@@ -367,6 +380,7 @@ class MaxPool1D(layers.Layer):
 
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
@@ -398,6 +412,10 @@ class MaxPool1D(layers.Layer):
         out = F.max_pool1d(input, self.kernel_size, self.stride, self.padding,
                            self.return_mask, self.ceil_mode, self.name)
         return out
+
+    def extra_repr(self):
+        return 'kernel_size={kernel_size}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
 
 
 class MaxPool2D(layers.Layer):
@@ -502,6 +520,10 @@ class MaxPool2D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
 
+    def extra_repr(self):
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
+
 
 class MaxPool3D(layers.Layer):
     """
@@ -593,6 +615,10 @@ class MaxPool3D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
 
+    def extra_repr(self):
+        return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
+            **self.__dict__)
+
 
 class AdaptiveAvgPool1D(layers.Layer):
     r"""
@@ -646,6 +672,7 @@ class AdaptiveAvgPool1D(layers.Layer):
           #
           import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
@@ -660,6 +687,9 @@ class AdaptiveAvgPool1D(layers.Layer):
 
     def forward(self, input):
         return F.adaptive_avg_pool1d(input, self.output_size, self.name)
+
+    def extra_repr(self):
+        return 'output_size={}'.format(self.output_size)
 
 
 class AdaptiveAvgPool2D(layers.Layer):
@@ -742,6 +772,9 @@ class AdaptiveAvgPool2D(layers.Layer):
             output_size=self._output_size,
             data_format=self._data_format,
             name=self._name)
+
+    def extra_repr(self):
+        return 'output_size={}'.format(self._output_size)
 
 
 class AdaptiveAvgPool3D(layers.Layer):
@@ -831,6 +864,9 @@ class AdaptiveAvgPool3D(layers.Layer):
             data_format=self._data_format,
             name=self._name)
 
+    def extra_repr(self):
+        return 'output_size={}'.format(self._output_size)
+
 
 class AdaptiveMaxPool1D(layers.Layer):
     """
@@ -884,8 +920,9 @@ class AdaptiveMaxPool1D(layers.Layer):
           #         lend = ceil((i + 1) * L / m)
           #         output[:, :, i] = max(input[:, :, lstart: lend])
           #
-                    import paddle
+          import paddle
           import paddle.nn as nn
+          import numpy as np
 
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
           AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
@@ -908,6 +945,10 @@ class AdaptiveMaxPool1D(layers.Layer):
     def forward(self, input):
         return F.adaptive_max_pool1d(input, self.output_size, self.return_mask,
                                      self.name)
+
+    def extra_repr(self):
+        return 'output_size={}, return_mask={}'.format(self.output_size,
+                                                       self.return_mask)
 
 
 class AdaptiveMaxPool2D(layers.Layer):
@@ -980,6 +1021,10 @@ class AdaptiveMaxPool2D(layers.Layer):
             output_size=self._output_size,
             return_mask=self._return_mask,
             name=self._name)
+
+    def extra_repr(self):
+        return 'output_size={}, return_mask={}'.format(self._output_size,
+                                                       self._return_mask)
 
 
 class AdaptiveMaxPool3D(layers.Layer):
@@ -1063,3 +1108,7 @@ class AdaptiveMaxPool3D(layers.Layer):
             output_size=self._output_size,
             return_mask=self._return_mask,
             name=self._name)
+
+    def extra_repr(self):
+        return 'output_size={}, return_mask={}'.format(self._output_size,
+                                                       self._return_mask)

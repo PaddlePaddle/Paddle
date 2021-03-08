@@ -25,6 +25,7 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable,
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+from .manipulation import _print_warning_in_static_mode
 
 # TODO: define math functions
 # yapf: disable
@@ -33,6 +34,7 @@ from ..fluid.layers import acos    #DEFINE_ALIAS
 from ..fluid.layers import asin    #DEFINE_ALIAS
 from ..fluid.layers import ceil    #DEFINE_ALIAS
 from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import tan    #DEFINE_ALIAS
 from ..fluid.layers import sinh    #DEFINE_ALIAS
 from ..fluid.layers import cosh    #DEFINE_ALIAS
 # from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
@@ -46,8 +48,6 @@ from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_all    #DEFINE_ALIAS
-from ..fluid.layers import reduce_any    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_max    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_min    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
@@ -69,6 +69,8 @@ from ..fluid import layers
 __all__ = [
         'abs',
         'acos',
+        'all',
+        'any',
         'asin',
         'atan',
         'ceil',
@@ -98,6 +100,7 @@ __all__ = [
         'stanh',
         'sum',
         'tanh',
+        'tanh_',
         'add_n',
         'max',
         'maximum',
@@ -117,7 +120,6 @@ __all__ = [
         'inverse',
         'log1p',
         'erf',
-        'addcmul',
         'addmm',
         'clip',
         'trace',
@@ -125,7 +127,8 @@ __all__ = [
         'isfinite',
         'isinf',
         'isnan',
-        'broadcast_shape'
+        'broadcast_shape',
+        'conj'
 ]
 # yapf: enable.
 
@@ -155,11 +158,11 @@ def pow(x, y, name=None):
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
 
@@ -167,16 +170,24 @@ def pow(x, y, name=None):
 
             import paddle
 
-            # example 1: y is a float
-            x = paddle.to_tensor([1, 2, 3])
-            y = 2
-            res = paddle.pow(x, y)
-            print(res) # [1 4 9]
-            
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            # example 1: y is a float or int
+            res = paddle.pow(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+            res = paddle.pow(x, 2.5)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1.         , 5.65685415 , 15.58845711])
+
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            y = paddle.to_tensor([2], dtype='float32')
             res = paddle.pow(x, y)
-            print(res) # [1 4 9]
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
 
     """
     # in dynamic graph mode
@@ -283,7 +294,7 @@ def add(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is: 
+    Substract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -302,7 +313,7 @@ def subtract(x, y, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
 
@@ -504,24 +515,20 @@ def multiply(x, y, name=None):
     act = None
     axis = -1
 
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
     if x.dtype != y.dtype:
         raise TypeError(
             'Input tensors must be same type, but received type of x: %s, type of y: %s '
             % (x.dtype, y.dtype))
 
-    if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor)):
-            raise TypeError(
-                    'Input x must tensor type, but received type of x: %s'
-                    % (x.dtype))
-
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 def maximum(x, y, name=None):
     """
-    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is: 
+    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
     .. math::
         out = max(x, y)
@@ -580,7 +587,7 @@ def maximum(x, y, name=None):
 
 def minimum(x, y, name=None):
     """
-    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is: 
+    Compare two tensors and returns a new tensor containing the element-wise minima. The equation is:
 
     .. math::
         out = min(x, y)
@@ -1178,7 +1185,7 @@ def max(x, axis=None, keepdim=False, name=None):
             print(result1)
             #[0.9]
             result2 = paddle.max(x, axis=0)
-            print(result2) 
+            print(result2)
             #[0.2 0.3 0.6 0.9]
             result3 = paddle.max(x, axis=-1)
             print(result3)
@@ -1272,7 +1279,7 @@ def min(x, axis=None, keepdim=False, name=None):
             print(result2)
             #[0.1 0.2 0.5 0.7]
             result3 = paddle.min(x, axis=-1)
-            print(result3) 
+            print(result3)
             #[0.2 0.1]
             result4 = paddle.min(x, axis=1, keepdim=True)
             print(result4)
@@ -1284,7 +1291,7 @@ def min(x, axis=None, keepdim=False, name=None):
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
             result5 = paddle.min(y, axis=[1, 2])
-            print(result5) 
+            print(result5)
             #[1. 5.]
             result6 = paddle.min(y, axis=[0, 1])
             print(result6)
@@ -1455,50 +1462,6 @@ def log10(x, name=None):
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log10", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def addcmul(input, tensor1, tensor2, value=1.0, name=None):
-    """
-
-    Calculate the element-wise multiplication of tensor1 and tensor2,
-    then multiply the result by value, and add it to input. The shape of input,
-    tensor1, tensor2 should be broadcastable.
-    The equation is:
-    ..  math::
-
-        out = input + value * tensor1 * tensor2
-    Args:
-        input(Tensor): The input to be added. A Tensor with type float32, float64, int32, int64.
-        tensor1(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        tensor2(Tensor): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
-        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        out(Tensor): The output result. A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          input = paddle.ones([2,2])
-          tensor1 = paddle.ones([2,2])
-          tensor2 = paddle.ones([2,2])
-          out = paddle.tensor.math.addcmul(input, tensor1, tensor2, value=0.5)
-          print(out)
-          # [[1.5 1.5]
-          # [1.5 1.5]]
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
-    if convert_dtype(input.dtype) in ['float32', 'float64']:
-        check_type(value, 'value', float, 'addcmul')
-    if convert_dtype(input.dtype) in ['int32', 'int64']:
-        check_type(value, 'value', int, 'addcmul')
-
-    out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
 
 
@@ -2008,6 +1971,17 @@ def tanh(x, name=None):
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
 
+def tanh_(x, name=None):
+    r"""
+    Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_tanh`.
+    """
+    if in_dygraph_mode():
+        return core.ops.tanh_(x)
+
+    _print_warning_in_static_mode("tanh")
+    return tanh(x, name)
+
 def increment(x, value=1.0, name=None):
     """
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
@@ -2074,16 +2048,14 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
@@ -2098,8 +2070,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[False], [True]]
+            out4 = paddle.all(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
     """
@@ -2170,16 +2142,14 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
@@ -2194,8 +2164,8 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.any(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
     """
@@ -2262,3 +2232,44 @@ def broadcast_shape(x_shape, y_shape):
     """
 
     return core.broadcast_shape(x_shape, y_shape)
+
+def conj(x, name=None):
+    r"""
+    This function computes the conjugate of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): The input tensor which hold the complex numbers. 
+            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        out (Tensor): The conjugate of input. The shape and data type is the same with input.
+            If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1+1j), (2+2j), (3+3j)],
+          #        [(4+4j), (5+5j), (6+6j)]])
+
+          conj_data=paddle.conj(data)
+          #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
+          #       [[(1-1j), (2-2j), (3-3j)],
+          #        [(4-4j), (5-5j), (6-6j)]])
+
+    """
+    if in_dygraph_mode():
+        return core.ops.conj(x)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'conj')
+
+    helper = LayerHelper('conj', **locals())
+    out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+
+    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+    return out

@@ -123,6 +123,7 @@ def batch_norm(x,
                momentum=0.9,
                epsilon=1e-05,
                data_format="NCHW",
+               use_global_stats=None,
                name=None):
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
@@ -139,6 +140,7 @@ def batch_norm(x,
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Defalut "NCHW".
+        use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -164,11 +166,8 @@ def batch_norm(x,
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
           print(batch_norm_out)
     """
-
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
-    # we use not training means use_global_status, more details see nn._BatchNormBase
-    use_global_stats = not training
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
@@ -181,15 +180,21 @@ def batch_norm(x,
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
+    if use_global_stats == None:
+        use_global_stats = not training
+        trainable_statistics = False
+    else:
+        trainable_statistics = not use_global_stats
+
     if in_dygraph_mode():
         # for dygraph need tuple
         attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
                  data_format, "use_mkldnn", False, "fuse_with_relu", False,
-                 "use_global_stats", use_global_stats)
+                 "use_global_stats", use_global_stats, "trainable_statistics",
+                 trainable_statistics)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
-
         return dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=None)
 
@@ -204,6 +209,7 @@ def batch_norm(x,
         "use_mkldnn": False,
         "fuse_with_relu": False,
         "use_global_stats": use_global_stats,
+        "trainable_statistics": trainable_statistics,
     }
 
     inputs = {
@@ -222,13 +228,16 @@ def batch_norm(x,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
 
     outputs = {
         "Y": [batch_norm_out],
         "MeanOut": [running_mean],
         "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance]
+        "SavedVariance": [saved_variance],
+        "ReserveSpace": [reserve_space]
     }
 
     helper.append_op(
@@ -271,9 +280,7 @@ def layer_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
-          layer_norm_out = layer_norm(x)
-
+          layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
     input_shape = list(x.shape)
@@ -366,7 +373,7 @@ def instance_norm(x,
           np.random.seed(123)
           x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          instance_norm_out = paddle.nn.functional.instancenorm(x)
+          instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
 
@@ -477,17 +484,26 @@ def local_response_norm(x,
 
     channel_last = True if data_format[-1] == "C" else False
 
+    from functools import reduce
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:
         pad4d_shape = [0, 0, size // 2, (size - 1) // 2]
         pool2d_shape = (size, 1)
-        reshape_shape = [sizes[0], 1, sizes[1], sizes[2], -1]
+        reshape_shape = [
+            sizes[0], 1, sizes[1], sizes[2],
+            int(sum_sizes / (sizes[1] * sizes[2]))
+        ]
         pad5d_shape = [0, 0, 0, 0, size // 2, (size - 1) // 2]
         pool3d_shape = (size, 1, 1)
     else:
         pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
         pool2d_shape = (1, size)
-        reshape_shape = [sizes[0], 1, sizes[1], -1, sizes[-1]]
+        reshape_shape = [
+            sizes[0], 1, sizes[1], int(sum_sizes / (sizes[1] * sizes[-1])),
+            sizes[-1]
+        ]
         pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
         pool3d_shape = (1, 1, size)
 

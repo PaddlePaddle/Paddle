@@ -386,3 +386,27 @@ class SingleProcessMultiThread(GradAllReduce):
     def _transpile_startup_program(self):
         block = self.startup_program.global_block()
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+
+
+class MultiThread(GradAllReduce):
+    '''
+    '''
+
+    def __init__(self, nrings=1):
+        GradAllReduce.__init__(self, nrings)
+        self.mode = "box"
+
+    def _transpile_startup_program(self):
+        if len(self.endpoints) > 1:
+            print("begin to _transpile_startup_program for multi-node")
+            print("current_endpoint: ", self.current_endpoint)
+            print("total endpoints: ", self.endpoints)
+            print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
+            for ring_id in range(self.nrings):
+                self._init_communicator(
+                    self.startup_program, self.current_endpoint, self.endpoints,
+                    self.rank, ring_id, self.wait_port, True)
+        else:
+            print("begin to _transpile_startup_program for single-node")
+            block = self.startup_program.global_block()
+            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})

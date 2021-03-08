@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 
+#include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
+#include "paddle/fluid/imperative/op_base.h"
 
 namespace paddle {
 namespace imperative {
@@ -34,6 +37,8 @@ class VariableWrapper {
   friend class VarBase;
 
   explicit VariableWrapper(const std::string& name) : name_(name) {}
+
+  ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
 
   const framework::Variable& Var() const { return var_; }
 
@@ -79,7 +84,7 @@ class VariableWrapper {
   }
 
   bool IsLeafGrad() const {
-    if (!HasGradVar() && !HasGradNode() && !OverridedStopGradient()) {
+    if (!HasGradNode() && !OverridedStopGradient()) {
       return true;
     }
     return false;
@@ -120,10 +125,6 @@ class VariableWrapper {
 
   framework::proto::VarType::Type Type() const { return type_; }
 
-  void SetDataType(framework::proto::VarType::Type data_type) {
-    data_type_ = data_type;
-  }
-
   std::shared_ptr<VariableWrapper> GetGradVar() const {
     return grad_var_.lock();
   }
@@ -137,6 +138,10 @@ class VariableWrapper {
   bool HasGradNode() const { return !grad_node_.expired(); }
 
   bool HasGradVar() const { return !grad_var_.expired(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    data_type_ = data_type;
+  }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -156,6 +161,14 @@ class VariableWrapper {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
       return data_type_;
     }
+  }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    fwd_data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return fwd_data_type_;
   }
 
   const platform::Place Place() const {
@@ -227,13 +240,29 @@ class VariableWrapper {
     inplace_version_snapshot_ = new_version;
   }
 
+  bool hasCacheKey(const paddle::framework::OpKernelType& key) {
+    return var_cache.find(key) != var_cache.end();
+  }
+
+  std::shared_ptr<VariableWrapper> getCacheValue(
+      const paddle::framework::OpKernelType& key) {
+    return var_cache[key];
+  }
+
+  void setCacheValue(const paddle::framework::OpKernelType& key,
+                     std::shared_ptr<VariableWrapper> val) {
+    var_cache[key] = val;
+    return;
+  }
+
  private:
   void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
-      PADDLE_ENFORCE_EQ(shared_var, nullptr,
-                        platform::errors::PermissionDenied(
-                            "Cannot set gradient var wrapper twice"));
+      PADDLE_ENFORCE_EQ(
+          shared_var, nullptr,
+          platform::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
   }
@@ -246,9 +275,16 @@ class VariableWrapper {
 
     auto shared_node = grad_node_.lock();
     if (shared_node != grad_node) {
-      PADDLE_ENFORCE_EQ(
-          shared_node, nullptr,
-          platform::errors::PermissionDenied("Cannot set gradient op twice"));
+      if (grad_node->InplaceGradNameMap().empty()) {
+        // grad_node doesn't have Inplace message
+        PADDLE_ENFORCE_EQ(
+            shared_node, nullptr,
+            platform::errors::PermissionDenied(
+                "Cannot set gradient op twice unless using Inplace Strategy."));
+      } else if (shared_node) {
+        VLOG(3) << "The gradient op of Var (" << Name()
+                << ") has been set twice. Because Inplace Strategy is used.";
+      }
       grad_node_ = grad_node;
     }
   }
@@ -292,6 +328,10 @@ class VariableWrapper {
   framework::Variable var_;
   std::string name_;
 
+  // Used for cache the dtype promotioned variableWrapper in real and complex
+  // compute of Paddle Quantum
+  std::map<paddle::framework::OpKernelType, std::shared_ptr<VariableWrapper>>
+      var_cache;
   // add this property for users may set stop_gradient themselves and this
   // should override the frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
@@ -303,6 +343,13 @@ class VariableWrapper {
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
+
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Used for grad var to get the data type of its corresponding forward var,
+  // if inconsistent, the data type of grad var needs to be casted to be
+  // consistent with forward var
+  framework::proto::VarType::Type fwd_data_type_{
+      static_cast<framework::proto::VarType::Type>(-1)};
 
   std::weak_ptr<VariableWrapper> grad_var_;
   std::weak_ptr<GradOpNode> grad_node_;

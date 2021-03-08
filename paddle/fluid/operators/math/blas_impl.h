@@ -296,6 +296,13 @@ struct CBlas<double> {
 template <>
 struct CBlas<platform::complex64> {
   template <typename... ARGS>
+  static void AXPY(int n, const paddle::platform::complex64 alpha,
+                   const paddle::platform::complex64 *X, const int incX,
+                   paddle::platform::complex64 *Y, const int incY) {
+    platform::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
+  }
+
+  template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     platform::dynload::cblas_ccopy(args...);
   }
@@ -415,6 +422,13 @@ struct CBlas<platform::complex64> {
 
 template <>
 struct CBlas<platform::complex128> {
+  template <typename... ARGS>
+  static void AXPY(int n, const paddle::platform::complex128 alpha,
+                   const paddle::platform::complex128 *X, const int incX,
+                   paddle::platform::complex128 *Y, const int incY) {
+    platform::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
+  }
+
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     platform::dynload::cblas_zcopy(args...);
@@ -599,11 +613,6 @@ struct CBlas<platform::complex64> {
   }
 
   template <typename... ARGS>
-  static void VADD(ARGS... args) {
-    vcAdd(args...);
-  }
-
-  template <typename... ARGS>
   static void AXPY(int n, const paddle::platform::complex64 alpha,
                    const paddle::platform::complex64 *X, const int incX,
                    paddle::platform::complex64 *Y, const int incY) {
@@ -639,11 +648,6 @@ struct CBlas<platform::complex128> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_zcopy(args...);
-  }
-
-  template <typename... ARGS>
-  static void VADD(ARGS... args) {
-    vzAdd(args...);
   }
 
   template <typename... ARGS>
@@ -1042,7 +1046,8 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: BatchedGEMMWithHead
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
@@ -1112,7 +1117,7 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
     }
   }
 }
-#endif
+#endif  // @} End Group Blas MKLML: BatchedGEMMWithHead
 
 template <typename DeviceContext>
 template <typename T>
@@ -1188,7 +1193,9 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
   }
 }
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+// @{ Group Blas MKLML: MatMulWithHead
 /*
  * Multiple two matrixes with multiple heads
  *
@@ -1315,7 +1322,7 @@ void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
         dim_a.stride_, dim_b.stride_, head_number, mat_b_split_vertical);
   }
 }
-#endif
+#endif  // @} End Group Blas MKLML: MatMulWithHead
 
 template <typename DeviceContext>
 template <typename T>

@@ -75,6 +75,45 @@ static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
   }
 }
 
+template <>
+__global__ void SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex64>(
+    const paddle::platform::complex64* x, const paddle::platform::complex64* y,
+    const paddle::platform::complex64* out,
+    const paddle::platform::complex64* dout, int64_t size,
+    paddle::platform::complex64* dx, paddle::platform::complex64* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex64 o = dout[col];
+    paddle::platform::complex64 y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex64 out_div_y_conj((out[col] / y[col]).real,
+                                               -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void SimpleElemwiseDivGradCUDAKernel<paddle::platform::complex128>(
+    const paddle::platform::complex128* x,
+    const paddle::platform::complex128* y,
+    const paddle::platform::complex128* out,
+    const paddle::platform::complex128* dout, int64_t size,
+    paddle::platform::complex128* dx, paddle::platform::complex128* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    paddle::platform::complex128 o = dout[col];
+    paddle::platform::complex128 y_conj(y[col].real, -y[col].imag);
+    paddle::platform::complex128 out_div_y_conj((out[col] / y[col]).real,
+                                                -(out[col] / y[col]).imag);
+    dx[col] = o / y_conj;
+    dy[col] = -o * out_div_y_conj;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type

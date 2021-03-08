@@ -14,16 +14,13 @@
 
 # TODO: define the common classes to build a neural network
 import paddle
-from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
-from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
+from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
     'Embedding',
     'Linear',
     'Upsample',
@@ -39,6 +36,13 @@ __all__ = [
     'Bilinear',
     'AlphaDropout',
 ]
+
+
+def _npairs(x, n):
+    if isinstance(x, (paddle.Tensor, list)):
+        return x
+    x = [x] * (n * 2)
+    return x
 
 
 class Linear(layers.Layer):
@@ -123,7 +127,6 @@ class Linear(layers.Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.name = name
         self.weight = self.create_parameter(
             shape=[in_features, out_features],
             attr=self._weight_attr,
@@ -140,6 +143,11 @@ class Linear(layers.Layer):
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'in_features={}, out_features={}, dtype={}{}'.format(
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
 
 
 class Upsample(layers.Layer):
@@ -336,6 +344,7 @@ class Upsample(layers.Layer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -379,6 +388,16 @@ class Upsample(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
+            main_str, self.mode, self.align_corners, self.align_mode,
+            self.data_format, name_str)
 
 
 class UpsamplingNearest2D(layers.Layer):
@@ -424,7 +443,7 @@ class UpsamplingNearest2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(2,3,6,10).astype("float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -455,6 +474,15 @@ class UpsamplingNearest2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class UpsamplingBilinear2D(layers.Layer):
@@ -501,7 +529,7 @@ class UpsamplingBilinear2D(layers.Layer):
             import paddle
             import paddle.nn as nn
 
-            input_data = paddle.rand(2,3,6,10).astype("float32")
+            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
             upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -532,6 +560,15 @@ class UpsamplingBilinear2D(layers.Layer):
             name=self.name)
 
         return out
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            main_str = 'scale_factor={}'.format(self.scale_factor)
+        else:
+            main_str = 'size={}'.format(self.size)
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return '{}, data_format={}{}'.format(main_str, self.data_format,
+                                             name_str)
 
 
 class Bilinear(layers.Layer):
@@ -622,6 +659,12 @@ class Bilinear(layers.Layer):
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
+            self._in1_features, self._in2_features, self._out_features,
+            self._dtype, name_str)
+
 
 class Dropout(layers.Layer):
     """
@@ -691,6 +734,11 @@ class Dropout(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, axis={}, mode={}{}'.format(self.p, self.axis, self.mode,
+                                                 name_str)
+
 
 class Dropout2D(layers.Layer):
     """
@@ -746,6 +794,11 @@ class Dropout2D(layers.Layer):
             data_format=self.data_format,
             name=self.name)
         return out
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
 
 
 class Dropout3D(layers.Layer):
@@ -803,6 +856,11 @@ class Dropout3D(layers.Layer):
             name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
+                                               name_str)
+
 
 class AlphaDropout(layers.Layer):
     """
@@ -852,6 +910,10 @@ class AlphaDropout(layers.Layer):
             input, p=self.p, training=self.training, name=self.name)
         return out
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'p={}{}'.format(self.p, name_str)
+
 
 class Pad1D(layers.Layer):
     """
@@ -860,7 +922,8 @@ class Pad1D(layers.Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -913,7 +976,7 @@ class Pad1D(layers.Layer):
                  data_format="NCL",
                  name=None):
         super(Pad1D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -927,6 +990,11 @@ class Pad1D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad2D(layers.Layer):
     """
@@ -936,8 +1004,9 @@ class Pad2D(layers.Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -991,7 +1060,7 @@ class Pad2D(layers.Layer):
                  data_format="NCHW",
                  name=None):
         super(Pad2D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -1005,6 +1074,11 @@ class Pad2D(layers.Layer):
                      data_format=self._data_format,
                      name=self._name)
 
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
+
 
 class Pad3D(layers.Layer):
     """
@@ -1014,7 +1088,8 @@ class Pad3D(layers.Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -1069,7 +1144,7 @@ class Pad3D(layers.Layer):
                  data_format="NCDHW",
                  name=None):
         super(Pad3D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -1082,6 +1157,11 @@ class Pad3D(layers.Layer):
                      value=self._value,
                      data_format=self._data_format,
                      name=self._name)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
+            self._pad, self._mode, self._value, self._data_format, name_str)
 
 
 class CosineSimilarity(layers.Layer):
@@ -1136,6 +1216,9 @@ class CosineSimilarity(layers.Layer):
 
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
+
+    def extra_repr(self):
+        return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
 
 
 class Embedding(layers.Layer):
@@ -1216,7 +1299,7 @@ class Embedding(layers.Layer):
 
             x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
             y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
-            paddle.disable_static(paddle.CPUPlace())
+
             x = paddle.to_tensor(x_data, stop_gradient=False)
             y = paddle.to_tensor(y_data, stop_gradient=False)
 
@@ -1280,6 +1363,9 @@ class Embedding(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
+        if in_dygraph_mode() and padding_idx != -1:
+            self.weight[padding_idx] = 0.0
+
     def forward(self, x):
         return F.embedding(
             x,
@@ -1287,3 +1373,12 @@ class Embedding(layers.Layer):
             padding_idx=self._padding_idx,
             sparse=self._sparse,
             name=self._name)
+
+    def extra_repr(self):
+        main_str = '{_num_embeddings}, {_embedding_dim}'
+        if self._padding_idx is not None:
+            main_str += ', padding_idx={_padding_idx}'
+        main_str += ', sparse={_sparse}'
+        if self._name is not None:
+            main_str += ', name={_name}'
+        return main_str.format(**self.__dict__)
