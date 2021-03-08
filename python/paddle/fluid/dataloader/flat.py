@@ -47,10 +47,12 @@ def _flatten_batch(batch):
                 elif isinstance(field, (str, bytes, numbers.Number, np.number)):
                     structure.append(field)
                 elif isinstance(field, Sequence):
-                    field_struct, field_idx = _flatten(field, flat_batch, [], field_idx)
+                    field_struct, field_idx = _flatten(field, flat_batch, [],
+                                                       field_idx)
                     structure.append(field_struct)
                 elif isinstance(field, Mapping):
-                    field_struct, field_idx = _flatten(field, flat_batch, {}, field_idx)
+                    field_struct, field_idx = _flatten(field, flat_batch, {},
+                                                       field_idx)
                     structure.append(field_struct)
                 else:
                     structure.append(field)
@@ -67,10 +69,12 @@ def _flatten_batch(batch):
                 elif isinstance(field, (str, bytes, numbers.Number, np.number)):
                     structure[k] = field
                 elif isinstance(field, Sequence):
-                    field_struct, field_idx = _flatten(field, flat_batch, [], field_idx)
+                    field_struct, field_idx = _flatten(field, flat_batch, [],
+                                                       field_idx)
                     structure[k] = field_struct
                 elif isinstance(field, Mapping):
-                    field_struct, field_idx = _flatten(field, flat_batch, {}, field_idx)
+                    field_struct, field_idx = _flatten(field, flat_batch, {},
+                                                       field_idx)
                     structure[k] = field_struct
                 else:
                     structure[k] = field

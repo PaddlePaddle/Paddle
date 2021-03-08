@@ -46,7 +46,8 @@ class BlockingQueue {
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
-      VLOG(3) << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      VLOG(3)
+          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
       return false;
     }
     if (closed_) {
@@ -70,7 +71,8 @@ class BlockingQueue {
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
     if (killed_) {
-      VLOG(3) << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      VLOG(3)
+          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
       return false;
     }
     if (closed_) {
@@ -94,7 +96,8 @@ class BlockingQueue {
     receive_cv_.wait(lock,
                      [&] { return !queue_.empty() || closed_ || killed_; });
     if (killed_) {
-      VLOG(3) << "WARNING:: Receiving an element to a killed reader::BlokcingQueue";
+      VLOG(3)
+          << "WARNING:: Receiving an element to a killed reader::BlokcingQueue";
       return false;
     }
     if (!queue_.empty()) {

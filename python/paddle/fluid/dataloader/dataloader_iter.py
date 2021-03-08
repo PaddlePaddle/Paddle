@@ -44,6 +44,7 @@ from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
 
+
 class _DataLoaderIterBase(object):
     """
     Iterator implement of DataLoader, will load and feed mini-batch
@@ -63,7 +64,7 @@ class _DataLoaderIterBase(object):
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
         self._use_shared_memory = loader.use_shared_memory
-        self._timeout = loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL 
+        self._timeout = loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
         self._dataset_kind = loader.dataset_kind
         self._pin_memory = loader.pin_memory
@@ -192,8 +193,13 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
-                    data =  [_restore_batch(d, s) for d, s in zip(data, self._structure_infos[:len(self._places)])]
-                    self._structure_infos = self._structure_infos[len(self._places):]
+                    data = [
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
+                    ]
+                    self._structure_infos = self._structure_infos[len(
+                        self._places):]
                     # static graph organized data on multi-device with list, if
                     # place number is 1, there is only 1 device, extra the data
                     # from list for devices to be compatible with dygraph mode
@@ -538,8 +544,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
-                    data =  [_restore_batch(d, s) for d, s in zip(data, self._structure_infos[:len(self._places)])]
-                    self._structure_infos = self._structure_infos[len(self._places):]
+                    data = [
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
+                    ]
+                    self._structure_infos = self._structure_infos[len(
+                        self._places):]
                     # static graph organized data on multi-device with list, if
                     # place number is 1, there is only 1 device, extra the data
                     # from list for devices to be compatible with dygraph mode

@@ -281,10 +281,13 @@ class ComplextDataset(Dataset):
         return self.sample_num
 
     def __getitem__(self, idx):
-        return (3.1, 'abc',
-                paddle.to_tensor(np.random.random([IMAGE_SIZE]).astype('float32'), place=paddle.CPUPlace()),
-                [1, np.random.random([2]).astype('float32')],
-                {'a': 2.0, 'b': np.random.random([2]).astype('float32')})
+        return (3.1, 'abc', paddle.to_tensor(
+            np.random.random([IMAGE_SIZE]).astype('float32'),
+            place=paddle.CPUPlace()),
+                [1, np.random.random([2]).astype('float32')], {
+                    'a': 2.0,
+                    'b': np.random.random([2]).astype('float32')
+                })
 
 
 class TestComplextDataset(unittest.TestCase):
