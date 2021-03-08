@@ -95,17 +95,17 @@ class Flowers(Dataset):
 
         flag = MODE_FLAG_MAP[mode.lower()]
 
-        if data_file is None:
+        if not data_file:
             assert download, "data_file is not set and downloading automatically is disabled"
             data_file = _check_exists_and_download(
                 data_file, DATA_URL, DATA_MD5, 'flowers', download)
 
-        if label_file is None:
+        if not label_file:
             assert download, "label_file is not set and downloading automatically is disabled"
             label_file = _check_exists_and_download(
                 label_file, LABEL_URL, LABEL_MD5, 'flowers', download)
 
-        if setid_file is None:
+        if not setid_file:
             assert download, "setid_file is not set and downloading automatically is disabled"
             setid_file = _check_exists_and_download(
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download)
