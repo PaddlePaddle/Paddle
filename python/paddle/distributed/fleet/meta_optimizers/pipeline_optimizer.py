@@ -145,8 +145,10 @@ class PipelineOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(PipelineOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        self.micro_batch_size = user_defined_strategy.pipeline_configs[
+            'micro_batch_size']
         self.num_microbatches = user_defined_strategy.pipeline_configs[
-            'micro_batch']
+            'accumulate_steps']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -162,7 +164,10 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _enable_strategy(self, dist_strategy, context):
         dist_strategy.pipeline = True
-        dist_strategy.pipeline_configs = {"micro_batch": 1, }
+        dist_strategy.pipeline_configs = {
+            "micro_batch_size": 1,
+            "accumulate_steps": 1,
+        }
 
     def minimize_impl(self,
                       loss,
@@ -185,6 +190,8 @@ class PipelineOptimizer(MetaOptimizerBase):
 
         loss.block.program._pipeline_opt = dict()
         loss.block.program._pipeline_opt['local_rank'] = self.rank
+        loss.block.program._pipeline_opt[
+            'micro_batch_size'] = self.micro_batch_size
         optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         assert prog_list
