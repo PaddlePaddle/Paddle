@@ -33,10 +33,19 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid.tests.unittests.testsuite import (
+    create_op,
+    set_input,
+    append_input_output,
+    append_loss_ops, )
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list, no_grad_set_white_list
+from paddle.fluid.tests.unittests.white_list import (
+    op_accuracy_white_list,
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    op_threshold_white_list,
+    no_grad_set_white_list, )
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -1452,6 +1461,16 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
+
+        # (aosewski) If numeric_grads (user_defined) are of float32 dtype and analytic are
+        # of uint16 dtype then uint16 represents bfloat16 values. Therefore for meaningful
+        # comparison convert them to fp32 data type. (numpy still doesn't support bf16.)
+        if (np.all([g.dtype == np.float32 for g in numeric_grads]) and
+                np.all([g.dtype == np.uint16 for g in analytic_grads])):
+            analytic_grads = [
+                convert_uint16_to_float(g) for g in analytic_grads
+            ]
+
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
