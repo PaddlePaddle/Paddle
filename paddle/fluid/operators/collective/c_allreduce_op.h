@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -115,40 +117,50 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
+
+// we need to pre-allocate 512 Bytes before the data
+// and 512 Bytes after the data, so the hccl allreduce
+// can work. This is a must acooding to huawei peer.
+#define PRE_MALLOC_SIZE_BYTES 512
+
     auto in = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-
     auto place = ctx.GetPlace();
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
-
     int64_t numel = in->numel();
-    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
-    // void* sendbuff =
-    // reinterpret_cast<void*>(const_cast<T*>(in->mutable_data<T>(place)));
 
-    out->Resize(in->dims());
-    // void* recvbuff = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
-    void* recvbuff =
-        reinterpret_cast<void*>(const_cast<T*>(out->mutable_data<T>(place)));
-    // void* recvbuff = sendbuff;
+    int64_t pre_tmp_size = PRE_MALLOC_SIZE_BYTES / sizeof(T);
+    int64_t tmp_numel = numel + pre_tmp_size * 2;
+
+    paddle::framework::LoDTensor tmp_in, tmp_out;
+    tmp_in.Resize({tmp_numel});
+    tmp_out.Resize({tmp_numel});
+    tmp_in.mutable_data<T>(place);   // allocate
+    tmp_out.mutable_data<T>(place);  // allocate
+
+    void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
+    void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
+
     std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
-    // s他的：
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    group = "hccl_world_group";  // std::string(HCOM_GROUP_PREFIX) +
-                                 // std::to_string(ring_id);
-
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
+
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+
+    memory::Copy(npu_place, sendbuff, npu_place,
+                 reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
+                 numel * sizeof(T), stream);
 
     hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
     switch (red_type) {
@@ -178,19 +190,17 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             << "hccl_red_type: " << hccl_red_type << ", group is: " << group
             << ", tag is " << tag;
 
-    printf("sendbuff: %p\n", sendbuff);
-    printf("recvbuff: %p\n", recvbuff);
-
-    // printf("sendbuff: %p, %d\n", sendbuff, ((int*)sendbuff)[0]);
-    // printf("recvbuff: %p, %d\n", recvbuff, ((int*)recvbuff)[0]);
-
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
         tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type,
         group.c_str(), (void*)stream));
 
+    memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()), npu_place,
+                 recvbuff, numel * sizeof(T), stream);
+
+    out->Resize(in->dims());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with NPU."));
 #endif
   }
 };
@@ -244,8 +254,9 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::ncclAllReduce(sendbuff, recvbuff, (u64)numel, dtype,
+                                         nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -261,7 +272,6 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
 #if defined(PADDLE_WITH_ASCEND_CL)
-#pragma message("hccl CAllReduceOpMaker need tag attr")
     AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
         .SetDefault("tag");
 #endif
