@@ -1,9 +1,13 @@
 #! python
 import unittest
+import os
+import tempfile
+import shutil
 from sampcd_processor import find_all
 from sampcd_processor import check_indent
 from sampcd_processor import sampcd_extract_and_run
 from sampcd_processor import single_defcom_extract
+from sampcd_processor import srccoms_extract
 
 class Test_find_all(unittest.TestCase):
     # def test_srcstr_is_None(self):
@@ -27,6 +31,9 @@ class Test_check_indent(unittest.TestCase):
     #         check_indent("  \thello paddle")
 
 class Test_sampcd_extract_and_run(unittest.TestCase):
+    def setUp(self):
+        if not os.path.exists('samplecode_temp/'):
+            os.mkdir('samplecode_temp/')
     def test_run_a_defs_samplecode(self):
         comments = """
         Examples:
@@ -109,9 +116,38 @@ class Test_single_defcom_extract(unittest.TestCase):
         self.assertEqual('', comm)
 
 class Test_srccoms_extract(unittest.TestCase):
-    def test_with_empty_wlist():
+    def setUp(self):
+        self.tmpDir = tempfile.mkdtemp()
+    def tearDown(self):
+        shutil.rmtree(self.tmpDir)
+    def test_from_ops_py(self):
         pass
-    def test_with_wlist():
+    def test_from_not_ops_py(self):
+        filecont = r'''
+        __all__ = [
+        'one_plus_one'
+        ]
+
+        def one_plus_one():
+            """
+            placeholder
+
+            Examples:
+            .. code-block:: python
+                print(1+1)
+            """
+            return 1+1
+
+        '''
+        pyfilename = os.path.join(self.tmpDir, 'opo.py')
+        with open(pyfilename, 'w') as pyfile:
+            pyfile.write(filecont)
+        with open(pyfilename, 'r') as pyfile:
+            self.assertTrue(srccoms_extract(pyfile, []))
+        pass
+    def test_with_empty_wlist(self):
+        pass
+    def test_with_wlist(self):
         pass
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py
