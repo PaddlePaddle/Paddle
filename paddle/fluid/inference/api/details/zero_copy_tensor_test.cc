@@ -57,7 +57,7 @@ struct RandomGenerator {
   std::uniform_real_distribution<double> dist_;
 };
 
-template <typename T, template <typename> typename G>
+template <typename T, template <typename> class G>
 bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
                             float threshold = 10e-5) {
   std::vector<T> data_in(length);
