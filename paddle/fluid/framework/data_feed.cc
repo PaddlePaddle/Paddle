@@ -519,7 +519,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (num == 0) {
@@ -530,14 +530,14 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                "characters.";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
         VLOG(0) << "error: the number of ids greater than INT_MAX";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       }
@@ -549,7 +549,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                        "representable values for float";
             VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -558,7 +558,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -574,7 +574,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           if (errno == ERANGE) {
             VLOG(0) << "error: the value is out of the range of "
                        "representable values for uint64_t";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -585,7 +585,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j

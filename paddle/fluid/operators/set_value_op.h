@@ -174,14 +174,13 @@ class SetValueKernel : public framework::OpKernel<T> {
     auto steps_tensor_list =
         ctx.MultiInput<framework::Tensor>("StepsTensorList");
 
-    auto dtype =
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");
     auto ends = ctx.Attr<std::vector<int64_t>>("ends");
     auto steps = ctx.Attr<std::vector<int64_t>>("steps");
     auto shape = ctx.Attr<std::vector<int64_t>>("shape");
 
+    auto dtype = in->type();
     if (!starts_tensor_list.empty()) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }

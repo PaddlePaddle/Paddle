@@ -55,6 +55,8 @@ class HashTable {
   void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
               Sgd sgd, gpuStream_t stream);
 
+  int size() { return container_->size(); }
+
  private:
   TableContainer<KeyType, ValType>* container_;
   int BLOCK_SIZE_{256};
