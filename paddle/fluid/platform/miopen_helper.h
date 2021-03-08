@@ -43,23 +43,6 @@ typedef enum {
   MIOPEN_TENSOR_NHWC = 1,
 } miopenTensorFormat_t;
 
-// MIOPEN do not support indirect function call defined in cudnnWorkspaceHandle
-struct miopenWorkspace {
-  explicit miopenWorkspace(size_t size) : size(size), data(NULL) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&data, size));
-  }
-  miopenWorkspace(const miopenWorkspace&) = delete;
-  miopenWorkspace(miopenWorkspace&&) = default;
-  miopenWorkspace& operator=(miopenWorkspace&&) = default;
-  ~miopenWorkspace() {
-    if (data) {
-      hipFree(data);
-    }
-  }
-  size_t size;
-  void* data;
-};
-
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {
     case miopenStatusSuccess:

@@ -47,7 +47,11 @@ TEST(Device, CUDADeviceContext) {
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
 #endif
     ASSERT_NE(nullptr, cudnn_handle);
+#ifdef PADDLE_WITH_HIP
+    rocblas_handle cublas_handle = device_context->cublas_handle();
+#else
     cublasHandle_t cublas_handle = device_context->cublas_handle();
+#endif
     ASSERT_NE(nullptr, cublas_handle);
     delete device_context;
   }

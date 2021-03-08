@@ -16,7 +16,13 @@ limitations under the License. */
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
-#include "cub/cub.cuh"
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 

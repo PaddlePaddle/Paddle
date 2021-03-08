@@ -62,7 +62,12 @@ struct ForRange<CUDADeviceContext> {
 
   template <typename Function>
   inline void operator()(Function func) const {
+#ifdef __HIPCC__
+    // HIP will throw core dump when threads > 256
+    constexpr int num_threads = 256;
+#else
     constexpr int num_threads = 1024;
+#endif
     size_t block_size = limit_ <= num_threads ? limit_ : num_threads;
     size_t grid_size = (limit_ + num_threads - 1) / num_threads;
 
