@@ -210,6 +210,7 @@ class PRChecker(object):
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
+            print(f)
             if f not in file_ut_map:
                 continue
                 if f.endswith('.md'):
