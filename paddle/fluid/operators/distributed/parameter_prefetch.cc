@@ -281,7 +281,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
         }
       }
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       std::vector<float> ids_value_vec(ids_size * vec_dim_1);
       for (auto idx = 0; idx < static_cast<int>(ids_size); idx++) {
         const auto &id = ids[idx];

@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <ctime>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 namespace paddle {

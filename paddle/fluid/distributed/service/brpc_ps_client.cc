@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
-#include "Eigen/Dense"
 
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/string_helper.h"
 
 const static int max_port = 65535;
 
@@ -62,9 +57,6 @@ namespace framework {
 class Scope;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -353,8 +345,9 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
   return fut;
 }
 
-std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id) {
-  return send_cmd(table_id, PS_SHRINK_TABLE, {std::string("1")});
+std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id,
+                                          const std::string threshold) {
+  return send_cmd(table_id, PS_SHRINK_TABLE, {threshold});
 }
 
 std::future<int32_t> BrpcPsClient::load(const std::string &epoch,

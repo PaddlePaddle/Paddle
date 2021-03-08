@@ -17,14 +17,25 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-
-#include <memory>
-#include <vector>
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/server.h"
 
+namespace brpc {
+class Controller;
+}  // namespace brpc
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+
 namespace paddle {
 namespace distributed {
+
+class PsRequestMessage;
+class PsResponseMessage;
+class Table;
 
 class BrpcPsServer : public PSServer {
  public:

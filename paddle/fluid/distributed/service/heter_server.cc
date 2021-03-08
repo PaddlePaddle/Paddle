@@ -13,12 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_server.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
@@ -95,7 +89,7 @@ int32_t HeterService::stop_heter_worker(const PsRequestMessage& request,
   stop_cpu_worker_set_.insert(client_id);
   if (stop_cpu_worker_set_.size() == fan_in_) {
     is_exit_ = true;
-    VLOG(0) << "Stop heter Service done.";
+    VLOG(3) << "Stop heter Service done.";
   }
   return 0;
 }

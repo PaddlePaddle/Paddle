@@ -30,8 +30,13 @@ endif()
 cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder)
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-          analysis_config zero_copy_tensor trainer_desc_proto)
+if(WITH_CRYPTO)
+    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
+              analysis_config zero_copy_tensor trainer_desc_proto paddle_crypto)
+else()
+    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
+              analysis_config zero_copy_tensor trainer_desc_proto)
+endif()
 
 if(WIN32)
     target_link_libraries(paddle_inference_api gflags)
@@ -50,7 +55,7 @@ cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
 if(WITH_TESTING)
   if (NOT APPLE AND NOT WIN32)
-    inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_fluid_shared
+    inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_inference_shared
       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
   elseif(WIN32)
@@ -62,7 +67,7 @@ if(WITH_TESTING)
 endif()
 
 if (NOT APPLE AND NOT WIN32)
-  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS paddle_fluid_shared
+  cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS paddle_inference_shared
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}

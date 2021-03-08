@@ -15,20 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/brpc_utils.h"
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <netinet/in.h>
-#include <limits>
-#include <memory>
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
-class Scope;
 class Variable;
+class LoDTensor;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

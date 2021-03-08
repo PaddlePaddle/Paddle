@@ -20,21 +20,28 @@ set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
 set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
 
-# the recent version of eigen will cause compilation error on windows
-if(WIN32)
-    set(EIGEN_REPOSITORY ${GIT_URL}/eigenteam/eigen-git-mirror.git)
-    set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
-endif()
-
 cache_third_party(extern_eigen3
     REPOSITORY    ${EIGEN_REPOSITORY}
     TAG           ${EIGEN_TAG}
     DIR           EIGEN_SOURCE_DIR)
 
 if(WIN32)
+    add_definitions(-DEIGEN_STRONG_INLINE=inline)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h native_src)
     file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/CUDA/Half.h native_dst)
-    set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
+    # For Windows
+    # which will cause a compilation error in Tensor:74:
+    # "can not open file 'unistd.h'"
+    # so use following patch to solve compilation error On Windows.
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Tensor native_src2)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/Tensor native_dst2)
+    # For VS2015
+    # which will cause a compilation error in TensorBlock.h:1028:
+    # "syntax error"
+    # so use following patch to solve compilation error On Windows.
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorBlock.h native_src3)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_dst3)
+    set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y && copy ${native_src2} ${native_dst2} /Y && copy ${native_src3} ${native_dst3} /Y)
 elseif(LINUX)
     # For gxx=4.8, __GXX_ABI_VERSION is less than 1004
     # which will cause a compilation error in Geometry_SSE.h:38:

@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include <utility>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 
-#if CUDA_VERSION >= 10000
+#ifdef PADDLE_WITH_HIP
+static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
+                               void *user_data)
+#elif CUDA_VERSION >= 10000
 static void CUDART_CB StreamCallbackFunc(void *user_data)
 #else
 static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
@@ -31,7 +33,7 @@ static void CUDART_CB StreamCallbackFunc(cudaStream_t stream,
   (*func)();
 }
 
-StreamCallbackManager::StreamCallbackManager(const cudaStream_t stream)
+StreamCallbackManager::StreamCallbackManager(const gpuStream_t stream)
     : stream_(stream), thread_pool_(1) {}
 
 void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
@@ -43,7 +45,10 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
       (*callback_func)();
     });
   });
-#if CUDA_VERSION >= 10000
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
+#elif CUDA_VERSION >= 10000
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaLaunchHostFunc(stream_, StreamCallbackFunc, func));
 #else
@@ -53,7 +58,11 @@ void StreamCallbackManager::AddCallback(std::function<void()> callback) const {
 }
 
 void StreamCallbackManager::Wait() const {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+#endif
   {
     std::lock_guard<std::mutex> lock(mtx_);
     if (last_future_.valid()) {

@@ -32,20 +32,31 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    const std::string data_format = context.Attr<std::string>("data_format");
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+
+    PADDLE_ENFORCE_EQ(data_format == "NHWC" || data_format == "NDHWC", false,
+                      platform::errors::InvalidArgument(
+                          ("XPU do support data_format is NCHW in conv op.")));
+
+    framework::DDim in_data_dims =
+        framework::slice_ddim(input->dims(), 2, input->dims().size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_c = static_cast<int>(input->dims()[1]);
     const int img_h = static_cast<int>(input->dims()[2]);
     const int img_w = static_cast<int>(input->dims()[3]);
     const int f = static_cast<int>(filter.dims()[0]);
-    const int win_h = static_cast<int>(filter.dims()[2]);
-    const int win_w = static_cast<int>(filter.dims()[3]);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> k_size;
-    k_size.push_back(win_h);
-    k_size.push_back(win_w);
     int r = xpu::conv2d<float, float, float, int16_t>(
         dev_ctx.x_context(), input->data<float>(), filter.data<float>(),
-        output->data<float>(), batch_size, img_c, img_h, img_w, f, k_size,
+        output->data<float>(), batch_size, img_c, img_h, img_w, f, ksize,
         strides, paddings, dilations, groups, nullptr, nullptr, nullptr, true);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
@@ -53,6 +64,7 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
                                    r, XPUAPIErrorMsg[r]));
   }
 };
+
 template <typename DeviceContext, typename T>
 class GemmConvGradXPUKernel : public framework::OpKernel<T> {
  public:
@@ -73,13 +85,28 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    const std::string data_format = context.Attr<std::string>("data_format");
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+
+    PADDLE_ENFORCE_EQ(
+        data_format == "NHWC" || data_format == "NDHWC", false,
+        platform::errors::InvalidArgument(
+            ("XPU do support data_format is NCHW in conv grad op.")));
+
+    framework::DDim in_data_dims =
+        framework::slice_ddim(input->dims(), 2, input->dims().size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter.dims(), 2, filter.dims().size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int img_c = static_cast<int>(input->dims()[1]);
     const int img_h = static_cast<int>(input->dims()[2]);
     const int img_w = static_cast<int>(input->dims()[3]);
     const int f = static_cast<int>(filter.dims()[0]);
-    const int win_h = static_cast<int>(filter.dims()[2]);
-    const int win_w = static_cast<int>(filter.dims()[3]);
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
     }
@@ -87,14 +114,11 @@ class GemmConvGradXPUKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
     }
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> k_size;
-    k_size.push_back(win_h);
-    k_size.push_back(win_w);
     int r = xpu::conv2d_grad<float, float, float, int16_t>(
         dev_ctx.x_context(), input->data<T>(), filter.data<T>(),
         output_grad->data<T>(), input_grad ? input_grad->data<T>() : nullptr,
         filter_grad ? filter_grad->data<T>() : nullptr, batch_size, img_c,
-        img_h, img_w, f, k_size, strides, paddings, dilations, groups, nullptr,
+        img_h, img_w, f, ksize, strides, paddings, dilations, groups, nullptr,
         nullptr, nullptr, nullptr, nullptr, true);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
