@@ -11,7 +11,6 @@ limitations under the License. */
 #include <algorithm>
 #include <functional>
 #include <string>
-#include "cub/cub.cuh"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/nll_loss_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -361,7 +360,11 @@ class NLLLossCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->mutable_data<T>(ctx.GetPlace());
     auto label_data = labels->data<int64_t>();
     auto weight_data = weight ? weight->data<T>() : nullptr;
+#ifdef PADDLE_WITH_HIP
+    hipMemset(total_weight_data, 0, sizeof(T));
+#else
     cudaMemset(total_weight_data, 0, sizeof(T));
+#endif
     auto x_dims = x->dims();
     auto batch_size = x_dims[0];
     auto n_classes = x_dims[1];
@@ -429,7 +432,11 @@ class NLLLossGradCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->data<T>();
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
     auto reduction = ctx.Attr<std::string>("reduction");
+#ifdef PADDLE_WITH_HIP
+    hipMemset(dx_data, 0, dx->numel() * sizeof(T));
+#else
     cudaMemset(dx_data, 0, dx->numel() * sizeof(T));
+#endif
 
     int64_t size_average = (int64_t)(reduction == "mean");
     auto x_dims = x->dims();

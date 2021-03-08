@@ -547,6 +547,7 @@ class PSGPUWorker : public HogwildWorker {
   virtual ~PSGPUWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
@@ -556,7 +557,6 @@ class PSGPUWorker : public HogwildWorker {
   virtual void ProduceTasks() override;
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
-  virtual void TrainFilesWithProfiler() {}
   void ResetStat();
 
  protected:
@@ -618,6 +618,7 @@ class PSGPUWorker : public HogwildWorker {
   gpuStream_t copy_stream_;
   int batch_cnt_{0};
   std::atomic<int> done_cnt_{0};
+  platform::DeviceContext* dev_ctx_ = nullptr;
 
   double total_time_;
   double read_time_;

@@ -102,7 +102,7 @@ class ErrorMessage {
   do {                                                                  \
     auto __message__ = ::paddle::ErrorMessage(__VA_ARGS__).to_string(); \
     throw ::paddle::PD_Exception(__message__, __FILE__, __LINE__,       \
-                                 "An error occured.");                  \
+                                 "An error occurred.");                 \
   } while (0)
 
 }  // namespace paddle

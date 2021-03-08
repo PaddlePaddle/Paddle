@@ -260,8 +260,8 @@ function(merge_static_libs TARGET_NAME)
     # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
-      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      COMMAND cmake -E make_directory $<TARGET_FILE_DIR:${TARGET_NAME}>
+      COMMAND lib /OUT:$<TARGET_FILE:${TARGET_NAME}> ${libfiles}
       )
   endif(WIN32)
 endfunction(merge_static_libs)
@@ -493,7 +493,9 @@ function(nv_library TARGET_NAME)
       endif()
     endif(nv_library_SRCS)
     if (WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-      set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
+      if(${MSVC_VERSION} LESS_EQUAL 1900)
+        set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS ${WIN_PROPS})
+      endif()
     endif()
   endif()
 endfunction(nv_library)
@@ -753,7 +755,8 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
-      DEPENDS ${ABS_FIL} protoc
+      # Set `EXTERN_PROTOBUF_DEPEND` only if need to compile `protoc.exe`.
+      DEPENDS ${ABS_FIL} ${EXTERN_PROTOBUF_DEPEND}
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
   endforeach()
@@ -794,7 +797,8 @@ function(py_test TARGET_NAME)
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(NAME ${TARGET_NAME}
               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-              FLAGS_cpu_deterministic=true ${py_test_ENVS}
+              FLAGS_cpu_deterministic=true
+              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

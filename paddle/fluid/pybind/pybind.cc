@@ -1125,7 +1125,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_fetch_list",
            [](Variable &self) { return self.GetMutable<FetchList>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_NCCL))
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -2496,6 +2496,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.nccl_comm_num_; },
           [](BuildStrategy &self, int nccl_comm_num) {
             self.nccl_comm_num_ = nccl_comm_num;
+          })
+      .def_property(
+          "bkcl_comm_num",
+          [](const BuildStrategy &self) { return self.bkcl_comm_num_; },
+          [](BuildStrategy &self, int bkcl_comm_num) {
+            self.bkcl_comm_num_ = bkcl_comm_num;
           })
       .def_property("use_hierarchical_allreduce",
                     [](const BuildStrategy &self) {
