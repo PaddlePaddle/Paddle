@@ -214,6 +214,11 @@ class HCCLCommContext {
   // Init global hcom
   HCCLCommContext() { InitHcomWorldGroup(); }
 
+public:
+  ~HCCLCommContext(){
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_destroy());
+  }
+
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
   // ring id to dev-HCCLComm
