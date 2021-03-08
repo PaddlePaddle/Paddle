@@ -161,6 +161,7 @@ add_subdirectory(benchmark)
 
 cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
 cc_test(matmul_v2_op_npu_test SRCS matmul_v2_op_npu_test.cc DEPS op_registry matmul_v2_op scope device_context enforce executor)
+cc_test(top_k_op_npu_test SRCS top_k_op_npu_test.cc DEPS op_registry top_k_op scope device_context enforce executor)
 
 
 if(WITH_MKLDNN)
