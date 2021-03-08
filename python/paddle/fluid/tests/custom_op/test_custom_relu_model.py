@@ -21,7 +21,7 @@ from paddle import nn
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -39,8 +39,8 @@ custom_module = load(
     name='custom_relu_for_model_jit',
     sources=['custom_relu_op.cc', 'custom_relu_op.cu'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
-    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_cc_args,  # test for cc flags
+    extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True)
 
 
@@ -212,10 +212,6 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False, use_pe=True)
             custom_relu_train_pe_out = self.train_model(
                 device, use_custom_op=True, use_pe=True)
-            print(original_relu_train_out)
-            print(custom_relu_train_out)
-            print(original_relu_train_pe_out)
-            print(custom_relu_train_pe_out)
 
             self.assertTrue(
                 np.array_equal(original_relu_train_out, custom_relu_train_out))
@@ -232,10 +228,6 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False, use_pe=True)
             custom_relu_eval_pe_out = self.eval_model(
                 device, use_custom_op=True, use_pe=True)
-            print(original_relu_eval_out)
-            print(custom_relu_eval_out)
-            print(original_relu_eval_pe_out)
-            print(custom_relu_eval_pe_out)
 
             self.assertTrue(
                 np.array_equal(original_relu_eval_out, custom_relu_eval_out))
