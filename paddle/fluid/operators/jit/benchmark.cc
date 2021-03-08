@@ -14,8 +14,7 @@
 
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -23,7 +22,6 @@
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");

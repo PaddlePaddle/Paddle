@@ -32,7 +32,8 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 void BindPSGPUWrapper(py::module* m) {
   py::class_<framework::PSGPUWrapper, std::shared_ptr<framework::PSGPUWrapper>>(
       *m, "PSGPU")
@@ -44,6 +45,8 @@ void BindPSGPUWrapper(py::module* m) {
       .def("set_dataset", &framework::PSGPUWrapper::SetDataset,
            py::call_guard<py::gil_scoped_release>())
       .def("init_gpu_ps", &framework::PSGPUWrapper::InitializeGPU,
+           py::call_guard<py::gil_scoped_release>())
+      .def("end_pass", &framework::PSGPUWrapper::EndPass,
            py::call_guard<py::gil_scoped_release>())
       .def("build_gpu_ps", &framework::PSGPUWrapper::BuildGPUPS,
            py::call_guard<py::gil_scoped_release>());

@@ -13,15 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_int32(rpc_deadline);
@@ -42,7 +34,7 @@ void HeterClient::MainThread() {
 void HeterClient::Stop() {
   running_ = false;
   if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
+    VLOG(3) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
       auto status = StopHeterWorker();
@@ -50,20 +42,20 @@ void HeterClient::Stop() {
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
-    VLOG(1) << "HeterClient Stop Done";
+    VLOG(3) << "HeterClient Stop Done";
   }
 }
 
 void HeterClient::FinalizeWorker() {
   running_ = false;
   if (!is_initialized_) {
-    VLOG(0) << "HeterClient is not inited, do nothing";
+    VLOG(3) << "HeterClient is not inited, do nothing";
   } else {
     if (main_thread_) {
       main_thread_->join();
       main_thread_.reset(nullptr);
     }
-    VLOG(1) << "HeterClient Stop Done";
+    VLOG(3) << "HeterClient Stop Done";
   }
 }
 

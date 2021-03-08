@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_elewise_add_act_pass.h"
-#include <algorithm>
 #include <string>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 

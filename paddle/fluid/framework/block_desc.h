@@ -29,8 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ProgramDesc;
 class OpDesc;
+class ProgramDesc;
 class VarDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize

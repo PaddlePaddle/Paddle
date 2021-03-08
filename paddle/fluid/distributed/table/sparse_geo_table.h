@@ -16,11 +16,13 @@
 
 #include <assert.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "Eigen/Dense"
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
@@ -34,6 +36,8 @@
 
 namespace paddle {
 namespace distributed {
+
+class GeoRecorder;
 
 class SparseGeoTable : public CommonSparseTable {
  public:

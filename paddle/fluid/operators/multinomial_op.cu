@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+// To-do(qili93): fix this after issue resolved
+// https://github.com/ROCmSoftwarePlatform/rocPRIM/issues/202
+
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/scan.h>
@@ -155,13 +159,24 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
       T* cpu_in_data = new T[in_data_numel];
       int64_t* cpu_out_data = new int64_t[out_data_numel];
 
+#ifdef PADDLE_WITH_HIP
+      hipMemcpy(cpu_in_data, in_data, in_data_numel * sizeof(T),
+                hipMemcpyDeviceToHost);
+#else
       cudaMemcpy(cpu_in_data, in_data, in_data_numel * sizeof(T),
                  cudaMemcpyDeviceToHost);
+#endif
 
       MultinomialFunctor<T>(cpu_out_data, cpu_in_data, num_samples, replacement,
                             num_categories, num_distributions);
+
+#ifdef PADDLE_WITH_HIP
+      hipMemcpy(out_data, cpu_out_data, out_data_numel * sizeof(int64_t),
+                hipMemcpyHostToDevice);
+#else
       cudaMemcpy(out_data, cpu_out_data, out_data_numel * sizeof(int64_t),
                  cudaMemcpyHostToDevice);
+#endif
 
       delete[] cpu_in_data;
       delete[] cpu_out_data;
@@ -250,5 +265,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    multinomial, ops::MultinomialOpKernel<plat::CUDADeviceContext, float>,
-    ops::MultinomialOpKernel<plat::CUDADeviceContext, double>);
+    multinomial, ops::MultinomialOpKernel<plat::CUDADeviceContext, double>,
+    ops::MultinomialOpKernel<plat::CUDADeviceContext, float>);
+
+#endif

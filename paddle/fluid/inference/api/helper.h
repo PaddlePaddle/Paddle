@@ -58,6 +58,26 @@ constexpr PaddleDType PaddleTensorGetDType<float>() {
   return PaddleDType::FLOAT32;
 }
 
+inline PaddleDType ConvertToPaddleDType(
+    paddle::framework::proto::VarType::Type type) {
+  if (type == paddle::framework::proto::VarType::FP32) {
+    return PaddleDType::FLOAT32;
+  } else if (type == paddle::framework::proto::VarType::INT64) {
+    return PaddleDType::INT64;
+  } else if (type == paddle::framework::proto::VarType::INT32) {
+    return PaddleDType::INT32;
+  } else if (type == paddle::framework::proto::VarType::UINT8) {
+    return PaddleDType::UINT8;
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+        "The paddle dtype convert function only supports FLOAT32, INT64, INT32 "
+        "and UINT8 now. But "
+        "we get %d here.",
+        static_cast<int>(type)));
+    return PaddleDType::FLOAT32;
+  }
+}
+
 using paddle::framework::DataTypeToString;
 
 // Timer for timer

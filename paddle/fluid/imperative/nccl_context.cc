@@ -14,26 +14,24 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#include <string>
-#include <utility>
-#include <vector>
-
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #endif
 
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/fluid/string/string_helper.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 void NCCLParallelContext::BcastNCCLId(
     std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
@@ -115,9 +113,14 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
   auto event = compute_events_[ring_id].get();
 
-  // compute_stream-->event-->comm_stream
+// compute_stream-->event-->comm_stream
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, compute_stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(comm_stream, event, 0));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, compute_stream));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(comm_stream, event, 0));
+#endif
 }
 
 void NCCLParallelContext::WaitComm(int ring_id) {
@@ -136,9 +139,14 @@ void NCCLParallelContext::WaitComm(int ring_id) {
       platform::NCCLCommContext::Instance().Get(ring_id, place_)->stream();
   auto event = comm_events_[ring_id].get();
 
-  // comm_stream-->event-->compute_stream
+// comm_stream-->event-->compute_stream
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, comm_stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamWaitEvent(compute_stream, event, 0));
+#else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, comm_stream));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(compute_stream, event, 0));
+#endif
 }
 
 #endif
