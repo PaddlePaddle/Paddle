@@ -207,6 +207,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
             accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block)
+            accumulated_grad_names = sorted(accumulated_grad_names)
+            print(accumulated_grad_names)
             first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(main_block) 
             insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, OpRole.Optimize, use_calc_stream = True)
             #if not self._shard.has_param(param_name): continue
@@ -459,19 +461,25 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._main_program.global_block())
 
     def _wait(self, ):
-        # only the first parallelsm group that init nccl need to be wait. 
-        if self._as_outer_parallelism:
-            endpoints =  self.global_group_endpoints[:]
-        else:
-            endpoints = self.sharding_group_endpoints[:]
+        endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
+        if self.role_maker._worker_index() == 0:
+            self._collective_helper._wait(current_endpoint, endpoints)
 
-        if self._as_outer_parallelism:
-            if self.global_rank == 0:
-                self._collective_helper._wait(current_endpoint, endpoints)
-        else:
-            if self.sharding_rank == 0:
-                self._collective_helper._wait(current_endpoint, endpoints)
+    # def _wait(self, ):
+    #     # only the first parallelsm group that init nccl need to be wait. 
+    #     if self._as_outer_parallelism:
+    #         endpoints = self.role_maker._get_trainer_endpoints()
+    #     else:
+    #         endpoints = self.sharding_group_endpoints[:]
+    #     current_endpoint = endpoints[self.role_maker._worker_index()]
+
+    #     if self._as_outer_parallelism:
+    #         if self.role_maker._worker_index() == 0:
+    #             self._collective_helper._wait(current_endpoint, endpoints)
+    #     else:
+    #         if self.sharding_rank == 0:
+    #             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
         for op_idx, op in reversed(list(enumerate(block.ops))):
@@ -801,10 +809,10 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _init_comm(self):
 
         # sharding alone mode
-        self.sharding_ring_id = 0
-        self.sharding_rank = self.global_rank
-        self.sharding_group_endpoints = self.endpoints[:]
-        self.sharding_group_size = len(self.endpoints)
+        # self.sharding_ring_id = 0
+        # self.sharding_rank = self.global_rank
+        # self.sharding_group_endpoints = self.endpoints[:]
+        # self.sharding_group_size = len(self.endpoints)
 
         if self.hybrid_dp:
             assert self._as_outer_parallelism == False, "hybrid dp is conflict when using sharding as outer parallelism"
@@ -825,7 +833,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 ep for idx, ep in enumerate(self.endpoints)
                 if (idx % self.sharding_group_size) == self.sharding_rank
             ]
-            self.global_group_endpoints = self.role_maker._get_trainer_endpoints()[:]
+            # self.global_group_endpoints = self.role_maker._get_trainer_endpoints()[:]
 
             assert self.global_word_size > self.sharding_group_size, \
                 "global_word_size: {} should be larger than sharding_group_size: {}".format(self.global_word_size, self.sharding_group_size)
