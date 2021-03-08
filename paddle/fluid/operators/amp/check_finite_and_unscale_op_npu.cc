@@ -74,8 +74,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
                                           {{"message", std::string("check_nan_and_inf")}});
         runner_checknumerics.Run(stream);
         tmp_checkxout = &check_xout;
-      } catch (const std::invalid_argument& e) {
-        std::cerr << e.what() << std::endl;
+      } catch (platform::EnforceNotMet& exception) {
+        LOG(WARNING) << exception.what();
         tmp_checkxout = nullptr;
         found_inf_data = true;
       }
