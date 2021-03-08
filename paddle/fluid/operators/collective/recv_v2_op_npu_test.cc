@@ -88,7 +88,7 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx){
 
     f::AttributeMap attrs;
     attrs["tag"]=std::string("srtest");
-    attrs["peer"]=atoi(getenv("SRC_RANK"));  
+    attrs["peer"]=atoi(getenv("SRC_RANK"));
     attrs["ring_id"]=0;
     attrs["srTag"]=0;
     std::vector<int> out_shape;

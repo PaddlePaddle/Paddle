@@ -39,18 +39,18 @@ set(GLOB_COLLECTIVE_DEPS ${COLLECTIVE_DEPS} CACHE INTERNAL "collective dependenc
 if(WITH_ASCEND_CL)
     set(COMMON_TEST_DEPS_FOR_HCOM c_comm_init_hcom_op op_registry ascend_hccl flags
         dynamic_loader dynload_warpctc scope device_context enforce executor)
-    cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc 
+    cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc
         DEPS c_broadcast_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(c_allreduce_sum_op_npu_test SRCS c_allreduce_sum_op_npu_test.cc 
+    cc_test(c_allreduce_sum_op_npu_test SRCS c_allreduce_sum_op_npu_test.cc
         DEPS c_allreduce_sum_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(c_allreduce_max_op_npu_test SRCS c_allreduce_max_op_npu_test.cc 
+    cc_test(c_allreduce_max_op_npu_test SRCS c_allreduce_max_op_npu_test.cc
         DEPS c_allreduce_max_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(c_reducescatter_op_npu_test SRCS c_reducescatter_op_npu_test.cc 
+    cc_test(c_reducescatter_op_npu_test SRCS c_reducescatter_op_npu_test.cc
         DEPS c_reducescatter_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(c_allgather_op_npu_test SRCS c_allgather_op_npu_test.cc 
+    cc_test(c_allgather_op_npu_test SRCS c_allgather_op_npu_test.cc
         DEPS c_allgather_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(send_v2_op_npu_test SRCS send_v2_op_npu_test.cc 
+    cc_test(send_v2_op_npu_test SRCS send_v2_op_npu_test.cc
         DEPS send_v2_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
-    cc_test(recv_v2_op_npu_test SRCS recv_v2_op_npu_test.cc 
+    cc_test(recv_v2_op_npu_test SRCS recv_v2_op_npu_test.cc
         DEPS recv_v2_op ${COLLECTIVE_DEPS} ${COMMON_TEST_DEPS_FOR_HCOM})
 endif()

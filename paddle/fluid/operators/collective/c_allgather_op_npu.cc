@@ -28,7 +28,7 @@ template <typename T>
 class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_ASCEND_CL) 
+#if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
@@ -79,7 +79,7 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_allgather, 
+REGISTER_OP_NPU_KERNEL(c_allgather,
                         ops::CAllGatherOpASCENDKernel<int8_t>,
                         ops::CAllGatherOpASCENDKernel<int>,
                         ops::CAllGatherOpASCENDKernel<float>,
