@@ -249,6 +249,10 @@ void FusionLSTMOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
+      .SetDefault(false);
   AddComment(R"DOC(
 Fusion Long-Short Term Memory (LSTM) Operator.
 This operator fuse the X into LSTM, more details can refer to LSTM op.

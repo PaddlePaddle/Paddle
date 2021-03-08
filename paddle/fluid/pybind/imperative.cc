@@ -583,26 +583,76 @@ void BindImperative(py::module *m_ptr) {
               py::object &value_obj) {
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto self_numpy = TensorToPyArray(*self_tensor);
-
+             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
+                                       ? PyTuple_Pack(1, _index.ptr())
+                                       : _index.ptr();
+             // 1. Check argumnets
+             // 1.1 Check whether value obj is a tensor.
+             bool value_is_tensor = true;
+             bool parse_index = true;
              if (py::isinstance<py::array>(value_obj) ||
                  py::isinstance<py::int_>(value_obj) ||
                  py::isinstance<py::float_>(value_obj)) {
-               auto value_numpy = value_obj;
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               value_is_tensor = false;
+             }
 
-             } else {
-               auto value =
-                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+             // 1.2 Check whether _index can be parsed.
+             const int size = PyTuple_GET_SIZE(index_ptr);
+             for (int dim = 0; dim < size; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+                 parse_index = false;
+                 break;
+               }
+             }
+
+             // 2. Call op set_value to speed up if the condition is met,
+             // otherwise call TensorToPyArray.
+             // TODO(liym27): Try not to call TensorToPyArray because it always
+             // copys data to cpu place, which reduces performance.
+             if (parse_index && value_is_tensor) {
+               std::vector<int> axes, starts, ends, steps, decrease_axis,
+                   infer_flags;
+               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
+                                  &steps, &decrease_axis, &infer_flags);
+
+               framework::AttributeMap attrs = {{"axes", axes},
+                                                {"starts", starts},
+                                                {"ends", ends},
+                                                {"steps", steps}};
+
+               imperative::NameVarBaseMap ins = {{"Input", {self}}};
+               imperative::NameVarBaseMap outs = {{"Out", {self}}};
+
                auto value_tensor =
-                   value->MutableVar()->GetMutable<framework::LoDTensor>();
-               auto value_numpy = TensorToPyArray(*value_tensor);
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               ins.insert({"ValueTensor", {value_tensor}});
 
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               const auto &tracer = imperative::GetCurrentTracer();
+               {
+                 // Release gil and do tracing
+                 py::gil_scoped_release release;
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+               }
+             } else {
+               auto self_numpy = TensorToPyArray(*self_tensor);
+
+               if (value_is_tensor) {
+                 auto value =
+                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+                 auto value_tensor =
+                     value->MutableVar()->GetMutable<framework::LoDTensor>();
+                 auto value_numpy = TensorToPyArray(*value_tensor);
+
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               } else {
+                 auto value_numpy = value_obj;
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               }
              }
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
@@ -916,7 +966,7 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self,
               const imperative::ParallelStrategy &strategy) {
              if (strategy.nranks_ > 1) {
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2212
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
@@ -934,7 +984,7 @@ void BindImperative(py::module *m_ptr) {
                PADDLE_THROW(platform::errors::Unimplemented(
                    "Imperative allreduce is not supported when paddle is "
                    "not compiled with NCCL."));
-#endif  // PADDLE_WITH_NCCL
+#endif  // PADDLE_WITH_NCCL or PADDLE_WITH_RCCL
              }
            },
            py::call_guard<py::gil_scoped_release>())
@@ -966,7 +1016,7 @@ void BindImperative(py::module *m_ptr) {
               )DOC")
       .def("pin_memory",
            [](const std::shared_ptr<imperative::VarBase> &self) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to pinned memory in CPU version "
                  "Paddle, "
@@ -1000,7 +1050,7 @@ void BindImperative(py::module *m_ptr) {
       .def("cuda",
            [](const std::shared_ptr<imperative::VarBase> &self, int device_id,
               bool blocking) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot copy this Tensor to GPU in CPU version Paddle, "
                  "Please recompile or reinstall Paddle with CUDA support."));
@@ -1362,7 +1412,8 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -1384,7 +1435,7 @@ void BindImperative(py::module *m_ptr) {
         py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")

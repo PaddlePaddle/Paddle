@@ -75,7 +75,8 @@ class PSClient {
       int max_retry) = 0;
 
   // 触发table数据退场
-  virtual std::future<int32_t> shrink(uint32_t table_id) = 0;
+  virtual std::future<int32_t> shrink(uint32_t table_id,
+                                      const std::string threshold) = 0;
 
   // 全量table进行数据load
   virtual std::future<int32_t> load(const std::string &epoch,

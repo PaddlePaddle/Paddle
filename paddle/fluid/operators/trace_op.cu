@@ -43,9 +43,15 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       auto stream = context.cuda_device_context().stream();
       std::vector<int> reduce_dims;
       reduce_dims.push_back(out->dims().size());
+#ifdef __HIPCC__
+      TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
+          diag, out, reduce_dims, static_cast<T>(0), hipcub::Sum(),
+          IdentityFunctor<T>(), stream);
+#else
       TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
           diag, out, reduce_dims, static_cast<T>(0), cub::Sum(),
           IdentityFunctor<T>(), stream);
+#endif
     }
   }
 };

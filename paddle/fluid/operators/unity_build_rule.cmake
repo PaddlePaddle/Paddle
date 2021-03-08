@@ -5,6 +5,7 @@
 # If there are some redefined error in compiling with the source file which
 # in combination rule, you can remove the source file from the following rules.
 register_unity_group(cc
+    abs_op.cc
     add_position_encoding_op.cc
     addmm_op.cc
     affine_channel_op.cc
@@ -33,7 +34,11 @@ register_unity_group(cc
     chunk_eval_op.cc
     clip_by_norm_op.cc
     clip_op.cc
-    coalesce_tensor_op.cc)
+    coalesce_tensor_op.cc
+    mkldnn/activation_mkldnn_op.cc
+    mkldnn/interpolate_mkldnn_op.cc
+    mkldnn/pool_mkldnn_op.cc
+    mkldnn/softmax_mkldnn_op.cc)
 register_unity_group(cc
     center_loss_op.cc
     mkldnn/concat_mkldnn_op.cc
@@ -42,7 +47,12 @@ register_unity_group(cc
     correlation_op.cc
     cos_sim_op.cc
     crf_decoding_op.cc
-    crop_op.cc)
+    crop_op.cc
+    ascend_trigger_op.cc
+    conj_op.cc
+    imag_op.cc
+    kldiv_loss_op.cc
+    memcpy_op.cc)
 register_unity_group(cc
     cross_entropy_op.cc
     cross_op.cc
@@ -69,7 +79,14 @@ register_unity_group(cc
     edit_distance_op.cc
     empty_op.cc
     enqueue_op.cc
-    erf_op.cc)
+    erf_op.cc
+    py_func_op.cc
+    real_op.cc
+    sync_batch_norm_op.cc
+    top_k_op.cc
+    conv_op.cc
+    conv_transpose_op.cc
+    gru_unit_op.cc)
 register_unity_group(cc
     expand_v2_op.cc
     fake_dequantize_op.cc
@@ -309,6 +326,29 @@ register_unity_group(cc
     unbind_op.cu.cc
     unpool_op.cu.cc
     unsqueeze_op.cu.cc)
+register_unity_group(cc
+    arg_max_op.cc
+    arg_min_op.cc
+    squared_l2_distance_op.cc)
+register_unity_group(cc
+    linear_chain_crf_op.cc
+    lstm_op.cc
+    partial_concat_op.cc
+    pyramid_hash_op.cc
+    recurrent_op.cc
+    run_program_op.cc
+    softmax_with_cross_entropy_op.cc
+    warpctc_op.cc)
+register_unity_group(cc
+    conv_op.cu.cc
+    lstm_op.cu.cc
+    rnn_op.cu.cc
+    split_op.cu.cc
+    activation_cudnn_op.cu.cc
+    assign_value_op.cu.cc
+    merge_selected_rows_op.cu.cc
+    run_program_op.cu.cc
+    warpctc_op.cu.cc)
 register_unity_group(cu
     addmm_op.cu
     affine_channel_op.cu

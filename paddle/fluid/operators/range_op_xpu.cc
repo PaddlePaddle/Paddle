@@ -29,11 +29,11 @@ class XPURangeKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     framework::Tensor n;
-    framework::TensorCopy(*start_t, platform::CPUPlace(), &n);
+    framework::TensorCopySync(*start_t, platform::CPUPlace(), &n);
     T start = n.data<T>()[0];
-    framework::TensorCopy(*end_t, platform::CPUPlace(), &n);
+    framework::TensorCopySync(*end_t, platform::CPUPlace(), &n);
     T end = n.data<T>()[0];
-    framework::TensorCopy(*step_t, platform::CPUPlace(), &n);
+    framework::TensorCopySync(*step_t, platform::CPUPlace(), &n);
     T step = n.data<T>()[0];
 
     int64_t size = 0;

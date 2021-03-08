@@ -19,11 +19,11 @@ from .cpp_extension import load, setup
 
 from .extension_utils import parse_op_info
 from .extension_utils import get_build_directory
+from .extension_utils import load_op_meta_info_and_register_op
 
 from . import cpp_extension
 from . import extension_utils
 
 __all__ = [
-    'CppExtension', 'CUDAExtension', 'BuildExtension', 'load', 'setup',
-    'get_build_directory'
+    'CppExtension', 'CUDAExtension', 'load', 'setup', 'get_build_directory'
 ]

@@ -12,8 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/memory/allocation/allocator.h>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+#endif
+
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
@@ -43,15 +49,15 @@ __global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
-    int* target_lvls) {
+    int* target_lvls, bool pixel_offset = true) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = RoIArea(offset_roi, false);
+    T roi_area = RoIArea(offset_roi, pixel_offset);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
-        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-6) + refer_level);
+        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
@@ -73,6 +79,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int max_level = ctx.Attr<int>("max_level");
     const int refer_level = ctx.Attr<int>("refer_level");
     const int refer_scale = ctx.Attr<int>("refer_scale");
+    const bool pixel_offset = ctx.Attr<bool>("pixel_offset");
     int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
@@ -126,7 +133,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     GPUDistFpnProposalsHelper<T><<<dist_blocks, threads>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
-        sub_lod_list_data, target_lvls_data);
+        sub_lod_list_data, target_lvls_data, pixel_offset);
     dev_ctx.Wait();
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
@@ -142,24 +149,42 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
+                                                 target_lvls_data, keys_out,
+                                                 idx_in, idx_out, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
                                               target_lvls_data, keys_out,
                                               idx_in, idx_out, roi_num);
+#endif
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-    // Run sorting operation
-    // sort target level to get corresponding index
+// Run sorting operation
+// sort target level to get corresponding index
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(
+        d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
+        idx_in, idx_out, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
+#endif
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
-    // sort current index to get restore index
+// sort current index to get restore index
+#ifdef PADDLE_WITH_HIP
+    hipcub::DeviceRadixSort::SortPairs<int, int>(
+        d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
+        restore_idx_data, roi_num);
+#else
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
+#endif
 
     int start = 0;
     auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");

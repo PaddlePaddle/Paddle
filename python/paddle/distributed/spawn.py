@@ -50,10 +50,10 @@ class ParallelEnvArgs(object):
         self.print_config = True
 
         # It's for gpu training and the training process will run 
-        # on the selected_gpus, each process is bound to a single GPU. 
+        # on the selected_devices, each process is bound to a single GPU. 
         # And if it's not set, this module will use all the gpu cards 
         # for training.
-        self.selected_gpus = None
+        self.selected_devices = None
 
 
 def _py_supported_check():
@@ -67,9 +67,9 @@ def _py_supported_check():
 
 def _options_valid_check(options):
     # `print_config` keeped as a debug options, not show to users
-    supported_options = ['start_method', 'ips', 'gpus', 'print_config']
+    supported_options = ['start_method', 'ips', 'gpus', 'xpus', 'print_config']
     deprecated_options = [
-        'selected_gpus', 'started_port', 'cluster_node_ips', 'node_ip',
+        'selected_devices', 'started_port', 'cluster_node_ips', 'node_ip',
         'use_paddlecloud'
     ]
     for key in options:
@@ -109,47 +109,83 @@ def _get_subprocess_env_list(nprocs, options):
         if args.cluster_node_ips is None:
             args.cluster_node_ips = "127.0.0.1"
 
-    # deal with `gpus`
-    # set default selected gpus
+    # deal with `gpus` or `xpus`
+    # set default selected devices(gpus or xpus)
     # e.g. if the nprocs is 4, the selected gpus is "0,1,2,3"
-    # NOTE(chenweihang): [ why not use FLAGS_selected_gpus directly? ]
-    # because the FLAGS_selected_gpus may be used in other place,
-    # if we set FLAGS_selected_gpus to be `0,1,2,3`, it may cause error
+    # NOTE(chenweihang): [ why not use FLAGS_selected_gpus or FLAGS_selected_xpus directly? ]
+    # because the FLAGS_selected_gpus or FLAGS_selected_xpus may be used in other place,
+    # if we set FLAGS_selected_gpus or FLAGS_selected_xpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
-    # NOTE(chenweihang): use absolute gpu card id
-    args.selected_gpus = options.get('gpus', None)
-    if args.selected_gpus is None:
-        args.selected_gpus = options.get('selected_gpus', None)
-    env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
-    if env_devices is None or env_devices == "":
-        env_devices_list = [
-            str(x) for x in six.moves.range(core.get_cuda_device_count())
-        ]
-    else:
-        env_devices_list = env_devices.split(',')
-    if args.selected_gpus is None:
-        if len(env_devices_list) < nprocs:
-            raise RuntimeError(
-                "the number of visible devices(%d) is less than the number "
-                "of spawn processes(%d), please ensure that the correct "
-                "`nprocs` argument is passed or the environment variable "
-                "`CUDA_VISIBLE_DEVICES` is correctly configured." %
-                (len(env_devices_list), nprocs))
-        args.selected_gpus = ",".join(
-            [str(env_devices_list[x]) for x in range(0, nprocs)])
-    else:
-        selected_gpu_list = args.selected_gpus.split(',')
-        if len(selected_gpu_list) != nprocs:
-            raise ValueError(
-                "The number of selected gpus(%s) is not equal to "
-                "the number of spawn processes(%d), please ensure that the "
-                "correct `nprocs` and `gpus` arguments are passed." %
-                (len(selected_gpu_list), nprocs))
-        for card_id in selected_gpu_list:
-            if card_id not in env_devices_list:
-                raise ValueError("The selected gpu card %s cannot found in "
-                                 "CUDA_VISIBLE_DEVICES (%s)." %
-                                 (card_id, ",".join(env_devices_list)))
+    # NOTE(chenweihang): use absolute gpu or xpu card id
+    if core.is_compiled_with_cuda():
+        args.selected_devices = options.get('gpus', None)
+        if args.selected_devices is None:
+            args.selected_devices = options.get('selected_devices', None)
+        env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x) for x in six.moves.range(core.get_cuda_device_count())
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+        if args.selected_devices is None:
+            if len(env_devices_list) < nprocs:
+                raise RuntimeError(
+                    "the number of visible devices(%d) is less than the number "
+                    "of spawn processes(%d), please ensure that the correct "
+                    "`nprocs` argument is passed or the environment variable "
+                    "`CUDA_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+        else:
+            selected_device_list = args.selected_devices.split(',')
+            if len(selected_device_list) != nprocs:
+                raise ValueError(
+                    "The number of selected devices(%s) is not equal to "
+                    "the number of spawn processes(%d), please ensure that the "
+                    "correct `nprocs` and `gpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected gpu card %s cannot found in "
+                                     "CUDA_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
+
+    elif core.is_compiled_with_xpu():
+        args.selected_devices = options.get('xpus', None)
+        if args.selected_devices is None:
+            args.selected_devices = options.get('selected_devices', None)
+        env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x) for x in six.moves.range(core.get_xpu_device_count())
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+        if args.selected_devices is None:
+            if len(env_devices_list) < nprocs:
+                raise RuntimeError(
+                    "the number of visible devices(%d) is less than the number "
+                    "of spawn processes(%d), please ensure that the correct "
+                    "`nprocs` argument is passed or the environment variable "
+                    "`XPU_VISIBLE_DEVICES` is correctly configured." %
+                    (len(env_devices_list), nprocs))
+            args.selected_devices = ",".join(
+                [str(env_devices_list[x]) for x in range(0, nprocs)])
+        else:
+            selected_device_list = args.selected_devices.split(',')
+            if len(selected_device_list) != nprocs:
+                raise ValueError(
+                    "The number of selected devices(%s) is not equal to "
+                    "the number of spawn processes(%d), please ensure that the "
+                    "correct `nprocs` and `xpus` arguments are passed." %
+                    (len(selected_device_list), nprocs))
+            for card_id in selected_device_list:
+                if card_id not in env_devices_list:
+                    raise ValueError("The selected xpu card %s cannot found in "
+                                     "XPU_VISIBLE_DEVICES (%s)." %
+                                     (card_id, ",".join(env_devices_list)))
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -185,12 +221,17 @@ def _remove_risky_env():
 
 
 def _set_trainer_env(env_dict):
-    # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus here? ]
+    # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus or FLAGS_selected_xpus here? ]
     # When the child process starts, it will inherit the configuration of the 
     # main process and set the FLAGS once, but the environment variable has 
-    # not been set at this time, which leads to the FLAGS_selected_gpus 
+    # not been set at this time, which leads to the FLAGS_selected_gpus or FLAGS_selected_xpus
     # is keep same with mainprocess(usually empty), so manually update the flags here
-    set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
+    if core.is_compiled_with_cuda():
+        set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
+    elif core.is_compiled_with_xpu():
+        set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
+    else:
+        raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 
@@ -407,8 +448,14 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         if device == 'cpu':
             # TODO: not supports cpu parallel now
             nprocs = _cpu_num()
-        else:
+        elif device == 'gpu':
             nprocs = core.get_cuda_device_count()
+        elif device == 'xpu':
+            nprocs = core.get_xpu_device_count()
+        else:
+            raise ValueError(
+                "`device` should be a string of `cpu`, 'gpu' or 'xpu', but got {}".
+                format(device))
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
     # when using `paddle.distributed.spawn` start parallel training, 

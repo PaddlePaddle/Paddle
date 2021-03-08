@@ -11,8 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <curand_kernel.h>
+#include "paddle/fluid/platform/dynload/curand.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#include <hiprand_kernel.h>
+#include "paddle/fluid/platform/dynload/hiprand.h"
+#endif
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
@@ -21,7 +30,6 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -32,15 +40,24 @@ __global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
                                 MaskType* mask_data, T* dst,
                                 bool is_upscale_in_train, uint64_t increment) {
-  curandStatePhilox4_32_10_t state;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
+#ifdef PADDLE_WITH_HIP
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, idx, increment, &state);
+#else
+  curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
+#endif
 
   MaskType mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
+#ifdef PADDLE_WITH_HIP
+    if (hiprand_uniform(&state) < dropout_prob) {
+#else
     if (curand_uniform(&state) < dropout_prob) {
+#endif
       mask = 0;
       dest = 0;
     } else {
@@ -62,9 +79,15 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const T* src, MaskType* mask_data,
                                           T* dst, bool is_upscale_in_train,
                                           uint64_t increment) {
+#ifdef PADDLE_WITH_HIP
+  int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, idx, increment, &state);
+#else
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
+#endif
 
   MaskType mask;
   T dest;
@@ -75,7 +98,11 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     T src_vec[VecSize];
     LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
     *value = *reinterpret_cast<const LoadT*>(&src[i]);
+#ifdef PADDLE_WITH_HIP
+    float4 rand = hiprand_uniform4(&state);
+#else
     float4 rand = curand_uniform4(&state);
+#endif
 
     T dest_vec[VecSize];
     MaskType mask_vec[VecSize];
@@ -131,10 +158,17 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(
             mask_data, 0, x_numel * sizeof(*mask_data), stream));
+#endif
         return;
       }
 
@@ -180,6 +214,20 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
         increment = offset;
       }
 
+#ifdef __HIPCC__
+      if (vec_size == 4 && size % 4 == 0) {
+        hipLaunchKernelGGL(
+            HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
+            config.block_per_grid, config.thread_per_block, 0, stream, size,
+            seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, increment);
+      } else {
+        hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
+                           config.block_per_grid, config.thread_per_block, 0,
+                           stream, size, seed_data, dropout_prob, x_data,
+                           mask_data, y_data, upscale_in_train, increment);
+      }
+#else
       if (vec_size == 4 && size % 4 == 0) {
         VectorizedRandomGenerator<
             T, uint8_t,
@@ -192,7 +240,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
             size, seed_data, dropout_prob, x_data, mask_data, y_data,
             upscale_in_train, increment);
       }
-
+#endif
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
