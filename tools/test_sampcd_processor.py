@@ -121,7 +121,35 @@ class Test_srccoms_extract(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpDir)
     def test_from_ops_py(self):
-        pass
+        filecont = r'''
+        __all__ = []
+        __all__ += ['one_plus_one']
+
+        def one_plus_one():
+            return 1+1
+
+        one_plus_one.__doc__ = r"""
+            placeholder
+
+            Examples:
+            .. code-block:: python
+                print(1+1)
+            """
+
+        __all__ += ['two_plus_two']
+        def two_plus_two():
+            return 2+2
+        add_sample_code(globals()["two_plus_two"], r"""
+            Examples:
+            .. code-block:: python
+                print(2+2)
+        """
+        '''
+        pyfilename = os.path.join(self.tmpDir, 'ops.py')
+        with open(pyfilename, 'w') as pyfile:
+            pyfile.write(filecont)
+        with open(pyfilename, 'r') as pyfile:
+            self.assertTrue(srccoms_extract(pyfile, []))
     def test_from_not_ops_py(self):
         filecont = r'''
         __all__ = [
