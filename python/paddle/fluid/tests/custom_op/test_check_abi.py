@@ -96,14 +96,6 @@ class TestCheckCompiler(TestABIBase):
             utils._expected_compiler_current_platform = raw_func
 
 
-class TestJITCompilerException(unittest.TestCase):
-    def test_exception(self):
-        with self.assertRaisesRegexp(RuntimeError,
-                                     "Failed to check Python interpreter"):
-            file_path = os.path.abspath(__file__)
-            utils._jit_compile(file_path, interpreter='fake_cmd', verbose=True)
-
-
 class TestRunCMDException(unittest.TestCase):
     def test_exception(self):
         for verbose in [True, False]:
