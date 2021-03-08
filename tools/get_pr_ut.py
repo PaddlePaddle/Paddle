@@ -210,8 +210,9 @@ class PRChecker(object):
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
-            print(f)
             if f not in file_ut_map:
+                print("not in file_ut_map")
+                print(f)
                 continue
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
@@ -239,11 +240,10 @@ class PRChecker(object):
                     print('PREC dismatch: {} not in file ut map'.format(f))
                     #return ''
             else:
-                if self.is_only_comment(f):
-                    ut_list.append('map_comment_placeholder')
-                else:
-                    ut_list.extend(file_ut_map.get(f))
+                ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
+        print("ut_lists:")
+        print(ut_list)
 
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
