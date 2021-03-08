@@ -235,7 +235,7 @@ class PRChecker(object):
                         return ''
                 else:
                     print('PREC dismatch: {} not in file ut map'.format(f))
-                    return ''
+                    #return ''
             else:
                 if self.is_only_comment(f):
                     ut_list.append('map_comment_placeholder')
