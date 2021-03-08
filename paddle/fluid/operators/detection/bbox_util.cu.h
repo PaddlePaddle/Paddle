@@ -23,6 +23,7 @@ limitations under the License. */
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 #include "paddle/fluid/platform/miopen_helper.h"
+namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -64,27 +65,16 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
 
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
-#ifdef PADDLE_WITH_HIP
-  hipcub::DeviceRadixSort::SortPairsDescending<T, int>(
-      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
-#else
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
-#endif
   // Allocate temporary storage
   auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-// Run sorting operation
-#ifdef PADDLE_WITH_HIP
-  hipcub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
-      idx_out, num);
-#else
+  // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
       idx_out, num);
-#endif
 }
 
 template <typename T>
