@@ -675,7 +675,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
         cv_.notify_all();
       }
     });
-#elif defined(PADDLE_WITH_NCCL)
+#elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
     FusedAllReduceSchedule(run_order, group);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
