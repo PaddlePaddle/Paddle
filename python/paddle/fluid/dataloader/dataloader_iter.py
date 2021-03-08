@@ -210,7 +210,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
             return data
         except StopIteration:
-            self._reader.reset()
+            self._reader.shutdown()
             six.reraise(*sys.exc_info())
 
     # python2 compatibility
@@ -561,7 +561,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._on_output_batch()
             return data
         except StopIteration:
-            # self._reader.reset()
+            self._reader.shutdown()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
 
