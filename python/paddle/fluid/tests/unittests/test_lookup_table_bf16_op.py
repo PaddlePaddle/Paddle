@@ -25,9 +25,10 @@ from paddle import enable_static
 def _get_grad(weights, ids):
     w_shape = weights.shape
     w_grad = np.zeros((w_shape), dtype=np.float32)
-    out_grad = weights[ids.flatten()]
-    for i, idx in enumerate(ids):
-        w_grad[idx] += out_grad[i]
+    out_grad_shape = (np.prod(ids.shape[:-1]), w_shape[-1])
+    out_grad = weights[ids.flatten()].reshape(out_grad_shape)
+    for i, idx in enumerate(ids.flatten()):
+        w_grad[idx, :] += out_grad[i]
     return w_grad
 
 
@@ -41,13 +42,13 @@ class TestLookupTableBF16Op(OpTest):
         table = np.random.random((17, 31)).astype("float32")
         self.ids = np.random.randint(0, 17, (4, 1)).astype("int64")
 
-        self.mkldnn_data_type = "bfloat16"
         self.w_bf16 = convert_float_to_uint16(table)
-        self.out = self.w_bf16[self.ids.flatten()]
-        self.w_grad_bf16 = convert_float_to_uint16(_get_grad(table, self.ids))
+        self.out_bf16 = self.w_bf16[self.ids.flatten()]
+        self.out_fp32 = table[self.ids.flatten()]
+        self.w_grad_fp32 = _get_grad(table, self.ids)
 
         self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
-        self.outputs = {'Out': self.out}
+        self.outputs = {'Out': self.out_fp32}
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
@@ -58,8 +59,39 @@ class TestLookupTableBF16Op(OpTest):
             'Out',
             no_grad_set=set('Ids'),
             check_dygraph=False,
-            user_defined_grads=[self.w_grad_bf16],
-            user_defined_grad_outputs=[self.out])
+            max_relative_error=1.5e-2,
+            user_defined_grads=[self.w_grad_fp32],
+            user_defined_grad_outputs=[self.out_bf16])
+
+
+class TestLookupTableBF16OpIds4D(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        self.dtype = np.uint16
+
+        table = np.random.random((17, 31)).astype("float32")
+        self.ids = np.random.randint(0, 17, (2, 4, 5, 1)).astype("int64")
+
+        self.w_bf16 = convert_float_to_uint16(table)
+        self.out_bf16 = self.w_bf16[self.ids.flatten()].reshape((2, 4, 5, 31))
+        self.out_fp32 = table[self.ids.flatten()].reshape((2, 4, 5, 31))
+        self.w_grad_fp32 = _get_grad(table, self.ids)
+
+        self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
+        self.outputs = {'Out': self.out_fp32}
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_dygraph=False,
+            max_relative_error=1.5e-2,
+            user_defined_grads=[self.w_grad_fp32],
+            user_defined_grad_outputs=[self.out_bf16])
 
 
 if __name__ == "__main__":
