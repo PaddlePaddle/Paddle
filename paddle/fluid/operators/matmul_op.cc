@@ -76,7 +76,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -89,7 +90,8 @@ class MatMulKernel : public framework::OpKernel<T> {
         mat_dim_a.batch_size_ = 0;
       }
     }
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
@@ -228,7 +230,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -362,7 +365,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     head_number = context.Attr<int>("head_number");
 #endif
 
@@ -562,7 +566,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                     DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     if (context->IsRuntime()) {
@@ -750,7 +755,8 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "used in MKL-DNN INT8")
         .SetDefault(false);
 
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
 #endif
@@ -916,7 +922,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,

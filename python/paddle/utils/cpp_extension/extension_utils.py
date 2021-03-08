@@ -48,7 +48,7 @@ MSVC_COMPILE_FLAGS = [
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
 
-COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU', '-O3']
+COMMON_NVCC_FLAGS = ['-DPADDLE_WITH_CUDA', '-DEIGEN_USE_GPU']
 
 GCC_MINI_VERSION = (5, 4, 0)
 MSVC_MINI_VERSION = (19, 0, 24215)
@@ -327,7 +327,7 @@ def prepare_unix_cudaflags(cflags):
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
     cflags = COMMON_NVCC_FLAGS + [
-        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '-w', '--expt-relaxed-constexpr',
+        '-ccbin', 'cc', '-Xcompiler', '-fPIC', '--expt-relaxed-constexpr',
         '-DNVCC'
     ] + cflags + get_cuda_arch_flags(cflags)
 
@@ -398,8 +398,11 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
-        # append compile flags
-        add_compile_flag(extra_compile_args, ['-g', '-w'])  # disable warnings
+        add_compile_flag(extra_compile_args, ['-w'])  # disable warning
+        # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
+        # We align it automatially with pre-installed Paddle.
+        if core.is_compiled_with_mkldnn():
+            add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -464,6 +467,39 @@ def find_cuda_home():
     return cuda_home
 
 
+def find_rocm_home():
+    """
+    Use heuristic method to find rocm path
+    """
+    # step 1. find in $ROCM_HOME or $ROCM_PATH
+    rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
+
+    # step 2.  find path by `which nvcc`
+    if rocm_home is None:
+        which_cmd = 'where' if IS_WINDOWS else 'which'
+        try:
+            with open(os.devnull, 'w') as devnull:
+                hipcc_path = subprocess.check_output(
+                    [which_cmd, 'hipcc'], stderr=devnull)
+                if six.PY3:
+                    hipcc_path = hipcc_path.decode()
+                hipcc_path = hipcc_path.rstrip('\r\n')
+
+                # for example: /opt/rocm/bin/hipcc
+                rocm_home = os.path.dirname(os.path.dirname(hipcc_path))
+        except:
+            rocm_home = "/opt/rocm"
+    # step 3. check whether path is valid
+    if rocm_home and not os.path.exists(
+            rocm_home) and core.is_compiled_with_rocm():
+        rocm_home = None
+        warnings.warn(
+            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+        )
+
+    return rocm_home
+
+
 def find_cuda_includes():
     """
     Use heuristic method to find cuda include path
@@ -477,6 +513,19 @@ def find_cuda_includes():
     return [os.path.join(cuda_home, 'include')]
 
 
+def find_rocm_includes():
+    """
+    Use heuristic method to find rocm include path
+    """
+    rocm_home = find_rocm_home()
+    if rocm_home is None:
+        raise ValueError(
+            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+        )
+
+    return [os.path.join(rocm_home, 'include')]
+
+
 def find_paddle_includes(use_cuda=False):
     """
     Return Paddle necessary include dir path.
@@ -487,8 +536,12 @@ def find_paddle_includes(use_cuda=False):
     include_dirs = [paddle_include_dir, third_party_dir]
 
     if use_cuda:
-        cuda_include_dir = find_cuda_includes()
-        include_dirs.extend(cuda_include_dir)
+        if core.is_compiled_with_rocm():
+            rocm_include_dir = find_rocm_includes()
+            include_dirs.extend(rocm_include_dir)
+        else:
+            cuda_include_dir = find_cuda_includes()
+            include_dirs.extend(cuda_include_dir)
 
     return include_dirs
 
@@ -510,6 +563,20 @@ def find_cuda_libraries():
     return cuda_lib_dir
 
 
+def find_rocm_libraries():
+    """
+    Use heuristic method to find rocm dynamic lib path
+    """
+    rocm_home = find_rocm_home()
+    if rocm_home is None:
+        raise ValueError(
+            "Not found ROCM runtime, please use `export ROCM_PATH=XXX` to specific it."
+        )
+    rocm_lib_dir = [os.path.join(rocm_home, 'lib')]
+
+    return rocm_lib_dir
+
+
 def find_paddle_libraries(use_cuda=False):
     """
     Return Paddle necessary library dir path.
@@ -518,8 +585,12 @@ def find_paddle_libraries(use_cuda=False):
     paddle_lib_dirs = [get_lib()]
 
     if use_cuda:
-        cuda_lib_dir = find_cuda_libraries()
-        paddle_lib_dirs.extend(cuda_lib_dir)
+        if core.is_compiled_with_rocm():
+            rocm_lib_dir = find_rocm_libraries()
+            paddle_lib_dirs.extend(rocm_lib_dir)
+        else:
+            cuda_lib_dir = find_cuda_libraries()
+            paddle_lib_dirs.extend(cuda_lib_dir)
 
     return paddle_lib_dirs
 
@@ -788,24 +859,22 @@ def list2str(args):
     return repr(args)
 
 
-def _jit_compile(file_path, interpreter=None, verbose=False):
+def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
-    if interpreter is None:
-        interpreter = 'python'
+    # Using interpreter same with current process.
+    interpreter = sys.executable
+
     try:
-        which = 'where' if IS_WINDOWS else 'which'
-        py_path = subprocess.check_output([which, interpreter])
         py_version = subprocess.check_output([interpreter, '-V'])
         if six.PY3:
-            py_path = py_path.decode()
             py_version = py_version.decode()
         log_v("Using Python interpreter: {}, version: {}".format(
-            py_path.strip(), py_version.strip()), verbose)
+            interpreter, py_version.strip()), verbose)
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(

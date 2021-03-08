@@ -108,7 +108,11 @@ class CublasHandleHolder {
   }
 #endif
 
+#ifdef PADDLE_WITH_HIP
+  const rocblas_handle& GetCublasHandle() const { return handle_; }
+#else
   const cublasHandle_t& GetCublasHandle() const { return handle_; }
+#endif
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_HIP

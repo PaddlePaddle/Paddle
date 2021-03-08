@@ -16,7 +16,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -28,7 +33,11 @@ class RNNDescriptors {
  public:
   RNNDescriptors(int seq_length, int batch_size, int input_size,
                  int hidden_size, int num_layers, float dropout_prob, int seed,
+#ifdef PADDLE_WITH_HIP
+                 int weight_numel, miopenRNNMode_t mode, bool is_bidirec,
+#else
                  int weight_numel, cudnnRNNMode_t mode, bool is_bidirec,
+#endif
                  bool is_test)
       : seq_length_(seq_length),
         batch_size_(batch_size),
@@ -40,15 +49,23 @@ class RNNDescriptors {
         weight_numel_(weight_numel),
         mode_(mode),
         is_bidirec_(is_bidirec),
-        is_test_(is_test) {}
+        is_test_(is_test) {
+  }
 
   template <typename T>
+#ifdef PADDLE_WITH_HIP
+  void Create(const miopenHandle_t &handle, const platform::Place &place,
+#else
   void Create(const cudnnHandle_t &handle, const platform::Place &place,
+#endif
               const std::vector<int> &sequence_length, size_t *workspace_size,
               size_t *reserve_size, framework::Tensor *dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
+#ifdef PADDLE_WITH_HIP
+    miopenDataType_t cudnn_type = platform::CudnnDataType<T>::type;
+#else
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
-
+#endif
     // ------------------- cudnn x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
     std::vector<int> strides_x = {input_size_, 1, 1};
@@ -59,7 +76,7 @@ class RNNDescriptors {
       y_descs_.emplace_back(y_desc_.descriptor<T>(dims_y, strides_y));
     }
 
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       x_seq_desc_.descriptor<T>(seq_length_, batch_size_, input_size_, true,
                                 sequence_length);
@@ -82,17 +99,29 @@ class RNNDescriptors {
     size_t state_size;
     bool is_initialized = dropout_state->IsInitialized();
     if (!is_test_ && !is_initialized) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
+                                           place);
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
+#endif
     }
     dropout_desc_.descriptor(handle, place, is_initialized, dropout_prob_,
                              is_test_ ? nullptr : dropout_state, seed_,
                              state_size);
 
 // ------------------- cudnn rnn descriptors ---------------------
-#if CUDNN_VERSION >= 6000
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor(
+        rnn_desc_.desc(), hidden_size_, num_layers_, miopenRNNlinear,
+        is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, mode_,
+        miopenRNNNoBias, miopenRNNdefault, cudnn_type));
+#elif CUDNN_VERSION >= 6000
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,
         dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
@@ -106,7 +135,7 @@ class RNNDescriptors {
         cudnn_type));
 #endif
 
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
@@ -115,8 +144,13 @@ class RNNDescriptors {
 
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
+        handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
+#endif
     PADDLE_ENFORCE_EQ(
         weights_size_, sizeof(T) * weight_numel_,
         platform::errors::InvalidArgument(
@@ -126,7 +160,16 @@ class RNNDescriptors {
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
-    // ------------------- cudnn workspace, reserve size ---------------------
+// ------------------- cudnn workspace, reserve size ---------------------
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenGetRNNWorkspaceSize(
+        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
+        workspace_size));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenGetRNNTrainingReserveSize(
+            handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
+            reserve_size));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
         workspace_size));
@@ -134,7 +177,19 @@ class RNNDescriptors {
         platform::dynload::cudnnGetRNNTrainingReserveSize(
             handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
             reserve_size));
+#endif
   }
+#ifdef PADDLE_WITH_HIP
+  miopenTensorDescriptor_t *x_descs() { return x_descs_.data(); }
+  miopenTensorDescriptor_t *y_descs() { return y_descs_.data(); }
+  miopenTensorDescriptor_t init_h_desc() { return init_h_desc_.desc(); }
+  miopenTensorDescriptor_t init_c_desc() { return init_c_desc_.desc(); }
+  miopenTensorDescriptor_t last_h_desc() { return last_h_desc_.desc(); }
+  miopenTensorDescriptor_t last_c_desc() { return last_c_desc_.desc(); }
+  miopenRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
+  miopenDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
+  miopenTensorDescriptor_t weight_desc() { return weight_desc_.desc(); }
+#else
   cudnnTensorDescriptor_t *x_descs() { return x_descs_.data(); }
   cudnnTensorDescriptor_t *y_descs() { return y_descs_.data(); }
 #if CUDNN_VERSION >= 7201
@@ -148,6 +203,7 @@ class RNNDescriptors {
   cudnnRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
   cudnnDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
   cudnnFilterDescriptor_t weight_desc() { return weight_desc_.desc(); }
+#endif
 
  private:
   int seq_length_;
@@ -158,15 +214,24 @@ class RNNDescriptors {
   float dropout_prob_;
   int seed_;
   int weight_numel_;
+#ifdef PADDLE_WITH_HIP
+  miopenRNNMode_t mode_;
+#else
   cudnnRNNMode_t mode_;
+#endif
   bool is_bidirec_;
   bool is_test_;
+#ifdef PADDLE_WITH_HIP
+  std::vector<miopenTensorDescriptor_t> x_descs_;
+  std::vector<miopenTensorDescriptor_t> y_descs_;
+#else
   std::vector<cudnnTensorDescriptor_t> x_descs_;
   std::vector<cudnnTensorDescriptor_t> y_descs_;
+#endif
 
   platform::ScopedTensorDescriptor x_desc_;
   platform::ScopedTensorDescriptor y_desc_;
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
   platform::ScopedRNNTensorDescriptor x_seq_desc_;
   platform::ScopedRNNTensorDescriptor y_seq_desc_;
 #endif
@@ -193,7 +258,7 @@ bool is_continuous(const Type &weight_list) {
 }
 
 template <typename T>
-void weight_to_tensor(const platform::Place &place, cudaStream_t stream,
+void weight_to_tensor(const platform::Place &place, gpuStream_t stream,
                       const std::vector<const Tensor *> &weight_list,
                       Tensor *weight) {
   auto weight_data = weight->data<T>();
@@ -211,7 +276,7 @@ void weight_to_tensor(const platform::Place &place, cudaStream_t stream,
 }
 
 template <typename T>
-void weight_to_tensor_list(const platform::Place &place, cudaStream_t stream,
+void weight_to_tensor_list(const platform::Place &place, gpuStream_t stream,
                            std::vector<Tensor *> *weight_grad,
                            const std::vector<const Tensor *> &weight_input,
                            const Tensor *weight) {
@@ -247,6 +312,17 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     auto mode = ctx.Attr<std::string>("mode");
+#ifdef PADDLE_WITH_HIP
+    miopenRNNMode_t rnn_mode = miopenLSTM;
+    if (mode == "LSTM")
+      rnn_mode = miopenLSTM;
+    else if (mode == "GRU")
+      rnn_mode = miopenGRU;
+    else if (mode == "RNN_RELU")
+      rnn_mode = miopenRNNRELU;
+    else if (mode == "RNN_TANH")
+      rnn_mode = miopenRNNTANH;
+#else
     cudnnRNNMode_t rnn_mode = CUDNN_LSTM;
     if (mode == "LSTM")
       rnn_mode = CUDNN_LSTM;
@@ -256,6 +332,7 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
       rnn_mode = CUDNN_RNN_RELU;
     else if (mode == "RNN_TANH")
       rnn_mode = CUDNN_RNN_TANH;
+#endif
     else
       PADDLE_THROW(platform::errors::InvalidArgument(
           "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received: "
@@ -285,7 +362,11 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
     T *last_h_data = state[0]->mutable_data<T>(ctx.GetPlace());
     T *last_c_data = nullptr;
+#ifdef PADDLE_WITH_HIP
+    if (rnn_mode == miopenLSTM) {
+#else
     if (rnn_mode == CUDNN_LSTM) {
+#endif
       init_c_data = pre_state[1]->data<T>();
       last_c_data = state[1]->mutable_data<T>(ctx.GetPlace());
     }
@@ -362,8 +443,17 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
                   &workspace_data_, workspace_size);
     } else {
       if (!has_seq_length) {
-        // for train
-        // This interface is used when the input/output is unpadded.
+// for train
+// This interface is used when the input/output is unpadded.
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNForwardTraining(
+            handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), x_data,
+            rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+            rnn.weight_desc(), w_data, rnn.y_descs(), out_data,
+            rnn.last_h_desc(), last_h_data, rnn.last_c_desc(), last_c_data,
+            workspace_data_.data<uint8_t>(), workspace_size, reserve_data,
+            reserve_size));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), x_data,
             rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
@@ -371,8 +461,9 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
             rnn.last_h_desc(), last_h_data, rnn.last_c_desc(), last_c_data,
             workspace_data_.data<uint8_t>(), workspace_size, reserve_data,
             reserve_size));
+#endif
       } else {
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
         // for train
         // This interface is used when the input/output is padded.
         PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -394,23 +485,36 @@ class RNNCudnnKernel : public framework::OpKernel<T> {
     }
   }
 
+#ifdef PADDLE_WITH_HIP
+  void RNNInferece(const bool &has_seq_length, const miopenHandle_t &handle,
+#else
   void RNNInferece(const bool &has_seq_length, const cudnnHandle_t &handle,
+#endif
                    const int &seq_length, RNNDescriptors *rnn, const T *x_data,
                    const T *init_h_data, const T *init_c_data, const T *w_data,
                    T *out_data, T *last_h_data, T *last_c_data,
                    framework::Tensor *workspace_data,
                    const size_t &workspace_size) const {
     if (!has_seq_length) {
-      // for inference
-      // This interface is used when the input/output is unpadded.
+// for inference
+// This interface is used when the input/output is unpadded.
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNForwardInference(
+          handle, rnn->rnn_desc(), seq_length, rnn->x_descs(), x_data,
+          rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
+          rnn->weight_desc(), w_data, rnn->y_descs(), out_data,
+          rnn->last_h_desc(), last_h_data, rnn->last_c_desc(), last_c_data,
+          workspace_data->data<uint8_t>(), workspace_size));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
           handle, rnn->rnn_desc(), seq_length, rnn->x_descs(), x_data,
           rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
           rnn->weight_desc(), w_data, rnn->y_descs(), out_data,
           rnn->last_h_desc(), last_h_data, rnn->last_c_desc(), last_c_data,
           workspace_data->data<uint8_t>(), workspace_size));
+#endif
     } else {
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
       // for inference
       // This interface is used when the input/output is padded.
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
@@ -457,6 +561,17 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     auto mode = ctx.Attr<std::string>("mode");
+#ifdef PADDLE_WITH_HIP
+    miopenRNNMode_t rnn_mode = miopenLSTM;
+    if (mode == "LSTM")
+      rnn_mode = miopenLSTM;
+    else if (mode == "GRU")
+      rnn_mode = miopenGRU;
+    else if (mode == "RNN_RELU")
+      rnn_mode = miopenRNNRELU;
+    else if (mode == "RNN_TANH")
+      rnn_mode = miopenRNNTANH;
+#else
     cudnnRNNMode_t rnn_mode = CUDNN_LSTM;
     if (mode == "LSTM")
       rnn_mode = CUDNN_LSTM;
@@ -466,6 +581,7 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
       rnn_mode = CUDNN_RNN_RELU;
     else if (mode == "RNN_TANH")
       rnn_mode = CUDNN_RNN_TANH;
+#endif
     else
       PADDLE_THROW(platform::errors::InvalidArgument(
           "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received: "
@@ -532,7 +648,11 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
             ? pre_state_grad[0]->mutable_data<T>(ctx.GetPlace())
             : nullptr;
     T *init_c_grad_data = nullptr;
+#ifdef PADDLE_WITH_HIP
+    if (rnn_mode == miopenLSTM) {
+#else
     if (rnn_mode == CUDNN_LSTM) {
+#endif
       init_c_data = pre_state[1]->data<T>();
       // last_c_data = state[1]->data<T>();
       last_c_grad_data = state_grad[1]->data<T>();
@@ -579,6 +699,17 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
 
     if (!has_seq_length) {
       if (in_grad) {
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNBackwardData(
+            handle, rnn.rnn_desc(), seq_length, rnn.y_descs(), out_data,
+            rnn.y_descs(), out_grad_data, rnn.last_h_desc(), last_h_grad_data,
+            rnn.last_c_desc(), last_c_grad_data, rnn.weight_desc(), weight_data,
+            rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+            rnn.x_descs(), in_grad_data, rnn.init_h_desc(), init_h_grad_data,
+            rnn.init_c_desc(), init_c_grad_data,
+            workspace_data_.data<uint8_t>(), workspace_size,
+            const_cast<uint8_t *>(reserve_data), reserve_size));
+#else
         // This interface is used when the input/output is unpadded.
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
             handle, rnn.rnn_desc(), seq_length, rnn.y_descs(), out_data,
@@ -589,17 +720,27 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
             rnn.init_c_desc(), init_c_grad_data,
             workspace_data_.data<uint8_t>(), workspace_size,
             const_cast<uint8_t *>(reserve_data), reserve_size));
+#endif
       }
       if (!weight_grad_list.empty()) {
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenRNNBackwardWeights(
+            handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
+            rnn.init_h_desc(), init_h_data, rnn.y_descs(), out->data<T>(),
+            rnn.weight_desc(), weight_grad_data,
+            workspace_data_.data<uint8_t>(), workspace_size,
+            const_cast<uint8_t *>(reserve_data), reserve_size));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
             handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
             rnn.init_h_desc(), init_h_data, rnn.y_descs(), out->data<T>(),
             workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc(),
             weight_grad_data, const_cast<uint8_t *>(reserve_data),
             reserve_size));
+#endif
       }
     } else {
-#if CUDNN_VERSION >= 7201
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
       // for train
       // This interface is used when the input/output is padded.
       if (in_grad) {
@@ -638,7 +779,13 @@ class RNNGradCudnnKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_CUDA_KERNEL(rnn, ops::RNNCudnnKernel<float>);
+REGISTER_OP_CUDA_KERNEL(rnn_grad, ops::RNNGradCudnnKernel<float>);
+#else
 REGISTER_OP_CUDA_KERNEL(rnn, ops::RNNCudnnKernel<float>,
                         ops::RNNCudnnKernel<double>);
 REGISTER_OP_CUDA_KERNEL(rnn_grad, ops::RNNGradCudnnKernel<float>,
                         ops::RNNGradCudnnKernel<double>);
+#endif

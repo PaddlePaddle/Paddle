@@ -17,7 +17,7 @@ import unittest
 import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_cc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the 
@@ -31,7 +31,7 @@ dispatch_op = load(
     name='dispatch_op',
     sources=['dispatch_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,
+    extra_cxx_cflags=extra_cc_args,
     verbose=True)
 
 
