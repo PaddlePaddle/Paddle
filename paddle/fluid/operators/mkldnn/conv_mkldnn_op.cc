@@ -981,7 +981,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-    auto chosen_memory_format = : MKLDNNMemoryFormat::any;
+    auto chosen_memory_format = MKLDNNMemoryFormat::any;
     weights_format = MKLDNNMemoryFormat::any;
 
     auto src_md = platform::MKLDNNMemDesc(
