@@ -20,6 +20,7 @@ import sys
 import time
 import subprocess
 import requests
+import platform
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
@@ -210,7 +211,12 @@ class PRChecker(object):
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
+            current_system = platform.system()
+            if current_system == "Darwin" or current_system == "Windows":
+                f = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f = f.replace('//', '/')
             if f not in file_ut_map:
+                continue
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):

@@ -38,6 +38,7 @@ __all__ = [
 _cudnn_version = None
 
 
+# test for prec
 def is_compiled_with_xpu():
     """
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
