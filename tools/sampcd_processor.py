@@ -271,7 +271,7 @@ def print_header(htype, name):
     print("-----------------------")
 
 
-def srccoms_extract(srcfile, wlist):
+def srccoms_extract(srcfile, wlist, methods):
     """
     Given a source file ``srcfile``, this function will
     extract its API(doc comments) and run sample codes in the
@@ -294,8 +294,8 @@ def srccoms_extract(srcfile, wlist):
 
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
-    srcfile_new = srcfile.name
-    srcfile_new = srcfile_new.replace('.py', '')
+    print('processing ', srcfile.name)
+    srcfile_new,_ = os.path.splitext(srcfile.name)
     srcfile_list = srcfile_new.split('/')
     srcfile_str = ''
     for i in range(4, len(srcfile_list)):
@@ -325,6 +325,7 @@ def srccoms_extract(srcfile, wlist):
             if '' in alllist:
                 alllist.remove('')
         api_alllist_count = len(alllist)
+        print('found', api_alllist_count, 'items in file')
         api_count = 0
         handled = []
         # get src contents in layers/ops.py
@@ -333,6 +334,7 @@ def srccoms_extract(srcfile, wlist):
                 if srcls[i].find("__doc__") != -1:
                     opname = srcls[i][:srcls[i].find("__doc__") - 1]
                     if opname in wlist:
+                        print(opname, 'is in the whitelist, skip it.')
                         continue
                     comstart = i
                     for j in range(i, len(srcls)):
@@ -354,6 +356,7 @@ def srccoms_extract(srcfile, wlist):
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
                 if "%s%s" % (srcfile_str, fn) not in methods:
+                    print('{}{}'.format(srcfile_str, fn), 'not in methods, skip it., [fn]')
                     continue
                 if fn in handled:
                     continue
@@ -375,6 +378,7 @@ def srccoms_extract(srcfile, wlist):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
                 if '%s%s' % (srcfile_str, cn) not in methods:
+                    print('{}{}'.format(srcfile_str, cn), 'not in methods, skip it. [cn]')
                     continue
                 if cn in handled:
                     continue
@@ -412,6 +416,7 @@ def srccoms_extract(srcfile, wlist):
                                 if '%s%s' % (
                                         srcfile_str, name
                                 ) not in methods:  # class method not in api.spec 
+                                    print('{}{}'.format(srcfile_str, name), 'not in methods, skip it. [name]')
                                     continue
                                 if mn.startswith('_'):
                                     continue
@@ -439,15 +444,18 @@ def srccoms_extract(srcfile, wlist):
                                     if not sampcd_extract_and_run(
                                             thismtdcom, name, "method", name):
                                         process_result = False
+    else:
+        print('__all__ not found in', srcfile.name)
 
     return process_result
 
 
 def test(file_list):
+    global methods
     process_result = True
     for file in file_list:
         with open(file, 'r') as src:
-            if not srccoms_extract(src, wlist):
+            if not srccoms_extract(src, wlist, methods):
                 process_result = False
     return process_result
 
@@ -519,12 +527,7 @@ def get_filenames():
     return filenames
 
 
-def get_incrementapi():
-    '''
-    this function will get the apis that difference between API_DEV.spec and API_PR.spec.
-    '''
-
-    def get_api_md5(path):
+def get_api_md5(path):
         api_md5 = {}
         API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
                               path)
@@ -535,6 +538,11 @@ def get_incrementapi():
                     '\n', '')
                 api_md5[api] = md5
         return api_md5
+
+def get_incrementapi():
+    '''
+    this function will get the apis that difference between API_DEV.spec and API_PR.spec.
+    '''
 
     dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
     pr_api = get_api_md5('paddle/fluid/API_PR.spec')
@@ -603,6 +611,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+methods = []
+whl_error = []
+
 if __name__ == '__main__':
     args = parse_args()
 
@@ -618,8 +629,14 @@ if __name__ == '__main__':
     RUN_ON_DEVICE = args.mode
     print("API check -- Example Code")
     print("sample_test running under python", platform.python_version())
-    if not os.path.isdir("./samplecode_temp"):
+
+    if os.path.exists("./samplecode_temp"):
+        if not os.path.isdir("./samplecode_temp"):
+            os.remove("./samplecode_temp")
+            os.mkdir("./samplecode_temp")
+    else:
         os.mkdir("./samplecode_temp")
+
     cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
     if len(filenames) == 0 and len(whl_error) == 0:
@@ -651,10 +668,7 @@ if __name__ == '__main__':
 
     # delete temp files
     if not args.debug:
-        for root, dirs, files in os.walk("./samplecode_temp"):
-            for fntemp in files:
-                os.remove("./samplecode_temp/" + fntemp)
-        os.rmdir("./samplecode_temp")
+        shutil.rmtree("./samplecode_temp")
 
     print("----------------End of the Check--------------------")
     if len(whl_error) != 0:
