@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid
 import json
 import argparse
+import shutil
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
