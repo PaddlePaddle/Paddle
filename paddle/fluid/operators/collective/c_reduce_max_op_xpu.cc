@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_allreduce_op.h"
+#include "paddle/fluid/operators/collective/c_reduce_op.h"
 
 namespace paddle {
 namespace platform {
@@ -24,5 +24,5 @@ struct float16;
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_allreduce_min,
-                       ops::CAllReduceOpXPUKernel<ops::kRedMin, float>)
+REGISTER_OP_XPU_KERNEL(c_reduce_max,
+                       ops::CReduceOpXPUKernel<ops::kRedMax, float>)

@@ -24,5 +24,5 @@ struct float16;
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_allreduce_sum,
+REGISTER_OP_XPU_KERNEL(c_allreduce_prod,
                        ops::CAllReduceOpXPUKernel<ops::kRedProd, float>)
