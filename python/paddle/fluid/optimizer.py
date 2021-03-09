@@ -4435,15 +4435,12 @@ class PipelineOptimizer(object):
                         self._op_role_key: self._op_role.LRSched,
                         'peer': read_dev_index,
                     })
-                var_shape = list(read_block.var(var_name).shape)
-                var_shape[0] = self.micro_batch_size if var_shape[
-                    0] < 0 else var_shape[0]
                 read_block._insert_op(
                     index=0,
                     type='recv_v2',
                     outputs={'Out': [read_block.var(var_name)]},
                     attrs={
-                        'out_shape': var_shape,
+                        'out_shape': read_block.var(var_name).shape,
                         'dtype': read_block.var(var_name).dtype,
                         self._op_device_key: read_device,
                         'use_calc_stream': True,
