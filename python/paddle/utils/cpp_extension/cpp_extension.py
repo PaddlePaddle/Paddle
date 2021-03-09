@@ -682,7 +682,6 @@ def load(name,
          extra_ldflags=None,
          extra_include_paths=None,
          build_directory=None,
-         interpreter=None,
          verbose=False):
     """
     An Interface to automatically compile C++/CUDA source files Just-In-Time
@@ -731,10 +730,9 @@ def load(name,
         custom_op_module = load(
             name="op_shared_libary_name",                # name of shared library
             sources=['relu_op.cc', 'relu_op.cu'],        # source files of cusomized op
-            extra_cxx_cflags=['-DPADDLE_WITH_MKLDNN'],   # need to specify the flag if pre-installed Paddle supports MKLDNN
-            extra_cuda_cflags=['-DPADDLE_WITH_MKLDNN'],  # need to specify the flag if pre-installed Paddle supports MKLDNN
-            interpreter='python3.7',                     # optional, specify another python interpreter
-            verbose=True                                 # output log information
+            extra_cxx_cflags=['-g', '-w'],               # optional, specify extra flags to compile .cc/.cpp file
+            extra_cuda_cflags=['-O2'],                   # optional, specify extra flags to compile .cu file
+            verbose=True                                 # optional, specify to output log information
         )
 
         x = paddle.randn([4, 10], dtype='float32')
@@ -747,11 +745,9 @@ def load(name,
                             and ``.cu`` for CUDA file.
         extra_cxx_cflags(list[str], optional): Specify additional flags used to compile CPP files. By default
                                all basic and framework related flags have been included.
-                               If your pre-insall Paddle supported MKLDNN, please add
-                               ``-DPADDLE_WITH_MKLDNN`` . Default is None.
         extra_cuda_cflags(list[str], optional): Specify additional flags used to compile CUDA files. By default
-                               all basic and framework related flags have been included. If your pre-insall Paddle supported MKLDNN, 
-                               please add ``-DPADDLE_WITH_MKLDNN`` . Default None. See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
+                               all basic and framework related flags have been included. 
+                               See `Cuda Compiler Driver NVCC <https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html>`_
                                for details. Default is None.
         extra_ldflags(list[str], optional): Specify additional flags used to link shared library. See
                                 `GCC Link Options <https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html>`_ for details.
@@ -762,10 +758,6 @@ def load(name,
         build_directory(str, optional): Specify root directory path to put shared library file. If set None,
                             it will use ``PADDLE_EXTENSION_DIR`` from os.environ. Use
                             ``paddle.utils.cpp_extension.get_build_directory()`` to see the location. Default is None.
-        interpreter(str, optional): Specify nterpreter path, supporting alias and full path.
-                           If set None, it will use `python` as default interpreter. If local environment contains
-                           more than one python interpreters and want to use new interpreter to apply compilation,
-                           please specify this parameter, such as ``python3.7`` . Default is None.
         verbose(bool, optional): whether to verbose compiled log information. Default is False
 
     Returns:
@@ -806,7 +798,7 @@ def load(name,
     _write_setup_file(name, sources, file_path, build_base_dir,
                       extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,
                       extra_ldflags, verbose)
-    _jit_compile(file_path, interpreter, verbose)
+    _jit_compile(file_path, verbose)
 
     # import as callable python api
     custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
