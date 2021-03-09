@@ -31,7 +31,9 @@ wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
 rem ------initialize common variable------
-if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
+set WITH_TPCACHE=OFF
+set WITH_CACHE=OFF
+if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
@@ -241,7 +243,7 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
-call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
