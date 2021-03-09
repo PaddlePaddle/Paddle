@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/enforce.h"
 
-
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
@@ -43,10 +42,10 @@ struct InputVars {
 };
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
+void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   const f::DDim dims = f::make_ddim({2, 2});
   auto place = ctx.GetPlace();
-  
+
   // init input
   std::vector<InputVars> input_names = {
       {"x", scope->Var("x")->GetMutable<f::LoDTensor>()},
@@ -58,7 +57,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto *out = scope->Var("out")->GetMutable<f::LoDTensor>();
   auto *out1 = scope->Var("out1")->GetMutable<f::LoDTensor>();
   auto *found_inf = scope->Var("found_inf")->GetMutable<f::LoDTensor>();
-  
+
   // Initialize input data
   const int num_inputs = input_names.size();
   size_t numel = static_cast<size_t>(f::product(dims));
@@ -66,7 +65,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   for (int i = 0; i < num_inputs; ++i) {
     std::vector<T> init_xs;
     for (size_t j = 0; j < numel; ++j) {
-      if ( j == 0) {
+      if (j == 0) {
         init_xs.push_back(static_cast<T>(NAN));
       } else {
         init_xs.push_back(static_cast<T>(j + 1));
@@ -76,29 +75,23 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     input_names[i].tensor->Resize(dims);
   }
 
-  //Tensor scale_tensor;
-  //scale_tensor.Resize({1});
-  //auto* scale_ptr = scale_tensor.mutable_data<T>(paddle::platform::CPUPlace());
-  //*scale_ptr = static_cast<T>(0.1234);
-  //f::TensorCopy(scale_tensor, ctx.GetPlace(), scale);
-  f::TensorFromVector(std::vector<T>{static_cast<T>(0.5)}, ctx, scale);	
+  f::TensorFromVector(std::vector<T>{static_cast<T>(0.5)}, ctx, scale);
 
   ctx.Wait();
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp("check_finite_and_unscale", 
-                                    {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
-                                    {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}}, 
-                                    attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "check_finite_and_unscale", {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
+      {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}}, attrs);
   op->Run(*scope, place);
   ctx.Wait();
- 
+
   // out0
   std::vector<T> out_vec;
   f::TensorToVector(*out, ctx, &out_vec);
   EXPECT_EQ(out_vec.size(), static_cast<size_t>(4));
-  for(size_t j = 0; j < out_vec.size(); ++j) {
+  for (size_t j = 0; j < out_vec.size(); ++j) {
     VLOG(3) << "out_vec[" << j << "]:" << out_vec[j];
   }
 
@@ -106,14 +99,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<T> out1_vec;
   f::TensorToVector(*out1, ctx, &out1_vec);
   EXPECT_EQ(out1_vec.size(), static_cast<size_t>(4));
-  for(size_t j = 0; j < out1_vec.size(); ++j) {
+  for (size_t j = 0; j < out1_vec.size(); ++j) {
     VLOG(3) << "out1_vec[" << j << "]:" << out1_vec[j];
   }
-  
+
   // out found_inf
   Tensor found_inf_tensor;
   found_inf_tensor.Resize({1});
-  bool* is_finite_data = found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
+  bool *is_finite_data =
+      found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
   f::TensorCopy(*found_inf, place, &found_inf_tensor);
   EXPECT_FALSE(*is_finite_data);
 

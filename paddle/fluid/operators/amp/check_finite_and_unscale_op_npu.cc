@@ -15,8 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -34,7 +34,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
     found_inf->mutable_data<bool>(ctx.GetPlace());
-    
+
     bool found_inf_data = false;
 
     auto stream =
@@ -44,16 +44,18 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // step1: inverse scale(RealDiv)
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(), &const_tensor);	
-                 
-    ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();             
+    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(),
+                     &const_tensor);
 
+    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+
+    // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
     Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
     inverse_out.mutable_data<T>(ctx.GetPlace());
-    auto runner_inverse = NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
+    auto runner_inverse =
+        NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
     tmp_inverse_out = &inverse_out;
 
@@ -63,15 +65,17 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
 
-      // step2: CheckNumerics	
-      // TODO Fixme(CheckNumerics runs on the Ascend AI CPU, which delivers poor performance. )
+      // step2: CheckNumerics
+      // CheckNumerics runs on the Ascend AI CPU, which delivers poor
+      // performance.
       Tensor* tmp_checkxout = const_cast<Tensor*>(x);
       Tensor check_xout(x->type());
       check_xout.Resize(x->dims());
       check_xout.mutable_data<T>(ctx.GetPlace());
       try {
-        auto runner_checknumerics = NpuOpRunner("CheckNumerics", {*x}, {check_xout}, 
-                                          {{"message", std::string("check_nan_and_inf")}});
+        auto runner_checknumerics =
+            NpuOpRunner("CheckNumerics", {*x}, {check_xout},
+                        {{"message", std::string("check_nan_and_inf")}});
         runner_checknumerics.Run(stream);
         tmp_checkxout = &check_xout;
       } catch (platform::EnforceNotMet& exception) {
@@ -79,17 +83,19 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         tmp_checkxout = nullptr;
         found_inf_data = true;
       }
-      
+
       if (tmp_checkxout != nullptr) {
         // MatMul
-        auto runner_matmul = NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
+        auto runner_matmul =
+            NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
         runner_matmul.Run(stream);
 
         // set found_inf to true
         if (found_inf_data) {
           Tensor found_inf_tensor;
           found_inf_tensor.Resize({1});
-          bool* is_found_inf = found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
+          bool* is_found_inf =
+              found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
           *is_found_inf = true;
           framework::TensorCopy(found_inf_tensor, ctx.GetPlace(), found_inf);
         }
@@ -97,10 +103,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
         // ZerosLike
         auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {*out}, {});
         runner_zeroslike.Run(stream);
-      } // end if
-      
-    } // end for
-    
+      }  // end if
+    }    // end for
   }
 };
 
@@ -110,6 +114,5 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(check_finite_and_unscale,
-                        ops::CheckFiniteAndUnscaleNPUKernel<float>,
-                        ops::CheckFiniteAndUnscaleNPUKernel<plat::float16>);
-
+                       ops::CheckFiniteAndUnscaleNPUKernel<float>,
+                       ops::CheckFiniteAndUnscaleNPUKernel<plat::float16>);
