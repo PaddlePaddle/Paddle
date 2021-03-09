@@ -39,7 +39,8 @@ from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
-from .worker import ParentWatchDog, get_worker_info, _worker_loop, _DatasetKind, _IterableDatasetStopIteration
+from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
+        _DatasetKind, _IterableDatasetStopIteration, _WorkerException
 from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
@@ -376,9 +377,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             if not self._thread_done_event.is_set():
                 if batch is None:
                     self._exit_thread_expectedly()
-                elif isinstance(batch, Exception):
-                    self._exit_thread_unexpectedly()
-                    raise batch
                 else:
                     try:
                         # pack as LoDTensorArray
@@ -485,6 +483,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
                 idx, batch, structure = data
+                if isinstance(batch, _WorkerException):
+                    self._exit_thread_unexpectedly()
+                    batch.reraise()
+
                 if idx == self._rcvd_idx:
                     del self._task_infos[idx]
                     self._structure_infos.append(structure)

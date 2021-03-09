@@ -17,6 +17,7 @@ import six
 import sys
 import paddle
 import numpy as np
+import traceback
 from collections import namedtuple
 from .. import core
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
@@ -152,6 +153,21 @@ class WorkerInfo(object):
         return super(WorkerInfo, self).__setattr__(key, val)
 
 
+class _WorkerException(object):
+    def __init__(self, worker_id, exc_info=None):
+        self.worker_id = worker_id
+        exc_info = exc_info or sys.exc_info()
+        self.exc_type = exc_info[0]
+        self.exc_msg = "".join(traceback.format_exception(*exc_info))
+
+    def reraise(self):
+        msg = "DataLoader worker({}) caught {} with message:\n{}".format(
+            self.worker_id, self.exc_type.__name__, self.exc_msg)
+        if getattr(self.exc_type, "message", None):
+            raise self.exc_type(message=msg)
+        raise self.exc_type(msg)
+
+
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                  auto_collate_batch, collate_fn, init_fn, worker_id,
                  num_workers, use_shared_memory):
@@ -176,8 +192,7 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
             fetcher = _DatasetKind.create_fetcher(
                 dataset_kind, dataset, auto_collate_batch, collate_fn, True)
         except:
-            init_exception = Exception("init_fn failed in worker {}: " \
-                                    "{}".format(worker_id, sys.exc_info()))
+            init_exception = _WorkerException(worker_id)
 
         iterator_drained = False
         parent_watch_dog = ParentWatchDog()
@@ -211,8 +226,10 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                     out_queue.put(_IterableDatasetStopIteration(worker_id))
                     iterator_drained = True
                 else:
-                    out_queue.put((idx, e, None))
+                    out_queue.put((idx, _WorkerException(worker_id), None))
             else:
+                if isinstance(batch, _WorkerException):
+                    out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
                     tensor_list = core._convert_to_tensor_list(batch)
