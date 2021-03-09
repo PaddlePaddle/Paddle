@@ -211,7 +211,7 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                     out_queue.put(_IterableDatasetStopIteration(worker_id))
                     iterator_drained = True
                 else:
-                    out_queue.put((idx, e))
+                    out_queue.put((idx, e, None))
             else:
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:

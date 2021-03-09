@@ -378,6 +378,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._exit_thread_expectedly()
                 elif isinstance(batch, Exception):
                     self._exit_thread_unexpectedly()
+                    raise batch
                 else:
                     try:
                         # pack as LoDTensorArray
