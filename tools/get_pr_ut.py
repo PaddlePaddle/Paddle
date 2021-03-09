@@ -210,6 +210,9 @@ class PRChecker(object):
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
+            if PADDLE_ROOT != '/paddle/':
+                f=f.replace(PADDLE_ROOT,'/paddle/', 1)
+                f=f.replace('//', '/')
             if f not in file_ut_map:
                 print("not in file_ut_map")
                 print(f)
