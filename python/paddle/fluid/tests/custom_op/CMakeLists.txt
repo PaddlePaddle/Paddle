@@ -38,7 +38,7 @@ py_test(test_setup_install SRCS test_setup_install.py)
 py_test(test_setup_build SRCS test_setup_build.py)
 
 set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
-set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_install PROPERTIES TIMEOUT 250)
 set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
 
 
