@@ -138,6 +138,7 @@ set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
 cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
+cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
