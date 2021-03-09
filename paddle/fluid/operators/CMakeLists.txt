@@ -156,6 +156,11 @@ if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
 
+if (WITH_ASCEND_CL)
+  cc_test(softmax_op_npu_test SRCS softmax_op_npu_test.cc DEPS op_registry softmax_op softmax scope device_context enforce executor)
+  cc_test(top_k_op_npu_test SRCS top_k_op_npu_test.cc DEPS op_registry top_k_op scope device_context enforce executor)
+endif()
+
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
