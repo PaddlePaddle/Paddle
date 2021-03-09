@@ -212,7 +212,7 @@ class PRChecker(object):
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
             current_system = platform.system()
-            if current_system == "Darwin":
+            if current_system == "Darwin" or current_system == "Windows":
                 f = f.replace(PADDLE_ROOT, '/paddle/', 1)
                 f = f.replace('//', '/')
             if f not in file_ut_map:
