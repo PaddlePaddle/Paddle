@@ -100,12 +100,6 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   }
 }
 
-inline void get_anchors(const framework::DDim &x_dims,
-                        const framework::DDim &y_dims, const int axis, int *pre,
-                        int *n, int *post, int *m) {
-  // TODO(limingshu : arr changeing mechanism)
-}
-
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
   int index_ = 0;
@@ -213,17 +207,12 @@ __global__ void ElementwiseKernel(const T *__restrict__ x_data,
                                   const T *__restrict__ y_data,
                                   OutType *__restrict__ out_data, int n,
                                   int post, const size_t total, Functor func) {
-  const int share_size = 512;
-  const int mod_value = share_size - 1;
-  __shared__ T s_data[share_size];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int stride = blockDim.x * blockIdx.x;
+  int stride = blockDim.x * gridDim.x;
 
-  for (; tid < total; tid += stride) {
-    int idx = tid / post % n;
-    s_data[idx & mod_value] = y_data[idx];
-    __syncthreads();
-    out_data[tid] = func(x_data[tid], s_data[idx & mod_value]);
+  for (int i = tid; i < total; i += stride) {
+    int idx = i / post % n;
+    out_data[i] = func(x_data[i], y_data[idx]);
   }
 }
 
@@ -238,7 +227,7 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   int numel = pre * n * post;
-  int threads = 512;
+  int threads = 256;
   int blocks = (numel + threads - 1) / threads;
 
   if (is_xsize_larger) {
