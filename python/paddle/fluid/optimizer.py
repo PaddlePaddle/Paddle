@@ -4879,8 +4879,9 @@ class PipelineOptimizer(object):
                     if '@BroadCast' in param_name:
                         param_name = param_name[0:param_name.find('@BroadCast')]
                     # clear gradient
+                    assert param_name in self.origin_main_block.vars, "[{}] not in original main block".format(
+                        param_name)
                     param_grad_name = self._append_grad_suffix(param_name)
-                    accumulated_grad_names.append(param_grad_name)
                     if not block.has_var(param_grad_name):
                         self._create_var(
                             block, self.origin_main_block.vars[param_name],
@@ -4925,7 +4926,7 @@ class PipelineOptimizer(object):
                                 #self._op_role_var_key: op_role_var
                             })
                         #offset += 1
-                        # accumulated_gradient_names.append(param_grad_var.name)
+                        accumulated_grad_names.append(param_grad_var.name)
                     else:
                         grad_name = op_role_var[i + 1]  # with _0 suffix
                         grad_var = block.vars[grad_name]
@@ -4962,7 +4963,7 @@ class PipelineOptimizer(object):
                                 # self._op_role_var_key: op_role_var
                             })
                         offset += 1
-                        # accumulated_gradient_names.append(param_grad_var.name)
+                        accumulated_grad_names.append(param_grad_var.name)
                         #real_grad_name = grad_name[0:grad_name.find(
                         #    '@GRAD')] + '@GRAD'
                         #real_grad_var = block.vars[
