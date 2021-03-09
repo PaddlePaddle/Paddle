@@ -164,9 +164,6 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-    //     sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(),
-    //     stream));
     PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), sendbuff, recvbuff, numel,
                                       dtype, bkcl_red_type, stream),
                       BKCL_SUCCESS, platform::errors::PreconditionNotMet(
