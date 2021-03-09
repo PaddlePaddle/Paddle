@@ -613,6 +613,9 @@ EOF
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         else
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         fi
         failed_test_lists=''
@@ -694,11 +697,14 @@ function get_precision_ut_mac() {
         UT_list_re=''
         on_precision=1
         re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+        UT_list_prec_1='ut_list_prec2'
         for case in $UT_list; do
             flag=$(echo $case|grep -oE $re)
             if [ -n "$flag" ];then
                 if [ -z "$UT_list_prec" ];then
                     UT_list_prec="^$case$"
+                elif [[ "${#UT_list_prec}" -gt 10000 ]];then
+                    UT_list_prec_1="$UT_list_prec_1|^$case$"
                 else
                     UT_list_prec="$UT_list_prec|^$case$"
                 fi
