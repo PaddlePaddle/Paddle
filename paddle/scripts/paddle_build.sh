@@ -681,16 +681,13 @@ EOF
 
 function get_precision_ut_mac() {
     on_precision=0
-    set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
-            set +x
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
-            set -x
         fi
     fi
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
@@ -710,7 +707,6 @@ function get_precision_ut_mac() {
             fi
         done
     fi
-    set +x
 }
 
 function fetch_upstream_develop_if_not_exist() {
