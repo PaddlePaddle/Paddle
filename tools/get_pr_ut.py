@@ -214,6 +214,8 @@ class PRChecker(object):
             if platform.system() == "Darwin":
                 f=f.replace(PADDLE_ROOT,'/paddle/', 1)
                 f=f.replace('//', '/')
+
+
             if f not in file_ut_map:
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
