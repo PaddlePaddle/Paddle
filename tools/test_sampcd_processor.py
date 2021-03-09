@@ -148,8 +148,11 @@ class Test_srccoms_extract(unittest.TestCase):
         pyfilename = os.path.join(self.tmpDir, 'ops.py')
         with open(pyfilename, 'w') as pyfile:
             pyfile.write(filecont)
+        self.assertTrue(os.path.exists(pyfilename))
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, []))
+        self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 
+        self.assertTrue(os.path.exists("samplecode_temp/" "two_plus_two_example.py"))
     def test_from_not_ops_py(self):
         filecont = r'''
         __all__ = [
@@ -172,11 +175,45 @@ class Test_srccoms_extract(unittest.TestCase):
             pyfile.write(filecont)
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, []))
-        pass
+        self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py"))
     def test_with_empty_wlist(self):
+        """
+        see test_from_ops_py
+        """
         pass
     def test_with_wlist(self):
-        pass
+        filecont = r'''
+        __all__ = [
+        'one_plus_one',
+        'three_plus_three'
+        ]
+
+        def one_plus_one():
+            """
+            placeholder
+
+            Examples:
+            .. code-block:: python
+                print(1+1)
+            """
+            return 1+1
+        def three_plus_three():
+            """
+            placeholder
+
+            Examples:
+            .. code-block:: python
+                print(3+3)
+            """
+            return 3+3
+
+        '''
+        pyfilename = os.path.join(self.tmpDir, 'opo.py')
+        with open(pyfilename, 'w') as pyfile:
+            pyfile.write(filecont)
+        with open(pyfilename, 'r') as pyfile:
+            self.assertTrue(srccoms_extract(pyfile, []))
+        self.assertFalse(os.path.exists("samplecode_temp/three_plus_three_example.py"))
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py
 # why? unabled to use the ast module. emmmmm
