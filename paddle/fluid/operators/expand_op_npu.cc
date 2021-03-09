@@ -26,29 +26,29 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
-    std::cout << "enter" << std::endl;
+    // std::cout << "enter" << std::endl;
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
-    std::cout << "enter" << std::endl;
+    // std::cout << "enter" << std::endl;
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
-    std::cout << "enter" << std::endl;
+    // std::cout << "enter" << std::endl;
     switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
-    std::cout << "out" << std::endl;
+    // std::cout << "out" << std::endl;
   }
 
  protected:
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
-    std::cout << "enter expand " << Rank << std::endl;
+    // std::cout << "enter expand " << Rank << std::endl;
     auto* in0 = context.Input<framework::LoDTensor>("X");
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
@@ -63,7 +63,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < expand_times.size(); ++i) {
       out_dims[i] *= expand_times[i];
-      std::cout << "out_dims " << out_dims[i] << std::endl;
+      // std::cout << "out_dims " << out_dims[i] << std::endl;
     }
     out0->Resize(out_dims);
 
@@ -71,10 +71,12 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
     // context.Input<framework::LoDTensor>("ExpandTimes");
     framework::LoDTensor expand_times_t;
     TensorFromVector(expand_times, context.device_context(), &expand_times_t);
+    /*
     std::cout << "expand_times_t:size " << expand_times.size() << std::endl;
     for (auto& t : expand_times) {
       std::cout << "expand_times_t " << t << std::endl;
     }
+    */
 
     auto runner = NpuOpRunner("Tile", {*in0, expand_times_t}, {*out0});
     auto stream =
