@@ -10,7 +10,107 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/math/math_cuda_utils.h"
+#include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace operators {
+
+using Tensor = framework::Tensor;
+template <typename T>
+__global__ void reluKernelCudaHalf2(const T* in, T* out, int num) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int loop = num >> 1;
+  int stride = blockDim.x * gridDim.x;
+  __half2* src = reinterpret_cast<__half2*> in;
+  __half2* dst = reinterpret_cast<__half2*> out;
+  const half2 kzero = __float2half2_rn(0.0f);
+  for (int i = idx; i < loop; i += stride) {
+#if __CUDA_ARCH__ >= 530 || CUDA_VERSION >= 300
+    dst[i] = __hmul2(__hgt2(__ldg(src + i), kzero), __ldg(src + i));
+#else
+    const float2 xx = __halfi22float2(src[i]);
+    dst[i] = __floats2half2_rn(xx.x > 0.0f ? static_cast<float>(xx.x) : 0.0f,
+                               xx.y > 0.0f ? static_cast<float>(xx.y) : 0.0f);
+#endif
+  }
+}
+template <typename T>
+__global__ void reluKernelCudaFloat4(const T* in, T* out, int num) {
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  float4* src = reinterpret_cast<float4*> in;
+  float4* dst = reinterpret_cast<float4*> out;
+  float4 temp;
+  int loop = num >> 2;
+  for (int i = idx; i < loop; i += blockDim.x * gridDim.x) {
+    temp = src[idx];
+    temp.x = max(temp.x, 0.0f);
+    temp.y = max(temp.y, 0.0f);
+    temp.z = max(temp.z, 0.0f);
+    temp.w = max(temp.w, 0.0f);
+    dst[i] = temp;
+  }
+  int tail = num % 4;
+  while (idx == loop && tail) {
+    temp.x = static_cast<float> in[num - tail];
+    out[num - tail] = max(temp.x, 0.0f);
+    --tail;
+  }
+}
+template <typename T>
+__global__ void reluKernelCudaDouble(const T* src, T* dst, int num) {
+  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  T zero = (T)(0.0f);
+
+  for (int idx = i; idx < num; idx += gridDim.x * blockDim.x) {
+    dst[i] = src[idx] > zero ? src[idx] : zero;
+  }
+}
+template <typename T, int vec>
+struct ReluGPUFunctor : public BaseActivationFunctor<T> {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& in, framework::Tensor* out,
+                  int num) {
+    const T* input_data = in.data<T>();
+    T* output_data = out->mutable_data<T>(context.GetPlace());
+    int block = 512;
+    int grid = (num + block - 1) / block;
+    int grid2 = (num / 2 + block - 1) / block;
+    int grid4 = (num / 4 + block - 1) / block;
+    switch (vec) {
+      case 1:  // float16 -> half2
+        reluKernelCudaHalf2<<<grid2, block>>>(input_data, output_data, num);
+        break;
+      case 2:  // float -> float4
+        reluKernelCudaFloat4<<<grid4, block>>>(input_data, output_data, num);
+        break;
+      case 4:  // double -> double
+        reluKernelCudaDouble<<<grid, block>>>(input_data, output_data, num);
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "ToVarType:Unsupported type %d", vec));
+    }
+  }
+};
+template <typename DeviceContext, typename Functor>
+class ReluBaseKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* in_x = context.Input<Tensor>("X");
+    Tensor* out = context.Output<Tensor>("Out");
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    int num = in_x->numel();
+    Functor functor;
+    functor(dev_ctx, *in_x, out, num);
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -60,8 +160,21 @@ REGISTER_OP_CUDA_KERNEL(
 /* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
-REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluCUDAFunctor, ReluGradFunctor);
+REGISTER_OP_CUDA_KERNEL(
+    relu, ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
+                              ops::ReluGPUFunctor<float, 2>>,
+    ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
+                        ops::ReluGPUFunctor<double, 4>>,
+    ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
+                        ops::ReluGPUFunctor<plat::float16, 1>>);
 
+REGISTER_OP_CUDA_KERNEL(
+    relu_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
+                                         ops::ReluGradFunctor<float>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::ReluGradFunctor<double>>,
+    ops::ActivationGradKernel<plat::CUDADeviceContext,
+                              ops::ReluGradFunctor<plat::float16>>);
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
