@@ -211,11 +211,10 @@ class PRChecker(object):
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
-            # fix code format error
-            current_system=platform.system()
+            current_system = platform.system()
             if current_system == "Darwin":
-                f=f.replace(PADDLE_ROOT,'/paddle/', 1)
-                f=f.replace('//', '/')
+                f = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f = f.replace('//', '/')
             if f not in file_ut_map:
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
