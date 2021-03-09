@@ -921,18 +921,15 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
 
     def tuple_to_stmts(self, node, tuple_name, idx=[]):
         if not isinstance(node, (gast.Tuple, gast.List)):
-            value_node = gast.Name(
-                id=tuple_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None)
+            value_node_str = tuple_name
             for i in idx:
-                value_node = gast.Subscript(
-                    value=value_node,
-                    slice=gast.Index(value=gast.Constant(
-                        value=i, kind=None)),
-                    ctx=gast.Load())
-            return [gast.Assign(targets=[node], value=value_node)]
+                value_node_str = value_node_str + "[{}]".format(i)
+
+            node_str = ast_to_source_code(node).strip()
+            assign_node_str = "{} = {}".format(node_str, value_node_str)
+            assign_node = gast.parse(assign_node_str).body[0]
+            return [assign_node]
+
         # isinstance(node, (gast.Tuple, gast.List))
         ret = []
         for i, element in enumerate(node.elts):
@@ -1240,14 +1237,9 @@ class ForNodeVisitor(object):
             value=step_node)
 
     def _build_assign_var_slice_node(self):
-        var_slice_node = gast.Subscript(
-            value=self.iter_node,
-            slice=gast.Index(value=gast.Name(
-                id=self.iter_idx_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None)),
-            ctx=gast.Load(), )
+        var_slice_str = "{}[{}]".format(
+            ast_to_source_code(self.iter_node).strip(), self.iter_idx_name)
+        var_slice_node = gast.parse(var_slice_str).body[0].value
         new_iter_var_name = unique_name.generate(FOR_ITER_VAR_NAME_PREFIX)
         target_node, assign_node = create_assign_node(new_iter_var_name,
                                                       var_slice_node)
@@ -1422,3 +1414,28 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
                 return False
 
     return True
+
+
+def slice_is_num(slice_node):
+    # A slice_node.slice can be a:
+    # (1) ast.Index, which is a simple number such as [1], [-2]
+    # (2) ast.Slice, which is represented by bounds such as [2:-1]
+    # (3) ast.Tuple, which includes the above two cases such as [2:-1, 1]
+    # If slice node is case (1), return True, Otherwise, return False.
+    #
+    # NOTE: In (1) case, when gast>=0.4.0, gast.Index is not used, which is replaced
+    # other gast node such as gast.Constant, gast.Name, gast.UnaryOp and so on.
+    # Considering the compatibility of gast, here use ast note to check whether the
+    # node is a num. For more details, please visit https://github.com/serge-sans-paille/gast
+
+    assert isinstance(slice_node, gast.Subscript)
+    slice_node_str = ast_to_source_code(slice_node).strip()
+    ast_node = ast.parse(slice_node_str).body[0].value
+
+    if isinstance(ast_node.slice, (ast.Tuple, ast.Slice)):
+        return False
+
+    if isinstance(ast_node.slice, ast.Index):
+        return True
+
+    return False

@@ -151,9 +151,12 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
   } else {
 #ifdef PADDLE_WITH_CUDA
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_HIP)
+    hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Not supported GPU, please compile with option WITH_GPU=ON."));
+        "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+        "WITH_ROCM=ON."));
 #endif
   }
 }
@@ -516,7 +519,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
         VLOG(0) << "error: the number of ids is a negative number: " << num;
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (num == 0) {
@@ -527,14 +530,14 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                "characters.";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       } else if (errno == ERANGE || num > INT_MAX) {
         VLOG(0) << "error: the number of ids greater than INT_MAX";
         VLOG(0) << "please check line<" << instance_cout << "> in file<"
                 << filename << ">";
-        VLOG(0) << "Error occured when parsing " << i
+        VLOG(0) << "Error occurred when parsing " << i
                 << " th slot with total slots number: " << all_slots_.size();
         return false;
       }
@@ -546,7 +549,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
                        "representable values for float";
             VLOG(0) << "please check line<" << instance_cout << "> in file<"
                     << filename << ">";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -555,7 +558,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -571,7 +574,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           if (errno == ERANGE) {
             VLOG(0) << "error: the value is out of the range of "
                        "representable values for uint64_t";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -582,7 +585,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
           }
           if (j + 1 != num && endptr - str == len) {
             VLOG(0) << "error: there is a wrong with the number of ids.";
-            VLOG(0) << "Error occured when parsing " << i
+            VLOG(0) << "Error occurred when parsing " << i
                     << " th slot with total slots number: "
                     << all_slots_.size();
             VLOG(0) << "and in this slot: " << j
@@ -1157,7 +1160,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {

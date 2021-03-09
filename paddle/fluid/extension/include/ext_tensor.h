@@ -16,24 +16,48 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-#include "paddle/fluid/extension/include/dtype.h"
-#include "paddle/fluid/extension/include/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
+
+#include "ext_dll_decl.h"  // NOLINT
+#include "ext_dtype.h"     // NOLINT
+#include "ext_place.h"     // NOLINT
 
 namespace paddle {
 namespace framework {
 class CustomTensorUtils;
 }  // namespace framework
-class Tensor {
+
+class StreamWrapper {
  public:
-  /// \brief Construct a Tensor on None Place for CustomOp.
+  StreamWrapper() : stream_(nullptr), is_stream_set_(false) {}
+  void SetStream(void* stream) {
+    stream_ = stream;
+    is_stream_set_ = true;
+  }
+
+  void* GetStream() const { return stream_; }
+
+  bool IsStreamSet() const { return is_stream_set_; }
+
+ private:
+  //  cudaStream_t stream_;
+  void* stream_;
+  bool is_stream_set_;
+};
+
+class PD_DLL_DECL Tensor {
+ public:
+  /// \brief Construct a Tensor on target Place for CustomOp.
   /// Generally it's only used for user to create Tensor.
   explicit Tensor(const PlaceType& place);
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
   /// Reshape must be called before calling
-  /// mutable_data() or copy_from_cpu()
+  /// mutable_data() or copy_to(const PlaceType& place)
   /// \param shape The shape to set.
-  void reshape(const std::vector<int>& shape);
+  void reshape(const std::vector<int64_t>& shape);
 
   /// \brief Get the memory pointer in CPU or GPU with
   /// specific data type.
@@ -59,14 +83,14 @@ class Tensor {
 
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
-  /// \param PlaceType of target place, from which
-  /// the tensor will copy.
+  /// \param PlaceType of target place, of which
+  /// the tensor will copy to.
 
   template <typename T>
-  Tensor copy_to(const PlaceType& place);
+  Tensor copy_to(const PlaceType& place) const;
 
   /// \brief Return the shape of the Tensor.
-  std::vector<int> shape() const;
+  std::vector<int64_t> shape() const;
 
   /// \brief Return the data type of the tensor.
   /// It's usually used to get the output tensor data type.
@@ -84,12 +108,18 @@ class Tensor {
   const PlaceType& place() const;
 
   /// \brief Cast datatype from one to another
-  Tensor cast(const DataType& target_type);
+  Tensor cast(const DataType& target_type) const;
+
+#ifdef PADDLE_WITH_CUDA
+  /// \bref Get current stream of Tensor
+  cudaStream_t stream() const;
+#endif
 
  private:
   friend class framework::CustomTensorUtils;
   mutable std::shared_ptr<void> tensor_;
   mutable PlaceType place_;
+  StreamWrapper stream_;
 };
 
 }  // namespace paddle

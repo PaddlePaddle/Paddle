@@ -145,6 +145,7 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
@@ -215,15 +216,19 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     }
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
+    T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_id = roi_batch_id_data[n];
-      T roi_xmin = rois_data[0] * spatial_scale;
-      T roi_ymin = rois_data[1] * spatial_scale;
-      T roi_xmax = rois_data[2] * spatial_scale;
-      T roi_ymax = rois_data[3] * spatial_scale;
+      T roi_xmin = rois_data[0] * spatial_scale - roi_offset;
+      T roi_ymin = rois_data[1] * spatial_scale - roi_offset;
+      T roi_xmax = rois_data[2] * spatial_scale - roi_offset;
+      T roi_ymax = rois_data[3] * spatial_scale - roi_offset;
 
-      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T roi_width = roi_xmax - roi_xmin;
+      T roi_height = roi_ymax - roi_ymin;
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
+
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
       const T* batch_data = input_data + roi_batch_id * in_stride[0];
@@ -290,6 +295,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto in_dims = in->dims();
+    auto aligned = ctx.Attr<bool>("aligned");
 
     int channels = in_dims[1];
     int height = in_dims[2];
@@ -344,14 +350,19 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto roi_stride = framework::stride(rois->dims());
     auto out_stride = framework::stride(out_grad->dims());
 
+    T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_idx = roi_batch_id_data[n];
-      T roi_xmin = rois_data[0] * spatial_scale;
-      T roi_ymin = rois_data[1] * spatial_scale;
-      T roi_xmax = rois_data[2] * spatial_scale;
-      T roi_ymax = rois_data[3] * spatial_scale;
-      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T roi_xmin = rois_data[0] * spatial_scale - roi_offset;
+      T roi_ymin = rois_data[1] * spatial_scale - roi_offset;
+      T roi_xmax = rois_data[2] * spatial_scale - roi_offset;
+      T roi_ymax = rois_data[3] * spatial_scale - roi_offset;
+
+      T roi_width = roi_xmax - roi_xmin;
+      T roi_height = roi_ymax - roi_ymin;
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
+
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
       for (int c = 0; c < channels; ++c) {

@@ -30,8 +30,9 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -104,8 +105,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
 
     const int batch_size = input.dims()[0];
@@ -249,8 +250,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const platform::CPUDeviceContext& context, const framework::Tensor& input,
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
-      const std::vector<int>& paddings, PoolProcess pool_grad_process,
-      bool exclusive, bool adaptive, framework::Tensor* input_grad) {
+      const std::vector<int>& paddings, bool exclusive, bool adaptive,
+      framework::Tensor* input_grad, PoolProcess pool_grad_process) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -328,8 +329,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::string data_format,
-      PoolProcess pool_grad_process, bool exclusive, bool adaptive,
-      framework::Tensor* input_grad) {
+      bool exclusive, bool adaptive, framework::Tensor* input_grad,
+      PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NHWC");
 
     const int batch_size = input.dims()[0];
@@ -678,8 +679,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -773,8 +775,8 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NDHWC");
     const int batch_size = input.dims()[0];
 
@@ -970,8 +972,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const platform::CPUDeviceContext& context, const framework::Tensor& input,
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
-      const std::vector<int>& paddings, PoolProcess pool_grad_process,
-      bool exclusive, bool adaptive, framework::Tensor* input_grad) {
+      const std::vector<int>& paddings, bool exclusive, bool adaptive,
+      framework::Tensor* input_grad, PoolProcess pool_grad_process) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -1071,8 +1073,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::string data_format,
-      PoolProcess pool_grad_process, bool exclusive, bool adaptive,
-      framework::Tensor* input_grad) {
+      bool exclusive, bool adaptive, framework::Tensor* input_grad,
+      PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NDHWC");
 
     const int batch_size = input.dims()[0];

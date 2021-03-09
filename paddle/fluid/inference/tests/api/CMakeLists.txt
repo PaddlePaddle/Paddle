@@ -1,7 +1,7 @@
 if (NOT APPLE AND NOT WIN32)
-    set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
+    set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 else()
-    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io ir_pass_manager analysis_predictor benchmark)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
@@ -139,6 +139,19 @@ function(inference_analysis_api_lexical_test_run TARGET_NAME test_binary infer_m
              --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=true
              --use_analysis=true
+             --iterations=2)
+endfunction()
+
+function(inference_analysis_api_lexical_bfloat16_test_run TARGET_NAME test_binary infer_model data_path)
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${infer_model}
+             --infer_data=${data_path}
+             --batch_size=50
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_accuracy_layer=true
+             --use_analysis=true
+             --enable_bf16=true
              --iterations=2)
 endfunction()
 
@@ -421,6 +434,8 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
   # run lexcial analysis test
   inference_analysis_api_lexical_test_run(test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
+  # run bfloat16 lexical analysis test
+  inference_analysis_api_lexical_bfloat16_test_run(test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   
@@ -508,10 +523,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(test_analyzer_capi_xpu SRCS analyzer_capi_xpu_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
             
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
@@ -584,20 +599,19 @@ endif()
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
 download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
 
-#TODO(wilber): tmp disable ut.
-#inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
-#        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-#        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
-#inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
-#        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-#        ARGS --infer_model=${RESNET50_MODEL_DIR})
+inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
+inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
 
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
 inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
@@ -610,12 +624,12 @@ inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_t
             
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
 
 inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
         ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
 if(WITH_GPU)
@@ -642,8 +656,7 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
 endif()
 
-#TODO(wilber): tmp disable ut
-#set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
+set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)

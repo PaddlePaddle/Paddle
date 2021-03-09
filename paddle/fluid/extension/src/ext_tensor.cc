@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/extension/include/tensor.h"
+#include "paddle/fluid/extension/include/ext_tensor.h"
 #include <utility>
 #include "paddle/fluid/framework/custom_tensor_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -95,14 +95,15 @@ void GpuCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
   }                                                     \
   auto *tensor = static_cast<framework::LoDTensor *>(tensor_.get());
 
-void Tensor::reshape(const std::vector<int> &shape) {
+void Tensor::reshape(const std::vector<int64_t> &shape) {
   GET_CASTED_TENSOR
   tensor->Resize(framework::make_ddim(shape));
 }
 
 Tensor::Tensor(const PlaceType &place)
-    : tensor_(std::make_shared<framework::LoDTensor>()), place_(place) {}
-
+    : tensor_(std::make_shared<framework::LoDTensor>()),
+      place_(place),
+      stream_(StreamWrapper()) {}
 template <typename T>
 T *Tensor::mutable_data(const PlaceType &place) {
   place_ = place;
@@ -125,8 +126,6 @@ T *Tensor::mutable_data() {
 #ifdef PADDLE_WITH_CUDA
     case static_cast<int>(PlaceType::kGPU): {
       int device_num = platform::GetCurrentDeviceId();
-      VLOG(1) << "Custom Operator: mutable data cuda device id - "
-              << device_num;
       return tensor->mutable_data<T>(platform::CUDAPlace(device_num));
     }
 #endif
@@ -161,22 +160,15 @@ DataType Tensor::type() const {
     return DataType::UINT8;
   } else if (type == framework::proto::VarType::FP64) {
     return DataType::FLOAT64;
-  } else if (type == framework::proto::VarType::BF16) {
-    return DataType::BFLOAT16;
-  } else if (type == framework::proto::VarType::FP16) {
-    return DataType::FLOAT16;
-  } else if (type == framework::proto::VarType::COMPLEX64) {
-    return DataType::COMPLEX64;
-  } else if (type == framework::proto::VarType::COMPLEX128) {
-    return DataType::COMPLEX128;
   } else if (type == framework::proto::VarType::BOOL) {
     return DataType::BOOL;
   }
+  // TODO(JiabinYang) Support more dtype here
   return DataType::FLOAT32;
 }
 
 template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) {
+Tensor Tensor::copy_to(const PlaceType &target_place) const {
   GET_CASTED_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     platform::errors::PreconditionNotMet(
@@ -209,77 +201,59 @@ Tensor Tensor::copy_to(const PlaceType &target_place) {
   return target;
 }
 
-template Tensor Tensor::copy_to<paddle::platform::float16>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::bfloat16>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::complex64>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<paddle::platform::complex128>(
-    const PlaceType &target_place);
-template Tensor Tensor::copy_to<float>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<double>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int64_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int32_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<uint8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int8_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<int16_t>(const PlaceType &target_place);
-template Tensor Tensor::copy_to<bool>(const PlaceType &target_place);
+template PD_DLL_DECL Tensor
+Tensor::copy_to<float>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<double>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
+template PD_DLL_DECL Tensor
+Tensor::copy_to<bool>(const PlaceType &target_place) const;
 
-template float *Tensor::data<float>() const;
-template double *Tensor::data<double>() const;
-template int64_t *Tensor::data<int64_t>() const;
-template int32_t *Tensor::data<int32_t>() const;
-template uint8_t *Tensor::data<uint8_t>() const;
-template int8_t *Tensor::data<int8_t>() const;
-template paddle::platform::float16 *Tensor::data<paddle::platform::float16>()
-    const;
-template paddle::platform::bfloat16 *Tensor::data<paddle::platform::bfloat16>()
-    const;
-template paddle::platform::complex128 *
-Tensor::data<paddle::platform::complex128>() const;
-template paddle::platform::complex64 *
-Tensor::data<paddle::platform::complex64>() const;
-template int16_t *Tensor::data<int16_t>() const;
-template bool *Tensor::data<bool>() const;
+template PD_DLL_DECL float *Tensor::data<float>() const;
+template PD_DLL_DECL double *Tensor::data<double>() const;
+template PD_DLL_DECL int64_t *Tensor::data<int64_t>() const;
+template PD_DLL_DECL int32_t *Tensor::data<int32_t>() const;
+template PD_DLL_DECL uint8_t *Tensor::data<uint8_t>() const;
+template PD_DLL_DECL int8_t *Tensor::data<int8_t>() const;
+template PD_DLL_DECL int16_t *Tensor::data<int16_t>() const;
+template PD_DLL_DECL bool *Tensor::data<bool>() const;
 
-template float *Tensor::mutable_data<float>();
-template double *Tensor::mutable_data<double>();
-template int64_t *Tensor::mutable_data<int64_t>();
-template int32_t *Tensor::mutable_data<int32_t>();
-template uint8_t *Tensor::mutable_data<uint8_t>();
-template int8_t *Tensor::mutable_data<int8_t>();
-template paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>();
-template paddle::platform::bfloat16 *
-Tensor::mutable_data<paddle::platform::bfloat16>();
-template paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>();
-template paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>();
-template int16_t *Tensor::mutable_data<int16_t>();
-template bool *Tensor::mutable_data<bool>();
+template PD_DLL_DECL float *Tensor::mutable_data<float>();
+template PD_DLL_DECL double *Tensor::mutable_data<double>();
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>();
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>();
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>();
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>();
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>();
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>();
 
-template float *Tensor::mutable_data<float>(const PlaceType &place);
-template double *Tensor::mutable_data<double>(const PlaceType &place);
-template int64_t *Tensor::mutable_data<int64_t>(const PlaceType &place);
-template int32_t *Tensor::mutable_data<int32_t>(const PlaceType &place);
-template uint8_t *Tensor::mutable_data<uint8_t>(const PlaceType &place);
-template int8_t *Tensor::mutable_data<int8_t>(const PlaceType &place);
-template paddle::platform::float16 *
-Tensor::mutable_data<paddle::platform::float16>(const PlaceType &place);
-template paddle::platform::bfloat16 *
-Tensor::mutable_data<paddle::platform::bfloat16>(const PlaceType &place);
-template paddle::platform::complex128 *
-Tensor::mutable_data<paddle::platform::complex128>(const PlaceType &place);
-template paddle::platform::complex64 *
-Tensor::mutable_data<paddle::platform::complex64>(const PlaceType &place);
-template int16_t *Tensor::mutable_data<int16_t>(const PlaceType &place);
-template bool *Tensor::mutable_data<bool>(const PlaceType &place);
+template PD_DLL_DECL float *Tensor::mutable_data<float>(const PlaceType &place);
+template PD_DLL_DECL double *Tensor::mutable_data<double>(
+    const PlaceType &place);
+template PD_DLL_DECL int64_t *Tensor::mutable_data<int64_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int32_t *Tensor::mutable_data<int32_t>(
+    const PlaceType &place);
+template PD_DLL_DECL uint8_t *Tensor::mutable_data<uint8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int8_t *Tensor::mutable_data<int8_t>(
+    const PlaceType &place);
+template PD_DLL_DECL int16_t *Tensor::mutable_data<int16_t>(
+    const PlaceType &place);
+template PD_DLL_DECL bool *Tensor::mutable_data<bool>(const PlaceType &place);
 
-std::vector<int> Tensor::shape() const {
+std::vector<int64_t> Tensor::shape() const {
   GET_CASTED_TENSOR
-  return framework::vectorize<int>(tensor->dims());
+  return framework::vectorize<int64_t>(tensor->dims());
 }
 
 const PlaceType &Tensor::place() const {
@@ -297,7 +271,7 @@ const PlaceType &Tensor::place() const {
   return place_;
 }
 
-Tensor Tensor::cast(const DataType &target_type) {
+Tensor Tensor::cast(const DataType &target_type) const {
   GET_CASTED_TENSOR;
   Tensor rlt = Tensor(place());
   rlt.reshape(this->shape());
@@ -308,14 +282,6 @@ Tensor Tensor::cast(const DataType &target_type) {
   auto dst_type =
       framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(target_type);
   switch (src_type) {
-    case framework::proto::VarType::FP16:
-      framework::VisitDataType(
-          dst_type, CastDataType<platform::float16>(*tensor, rlt_tensor_, ctx));
-      break;
-    case framework::proto::VarType::BF16:
-      framework::VisitDataType(dst_type, CastDataType<platform::bfloat16>(
-                                             *tensor, rlt_tensor_, ctx));
-      break;
     case framework::proto::VarType::FP32:
       framework::VisitDataType(dst_type,
                                CastDataType<float>(*tensor, rlt_tensor_, ctx));
@@ -344,7 +310,7 @@ Tensor Tensor::cast(const DataType &target_type) {
       framework::VisitDataType(
           dst_type, CastDataType<uint8_t>(*tensor, rlt_tensor_, ctx));
       break;
-    // TODO(JiabinYang): Support Complex later
+    // TODO(JiabinYang) Support more dtype here
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
@@ -357,6 +323,18 @@ int64_t Tensor::size() const {
   GET_CASTED_TENSOR;
   return tensor->numel();
 }
+
+#ifdef PADDLE_WITH_CUDA
+cudaStream_t Tensor::stream() const {
+  if (!stream_.IsStreamSet()) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Stream is not Set, only input tensor will have "
+        "stream which is set by framework "));
+  } else {
+    return reinterpret_cast<cudaStream_t>(stream_.GetStream());
+  }
+}
+#endif
 
 namespace framework {
 

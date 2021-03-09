@@ -642,17 +642,19 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad, float, ops::ReshapeGradKernel, double,
     ops::ReshapeGradKernel, int, ops::ReshapeGradKernel, uint8_t,
     ops::ReshapeGradKernel, int64_t, ops::ReshapeGradKernel, bool,
-    ops::ReshapeGradKernel, paddle::platform::complex64, ops::ReshapeGradKernel,
+    ops::ReshapeGradKernel, paddle::platform::bfloat16, ops::ReshapeGradKernel,
+    paddle::platform::complex64, ops::ReshapeGradKernel,
     paddle::platform::complex128, ops::ReshapeGradKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(
     reshape2_grad_grad, float, ops::ReshapeDoubleGradKernel, double,
     ops::ReshapeDoubleGradKernel, int, ops::ReshapeDoubleGradKernel, uint8_t,
     ops::ReshapeDoubleGradKernel, int64_t, ops::ReshapeDoubleGradKernel, bool,
+    ops::ReshapeDoubleGradKernel, paddle::platform::bfloat16,
     ops::ReshapeDoubleGradKernel, paddle::platform::complex64,
     ops::ReshapeDoubleGradKernel, paddle::platform::complex128,
     ops::ReshapeDoubleGradKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 uint8_t, ops::ReshapeKernel, int64_t,
