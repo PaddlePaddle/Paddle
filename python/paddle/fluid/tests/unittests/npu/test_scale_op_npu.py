@@ -54,5 +54,31 @@ class TestScale(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
+class TestBiasAfterScale(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "scale"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.random.random((10, 10)).astype(self.dtype))
+        }
+        self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': False}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
+        }
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+
 if __name__ == '__main__':
     unittest.main()
