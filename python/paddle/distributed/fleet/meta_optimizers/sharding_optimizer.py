@@ -16,7 +16,7 @@ from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op, OpRole
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
@@ -207,10 +207,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
             accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block)
-            accumulated_grad_names = sorted(accumulated_grad_names)
+            # accumulated_grad_names = sorted(accumulated_grad_names)
+            print("persistable FP32 grad: ")
             print(accumulated_grad_names)
             first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(main_block) 
-            insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, OpRole.Optimize, use_calc_stream = True)
+            insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, core.op_proto_and_checker_maker.OpRole.Optimize, use_calc_stream = True)
             #if not self._shard.has_param(param_name): continue
             ##if not main_block.has_var(grad_name): continue
             #assert main_block.has_var(grad_name)
@@ -461,10 +462,21 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._main_program.global_block())
 
     def _wait(self, ):
-        endpoints = self.role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker._worker_index()]
-        if self.role_maker._worker_index() == 0:
-            self._collective_helper._wait(current_endpoint, endpoints)
+        # only the first parallelsm group that init nccl need to be wait. 
+        if self._as_outer_parallelism:
+            endpoints = self.role_maker._get_trainer_endpoints()
+            current_endpoint = endpoints[self.role_maker._worker_index()]
+        else:
+            endpoints = self.sharding_group_endpoints[:]
+            current_endpoint = self.sharding_group_endpoints[self.sharding_rank]
+        
+
+        if self._as_outer_parallelism:
+            if self.role_maker._worker_index() == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
+        else:
+            if self.sharding_rank == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
 
     # def _wait(self, ):
     #     # only the first parallelsm group that init nccl need to be wait. 
@@ -1056,3 +1068,4 @@ class ShardingOptimizer(MetaOptimizerBase):
             outputs={'Out': params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
+                   
