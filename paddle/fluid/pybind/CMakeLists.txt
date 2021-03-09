@@ -31,7 +31,6 @@ set(PYBIND_SRCS
   heter_wrapper_py.cc
   ps_gpu_wrapper_py.cc
   gloo_wrapper_py.cc
-  graph_service.cc
   box_helper_py.cc
   data_set_py.cc
   imperative.cc

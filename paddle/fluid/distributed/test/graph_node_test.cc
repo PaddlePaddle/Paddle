@@ -18,6 +18,7 @@ limitations under the License. */
 #include <iomanip>
 #include <string>
 #include <thread>  // NOLINT
+#include <vector>
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
@@ -48,11 +49,10 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 void testGraphToBuffer();
-std::string nodes[] = {
-    std::string("37\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),
-    std::string("96\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21"),
-    std::string("59\tuser\t45;user;0.34\t145;user;0.31\t112;item;0.21"),
-    std::string("97\tuser\t48;user;1.4\t247;user;0.31\t111;item;1.21")};
+std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
+                       std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
+                       std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
+                       std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
 char file_name[] = "nodes.txt";
 void prepare_file(char file_name[]) {
   std::ofstream ofile;
@@ -61,18 +61,6 @@ void prepare_file(char file_name[]) {
     ofile << x << std::endl;
   }
   ofile.close();
-}
-distributed::GraphNodeType get_graph_node_type(std::string& str) {
-  distributed::GraphNodeType type;
-  if (str == "user")
-    type = distributed::GraphNodeType::user;
-  else if (str == "item")
-    type = distributed::GraphNodeType::item;
-  else if (str == "query")
-    type = distributed::GraphNodeType::query;
-  else
-    type = distributed::GraphNodeType::unknown;
-  return type;
 }
 void GetDownpourSparseTableProto(
     ::paddle::distributed::TableParameter* sparse_table_proto) {
@@ -83,19 +71,6 @@ void GetDownpourSparseTableProto(
   ::paddle::distributed::TableAccessorParameter* accessor_proto =
       sparse_table_proto->mutable_accessor();
   accessor_proto->set_accessor_class("CommMergeAccessor");
-}
-
-distributed::GraphNodeType get_graph_node_type(std::string str) {
-  distributed::GraphNodeType type;
-  if (str == "user") {
-    type = distributed::GraphNodeType::user;
-  } else if (str == "item")
-    type = distributed::GraphNodeType::item;
-  else if (str == "query")
-    type = distributed::GraphNodeType::query;
-  else
-    type = distributed::GraphNodeType::unknown;
-  return type;
 }
 
 ::paddle::distributed::PSParameter GetServerProto() {
@@ -236,19 +211,17 @@ void RunBrpcPushSparse() {
 
   pull_status.wait();
   std::vector<distributed::GraphNode> v;
-  pull_status = worker_ptr_->sample(
-      0, 37, get_graph_node_type(std::string("user")), 4, v);
+  pull_status = worker_ptr_->sample(0, 37, 4, v);
   pull_status.wait();
   // for (auto g : v) {
   //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
   // }
   ASSERT_EQ(v.size(), 3);
   v.clear();
-  pull_status = worker_ptr_->sample(
-      0, 96, get_graph_node_type(std::string("user")), 4, v);
+  pull_status = worker_ptr_->sample(0, 96, 4, v);
   pull_status.wait();
   for (auto g : v) {
-    std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
+    std::cout << g.get_id() << std::endl;
   }
   // ASSERT_EQ(v.size(),3);
   v.clear();
@@ -266,7 +239,7 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(v.size(), 1);
   ASSERT_EQ(v[0].get_id(), 59);
   for (auto g : v) {
-    std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
+    std::cout << g.get_id() << std::endl;
   }
 
   distributed::GraphPyService gps1, gps2;
@@ -277,17 +250,26 @@ void RunBrpcPushSparse() {
   v.clear();
   v = gps2.pull_graph_list(0, 1, 4);
   ASSERT_EQ(v[0].get_id(), 59);
-  // for (auto g : v) {
-  //    std::cout << g.get_id() << " service-test " << g.get_graph_node_type()
-  //    << std::endl;
-  // }
   v.clear();
-  v = gps2.sample_k(96, std::string("user"), 4);
+  v = gps2.sample_k(96, 4);
   ASSERT_EQ(v.size(), 3);
-  // for (auto g : v) {
-  //    std::cout << g.get_id() << " service-test--neighboor " <<
-  //    g.get_graph_node_type() << std::endl;
-  // }
+  // to test in python,try this:
+  //   from paddle.fluid.core import GraphPyService
+  // ips_str = "127.0.0.1:4211;127.0.0.1:4212"
+  // gps1 = GraphPyService();
+  // gps2 = GraphPyService();
+  // gps1.set_up(ips_str, 127, 0, 0, 0);
+  // gps2.set_up(ips_str, 127, 1, 1, 0);
+  // gps1.load_file("input.txt");
+
+  // list = gps2.pull_graph_list(0,1,4)
+  // for x in list:
+  //     print(x.get_id())
+
+  // list = gps2.sample_k(96, "user", 4);
+  // for x in list:
+  //     print(x.get_id())
+
   std::remove(file_name);
   LOG(INFO) << "Run stop_server";
   worker_ptr_->stop_server();
@@ -302,13 +284,11 @@ void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
   s.set_feature("hhhh");
   s.set_id(65);
-  s.set_graph_node_type(::paddle::distributed::GraphNodeType(0));
   int size = s.get_size();
   char str[size];
   s.to_buffer(str);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
-  ASSERT_EQ((int)s.get_graph_node_type(), (int)s1.get_graph_node_type());
   VLOG(0) << s.get_feature();
   VLOG(0) << s1.get_feature();
 }

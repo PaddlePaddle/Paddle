@@ -93,8 +93,7 @@ class Table {
     return 0;
   }
   // only for graph table
-  virtual int32_t random_sample(uint64_t node_id, GraphNodeType type,
-                                int sampe_size, char *&buffer,
+  virtual int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 int &actual_size) {
     return 0;
   }

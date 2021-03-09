@@ -36,9 +36,7 @@ int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
 }
 // char* &buffer,int &actual_size
 std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
-                                             uint64_t node_id,
-                                             GraphNodeType type,
-                                             int sample_size,
+                                             uint64_t node_id, int sample_size,
                                              std::vector<GraphNode> &res) {
   int server_index = get_server_index_by_id(node_id);
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
@@ -71,9 +69,9 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
   closure->request(0)->set_cmd_id(PS_GRAPH_SAMPLE);
   closure->request(0)->set_table_id(table_id);
   closure->request(0)->set_client_id(_client_id);
-  std::string type_str = GraphNode::node_type_to_string(type);
+  // std::string type_str = GraphNode::node_type_to_string(type);
   closure->request(0)->add_params((char *)&node_id, sizeof(uint64_t));
-  closure->request(0)->add_params(type_str.c_str(), type_str.size());
+  // closure->request(0)->add_params(type_str.c_str(), type_str.size());
   closure->request(0)->add_params((char *)&sample_size, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
@@ -116,9 +114,6 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   closure->request(0)->set_cmd_id(PS_PULL_GRAPH_LIST);
   closure->request(0)->set_table_id(table_id);
   closure->request(0)->set_client_id(_client_id);
-  // std::string type_str = GraphNode::node_type_to_string(type);
-  // closure->request(0)->add_params((char *)&node_id, sizeof(uint64_t));
-  // closure->request(0)->add_params(type_str.c_str(), type_str.size());
   closure->request(0)->add_params((char *)&start, sizeof(int));
   closure->request(0)->add_params((char *)&size, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));

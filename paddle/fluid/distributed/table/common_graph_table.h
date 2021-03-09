@@ -30,11 +30,6 @@
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
-struct pair_hash {
-  inline size_t operator()(const std::pair<uint64_t, GraphNodeType> &p) const {
-    return p.first * 10007 + int(p.second);
-  }
-};
 class GraphShard {
  public:
   static int bucket_low_bound;
@@ -58,18 +53,15 @@ class GraphShard {
     return -1;
   }
   std::list<GraphNode *>::iterator add_node(GraphNode *node);
-  GraphNode *find_node(uint64_t id, GraphNodeType type);
-  void add_neighboor(uint64_t id, GraphNodeType type, GraphEdge *edge);
-  std::unordered_map<std::pair<uint64_t, GraphNodeType>,
-                     std::list<GraphNode *>::iterator, pair_hash>
+  GraphNode *find_node(uint64_t id);
+  void add_neighboor(uint64_t id, GraphEdge *edge);
+  std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
   get_node_location() {
     return node_location;
   }
 
  private:
-  std::unordered_map<std::pair<uint64_t, GraphNodeType>,
-                     std::list<GraphNode *>::iterator, pair_hash>
-      node_location;
+  std::unordered_map<uint64_t, std::list<GraphNode *>::iterator> node_location;
   int bucket_size, shard_num;
   std::vector<std::list<GraphNode *>> bucket;
 };
@@ -79,12 +71,11 @@ class GraphTable : public SparseTable {
   virtual ~GraphTable() {}
   virtual int32_t pull_graph_list(int start, int size, char *&buffer,
                                   int &actual_size);
-  virtual int32_t random_sample(uint64_t node_id, GraphNodeType type,
-                                int sampe_size, char *&buffer,
+  virtual int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 int &actual_size);
   virtual int32_t initialize();
   int32_t load(const std::string &path, const std::string &param);
-  GraphNode *find_node(uint64_t id, GraphNodeType type);
+  GraphNode *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
     return 0;
@@ -101,12 +92,13 @@ class GraphTable : public SparseTable {
     return 0;
   }
   virtual int32_t initialize_shard() { return 0; }
+  virtual uint32_t get_thread_pool_index(uint64_t node_id);
 
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
-  const int task_pool_size_ = 7;
+  const int task_pool_size_ = 11;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 };
 }

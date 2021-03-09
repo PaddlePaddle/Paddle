@@ -114,7 +114,6 @@ limitations under the License. */
 #endif
 
 #include "pybind11/stl.h"
-//#include "paddle/fluid/pybind/graph_ps_service.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -2845,9 +2844,10 @@ All parameter, weight, gradient are variables in Paddle.
   BindDistFleetWrapper(&m);
   BindPSHost(&m);
   BindCommunicatorContext(&m);
-  // BindGraphService(&m);
   BindDistCommunicator(&m);
   BindHeterClient(&m);
+  BindGraphNode(&m);
+  BindGraphService(&m);
 #endif
 }
 }  // namespace pybind

@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/service/graph_py_service.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
 
 namespace py = pybind11;
@@ -39,6 +41,8 @@ using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
 using paddle::distributed::FleetWrapper;
 using paddle::distributed::HeterClient;
+using paddle::distributed::GraphPyService;
+using paddle::distributed::GraphNode;
 
 namespace paddle {
 namespace pybind {
@@ -150,6 +154,21 @@ void BindHeterClient(py::module* m) {
             return HeterClient::GetInstance(endpoint, trainer_id);
           }))
       .def("stop", &HeterClient::Stop);
+}
+
+void BindGraphNode(py::module* m) {
+  py::class_<GraphNode>(*m, "GraphNode")
+      .def(py::init<>())
+      .def("get_id", &GraphNode::get_id)
+      .def("get_feature", &GraphNode::get_feature);
+}
+void BindGraphService(py::module* m) {
+  py::class_<GraphPyService>(*m, "GraphPyService")
+      .def(py::init<>())
+      .def("load_file", &GraphPyService::load_file)
+      .def("set_up", &GraphPyService::set_up)
+      .def("pull_graph_list", &GraphPyService::pull_graph_list)
+      .def("sample_k", &GraphPyService::sample_k);
 }
 
 }  // end namespace pybind

@@ -277,19 +277,17 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
                                               PsResponseMessage &response,
                                               brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
-  if (request.params_size() < 3) {
+  if (request.params_size() < 2) {
     set_response_code(
         response, -1,
-        "graph_random_sample request requires at least 3 arguments");
+        "graph_random_sample request requires at least 2 arguments");
     return 0;
   }
   uint64_t node_id = *(uint64_t *)(request.params(0).c_str());
-  std::string type_str = request.params(1);
-  int sample_size = *(uint64_t *)(request.params(2).c_str());
-  GraphNodeType type = GraphNode::get_graph_node_type(type_str);
+  int sample_size = *(uint64_t *)(request.params(1).c_str());
   char *buffer;
   int actual_size;
-  table->random_sample(node_id, type, sample_size, buffer, actual_size);
+  table->random_sample(node_id, sample_size, buffer, actual_size);
   cntl->response_attachment().append(buffer, actual_size);
   return 0;
 }

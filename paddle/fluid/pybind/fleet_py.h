@@ -27,6 +27,8 @@ void BindPSHost(py::module* m);
 void BindCommunicatorContext(py::module* m);
 void BindDistCommunicator(py::module* m);
 void BindHeterClient(py::module* m);
+void BindGraphNode(py::module* m);
+void BindGraphService(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

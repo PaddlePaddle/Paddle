@@ -143,12 +143,9 @@ class GraphPyService {
     status.wait();
   }
 
-  std::vector<GraphNode> sample_k(uint64_t node_id, std::string type,
-                                  int sample_size) {
+  std::vector<GraphNode> sample_k(uint64_t node_id, int sample_size) {
     std::vector<GraphNode> v;
-    auto status = worker_ptr->sample(table_id, node_id,
-                                     GraphNode::get_graph_node_type(type),
-                                     sample_size, v);
+    auto status = worker_ptr->sample(table_id, node_id, sample_size, v);
     status.wait();
     return v;
   }

@@ -156,7 +156,7 @@ class PSClient {
     return fut;
   }
   virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id,
-                                      GraphNodeType type, int sample_size,
+                                      int sample_size,
                                       std::vector<GraphNode> &res) {
     LOG(FATAL) << "Did not implement";
     std::promise<int32_t> promise;
