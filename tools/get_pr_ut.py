@@ -75,7 +75,10 @@ class PRChecker(object):
             if ix // 2 == 0:
                 proxy = ''
             else:
-                proxy = '--no-proxy'
+                if platform.system() == 'Windows':
+                    proxy = '-Y off'
+                else:
+                    proxy = '--no-proxy'
             code = subprocess.call(
                 'wget -q {} --no-check-certificate {}'.format(proxy, url),
                 shell=True)
