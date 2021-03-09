@@ -38,7 +38,6 @@ USE_OP_DEVICE_KERNEL(expand, NPU);
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
-  // std::cout << "aaaaaaaaaaaaaaaaaaaaaa a\n" << std::endl;
   auto in = scope->Var("X");
   auto expand_times = scope->Var("ExpandTimes");
   auto out = scope->Var("Out");
@@ -49,32 +48,26 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto place = ctx.GetPlace();
   TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
   TensorFromVector(std::vector<int>({1, 10, 1}), ctx, expand_times_t);
-  // std::cout << "fdsab\n" << std::endl;
 
   in_t->Resize(f::make_ddim({3, 1, 7}));
   expand_times_t->Resize(f::make_ddim({3}));
   out_t->Resize(f::make_ddim({3, 10, 7}));
-  // std::cout << "bbbbbb\n" << std::endl;
 
   // in_t->mutable_data<T>(place);
   // expand_times_t->mutable_data<int>(place);
   out_t->mutable_data<T>(place);
 
-  // std::cout << "bbbbbbbbbbbbb\n" << std::endl;
   f::AttributeMap attrs = {{}};
   auto op = f::OpRegistry::CreateOp(
       "expand", {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
       {{"Out", {"Out"}}}, attrs);
-  // std::cout << "ccccccccccccc\n" << std::endl;
   op->Run(*scope, place);
   ctx.Wait();
-  // std::cout << "dddddd\n" << std::endl;
 
   auto out_dim = out_t->dims();
   EXPECT_EQ(out_dim.at(0), 3);
   EXPECT_EQ(out_dim.at(1), 10);
   EXPECT_EQ(out_dim.at(2), 7);
-  // std::cout << "eeee\n" << std::endl;
 }
 
 TEST(expand, NPU_fp32) {
