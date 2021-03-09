@@ -52,20 +52,18 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Input<framework::LoDTensor>("Out");
     auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
-    auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dX->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(axis, 0,
                             platform::errors::InvalidArgument(
-                               "softmax_grad(for npu) require axis be 0"))
+                               "softmax_grad(for npu) require axis be 0"));
 
-    auto* dX = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     dX->Resize(out->dims());
     dX->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {};
-    auto runner = NpuOpRunner("SoftmaxGrad", {*out, *dOut}, {*dX}, attr_input);
+    auto runner = NpuOpRunner(std::string("SoftmaxGrad"), {*out, *dOut}, {*dX}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()

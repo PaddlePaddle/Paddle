@@ -98,10 +98,11 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   ctx.Wait();
 
-  auto op = f::OpRegistry::CreateOp(op_type, {{"Out@GRAD", {"DOut"}},
-                                              {"X", {"X"}}},
-                                              {"X@GRAD", {"DX"}}},
-                                              {});
+  auto op = f::OpRegistry::CreateOp(op_type, 
+                                    {{"Out@GRAD", {"DOut"}},
+                                     {"X", {"X"}}},
+                                    {{"X@GRAD", {"DX"}}},
+                                    {});
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
