@@ -74,7 +74,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  std::vector<int> init_x = {1, 0, 1, 1};
+  std::vector<int> init_x = {1, 0, 0, 0};
   TensorFromVector<bool>(init_x, ctx, tensor_x);
   tensor_x->Resize(paddle::framework::make_ddim({2}));
 
@@ -85,9 +85,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   // run
-  std::vector<int> axes = {-1};
-  f::AttributeMap attrs = {
-      {"axes", axes}, {"keep_dims", false}, {"reduce_all", true}};
+  std::vector<int> axes;
+  f::AttributeMap attrs = {{"axes", axes}, {"keep_dims", true}};
   auto op = f::OpRegistry::CreateOp("reduce_any", {{"X", {"X"}}},
                                     {{"Out", {"Out"}}}, attrs);
 
@@ -98,13 +97,12 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   ctx.Wait();
 
-  // VLOG(3) << "out_vec.size()-------->" << out_vec.size();
-  // for (uint32_t i = 0; i < out_vec.size(); i++) {
-  //  VLOG(3) << "out_vec[i]-------->" << out_vec[i];
-  //}
-  std::vector<int> expected_vec = {0};
-  // EXPECT_EQ(out_vec.size(), expected_vec.size());
-
+  VLOG(3) << "out_vec.size()-------->" << out_vec.size();
+  for (uint32_t i = 0; i < out_vec.size(); i++) {
+    VLOG(3) << "out_vec[i]-------->" << out_vec[i];
+  }
+  std::vector<int> expected_vec = {1};
+  EXPECT_EQ(out_vec.size(), expected_vec.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], expected_vec[i]);
   }

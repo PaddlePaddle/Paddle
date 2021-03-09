@@ -31,21 +31,14 @@ class ReduceAnyNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     bool keep_dim = ctx.Attr<bool>("keep_dim");
-    bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto dims = ctx.Attr<std::vector<int>>("dim");
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    // set op type
-    std::string op_name = "ReduceAnyD";
-    if (reduce_all) {
-      op_name = "ReduceAllD";
-    }
-
     // set attr
     NPUAttributeMap attr = {{"keep_dims", keep_dim}, {"axes", dims}};
 
-    auto runner = NpuOpRunner(op_name, {*x}, {*out}, attr);
+    auto runner = NpuOpRunner("ReduceAnyD", {*x}, {*out}, attr);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
