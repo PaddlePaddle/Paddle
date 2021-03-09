@@ -460,6 +460,13 @@ def test(file_list):
                 process_result = False
     return process_result
 
+def run_a_test(tc_filename):
+    global methods
+    process_result = True
+    with open(tc_filename, 'r') as src:
+        if not srccoms_extract(src, wlist, methods):
+            process_result = False
+    return process_result
 
 def get_filenames():
     '''
@@ -661,7 +668,8 @@ if __name__ == '__main__':
     ]
 
     po = multiprocessing.Pool()
-    results = po.map_async(test, divided_file_list)
+    # results = po.map_async(test, divided_file_list)
+    results = po.map_async(run_a_test, filenames)
     po.close()
     po.join()
 
@@ -690,8 +698,12 @@ if __name__ == '__main__':
         print("----------------------------------------------------")
         exit(1)
     else:
-        for temp in result:
-            if not temp:
+        has_error = False
+        for i in range(len(filenames)):
+            if not result[i]:
+                print(filenames[i], ' error.')
+                has_error = True
+        if has_error:
                 print("Mistakes found in sample codes.")
                 print("Please check sample codes.")
                 exit(1)
