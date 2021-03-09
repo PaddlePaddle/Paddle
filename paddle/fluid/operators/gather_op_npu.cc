@@ -17,31 +17,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-inline framework::Tensor UnsqueezeTo(const framework::Tensor &src, int ndims) {
-  const framework::DDim &shape = src.dims();
-  int rank = shape.size();
-  framework::Tensor res;
-  res.ShareDataWith(src);
-  PADDLE_ENFORCE_LE(
-      rank, ndims,
-      platform::errors::InvalidArgument(
-          "The input Tensor's rank should be less than or equal to ndims"
-          "Received input Tensor's rank = %d, ndims = %d",
-          rank, ndims));
-  if (rank < ndims) {
-    std::vector<int64_t> new_dim(ndims, 1);
-    for (int i = ndims - rank; i < ndims; i++) {
-      new_dim[i] = shape[i - ndims + rank];
-    }
-    res.Resize(framework::make_ddim(new_dim));
-  }
-  return res;
-}
 
 template <typename DeviceContext, typename T>
 class GatherOpNPUKernel : public framework::OpKernel<T> {

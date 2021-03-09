@@ -22,8 +22,8 @@ from op_test import OpTest, _set_use_system_allocator
 import paddle
 import paddle.fluid as fluid
 
-
 paddle.enable_static()
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
