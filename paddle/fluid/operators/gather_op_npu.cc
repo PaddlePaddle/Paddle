@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/gather_op.h"
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/gather_op.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-inline framework::Tensor UnsqueezeTo(const framework::Tensor& src, int ndims) {
-  const framework::DDim& shape = src.dims();
+inline framework::Tensor UnsqueezeTo(const framework::Tensor &src, int ndims) {
+  const framework::DDim &shape = src.dims();
   int rank = shape.size();
   framework::Tensor res;
   res.ShareDataWith(src);
@@ -50,9 +50,10 @@ class GatherOpNPUKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("X");
     auto *index = ctx.Input<Tensor>("Index");
     auto *out = ctx.Output<Tensor>("Out");
-    
+
     out->mutable_data<T>(ctx.GetPlace());
-    auto runner = NpuOpRunner("Gather", {*x, *index}, {*out}, {{"validate_indices", true}});
+    auto runner = NpuOpRunner("Gather", {*x, *index}, {*out},
+                              {{"validate_indices", true}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -68,7 +69,7 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<Tensor>("X");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    
+
     // step1: Unsqueeze index
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
@@ -79,22 +80,22 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
- 
-    // step2: ZerosLike x in device 
-    Tensor* tmp_zerox = const_cast<Tensor*>(x);
+
+    // step2: ZerosLike x in device
+    Tensor *tmp_zerox = const_cast<Tensor *>(x);
     Tensor zeroslike_xout(x->type());
     zeroslike_xout.Resize(x->dims());
     zeroslike_xout.mutable_data<T>(ctx.GetPlace());
 
-    auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {zeroslike_xout}, {});
+    auto runner_zeroslike =
+        NpuOpRunner("ZerosLike", {*x}, {zeroslike_xout}, {});
     runner_zeroslike.Run(stream);
     tmp_zerox = &zeroslike_xout;
 
     // step3: scatter(x_grad)
     dx->mutable_data<T>(ctx.GetPlace());
-    auto runner_scatter = NpuOpRunner("TensorScatterUpdate", 
-                                        {*tmp_zerox, *index, *dout}, 
-                                        {*dx}, {});
+    auto runner_scatter = NpuOpRunner("TensorScatterUpdate",
+                                      {*tmp_zerox, *index, *dout}, {*dx}, {});
     runner_scatter.Run(stream);
   }
 };
@@ -104,14 +105,12 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
-    gather, 
-    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, 
+    gather, ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GatherOpNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
-                           
-REGISTER_OP_NPU_KERNEL(
-    gather_grad, 
-    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, 
-                               paddle::platform::float16>);
 
+REGISTER_OP_NPU_KERNEL(
+    gather_grad,
+    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GatherGradOpNPUKernel<paddle::platform::NPUDeviceContext,
+                               paddle::platform::float16>);

@@ -39,14 +39,14 @@ USE_OP_DEVICE_KERNEL(gather_grad, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx,
-             std::string op_type) {            
+             std::string op_type) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  
+
   auto index = scope->Var("Index");
   auto tensor_index = index->GetMutable<f::LoDTensor>();
-  
+
   std::vector<T> init_x;
   for (int64_t i = 1; i < 7; ++i) {
     // 1,2,3,4,5,6
@@ -68,8 +68,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   f::AttributeMap attrs = {{"validate_indices", true}};
-  auto op = f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}, {"Index", {"Index"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}, {"Index", {"Index"}}}, {{"Out", {"Out"}}}, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
@@ -78,10 +78,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
- 
+
   // ref:https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/tensor/manipulation/gather_cn.html#gather
-  for(int i=0; i< static_cast<int>(out_vec.size()); ++i){
-    VLOG(3) << "out_vec[" << i<< "] : "<< out_vec[i];
+  for (int i = 0; i < static_cast<int>(out_vec.size()); ++i) {
+    VLOG(3) << "out_vec[" << i << "] : " << out_vec[i];
   }
   uint32_t expected_size = 4;
   EXPECT_EQ((uint32_t)out_vec.size(), expected_size);
@@ -96,7 +96,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   }
 }
 
-
 template <typename T>
 void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
                  std::string op_type) {
@@ -106,12 +105,12 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
-  
+
   auto dout = scope->Var("DOut");
   auto tensor_dout = dout->GetMutable<f::LoDTensor>();
 
-  //https://tensorflow.google.cn/api_docs/python/tf/raw_ops/TensorScatterUpdate
-  //https://tensorflow.google.cn/api_docs/python/tf/tensor_scatter_nd_update
+  // https://tensorflow.google.cn/api_docs/python/tf/raw_ops/TensorScatterUpdate
+  // https://tensorflow.google.cn/api_docs/python/tf/tensor_scatter_nd_update
   std::vector<int> init_index = {0, 1, 2, 0};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
   tensor_index->Resize(paddle::framework::make_ddim({2, 2}));
@@ -131,9 +130,9 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   f::AttributeMap attrs;
-  auto op = f::OpRegistry::CreateOp(op_type,
-    {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
-    {{"X@GRAD", {"DX"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
+      {{"X@GRAD", {"DX"}}}, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
@@ -154,19 +153,19 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 TEST(gather, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "gather");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "gather");
 }
 
 TEST(gather, NPU_fp16) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<p::float16>(&scope, ctx, "gather");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<p::float16>(&scope, ctx, "gather");
 }
 
-TEST(gather_grad, NPU) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    CompareGrad<float>(&scope, ctx, "gather_grad");
+TEST(gather_grad, NPU_fp32) {
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  CompareGrad<float>(&scope, ctx, "gather_grad");
 }
