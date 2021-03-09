@@ -13,14 +13,18 @@ endif()
 
 py_test(test_sysconfig SRCS test_sysconfig.py)
 
+if(WIN32 AND ${MSVC_VERSION} GREATER 1900)
+    set(DISTUTILS_USE_SDK_ENV DISTUTILS_USE_SDK=1)
+endif()
+
 # 'test_dispatch' compile .cc file
-py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
+py_test(test_dispatch_jit SRCS test_dispatch_jit.py ENVS ${DISTUTILS_USE_SDK_ENV})
 set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 120)
 
-py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
+py_test(test_multi_out_jit SRCS test_multi_out_jit.py ENVS ${DISTUTILS_USE_SDK_ENV})
 set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
 
-py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py ENVS ${DISTUTILS_USE_SDK_ENV})
 set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
 
 py_test(test_check_abi SRCS test_check_abi.py)
