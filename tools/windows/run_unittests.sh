@@ -13,7 +13,7 @@
 # limitations under the License.
 
 set -e
-set +x
+set -x
 NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 
