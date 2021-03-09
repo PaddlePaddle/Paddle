@@ -1193,6 +1193,7 @@ set +x
         exec_retry_threshold=10
         is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
+            TIMEOUT_DEBUG_HELP=ON
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
