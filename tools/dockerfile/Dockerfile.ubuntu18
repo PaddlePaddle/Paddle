@@ -47,15 +47,8 @@ RUN apt-get update && \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
   python3.8 python3.8-dev python3.8-distutils && \
-  curl https://bootstrap.pypa.io/2.7/get-pip.py -o - | python2.7 && easy_install pip && \
-  curl https://bootstrap.pypa.io/3.5/get-pip.py -o - | python3.5 && easy_install pip && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.6 && easy_install pip && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.7 && easy_install pip && \
-  curl https://bootstrap.pypa.io/ez_setup.py -o - | python3.8 && easy_install pip && \
   rm /usr/bin/python && ln -s /usr/bin/python2.7 /usr/bin/python && \
-  rm /usr/bin/python3 && ln -s /usr/bin/python3.5 /usr/bin/python3 && \
-  rm /usr/local/bin/pip && ln -s /usr/local/bin/pip2.7 /usr/local/bin/pip && \
-  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.5 /usr/local/bin/pip3
+  rm /usr/bin/python3 && ln -s /usr/bin/python3.5 /usr/bin/python3
 
 
 WORKDIR /home
@@ -86,6 +79,8 @@ RUN python setup.py install && \
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 setuptools-50.3.2 pip-20.0.1
+RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip2.7 /usr/local/bin/pip && \
+  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.5 /usr/local/bin/pip3
 
 
 # remove them when apt-get support 2.27 and higher version
