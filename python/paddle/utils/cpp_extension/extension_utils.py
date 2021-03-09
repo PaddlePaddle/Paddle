@@ -982,7 +982,10 @@ def check_abi_compatibility(compiler, verbose=False):
             compiler_info = subprocess.check_output(
                 compiler, stderr=subprocess.STDOUT)
             if six.PY3:
-                compiler_info = compiler_info.decode()
+                try:
+                    compiler_info = compiler_info.decode('UTF-8')
+                except UnicodeDecodeError:
+                    compiler_info = compiler_info.decode('gbk')
             match = re.search(r'(\d+)\.(\d+)\.(\d+)', compiler_info.strip())
             if match is not None:
                 version = match.groups()
