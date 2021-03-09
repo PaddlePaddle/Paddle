@@ -1452,6 +1452,16 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+        fp32_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03
+            fp32_grads.append(grad)
+        analytic_grads = fp32_grads
+
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
