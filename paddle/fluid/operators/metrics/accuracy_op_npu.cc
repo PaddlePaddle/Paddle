@@ -45,16 +45,18 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_pred(pred->type());
     tmp_pred.Resize(pred->dims());
     tmp_pred.mutable_data<int>(ctx.GetPlace());
-    auto runner_cast_pred = NpuOpRunner("Cast", {*pred}, {tmp_pred},
-                                        {{"dst_type", static_cast<int>(3)}});
+    auto runner_cast_pred =
+        NpuOpRunner("Cast", {*pred}, {tmp_pred},
+                    {{"dst_type", static_cast<int>(ACL_INT32)}});
     runner_cast_pred.Run(stream);
 
     // cast label
     Tensor tmp_label(label->type());
     tmp_label.Resize(label->dims());
     tmp_label.mutable_data<int>(ctx.GetPlace());
-    auto runner_cast_label = NpuOpRunner("Cast", {*label}, {tmp_label},
-                                         {{"dst_type", static_cast<int>(3)}});
+    auto runner_cast_label =
+        NpuOpRunner("Cast", {*label}, {tmp_label},
+                    {{"dst_type", static_cast<int>(ACL_INT32)}});
     runner_cast_label.Run(stream);
 
     // equal
@@ -69,8 +71,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_equal_cast(label->type());
     tmp_equal_cast.Resize(label->dims());
     tmp_equal_cast.mutable_data<T>(ctx.GetPlace());
-    auto runner_cast_equal = NpuOpRunner("Cast", {tmp_equal}, {tmp_equal_cast},
-                                         {{"dst_type", static_cast<float>(0)}});
+    auto runner_cast_equal =
+        NpuOpRunner("Cast", {tmp_equal}, {tmp_equal_cast},
+                    {{"dst_type", static_cast<float>(ACL_FLOAT)}});
     runner_cast_equal.Run(stream);
 
     // acc

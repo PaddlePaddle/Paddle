@@ -87,5 +87,31 @@ class TestAccuracy2(TestAccurary):
         }
 
 
+class TestAccuracy3(TestAccurary):
+    def setUp(self):
+        self.op_type = "accuracy"
+        self.set_npu()
+        self.init_dtype()
+        np.random.seed(SEED)
+        a = np.random.randint(1, 2, [5, 1])
+        b = np.random.randint(0, 1, [5, 1])
+        pred = np.row_stack((a, b)).astype(self.dtype)
+        label = np.random.randint(1, 2, [10, 1]).astype(self.dtype)
+        accuracy = np.array([0.5]).astype(self.dtype)
+        correct = np.array([5]).astype(self.dtype)
+        total = np.array([10 * 1]).astype(self.dtype)
+
+        self.inputs = {
+            "Out": OpTest.np_dtype_to_fluid_dtype(pred),
+            "Label": OpTest.np_dtype_to_fluid_dtype(label),
+            "Indices": OpTest.np_dtype_to_fluid_dtype(pred)
+        }
+        self.outputs = {
+            "Accuracy": accuracy,
+            "Correct": correct,
+            "Total": total
+        }
+
+
 if __name__ == '__main__':
     unittest.main()
