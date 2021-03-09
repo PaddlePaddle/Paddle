@@ -109,8 +109,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   auto dout = scope->Var("DOut");
   auto tensor_dout = dout->GetMutable<f::LoDTensor>();
 
-  // https://tensorflow.google.cn/api_docs/python/tf/raw_ops/TensorScatterUpdate
-  // https://tensorflow.google.cn/api_docs/python/tf/tensor_scatter_nd_update
   std::vector<int> init_index = {0, 1, 2, 0};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
   tensor_index->Resize(paddle::framework::make_ddim({2, 2}));
