@@ -27,8 +27,8 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
-    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
-    auto bias = static_cast<T>(ctx.Attr<float>("bias"));
+    auto scale = static_cast<float>(ctx.Attr<float>("scale"));
+    auto bias = static_cast<float>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -64,4 +64,6 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    scale, ops::ScaleNPUKernel<paddle::platform::NPUDeviceContext, float>);
+    scale, ops::ScaleNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ScaleNPUKernel<paddle::platform::NPUDeviceContext,
+                        paddle::platform::float16>);

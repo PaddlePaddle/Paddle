@@ -54,6 +54,11 @@ class TestScale(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
+class TestFP16Scale(TestScale):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestBiasAfterScale(OpTest):
     def setUp(self):
         self.set_npu()
