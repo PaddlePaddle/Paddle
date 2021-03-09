@@ -4838,7 +4838,7 @@ class PipelineOptimizer(object):
                     new_var.persistable = False
                     self._rename_arg(op, grad_name, new_grad_var_name)
 
-    def _accumulate_gradients(self, block):
+    def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
         """
         Accumulate the gradients generated in microbatch to the one in mini-batch.
         """
@@ -4875,7 +4875,11 @@ class PipelineOptimizer(object):
                 for i in range(0, len(op_role_var), 2):
                     offset = 0
                     param_name = op_role_var[i]
-                    # if not block.has_var(param_name): continue
+
+                    if not pp_allreduce_in_optimize:
+                        if not block.has_var(param_name):
+                            continue
+
                     if '@BroadCast' in param_name:
                         param_name = param_name[0:param_name.find('@BroadCast')]
                     # clear gradient
