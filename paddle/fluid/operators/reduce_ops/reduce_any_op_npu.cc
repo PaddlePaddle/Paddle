@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -30,22 +29,23 @@ class ReduceAnyNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
+
     bool keep_dim = ctx.Attr<bool>("keep_dim");
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
+    auto dims = ctx.Attr<std::vector<int>>("dim");
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    std::vector<Tensor> inputs = {*x};
-    if (ctx.HasInput("dim")) {
-        auto dims = ctx.Attr<std::vector<int>>("dim");
-        int dims_size = dims.size();
-        Tensor dims_tensor;
-        paddle::framework::TensorFromVector<int>(dims, &dims_tensor);
-        dims_tensor.Resize(paddle::framework::make_ddim({1, dims_size}));
-        dims_tensor.mutable_data<int>(ctx.GetPlace());
-        inputs.push_back(dims_tensor);
+    // set op type
+    std::string op_name = "ReduceAnyD";
+    if (reduce_all) {
+      op_name = "ReduceAllD";
     }
-    
-    auto runner = NpuOpRunner("ReduceAny", inputs, {*out}, {{"keep_dims", keep_dim}});
+
+    // set attr
+    NPUAttributeMap attr = {{"keep_dims", keep_dim}, {"axes", dims}};
+
+    auto runner = NpuOpRunner(op_name, {*x}, {*out}, attr);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
