@@ -4075,12 +4075,15 @@ class PipelineOptimizer(object):
                         break
                 source_var = main_program.block(0).var(var_name)
                 new_var = self._create_var(block, source_var, var_name)
+                new_var_shape = list(new_var.shape)
+                new_var_shape[0] = self.micro_batch_size if new_var_shape[
+                    0] < 0 else new_var_shape[0]
                 block._insert_op(
                     index=index,
                     type='recv_v2',
                     outputs={'Out': [new_var]},
                     attrs={
-                        'out_shape': new_var.shape,
+                        'out_shape': new_var_shape,
                         'dtype': new_var.dtype,
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
@@ -4243,12 +4246,15 @@ class PipelineOptimizer(object):
                             'peer': cur_device_index,
                         })
                     extra_index += 1
+                    var_shape = list(var.shape)
+                    var_shape[0] = self.micro_batch_size if var_shape[
+                        0] < 0 else var_shape[0]
                     block._insert_op(
                         index=index + extra_index,
                         type='recv_v2',
                         outputs={'Out': [var]},
                         attrs={
-                            'out_shape': var.shape,
+                            'out_shape': var_shape,
                             'dtype': var.dtype,
                             self._op_device_key: cur_device_spec,
                             self._op_role_key: op_role,
@@ -4455,6 +4461,8 @@ class PipelineOptimizer(object):
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         self._param_device_map = self._optimizer._param_device_map
+        self.micro_batch_size = main_block.program._pipeline_opt[
+            'micro_batch_size']
 
         # Step1: add default op_device attribute for regulization and clip ops
         self._add_opdevice_attr_for_regularization_clip(main_block)
