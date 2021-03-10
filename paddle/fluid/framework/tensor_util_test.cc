@@ -208,6 +208,96 @@ TEST(TensorFromVector, Tensor) {
 #endif
 }
 
+TEST(TensorFromVector, Tensor) {
+  {
+    std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    paddle::framework::Tensor cpu_tensor;
+
+    // Copy to CPU Tensor
+    cpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
+    auto cpu_place = new paddle::platform::CPUPlace();
+    paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
+
+    // Compare Tensors
+    const int* cpu_ptr = cpu_tensor.data<int>();
+    const int* src_ptr = src_vec.data();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+    }
+
+    src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
+    cpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
+    cpu_ptr = cpu_tensor.data<int>();
+    src_ptr = src_vec.data();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    for (size_t i = 0; i < 5; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+    }
+
+    delete cpu_place;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  {
+    std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    paddle::framework::Tensor cpu_tensor;
+    paddle::framework::Tensor gpu_tensor;
+    paddle::framework::Tensor dst_tensor;
+
+    // Copy to CPU Tensor
+    cpu_tensor.Resize(make_ddim({3, 3}));
+    auto cpu_place = new paddle::platform::CPUPlace();
+    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+
+    // Copy to GPUTensor
+    gpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
+    auto gpu_place = new paddle::platform::CUDAPlace();
+    paddle::platform::CUDADeviceContext gpu_ctx(*gpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    // Copy from GPU to CPU tensor for comparison
+    paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+
+    // Sync before Compare Tensors
+    gpu_ctx.Wait();
+    const int* src_ptr = src_vec.data();
+    const int* cpu_ptr = cpu_tensor.data<int>();
+    const int* dst_ptr = dst_tensor.data<int>();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
+
+    src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
+
+    cpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    gpu_tensor.Resize(paddle::framework::make_ddim({2, 2}));
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
+
+    // Sync before Compare Tensors
+    gpu_ctx.Wait();
+    src_ptr = src_vec.data();
+    cpu_ptr = cpu_tensor.data<int>();
+    dst_ptr = dst_tensor.data<int>();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 5; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
+    }
+
+    delete cpu_place;
+    delete gpu_place;
+  }
+#endif
+}
+
 TEST(TensorToVector, Tensor) {
   {
     paddle::framework::Tensor src;
@@ -234,6 +324,61 @@ TEST(TensorToVector, Tensor) {
 
     std::vector<int> dst;
     paddle::framework::TensorToVector<int>(gpu_tensor, gpu_ctx, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
+}
+
+TEST(TensorToVector, Tensor_bool) {
+  {
+    paddle::framework::Tensor src;
+    bool* src_ptr =
+        src.mutable_data<bool>({3, 3}, paddle::platform::CPUPlace());
+    for (int i = 0; i < 3 * 3; ++i) {
+      src_ptr[i] = static_cast<bool>(i % 2);
+    }
+
+    paddle::platform::CPUPlace place;
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(src, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_ptr[i], dst[i]);
+    }
+  }
+#ifdef PADDLE_WITH_CUDA
+  {
+    std::vector<bool> src_vec = {
+        false, true, false, true, false, true, false, true, false,
+    };
+    paddle::framework::Tensor gpu_tensor;
+    paddle::platform::CUDAPlace place;
+    paddle::platform::CUDADeviceContext gpu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, gpu_ctx, &gpu_tensor);
+
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(gpu_tensor, gpu_ctx, &dst);
+
+    for (int i = 0; i < 3 * 3; ++i) {
+      EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  {
+    std::vector<bool> src_vec = {
+        false, true, false, true, false, true, false, true, false,
+    };
+    paddle::framework::Tensor npu_tensor;
+    paddle::platform::NPUPlace place(0);
+    paddle::platform::NPUDeviceContext npu_ctx(place);
+    paddle::framework::TensorFromVector<bool>(src_vec, npu_ctx, &npu_tensor);
+
+    std::vector<bool> dst;
+    paddle::framework::TensorToVector<bool>(gpu_tensor, npu_ctx, &dst);
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);
