@@ -20,7 +20,7 @@ from .... import core
 from .... import framework
 from ....log_helper import get_logger
 from ....wrapped_decorator import signature_safe_contextmanager
-from .amp_lists import AutoMixedPrecisionLists
+from .amp_lists import AutoMixedPrecisionListsBF16
 import logging
 import numpy as np
 
@@ -287,7 +287,7 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
         main_prog (Program): The main program for training.
     """
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists()
+        amp_lists = AutoMixedPrecisionListsBF16()
     block = main_prog.global_block()
     ops = block.ops
     bf16_op_set = set()

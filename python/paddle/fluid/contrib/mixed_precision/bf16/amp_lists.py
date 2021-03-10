@@ -14,12 +14,12 @@
 
 import copy
 
-__all__ = ["AutoMixedPrecisionLists"]
+__all__ = ["AutoMixedPrecisionListsBF16"]
 
 
-class AutoMixedPrecisionLists(object):
+class AutoMixedPrecisionListsBF16(object):
     """
-    AutoMixedPrecisionLists is a class for fp32/bf16 list. It can update
+    AutoMixedPrecisionListsBF16 is a class for fp32/bf16 list. It can update
     pre-defined fp32 list and bf16 list according to users' custom fp32
     bf16 lists. The lists are used for an algorithm which determines op's
     execution mode (fp32 or bf16).
