@@ -44,7 +44,7 @@ def _flatten_batch(batch):
                     structure.append('{}{}'.format(FIELD_PREFIX, field_idx))
                     flat_batch.append(field.numpy())
                     field_idx += 1
-                elif isinstance(field, (str, bytes, numbers.Number, np.number)):
+                elif isinstance(field, (str, bytes, numbers.Number)):
                     structure.append(field)
                 elif isinstance(field, Sequence):
                     field_struct, field_idx = _flatten(field, flat_batch, [],
@@ -66,7 +66,7 @@ def _flatten_batch(batch):
                     structure[k] = '{}{}'.format(FIELD_PREFIX, field_idx)
                     flat_batch.append(field.numpy())
                     field_idx += 1
-                elif isinstance(field, (str, bytes, numbers.Number, np.number)):
+                elif isinstance(field, (str, bytes, numbers.Number)):
                     structure[k] = field
                 elif isinstance(field, Sequence):
                     field_struct, field_idx = _flatten(field, flat_batch, [],
@@ -110,7 +110,7 @@ def _restore_batch(flat_batch, structure):
                                 "flat_batch[{}] parsed repeatly"
                     structure[i] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
-                elif isinstance(field, (str, bytes, numbers.Number, np.number)):
+                elif isinstance(field, (str, bytes, numbers.Number)):
                     continue
                 elif isinstance(field, (Sequence, Mapping)):
                     field_idx = _restore(structure[i], field_idx)
@@ -123,7 +123,7 @@ def _restore_batch(flat_batch, structure):
                                 "flat_batch[{}] parsed repeatly"
                     structure[k] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
-                elif isinstance(field, (str, bytes, numbers.Number, np.number)):
+                elif isinstance(field, (str, bytes, numbers.Number)):
                     continue
                 elif isinstance(field, (Sequence, Mapping)):
                     field_idx = _restore(structure[k], field_idx)
@@ -132,9 +132,14 @@ def _restore_batch(flat_batch, structure):
 
         return field_idx
 
-    assert isinstance(flat_batch, Sequence), "flat_batch is not a list or tuple"
+    assert isinstance(flat_batch, Sequence), \
+            "flat_batch is not a list or tuple"
+
+    # no np.array in dataset, no output tensor from blocking queue
+    # simply return structure
     if len(flat_batch) == 0:
         return structure
+
     # sample only contains single fields
     if isinstance(structure, (str, bytes)):
         assert structure == '{}{}'.format(FIELD_PREFIX, 0), \
