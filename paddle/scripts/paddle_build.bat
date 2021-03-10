@@ -31,9 +31,6 @@ wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
 rem ------initialize common variable------
-set GENERATOR="Ninja"
-set WITH_TPCACHE=OFF
-set WITH_CACHE=OFF
 if not defined GENERATOR set GENERATOR="Visual Studio 14 2015 Win64"
 if not defined BRANCH set BRANCH=develop
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON 
