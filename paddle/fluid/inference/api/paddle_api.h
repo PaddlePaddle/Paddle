@@ -269,7 +269,7 @@ template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
 
-PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
+PD_INFER_DECL size_t PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
 

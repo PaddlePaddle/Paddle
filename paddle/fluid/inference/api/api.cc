@@ -105,7 +105,7 @@ void HostBuffer::Free() {
 
 namespace paddle {
 
-int PaddleDtypeSize(PaddleDType dtype) {
+size_t PaddleDtypeSize(PaddleDType dtype) {
   switch (dtype) {
     case PaddleDType::FLOAT32:
       return sizeof(float);
@@ -120,7 +120,7 @@ int PaddleDtypeSize(PaddleDType dtype) {
           "The dtype must be one in the list: FLOAT32, INT64, INT32, UINT8. "
           "But it is `%d`",
           static_cast<int>(dtype)));
-      return -1;
+      return 0;
   }
 }
 
