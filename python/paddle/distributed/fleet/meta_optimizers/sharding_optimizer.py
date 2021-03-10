@@ -24,6 +24,7 @@ from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper impor
 from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
+
 import logging
 from functools import reduce
 
@@ -99,6 +100,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.schedule_mode = self.user_defined_strategy.sharding_configs[
             "schedule_mode"]
         self.pp_bz = self.user_defined_strategy.sharding_configs["pp_bz"]
+        self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs["pp_allreduce_in_optimize"]
 
         if self.inner_opt is None:
             raise ValueError(
@@ -178,6 +180,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._initialization_broadcast(startup_program)
 
         if self.use_pipeline:
+            # pp_optimizer._rename_gradient_var_name(main_block)
             # crop ops
             for idx, op in reversed(list(enumerate(main_block.ops))):
                 # if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
@@ -205,7 +208,13 @@ class ShardingOptimizer(MetaOptimizerBase):
             #    if self._shard.has_param(param_name):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
-            pp_optimizer._accumulate_gradients(main_block)
+            accumulated_grad_names = pp_optimizer._accumulate_gradients(main_block, pp_allreduce_in_optimize = self.pp_allreduce_in_optimize)
+            # accumulated_grad_names = sorted(accumulated_grad_names)
+            if self.pp_allreduce_in_optimize :
+                print("persistable FP32 grad: ")
+                print(accumulated_grad_names)
+                first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(main_block) 
+                insert_reduce_ops(main_block, first_optimize_op_index, self.sharding_ring_id, accumulated_grad_names, self._shard, core.op_proto_and_checker_maker.OpRole.Optimize, use_calc_stream = True)
             #if not self._shard.has_param(param_name): continue
             ##if not main_block.has_var(grad_name): continue
             #assert main_block.has_var(grad_name)
@@ -378,19 +387,19 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._init_comm()
 
         # global
-        print("global_group_endpoints:", self.global_group_endpoints)
-        print("global_rank:", self.global_rank)
-        print("global_ring_id:", self.global_group_id)
         if self._as_outer_parallelism:
+            print("global_group_endpoints:", self.global_group_endpoints)
+            print("global_rank:", self.global_rank)
+            print("global_ring_id:", self.global_group_id)
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.global_group_endpoints, self.global_rank,
                 self.global_group_id, True)
 
-        print("mp_group_endpoints:", self.mp_group_endpoints)
-        print("mp_rank:", self.mp_rank)
-        print("mp_ring_id:", self.mp_group_id)
         if self._as_outer_parallelism:
+            print("mp_group_endpoints:", self.mp_group_endpoints)
+            print("mp_rank:", self.mp_rank)
+            print("mp_ring_id:", self.mp_group_id)
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.mp_group_endpoints, self.mp_rank, self.mp_group_id, False)
@@ -408,7 +417,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.hybrid_dp:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
-                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, True)
+                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, False)
         # pp
         if self.use_pipeline:
             print("pp_group_endpoints:", self.pp_group_endpoints)
@@ -456,10 +465,36 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._main_program.global_block())
 
     def _wait(self, ):
-        endpoints = self.role_maker._get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker._worker_index()]
-        if self.role_maker._worker_index() == 0:
-            self._collective_helper._wait(current_endpoint, endpoints)
+        # only the first parallelsm group that init nccl need to be wait. 
+        if self._as_outer_parallelism:
+            endpoints = self.role_maker._get_trainer_endpoints()
+            current_endpoint = endpoints[self.role_maker._worker_index()]
+        else:
+            endpoints = self.sharding_group_endpoints[:]
+            current_endpoint = self.sharding_group_endpoints[self.sharding_rank]
+        
+
+        if self._as_outer_parallelism:
+            if self.role_maker._worker_index() == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
+        else:
+            if self.sharding_rank == 0:
+                self._collective_helper._wait(current_endpoint, endpoints)
+
+    # def _wait(self, ):
+    #     # only the first parallelsm group that init nccl need to be wait. 
+    #     if self._as_outer_parallelism:
+    #         endpoints = self.role_maker._get_trainer_endpoints()
+    #     else:
+    #         endpoints = self.sharding_group_endpoints[:]
+    #     current_endpoint = endpoints[self.role_maker._worker_index()]
+
+    #     if self._as_outer_parallelism:
+    #         if self.role_maker._worker_index() == 0:
+    #             self._collective_helper._wait(current_endpoint, endpoints)
+    #     else:
+    #         if self.sharding_rank == 0:
+    #             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
         for op_idx, op in reversed(list(enumerate(block.ops))):
@@ -500,17 +535,21 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._main_program.global_block().var(input_name))
 
             # find reduce vars
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
-                if len(op_role_var) != 0:
-                    assert len(op_role_var) % 2 == 0
-                    for i in range(0, len(op_role_var), 2):
-                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
-                        segment._allreduce_vars.append(reduced_grad)
-                        #assert (
-                        #    reduced_grad not in self._reduced_grads_to_param)
-                        self._reduced_grads_to_param[reduced_grad] = param
+            if self.use_pipeline and self.pp_allreduce_in_optimize :
+                # place pipeline gradient allreduce in optimize
+                pass
+            else:
+                if is_backward_op(op) and \
+                        OP_ROLE_VAR_KEY in op.attr_names:
+                    op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+                    if len(op_role_var) != 0:
+                        assert len(op_role_var) % 2 == 0
+                        for i in range(0, len(op_role_var), 2):
+                            param, reduced_grad = op_role_var[i], op_role_var[i + 1]
+                            segment._allreduce_vars.append(reduced_grad)
+                            #assert (
+                            #    reduced_grad not in self._reduced_grads_to_param)
+                            self._reduced_grads_to_param[reduced_grad] = param
 
             # find cast op
             if FP16Utils.is_fp16_cast_op(block, op, self._params):
@@ -629,10 +668,17 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _add_broadcast_allreduce(self, block):
         """
         _add_broadcast_allreduce
+
+        if combined with pipeline(grad accumulate), 
+        the grad allreduce should be done in optimize role
         """
         if len(self._segments) < 1:
             return
         # sharding
+        if self.use_pipeline and self.pp_allreduce_in_optimize :
+            for idx in range(len(self._segments)):
+                assert len(self._segments[idx]._allreduce_vars) == 0
+
         if self._segments[-1]._allreduce_vars:
             shard_allredue_vars = self._shard.filter_grads(self._segments[-1]
                                                            ._allreduce_vars)
@@ -644,9 +690,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
-            insert_allreduce_ops(block, self._segments[-1]._end_idx,
+            # allreduce --> reduce
+            insert_reduce_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
-                                 self._segments[-1]._allreduce_vars)
+                                 self._segments[-1]._allreduce_vars, self._shard, op_role = OpRole.Backward, use_calc_stream = False)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -726,8 +773,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_comm_ops(block, segment._start_idx,
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
-            insert_allreduce_ops(block, segment._start_idx,
-                                 self.sharding_ring_id, allreduce_vars)
+            # allreduce --> reduce
+            insert_reduce_ops(block, segment._start_idx,
+                                 self.sharding_ring_id, allreduce_vars, self._shard, op_role = OpRole.Backward, use_calc_stream = False)
 
             block._sync_with_cpp()
 
@@ -799,6 +847,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 ep for idx, ep in enumerate(self.endpoints)
                 if (idx % self.sharding_group_size) == self.sharding_rank
             ]
+
             assert self.global_word_size > self.sharding_group_size, \
                 "global_word_size: {} should be larger than sharding_group_size: {}".format(self.global_word_size, self.sharding_group_size)
             assert self.global_word_size % self.sharding_group_size == 0, \
@@ -1020,3 +1069,4 @@ class ShardingOptimizer(MetaOptimizerBase):
             outputs={'Out': params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
+                   
