@@ -85,6 +85,12 @@ class _ConvNd(layers.Layer):
                 "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
             )
 
+        valid_format = {'NHWC', 'NCHW', 'NDHWC', 'NCDHW', 'NLC', 'NCL'}
+        if data_format not in valid_format:
+            raise ValueError(
+                "data_format must be one of {}, but got data_format='{}'".
+                format(valid_format, data_format))
+
         channel_last = (data_format == "NHWC") or (data_format == "NDHWC") or (
             data_format == "NLC")
         if channel_last:

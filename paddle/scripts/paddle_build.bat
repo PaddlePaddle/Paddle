@@ -146,6 +146,15 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 rem clcache.exe -M 21474836480
 
+:: install ninja if GENERATOR is Ninja
+if %GENERATOR% == "Ninja" (
+    pip install ninja
+    if %errorlevel% NEQ 0 (
+        echo pip install ninja failed!
+        exit /b 7
+    )
+)
+
 rem ------show summary of current environment----------
 cmake --version
 nvcc --version
@@ -285,14 +294,14 @@ if "%WITH_GPU%"=="ON" (
 )
 
 :cmake_impl
-echo cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME%
 
-cmake .. -G %GENERATOR% -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
@@ -317,7 +326,11 @@ for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+if %GENERATOR% == "Ninja" (
+    ninja third_party
+) else (
+    msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
+)
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 2 (
@@ -335,10 +348,14 @@ set build_times=1
 rem clcache.exe -z
 
 echo Build Paddle the %build_times% time:
-if "%WITH_CLCACHE%"=="OFF" (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+if %GENERATOR% == "Ninja" (
+    ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
-    msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    if "%WITH_CLCACHE%"=="OFF" (
+        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    ) else (
+        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+    )
 )
 
 if %ERRORLEVEL% NEQ 0 (
@@ -476,7 +493,7 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE%
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST%
 
 goto:eof
 

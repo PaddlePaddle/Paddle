@@ -54,7 +54,12 @@ nvinfer1::DimsExprs SpecialSlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) {
   nvinfer1::DimsExprs output(inputs[0]);
+  output.nbDims++;
+  for (int i = output.nbDims - 1; i > 1; i--) {
+    output.d[i] = inputs[0].d[i - 1];
+  }
   auto one = expr_builder.constant(1);
+  output.d[1] = one;
   output.d[0] = expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
                                        *inputs[1].d[0], *one);
 

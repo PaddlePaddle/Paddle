@@ -1,16 +1,16 @@
 # A image for building paddle binaries
 # Use rocm-terminal base image for both rocm environment
 # When you modify it, please be aware of rocm version
-# 
-# Build: ROCM 3.9
+#
+# Build: ROCM 4.0.1
 # cd Paddle/tools/dockerfile
 # docker build -f Dockerfile.rocm  \
-#        --build-arg ROCM_VERSION=3.9  \
-#        -t paddlepaddle/paddle-centos-rocm39-dev:latest .
-# 
+#        --build-arg ROCM_VERSION=4.0.1  \
+#        -t paddlepaddle/paddle-centos-rocm401-dev:latest .
+#
 # docker run -it --device=/dev/kfd --device=/dev/dri \
 # --security-opt seccomp=unconfined --group-add video \
-# paddlepaddle/paddle-centos-rocm39-dev:latest /bin/bash
+# paddlepaddle/paddle-centos-rocm401-dev:latest /bin/bash
 
 FROM centos:7.8.2003
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -21,7 +21,8 @@ ENV LANGUAGE en_US.UTF-8
 
 RUN yum install -y epel-release deltarpm sudo openssh-server gettext-devel sqlite-devel \
         zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel \
-        make bzip2 git patch unzip bison yasm diffutils automake which file kernel-headers kernel-devel
+        make bzip2 git patch unzip bison yasm diffutils automake which file kernel-headers kernel-devel \
+        net-tools numactl-devel chrpath
 
 # Install devtoolset-7
 RUN yum install -y yum-utils centos-release-scl && \
@@ -70,7 +71,7 @@ RUN cd /opt && wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   make -j8 && make install && \
   cd .. && rm -rf git-2.17.1.tar.gz && rm -rf git-2.17.1
 
-ENV GOROOT=/usr/local/go 
+ENV GOROOT=/usr/local/go
 ENV GOPATH=/root/gopath
 ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
@@ -82,7 +83,7 @@ RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8
     mkdir /root/gopath/src
 
 # protobuf 3.6.1
-RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 
+RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && \
     cd .. && rm -f protobuf-cpp-3.6.1.tar.gz && rm -rf protobuf-3.6.1
@@ -91,27 +92,33 @@ RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/p
 RUN cd /opt && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && chmod +x Miniconda3-latest-Linux-x86_64.sh
 RUN mkdir /opt/conda && ./Miniconda3-latest-Linux-x86_64.sh -b -f -p "/opt/conda" && rm -rf Miniconda3-latest-Linux-x86_64.sh
 ENV PATH=/opt/conda/bin:${PATH}
-RUN conda init bash && \
-    conda create -n python2.7 python=2.7 && \
-    conda create -n python3.7 python=3.7
+RUN conda init bash && conda install -n base jupyter 
 
-# install paddle requirement
+# install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 RUN /opt/conda/bin/pip install -r /root/requirements.txt && \
-    /opt/conda/envs/python2.7/bin/pip install -r /root/requirements.txt && \
-    /opt/conda/envs/python3.7/bin/pip install -r /root/requirements.txt && \
     rm -rf /root/requirements.txt
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O /root/requirements.txt
-RUN /opt/conda/bin/pip install -r /root/requirements.txt && \
-    /opt/conda/envs/python2.7/bin/pip install -r /root/requirements.txt && \
-    /opt/conda/envs/python3.7/bin/pip install -r /root/requirements.txt && \
-    rm -rf /root/requirements.txt
+RUN /opt/conda/bin/pip install -r /root/requirements.txt && rm -rf /root/requirements.txt
+
+# install PaddleClas requirement
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/PaddleClas/develop/requirements.txt -O /root/requirements.txt
+RUN /opt/conda/bin/pip install -r /root/requirements.txt && rm -rf /root/requirements.txt
+
+# install PaddleDetection requirement
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/PaddleDetection/develop/requirements.txt -O /root/requirements.txt
+RUN /opt/conda/bin/pip install -r /root/requirements.txt && rm -rf /root/requirements.txt
 
 # configure ssh
 RUN sed -i "s/^#PermitRootLogin/PermitRootLogin/" /etc/ssh/sshd_config && \
     sed -i "s/^#PubkeyAuthentication/PubkeyAuthentication/" /etc/ssh/sshd_config && \
     sed -i "s/^#RSAAuthentication/RSAAuthentication/" /etc/ssh/sshd_config
+
+# clang-format 3.8
+RUN wget https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.8.0/repo/epel-7/alonid-llvm-3.8.0-epel-7.repo -P /etc/yum.repos.d/
+RUN yum install -y clang-3.8.0
+ENV PATH=/opt/llvm-3.8.0/bin:${PATH}
 
 # patchelf
 RUN yum install -y patchelf && \

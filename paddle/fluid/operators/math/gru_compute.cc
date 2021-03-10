@@ -32,7 +32,7 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
                       const detail::ActivationType active_node,
                       const detail::ActivationType active_gate,
                       bool origin_mode) {
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false, false, batch_size, frame_size * 2, frame_size, 1,
@@ -66,7 +66,7 @@ struct GRUUnitGradFunctor<platform::CPUDeviceContext, T> {
                       const detail::ActivationType active_node,
                       const detail::ActivationType active_gate,
                       bool origin_mode) {
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)
     detail::backward_state_grad(detail::backward::gru_stateGrad<T>(), value,
                                 grad, frame_size, batch_size, active_node,
                                 origin_mode);
@@ -108,7 +108,7 @@ struct GRUUnitFunctorV2<platform::CPUDeviceContext, T> {
                       GRUMetaValue<T> value, int frame_size, int batch_size,
                       const detail::ActivationType active_node,
                       const detail::ActivationType active_gate) {
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(CblasNoTrans, CblasTrans, batch_size, frame_size, frame_size, 1,
@@ -142,7 +142,7 @@ struct GRUUnitGradFunctorV2<platform::CPUDeviceContext, T> {
                       int frame_size, int batch_size,
                       const detail::ActivationType active_node,
                       const detail::ActivationType active_gate) {
-#ifndef __NVCC__
+#if !defined(__NVCC__) && !defined(__HIPCC___)
     // calculate grad_update_gate, grad_frame_state,
     // grad_reset_output, grad_reset_gate
     detail::cpu_gru_backward(context, detail::backward::gru<T>(), value, grad,

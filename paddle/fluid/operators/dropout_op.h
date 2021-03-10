@@ -42,7 +42,7 @@ inline int VectorizedSize(const T* pointer) {
   return 1;
 }
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename MaskType, int VecSize>
 __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
                                       const T factor, const int64_t size,
@@ -186,7 +186,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
         int vec_size = VectorizedSize<T>(grad_y->data<T>());
         if (platform::is_gpu_place(context.GetPlace()) && vec_size == 4 &&
             size % 4 == 0) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
           auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
           auto stream = context.cuda_device_context().stream();
           platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(
