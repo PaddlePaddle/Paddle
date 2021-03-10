@@ -21,8 +21,7 @@ import unittest
 import numpy as np
 import paddle.fluid.layers as layers
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision.bf16_utils import rewrite_program_bf16,\
-    convert_float_to_uint16, convert_uint16_to_float
+from paddle.fluid.contrib.mixed_precision.bf16 import rewrite_program_bf16, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -82,20 +81,29 @@ class TestModelCastBF16(unittest.TestCase):
 
             ret = layers.elementwise_add(t, tt)
             ret = layers.elementwise_mul(ret, t)
-            with paddle.static.amp.bf16_guard():
+            ret = fluid.layers.reshape(ret, [0, 0])
+
+            with paddle.static.amp.bf16.bf16_guard():
                 ret_bf16 = layers.elementwise_add(t_bf16, tt_bf16)
                 ret_bf16 = layers.elementwise_mul(ret_bf16, t_bf16)
+                ret_bf16 = layers.reshape(ret_bf16, [0, 0])
 
-            static_ret_bf16, static_ret = self.get_static_graph_result(
+            with paddle.static.amp.bf16.bf16_guard():
+                ret_fp32bf16 = layers.elementwise_add(t, tt)
+                ret_fp32bf16 = layers.elementwise_mul(ret_fp32bf16, t)
+                ret_fp32bf16 = layers.reshape(ret_fp32bf16, [0, 0])
+
+            static_ret_bf16, static_ret, ret_fp32bf16 = self.get_static_graph_result(
                 feed={
                     't': n,
                     'tt': nn,
                     't_bf16': n_bf16,
                     'tt_bf16': nn_bf16,
                 },
-                fetch_list=[ret_bf16, ret])
+                fetch_list=[ret_bf16, ret, ret_fp32bf16])
 
         self.assertTrue(np.allclose(static_ret_bf16, static_ret, 1e-2))
+        self.assertTrue(np.allclose(static_ret_bf16, ret_fp32bf16, 1e-2))
 
 
 if __name__ == '__main__':

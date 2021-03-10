@@ -3,6 +3,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
+
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
@@ -15,21 +16,15 @@
 from __future__ import print_function
 import struct
 
-from ... import core
-from ... import framework
-from ... import layers
-from ... import global_scope
-from ...log_helper import get_logger
-from ...wrapped_decorator import signature_safe_contextmanager
-from .bf16_lists import AutoMixedPrecisionListsBF16
-import collections
+from .... import core
+from .... import framework
+from ....log_helper import get_logger
+from ....wrapped_decorator import signature_safe_contextmanager
+from .amp_lists import AutoMixedPrecisionLists
 import logging
 import numpy as np
 
-__all__ = [
-    "bf16_guard", "rewrite_program_bf16", "convert_float_to_uint16",
-    "convert_uint16_to_float"
-]
+__all__ = ["bf16_guard", "rewrite_program_bf16", "convert_float_to_uint16"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -50,14 +45,6 @@ def convert_float_to_uint16(in_list):
     return np.reshape(out, in_list.shape)
 
 
-def convert_uint16_to_float(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
-        otypes=[np.float32])(in_list.flat)
-    return np.reshape(out, in_list.shape)
-
-
 def _rename_arg(op, old_name, new_name):
     """
     If an op has old_name input and output, rename these input
@@ -73,18 +60,6 @@ def _rename_arg(op, old_name, new_name):
         op_desc = op_desc[0]
     op_desc._rename_input(old_name, new_name)
     op_desc._rename_output(old_name, new_name)
-
-
-def _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops):
-    for block in program.blocks:
-        ops = block.ops
-        block_id = block.idx
-        for op in ops:
-            if op not in origin_ops or op in keep_fp32_ops:
-                continue
-            for name in op.input_arg_names:
-                if name in op_var_rename_map[block_id]:
-                    op._rename_input(name, op_var_rename_map[block_id][name])
 
 
 def _dtype_to_str(dtype):
@@ -226,13 +201,13 @@ def find_op_index(block_desc, cur_op_desc):
     return -1
 
 
-def _is_in_black_varnames(op, amp_lists):
+def _is_in_fp32_varnames(op, amp_lists):
     for in_name in op.input_arg_names:
-        if in_name in amp_lists.black_varnames:
+        if in_name in amp_lists.fp32_varnames:
             return True
 
     for out_name in op.output_arg_names:
-        if out_name in amp_lists.black_varnames:
+        if out_name in amp_lists.fp32_varnames:
             return True
 
     return False
@@ -296,27 +271,27 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
     Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
 
-    1. When an op belongs to the black list, add it to black set
-    2. When an op belongs to the white list, add it to white set
+    1. When an op belongs to the fp32 list, add it to fp32 set
+    2. When an op belongs to the bf16 list, add it to bf16 set
     3. When an op belongs to the gray list. If one
-       of its inputs is the output of black set op or black list op,
-       add it to black set. If all of its previous ops are not black
-       op and one of its inputs is the output of white set op or
-       white list op, add it to white set.
-    4. When an op isn't in the lists, add it to black op set.
-    5. Add necessary cast ops to make sure that black set op will be
-       computed in fp32 mode, while white set op will be computed in
+       of its inputs is the output of fp32 set op or fp32 list op,
+       add it to fp32 set. If all of its previous ops are not fp32
+       op and one of its inputs is the output of bf16 set op or
+       bf16 list op, add it to bf16 set.
+    4. When an op isn't in the lists, add it to fp32 op set.
+    5. Add necessary cast ops to make sure that fp32 set op will be
+       computed in fp32 mode, while bf16 set op will be computed in
        bf16 mode.
 
     Args:
         main_prog (Program): The main program for training.
     """
     if amp_lists is None:
-        amp_lists = AutoMixedPrecisionListsBF16()
+        amp_lists = AutoMixedPrecisionLists()
     block = main_prog.global_block()
     ops = block.ops
-    white_op_set = set()
-    black_op_set = set()
+    bf16_op_set = set()
+    fp32_op_set = set()
     for op in ops:
 
         # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder,
@@ -326,19 +301,19 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
         if op.type == 'create_py_reader' or op.type == 'read':
             continue
 
-        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+        if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
                 op, amp_lists):
-            black_op_set.add(op)
+            fp32_op_set.add(op)
             continue
 
-        if op.type in amp_lists.black_list or _need_keep_fp32(
+        if op.type in amp_lists.fp32_list or _need_keep_fp32(
                 op, amp_lists.unsupported_list, use_bf16_guard):
-            black_op_set.add(op)
-        elif op.type in amp_lists.white_list:
-            white_op_set.add(op)
+            fp32_op_set.add(op)
+        elif op.type in amp_lists.bf16_list:
+            bf16_op_set.add(op)
         elif op.type in amp_lists.gray_list:
-            is_black_op = False
-            is_white_op = False
+            is_fp32_op = False
+            is_bf16_op = False
             for in_name in op.input_names:
                 # if this op has inputs
                 if in_name:
@@ -354,32 +329,32 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
                         else:
                             prev_op = in_var.op
                         # if it's one of inputs
-                        if prev_op in black_op_set or \
-                                prev_op.type in amp_lists.black_list:
-                            is_black_op = True
-                        elif prev_op in white_op_set or \
-                                prev_op.type in amp_lists.white_list:
-                            is_white_op = True
-            if is_black_op:
-                black_op_set.add(op)
-            elif is_white_op:
-                white_op_set.add(op)
+                        if prev_op in fp32_op_set or \
+                                prev_op.type in amp_lists.fp32_list:
+                            is_fp32_op = True
+                        elif prev_op in bf16_op_set or \
+                                prev_op.type in amp_lists.bf16_list:
+                            is_bf16_op = True
+            if is_fp32_op:
+                fp32_op_set.add(op)
+            elif is_bf16_op:
+                bf16_op_set.add(op)
             else:
                 pass
         else:
             # For numerical safe, we apply fp32 computation on ops that
             # are not determined which list they should stay.
-            black_op_set.add(op)
+            fp32_op_set.add(op)
 
     idx = 0
     while idx < len(ops):
         op = ops[idx]
         num_cast_ops = 0
-        if op in black_op_set:
+        if op in fp32_op_set:
             num_cast_ops = _insert_cast_op(block, op, idx,
                                            core.VarDesc.VarType.BF16,
                                            core.VarDesc.VarType.FP32)
-        elif op in white_op_set:
+        elif op in bf16_op_set:
             if use_bf16_guard:
                 if not (op.has_attr('op_namescope') and
                         (_bf16_guard_pattern in op.attr("op_namescope"))):

@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,76 +14,73 @@
 
 import copy
 
-__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
+__all__ = ["AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
     """
-    AutoMixedPrecisionLists is a class for black/white list. It can update
-    pre-defined black list and white list according to users' custom black
-    white lists. The lists are used for an algorithm which determines op's
-    execution mode (fp32 or fp16).
+    AutoMixedPrecisionLists is a class for fp32/bf16 list. It can update
+    pre-defined fp32 list and bf16 list according to users' custom fp32
+    bf16 lists. The lists are used for an algorithm which determines op's
+    execution mode (fp32 or bf16).
 
     Args:
-        custom_white_list (set): Users' custom white list.
-        custom_black_list (set): Users' custom black list.
-        custom_black_varnames (set): Users' custom black varibles' names.
+        custom_bf16_list (set): Users' custom bf16 list.
+        custom_fp32_list (set): Users' custom fp32 list.
+        custom_fp32_varnames (set): Users' custom fp32 variables' names.
     """
 
     def __init__(self,
-                 custom_white_list=None,
-                 custom_black_list=None,
-                 custom_black_varnames=None):
-        self._custom_white_list = custom_white_list
-        self._custom_black_list = custom_black_list
-        self.white_list = copy.copy(white_list)
-        self.black_list = copy.copy(black_list)
+                 custom_bf16_list=None,
+                 custom_fp32_list=None,
+                 custom_fp32_varnames=None):
+        self._custom_bf16_list = custom_bf16_list
+        self._custom_fp32_list = custom_fp32_list
+        self.bf16_list = copy.copy(bf16_list)
+        self.fp32_list = copy.copy(fp32_list)
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(unsupported_fp16_list)
-        self.black_varnames = copy.copy(custom_black_varnames)
+        self.unsupported_list = copy.copy(unsupported_list)
+        self.fp32_varnames = copy.copy(custom_fp32_varnames)
         self._update_list()
 
     def _update_list(self):
         """
-        Update black and white list according to users' custom list.
+        Update fp32 and bf16 list according to users' custom list.
         """
-        if self._custom_white_list and self._custom_black_list:
-            for op_name in self._custom_white_list:
-                if op_name in self._custom_black_list:
-                    raise ValueError("Custom white list overlap "
-                                     "custom black list")
-        if self._custom_white_list:
-            for op_name in self._custom_white_list:
-                if op_name in self.black_list:
-                    self.black_list.remove(op_name)
+        if self._custom_bf16_list and self._custom_fp32_list:
+            for op_name in self._custom_bf16_list:
+                if op_name in self._custom_fp32_list:
+                    raise ValueError("Custom bf16 list overlap "
+                                     "custom fp32 list")
+        if self._custom_bf16_list:
+            for op_name in self._custom_bf16_list:
+                if op_name in self.fp32_list:
+                    self.fp32_list.remove(op_name)
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
-                self.white_list.add(op_name)
-        if self._custom_black_list:
-            for op_name in self._custom_black_list:
-                if op_name in self.white_list:
-                    self.white_list.remove(op_name)
+                self.bf16_list.add(op_name)
+        if self._custom_fp32_list:
+            for op_name in self._custom_fp32_list:
+                if op_name in self.bf16_list:
+                    self.bf16_list.remove(op_name)
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
-                self.black_list.add(op_name)
+                self.fp32_list.add(op_name)
                 self.unsupported_list.add(op_name)
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all
-# paddle ops currently.
+# always bf16
+bf16_list = {'elementwise_add', }
 
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-white_list = {
+# depends on the prev_op type
+gray_list = {'reshape2', }
+
+# always fp32
+fp32_list = {
     'conv2d',
     'matmul',
     'matmul_v2',
     'mul',
-}
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-black_list = {
     'exp',
     'square',
     'log',
@@ -95,17 +92,9 @@ black_list = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
-    # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
-}
-
-# This set contains two types of ops. All ops supported fp16 calculation. One 
-# of two types is considered numerically-safe, but may be made unsafe by an
-# upstream blacklist op. Another type do not have numerically-significant
-# effects, like stack, flatten2.
-gray_list = {
-    'elementwise_add',
+    # 'elementwise_add',
     'elementwise_sub',
     'elementwise_mul',
     'elementwise_div',
@@ -137,7 +126,7 @@ gray_list = {
     'rank',
     'scale',
     'transpose2',
-    'reshape2',
+    # 'reshape2',
     'gather',
     'fill_constant',
     'get_tensor_from_selected_rows',
@@ -146,8 +135,8 @@ gray_list = {
     'fused_bn_add_activation',
 }
 
-# The set of ops that don't support fp16 calculation
-unsupported_fp16_list = {
+# The set of ops that don't support bf16 calculation
+unsupported_list = {
     # from python/paddle/fluid/layers/io.py
     'send',
     'send_barrier',
@@ -285,9 +274,6 @@ unsupported_fp16_list = {
     'generate_proposals',
     'generate_proposal_labels',
     'generate_mask_labels',
-    # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
 }
-
-CustomOpLists = AutoMixedPrecisionLists
