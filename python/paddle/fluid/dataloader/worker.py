@@ -219,7 +219,13 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                     batch = init_exception
                     init_exception = None
                 else:
-                    batch = fetcher.fetch(indices)
+                    # NOTE: GPU tensor operation is not supported in sub-process
+                    #       but default device is GPU in paddle-gpu version, which
+                    #       may copy CPU tensor to GPU even if users want to use
+                    #       CPU tensor operation, so we add CPUPlace guard here
+                    #       to make sure tensor will be operated only on CPU
+                    with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                        batch = fetcher.fetch(indices)
             except Exception as e:
                 if isinstance(
                         e, StopIteration) and dataset_kind == _DatasetKind.ITER:
