@@ -35,6 +35,11 @@ __global__ void reluKernelCudaHalf2(const T* in, T* out, int num) {
                                xx.y > 0.0f ? static_cast<float>(xx.y) : 0.0f);
 #endif
   }
+
+  if (idx == loop && num % 2 == 1) {
+    T zero = (T)(0.0f);
+    out[num - 1] = in[num - 1] > zero ? in[num - 1] : zero;
+  }
 }
 template <typename T>
 __global__ void reluKernelCudaFloat4(const T* in, T* out, int num) {
@@ -44,7 +49,7 @@ __global__ void reluKernelCudaFloat4(const T* in, T* out, int num) {
   float4 temp;
   int loop = num >> 2;
   for (int i = idx; i < loop; i += blockDim.x * gridDim.x) {
-    temp = src[idx];
+    temp = src[i];
     temp.x = max(temp.x, 0.0f);
     temp.y = max(temp.y, 0.0f);
     temp.z = max(temp.z, 0.0f);
