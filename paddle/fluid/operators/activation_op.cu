@@ -21,14 +21,18 @@ using Tensor = framework::Tensor;
 template <typename T>
 __global__ void reluKernelCudaHalf2(const T* in, T* out, int num) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int loop = num >> 1;
   int stride = blockDim.x * gridDim.x;
+  int loop = num >> 1;
+
   const __half2* src = reinterpret_cast<const __half2*>(in);
   __half2* dst = reinterpret_cast<__half2*>(out);
+
   const half2 kzero = __float2half2_rn(0.0f);
+
   for (int i = idx; i < loop; i += stride) {
 #if __CUDA_ARCH__ >= 530 || CUDA_VERSION >= 300
     dst[i] = __hmul2(__hgt2(__ldg(src + i), kzero), __ldg(src + i));
+
 #else
     const float2 xx = __halfi22float2(src[i]);
     dst[i] = __floats2half2_rn(xx.x > 0.0f ? static_cast<float>(xx.x) : 0.0f,
@@ -46,8 +50,10 @@ __global__ void reluKernelCudaFloat4(const T* in, T* out, int num) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   const float4* src = reinterpret_cast<const float4*>(in);
   float4* dst = reinterpret_cast<float4*>(out);
+
   float4 temp;
   int loop = num >> 2;
+
   for (int i = idx; i < loop; i += blockDim.x * gridDim.x) {
     temp = src[i];
     temp.x = max(temp.x, 0.0f);
@@ -65,11 +71,11 @@ __global__ void reluKernelCudaFloat4(const T* in, T* out, int num) {
 }
 template <typename T>
 __global__ void reluKernelCudaDouble(const T* src, T* dst, int num) {
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
   T zero = (T)(0.0f);
 
-  for (int idx = i; idx < num; idx += gridDim.x * blockDim.x) {
-    dst[i] = src[idx] > zero ? src[idx] : zero;
+  for (int idx = index; idx < num; idx += gridDim.x * blockDim.x) {
+    dst[idx] = src[idx] > zero ? src[idx] : zero;
   }
 }
 template <typename T, int vec>
