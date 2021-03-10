@@ -88,7 +88,7 @@ if(WIN32)
             endif()
         endforeach(flag_var)
     endif()
-
+    
     # NOTE(Avin0323): Less parallel count result in faster compilation.
     math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
     # windows build turn off warnings, use parallel compiling.
@@ -115,6 +115,10 @@ if(WIN32)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
+
+    foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
+        string(APPEND ${flag_var} "/ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
+    endforeach(flag_var)
 
     if (WITH_WIN_DUMP_DBG)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Zi")
