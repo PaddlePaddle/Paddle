@@ -43,6 +43,7 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...fluid.layer_helper import LayerHelper
 from ...fluid import core, dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
