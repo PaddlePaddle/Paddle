@@ -1251,7 +1251,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${failed_test_lists_ult}"
+                        echo "${retry_unittests}"
                             
                         for line in ${retry_unittests[@]} ;
                             do
@@ -1340,7 +1340,7 @@ function show_ut_retry_result() {
             echo "Summary Failed Tests... "
             echo "========================================"
             echo "The following tests FAILED: "
-            echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
             exit 8;
         fi
     fi
