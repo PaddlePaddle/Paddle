@@ -28,133 +28,16 @@
 #include <string>
 #include <vector>
 #include "crypto/cipher.h"
-#include "paddle_infer_declare.h"        // NOLINT
-#include "paddle_infer_tensor_handle.h"  // NOLINT
-                                         /*! \namespace paddle
-                                          */
+#include "paddle_infer_declare.h"  // NOLINT
+#include "paddle_infer_tensor.h"   // NOLINT
+                                   /*! \namespace paddle
+                                    */
 namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
-
-/// \brief Memory manager for PaddleTensor.
-///
-/// The PaddleBuf holds a buffer for data input or output. The memory can be
-/// allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
-/// should be reused for better performance.
-///
-/// For user allocated memory, the following API can be used:
-/// - PaddleBuf(void* data, size_t length) to set an external memory by
-/// specifying the memory address and length.
-/// - Reset(void* data, size_t length) to reset the PaddleBuf with an external
-/// memory.
-/// ATTENTION, for user allocated memory, deallocation should be done by users
-/// externally after the program finished. The PaddleBuf won't do any allocation
-/// or deallocation.
-///
-/// To have the PaddleBuf allocate and manage the memory:
-/// - PaddleBuf(size_t length) will allocate a memory of size `length`.
-/// - Resize(size_t length) resize the memory to no less than `length`,
-/// ATTENTION
-///  if the allocated memory is larger than `length`, nothing will done.
-///
-/// Usage:
-///
-/// Let PaddleBuf manage the memory internally.
-/// \code{cpp}
-/// const int num_elements = 128;
-/// PaddleBuf buf(num_elements/// sizeof(float));
-/// \endcode
-///
-/// Or
-/// \code{cpp}
-/// PaddleBuf buf;
-/// buf.Resize(num_elements/// sizeof(float));
-/// \endcode
-/// Works the exactly the same.
-///
-/// One can also make the `PaddleBuf` use the external memory.
-/// \code{cpp}
-/// PaddleBuf buf;
-/// void* external_memory = new float[num_elements];
-/// buf.Reset(external_memory, num_elements*sizeof(float));
-/// ...
-/// delete[] external_memory; // manage the memory lifetime outside.
-/// \endcode
-///
-class PD_INFER_DECL PaddleBuf {
- public:
-  ///
-  /// \brief PaddleBuf allocate memory internally, and manage it.
-  ///
-  /// \param[in] length The length of data.
-  ///
-  explicit PaddleBuf(size_t length)
-      : data_(new char[length]), length_(length), memory_owned_(true) {}
-  ///
-  /// \brief Set external memory, the PaddleBuf won't manage it.
-  ///
-  /// \param[in] data The start address of the external memory.
-  /// \param[in] length The length of data.
-  ///
-  PaddleBuf(void* data, size_t length)
-      : data_(data), length_(length), memory_owned_{false} {}
-  ///
-  /// \brief Copy only available when memory is managed externally.
-  ///
-  /// \param[in] other another `PaddleBuf`
-  ///
-  explicit PaddleBuf(const PaddleBuf& other);
-  ///
-  /// \brief Resize the memory.
-  ///
-  /// \param[in] length The length of data.
-  ///
-  void Resize(size_t length);
-  ///
-  /// \brief Reset to external memory, with address and length set.
-  ///
-  /// \param[in] data The start address of the external memory.
-  /// \param[in] length The length of data.
-  ///
-  void Reset(void* data, size_t length);
-  ///
-  /// \brief Tell whether the buffer is empty.
-  ///
-  bool empty() const { return length_ == 0; }
-  ///
-  /// \brief Get the data's memory address.
-  ///
-  void* data() const { return data_; }
-  ///
-  /// \brief Get the memory length.
-  ///
-  size_t length() const { return length_; }
-
-  ~PaddleBuf() { Free(); }
-  PaddleBuf& operator=(const PaddleBuf&);
-  PaddleBuf& operator=(PaddleBuf&&);
-  PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other);
-
- private:
-  void Free();
-  void* data_{nullptr};  ///< pointer to the data memory.
-  size_t length_{0};     ///< number of memory bytes.
-  bool memory_owned_{true};
-};
-
-///
-/// \brief Basic input and output data structure for PaddlePredictor.
-///
-struct PD_INFER_DECL PaddleTensor {
-  PaddleTensor() = default;
-  std::string name;  ///<  variable name.
-  std::vector<int> shape;
-  PaddleBuf data;  ///<  blob of data.
-  PaddleDType dtype;
-  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
-};
+using PaddleBuf = paddle_infer::HostBuffer;
+using PaddleTensor = paddle_infer::HostTensor;
 
 /// \brief Represents an n-dimensional array of values.
 /// The ZeroCopyTensor is used to store the input or output of the network.

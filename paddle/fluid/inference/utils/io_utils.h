@@ -21,10 +21,6 @@
 #include "paddle/fluid/inference/api/paddle_api.h"
 
 namespace paddle {
-struct PaddleTensor;
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 
 constexpr uint32_t kCurPDTensorVersion = 0;

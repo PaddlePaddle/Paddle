@@ -21,6 +21,88 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
+namespace paddle_infer {
+
+HostBuffer::HostBuffer(HostBuffer &&other)
+    : data_(other.data_),
+      length_(other.length_),
+      memory_owned_(other.memory_owned_) {
+  other.memory_owned_ = false;
+  other.data_ = nullptr;
+  other.length_ = 0;
+}
+
+HostBuffer::HostBuffer(const HostBuffer &other) { *this = other; }
+
+HostBuffer &HostBuffer::operator=(const HostBuffer &other) {
+  if (!other.memory_owned_) {
+    data_ = other.data_;
+    length_ = other.length_;
+    memory_owned_ = other.memory_owned_;
+  } else {
+    Resize(other.length());
+    // if other.length() == 0 or other.data() == nullptr, then the memcpy
+    // behavior is undefined
+    if (other.length() && other.data())
+      memcpy(data_, other.data(), other.length());
+    else if (other.length())
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Invalid argument, null pointer data with length %u is passed",
+          other.length()));
+
+    length_ = other.length();
+    memory_owned_ = true;
+  }
+  return *this;
+}
+
+HostBuffer &HostBuffer::operator=(HostBuffer &&other) {
+  // only the buffer with external memory can be copied
+  data_ = other.data_;
+  length_ = other.length_;
+  memory_owned_ = other.memory_owned_;
+  other.data_ = nullptr;
+  other.length_ = 0;
+  other.memory_owned_ = false;
+  return *this;
+}
+
+void HostBuffer::Resize(size_t length) {
+  // Only the owned memory can be reset, the external memory can't be changed.
+  if (length_ >= length) return;
+  if (memory_owned_) {
+    Free();
+    data_ = new char[length];
+    length_ = length;
+    memory_owned_ = true;
+  } else {
+    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "The memory is allocated externally, can not Resized"));
+  }
+}
+
+void HostBuffer::Reset(void *data, size_t length) {
+  Free();
+  memory_owned_ = false;
+  data_ = data;
+  length_ = length;
+}
+
+void HostBuffer::Free() {
+  if (memory_owned_ && data_) {
+    PADDLE_ENFORCE_GT(
+        length_, 0UL,
+        paddle::platform::errors::PreconditionNotMet(
+            "The memory used in HostBuffer %d should be greater than 0",
+            length_));
+    delete[] static_cast<char *>(data_);
+    data_ = nullptr;
+    length_ = 0;
+  }
+}
+
+}  // namespace paddle_infer
+
 namespace paddle {
 
 int PaddleDtypeSize(PaddleDType dtype) {
@@ -36,84 +118,6 @@ int PaddleDtypeSize(PaddleDType dtype) {
     default:
       assert(false);
       return -1;
-  }
-}
-
-PaddleBuf::PaddleBuf(PaddleBuf &&other)
-    : data_(other.data_),
-      length_(other.length_),
-      memory_owned_(other.memory_owned_) {
-  other.memory_owned_ = false;
-  other.data_ = nullptr;
-  other.length_ = 0;
-}
-
-PaddleBuf::PaddleBuf(const PaddleBuf &other) { *this = other; }
-
-PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
-  if (!other.memory_owned_) {
-    data_ = other.data_;
-    length_ = other.length_;
-    memory_owned_ = other.memory_owned_;
-  } else {
-    Resize(other.length());
-    // if other.length() == 0 or other.data() == nullptr, then the memcpy
-    // behavior is undefined
-    if (other.length() && other.data())
-      memcpy(data_, other.data(), other.length());
-    else if (other.length())
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid argument, null pointer data with length %u is passed",
-          other.length()));
-
-    length_ = other.length();
-    memory_owned_ = true;
-  }
-  return *this;
-}
-
-PaddleBuf &PaddleBuf::operator=(PaddleBuf &&other) {
-  // only the buffer with external memory can be copied
-  data_ = other.data_;
-  length_ = other.length_;
-  memory_owned_ = other.memory_owned_;
-  other.data_ = nullptr;
-  other.length_ = 0;
-  other.memory_owned_ = false;
-  return *this;
-}
-
-void PaddleBuf::Resize(size_t length) {
-  // Only the owned memory can be reset, the external memory can't be changed.
-  if (length_ >= length) return;
-  if (memory_owned_) {
-    Free();
-    data_ = new char[length];
-    length_ = length;
-    memory_owned_ = true;
-  } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "The memory is allocated externally, can not Resized"));
-  }
-}
-
-void PaddleBuf::Reset(void *data, size_t length) {
-  Free();
-  memory_owned_ = false;
-  data_ = data;
-  length_ = length;
-}
-
-void PaddleBuf::Free() {
-  if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(
-        length_, 0UL,
-        platform::errors::PreconditionNotMet(
-            "The memory used in PaddleBuf %d should be greater than 0",
-            length_));
-    delete[] static_cast<char *>(data_);
-    data_ = nullptr;
-    length_ = 0;
   }
 }
 

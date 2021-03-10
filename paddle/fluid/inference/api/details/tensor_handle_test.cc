@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_infer_tensor_handle.h"
+#include "paddle/fluid/inference/api/paddle_infer_tensor.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle_infer {

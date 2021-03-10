@@ -30,6 +30,126 @@ enum DataType {
 
 enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU };
 
+/// \brief Memory manager for HostTensor.
+///
+/// The HostBuffer holds a buffer for data input or output. The memory can be
+/// allocated by user or by HostBuffer itself, but in any case, the HostBuffer
+/// should be reused for better performance.
+///
+/// For user allocated memory, the following API can be used:
+/// - HostBuffer(void* data, size_t length) to set an external memory by
+/// specifying the memory address and length.
+/// - Reset(void* data, size_t length) to reset the HostBuffer with an external
+/// memory.
+/// ATTENTION, for user allocated memory, deallocation should be done by users
+/// externally after the program finished. The HostBuffer won't do any
+/// allocation
+/// or deallocation.
+///
+/// To have the HostBuffer allocate and manage the memory:
+/// - HostBuffer(size_t length) will allocate a memory of size `length`.
+/// - Resize(size_t length) resize the memory to no less than `length`,
+/// ATTENTION
+///  if the allocated memory is larger than `length`, nothing will done.
+///
+/// Usage:
+///
+/// Let HostBuffer manage the memory internally.
+/// \code{cpp}
+/// const int num_elements = 128;
+/// HostBuffer buf(num_elements/// sizeof(float));
+/// \endcode
+///
+/// Or
+/// \code{cpp}
+/// HostBuffer buf;
+/// buf.Resize(num_elements/// sizeof(float));
+/// \endcode
+/// Works the exactly the same.
+///
+/// One can also make the `HostBuffer` use the external memory.
+/// \code{cpp}
+/// HostBuffer buf;
+/// void* external_memory = new float[num_elements];
+/// buf.Reset(external_memory, num_elements*sizeof(float));
+/// ...
+/// delete[] external_memory; // manage the memory lifetime outside.
+/// \endcode
+///
+class PD_INFER_DECL HostBuffer {
+ public:
+  ///
+  /// \brief HostBuffer allocate memory internally, and manage it.
+  ///
+  /// \param[in] length The length of data.
+  ///
+  explicit HostBuffer(size_t length)
+      : data_(new char[length]), length_(length), memory_owned_(true) {}
+  ///
+  /// \brief Set external memory, the HostBuffer won't manage it.
+  ///
+  /// \param[in] data The start address of the external memory.
+  /// \param[in] length The length of data.
+  ///
+  HostBuffer(void* data, size_t length)
+      : data_(data), length_(length), memory_owned_{false} {}
+  ///
+  /// \brief Copy only available when memory is managed externally.
+  ///
+  /// \param[in] other another `HostBuffer`
+  ///
+  explicit HostBuffer(const HostBuffer& other);
+  ///
+  /// \brief Resize the memory.
+  ///
+  /// \param[in] length The length of data.
+  ///
+  void Resize(size_t length);
+  ///
+  /// \brief Reset to external memory, with address and length set.
+  ///
+  /// \param[in] data The start address of the external memory.
+  /// \param[in] length The length of data.
+  ///
+  void Reset(void* data, size_t length);
+  ///
+  /// \brief Tell whether the buffer is empty.
+  ///
+  bool empty() const { return length_ == 0; }
+  ///
+  /// \brief Get the data's memory address.
+  ///
+  void* data() const { return data_; }
+  ///
+  /// \brief Get the memory length.
+  ///
+  size_t length() const { return length_; }
+
+  ~HostBuffer() { Free(); }
+  HostBuffer& operator=(const HostBuffer&);
+  HostBuffer& operator=(HostBuffer&&);
+  HostBuffer() = default;
+  HostBuffer(HostBuffer&& other);
+
+ private:
+  void Free();
+  void* data_{nullptr};  ///< pointer to the data memory.
+  size_t length_{0};     ///< number of memory bytes.
+  bool memory_owned_{true};
+};
+
+///
+/// \brief Basic input and output data structure for PaddlePredictor.
+///
+struct PD_INFER_DECL HostTensor {
+  HostTensor() = default;
+  std::string name;  ///<  variable name.
+  std::vector<int> shape;
+  HostBuffer data;  ///<  blob of data.
+  DataType dtype;
+  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
+};
+
 /// \brief Represents an n-dimensional array of values.
 /// TensorHandle is used to refer to a tensor in the predictor.
 /// It is a handle, and the user cannot construct it directly.
