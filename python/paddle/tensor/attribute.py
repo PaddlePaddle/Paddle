@@ -16,7 +16,7 @@ from __future__ import print_function
 
 from ..fluid.framework import core, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
+from ..fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define functions to get tensor attributes  
 from ..fluid.layers import rank  #DEFINE_ALIAS
