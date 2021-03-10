@@ -829,8 +829,6 @@ def _append_backward_ops_with_checkpoints_(
     cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
     _logger.info("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
     len(cross_vars), cross_vars))
-    _logger.info("found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format( \
-    len(cross_vars), cross_vars))
 
     # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
