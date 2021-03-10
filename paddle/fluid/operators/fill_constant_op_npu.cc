@@ -68,9 +68,9 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     TensorFromVector(std::vector<T>{value}, ctx.device_context(), &tensor_tmp);
 
     out_var->mutable_data<T>(shape, place);
-    auto runner_bc = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
-                                 {{"dims", framework::vectorize(shape)}});
-    runner_bc.Run(stream);
+    auto runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
+                              {{"dims", framework::vectorize(shape)}});
+    runner.Run(stream);
   }
 };
 }  // namespace operators
