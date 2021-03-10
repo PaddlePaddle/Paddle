@@ -113,6 +113,14 @@ class PD_INFER_DECL Predictor {
   bool Run();
 
   ///
+  /// \brief Run the prediction engine with callback function
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool RunWithCallBack(const std::vector<OperatorCallBack>& before,
+                       const std::vector<OperatorCallBack>& after);
+
+  ///
   /// \brief Get the output names
   ///
   /// \return output names

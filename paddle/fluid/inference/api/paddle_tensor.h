@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <functional>
+#include <string>
+#include <vector>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle_infer {
@@ -92,7 +96,7 @@ class PD_INFER_DECL Tensor {
   DataType type() const;
 
  protected:
-  explicit Tensor(void* scope);
+  explicit Tensor(const void* scope);
   void* FindTensor() const;
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);
@@ -103,9 +107,33 @@ class PD_INFER_DECL Tensor {
   mutable void* tensor_{nullptr};
   DataType dtype_;
   bool input_or_output_;
-  void* scope_{nullptr};
+  const void* scope_{nullptr};
   PlaceType place_;
   int device_;
 };
+
+/// \brief Represents information of an operator.
+/// Used to characterize the running operator information, including its
+/// description and type. This data structure is mainly used to construct
+/// the callback function of the executor.
+class OperatorInfo {
+ public:
+  /// \brief Return the description of the operator.
+  const std::string& desc() const;
+  /// \brief Return the type of the operator.
+  const std::string& type() const;
+
+ protected:
+  struct Impl;
+  OperatorInfo();
+  ~OperatorInfo();
+  std::unique_ptr<Impl> impl_;
+};
+
+/// \brief Represents call back type of an operator.
+/// We can add logic before and after the execution of each operator
+/// through the callback function in the executor.
+using OperatorCallBack =
+    std::function<bool(const OperatorInfo&, const std::vector<Tensor*>&)>;
 
 }  // namespace paddle_infer

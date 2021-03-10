@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -54,6 +55,17 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
+
+namespace paddle_infer {
+struct OperatorInfo::Impl {
+  std::string desc;
+  std::string type;
+};
+OperatorInfo::OperatorInfo() = default;
+OperatorInfo::~OperatorInfo() = default;
+const std::string &OperatorInfo::desc() const { return impl_->desc; }
+const std::string &OperatorInfo::type() const { return impl_->type; }
+}
 
 namespace paddle {
 
@@ -239,6 +251,7 @@ bool AnalysisPredictor::PrepareProgram(
 
   return true;
 }
+
 bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu()) {
     PADDLE_ENFORCE_EQ(config_.use_xpu(), false,
@@ -846,7 +859,89 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   return res;
 }
 
-bool AnalysisPredictor::ZeroCopyRun() {
+bool AnalysisPredictor::ZeroCopyRun() { return ZeroCopyRunWithCallBack(); }
+
+namespace {
+using UserOpInfo = paddle_infer::OperatorInfo;
+using UserTensor = paddle_infer::Tensor;
+
+class OperatorBaseInfo : public UserOpInfo {
+ public:
+  explicit OperatorBaseInfo(const framework::OperatorBase &base) {
+    impl_->desc = base.DebugString();
+    impl_->type = base.Type();
+  }
+};
+
+class TensorRef : public UserTensor {
+ public:
+  TensorRef(const std::string &name, const framework::Scope &scope,
+            const platform::Place &place)
+      : UserTensor{&scope} {
+    PADDLE_ENFORCE_NOT_NULL(
+        scope.FindVar(name),
+        platform::errors::PreconditionNotMet(
+            "The variable named %s is not found in the scope of ctor.", name));
+    input_or_output_ = false;
+    SetName(name);
+    if (platform::is_cpu_place(place)) {
+      SetPlace(PaddlePlace::kCPU);
+    } else if (platform::is_xpu_place(place)) {
+      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+      SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
+    } else {
+      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+      SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
+    }
+  }
+};
+
+std::vector<std::string> InputVarNames(const framework::OperatorBase &op) {
+  return op.InputVars();
+}
+std::vector<std::string> OutputVarNames(const framework::OperatorBase &op) {
+  return op.OutputVars(/* has_intermediate */ true);
+}
+
+template <
+    std::vector<std::string> (*GetVarNames)(const framework::OperatorBase &)>
+framework::ExecOpCallBackFunc callback_decorator(const OperatorCallBack &func) {
+  return [&func](const framework::Scope &scope,
+                 const framework::OperatorBase &op_base,
+                 const platform::Place &place) -> bool {
+    // The reference capture `&func` requires that the parameter lifetime is not
+    // less than the execution period of the ZeroCopyRunWithCallBack function,
+    // otherwise the behavior will be undefined.
+    OperatorBaseInfo info{op_base};
+    std::vector<paddle_infer::Tensor *> tensors;
+    for (const auto &var_name : GetVarNames(op_base)) {
+      tensors.emplace_back(new TensorRef{var_name, scope, place});
+    }
+    func(info, tensors);
+    for (auto p : tensors) {
+      delete p;
+    }
+    return true;
+  };
+}
+
+framework::ExecOpCallBack callback_decorator(
+    const std::vector<OperatorCallBack> &before,
+    const std::vector<OperatorCallBack> &after) {
+  framework::ExecOpCallBack callback;
+  for (const auto &f : before) {
+    callback.before.emplace_back(callback_decorator<InputVarNames>(f));
+  }
+  for (const auto &f : after) {
+    callback.after.emplace_back(callback_decorator<OutputVarNames>(f));
+  }
+  return callback;
+}
+}  // namespace
+
+bool AnalysisPredictor::ZeroCopyRunWithCallBack(
+    const std::vector<OperatorCallBack> &before,
+    const std::vector<OperatorCallBack> &after) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
@@ -860,7 +955,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
-  executor_->Run();
+  executor_->Run(callback_decorator(before, after));
+
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
@@ -1227,6 +1323,11 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
 
+bool Predictor::RunWithCallBack(const std::vector<OperatorCallBack> &before,
+                                const std::vector<OperatorCallBack> &after) {
+  return predictor_->ZeroCopyRunWithCallBack(before, after);
+}
+
 std::unique_ptr<Predictor> Predictor::Clone() {
   auto analysis_pred = predictor_->Clone();
   std::unique_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
@@ -1261,9 +1362,6 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
 }
 
-}  // namespace paddle_infer
-
-namespace paddle_infer {
 std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
   std::shared_ptr<Predictor> predictor(new Predictor(config));
   return predictor;
@@ -1301,4 +1399,5 @@ Predictor *PredictorPool::Retrive(size_t idx) {
   return preds_[idx - 1].get();
 }
 }  // namespace services
+
 }  // namespace paddle_infer

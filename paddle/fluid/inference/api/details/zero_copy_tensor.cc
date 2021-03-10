@@ -29,7 +29,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(input_or_output_, true,
                     paddle::platform::errors::PermissionDenied(
                         "Can't reshape the output tensor, it is readonly"));
-  auto *scope = static_cast<paddle::framework::Scope *>(scope_);
+  auto *scope = static_cast<const paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
       var, paddle::platform::errors::PreconditionNotMet(
@@ -228,7 +228,7 @@ template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
 template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {
+Tensor::Tensor(const void *scope) : scope_{scope} {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           paddle::platform::errors::PreconditionNotMet(
                               "The `scope` can not be nullptr. It should be "
@@ -241,7 +241,7 @@ void *Tensor::FindTensor() const {
       paddle::platform::errors::PreconditionNotMet(
           "Need to SetName first, so that the corresponding tensor can "
           "be retrieved."));
-  auto *scope = static_cast<paddle::framework::Scope *>(scope_);
+  auto *scope = static_cast<const paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
       var, paddle::platform::errors::PreconditionNotMet(

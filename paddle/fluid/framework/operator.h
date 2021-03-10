@@ -191,7 +191,7 @@ class OperatorBase {
   //! Get a input which has multiple variables.
   const std::vector<std::string>& Inputs(const std::string& name) const;
   //! Get all inputs variable names
-  std::vector<std::string> InputVars() const;
+  virtual std::vector<std::string> InputVars() const;
 
   bool HasOutputs(const std::string& name) const;
   //! Get a output with argument's name described in `op_proto`

@@ -36,6 +36,7 @@ namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
+using OperatorCallBack = paddle_infer::OperatorCallBack;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -253,6 +254,12 @@ class PD_INFER_DECL PaddlePredictor {
   /// to directly write or read the input/output tensors.
   /// \return Whether the run is successful
   virtual bool ZeroCopyRun() { return false; }
+
+  virtual bool ZeroCopyRunWithCallBack(
+      const std::vector<OperatorCallBack>& before = {},
+      const std::vector<OperatorCallBack>& after = {}) {
+    return false;
+  }
 
   ///
   /// \brief Clear the intermediate tensors of the predictor
