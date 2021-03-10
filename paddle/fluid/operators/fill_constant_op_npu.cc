@@ -81,6 +81,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     fill_constant,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext,
                                paddle::platform::float16>);
