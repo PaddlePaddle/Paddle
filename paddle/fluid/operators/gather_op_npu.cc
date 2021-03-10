@@ -53,8 +53,11 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
     // step1: Unsqueeze index
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
-      framework::Tensor tmp_index = UnsqueezeTo(*index, 2);
-      index = &tmp_index;
+      framework::Tensor res;
+      res.ShareDataWith(*index);
+      std::vector<int64_t> new_dim = {index_dims[0], 1};
+      res.Resize(framework::make_ddim(new_dim));
+      index = &res;
     }
 
     auto stream =
