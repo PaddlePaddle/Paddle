@@ -76,10 +76,17 @@ namespace platform {
  *
 */
 
+#ifdef __HIPCC__
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
+  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
+  for (index_type i = __index__; __index__ < (num);                   \
+       __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
+#else
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
+#endif
 
 #define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 
@@ -108,7 +115,11 @@ class CublasHandleHolder {
   }
 #endif
 
+#ifdef PADDLE_WITH_HIP
+  const rocblas_handle& GetCublasHandle() const { return handle_; }
+#else
   const cublasHandle_t& GetCublasHandle() const { return handle_; }
+#endif
 
   ~CublasHandleHolder() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_HIP

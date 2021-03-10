@@ -369,19 +369,7 @@ struct KronGradOpFunctor {
     for_range(func);
 
 // reduce_sum along aixs 1
-#ifdef __HIPCC__
-    auto stream = dev_ctx.stream();  // it is a cuda device_context
-    if (dx) {
-      TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
-          dout_x, dx, {1}, static_cast<T>(0), hipcub::Sum(),
-          IdentityFunctor<T>(), stream);
-    }
-    if (dy) {
-      TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
-          dout_y, dy, {1}, static_cast<T>(0), hipcub::Sum(),
-          IdentityFunctor<T>(), stream);
-    }
-#elif defined(__NVCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
       TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(

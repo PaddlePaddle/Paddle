@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
-#include "cub/cub.cuh"
 #include "paddle/fluid/operators/bce_loss_op.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/cuda_primitives.h"

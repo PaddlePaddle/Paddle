@@ -65,7 +65,7 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!cpu_place) {
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       out->mutable_data(ctx.GetPlace(), data_type);

@@ -32,6 +32,8 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
+#elif defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
         platform::errors::InvalidArgument("Check your paddle version, current "
@@ -129,7 +131,7 @@ TEST(test_elementwise_add_not_inplace, cpu_place) {
   ASSERT_TRUE(TestMain<float>(p, dims, false));
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_inplace, gpu_place) {
   framework::DDim dims({32, 64});
   platform::CUDAPlace p(0);

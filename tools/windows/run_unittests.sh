@@ -15,8 +15,9 @@
 set -e
 set +x
 NIGHTLY_MODE=$1
+PRECISION_TEST=$2
 
-PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
+export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
 else
@@ -210,18 +211,45 @@ export CUDA_VISIBLE_DEVICES=0
 UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
 num=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | wc -l)
 echo "Windows 1 card TestCases count is $num"
+if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+    python ${PADDLE_ROOT}/tools/get_pr_ut.py
+    if [[ -f "ut_list" ]]; then
+        set +x
+        echo "PREC length: "`wc -l ut_list`
+        precision_cases=`cat ut_list`
+        set -x
+    fi
+fi
+
+if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+    UT_list_prec=''
+    re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+    for case in $UT_list; do
+        flag=$(echo $case|grep -oE $re)
+        if [ -n "$flag" ];then
+            if [ -z "$UT_list_prec" ];then
+                UT_list_prec=$case
+            else
+                UT_list_prec=$UT_list_prec'\n'$case
+            fi
+        else
+            echo $case "won't run in PRECISION_TEST mode."
+        fi
+    done
+    UT_list=$UT_list_prec
+fi
+
 output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
 cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
 tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
-echo $tetrad_parallel_job
 two_parallel_job=$(echo $output | cut -d ";" -f 3)
-echo $two_parallel_job
 non_parallel_job=$(echo $output | cut -d ";" -f 4)
 
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
 function collect_failed_tests() {
+    set +e
     for file in `ls $tmp_dir`; do
         grep -q 'The following tests FAILED:' $tmp_dir/$file
         exit_code=$?
@@ -233,6 +261,7 @@ function collect_failed_tests() {
             ${failuretest}"
         fi
     done
+    set -e
 }
 
 function run_unittest() {
@@ -260,8 +289,9 @@ function unittests_retry(){
     exec_times=0
     exec_retry_threshold=10
     retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-    need_retry_ut_counts=$(echo "$ut_lists" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
+    need_retry_ut_counts=$(echo "$retry_unittests" |awk -F ' ' '{print }'| sed '/^$/d' | wc -l)
     retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+    tmpfile=$tmp_dir/$RANDOM
 
     if [ $need_retry_ut_counts -lt $exec_retry_threshold ];then
             retry_unittests_record=''
@@ -272,7 +302,7 @@ function unittests_retry(){
                         cur_order='first'
                     elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
-                    elif ( [[ "$exec_times" == "1" ]] );then
+                    elif ( [[ "$exec_times" == "2" ]] );then
                         cur_order='third'
                     fi
                     echo "========================================="
@@ -283,7 +313,8 @@ function unittests_retry(){
                     echo "========================================="
                     rm -f $tmp_dir/*
                     failed_test_lists=''
-                    ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile
+                    (ctest -R "($retry_unittests_regular)" --output-on-failure -C Release -j $parallel_job| tee $tmpfile ) &
+                    wait;
                     collect_failed_tests
                     exec_times=$(echo $exec_times | awk '{print $0+1}')
                 done
