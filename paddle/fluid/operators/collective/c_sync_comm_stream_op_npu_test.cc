@@ -44,8 +44,7 @@ USE_NO_KERNEL_OP(c_sync_comm_stream);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
 USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
-
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
@@ -66,19 +65,19 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
 }
 
 void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
-  std::cout<< "BEGIN TEST:" << __FUNCTION__ <<std::endl;
+  std::cout << "BEGIN TEST:" << __FUNCTION__ << std::endl;
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
   int num = 2;
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
-  std::cout<< "rank_id:" << rank_id<<std::endl;
+  std::cout << "rank_id:" << rank_id << std::endl;
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(1.0 + rank_id);
-    std::cout<< init[0];
+    std::cout << init[0];
   }
-  std::cout<<std::endl;
+  std::cout << std::endl;
 
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num, num});
@@ -95,24 +94,25 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"]=std::string("tagx");
-  attrs["root"]=0;
-  attrs["ring_id"]=0;
+  attrs["tag"] = std::string("tagx");
+  attrs["root"] = 0;
+  attrs["ring_id"] = 0;
 
-  auto op =
-      f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
+                                    {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
 
+  // comm sync
+
+  auto sync_op = f::OpRegistry::CreateOp("c_sync_comm_stream", {{"X", {"X"}}},
+                                         {{"Out", {"Out"}}}, attrs);
+  sync_op->Run(*scope, place);
+
+  // ctx.Wait();
+
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
-  
-  // comm sync
-  auto sync_op =
-      f::OpRegistry::CreateOp("c_sync_comm_stream", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
-  sync_op->Run(*scope, place);
 
   EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
@@ -120,10 +120,9 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 }
 
-
 TEST(c_broadcast, NPU) {
   f::Scope scope;
-  char * npu_id=getenv("FLAGS_selected_npus");
+  char* npu_id = getenv("FLAGS_selected_npus");
 
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
 
