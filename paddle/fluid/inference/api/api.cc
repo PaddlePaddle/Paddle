@@ -116,7 +116,10 @@ int PaddleDtypeSize(PaddleDType dtype) {
     case PaddleDType::UINT8:
       return sizeof(uint8_t);
     default:
-      assert(false);
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "The dtype must be one in the list: FLOAT32, INT64, INT32, UINT8. "
+          "But it is `%d`",
+          static_cast<int>(dtype)));
       return -1;
   }
 }

@@ -88,6 +88,7 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
   ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length();
   float* data = static_cast<float*>(outputs[0].data.data());
+  ASSERT_FALSE(outputs[0].data.empty());
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     ASSERT_LT(data[j], 1.0);
     ASSERT_GT(data[j], -1.0);
@@ -321,6 +322,22 @@ TEST(PassBuilder, Delete) {
   const auto& passes = config.pass_builder()->AllPasses();
   auto it = std::find(passes.begin(), passes.end(), "attention_lstm_fuse_pass");
   ASSERT_EQ(it, passes.end());
+}
+
+TEST(PaddleDtypeSize, Size) {
+  CHECK_EQ(paddle::PaddleDtypeSize(PaddleDType::FLOAT32), sizeof(float));
+  CHECK_EQ(paddle::PaddleDtypeSize(PaddleDType::INT64), sizeof(int64_t));
+  CHECK_EQ(paddle::PaddleDtypeSize(PaddleDType::INT32), sizeof(int32_t));
+  CHECK_EQ(paddle::PaddleDtypeSize(PaddleDType::UINT8), sizeof(uint8_t));
+}
+
+TEST(PaddleBuf, NotOwned) {
+  constexpr size_t N{1};
+  char* a = new char[N];
+  PaddleBuf buf_0(a, N * sizeof(char));
+  PaddleBuf buf_1(N);
+  buf_1.Reset(a, N * sizeof(char));
+  delete[] a;
 }
 
 }  // namespace paddle
