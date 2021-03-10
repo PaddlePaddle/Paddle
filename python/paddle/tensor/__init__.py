@@ -24,7 +24,6 @@ from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
 from .attribute import real  #DEFINE_ALIAS
 from .attribute import imag  #DEFINE_ALIAS
-from .attribute import size  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS
 from .creation import diag  #DEFINE_ALIAS
 from .creation import eye  #DEFINE_ALIAS
