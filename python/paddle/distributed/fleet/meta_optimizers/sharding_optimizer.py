@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, Progr
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
 from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper import WeightDecayHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
-
+from .sharding.offload_helper import OffloadHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
