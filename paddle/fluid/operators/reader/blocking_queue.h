@@ -95,11 +95,7 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     receive_cv_.wait(lock,
                      [&] { return !queue_.empty() || closed_ || killed_; });
-    if (killed_) {
-      VLOG(3)
-          << "WARNING:: Receiving an element to a killed reader::BlokcingQueue";
-      return false;
-    }
+    EnforceNotKilled();
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(
           elem, platform::errors::InvalidArgument(
