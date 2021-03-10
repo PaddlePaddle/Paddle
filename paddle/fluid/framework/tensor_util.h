@@ -169,9 +169,11 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 }
 
+// The fully specialized function should be inline to avoid
+// multi-definition.
 template <>
-void TensorFromVector(const std::vector<bool>& src,
-                      const platform::DeviceContext& ctx, Tensor* dst) {
+inline void TensorFromVector(const std::vector<bool>& src,
+                             const platform::DeviceContext& ctx, Tensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
   // https://stackoverflow.com/questions/46115669/why-does-stdvectorbool-have-no-data/46115714
@@ -223,7 +225,7 @@ void TensorFromVector(const std::vector<T>& src, Tensor* dst) {
 }
 
 template <>
-void TensorFromVector(const std::vector<bool>& src, Tensor* dst) {
+inline void TensorFromVector(const std::vector<bool>& src, Tensor* dst) {
   bool* array = new bool[src.size()];
   for (unsigned int i = 0; i < src.size(); i++) {
     array[i] = static_cast<bool>(src[i]);
@@ -273,8 +275,9 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 }
 
 template <>
-void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
-                    std::vector<bool>* dst) {
+inline void TensorToVector(const Tensor& src,
+                           const platform::DeviceContext& ctx,
+                           std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);
 
@@ -331,7 +334,7 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
 }
 
 template <>
-void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
+inline void TensorToVector(const Tensor& src, std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);
 
