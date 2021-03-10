@@ -92,22 +92,20 @@ class PRChecker(object):
             ix += 1
         return False
 
-    def __urlretrieve(self,url,filename):
+    def __urlretrieve(self, url, filename):
         ix = 1
         with_proxy = urllib.request.getproxies()
-        without_proxy = {
-                'http' : '',
-                'http' : ''
-            }
+        without_proxy = {'http' : '','http' : ''}
         while ix < 6:
             if ix // 2 == 0:
                 cur_proxy = urllib.request.ProxyHandler(without_proxy)
             else:
                 cur_proxy = urllib.request.ProxyHandler(with_proxy)
-            opener = urllib.request.build_opener(cur_proxy,urllib.request.HTTPHandler)
+            opener = urllib.request.build_opener(cur_proxy,
+                                                urllib.request.HTTPHandler)
             urllib.request.install_opener(opener)
             try:
-                urllib.request.urlretrieve(url,filename)
+                urllib.request.urlretrieve(url, filename)
             except Exception as e:
                 print(e)
                 print(
@@ -119,6 +117,7 @@ class PRChecker(object):
             time.sleep(ix * 10)
             ix += 1
             
+
         return False
 
     def get_pr_files(self):
@@ -237,7 +236,7 @@ class PRChecker(object):
         file_ut_map = None
         ret = self.__urlretrieve(
             'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
-                self.suffix),'file_ut.json{}'.format(self.suffix))
+                self.suffix), 'file_ut.json{}'.format(self.suffix))
         if not ret:
             print('PREC download file_ut.json failed')
             exit(1)
@@ -290,7 +289,7 @@ class PRChecker(object):
         if ut_list:
             ret = self.__urlretrieve(
                 'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix),'prec_delta{}'.format(suffix))
+                    self.suffix), 'prec_delta{}'.format(suffix))
             if ret:
                 with open('prec_delta' + self.suffix) as delta:
                     for ut in delta:
