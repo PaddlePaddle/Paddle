@@ -16,15 +16,23 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (OpTest,
-                                                  convert_float_to_uint16)
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest, convert_float_to_uint16, convert_uint16_to_float)
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import enable_static
 
 
+def _lookup(weights, ids):
+    w_shape = weights.shape
+    out_shape = (*ids.shape[:-1], w_shape[-1])
+    out = weights[ids.flatten()].reshape(out_shape)
+    return out
+
+
 def _get_grad(weights, ids):
     w_shape = weights.shape
-    w_grad = np.zeros((w_shape), dtype=np.float32)
+    w_grad = np.zeros((w_shape), dtype=weights.dtype)
     out_grad_shape = (np.prod(ids.shape[:-1]), w_shape[-1])
     out_grad = weights[ids.flatten()].reshape(out_grad_shape)
     for i, idx in enumerate(ids.flatten()):
@@ -92,6 +100,60 @@ class TestLookupTableBF16OpIds4D(OpTest):
             max_relative_error=1.5e-2,
             user_defined_grads=[self.w_grad_fp32],
             user_defined_grad_outputs=[self.out_bf16])
+
+
+class TestLookupTableBF16OpWIsSelectedRows(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        self.dtype = np.uint16
+
+        self.ids = np.random.randint(
+            low=0, high=15, size=(10, 1)).astype("int64")
+        self.w_fp32 = np.random.random((15, 32)).astype("float32")
+        self.w_bf16 = convert_float_to_uint16(self.w_fp32)
+
+        self.out_fp32 = _lookup(self.w_fp32, self.ids)
+        self.out_bf16 = _lookup(self.w_bf16, self.ids)
+        self.w_grad_fp32 = _get_grad(self.w_fp32, self.ids)
+
+        self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
+        self.outputs = {'Out': self.out_fp32}
+
+        self.scope = core.Scope()
+        self.place = core.CPUPlace()
+
+        self.prepare_w(self.scope, self.place)
+
+    def prepare_w(self, scope, place):
+        rows = [a for a in range(self.w_bf16.shape[0])]
+        row_numel = self.w_bf16.shape[1]
+
+        w_selected_rows = scope.var('W').get_selected_rows()
+        w_selected_rows.set_height(len(rows))
+        w_selected_rows.set_rows(rows)
+        w_tensor = w_selected_rows.get_tensor()
+        w_tensor.set(self.w_bf16, place)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_dygraph=False,
+            max_relative_error=1.5e-2,
+            user_defined_grads=[self.w_grad_fp32],
+            user_defined_grad_outputs=[self.out_bf16])
+
+
+class TestLookupTableBF16OpWIsSelectedRows4DIds(
+        TestLookupTableBF16OpWIsSelectedRows):
+    def setUp(self):
+        super().setUp()
+        self.ids = np.random.randint(
+            low=0, high=15, size=(3, 4, 5, 1)).astype("int64")
 
 
 if __name__ == "__main__":
