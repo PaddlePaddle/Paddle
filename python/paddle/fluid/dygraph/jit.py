@@ -683,9 +683,11 @@ def save(layer, path, input_spec=None, **configs):
             # transform in jit.save, if input_spec is incomplete, declarative will throw error
             # inner_input_spec is list[InputSpec], it should be packed with same sturcture
             # as original input_spec here.
+            if inner_input_spec:
+                inner_input_spec = pack_sequence_as(input_spec,
+                                                    inner_input_spec)
             static_forward = declarative(
-                inner_layer.forward,
-                input_spec=pack_sequence_as(input_spec, inner_input_spec))
+                inner_layer.forward, input_spec=inner_input_spec)
             concrete_program = static_forward.concrete_program
             # the input_spec has been used in declarative, which is equal to
             # @declarative with input_spec and jit.save without input_spec,
