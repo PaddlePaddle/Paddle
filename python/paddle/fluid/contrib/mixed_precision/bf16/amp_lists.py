@@ -28,6 +28,12 @@ class AutoMixedPrecisionListsBF16(object):
         custom_bf16_list (set): Users' custom bf16 list.
         custom_fp32_list (set): Users' custom fp32 list.
         custom_fp32_varnames (set): Users' custom fp32 variables' names.
+
+    Examples:
+        .. code-block:: python
+
+        with paddle.static.amp.bf16_guard():
+            AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
     """
 
     def __init__(self,

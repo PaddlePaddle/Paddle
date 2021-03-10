@@ -20,7 +20,7 @@ import contextlib
 import unittest
 import numpy as np
 import paddle.fluid.layers as layers
-import paddle.fluid.contrib.mixed_precision as amp
+import paddle.static.amp as amp
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -83,12 +83,12 @@ class TestModelCastBF16(unittest.TestCase):
             ret = layers.elementwise_mul(ret, t)
             ret = fluid.layers.reshape(ret, [0, 0])
 
-            with paddle.static.amp.bf16.bf16_guard():
+            with amp.bf16_guard():
                 ret_bf16 = layers.elementwise_add(t_bf16, tt_bf16)
                 ret_bf16 = layers.elementwise_mul(ret_bf16, t_bf16)
                 ret_bf16 = layers.reshape(ret_bf16, [0, 0])
 
-            with paddle.static.amp.bf16.bf16_guard():
+            with amp.bf16_guard():
                 ret_fp32bf16 = layers.elementwise_add(t, tt)
                 ret_fp32bf16 = layers.elementwise_mul(ret_fp32bf16, t)
                 ret_fp32bf16 = layers.reshape(ret_fp32bf16, [0, 0])
