@@ -95,6 +95,8 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
     VLOG(3) << "out_vec[" << j << "]:" << out_vec[j];
   }
 
+  ctx.Wait();
+
   // out0
   std::vector<T> out1_vec;
   f::TensorToVector(*out1, ctx, &out1_vec);
@@ -102,6 +104,8 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   for (size_t j = 0; j < out1_vec.size(); ++j) {
     VLOG(3) << "out1_vec[" << j << "]:" << out1_vec[j];
   }
+
+  ctx.Wait();
 
   // out found_inf
   Tensor found_inf_tensor;
