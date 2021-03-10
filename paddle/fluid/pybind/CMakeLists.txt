@@ -101,7 +101,7 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
-      if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
     else()
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
@@ -113,7 +113,7 @@ if(WITH_PYTHON)
     "${op_function_generator_path}/op_function_generator ${impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 100 (\n"
+    "    if %build_times% GTR 5 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"

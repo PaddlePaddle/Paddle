@@ -214,10 +214,8 @@ echo "Windows 1 card TestCases count is $num"
 if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
     python ${PADDLE_ROOT}/tools/get_pr_ut.py
     if [[ -f "ut_list" ]]; then
-        set +x
         echo "PREC length: "`wc -l ut_list`
         precision_cases=`cat ut_list`
-        set -x
     fi
 fi
 
@@ -278,7 +276,8 @@ function run_unittest() {
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
     tmpfile=$tmp_dir/$RANDOM
-    ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile
+    (ctest -R "$test_case" -E "$disable_ut_quickly|$diable_wingpu_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
+    wait;
 }
 
 function unittests_retry(){
@@ -327,7 +326,7 @@ function unittests_retry(){
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
-        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -o '[^ ].*$'`
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
