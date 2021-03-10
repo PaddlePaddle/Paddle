@@ -100,30 +100,37 @@ def _restore_batch(flat_batch, structure):
     :attr:`_paddle_field_x` with data from flat_batch
     """
 
-    def _restore(flat_batch, structure, field_idx):
+    def _restore(structure, field_idx):
         if isinstance(structure, Sequence):
             for i, field in enumerate(structure):
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
                     cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
                     field_idx = max(field_idx, cur_field_idx)
+                    assert flat_batch[cur_field_idx] is not None, \
+                                "flat_batch[{}] parsed repeatly"
                     structure[i] = flat_batch[cur_field_idx]
+                    flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number, np.number)):
                     continue
                 elif isinstance(field, (Sequence, Mapping)):
-                    _, field_idx = _restore(flat_batch, structure[i], field_idx)
+                    field_idx = _restore(structure[i], field_idx)
         elif isinstance(structure, Mapping):
             for k, field in structure.items():
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
-                    field_idx = int(field.replace(FIELD_PREFIX, ''))
-                    structure[k] = flat_batch[field_idx]
+                    cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
+                    field_idx = max(field_idx, cur_field_idx)
+                    assert flat_batch[cur_field_idx] is not None, \
+                                "flat_batch[{}] parsed repeatly"
+                    structure[k] = flat_batch[cur_field_idx]
+                    flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number, np.number)):
                     continue
                 elif isinstance(field, (Sequence, Mapping)):
-                    _, field_idx = _restore(flat_batch, structure[k], field_idx)
+                    field_idx = _restore(structure[k], field_idx)
         else:
             raise TypeError("wrong flat data type: {}".format(type(batch)))
 
-        return structure, field_idx
+        return field_idx
 
     assert isinstance(flat_batch, Sequence), "flat_batch is not a list or tuple"
     if len(flat_batch) == 0:
@@ -133,6 +140,6 @@ def _restore_batch(flat_batch, structure):
         assert structure == '{}{}'.format(FIELD_PREFIX, 0), \
                 "invalid structure: {}".format(structure)
         return flat_batch[0]
-    batch, field_idx = _restore(flat_batch, structure, 0)
+    field_idx = _restore(structure, 0)
     assert field_idx + 1 == len(flat_batch), "Tensor parse incomplete"
-    return batch
+    return structure
