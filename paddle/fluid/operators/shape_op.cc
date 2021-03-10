@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/shape_op.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -30,8 +31,13 @@ class ShapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "Output (Out) of get_shape op should not be null."));
-    auto in_dim = ctx->GetInputDim("Input");
-    ctx->SetOutputDim("Out", {in_dim.size()});
+    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    if (axes.empty()) {
+      auto in_dim = ctx->GetInputDim("Input");
+      ctx->SetOutputDim("Out", {in_dim.size()});
+    } else {
+      ctx->SetOutputDim("Out", {static_cast<int64_t>(axes.size())});
+    }
   }
 
  protected:
@@ -48,6 +54,11 @@ class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "(LoDTensor), The input tensor.");
+    AddAttr<std::vector<int32_t>>(
+        "axes",
+        "If given, this operator only returns the dimensions of the given axes."
+        "Otherwise, the operator returns the dimensions of all axes.")
+        .SetDefault({});
     AddOutput(
         "Out",
         "(LoDTensor), The shape of input tensor, the data type of the shape"
@@ -72,3 +83,13 @@ REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
                        ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
                        ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
                        ops::ShapeKernel<double>);
+
+REGISTER_OP_VERSION(shape)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade shape op, add a new attribute [axes].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "axes",
+            "In order to support new feature: tensor.size(axes) -> 1d-tensor",
+            std::vector<int32_t>{}));

@@ -151,10 +151,6 @@ def monkey_patch_math_varbase():
     def _ndim_(var):
         return len(var.shape)
 
-    @property
-    def _size_(var):
-        return np.prod(var.shape)
-
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -272,7 +268,6 @@ def monkey_patch_math_varbase():
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
-        ('size', _size_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
