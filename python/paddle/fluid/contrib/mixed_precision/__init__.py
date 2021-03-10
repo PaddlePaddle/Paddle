@@ -20,7 +20,7 @@ from . import fp16_lists
 from .fp16_lists import *
 from . import fp16_utils
 from .fp16_utils import *
-# from . import bf16
+from . import bf16
 from .bf16 import *
 
 __all__ = decorator.__all__

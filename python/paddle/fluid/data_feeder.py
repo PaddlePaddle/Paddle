@@ -127,7 +127,7 @@ def check_dtype(input_dtype,
             "The data type of '%s' in %s only support float16 in GPU now. %s" %
             (input_name, op_name, extra_message))
     if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-            'reshape', 'lookup_table'
+            'reshape', 'lookup_table', 'scale'
     ]:
         warnings.warn(
             "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"

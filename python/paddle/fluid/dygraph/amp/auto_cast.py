@@ -60,8 +60,8 @@ AMP_RELATED_FLAGS_SETTING = {
 }
 
 
-#NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionListsBF16._update_list
-# The reason why not use AutoMixedPrecisionListsBF16 is that custom_black_varnames is not suitable for imperative mode.
+#NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
+# The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
 def _update_list(custom_white_list, custom_black_list):
     """
     Update black and white list according to users' custom list.

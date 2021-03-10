@@ -31,9 +31,10 @@ class AutoMixedPrecisionListsBF16(object):
 
     Examples:
         .. code-block:: python
-
+        import paddle
+        paddle.enable_static()
         with paddle.static.amp.bf16_guard():
-            AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
+            paddle.static.amp.AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
     """
 
     def __init__(self,
