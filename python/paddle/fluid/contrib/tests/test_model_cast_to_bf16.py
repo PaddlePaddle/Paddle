@@ -20,8 +20,8 @@ import contextlib
 import unittest
 import numpy as np
 import paddle.fluid.layers as layers
+import paddle.fluid.contrib.mixed_precision as amp
 from paddle.fluid import core
-from paddle.fluid.contrib.mixed_precision.bf16 import rewrite_program_bf16, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -57,7 +57,7 @@ class TestModelCastBF16(unittest.TestCase):
         exe = fluid.Executor(core.CPUPlace())
         exe.run(fluid.default_startup_program())
         prog = fluid.default_main_program()
-        rewrite_program_bf16(prog, use_bf16_guard=True)
+        amp.rewrite_program_bf16(prog, use_bf16_guard=True)
         return exe.run(prog,
                        feed=feed,
                        fetch_list=fetch_list,
@@ -68,8 +68,8 @@ class TestModelCastBF16(unittest.TestCase):
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
 
-        n_bf16 = convert_float_to_uint16(n)
-        nn_bf16 = convert_float_to_uint16(nn)
+        n_bf16 = amp.convert_float_to_uint16(n)
+        nn_bf16 = amp.convert_float_to_uint16(nn)
 
         with self.static_graph():
             t_bf16 = layers.data(
