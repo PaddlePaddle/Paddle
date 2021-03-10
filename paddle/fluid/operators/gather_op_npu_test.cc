@@ -109,17 +109,17 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   auto dout = scope->Var("DOut");
   auto tensor_dout = dout->GetMutable<f::LoDTensor>();
 
-  std::vector<int> init_index = {0, 1, 2, 0};
+  std::vector<int> init_index = {0, 1};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
-  tensor_index->Resize(paddle::framework::make_ddim({2, 2}));
+  tensor_index->Resize(paddle::framework::make_ddim({2}));
 
   std::vector<T> init_x = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
   TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize(paddle::framework::make_ddim({3, 2}));
 
-  std::vector<T> init_dout = {5.0, 10.0};
+  std::vector<T> init_dout = {5.0, 10.0, 2.0, 3.0};
   TensorFromVector(init_dout, ctx, tensor_dout);
-  tensor_dout->Resize(paddle::framework::make_ddim({2}));
+  tensor_dout->Resize(paddle::framework::make_ddim({2, 2}));
 
   ctx.Wait();
 
@@ -143,7 +143,7 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   uint32_t expected_size = 3 * 2;
   EXPECT_EQ((uint32_t)dx_vec.size(), expected_size);
 
-  std::vector<T> expected_dx_vec = {0.0, 5.0, 0.0, 0.0, 10.0, 0.0};
+  std::vector<T> expected_dx_vec = {5.0, 10.0, 2.0, 3.0, 0.0, 0.0};
   for (uint32_t i = 0; i < dx_vec.size(); i++) {
     VLOG(3) << "dx_vec[i]=" << dx_vec[i];
     EXPECT_EQ(dx_vec[i], expected_dx_vec[i]);

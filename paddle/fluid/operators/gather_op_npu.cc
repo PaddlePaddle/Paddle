@@ -52,6 +52,7 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
 
     // step1: Unsqueeze index
     const auto index_dims = index->dims();
+
     if (index_dims.size() == 1) {
       framework::Tensor res;
       res.ShareDataWith(*index);
