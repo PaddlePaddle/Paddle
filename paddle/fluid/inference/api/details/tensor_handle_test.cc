@@ -24,25 +24,25 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_tensor.h"
+#include "paddle/fluid/inference/api/paddle_infer_tensor_handle.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle_infer {
 
-struct TensorWrapper : public Tensor {
+struct TensorWrapper : public TensorHandle {
   TensorWrapper(paddle_infer::PlaceType place, paddle::framework::Scope* scope,
                 const std::string& name)
-      : Tensor{static_cast<void*>(scope)} {
+      : TensorHandle{static_cast<void*>(scope)} {
     SetPlace(place, 0 /*device_id*/);
     SetName(name);
     input_or_output_ = true;
   }
 };
 
-std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
-                                     paddle::framework::Scope* scope,
-                                     const std::string& name) {
-  return std::unique_ptr<Tensor>(new TensorWrapper{place, scope, name});
+std::unique_ptr<TensorHandle> CreateTensorHandle(
+    paddle_infer::PlaceType place, paddle::framework::Scope* scope,
+    const std::string& name) {
+  return std::unique_ptr<TensorHandle>(new TensorWrapper{place, scope, name});
 }
 
 template <typename T>
@@ -65,7 +65,7 @@ bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
   paddle::framework::Scope scope;
   const std::string name{"name"};
   scope.Var(name);
-  auto tensor = CreateTensor(place, &scope, name);
+  auto tensor = CreateTensorHandle(place, &scope, name);
   tensor->CopyFromCpu<T>(data_in.data());
   if (tensor->type() != paddle::inference::ConvertToPaddleDType(
                             paddle::framework::DataTypeTrait<T>::DataType())) {
@@ -87,7 +87,7 @@ bool SetPlaceAndCheck(PlaceType place, size_t length) {
   const std::string name{"name"};
   const std::vector<std::vector<size_t>> lod{{0, length}};
   scope.Var(name);
-  auto tensor = CreateTensor(place, &scope, name);
+  auto tensor = CreateTensorHandle(place, &scope, name);
   tensor->Reshape({static_cast<int>(length)});
   tensor->mutable_data<T>(place);
   tensor->SetLoD(lod);
@@ -126,7 +126,7 @@ bool SetPlaceAndCheck(PlaceType place) {
          SetPlaceAndCheck<uint8_t>(place, length);
 }
 
-TEST(Tensor, FillRandomDataAndCheck) {
+TEST(TensorHandle, FillRandomDataAndCheck) {
   ASSERT_TRUE(FillRandomDataAndCheck(PlaceType::kCPU));
   ASSERT_TRUE(SetPlaceAndCheck(PlaceType::kCPU));
 #ifdef PADDLE_WITH_CUDA

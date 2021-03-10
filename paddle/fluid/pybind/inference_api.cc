@@ -152,7 +152,7 @@ void ZeroCopyTensorCreate(
 
 template <typename T>
 void PaddleInferTensorCreate(
-    paddle_infer::Tensor &tensor,  // NOLINT
+    paddle_infer::TensorHandle &tensor,  // NOLINT
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
@@ -210,7 +210,8 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
   return array;
 }
 
-py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
+py::array PaddleInferTensorToNumpy(
+    paddle_infer::TensorHandle &tensor) {  // NOLINT
   py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
   auto tensor_shape = tensor.shape();
   py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
@@ -638,16 +639,16 @@ void BindZeroCopyTensor(py::module *m) {
 }
 
 void BindPaddleInferTensor(py::module *m) {
-  py::class_<paddle_infer::Tensor>(*m, "PaddleInferTensor")
-      .def("reshape", &paddle_infer::Tensor::Reshape)
+  py::class_<paddle_infer::TensorHandle>(*m, "PaddleInferTensor")
+      .def("reshape", &paddle_infer::TensorHandle::Reshape)
       .def("copy_from_cpu", &PaddleInferTensorCreate<int32_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
-      .def("shape", &paddle_infer::Tensor::shape)
-      .def("set_lod", &paddle_infer::Tensor::SetLoD)
-      .def("lod", &paddle_infer::Tensor::lod)
-      .def("type", &paddle_infer::Tensor::type);
+      .def("shape", &paddle_infer::TensorHandle::shape)
+      .def("set_lod", &paddle_infer::TensorHandle::SetLoD)
+      .def("lod", &paddle_infer::TensorHandle::lod)
+      .def("type", &paddle_infer::TensorHandle::type);
 }
 
 void BindPredictorPool(py::module *m) {

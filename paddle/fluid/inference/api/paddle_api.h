@@ -28,10 +28,10 @@
 #include <string>
 #include <vector>
 #include "crypto/cipher.h"
-#include "paddle_infer_declare.h"  // NOLINT
-#include "paddle_tensor.h"         // NOLINT
-                                   /*! \namespace paddle
-                                    */
+#include "paddle_infer_declare.h"        // NOLINT
+#include "paddle_infer_tensor_handle.h"  // NOLINT
+                                         /*! \namespace paddle
+                                          */
 namespace paddle {
 
 using PaddleDType = paddle_infer::DataType;
@@ -165,7 +165,7 @@ struct PD_INFER_DECL PaddleTensor {
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 
-class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
+class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::TensorHandle {
  public:
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
@@ -184,7 +184,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
 
  private:
   friend class AnalysisPredictor;
-  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+  explicit ZeroCopyTensor(void* scope) : paddle_infer::TensorHandle{scope} {}
 };
 
 /// \brief A Predictor for executing inference on a model.

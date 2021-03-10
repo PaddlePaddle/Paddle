@@ -1206,7 +1206,8 @@ std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
 }
 
-std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
+std::unique_ptr<TensorHandle> Predictor::GetInputHandle(
+    const std::string &name) {
   return predictor_->GetInputTensor(name);
 }
 
@@ -1214,7 +1215,8 @@ std::vector<std::string> Predictor::GetOutputNames() {
   return predictor_->GetOutputNames();
 }
 
-std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
+std::unique_ptr<TensorHandle> Predictor::GetOutputHandle(
+    const std::string &name) {
   return predictor_->GetOutputTensor(name);
 }
 

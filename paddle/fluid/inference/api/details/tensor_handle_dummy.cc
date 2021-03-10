@@ -17,32 +17,32 @@
 
 namespace paddle_infer {
 
-void Tensor::Reshape(const std::vector<int> &shape) {}
+void TensorHandle::Reshape(const std::vector<int> &shape) {}
 
 template <typename T>
-T *Tensor::mutable_data(PlaceType place) {
+T *TensorHandle::mutable_data(PlaceType place) {
   return nullptr;
 }
 
 template <typename T>
-T *Tensor::data(PlaceType *place, int *size) const {
+T *TensorHandle::data(PlaceType *place, int *size) const {
   return nullptr;
 }
 
-template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
-                                                  int *size) const;
-template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
-                                                      int *size) const;
-template float *Tensor::mutable_data(PlaceType place);
-template int64_t *Tensor::mutable_data(PlaceType place);
+template PD_INFER_DECL float *TensorHandle::data<float>(PlaceType *place,
+                                                        int *size) const;
+template PD_INFER_DECL int64_t *TensorHandle::data<int64_t>(PlaceType *place,
+                                                            int *size) const;
+template float *TensorHandle::mutable_data(PlaceType place);
+template int64_t *TensorHandle::mutable_data(PlaceType place);
 
-void *Tensor::FindTensor() const { return nullptr; }
+void *TensorHandle::FindTensor() const { return nullptr; }
 
-std::vector<int> Tensor::shape() const { return {}; }
+std::vector<int> TensorHandle::shape() const { return {}; }
 
-void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {}
+void TensorHandle::SetLoD(const std::vector<std::vector<size_t>> &x) {}
 
-std::vector<std::vector<size_t>> Tensor::lod() const {
+std::vector<std::vector<size_t>> TensorHandle::lod() const {
   return std::vector<std::vector<size_t>>();
 }
 

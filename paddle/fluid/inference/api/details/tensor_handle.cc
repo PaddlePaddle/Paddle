@@ -20,7 +20,7 @@
 
 namespace paddle_infer {
 
-void Tensor::Reshape(const std::vector<int> &shape) {
+void TensorHandle::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
@@ -45,7 +45,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   auto *tensor = static_cast<paddle::framework::LoDTensor *>(tensor_);
 
 template <typename T>
-T *Tensor::mutable_data(PlaceType place) {
+T *TensorHandle::mutable_data(PlaceType place) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
@@ -74,7 +74,7 @@ T *Tensor::mutable_data(PlaceType place) {
 }
 
 template <typename T>
-T *Tensor::data(PlaceType *place, int *size) const {
+T *TensorHandle::data(PlaceType *place, int *size) const {
   EAGER_GET_TENSOR;
   auto *res = tensor->data<T>();
 
@@ -92,7 +92,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
   return res;
 }
 
-DataType Tensor::type() const {
+DataType TensorHandle::type() const {
   EAGER_GET_TENSOR;
   auto type = tensor->type();
   if (type == paddle::framework::proto::VarType::FP32) {
@@ -108,7 +108,7 @@ DataType Tensor::type() const {
 }
 
 template <typename T>
-void Tensor::CopyFromCpu(const T *data) {
+void TensorHandle::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -155,7 +155,7 @@ void Tensor::CopyFromCpu(const T *data) {
 }
 
 template <typename T>
-void Tensor::CopyToCpu(T *data) {
+void TensorHandle::CopyToCpu(T *data) {
   EAGER_GET_TENSOR;
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
@@ -199,43 +199,52 @@ void Tensor::CopyToCpu(T *data) {
         "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
-template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
+template PD_INFER_DECL void TensorHandle::CopyFromCpu<float>(const float *data);
+template PD_INFER_DECL void TensorHandle::CopyFromCpu<int64_t>(
+    const int64_t *data);
+template PD_INFER_DECL void TensorHandle::CopyFromCpu<int32_t>(
+    const int32_t *data);
+template PD_INFER_DECL void TensorHandle::CopyFromCpu<uint8_t>(
+    const uint8_t *data);
+template PD_INFER_DECL void TensorHandle::CopyFromCpu<int8_t>(
+    const int8_t *data);
 
-template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
-template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data);
+template PD_INFER_DECL void TensorHandle::CopyToCpu<float>(float *data);
+template PD_INFER_DECL void TensorHandle::CopyToCpu<int64_t>(int64_t *data);
+template PD_INFER_DECL void TensorHandle::CopyToCpu<int32_t>(int32_t *data);
+template PD_INFER_DECL void TensorHandle::CopyToCpu<uint8_t>(uint8_t *data);
+template PD_INFER_DECL void TensorHandle::CopyToCpu<int8_t>(int8_t *data);
 
-template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
-                                                  int *size) const;
-template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
-                                                      int *size) const;
-template PD_INFER_DECL int32_t *Tensor::data<int32_t>(PlaceType *place,
-                                                      int *size) const;
-template PD_INFER_DECL uint8_t *Tensor::data<uint8_t>(PlaceType *place,
-                                                      int *size) const;
-template PD_INFER_DECL int8_t *Tensor::data<int8_t>(PlaceType *place,
-                                                    int *size) const;
+template PD_INFER_DECL float *TensorHandle::data<float>(PlaceType *place,
+                                                        int *size) const;
+template PD_INFER_DECL int64_t *TensorHandle::data<int64_t>(PlaceType *place,
+                                                            int *size) const;
+template PD_INFER_DECL int32_t *TensorHandle::data<int32_t>(PlaceType *place,
+                                                            int *size) const;
+template PD_INFER_DECL uint8_t *TensorHandle::data<uint8_t>(PlaceType *place,
+                                                            int *size) const;
+template PD_INFER_DECL int8_t *TensorHandle::data<int8_t>(PlaceType *place,
+                                                          int *size) const;
 
-template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType place);
-template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType place);
-template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
-template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
-template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
+template PD_INFER_DECL float *TensorHandle::mutable_data<float>(
+    PlaceType place);
+template PD_INFER_DECL int64_t *TensorHandle::mutable_data<int64_t>(
+    PlaceType place);
+template PD_INFER_DECL int32_t *TensorHandle::mutable_data<int32_t>(
+    PlaceType place);
+template PD_INFER_DECL uint8_t *TensorHandle::mutable_data<uint8_t>(
+    PlaceType place);
+template PD_INFER_DECL int8_t *TensorHandle::mutable_data<int8_t>(
+    PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {
+TensorHandle::TensorHandle(void *scope) : scope_{scope} {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           paddle::platform::errors::PreconditionNotMet(
                               "The `scope` can not be nullptr. It should be "
                               "set to the pointer of scope."));
 }
 
-void *Tensor::FindTensor() const {
+void *TensorHandle::FindTensor() const {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
@@ -250,7 +259,7 @@ void *Tensor::FindTensor() const {
   return tensor;
 }
 
-std::vector<int> Tensor::shape() const {
+std::vector<int> TensorHandle::shape() const {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
@@ -258,7 +267,7 @@ std::vector<int> Tensor::shape() const {
   return paddle::framework::vectorize<int>(tensor->dims());
 }
 
-void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+void TensorHandle::SetLoD(const std::vector<std::vector<size_t>> &x) {
   EAGER_GET_TENSOR;
   paddle::framework::LoD lod;
   for (auto &level : x) {
@@ -267,7 +276,7 @@ void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
   tensor->set_lod(lod);
 }
 
-std::vector<std::vector<size_t>> Tensor::lod() const {
+std::vector<std::vector<size_t>> TensorHandle::lod() const {
   EAGER_GET_TENSOR;
   std::vector<std::vector<size_t>> res;
   for (auto &level : tensor->lod()) {
@@ -276,11 +285,11 @@ std::vector<std::vector<size_t>> Tensor::lod() const {
   return res;
 }
 
-void Tensor::SetName(const std::string &name) { name_ = name; }
+void TensorHandle::SetName(const std::string &name) { name_ = name; }
 
-const std::string &Tensor::name() const { return name_; }
+const std::string &TensorHandle::name() const { return name_; }
 
-void Tensor::SetPlace(PlaceType place, int device) {
+void TensorHandle::SetPlace(PlaceType place, int device) {
   place_ = place;
   device_ = device;
 }

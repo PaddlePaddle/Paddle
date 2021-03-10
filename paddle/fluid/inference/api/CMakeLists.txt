@@ -32,10 +32,10 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto paddle_crypto)
+              analysis_config tensor_handle trainer_desc_proto paddle_crypto)
 else()
     cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
-              analysis_config zero_copy_tensor trainer_desc_proto)
+              analysis_config tensor_handle trainer_desc_proto)
 endif()
 
 if(WIN32)
@@ -49,7 +49,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
-          zero_copy_tensor ir_pass_manager op_compatible_info)
+          tensor_handle ir_pass_manager op_compatible_info)
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 

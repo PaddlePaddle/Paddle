@@ -14,7 +14,7 @@
 #
 
 cc_library(reset_tensor_array SRCS reset_tensor_array.cc DEPS lod_tensor scope)
-cc_library(zero_copy_tensor SRCS zero_copy_tensor.cc DEPS scope lod_tensor enforce)
-cc_library(zero_copy_tensor_dummy SRCS zero_copy_tensor_dummy.cc)
+cc_library(tensor_handle SRCS tensor_handle.cc DEPS scope lod_tensor enforce)
+cc_library(tensor_handle_dummy SRCS tensor_handle_dummy.cc)
 
-cc_test(zero_copy_tensor_test SRCS zero_copy_tensor_test.cc DEPS paddle_inference_api)
+cc_test(tensor_handle_test SRCS tensor_handle_test.cc DEPS paddle_inference_api)

@@ -31,14 +31,12 @@ enum DataType {
 enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU };
 
 /// \brief Represents an n-dimensional array of values.
-/// The Tensor is used to store the input or output of the network.
-/// Zero copy means that the tensor supports direct copy of host or device data
-/// to device,
-/// eliminating additional CPU copy. Tensor is only used in the
-/// AnalysisPredictor.
-/// It is obtained through PaddlePredictor::GetinputTensor()
-/// and PaddlePredictor::GetOutputTensor() interface.
-class PD_INFER_DECL Tensor {
+/// TensorHandle is used to refer to a tensor in the predictor.
+/// It is a handle, and the user cannot construct it directly.
+/// It supports direct copy of host or device data to device,
+/// eliminating additional CPU copy. It is obtained through Predictor::
+/// GetInputHandle() and PaddlePredictor::GetOutputHandle() interface.
+class PD_INFER_DECL TensorHandle {
  public:
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
@@ -61,19 +59,19 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   T* data(PlaceType* place, int* size) const;
 
-  /// \brief Copy the host memory to tensor data.
+  /// \brief Copy the host memory to the referenced tensor.
   /// It's usually used to set the input tensor data.
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void CopyFromCpu(const T* data);
 
-  /// \brief Copy the tensor data to the host memory.
+  /// \brief Copy the referenced tensor data to the host memory.
   /// It's usually used to get the output tensor data.
   /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
   void CopyToCpu(T* data);
 
-  /// \brief Return the shape of the Tensor.
+  /// \brief Return the shape of the tensor.
   std::vector<int> shape() const;
 
   /// \brief Set lod info of the tensor.
@@ -81,8 +79,10 @@ class PD_INFER_DECL Tensor {
   ///  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
   /// \param x the lod info.
   void SetLoD(const std::vector<std::vector<size_t>>& x);
+
   /// \brief Return the lod info of the tensor.
   std::vector<std::vector<size_t>> lod() const;
+
   /// \brief Return the name of the tensor.
   const std::string& name() const;
 
@@ -92,7 +92,7 @@ class PD_INFER_DECL Tensor {
   DataType type() const;
 
  protected:
-  explicit Tensor(void* scope);
+  explicit TensorHandle(void* scope);
   void* FindTensor() const;
   void SetPlace(PlaceType place, int device = -1);
   void SetName(const std::string& name);

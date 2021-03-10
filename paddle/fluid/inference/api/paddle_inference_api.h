@@ -98,12 +98,12 @@ class PD_INFER_DECL Predictor {
   std::vector<std::string> GetInputNames();
 
   ///
-  /// \brief Get the Input Tensor object
+  /// \brief Get the intput tensor handle
   ///
   /// \param[in] name input name
   /// \return input tensor
   ///
-  std::unique_ptr<Tensor> GetInputHandle(const std::string& name);
+  std::unique_ptr<TensorHandle> GetInputHandle(const std::string& name);
 
   ///
   /// \brief Run the prediction engine
@@ -120,12 +120,12 @@ class PD_INFER_DECL Predictor {
   std::vector<std::string> GetOutputNames();
 
   ///
-  /// \brief Get the Output Tensor object
+  /// \brief Get the output tensor handle
   ///
   /// \param[in] name otuput name
   /// \return output tensor
   ///
-  std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
+  std::unique_ptr<TensorHandle> GetOutputHandle(const std::string& name);
 
   ///
   /// \brief Clone to get the new predictor. thread safe.
