@@ -19,7 +19,7 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_compile_args, IS_WINDOWS
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_WINDOWS
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 
 # Because Windows don't use docker, the shared lib already exists in the 
@@ -40,8 +40,8 @@ custom_module = load(
         'custom_relu_op.cc', 'custom_relu_op.cu', 'custom_relu_op_dup.cc'
     ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
-    extra_cuda_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_cc_args,  # test for cc flags
+    extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True)
 
 

@@ -20,6 +20,7 @@ import sys
 import time
 import subprocess
 import requests
+import urllib.request
 import platform
 from github import Github
 
@@ -75,10 +76,7 @@ class PRChecker(object):
             if ix // 2 == 0:
                 proxy = ''
             else:
-                if platform.system() == 'Windows':
-                    proxy = '-Y off'
-                else:
-                    proxy = '--no-proxy'
+                proxy = '--no-proxy'
             code = subprocess.call(
                 'wget -q {} --no-check-certificate {}'.format(proxy, url),
                 shell=True)
@@ -89,6 +87,34 @@ class PRChecker(object):
                 format(url, ix, ix * 10, proxy))
             time.sleep(ix * 10)
             ix += 1
+        return False
+
+    def __urlretrieve(self, url, filename):
+        ix = 1
+        with_proxy = urllib.request.getproxies()
+        without_proxy = {'http' : '','http' : ''}
+        while ix < 6:
+            if ix // 2 == 0:
+                cur_proxy = urllib.request.ProxyHandler(without_proxy)
+            else:
+                cur_proxy = urllib.request.ProxyHandler(with_proxy)
+            opener = urllib.request.build_opener(cur_proxy,
+                                                urllib.request.HTTPHandler)
+            urllib.request.install_opener(opener)
+            try:
+                urllib.request.urlretrieve(url, filename)
+            except Exception as e:
+                print(e)
+                print(
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
+                    format(url, ix, ix * 10, proxy))
+                continue
+            else:
+                return True
+            time.sleep(ix * 10)
+            ix += 1
+            
+
         return False
 
     def get_pr_files(self):
@@ -205,9 +231,9 @@ class PRChecker(object):
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        ret = self.__wget_with_retry(
+        ret = self.__urlretrieve(
             'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
-                self.suffix))
+                self.suffix), 'file_ut.json{}'.format(self.suffix))
         if not ret:
             print('PREC download file_ut.json failed')
             exit(1)
@@ -259,9 +285,9 @@ class PRChecker(object):
                     ut_list.append(ut.rstrip('\r\n'))
 
         if ut_list:
-            ret = self.__wget_with_retry(
+            ret = self.__urlretrieve(
                 'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix))
+                    self.suffix), 'prec_delta{}'.format(suffix))
             if ret:
                 with open('prec_delta' + self.suffix) as delta:
                     for ut in delta:

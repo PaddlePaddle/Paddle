@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the 
@@ -34,7 +34,8 @@ custom_attrs = load(
     name='custom_attrs_jit',
     sources=['attr_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_cc_args,  # test for cflags
+    extra_cuda_cflags=extra_nvcc_args,  # test for cflags
     verbose=True)
 
 

@@ -162,7 +162,11 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
       int grid = cout;
       int max_threads = 1024;
 
+#ifdef PADDLE_WITH_HIP
+      hipMemset(out_abs_max, 0, sizeof(T) * cout);
+#else
       cudaMemset(out_abs_max, 0, sizeof(T) * cout);
+#endif
 
       for (int i = 0; i < cin / max_threads; i++) {
         int block = max_threads;
