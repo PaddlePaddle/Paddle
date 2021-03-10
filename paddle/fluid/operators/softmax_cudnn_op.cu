@@ -37,13 +37,6 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 using Tensor = framework::Tensor;
 
-#define LAUNCH_SOFTMAX_WARP_FORWARD(Log2Elements)                  \
-  case Log2Elements:                                               \
-    WarpSoftmaxForward<T, float, Log2Elements><<<                  \
-        blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
-        out_data, x->data<T>(), N, dim, dim);                      \
-    break;
-
 template <typename T>
 struct GetAccType {
   using type = T;
@@ -86,6 +79,20 @@ struct GetVecType<double, 4> {
 
 constexpr int MAX_BLOCK_DIM = 1024;
 
+#define LAUNCH_SOFTMAX_WARP_FORWARD(Log2Elements)                  \
+  case Log2Elements:                                               \
+    WarpSoftmaxForward<T, float, Log2Elements><<<                  \
+        blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
+        out_data, x->data<T>(), N, dim, dim);                      \
+    break;
+
+#define LAUNCH_SOFTMAX_WARP_BACKWARD(Log2Elements)                 \
+  case Log2Elements:                                               \
+    softmax_warp_backward<T, float, Log2Elements><<<               \
+        blocks, threads, 0, ctx.cuda_device_context().stream()>>>( \
+        dx_data, mul_grad.data<T>(), out->data<T>(), N, dim, dim); \
+    break;
+
 static inline int SizeOutAxis(const int axis, DDim dims) {
   int size = 1;
   for (int i = axis + 1; i < dims.size(); i++) {
@@ -99,6 +106,23 @@ int log2_ceil(int value) {
   while ((1 << log2_value) < value) ++log2_value;
   return log2_value;
 }
+
+template <typename T, int VLEN>
+union vec_t {
+  static_assert(sizeof(T) == -1, "vec_t is only available by specialization.");
+};
+
+template <>
+union vec_t<float, 4> {
+  float4 s;
+  float v[4];
+};
+
+template <>
+union vec_t<platform::float16, 4> {
+  int2 s;
+  platform::float16 v[4];
+};
 
 template <typename T, typename VECT, int VPT, int WARP_PER_BLOCK>
 __global__ void VecSoftmaxForward(T* dst, const T* src, const int batch_size,
@@ -229,6 +253,113 @@ __global__ void WarpSoftmaxForward(T* dst, const T* src, const int batch_size,
   }
 }
 
+template <typename T, typename AccT, int Log2Elements>
+__global__ void softmax_warp_backward(T* gradInput, const T* grad,
+                                      const T* output, int batch_size,
+                                      int stride, int element_count) {
+  constexpr int next_power_of_two = 1 << Log2Elements;
+  constexpr int warp_size_softmax =
+      (next_power_of_two < 32) ? next_power_of_two : 32;
+  constexpr int WARP_ITERATIONS = next_power_of_two / warp_size_softmax;
+  constexpr int WARP_BATCH = (next_power_of_two <= 128) ? 2 : 1;
+
+  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * WARP_BATCH;
+
+  int local_batches = batch_size - first_batch;
+  if (local_batches > WARP_BATCH) {
+    local_batches = WARP_BATCH;
+  }
+
+  int local_idx = threadIdx.x % warp_size_softmax;
+
+  int thread_offset = first_batch * stride + local_idx;
+  grad += thread_offset;
+  output += thread_offset;
+  gradInput += thread_offset;
+
+  // load data from global memory
+  AccT grad_reg[WARP_BATCH][WARP_ITERATIONS];
+  AccT output_reg[WARP_BATCH][WARP_ITERATIONS];
+  for (int i = 0; i < WARP_BATCH; ++i) {
+    int batch_element_count = (i >= local_batches) ? 0 : element_count;
+    for (int it = 0; it < WARP_ITERATIONS; ++it) {
+      int element_index = local_idx + it * warp_size_softmax;
+      if (element_index < batch_element_count) {
+        grad_reg[i][it] =
+            static_cast<AccT>(grad[i * element_count + it * warp_size_softmax]);
+        output_reg[i][it] = static_cast<AccT>(
+            output[i * element_count + it * warp_size_softmax]);
+      } else {
+        grad_reg[i][it] = AccT(0);
+        output_reg[i][it] = AccT(0);
+      }
+    }
+  }
+
+  AccT sum[WARP_BATCH];
+#pragma unroll
+  for (int i = 0; i < WARP_BATCH; ++i) {
+    sum[i] = grad_reg[i][0];
+#pragma unroll
+    for (int it = 1; it < WARP_ITERATIONS; ++it) {
+      sum[i] += grad_reg[i][it];
+    }
+  }
+  warp_reduce_sum<AccT, WARP_BATCH, warp_size_softmax>(sum);
+
+// store result
+#pragma unroll
+  for (int i = 0; i < WARP_BATCH; ++i) {
+    if (i >= local_batches) break;
+#pragma unroll
+    for (int it = 0; it < WARP_ITERATIONS; ++it) {
+      int element_index = local_idx + it * warp_size_softmax;
+      if (element_index < element_count) {
+        // compute gradients
+        gradInput[i * element_count + it * warp_size_softmax] =
+            (grad_reg[i][it] - output_reg[i][it] * sum[i]);
+      }
+    }
+  }
+}
+
+template <typename T>
+__global__ void MultiplyCUDAKernel(T* C, const T* A, const T* B, int N) {
+  CUDA_KERNEL_LOOP(i, N) {
+    C[i] = static_cast<T>(static_cast<float>(A[i]) * static_cast<float>(B[i]));
+  }
+}
+
+template <typename T, int VPT, int WARP_PER_BLOCK>
+__global__ void VecSoftmaxBackward(T* dst, const T* grad, const T* src,
+                                   const int batch_size,
+                                   const int softmax_ele) {
+  const int offset =
+      blockIdx.x * softmax_ele * WARP_PER_BLOCK + threadIdx.x * VPT;
+
+  float local_sum_gy = 0.f;
+  vec_t<T, VPT> local_grad;
+  vec_t<T, VPT> local_src;
+
+  local_grad.s =
+      reinterpret_cast<const decltype(local_grad.s)*>(&grad[offset])[0];
+  local_src.s = reinterpret_cast<const decltype(local_src.s)*>(&src[offset])[0];
+
+  for (int i = 0; i < VPT; ++i) {
+    local_sum_gy += static_cast<float>(local_grad.v[i]) *
+                    static_cast<float>(local_src.v[i]);
+  }
+  float sum_gy = math::warpReduceSum<float>(local_sum_gy, 0xffffffff);
+
+  vec_t<T, VPT> local_dst;
+  for (int i = 0; i < VPT; ++i) {
+    local_dst.v[i] =
+        static_cast<T>(static_cast<float>(local_src.v[i]) *
+                       (static_cast<float>(local_grad.v[i]) - sum_gy));
+  }
+  reinterpret_cast<decltype(local_dst.s)*>(&dst[offset])[0] = local_dst.s;
+}
+
 // When D is larg and dim is small:
 // Each block arranged by N，each thread arranged by D
 // each thread compute dim * VECSIZE number's softmax
@@ -311,6 +442,86 @@ inline void LaunchLoopDimSoftmaxForward(const cudaStream_t& stream,
   } else {
     LaunchLoopDimSoftmaxForwardKernel<T, 1>(stream, in_data, out_data, N, dim,
                                             D);
+  }
+}
+
+// When D is larg and dim is small:
+// Each block arranged by N，each thread arranged by D
+// each thread compute dim number's softmax
+template <typename T, typename AccT, int VECSIZE>
+__global__ void KeLoopDimSoftmaxBackward(T* __restrict__ dx,
+                                         const T* __restrict__ out,
+                                         const T* __restrict__ dout,
+                                         const int N, const int dim,
+                                         const int D) {
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int vec_id = tid * VECSIZE;
+  const int out_id = vec_id / D;
+  if (out_id >= N) return;
+  const int in_id = vec_id - out_id * D;
+  // vectorization for global memory coalescing
+  using VecT = typename GetVecType<T, VECSIZE>::type;
+  VecT vec_out, vec_dout, vec_dx;
+  T* buf_out = reinterpret_cast<T*>(&vec_out);
+  T* buf_dout = reinterpret_cast<T*>(&vec_dout);
+  T* buf_dx = reinterpret_cast<T*>(&vec_dx);
+
+  const int offset = out_id * dim * D + in_id;
+  const T* __restrict__ out_row = out + offset;
+  const T* __restrict__ dout_row = dout + offset;
+  T* __restrict__ dx_row = dx + offset;
+  // compute multiply then sum value
+  AccT sum_val[VECSIZE]{0};
+  for (int dim_id = 0; dim_id < dim; dim_id++) {
+    vec_out = reinterpret_cast<const VecT*>(&out_row[dim_id * D])[0];
+    vec_dout = reinterpret_cast<const VecT*>(&dout_row[dim_id * D])[0];
+#pragma unroll
+    for (int i = 0; i < VECSIZE; i++) {
+      sum_val[i] +=
+          static_cast<AccT>(buf_out[i]) * static_cast<AccT>(buf_dout[i]);
+    }
+  }
+  // compute softmax gradient value
+  for (int dim_id = 0; dim_id < dim; dim_id++) {
+    vec_out = reinterpret_cast<const VecT*>(&out_row[dim_id * D])[0];
+    vec_dout = reinterpret_cast<const VecT*>(&dout_row[dim_id * D])[0];
+#pragma unroll
+    for (int i = 0; i < VECSIZE; i++) {
+      buf_dx[i] = static_cast<T>(static_cast<AccT>(buf_out[i]) *
+                                 (static_cast<AccT>(buf_dout[i]) - sum_val[i]));
+    }
+    reinterpret_cast<VecT*>(&dx_row[dim_id * D])[0] = vec_dx;
+  }
+}
+
+template <typename T, int VECSIZE>
+inline void LaunchLoopDimSoftmaxBackwardKernel(const cudaStream_t& stream,
+                                               T* dx_data, const T* out_data,
+                                               const T* dout_data, const int N,
+                                               const int dim, const int D) {
+  int loop_num = N * D / VECSIZE;
+  int threads = std::min(loop_num, MAX_BLOCK_DIM);
+  int grids = (loop_num + threads - 1) / threads;
+  using AccT = typename GetAccType<T>::type;
+
+  KeLoopDimSoftmaxBackward<T, AccT, VECSIZE><<<grids, threads, 0, stream>>>(
+      dx_data, out_data, dout_data, N, dim, D);
+}
+
+template <typename T>
+inline void LaunchLoopDimSoftmaxBackward(const cudaStream_t& stream, T* dx_data,
+                                         const T* out_data, const T* dout_data,
+                                         const int N, const int dim,
+                                         const int D) {
+  if (D % 4 == 0) {
+    LaunchLoopDimSoftmaxBackwardKernel<T, 4>(stream, dx_data, out_data,
+                                             dout_data, N, dim, D);
+  } else if (D % 2 == 0) {
+    LaunchLoopDimSoftmaxBackwardKernel<T, 2>(stream, dx_data, out_data,
+                                             dout_data, N, dim, D);
+  } else {
+    LaunchLoopDimSoftmaxBackwardKernel<T, 1>(stream, dx_data, out_data,
+                                             dout_data, N, dim, D);
   }
 }
 
@@ -434,427 +645,6 @@ inline void LaunchSpandDimDSoftmaxForward(const cudaStream_t& stream,
   } else {
     LaunchSpandDimDSoftmaxForwardKernel<T, 1>(stream, in_data, out_data, N, dim,
                                               D);
-  }
-}
-
-// when D == 1 && 320 <= dim <= 512, using KeD1WarpSoftmaxBackward faster,
-// each warp compute one row's element,
-// each thread compute COLS element of dim and store in register
-template <typename T, typename AccT, int COLS, int VECSIZE>
-__global__ void KeD1WarpSoftmaxBackward(T* __restrict__ dx,
-                                        const T* __restrict__ out,
-                                        const T* __restrict__ dout, const int N,
-                                        const int dim) {
-  static_assert(COLS % VECSIZE == 0);
-  constexpr int num_vec = COLS / VECSIZE;
-  const int warp_id = blockIdx.x * blockDim.y + threadIdx.y;
-  const int tid = threadIdx.x;
-
-  for (int row = warp_id; row < N; row += gridDim.x * blockDim.y) {
-    const int offset = row * dim;
-    const T* __restrict__ out_row = out + offset;
-    const T* __restrict__ dout_row = dout + offset;
-    T* __restrict__ dx_row = dx + offset;
-    // vectorization for global memory coalescing
-    using VecT = typename GetVecType<T, VECSIZE>::type;
-    VecT vec;
-    T* buf_src = reinterpret_cast<T*>(&vec);
-    // Load src data from global memory to register,
-    // and compute max value
-    AccT buf_out[COLS], buf_dout[COLS];
-    int real_cols = 0;
-    AccT sum_val(0);
-#pragma unroll
-    for (int col = 0; col < num_vec; col++) {
-      int src_col = (tid + col * WARP_SIZE) * VECSIZE;
-      if (src_col >= dim) break;
-      // Vectorize read out data
-      vec = reinterpret_cast<const VecT*>(&out_row[src_col])[0];
-      AccT* out_acc = buf_out + real_cols;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        out_acc[i] = static_cast<AccT>(buf_src[i]);
-      }
-      // Vectorize read dout data
-      vec = reinterpret_cast<const VecT*>(&dout_row[src_col])[0];
-      AccT* dout_acc = buf_dout + real_cols;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        dout_acc[i] = static_cast<AccT>(buf_src[i]);
-        sum_val += out_acc[i] * dout_acc[i];
-      }
-      real_cols += VECSIZE;
-    }
-    sum_val = math::warpReduceSum(sum_val, 0xffffffff);
-    // compute softmax result
-    real_cols = 0;
-#pragma unroll
-    for (int col = 0; col < num_vec; col++) {
-      int dst_col = (tid + col * WARP_SIZE) * VECSIZE;
-      if (dst_col >= dim) break;
-      AccT* out_acc = buf_out + real_cols;
-      AccT* dout_acc = buf_dout + real_cols;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        buf_src[i] = static_cast<T>(out_acc[i] * (dout_acc[i] - sum_val));
-      }
-      reinterpret_cast<VecT*>(&dx_row[dst_col])[0] = vec;
-      real_cols += VECSIZE;
-    }
-  }
-}
-
-template <typename T, int COLS, int VECSIZE>
-void LaunchD1WarpSoftmaxBackwardKernel(const cudaStream_t& stream, T* dx_data,
-                                       const T* out_data, const T* dout_data,
-                                       const int N, const int dim) {
-  int N_b = std::min(8, N);
-  dim3 threads(WARP_SIZE, N_b);
-  int grids = (N + N_b - 1) / N_b;
-  using AccT = typename GetAccType<T>::type;
-
-  KeD1WarpSoftmaxBackward<T, AccT, COLS,
-                          VECSIZE><<<grids, threads, 0, stream>>>(
-      dx_data, out_data, dout_data, N, dim);
-}
-
-#define LAUNCH_D1WARP_BACKWARD_COLS(COLS)                \
-  case COLS:                                             \
-    LaunchD1WarpSoftmaxBackwardKernel<T, COLS, VECSIZE>( \
-        stream, dx_data, out_data, dout_data, N, dim);   \
-    break;
-
-template <typename T, int VECSIZE>
-typename std::enable_if<VECSIZE == 1, void>::type DispatchD1WarpSoftmaxBackward(
-    const cudaStream_t& stream, T* dx_data, const T* out_data,
-    const T* dout_data, const int N, const int dim, const int cols_per_thread) {
-  switch (cols_per_thread) {
-    LAUNCH_D1WARP_BACKWARD_COLS(1)
-    LAUNCH_D1WARP_BACKWARD_COLS(2)
-    LAUNCH_D1WARP_BACKWARD_COLS(3)
-    LAUNCH_D1WARP_BACKWARD_COLS(4)
-    LAUNCH_D1WARP_BACKWARD_COLS(5)
-    LAUNCH_D1WARP_BACKWARD_COLS(6)
-    LAUNCH_D1WARP_BACKWARD_COLS(7)
-    LAUNCH_D1WARP_BACKWARD_COLS(8)
-    LAUNCH_D1WARP_BACKWARD_COLS(9)
-    LAUNCH_D1WARP_BACKWARD_COLS(10)
-    LAUNCH_D1WARP_BACKWARD_COLS(11)
-    LAUNCH_D1WARP_BACKWARD_COLS(12)
-    LAUNCH_D1WARP_BACKWARD_COLS(13)
-    LAUNCH_D1WARP_BACKWARD_COLS(14)
-    LAUNCH_D1WARP_BACKWARD_COLS(15)
-    LAUNCH_D1WARP_BACKWARD_COLS(16)
-    default:
-      fprintf(stderr,
-              "[DispatchD1WarpSoftmaxBackward::VECSIZE==1] "
-              "BAD PARAM (%d, %d) with %d\n",
-              N, dim, cols_per_thread);
-      // (32 for out + 32 for dout) * 4 byte for float = 256 > 255
-      // so only support max(COLS) == 16
-      break;
-  }
-}
-
-template <typename T, int VECSIZE>
-typename std::enable_if<VECSIZE == 2, void>::type DispatchD1WarpSoftmaxBackward(
-    const cudaStream_t& stream, T* dx_data, const T* out_data,
-    const T* dout_data, const int N, const int dim, const int cols_per_thread) {
-  switch (cols_per_thread) {
-    LAUNCH_D1WARP_BACKWARD_COLS(2)
-    LAUNCH_D1WARP_BACKWARD_COLS(4)
-    LAUNCH_D1WARP_BACKWARD_COLS(6)
-    LAUNCH_D1WARP_BACKWARD_COLS(8)
-    LAUNCH_D1WARP_BACKWARD_COLS(10)
-    LAUNCH_D1WARP_BACKWARD_COLS(12)
-    LAUNCH_D1WARP_BACKWARD_COLS(14)
-    LAUNCH_D1WARP_BACKWARD_COLS(16)
-    default:
-      fprintf(stderr,
-              "[DispatchD1WarpSoftmaxBackward::VECSIZE==2] "
-              "BAD PARAM (%d, %d) with %d\n",
-              N, dim, cols_per_thread);
-      break;
-  }
-}
-
-template <typename T, int VECSIZE>
-typename std::enable_if<VECSIZE == 4, void>::type DispatchD1WarpSoftmaxBackward(
-    const cudaStream_t& stream, T* dx_data, const T* out_data,
-    const T* dout_data, const int N, const int dim, const int cols_per_thread) {
-  switch (cols_per_thread) {
-    LAUNCH_D1WARP_BACKWARD_COLS(4)
-    LAUNCH_D1WARP_BACKWARD_COLS(8)
-    LAUNCH_D1WARP_BACKWARD_COLS(12)
-    LAUNCH_D1WARP_BACKWARD_COLS(16)
-    default:
-      fprintf(stderr,
-              "[DispatchD1WarpSoftmaxBackward::VECSIZE==4] "
-              "BAD PARAM (%d, %d) with %d\n",
-              N, dim, cols_per_thread);
-      break;
-  }
-}
-#undef LAUNCH_D1WARP_BACKWARD_COLS
-
-template <typename T>
-inline void LaunchD1WarpSoftmaxBackward(const cudaStream_t& stream, T* dx_data,
-                                        const T* out_data, const T* dout_data,
-                                        const int N, const int dim) {
-  const int cols_per_thread = (dim + WARP_SIZE - 1) / WARP_SIZE;
-
-  if (dim % 4 == 0 && cols_per_thread % 4 == 0) {
-    DispatchD1WarpSoftmaxBackward<T, 4>(stream, dx_data, out_data, dout_data, N,
-                                        dim, cols_per_thread);
-  } else if (dim % 2 == 0 && cols_per_thread % 2 == 0) {
-    DispatchD1WarpSoftmaxBackward<T, 2>(stream, dx_data, out_data, dout_data, N,
-                                        dim, cols_per_thread);
-  } else {
-    DispatchD1WarpSoftmaxBackward<T, 1>(stream, dx_data, out_data, dout_data, N,
-                                        dim, cols_per_thread);
-  }
-}
-
-// when D == 1 && 512 < dim <= 2048, using KeD1BlockSharedSoftmaxBackward
-// each block compute a row, and synchronization by shared memory
-// each thread compute VECSIZE elements of dim, and store in shared memory
-template <typename T, typename AccT, int VECSIZE>
-__global__ void KeD1BlockSharedSoftmaxBackward(T* __restrict__ dx,
-                                               const T* __restrict__ out,
-                                               const T* __restrict__ dout,
-                                               const int N, const int dim) {
-  extern __shared__ __align__(sizeof(AccT)) unsigned char s_mem[];
-  AccT* buf_out = reinterpret_cast<AccT*>(s_mem);
-  AccT* buf_dout = buf_out + dim;
-
-  const int tid = threadIdx.x;
-  // vectorization for global memory coalescing
-  using VecT = typename GetVecType<T, VECSIZE>::type;
-  VecT vec;
-  T* buf_src = reinterpret_cast<T*>(&vec);
-
-  for (int row = blockIdx.x; row < N; row += gridDim.x) {
-    const int offset = row * dim;
-    const T* __restrict__ out_row = out + offset;
-    const T* __restrict__ dout_row = dout + offset;
-    T* __restrict__ dx_row = dx + offset;
-
-    // compute max value
-    AccT sum_val(0);
-    for (int col = tid * VECSIZE; col < dim; col += blockDim.x * VECSIZE) {
-      // Vectorize read out data
-      vec = reinterpret_cast<const VecT*>(&out_row[col])[0];
-      AccT* out_acc = buf_out + col;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        out_acc[i] = static_cast<AccT>(buf_src[i]);
-      }
-      // Vectorize read dout data
-      vec = reinterpret_cast<const VecT*>(&dout_row[col])[0];
-      AccT* dout_acc = buf_dout + col;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        dout_acc[i] = static_cast<AccT>(buf_src[i]);
-        sum_val += out_acc[i] * dout_acc[i];
-      }
-    }
-    sum_val = math::blockReduceSum(sum_val, 0xffffffff);
-    // compute softmax result
-    for (int col = tid * VECSIZE; col < dim; col += blockDim.x * VECSIZE) {
-      AccT* out_acc = buf_out + col;
-      AccT* dout_acc = buf_dout + col;
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        buf_src[i] = static_cast<T>(out_acc[i] * (dout_acc[i] - sum_val));
-      }
-      reinterpret_cast<VecT*>(&dx_row[col])[0] = vec;
-    }
-  }
-}
-
-template <typename T, int VECSIZE>
-void LaunchD1BlockSharedSoftmaxBackwardKernel(const cudaStream_t& stream,
-                                              T* dx_data, const T* out_data,
-                                              const T* dout_data, const int N,
-                                              const int dim) {
-  const int threads = std::min(dim, MAX_BLOCK_DIM);
-  const int grids = N;
-  using AccT = typename GetAccType<T>::type;
-
-  KeD1BlockSharedSoftmaxBackward<
-      T, AccT, VECSIZE><<<grids, threads, dim * 2 * sizeof(AccT), stream>>>(
-      dx_data, out_data, dout_data, N, dim);
-}
-
-template <typename T>
-inline void LaunchD1BlockSharedSoftmaxBackward(const cudaStream_t& stream,
-                                               T* dx_data, const T* out_data,
-                                               const T* dout_data, const int N,
-                                               const int dim) {
-  if (dim % 4 == 0) {
-    LaunchD1BlockSharedSoftmaxBackwardKernel<T, 4>(stream, dx_data, out_data,
-                                                   dout_data, N, dim);
-  } else if (dim % 2 == 0) {
-    LaunchD1BlockSharedSoftmaxBackwardKernel<T, 2>(stream, dx_data, out_data,
-                                                   dout_data, N, dim);
-  } else {
-    LaunchD1BlockSharedSoftmaxBackwardKernel<T, 1>(stream, dx_data, out_data,
-                                                   dout_data, N, dim);
-  }
-}
-
-// when D == 1 && 2048 < dim, using KeD1BlockSoftmaxBackward,
-// each block compute a row, and synchronization by blockReduce,
-// each thread compute VECSIZE elements of dim
-template <typename T, typename AccT, int VECSIZE>
-__global__ void KeD1BlockSoftmaxBackward(T* __restrict__ dx,
-                                         const T* __restrict__ out,
-                                         const T* __restrict__ dout,
-                                         const int N, const int dim) {
-  const int tid = threadIdx.x;
-  // vectorization for global memory coalescing
-  using VecT = typename GetVecType<T, VECSIZE>::type;
-  VecT vec_out, vec_dout, vec_dx;
-  T* buf_out = reinterpret_cast<T*>(&vec_out);
-  T* buf_dout = reinterpret_cast<T*>(&vec_dout);
-  T* buf_dx = reinterpret_cast<T*>(&vec_dx);
-
-  for (int row = blockIdx.x; row < N; row += gridDim.x) {
-    const int offset = row * dim;
-    const T* __restrict__ out_row = out + offset;
-    const T* __restrict__ dout_row = dout + offset;
-    T* __restrict__ dx_row = dx + offset;
-    // compute sum value
-    AccT sum_val(0);
-    for (int col = tid * VECSIZE; col < dim; col += blockDim.x * VECSIZE) {
-      vec_out = reinterpret_cast<const VecT*>(&out_row[col])[0];
-      vec_dout = reinterpret_cast<const VecT*>(&dout_row[col])[0];
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        sum_val +=
-            static_cast<AccT>(buf_out[i]) * static_cast<AccT>(buf_dout[i]);
-      }
-    }
-    sum_val = math::blockReduceSum(sum_val, 0xffffffff);
-    // compute softmax result
-    for (int col = tid * VECSIZE; col < dim; col += blockDim.x * VECSIZE) {
-      vec_out = reinterpret_cast<const VecT*>(&out_row[col])[0];
-      vec_dout = reinterpret_cast<const VecT*>(&dout_row[col])[0];
-#pragma unroll
-      for (int i = 0; i < VECSIZE; i++) {
-        buf_dx[i] = static_cast<T>(static_cast<AccT>(buf_out[i]) *
-                                   (static_cast<AccT>(buf_dout[i]) - sum_val));
-      }
-      reinterpret_cast<VecT*>(&dx_row[col])[0] = vec_dx;
-    }
-  }
-}
-
-template <typename T, int VECSIZE>
-void LaunchD1BlockSoftmaxBackwardKernel(const cudaStream_t& stream, T* dx_data,
-                                        const T* out_data, const T* dout_data,
-                                        const int N, const int dim) {
-  const int threads = std::min(dim, MAX_BLOCK_DIM);
-  const int grids = N;
-  using AccT = typename GetAccType<T>::type;
-
-  KeD1BlockSoftmaxBackward<T, AccT, VECSIZE><<<grids, threads, 0, stream>>>(
-      dx_data, out_data, dout_data, N, dim);
-}
-
-template <typename T>
-inline void LaunchD1BlockSoftmaxBackward(const cudaStream_t& stream, T* dx_data,
-                                         const T* out_data, const T* dout_data,
-                                         const int N, const int dim) {
-  if (dim % 4 == 0) {
-    LaunchD1BlockSoftmaxBackwardKernel<T, 4>(stream, dx_data, out_data,
-                                             dout_data, N, dim);
-  } else if (dim % 2 == 0) {
-    LaunchD1BlockSoftmaxBackwardKernel<T, 2>(stream, dx_data, out_data,
-                                             dout_data, N, dim);
-  } else {
-    LaunchD1BlockSoftmaxBackwardKernel<T, 1>(stream, dx_data, out_data,
-                                             dout_data, N, dim);
-  }
-}
-
-// When D is larg and dim is small:
-// Each block arranged by N，each thread arranged by D
-// each thread compute dim number's softmax
-template <typename T, typename AccT, int VECSIZE>
-__global__ void KeLoopDimSoftmaxBackward(T* __restrict__ dx,
-                                         const T* __restrict__ out,
-                                         const T* __restrict__ dout,
-                                         const int N, const int dim,
-                                         const int D) {
-  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  const int vec_id = tid * VECSIZE;
-  const int out_id = vec_id / D;
-  if (out_id >= N) return;
-  const int in_id = vec_id - out_id * D;
-  // vectorization for global memory coalescing
-  using VecT = typename GetVecType<T, VECSIZE>::type;
-  VecT vec_out, vec_dout, vec_dx;
-  T* buf_out = reinterpret_cast<T*>(&vec_out);
-  T* buf_dout = reinterpret_cast<T*>(&vec_dout);
-  T* buf_dx = reinterpret_cast<T*>(&vec_dx);
-
-  const int offset = out_id * dim * D + in_id;
-  const T* __restrict__ out_row = out + offset;
-  const T* __restrict__ dout_row = dout + offset;
-  T* __restrict__ dx_row = dx + offset;
-  // compute multiply then sum value
-  AccT sum_val[VECSIZE]{0};
-  for (int dim_id = 0; dim_id < dim; dim_id++) {
-    vec_out = reinterpret_cast<const VecT*>(&out_row[dim_id * D])[0];
-    vec_dout = reinterpret_cast<const VecT*>(&dout_row[dim_id * D])[0];
-#pragma unroll
-    for (int i = 0; i < VECSIZE; i++) {
-      sum_val[i] +=
-          static_cast<AccT>(buf_out[i]) * static_cast<AccT>(buf_dout[i]);
-    }
-  }
-  // compute softmax gradient value
-  for (int dim_id = 0; dim_id < dim; dim_id++) {
-    vec_out = reinterpret_cast<const VecT*>(&out_row[dim_id * D])[0];
-    vec_dout = reinterpret_cast<const VecT*>(&dout_row[dim_id * D])[0];
-#pragma unroll
-    for (int i = 0; i < VECSIZE; i++) {
-      buf_dx[i] = static_cast<T>(static_cast<AccT>(buf_out[i]) *
-                                 (static_cast<AccT>(buf_dout[i]) - sum_val[i]));
-    }
-    reinterpret_cast<VecT*>(&dx_row[dim_id * D])[0] = vec_dx;
-  }
-}
-
-template <typename T, int VECSIZE>
-inline void LaunchLoopDimSoftmaxBackwardKernel(const cudaStream_t& stream,
-                                               T* dx_data, const T* out_data,
-                                               const T* dout_data, const int N,
-                                               const int dim, const int D) {
-  int loop_num = N * D / VECSIZE;
-  int threads = std::min(loop_num, MAX_BLOCK_DIM);
-  int grids = (loop_num + threads - 1) / threads;
-  using AccT = typename GetAccType<T>::type;
-
-  KeLoopDimSoftmaxBackward<T, AccT, VECSIZE><<<grids, threads, 0, stream>>>(
-      dx_data, out_data, dout_data, N, dim, D);
-}
-
-template <typename T>
-inline void LaunchLoopDimSoftmaxBackward(const cudaStream_t& stream, T* dx_data,
-                                         const T* out_data, const T* dout_data,
-                                         const int N, const int dim,
-                                         const int D) {
-  if (D % 4 == 0) {
-    LaunchLoopDimSoftmaxBackwardKernel<T, 4>(stream, dx_data, out_data,
-                                             dout_data, N, dim, D);
-  } else if (D % 2 == 0) {
-    LaunchLoopDimSoftmaxBackwardKernel<T, 2>(stream, dx_data, out_data,
-                                             dout_data, N, dim, D);
-  } else {
-    LaunchLoopDimSoftmaxBackwardKernel<T, 1>(stream, dx_data, out_data,
-                                             dout_data, N, dim, D);
   }
 }
 
@@ -986,21 +776,18 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
     constexpr int max_dim = 320;
     bool optimize = false;
-    constexpr bool warp_softmax_available =
-        std::is_same<T, float>::value ||
-        std::is_same<T, platform::float16>::value;
     constexpr int warps_per_block = 4;
-    if (D == 1 && dim <= max_dim && warp_softmax_available) {
+    if (D == 1 && dim <= max_dim && sizeof(T) <= 4) {
       if (dim == 128 && N % warps_per_block == 0) {
         optimize = true;
         // a warp for a batch, 4 elements for a thread, only support the softmax
         // dim size = 128 currently
-        if (std::is_same<T, platform::float16>::value) {
+        if (sizeof(T) == 2) {
           VecSoftmaxForward<T, int2, 4, warps_per_block><<<
               N / warps_per_block, warps_per_block * WARP_SIZE, 0,
               ctx.cuda_device_context().stream()>>>(out_data, x->data<T>(), N,
                                                     dim);
-        } else if (std::is_same<T, float>::value) {
+        } else if (sizeof(T) == 4) {
           VecSoftmaxForward<T, int4, 4, warps_per_block><<<
               N / warps_per_block, warps_per_block * WARP_SIZE, 0,
               ctx.cuda_device_context().stream()>>>(out_data, x->data<T>(), N,
@@ -1100,21 +887,78 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     const int N = SizeToAxis(axis, dims);
     const int D = SizeOutAxis(axis, dims);
 
+    constexpr int warps_per_block = 4;
+    constexpr bool warp_softmax_available =
+        std::is_same<T, float>::value ||
+        std::is_same<T, platform::float16>::value;
     bool optimize = false;
-    auto stream = ctx.cuda_device_context().stream();
-    if (D == 1) {
-      optimize = true;
-      if (dim <= 512) {
-        LaunchD1WarpSoftmaxBackward(stream, dx_data, out->data<T>(),
-                                    dout->data<T>(), N, dim);
-      } else if (dim <= 2048) {
-        LaunchD1BlockSharedSoftmaxBackward(stream, dx_data, out->data<T>(),
-                                           dout->data<T>(), N, dim);
-      } else {
-        LaunchD1BlockSoftmaxBackward(stream, dx_data, out->data<T>(),
-                                     dout->data<T>(), N, dim);
+    if (D == 1 && warp_softmax_available) {
+      if (dim == 128 && N % warps_per_block == 0) {
+        optimize = true;
+        if (std::is_same<T, float>::value) {
+          VecSoftmaxBackward<float, 4, warps_per_block><<<
+              N / warps_per_block, warps_per_block * WARP_SIZE, 0,
+              ctx.cuda_device_context().stream()>>>(dx->data<float>(),
+                                                    dout->data<float>(),
+                                                    out->data<float>(), N, dim);
+        } else if (std::is_same<T, platform::float16>::value) {
+          VecSoftmaxBackward<platform::float16, 4, warps_per_block><<<
+              N / warps_per_block, warps_per_block * WARP_SIZE, 0,
+              ctx.cuda_device_context().stream()>>>(
+              dx->data<platform::float16>(), dout->data<platform::float16>(),
+              out->data<platform::float16>(), N, dim);
+        } else {
+          PADDLE_ENFORCE_EQ(
+              warp_softmax_available, true,
+              platform::errors::Unimplemented(
+                  "Warp softmax backward is only available for fp32 and fp16"));
+        }
+      } else if (dim < 40 && dim % 32 != 0) {
+        optimize = true;
+        Tensor mul_grad;
+        int numel = N * dim;
+        mul_grad.mutable_data<T>({numel}, ctx.GetPlace());
+
+        auto stream = ctx.cuda_device_context().stream();
+        auto& dev_ctx =
+            ctx.template device_context<platform::CUDADeviceContext>();
+        auto config = GetGpuLaunchConfig1D(dev_ctx, numel);
+
+        MultiplyCUDAKernel<T><<<config.block_per_grid.x,
+                                config.thread_per_block.x, 0, stream>>>(
+            mul_grad.data<T>(), dout->data<T>(), out->data<T>(), numel);
+
+        int log2_elements = log2_ceil(dim);
+        const int next_power_of_two = 1 << log2_elements;
+
+        int warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
+
+        int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
+
+        constexpr int threads_per_block = 128;
+
+        int warps_per_block = (threads_per_block / warp_size);
+        int batches_per_block = warps_per_block * batches_per_warp;
+        int blocks = (N + batches_per_block - 1) / batches_per_block;
+        dim3 threads(warp_size, warps_per_block, 1);
+
+        switch (log2_elements) {
+          LAUNCH_SOFTMAX_WARP_BACKWARD(0);  // 1
+          LAUNCH_SOFTMAX_WARP_BACKWARD(1);  // 2
+          LAUNCH_SOFTMAX_WARP_BACKWARD(2);  // 4
+          LAUNCH_SOFTMAX_WARP_BACKWARD(3);  // 8
+          LAUNCH_SOFTMAX_WARP_BACKWARD(4);  // 16
+          LAUNCH_SOFTMAX_WARP_BACKWARD(5);  // 32
+          LAUNCH_SOFTMAX_WARP_BACKWARD(6);  // 64
+          LAUNCH_SOFTMAX_WARP_BACKWARD(7);  // 128
+          LAUNCH_SOFTMAX_WARP_BACKWARD(8);  // 256
+          LAUNCH_SOFTMAX_WARP_BACKWARD(9);  // 512
+          default:
+            break;
+        }
       }
-    } else {
+    } else if (D > 1) {
+      auto stream = ctx.cuda_device_context().stream();
       if (D <= MAX_BLOCK_DIM) {
         optimize = true;
         LaunchSpandDimDSoftmaxBackward(stream, dx_data, out->data<T>(),
