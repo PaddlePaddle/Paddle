@@ -312,7 +312,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertEqual(x.dim(), 2)
         self.assertEqual(x.ndimension(), 2)
         self.assertEqual(x.ndim, 2)
-        self.assertEqual(x.size, 6)
         self.assertEqual(x.numel(), 6)
         self.assertTrue(np.array_equal(x.exp().numpy(), paddle.exp(x).numpy()))
         self.assertTrue(
