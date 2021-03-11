@@ -78,7 +78,7 @@ __global__ void reluKernelCudaDouble(const T* src, T* dst, int num) {
     dst[idx] = src[idx] > zero ? src[idx] : zero;
   }
 }
-template <typename T, int vec>
+template <typename T, int VECTORSIZE>
 struct ReluGPUFunctor : public BaseActivationFunctor<T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& in, framework::Tensor* out,
@@ -86,18 +86,20 @@ struct ReluGPUFunctor : public BaseActivationFunctor<T> {
     const T* input_data = in.data<T>();
     T* output_data = out->mutable_data<T>(context.GetPlace());
     int block = 512;
-    int grid = (num + block - 1) / block;
-    int grid2 = (num / 2 + block - 1) / block;
-    int grid4 = (num / 4 + block - 1) / block;
+    int vec = VECTORSIZE;
+    if (num < vec) {
+      vec = 1;
+    }
+    int grid = (num / vec + block - 1) / block;
     switch (vec) {
-      case 1:  // float16 -> half2
-        reluKernelCudaHalf2<<<grid2, block>>>(input_data, output_data, num);
-        break;
-      case 2:  // float -> float4
-        reluKernelCudaFloat4<<<grid4, block>>>(input_data, output_data, num);
-        break;
-      case 4:  // double -> double
+      case 1:  // double -> double
         reluKernelCudaDouble<<<grid, block>>>(input_data, output_data, num);
+        break;
+      case 2:  // float16 -> half2
+        reluKernelCudaHalf2<<<grid, block>>>(input_data, output_data, num);
+        break;
+      case 4:  // float -> float4
+        reluKernelCudaFloat4<<<grid, block>>>(input_data, output_data, num);
         break;
       default:
         break;
@@ -187,11 +189,11 @@ REGISTER_OP_CUDA_KERNEL(
 /* ===========================    relu register  ============================ */
 REGISTER_OP_CUDA_KERNEL(
     relu, ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
-                              ops::ReluGPUFunctor<float, 2>>,
+                              ops::ReluGPUFunctor<float, 4>>,
     ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
-                        ops::ReluGPUFunctor<double, 4>>,
+                        ops::ReluGPUFunctor<double, 1>>,
     ops::ReluBaseKernel<paddle::platform::CUDADeviceContext,
-                        ops::ReluGPUFunctor<plat::float16, 1>>);
+                        ops::ReluGPUFunctor<plat::float16, 2>>);
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
