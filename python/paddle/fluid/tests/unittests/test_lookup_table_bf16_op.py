@@ -160,6 +160,33 @@ class TestLookupTableBF16OpWIsSelectedRows4DIds(
             low=0, high=15, size=(3, 4, 5, 1)).astype("int64")
 
 
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
+class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
+    def test_check_output(self):
+        ids = np.squeeze(self.inputs['Ids'])
+        padding_idx = np.random.choice(ids, 1)[0]
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output(check_dygraph=False)
+
+
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
+class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output(check_dygraph=False)
+
+
 if __name__ == "__main__":
     enable_static()
     unittest.main()
