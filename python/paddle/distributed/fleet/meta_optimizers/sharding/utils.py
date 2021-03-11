@@ -357,7 +357,7 @@ def get_grad_device(grad_name, shard):
     base_name = None
     # mind the traversal order 
     possible_suffixes = [
-        '.cast_fp16@GRAD_0', '.cast_fp16@GRAD', '@GRAD_0', '@GRAD'
+        '.cast_fp16@GRAD@MERGED', '.cast_fp16@GRAD', '@GRAD@MERGED', '@GRAD'
     ]
     for suffix in possible_suffixes:
         if suffix in grad_name:
