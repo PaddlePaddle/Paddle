@@ -4080,11 +4080,8 @@ class PipelineOptimizer(object):
         return None
 
     def _rename_arg(self, op, old_name, new_name):
-        op_desc = op.desc
-        if isinstance(op_desc, tuple):
-            op_desc = op_desc[0]
-        op_desc._rename_input(old_name, new_name)
-        op_desc._rename_output(old_name, new_name)
+        op._rename_input(old_name, new_name)
+        op._rename_output(old_name, new_name)
 
     def _create_var(self, block, ref_var, name):
         """
@@ -4839,44 +4836,32 @@ class PipelineOptimizer(object):
 
     def _rename_gradient_var_name(self, block):
         for index, op in enumerate(block.ops):
-            if self._is_backward_op(op) and (
-                    self._op_role_var_key in op.attr_names):
-                op_role_var = op.attr(self._op_role_var_key)
-
-                if len(op_role_var) == 0:
-                    continue
-                for i in range(0, len(op_role_var), 2):
-                    grad_name = op_role_var[i + 1]
-                    grad_var = block.vars[grad_name]
-                    new_grad_var_name = unique_name.generate(grad_name)
-                    new_var = self._create_var(block, grad_var,
-                                               new_grad_var_name)
-                    new_var.persistable = False
-                    self._rename_arg(op, grad_name, new_grad_var_name)
+            if not self._is_optimize_op(op): continue
+            input_names = op.input_arg_names
+            output_names = op.output_arg_names
+            in_out_names = input_names + output_names
+            # append "MERGED" to the names of parameter gradients,
+            # and mofify the op_role_var attribute (by rename_arg func).
+            for name in in_out_names:
+                if not core.grad_var_suffix() in name: continue
+                param_name = name.strip(core.grad_var_suffix())
+                new_grad_name = name + "@MERGED"
+                self._rename_arg(op, name, new_grad_name)
 
     def _accumulate_gradients(self, block):
         """
-        Accumulate the gradients generated in microbatch to the one in mini-batch.
+        Create a new merged gradient for each parameter and accumulate the
+        corresponding gradient to it.
         """
-        first_optimize_op_index = None
-        accumulated_grad_names = []
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # remove the cast op of fp16 grad to fp32 grad
             if self._is_optimize_op(op) and op.type == 'cast':
                 in_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]
-                if out_name.strip('@GRAD') in self._param_device_map:
+                if out_name.strip('@GRAD@MERGED') in self._param_device_map:
                     assert in_name.replace('.cast_fp16', '') == out_name
                     block._remove_op(index)
                     continue
-
-            if not self._is_optimize_op(op) and not first_optimize_op_index:
-                first_optimize_op_index = index + 1
-                if block.ops[
-                        first_optimize_op_index].type == 'c_sync_comm_stream':
-                    block.ops[first_optimize_op_index]._set_attr(
-                        self._op_role_key, self._op_role.Backward)
-                    first_optimize_op_index += 1
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -4885,135 +4870,78 @@ class PipelineOptimizer(object):
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
+                op._remove_attr(self._op_role_var_key)
                 for i in range(0, len(op_role_var), 2):
-                    offset = 0
+                    offset = 1
                     param_name = op_role_var[i]
-                    if not block.has_var(param_name): continue
-                    if '@BroadCast' in param_name:
-                        param_name = param_name[0:param_name.find('@BroadCast')]
+                    assert block.has_var(param_name), (
+                        "parameter {} not in "
+                        "current block.".format(param_name))
                     # clear gradient
                     param_grad_name = self._append_grad_suffix(param_name)
-                    accumulated_grad_names.append(param_grad_name)
-                    if not block.has_var(param_grad_name):
+                    merged_param_grad_name = param_grad_name + '@MERGED'
+                    if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
-                                         param_grad_name)
-                    assert block.has_var(param_grad_name)
+                                         merged_param_grad_name)
+                    assert block.has_var(merged_param_grad_name)
                     param_grad_var = block.var(param_grad_name)
-                    param_grad_var.persistable = True
+                    merged_param_grad_var = block.var(merged_param_grad_name)
+                    merged_param_grad_var.persistable = True
                     block._insert_op(
-                        index=first_optimize_op_index + offset,
+                        index=index + offset,
                         type='fill_constant',
                         inputs={},
-                        outputs={'Out': [param_grad_var]},
+                        outputs={'Out': [merged_param_grad_var]},
                         attrs={
-                            'shape': param_grad_var.shape,
-                            'dtype': param_grad_var.dtype,
+                            'shape': merged_param_grad_var.shape,
+                            'dtype': merged_param_grad_var.dtype,
                             'value': float(0),
-                            # self._op_device_key: device,
                             # a trick to run this op once per mini-batch
                             self._op_role_key: self._op_role.Optimize.LRSched,
                         })
-                    #offset += 1
-                    grad_name = op_role_var[i + 1]  # with _0 suffix
+                    offset += 1
+                    grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    #real_grad_name = grad_name[0:grad_name.find(
-                    #    '@GRAD')] + '@GRAD'  # without _0 suffix
-                    #real_grad_var = block.vars[
-                    #    real_grad_name]  # without _0 suffix
-                    # new_grad_var_name = unique_name.generate(grad_name)
-                    # new_var = self._create_var(block, grad_var,
-                    #                            new_grad_var_name)
-                    # new_var.persistable = False
-                    # self._rename_arg(op, grad_name, new_grad_var_name)
                     if not 'cast_fp16' in grad_name:
                         block._insert_op(
-                            index=index + 1,
+                            index=index + offset,
                             type='sum',
-                            inputs={'X': [grad_var, param_grad_var]},
-                            outputs={'Out': param_grad_var},
+                            inputs={'X': [grad_var, merged_param_grad_var]},
+                            outputs={'Out': merged_param_grad_var},
                             attrs={
-                                #self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
-                                #self._op_role_var_key: op_role_var
                             })
-                        #offset += 1
+                        offset += 1
                     else:
-                        grad_name = op_role_var[i + 1]  # with _0 suffix
-                        grad_var = block.vars[grad_name]
-                        #fp32_grad_var_name = param_name + core.grad_var_suffix(
-                        #)  # without _0 suffix
-                        #fp32_grad_var = block.vars[fp32_grad_var_name]
-                        #fp32_grad_var.persistable = True
-                        cast_grad_var_name = unique_name.generate(
-                            param_grad_name)
+                        # cast gradient to fp32 to accumulate to merged gradient
+                        cast_grad_var_name = param_grad_name + '@TMP'
                         cast_grad_var = self._create_var(block, param_grad_var,
                                                          cast_grad_var_name)
                         cast_grad_var.persistable = False
                         block._insert_op(
-                            index=index + 1,
+                            index=index + offset,
                             type='cast',
                             inputs={'X': grad_var},
                             outputs={'Out': cast_grad_var},
                             attrs={
                                 'in_dtype': grad_var.dtype,
                                 'out_dtype': cast_grad_var.dtype,
-                                # self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
-                                # self._op_role_var_key: op_role_var
                             })
                         offset += 1
                         block._insert_op(
-                            index=index + 2,
+                            index=index + offset,
                             type='sum',
-                            inputs={'X': [param_grad_var, cast_grad_var]},
-                            outputs={'Out': param_grad_var},
+                            inputs={
+                                'X': [merged_param_grad_var, cast_grad_var]
+                            },
+                            outputs={'Out': merged_param_grad_var},
                             attrs={
                                 # self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
-                                # self._op_role_var_key: op_role_var
+                                self._op_role_var_key: op_role_var
                             })
                         offset += 1
-                        #real_grad_name = grad_name[0:grad_name.find(
-                        #    '@GRAD')] + '@GRAD'
-                        #real_grad_var = block.vars[
-                        #    real_grad_name]  # without _0 suffix
-                        #block._insert_op(
-                        #    index=first_optimize_op_index + offset,
-                        #    type='cast',
-                        #    inputs={'X': fp32_grad_var},
-                        #    outputs={'Out': cast_var},
-                        #    attrs={
-                        #        'in_dtype': fp32_grad_var.dtype,
-                        #        'out_dtype': cast_var.dtype,
-                        #        # self._op_device_key: device,
-                        #        self._op_role_key: self._op_role.Backward,
-                        #        # self._op_role_var_key: op_role_var
-                        #    })
-                        #offset += 1
-                        #block._insert_op(
-                        #    index=first_optimize_op_index + offset,
-                        #    type='sum',
-                        #    inputs={'X': [grad_var, cast_var]},
-                        #    outputs={'Out': real_grad_var},
-                        #    attrs={
-                        #        # self._op_device_key: device,
-                        #        self._op_role_key: self._op_role.Backward,
-                        #        # self._op_role_var_key: op_role_var
-                        #    })
-                        #offset += 1
-                        #block._insert_op(
-                        #    index=first_optimize_op_index + offset,
-                        #    type='cast',
-                        #    inputs={'X': real_grad_var},
-                        #    outputs={'Out': fp32_grad_var},
-                        #    attrs={
-                        #        'in_dtype': real_grad_var.dtype,
-                        #        'out_dtype': fp32_grad_var.dtype,
-                        #        # self._op_device_key: device,
-                        #        self._op_role_key: self._op_role.Backward,
-                        #        # self._op_role_var_key: op_role_var
-                        #    })
-        return accumulated_grad_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
@@ -5355,7 +5283,9 @@ class PipelineOptimizer(object):
                 if real_block.has_var(param): param_list.append(param)
             #self._clear_gradients(real_block, param_list)
             self._rename_gradient_var_name(real_block)
+            real_block._sync_with_cpp()
             self._accumulate_gradients(real_block)
+            real_block._sync_with_cpp()
 
         place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         main_program._pipeline_opt = {
