@@ -211,6 +211,7 @@ void RunBrpcPushSparse() {
 
   pull_status.wait();
   std::vector<distributed::GraphNode> v;
+  std::vector<std::vector<distributed::GraphNode> > vs;
   pull_status = worker_ptr_->sample(0, 37, 4, v);
   pull_status.wait();
   // for (auto g : v) {
@@ -253,6 +254,8 @@ void RunBrpcPushSparse() {
   v.clear();
   v = gps2.sample_k(96, 4);
   ASSERT_EQ(v.size(), 3);
+  vs = gps2.batch_sample_k([96, 37], 4);
+  ASSERT_EQ(vs.size(), 2);
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService
   // ips_str = "127.0.0.1:4211;127.0.0.1:4212"

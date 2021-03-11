@@ -57,8 +57,6 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
       int *actual_sizes = (int *)(buffer + sizeof(size_t));
       char *node_buffer = buffer + sizeof(size_t) + sizeof(int) * node_num;
       
-      std::vector<std::vector<GraphNode> > ress;
-      std::vector<GraphNode> res_;
       int offset = 0;
       for (size_t idx = 0; idx < node_num; ++idx){
         int actual_size = actual_sizes[idx];
@@ -67,19 +65,16 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
           GraphNode node;
           node.recover_from_buffer(node_buffer + offset + start);
           start += node.get_size();
-          res_.push_back(node);
+          res.push_back(node);
         }
         offset += actual_size;
-        ress.push_back(res_);
       }
-      res = ress[0];
     }
     closure->set_promise_value(ret);
   });
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
-  ;
   closure->request(0)->set_cmd_id(PS_GRAPH_SAMPLE);
   closure->request(0)->set_table_id(table_id);
   closure->request(0)->set_client_id(_client_id);
