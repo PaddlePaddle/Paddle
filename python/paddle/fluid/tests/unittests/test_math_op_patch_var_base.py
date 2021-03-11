@@ -309,6 +309,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         b = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
 
         # 1. Unary operation for Tensor
+        self.assertTrue((np.array(x_np.shape) == x.size().numpy()).all())
+        self.assertTrue((x.size(0).numpy() == x_np.shape[0]).all())
         self.assertEqual(x.dim(), 2)
         self.assertEqual(x.ndimension(), 2)
         self.assertEqual(x.ndim, 2)
