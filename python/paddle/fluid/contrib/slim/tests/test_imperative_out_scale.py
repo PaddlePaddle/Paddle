@@ -246,6 +246,10 @@ class TestImperativeOutSclae(unittest.TestCase):
 
             lenet.eval()
 
+        param_save_path = "test_save_quantized_model/lenet.pdparams"
+        save_dict = lenet.state_dict()
+        paddle.save(save_dict, param_save_path)
+
         path = "./dynamic_outscale_infer_model/lenet"
         dynamic_save_dir = "./dynamic_outscale_infer_model"
 
@@ -379,7 +383,72 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
-                print(dynamic_ops[i].type)
+                self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
+                self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
+                                static_ops[i].attr("out_threshold"))
+
+
+class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
+    def test_save_quantized_model(self):
+        weight_quantize_type = 'abs_max'
+        activation_quantize_type = 'moving_average_abs_max'
+        load_param_path = "test_save_quantized_model/lenet.pdparams"
+        path = "./dynamic_outscale_infer_model_from_checkpoint/lenet"
+        dynamic_model_save_dir = "./dynamic_outscale_infer_model_from_checkpoint"
+        static_model_save_dir = "./static_outscale_infer_model"
+
+        imperative_out_scale = ImperativeQuantAware(
+            weight_quantize_type=weight_quantize_type,
+            activation_quantize_type=activation_quantize_type)
+
+        with fluid.dygraph.guard():
+            lenet = ImperativeLenet()
+            load_dict = paddle.load(load_param_path)
+            imperative_out_scale.quantize(lenet)
+            lenet.set_dict(load_dict)
+
+        imperative_out_scale.save_quantized_model(
+            layer=lenet,
+            path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+
+        # load dynamic model
+        [dynamic_inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=dynamic_model_save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
+        # load static model
+        [static_inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=static_model_save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX))
+
+        dynamic_ops = dynamic_inference_program.global_block().ops
+        static_ops = static_inference_program.global_block().ops
+
+        for op in dynamic_ops[:]:
+            if op.type == "flatten2" or 'fake' in op.type:
+                dynamic_ops.remove(op)
+
+        for op in static_ops[:]:
+            if 'fake' in op.type:
+                static_ops.remove(op)
+
+        for i in range(len(dynamic_ops)):
+            if dynamic_ops[i].has_attr("out_threshold"):
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))

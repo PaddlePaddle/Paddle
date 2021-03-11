@@ -346,11 +346,9 @@ class ImperativeCalcOutScale(object):
         return True
 
     def _add_new_parameters(self, layer, name=None):
-        if layer._dtype is not None and layer._dtype not in [
-                "float32", "float64"
-        ]:
-            return
         dtype = layer._dtype if layer._dtype is not None else "float32"
+        if dtype not in ["float32", "float64"]:
+            return
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
         scale_name = unique_name.generate(scale_prefix)
         scale_attr = ParamAttr(
@@ -389,10 +387,10 @@ class ImperativeCalcOutScale(object):
         op_type = op_type.rsplit("_", 1)[0]
         if op_type == 'depthwise_conv2d':
             op_type = 'conv2d'
-        if 'relu' in op_type:
-            op_type = op_type.replace('relu', 're_lu')
         if 'prelu' in op_type:
             op_type = op_type.replace('prelu', 'p_re_lu')
+        if 'relu' in op_type:
+            op_type = op_type.replace('relu', 're_lu')
         if op_type in layer_name:
             return True
         else:
@@ -467,8 +465,7 @@ class ImperativeCalcOutScale(object):
             is_dynamic_mode = True
             paddle.enable_static()
 
-        paddle.jit.save(
-            layer=self._layer, path=path, input_spec=input_spec, **config)
+        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
