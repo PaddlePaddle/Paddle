@@ -15,12 +15,15 @@
 #include "paddle/fluid/distributed/table/common_graph_table.h"
 #include <algorithm>
 #include <sstream>
+#include <time.h>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
+
 int GraphShard::bucket_low_bound = 11;
+
 std::vector<GraphNode *> GraphShard::get_batch(int start, int total_size) {
   if (start < 0) start = 0;
   int size = 0, cur_size;
@@ -51,6 +54,7 @@ std::vector<GraphNode *> GraphShard::get_batch(int start, int total_size) {
   }
   return res;
 }
+
 size_t GraphShard::get_size() {
   size_t res = 0;
   for (int i = 0; i < bucket_size; i++) {
@@ -58,61 +62,63 @@ size_t GraphShard::get_size() {
   }
   return res;
 }
+
 std::list<GraphNode *>::iterator GraphShard::add_node(GraphNode *node) {
   if (node_location.find(node->get_id()) != node_location.end())
     return node_location.find(node->get_id())->second;
+
   int index = node->get_id() % shard_num % bucket_size;
+
   std::list<GraphNode *>::iterator iter =
       bucket[index].insert(bucket[index].end(), node);
+
   node_location[node->get_id()] = iter;
   return iter;
 }
+
 void GraphShard::add_neighboor(uint64_t id, GraphEdge *edge) {
   (*add_node(new GraphNode(id, std::string(""))))->add_edge(edge);
 }
+
 GraphNode *GraphShard::find_node(uint64_t id) {
   if (node_location.find(id) == node_location.end()) return NULL;
   return *(node_location[id]);
 }
+
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
   VLOG(0) << paths.size();
+  int count = 0;
   for (auto path : paths) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
       auto values = paddle::string::split_string<std::string>(line, "\t");
+      count ++;
       if (values.size() < 2) continue;
-      auto id = std::stoull(values[0]);
-      size_t shard_id = id % shard_num;
-      if (shard_id >= shard_end || shard_id < shard_start) {
-        VLOG(0) << "will not load " << id << " from " << path
+      auto src_id = std::stoull(values[0]);
+      auto dst_id = std::stoull(values[1]);
+      double weight = 0;
+      if (values.size() == 3) {
+          weight = std::stod(values[2]);
+      }
+      size_t src_shard_id = src_id % shard_num;
+
+      if (src_shard_id >= shard_end || src_shard_id < shard_start) {
+        VLOG(0) << "will not load " << src_id << " from " << path
                 << ", please check id distribution";
         continue;
+
       }
-      size_t index = shard_id - shard_start;
-      // GraphNodeType type = GraphNode::get_graph_node_type(values[1]);
-      // VLOG(0)<<"shards's size = "<<shards.size()<<" values' size =
-      // "<<values.size();
-      // VLOG(0)<<"add to index "<<index<<" table rank = "<<_shard_idx;
-      shards[index].add_node(new GraphNode(id, values[1]));
-      // VLOG(0)<<"checking added of rank "<<_shard_idx<<" shard "<<index<<"
-      // "<<cc->get_id();
-      for (size_t i = 2; i < values.size(); i++) {
-        auto edge_arr =
-            paddle::string::split_string<std::string>(values[i], ";");
-        if (edge_arr.size() == 2) {
-          // VLOG(0)<<"edge content "<<edge_arr[0]<<" "<<edge_arr[1]<<"
-          // "<<edge_arr[2];
-          auto edge_id = std::stoull(edge_arr[0]);
-          auto weight = std::stod(edge_arr[1]);
-          // VLOG(0)<<"edge_id "<<edge_id<<" weight "<<weight;
-          GraphEdge *edge = new GraphEdge(edge_id, weight);
-          shards[index].add_neighboor(id, edge);
-        }
-      }
+      size_t index = src_shard_id - shard_start;
+      GraphEdge *edge = new GraphEdge(dst_id, weight);
+      shards[index].add_neighboor(src_id, edge);
     }
-    for (auto &shard : shards) {
+  }
+  VLOG(0) << "Load Finished Total Edge Count " << count;
+
+  // Build Sampler j
+  for (auto &shard : shards) {
       auto bucket = shard.get_bucket();
       for (int i = 0; i < bucket.size(); i++) {
         std::list<GraphNode *>::iterator iter = bucket[i].begin();
@@ -122,7 +128,6 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
           iter++;
         }
       }
-    }
   }
   return 0;
 }
@@ -144,6 +149,7 @@ int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
                                   char *&buffer, int &actual_size) {
   return _shards_task_pool[get_thread_pool_index(node_id)]
       ->enqueue([&]() -> int {
+
         GraphNode *node = find_node(node_id);
         if (node == NULL) {
           actual_size = 0;
