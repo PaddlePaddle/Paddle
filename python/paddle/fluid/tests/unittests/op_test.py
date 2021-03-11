@@ -235,6 +235,19 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     return new_output
 
 
+def copy_bits_from_uint16_to_float(i):
+    i = np.uint32(i) << 16
+    return struct.unpack('<f', struct.pack('<I', i))[0]
+
+
+def convert_uint16_to_float(uint16_list):
+    new_output = []
+    for x in np.nditer(uint16_list):
+        new_output.append(np.float32(copy_bits_from_uint16_to_float(x)))
+
+    return np.reshape(new_output, uint16_list.shape).view(np.float32)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -278,6 +291,9 @@ class OpTest(unittest.TestCase):
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
+        def is_rocm_op_test():
+            return core.is_compiled_with_rocm()
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -298,7 +314,8 @@ class OpTest(unittest.TestCase):
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
                 and not is_xpu_op_test() \
-                and not is_mkldnn_op_test():
+                and not is_mkldnn_op_test() \
+                and not is_rocm_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -1139,8 +1156,14 @@ class OpTest(unittest.TestCase):
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
+
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+
+                if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
+                    actual_t = convert_uint16_to_float(actual_t)
+                    atol = 0.03
+
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
@@ -1429,6 +1452,16 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+        fp32_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03
+            fp32_grads.append(grad)
+        analytic_grads = fp32_grads
+
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))

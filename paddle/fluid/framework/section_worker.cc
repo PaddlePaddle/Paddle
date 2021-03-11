@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <float.h>
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -38,7 +38,7 @@ void SectionWorker::TrainFiles() {
   std::unique_ptr<GarbageCollector> gc;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
   if (max_memory_size >= 0) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
@@ -70,7 +70,11 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+#ifdef PADDLE_WITH_RCCL
+    hipDeviceSynchronize();
+#else
     cudaDeviceSynchronize();
+#endif
   }
 
   // backward pass
@@ -89,7 +93,11 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+#ifdef PADDLE_WITH_RCCL
+    hipDeviceSynchronize();
+#else
     cudaDeviceSynchronize();
+#endif
   }
 
   // update pass

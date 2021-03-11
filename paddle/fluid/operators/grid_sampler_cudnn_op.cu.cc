@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cudnnSpatialTfGridGeneratorForward
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
@@ -140,3 +143,5 @@ REGISTER_OP_KERNEL(grid_sampler, CUDNN, plat::CUDAPlace,
 REGISTER_OP_KERNEL(grid_sampler_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNGridSampleGradOpKernel<float>,
                    paddle::operators::CUDNNGridSampleGradOpKernel<double>);
+
+#endif  // PADDLE_WITH_HIP

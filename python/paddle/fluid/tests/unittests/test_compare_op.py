@@ -61,6 +61,9 @@ def create_test_class(op_type, typename, callback):
 
 
 for _type_name in {'float32', 'float64', 'int32', 'int64'}:
+    if _type_name == 'float64' and core.is_compiled_with_rocm():
+        _type_name = 'float32'
+
     create_test_class('less_than', _type_name, lambda _a, _b: _a < _b)
     create_test_class('less_equal', _type_name, lambda _a, _b: _a <= _b)
     create_test_class('greater_than', _type_name, lambda _a, _b: _a > _b)

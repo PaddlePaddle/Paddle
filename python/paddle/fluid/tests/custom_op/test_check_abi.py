@@ -22,10 +22,11 @@ import paddle.utils.cpp_extension.extension_utils as utils
 
 class TestABIBase(unittest.TestCase):
     def test_environ(self):
-        compiler = 'gcc'
-        for flag in ['1', 'True', 'true']:
-            os.environ['PADDLE_SKIP_CHECK_ABI'] = flag
-            self.assertTrue(utils.check_abi_compatibility(compiler))
+        compiler_list = ['gcc', 'cl']
+        for compiler in compiler_list:
+            for flag in ['1', 'True', 'true']:
+                os.environ['PADDLE_SKIP_CHECK_ABI'] = flag
+                self.assertTrue(utils.check_abi_compatibility(compiler))
 
     def del_environ(self):
         key = 'PADDLE_SKIP_CHECK_ABI'
@@ -33,43 +34,49 @@ class TestABIBase(unittest.TestCase):
             del os.environ[key]
 
 
-class TestCheckLinux(TestABIBase):
+class TestCheckCompiler(TestABIBase):
     def test_expected_compiler(self):
         if utils.OS_NAME.startswith('linux'):
             gt = ['gcc', 'g++', 'gnu-c++', 'gnu-cc']
-            self.assertListEqual(utils._expected_compiler_current_platform(),
-                                 gt)
+        elif utils.IS_WINDOWS:
+            gt = ['cl']
+        elif utils.OS_NAME.startswith('darwin'):
+            gt = ['clang', 'clang++']
 
-    def test_gcc_version(self):
+        self.assertListEqual(utils._expected_compiler_current_platform(), gt)
+
+    def test_compiler_version(self):
         # clear environ
         self.del_environ()
-        compiler = 'g++'
         if utils.OS_NAME.startswith('linux'):
-            # all CI gcc version > 5.4.0
-            self.assertTrue(
-                utils.check_abi_compatibility(
-                    compiler, verbose=True))
+            compiler = 'g++'
+        elif utils.IS_WINDOWS:
+            compiler = 'cl'
+
+        # Linux: all CI gcc version > 5.4.0
+        # Windows: all CI MSVC version > 19.00.24215
+        # Mac: clang has no version limitation, always return true
+        self.assertTrue(utils.check_abi_compatibility(compiler, verbose=True))
 
     def test_wrong_compiler_warning(self):
         # clear environ
         self.del_environ()
-        compiler = 'nvcc'  # fake wrong compiler
-        if utils.OS_NAME.startswith('linux'):
-            with warnings.catch_warnings(record=True) as error:
-                flag = utils.check_abi_compatibility(compiler, verbose=True)
-                # check return False
-                self.assertFalse(flag)
-                # check Compiler Compatibility WARNING
-                self.assertTrue(len(error) == 1)
-                self.assertTrue(
-                    "Compiler Compatibility WARNING" in str(error[0].message))
+        compiler = 'python'  # fake wrong compiler
+        with warnings.catch_warnings(record=True) as error:
+            flag = utils.check_abi_compatibility(compiler, verbose=True)
+            # check return False
+            self.assertFalse(flag)
+            # check Compiler Compatibility WARNING
+            self.assertTrue(len(error) == 1)
+            self.assertTrue(
+                "Compiler Compatibility WARNING" in str(error[0].message))
 
     def test_exception(self):
         # clear environ
         self.del_environ()
         compiler = 'python'  # fake command
         if utils.OS_NAME.startswith('linux'):
-            # to skip _expected_compiler_current_platform
+
             def fake():
                 return [compiler]
 
@@ -87,40 +94,6 @@ class TestCheckLinux(TestABIBase):
 
             # restore
             utils._expected_compiler_current_platform = raw_func
-
-
-class TestCheckMacOs(TestABIBase):
-    def test_expected_compiler(self):
-        if utils.OS_NAME.startswith('darwin'):
-            gt = ['clang', 'clang++']
-            self.assertListEqual(utils._expected_compiler_current_platform(),
-                                 gt)
-
-    def test_gcc_version(self):
-        # clear environ
-        self.del_environ()
-
-        if utils.OS_NAME.startswith('darwin'):
-            # clang has no version limitation.
-            self.assertTrue(utils.check_abi_compatibility())
-
-
-class TestCheckWindows(TestABIBase):
-    def test_gcc_version(self):
-        # clear environ
-        self.del_environ()
-
-        if utils.IS_WINDOWS:
-            # we skip windows now
-            self.assertTrue(utils.check_abi_compatibility())
-
-
-class TestJITCompilerException(unittest.TestCase):
-    def test_exception(self):
-        with self.assertRaisesRegexp(RuntimeError,
-                                     "Failed to check Python interpreter"):
-            file_path = os.path.abspath(__file__)
-            utils._jit_compile(file_path, interpreter='fake_cmd', verbose=True)
 
 
 class TestRunCMDException(unittest.TestCase):

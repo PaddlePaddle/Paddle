@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <algorithm>
 #include <map>
@@ -65,18 +66,19 @@ class HeterContext {
       mutex_[i] = new std::mutex();
     }
   }
-  void batch_add_keys(const std::vector<std::vector<uint64_t>>& thread_keys) {
+  void batch_add_keys(
+      const std::vector<std::unordered_set<uint64_t>>& thread_keys) {
     assert(thread_keys.size() == feature_keys_.size());
 
     for (uint32_t i = 0; i < shard_num_; i++) {
       int idx = 0;
       idx = feature_keys_[i].size();
       feature_keys_[i].resize(feature_keys_[i].size() + thread_keys[i].size());
-      for (uint64_t j = 0; j < thread_keys[i].size(); j++) {
-        feature_keys_[i][idx + j] = thread_keys[i][j];
-      }
+      std::copy(thread_keys[i].begin(), thread_keys[i].end(),
+                feature_keys_[i].begin() + idx);
     }
   }
+
   void UniqueKeys() {
     std::vector<std::thread> threads;
     auto unique_func = [this](int i) {

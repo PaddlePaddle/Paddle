@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -280,6 +281,10 @@ class ConvMKLDNNHandlerT
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "hard_swish") {
+      constexpr float scale = 1.0f;
+      post_operations.append_eltwise(
+          scale, mkldnn::algorithm::eltwise_hardswish, fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -986,7 +991,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
-
     auto chosen_memory_format = MKLDNNMemoryFormat::any;
     weights_format = MKLDNNMemoryFormat::any;
 
