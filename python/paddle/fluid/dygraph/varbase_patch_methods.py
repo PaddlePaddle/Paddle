@@ -191,8 +191,13 @@ def monkey_patch_varbase():
                 scaled_loss._run_backward(framework._dygraph_tracer(),
                                           retain_graph)
             else:
-                if grad_tensor is not None:
-                    assert grad_tensor.shape == self.shape, "Variable Shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
+                if grad_tensor is None:
+                    grad_tensor = paddle.ones_like(self)
+                else:
+                    assert isinstance(
+                        grad_tensor, core.VarBase
+                    ), "The type of grad_tensot must be paddle.VarBase"
+                    assert grad_tensor.shape == self.shape, "Variable shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
                         grad_tensor.name, grad_tensor.shape, self.name,
                         self.shape)
                 self._run_backward(framework._dygraph_tracer(), retain_graph,

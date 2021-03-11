@@ -75,15 +75,8 @@ void BasicEngine::Init(VarBase* var, bool retain_graph, VarBase* grad_tensor) {
           << " as stop_gradient false";
   var->GradVarBase()->InnerSetOverridedStopGradient(false);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());
-  if (grad_tensor == nullptr) {
-    grad_var->Resize(fwd_var.dims());
-    grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-    operators::math::set_constant(*dev_ctx, grad_var, 1.0);
-  } else {
-    paddle::framework::TensorCopy(
-        grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
-        *dev_ctx, grad_var);
-  }
+  paddle::framework::TensorCopy(grad_tensor->Var().Get<framework::LoDTensor>(),
+                                fwd_var.place(), *dev_ctx, grad_var);
 }
 
 void BasicEngine::CheckBackwardInputs(const OpBase& op) {
