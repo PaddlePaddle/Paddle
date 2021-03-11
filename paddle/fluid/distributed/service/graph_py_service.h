@@ -149,6 +149,12 @@ class GraphPyService {
     status.wait();
     return v;
   }
+  std::vector<std::vector<GraphNode> > batch_sample_k(std::vector<uint64_t> node_ids, int sample_size) {
+    std::vector<std::vector<GraphNode> > v;
+    auto status = worker_ptr->batch_sample(table_id, node_ids, sample_size, v);
+    status.wait();
+    return v;
+  }
   std::vector<GraphNode> pull_graph_list(int server_index, int start,
                                          int size) {
     std::vector<GraphNode> res;

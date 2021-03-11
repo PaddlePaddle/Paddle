@@ -168,7 +168,8 @@ void BindGraphService(py::module* m) {
       .def("load_file", &GraphPyService::load_file)
       .def("set_up", &GraphPyService::set_up)
       .def("pull_graph_list", &GraphPyService::pull_graph_list)
-      .def("sample_k", &GraphPyService::sample_k);
+      .def("sample_k", &GraphPyService::sample_k)
+      .def("batch_sample_k", &GraphPyService::batch_sample_k);
 }
 
 }  // end namespace pybind
