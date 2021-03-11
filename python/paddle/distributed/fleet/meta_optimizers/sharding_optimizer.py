@@ -100,7 +100,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.schedule_mode = self.user_defined_strategy.sharding_configs[
             "schedule_mode"]
         self.pp_bz = self.user_defined_strategy.sharding_configs["pp_bz"]
-        #self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs["pp_allreduce_in_optimize"]
+        self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs[
+            "pp_allreduce_in_optimize"]
 
         if self.inner_opt is None:
             raise ValueError(

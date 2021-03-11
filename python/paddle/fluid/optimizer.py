@@ -4913,7 +4913,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: self._op_role.Backward,
                             })
                         offset += 1
-                        merged_grad_names.append(merged_param_grad_name)
+                        merged_gradient_names.append(merged_param_grad_name)
                     else:
                         # cast gradient to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
@@ -4944,8 +4944,8 @@ class PipelineOptimizer(object):
                                 self._op_role_var_key: op_role_var
                             })
                         offset += 1
-                        merged_grad_names.append(merged_param_grad_name)
-        return merged_grad_names
+                        merged_gradient_names.append(merged_param_grad_name)
+        return merged_gradient_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
