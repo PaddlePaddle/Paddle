@@ -242,10 +242,11 @@ class PRChecker(object):
         for f in self.get_pr_files():
             current_system = platform.system()
             if current_system == "Darwin" or current_system == "Windows":
-                f = f.replace(PADDLE_ROOT, '/paddle/', 1)
-                f = f.replace('//', '/')
-            if f not in file_ut_map:
-                continue
+                f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f_judge = f_judge.replace('//', '/')
+            else:
+                f_judge = f
+            if f_judge not in file_ut_map:
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):
@@ -270,7 +271,8 @@ class PRChecker(object):
                         return ''
                 else:
                     print('PREC dismatch: {} not in file ut map'.format(f))
-                    return ''
+                    continue
+                    #return ''
             else:
                 if self.is_only_comment(f):
                     ut_list.append('map_comment_placeholder')
