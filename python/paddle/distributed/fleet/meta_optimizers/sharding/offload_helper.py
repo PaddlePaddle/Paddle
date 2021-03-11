@@ -79,7 +79,7 @@ class OffloadHelper(object):
                 # {Moment1Out = [''], Moment2Out = [''], ParamOut = ['']} =
                 # adam(inputs={Moment1 = [''], Moment2 = [''], Param = ['']})
                 vars_name.append(op.desc.input("Moment1")[0])
-                vars_name.append(op.desc.input("Moment1")[0])
+                vars_name.append(op.desc.input("Moment2")[0])
             elif op.type == 'momentum':
                 pass
             elif op.type == 'lars':
