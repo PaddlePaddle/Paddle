@@ -254,7 +254,10 @@ void RunBrpcPushSparse() {
   v.clear();
   v = gps2.sample_k(96, 4);
   ASSERT_EQ(v.size(), 3);
-  vs = gps2.batch_sample_k([96, 37], 4);
+  std::vector<uint64_t> node_ids;
+  node_ids.push_back(96);
+  node_ids.push_back(37);
+  vs = gps2.batch_sample_k(node_ids, 4);
   ASSERT_EQ(vs.size(), 2);
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService
