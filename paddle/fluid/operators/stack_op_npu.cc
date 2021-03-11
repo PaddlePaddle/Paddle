@@ -31,16 +31,25 @@ template <typename DeviceContext, typename T>
 class StackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-	//init X
+        //init X
+        /*
     auto x = ctx.MultiInput<Tensor>("X");
     std::vector<paddle::framework::Tensor> x_2;
     for(uint32_t i = 0; i < x.size(); i++) {
       x_2[i] = *x[i];
     }
+    */
 
-	//init asix
+        auto x = ctx.MultiInput<Tensor>("X");
+    int n = static_cast<int>(x.size());
+    //std::vector<const T*> x_list;
+    std::vector<paddle::framework::Tensor> x_list;
+    for (int i = 0; i < n; i++) {
+      x_list.push_back(x[i]);
+    }
+
     int axis = ctx.Attr<int>("axis");
-	int32_t tiles = x.size();
+        int32_t N = x.size();
     auto* out = ctx.Output<Tensor>("Out");
 
     auto place = ctx.GetPlace();
@@ -48,14 +57,9 @@ class StackNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-        
-    Tensor expand_x(paddle::framework::proto::VarType::FP32);
-    expand_x.mutable_data<T>(place);
-	auto expand_runner = NpuOpRunner("ExpandDims", {x_2[0]}, {expand_x}, {{"axis", axis}});
-    expand_runner.Run(stream);
-    
+
     out->mutable_data<T>(place);
-	auto runner = NpuOpRunner("TileWithAxis", {expand_x}, {*out}, {{"axis", axis}, {"tiles", tiles}});
+        auto runner = NpuOpRunner("Pack", {x_list}, {*out}, {{"axis", axis}, {"N", N}});
     runner.Run(stream);
   }
 };
