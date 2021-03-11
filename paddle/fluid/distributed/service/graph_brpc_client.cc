@@ -123,8 +123,10 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
       
       std::vector<GraphNode> res_;
       int offset = 0;
+      std::cout << "num_nodes: " << num_nodes << std::endl;
       for (size_t idx = 0; idx < num_nodes; ++idx){
         int actual_size = actual_sizes[idx];
+        std::cout << "actual_size: " << actual_size << std::endl;
         int start = 0;
         while (start < actual_size) {
           GraphNode node;
