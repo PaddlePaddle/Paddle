@@ -293,6 +293,10 @@ class TensorShapeTransformer(gast.NodeTransformer):
         return False
 
     def _update_name_to_var_shape(self, node):
+        def replace_dot(name):
+            # replace all '.' into '_'
+            return name.replace('.', '_')
+
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
         value_node = node.value
@@ -307,7 +311,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                     if value_node.id in self.name_to_var_shape:
                         # TODO(zhhsplendid): is context a problem for the result node of gast.parse?
                         static_shape_var_name = unique_name.generate(
-                            target_id + STATIC_CONVERT_VAR_SHAPE_SUFFIX)
+                            replace_dot(target_id) +
+                            STATIC_CONVERT_VAR_SHAPE_SUFFIX)
                         static_shape_var_node = gast.parse(
                             static_shape_var_name).body[0].value
 
@@ -328,7 +333,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                 if isinstance(value_node, gast.Attribute):
                     if self._is_var_shape(value_node):  # eg: x.shape
                         static_shape_var_name = unique_name.generate(
-                            target_id + STATIC_CONVERT_VAR_SHAPE_SUFFIX)
+                            replace_dot(target_id) +
+                            STATIC_CONVERT_VAR_SHAPE_SUFFIX)
                         static_shape_var_node = gast.parse(
                             static_shape_var_name).body[0].value
 
@@ -360,7 +366,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
             if isinstance(value_node, gast.Name):
                 if value_node.id in self.name_to_var_shape:
                     static_shape_var_name = unique_name.generate(
-                        target_id + STATIC_CONVERT_VAR_SHAPE_SUFFIX)
+                        replace_dot(target_id) +
+                        STATIC_CONVERT_VAR_SHAPE_SUFFIX)
                     static_shape_var_node = gast.parse(
                         static_shape_var_name).body[0].value
                     static_shape_value_name = self.name_to_var_shape[
@@ -376,7 +383,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
                     self.name_to_var_shape[target_id] = static_shape_var_name
             elif self._is_var_shape(value_node):  # eg: x.shape or x.shape[0]
                 static_shape_var_name = unique_name.generate(
-                    target_id + STATIC_CONVERT_VAR_SHAPE_SUFFIX)
+                    replace_dot(target_id) + STATIC_CONVERT_VAR_SHAPE_SUFFIX)
                 static_shape_var_node = gast.parse(static_shape_var_name).body[
                     0].value
                 static_shape_value_node = copy.deepcopy(value_node)
