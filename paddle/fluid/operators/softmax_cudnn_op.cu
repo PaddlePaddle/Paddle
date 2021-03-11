@@ -458,10 +458,8 @@ __global__ void KeSpandDimDSoftmaxForward(T* __restrict__ dst,
   T* buf_src = reinterpret_cast<T*>(&vec_src);
   T* buf_dst = reinterpret_cast<T*>(&vec_dst);
 
-  const int tid = threadIdx.x;
-  const int vec_id = tid * VECSIZE;
-  const int BlockDim = blockDim.x;
-  const int vec_num = BlockDim * VECSIZE;
+  const int vec_id = threadIdx.x * VECSIZE;
+  const int vec_num = blockDim.x * VECSIZE;
   for (int out_id = blockIdx.x; out_id < N; out_id += gridDim.x) {
     const T* __restrict__ src_row = src + out_id * dim * D;
     T* __restrict__ dst_row = dst + out_id * dim * D;
@@ -519,7 +517,7 @@ __global__ void KeSpandDimDSoftmaxForward(T* __restrict__ dst,
       for (int i = 0; i < VECSIZE; i++) {
         buf_dst[i] = static_cast<T>(
             math::exp_func(static_cast<AccT>(buf_src[i]) - max_val[i]) /
-            (sum_val[i] + 1e-6f));
+            (sum_val[i] + std::numeric_limits<AccT>::min()));
       }
       reinterpret_cast<VecT*>(&dst_row[id])[0] = vec_dst;
     }
@@ -583,10 +581,8 @@ __global__ void KeSpandDimDSoftmaxBackward(T* __restrict__ dx,
   T* buf_dout = reinterpret_cast<T*>(&vec_dout);
   T* buf_dx = reinterpret_cast<T*>(&vec_dx);
 
-  const int tid = threadIdx.x;
-  const int vec_id = tid * VECSIZE;
-  const int BlockDim = blockDim.x;
-  const int vec_num = BlockDim * VECSIZE;
+  const int vec_id = threadIdx.x * VECSIZE;
+  const int vec_num = blockDim.x * VECSIZE;
   for (int out_id = blockIdx.x; out_id < N; out_id += gridDim.x) {
     const int offset = out_id * dim * D;
     const T* __restrict__ out_row = out + offset;
