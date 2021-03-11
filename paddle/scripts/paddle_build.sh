@@ -607,7 +607,16 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        get_precision_ut_mac
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        fi
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -669,6 +678,42 @@ EOF
             show_ut_retry_result
         fi
         set -x
+    fi
+}
+
+function get_precision_ut_mac() {
+    on_precision=0
+    set -x
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    precison_cases=""
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+        if [[ -f "ut_list" ]]; then
+            set +x
+            echo "PREC length: "`wc -l ut_list`
+            precision_cases=`cat ut_list`
+            set -x
+        fi
+    fi
+    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+        UT_list_re=''
+        on_precision=1
+        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+        UT_list_prec_1='ut_list_prec2'
+        for case in $UT_list; do
+            flag=$(echo $case|grep -oE $re)
+            if [ -n "$flag" ];then
+                if [ -z "$UT_list_prec" ];then
+                    UT_list_prec="^$case$"
+                elif [[ "${#UT_list_prec}" -gt 10000 ]];then
+                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                else
+                    UT_list_prec="$UT_list_prec|^$case$"
+                fi
+            else
+                echo ${case} "won't run in PRECISION_TEST mode."
+            fi
+        done
     fi
 }
 
@@ -1206,7 +1251,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${failed_test_lists_ult}"
+                        echo "${retry_unittests}"
                             
                         for line in ${retry_unittests[@]} ;
                             do
@@ -1295,7 +1340,7 @@ function show_ut_retry_result() {
             echo "Summary Failed Tests... "
             echo "========================================"
             echo "The following tests FAILED: "
-            echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
             exit 8;
         fi
     fi

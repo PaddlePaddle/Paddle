@@ -168,6 +168,7 @@ class DeviceWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
+  virtual void Schedule(int taskid) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   virtual void SetStream(const gpuStream_t stream) {}
   virtual void SetEvent(const gpuEvent_t event) {}

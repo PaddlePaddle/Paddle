@@ -174,15 +174,9 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-#ifdef __HIPCC__
-    TensorReduce<T, T, hipcub::Sum, IdentityFunctor<T>>(
-        dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), hipcub::Sum(),
-        IdentityFunctor<T>(), stream);
-#else
     TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
         dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
         IdentityFunctor<T>(), stream);
-#endif
   }
 };
 

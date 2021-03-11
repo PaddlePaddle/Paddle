@@ -117,7 +117,10 @@ message AsyncConfig {
   optional int32 lr_decay_steps = 11 [ default = 10 ];
 }
 
-message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
+message PipelineConfig {
+  optional int32 micro_batch_size = 1 [ default = 1 ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+}
 
 message DistributedStrategy {
   // bool options
