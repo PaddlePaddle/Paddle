@@ -26,6 +26,11 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import six
 
+DTYPE_LIST = ["float32"] if core.is_compiled_with_rocm(
+) else ["float32", "float64"]
+
+paddle.enable_static()
+
 
 class SimpleNet(fluid.Layer):
     def __init__(self,
