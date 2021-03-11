@@ -74,6 +74,8 @@ class TestLookupTableBF16Op(OpTest):
             user_defined_grad_outputs=[self.out_bf16])
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestLookupTableBF16OpIds4D(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
@@ -104,6 +106,8 @@ class TestLookupTableBF16OpIds4D(OpTest):
             user_defined_grad_outputs=[self.out_bf16])
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
     def setUp(self):
         self.ids = np.random.randint(
@@ -146,6 +150,8 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         self._check_output(ref, result_array)
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestLookupTableBF16OpWIsSelectedRows4DIds(
         TestLookupTableBF16OpWIsSelectedRows):
     def setUp(self):
