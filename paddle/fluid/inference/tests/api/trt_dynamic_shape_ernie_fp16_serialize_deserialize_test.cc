@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <dirent.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_dynamic_shape_ernie_serialize_deserialize_test.h"
 

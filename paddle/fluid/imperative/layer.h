@@ -45,8 +45,8 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-class OpBase;
 class GradOpNode;
+class OpBase;
 class VariableWrapper;
 
 class ThreadSafeNameSet {
@@ -201,6 +201,14 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    var_->SetForwardDataType(data_type);
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return var_->ForwardDataType();
+  }
+
   const platform::Place Place() const { return var_->Place(); }
 
   void ClearGradient();
@@ -248,7 +256,8 @@ class Layer {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place);
+    const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
 
 }  // namespace imperative
 }  // namespace paddle

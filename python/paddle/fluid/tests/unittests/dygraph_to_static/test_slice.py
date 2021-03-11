@@ -40,9 +40,12 @@ def test_slice_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int64"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+
     if x.numpy()[0] > 0:
         a[0] = x
+
+    a[0] = x + 1
     out = a[0]
     return out
 
@@ -84,13 +87,36 @@ def test_slice_in_for_loop(x, iter_num=3):
     return out
 
 
+@paddle.jit.to_static
+def test_set_value(x):
+    x = paddle.to_tensor(x)
+    x[0] = paddle.full(shape=[1], fill_value=2, dtype="float32")
+    x[1:2, 0:1] = 10
+    return x
+
+
+class LayerWithSetValue(paddle.nn.Layer):
+    def __init__(self, input_dim, hidden):
+        super(LayerWithSetValue, self).__init__()
+        self.linear = paddle.nn.Linear(input_dim, hidden)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x = self.linear(x)
+        x[0] = 1
+        return x
+
+
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((3)).astype('int32')
+        self.init_input()
         self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         self.init_dygraph_func()
         paddle.disable_static()
+
+    def init_input(self):
+        self.input = np.random.random((3)).astype('int32')
 
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow
@@ -125,9 +151,29 @@ class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
         self.dygraph_func = test_slice_in_while_loop
 
 
-class TestSliceInForLoop(TestSliceInWhileLoop):
+class TestSliceInForLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
+
+
+class TestSetValue(TestSliceWithoutControlFlow):
+    def init_input(self):
+        self.input = np.full([3, 4, 5], 5).astype('float32')
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_set_value
+
+
+class TestSetValueWithLayerAndSave(unittest.TestCase):
+    def test_set_value_with_save(self):
+        prog_trans.enable(True)
+        model = LayerWithSetValue(input_dim=10, hidden=1)
+        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+        paddle.jit.save(
+            layer=model,
+            path="./layer_use_set_value",
+            input_spec=[x],
+            output_spec=None)
 
 
 if __name__ == '__main__':

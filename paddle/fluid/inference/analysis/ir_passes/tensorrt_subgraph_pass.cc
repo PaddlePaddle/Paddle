@@ -14,10 +14,6 @@
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 
-#include <algorithm>
-#include <map>
-#include <set>
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -25,7 +21,6 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -39,10 +34,18 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
-                                             no_calib_int8);
+    if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
+             node->Op()->Type()) != trt_disabled_ops.end()) {
+      VLOG(3) << node->Op()->Type().c_str()
+              << " is diabled by config in TensorRT";
+      return false;
+    }
+    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                             with_dynamic_shape);
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -313,6 +316,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
+  trt_engine->SetDLACore(Get<int>("trt_dla_core"));
 
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
@@ -383,17 +388,17 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("concat", 0)
             .EQ("tanh", 0)
             .EQ("pad", 0)
-            .EQ("elementwise_add", 0)
-            .EQ("elementwise_mul", 0)
+            .LE("elementwise_add", 1)
+            .LE("elementwise_mul", 1)
             .EQ("prelu", 0)
-            .LE("conv2d_transpose", 1)
+            .LE("conv2d_transpose", 2)
             .LE("leaky_relu", 1)
             .EQ("fc", 0)
             .EQ("shuffle_channel", 0)
             .EQ("swish", 0)
             .EQ("split", 0)
-            .EQ("instance_norm", 0)
+            .LE("instance_norm", 1)
             .EQ("gelu", 0)
             .EQ("layer_norm", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0));
+            .LE("matmul", 1));

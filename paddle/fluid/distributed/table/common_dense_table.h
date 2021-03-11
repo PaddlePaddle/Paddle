@@ -28,6 +28,8 @@
 namespace paddle {
 namespace distributed {
 
+class DenseOptimizer;
+
 class CommonDenseTable : public DenseTable {
  public:
   explicit CommonDenseTable() {}
@@ -42,6 +44,7 @@ class CommonDenseTable : public DenseTable {
   virtual int32_t push_dense_param(const float* values, size_t num) override;
   virtual int32_t push_dense(const float* values, size_t num) override;
   virtual int32_t pour() override;
+  virtual int32_t set_global_lr(float* lr) override;
 
   int32_t load(const std::string& path, const std::string& param) override {
     VLOG(0) << "Dense table may load by "
@@ -57,7 +60,7 @@ class CommonDenseTable : public DenseTable {
   }
 
   virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink() override { return 0; }
+  virtual int32_t shrink(const std::string& param) override { return 0; }
   virtual void clear() override { return; }
 
  protected:

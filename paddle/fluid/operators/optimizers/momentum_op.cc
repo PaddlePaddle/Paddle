@@ -115,9 +115,14 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_VERSION(momentum)
     .AddCheckpoint(
         R"ROC(
-      Upgrade momentum add 2 attributes [regularization_method, regularization_coeff].
+      Upgrade momentum add 4 attributes [regularization_method, regularization_coeff,
+      multi_precision, rescale_grad].
     )ROC",
         paddle::framework::compatible::OpVersionDesc()
+            .NewInput("MasterParam", "FP32 master weight for AMP.")
+            .NewOutput("MasterParamOut",
+                       "The updated FP32 master weight for AMP. "
+                       "It shared memory with Input(MasterParam).")
             .NewAttr("regularization_method",
                      "(string) regularization_method, right now only support "
                      "l2decay or none",

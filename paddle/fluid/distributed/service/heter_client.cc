@@ -13,21 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/service/heter_client.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/string/split.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(pserver_timeout_ms);
+
 namespace paddle {
 namespace distributed {
-
-DEFINE_int32(pserver_timeout_ms, 10800000, "pserver request server timeout_ms");
 
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = NULL;
 bool HeterClient::is_initialized_ = false;
@@ -53,6 +46,23 @@ void HeterClient::Stop() {
   }
 }
 
+void HeterClient::FinalizeWorker() {
+  running_ = false;
+  if (!is_initialized_) {
+    VLOG(0) << "HeterClient is not inited, do nothing";
+  } else {
+    if (main_thread_) {
+      main_thread_->join();
+      main_thread_.reset(nullptr);
+    }
+    VLOG(1) << "HeterClient Stop Done";
+  }
+}
+
+std::future<int32_t> HeterClient::StopHeterWorker() {
+  return SendCmd(-1, PS_STOP_SERVER, {});
+}
+
 void HeterClient::RpcProfilerControl() {
   if (trainer_id_ == 0) {
     if (!do_server_profiler_ && platform::IsProfileEnabled()) {
@@ -73,13 +83,20 @@ void HeterClient::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = pserver_timeout_ms;
+  options.timeout_ms = FLAGS_pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
     xpu_channels_[i].reset(new brpc::Channel());
     if (xpu_channels_[i]->Init(xpu_list_[i].c_str(), "", &options) != 0) {
-      VLOG(0) << "HeterServer channel init fail";
+      VLOG(0) << "HeterClient channel init fail. Try Again";
+      auto ip_port = paddle::string::Split(xpu_list_[i], ':');
+      std::string ip = ip_port[0];
+      int port = std::stoi(ip_port[1]);
+      std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+      if (xpu_channels_[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "BrpcPsServer start failed, ip_port= " << int_ip_port;
+      }
     }
   }
 }
@@ -102,10 +119,10 @@ void HeterClient::SendAndRecvAsync(
   int num = trainer_id_ % xpu_channels_.size();
 
   brpc::Controller cntl;
-  cntl.set_timeout_ms(pserver_timeout_ms);
+  cntl.set_timeout_ms(FLAGS_pserver_timeout_ms);
   distributed::MultiVarMsg request, response;
   auto& request_io_buffer = cntl.request_attachment();
-  ::paddle::PsService_Stub stub(xpu_channels_[num].get());
+  ::paddle::distributed::PsService_Stub stub(xpu_channels_[num].get());
   distributed::SerializeToMultiVarMsgAndIOBuf(
       message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
       &request, &request_io_buffer);
@@ -147,9 +164,9 @@ std::future<int32_t> HeterClient::SendCmd(
     for (const auto& param : params) {
       closure->request(i)->add_params(param);
     }
-    ::paddle::PsService_Stub rpc_stub(xpu_channels_[i].get());
+    ::paddle::distributed::PsService_Stub rpc_stub(xpu_channels_[i].get());
     closure->cntl(i)->set_timeout_ms(
-        pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
+        FLAGS_pserver_timeout_ms);  // cmd msg don't limit timeout for save/load
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }

@@ -16,9 +16,13 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#else
+#include <hip/hip_runtime.h>
+#endif
 #include <stddef.h>
 #include <algorithm>
 #include <string>
@@ -36,7 +40,8 @@ struct GpuLaunchConfig {
 };
 
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int element_count) {
+    const platform::CUDADeviceContext& context, int element_count,
+    int max_threads = 1024) {
   PADDLE_ENFORCE_GT(element_count, 0,
                     platform::errors::InvalidArgument(
                         "element count should be greater than 0,"
@@ -53,7 +58,8 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
       std::min(max_physical_threads, theory_thread_count);
 
   // Need get from device
-  const int thread_per_block = std::min(1024, context.GetMaxThreadsPerBlock());
+  const int thread_per_block =
+      std::min(max_threads, context.GetMaxThreadsPerBlock());
   const int block_count =
       std::min(DivUp(physical_thread_count, thread_per_block), sm);
 

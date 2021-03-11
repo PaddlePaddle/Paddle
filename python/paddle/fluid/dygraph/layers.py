@@ -46,6 +46,17 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
+def _addindent(string, indent):
+    s1 = string.split('\n')
+    if len(s1) == 1:
+        return string
+    s2 = []
+    for idx, line in enumerate(s1):
+        if idx > 0:
+            s2.append(str((indent * ' ') + line))
+    return s1[0] + '\n' + '\n'.join(s2)
+
+
 class HookRemoveHelper(object):
     """ A HookRemoveHelper that can be used to remove hook. """
 
@@ -141,7 +152,7 @@ class Layer(core.Layer):
         # Layer-level setting
         self.training = True
         for layer in self.sublayers():
-            layer.train()
+            layer.training = True
 
     def eval(self):
         """
@@ -182,7 +193,7 @@ class Layer(core.Layer):
         # Layer-level setting
         self.training = False
         for layer in self.sublayers():
-            layer.eval()
+            layer.training = False
 
     def apply(self, fn):
         """
@@ -948,7 +959,7 @@ class Layer(core.Layer):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert isinstance(sublayer, core.Layer)
+        assert (isinstance(sublayer, core.Layer) or sublayer == None)
 
         self._sub_layers[name] = sublayer
         return sublayer
@@ -1166,6 +1177,35 @@ class Layer(core.Layer):
 
         return keys
 
+    def extra_repr(self):
+        """
+        Extra representation of this layer, you can have custom implementation
+        of your own layer.
+        """
+        return ''
+
+    def __repr__(self):
+        extra_lines = []
+        extra_repr = self.extra_repr()
+        extra_lines = extra_repr.split('\n')
+        sublayer_lines = []
+        for name, layer in self._sub_layers.items():
+            sublayer_str = repr(layer)
+            sublayer_str = _addindent(sublayer_str, 2)
+            sublayer_lines.append('(' + name + '): ' + sublayer_str)
+
+        final_str = self.__class__.__name__ + '('
+        if extra_lines:
+            if len(extra_lines) > 1:
+                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
+            elif len(extra_lines) == 1:
+                final_str += extra_lines[0]
+        if sublayer_lines:
+            final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
+
+        final_str += ')'
+        return final_str
+
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
@@ -1274,6 +1314,10 @@ class Layer(core.Layer):
                     place = core.CPUPlace()
                 elif p.is_cuda_pinned_place():
                     place = core.CUDAPinnedPlace()
+                elif p.is_xpu_place():
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.XPUPlace(p.xpu_device_id())
                 else:
                     p = core.Place()
                     p.set_place(t._place())

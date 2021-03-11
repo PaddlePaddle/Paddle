@@ -12,11 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <set>
-#include <unordered_map>
-
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
@@ -548,6 +543,10 @@ template struct MergeAdd<platform::CPUDeviceContext, int>;
 template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
 template struct MergeAdd<platform::CPUDeviceContext, float>;
 template struct MergeAdd<platform::CPUDeviceContext, double>;
+template struct MergeAdd<platform::CPUDeviceContext,
+                         paddle::platform::complex64>;
+template struct MergeAdd<platform::CPUDeviceContext,
+                         paddle::platform::complex128>;
 
 template struct MergeAverage<platform::CPUDeviceContext, int>;
 template struct MergeAverage<platform::CPUDeviceContext, int64_t>;

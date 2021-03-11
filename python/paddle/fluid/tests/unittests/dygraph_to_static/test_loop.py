@@ -86,11 +86,15 @@ def for_loop_dyfunc(max_len):
 
 def for_loop_dyfunc2(max_len):
     # Test case: a variable is used and created in loop, but used before created
+    x = fluid.layers.fill_constant(shape=[1, 2], dtype="int32", value=1)
+
     for i in range(max_len):
         if i > 1:
             s = a
         a = 1
-    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s)
+        q, _ = x.shape  # test var x.shape only used but not created in loop
+
+    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s + q)
     return ret
 
 

@@ -82,19 +82,23 @@ from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
 from .manipulation import gather_nd  #DEFINE_ALIAS
 from .manipulation import reshape  #DEFINE_ALIAS
+from .manipulation import reshape_  #DEFINE_ALIAS
 from .manipulation import flip as reverse  #DEFINE_ALIAS
 from .manipulation import scatter  #DEFINE_ALIAS
+from .manipulation import scatter_  #DEFINE_ALIAS
 from .manipulation import scatter_nd_add  #DEFINE_ALIAS
 from .manipulation import scatter_nd  #DEFINE_ALIAS
 from .manipulation import shard_index  #DEFINE_ALIAS
 from .manipulation import slice  #DEFINE_ALIAS
 from .manipulation import split  #DEFINE_ALIAS
 from .manipulation import squeeze  #DEFINE_ALIAS
+from .manipulation import squeeze_  #DEFINE_ALIAS
 from .manipulation import stack  #DEFINE_ALIAS
 from .manipulation import strided_slice  #DEFINE_ALIAS
 from .manipulation import transpose  #DEFINE_ALIAS
 from .manipulation import unique  #DEFINE_ALIAS
 from .manipulation import unsqueeze  #DEFINE_ALIAS
+from .manipulation import unsqueeze_  #DEFINE_ALIAS
 from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 from .manipulation import unbind  #DEFINE_ALIAS
@@ -138,6 +142,7 @@ from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
 from .math import sum  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
+from .math import tanh_  #DEFINE_ALIAS
 from .math import add_n  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
 from .math import maximum  #DEFINE_ALIAS
@@ -203,3 +208,8 @@ from .stat import median  #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
 from .to_string import set_printoptions  #DEFINE_ALIAS
+
+from .array import array_length  #DEFINE_ALIAS
+from .array import array_read  #DEFINE_ALIAS
+from .array import array_write  #DEFINE_ALIAS
+from .array import create_array  #DEFINE_ALIAS

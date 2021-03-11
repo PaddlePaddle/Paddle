@@ -1093,8 +1093,7 @@ class RandomRotation(BaseTransform):
         degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        interpolation (int|str, optional): Interpolation method. Default: 'bilinear'.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
             according the backend. when use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
@@ -1131,7 +1130,7 @@ class RandomRotation(BaseTransform):
 
     def __init__(self,
                  degrees,
-                 resample=False,
+                 interpolation='nearest',
                  expand=False,
                  center=None,
                  fill=0,
@@ -1148,7 +1147,7 @@ class RandomRotation(BaseTransform):
             self.degrees = degrees
 
         super(RandomRotation, self).__init__(keys)
-        self.resample = resample
+        self.interpolation = interpolation
         self.expand = expand
         self.center = center
         self.fill = fill
@@ -1169,8 +1168,8 @@ class RandomRotation(BaseTransform):
 
         angle = self._get_param(self.degrees)
 
-        return F.rotate(img, angle, self.resample, self.expand, self.center,
-                        self.fill)
+        return F.rotate(img, angle, self.interpolation, self.expand,
+                        self.center, self.fill)
 
 
 class Grayscale(BaseTransform):

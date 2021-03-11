@@ -23,7 +23,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include <ThreadPool.h>
 #include "paddle/fluid/distributed/communicator_common.h"
 #include "paddle/fluid/distributed/service/service.h"
 #include "paddle/fluid/framework/archive.h"
@@ -36,7 +35,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+class SelectedRows;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace distributed {
+
+class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;
@@ -154,8 +164,10 @@ class FleetWrapper {
   // init server
   // void InitServer(const std::string& dist_desc,
   //                 const std::vector<uint64_t>& host_sign_list, int index);
-  void InitServer(const std::string& dist_desc,
-                  const std::vector<std::string>& host_sign_list, int index);
+  void InitServer(
+      const std::string& dist_desc,
+      const std::vector<std::string>& host_sign_list, int index, int trainers,
+      const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
                   const std::vector<std::string>& host_sign_list, Scope* scope,
@@ -196,12 +208,16 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModelOneTable(const uint64_t table_id, const std::string& path,
                          const int mode);
+
+  // recv table from server and save it in LodTensor
+  void RecvAndSaveTable(const uint64_t table_id, const std::string& path);
+
   // clear all models, release their memory
   void ClearModel();
   // clear one table
   void ClearOneTable(const uint64_t table_id);
   // shrink sparse table
-  void ShrinkSparseTable(int table_id);
+  void ShrinkSparseTable(int table_id, int threshold);
   // shrink dense table
   void ShrinkDenseTable(int table_id, Scope* scope,
                         std::vector<std::string> var_list, float decay,

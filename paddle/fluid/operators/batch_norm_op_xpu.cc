@@ -139,16 +139,14 @@ class BatchNormGradXPUKernel : public framework::OpKernel<T> {
     auto* dscale_data = dscale->mutable_data<T>(ctx.GetPlace());
     auto* dbias_data = dbias->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::batch_norm_backward(dev_ctx.x_context(), N, C, H, W, x_data,
-                                     dy_data, scale_data, saved_mean_data,
-                                     saved_inv_variance_data, dx_data,
-                                     dscale_data, dbias_data);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU API(batch_norm_infer_forward) return "
-                                   "wrong value[%d], please check whether "
-                                   "Baidu Kunlun Card is properly installed.",
-                                   r));
+    int r = xpu::batch_norm_grad<T>(dev_ctx.x_context(), x_data, dy_data,
+                                    dx_data, N, C, H, W, scale_data,
+                                    saved_mean_data, saved_inv_variance_data,
+                                    dscale_data, dbias_data, true);
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS, platform::errors::External(
+                                          "XPU API(batch_norm_grad) return "
+                                          "wrong value[%d %s]",
+                                          r, XPUAPIErrorMsg[r]));
   }
 };
 

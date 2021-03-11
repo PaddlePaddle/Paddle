@@ -20,7 +20,7 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list
+from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check
 
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
@@ -55,12 +55,6 @@ class TestInitParallelEnv(unittest.TestCase):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSpawnAssistMethod(unittest.TestCase):
-    def test_only_cluster_node_ips_error(self):
-        with self.assertRaises(ValueError):
-            options = dict()
-            options['cluster_node_ips'] = "127.0.0.1,127.0.0.2"
-            _get_subprocess_env_list(nprocs=1, options=options)
-
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())
@@ -72,9 +66,26 @@ class TestSpawnAssistMethod(unittest.TestCase):
             _get_subprocess_env_list(nprocs=2, options=options)
 
     def test_get_correct_env(self):
-        env_dict = _get_subprocess_env_list(nprocs=1, options=dict())[0]
+        options = dict()
+        options['print_config'] = True
+        env_dict = _get_subprocess_env_list(nprocs=1, options=options)[0]
         self.assertEqual(env_dict['PADDLE_TRAINER_ID'], '0')
         self.assertEqual(env_dict['PADDLE_TRAINERS_NUM'], '1')
+
+    def test_nprocs_not_equal_to_selected_gpus(self):
+        with self.assertRaises(ValueError):
+            options = dict()
+            options['selected_gpus'] = "100,101,102"
+            _get_subprocess_env_list(nprocs=2, options=options)
+
+    def test_options_valid_check(self):
+        options = dict()
+        options['selected_gpus'] = "100,101,102"
+        _options_valid_check(options)
+
+        with self.assertRaises(ValueError):
+            options['error'] = "error"
+            _options_valid_check(options)
 
 
 if __name__ == "__main__":

@@ -145,58 +145,7 @@ class TestListenAndServOp(unittest.TestCase):
                 start_left_time -= sleep_time
 
     def test_rpc_interfaces(self):
-        # TODO(Yancey1989): need to make sure the rpc interface correctly.
         pass
-
-    def test_handle_signal_in_serv_op(self):
-        # run pserver on CPU in sync mode
-        p1 = self._start_pserver(False, True, run_pserver)
-        print("test_handle_signal_in_serv_op before _wait_ps_ready")
-        self._wait_ps_ready(p1.pid)
-
-        # raise SIGTERM to pserver
-        os.kill(p1.pid, signal.SIGINT)
-        print("test_handle_signal_in_serv_op after kill pid:", p1.pid)
-        p1.join()
-
-        # run pserver on CPU in async mode
-        p2 = self._start_pserver(False, False, run_pserver)
-        print("test_handle_signal_in_serv_op after start p2 pid:", p2.pid)
-        self._wait_ps_ready(p2.pid)
-
-        # raise SIGTERM to pserver
-        os.kill(p2.pid, signal.SIGTERM)
-        print("test_handle_signal_in_serv_op before join p2 pid:", p2.pid)
-        p2.join()
-
-        gen_complete_file_flag("test_handle_signal_in_serv_op.flag")
-
-    def test_list_and_serv_run_empty_optimize_block(self):
-        # run pserver on CPU in sync mode
-        p1 = self._start_pserver(False, True, run_pserver_with_empty_block)
-        print(
-            "test_list_and_serv_run_empty_optimize_block before _wait_ps_ready")
-        self._wait_ps_ready(p1.pid)
-
-        # raise SIGTERM to pserver
-        os.kill(p1.pid, signal.SIGINT)
-        print("test_list_and_serv_run_empty_optimize_block after kill pid:",
-              p1.pid)
-        p1.join()
-
-        # run pserver on CPU in async mode
-        p2 = self._start_pserver(False, False, run_pserver_with_empty_block)
-        print("test_list_and_serv_run_empty_optimize_block after start p2 pid:",
-              p2.pid)
-        self._wait_ps_ready(p2.pid)
-
-        # raise SIGTERM to pserver
-        os.kill(p2.pid, signal.SIGTERM)
-        print("test_list_and_serv_run_empty_optimize_block before join p2 pid:",
-              p2.pid)
-        p2.join()
-        gen_complete_file_flag(
-            "test_list_and_serv_run_empty_optimize_block.flag")
 
 
 if __name__ == '__main__':

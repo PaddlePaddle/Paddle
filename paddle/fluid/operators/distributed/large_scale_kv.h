@@ -15,7 +15,6 @@
 #pragma once
 
 #include <ThreadPool.h>
-#include <gflags/gflags.h>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -25,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"

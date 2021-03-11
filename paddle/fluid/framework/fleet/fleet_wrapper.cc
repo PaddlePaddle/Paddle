@@ -27,14 +27,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/io/fs.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -198,6 +193,7 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  /*
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
       workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
       fea_keys.size(), task->taskid_);
@@ -211,6 +207,7 @@ void FleetWrapper::HeterPullSparseVars(
       exit(-1);
     }
   }
+  */
 }
 
 void FleetWrapper::HeterPushSparseVars(
@@ -359,6 +356,7 @@ int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
   return pslib_ptr_->_worker_ptr->registe_heter_callback(handler);
+
 #else
   VLOG(0) << "FleetWrapper::RegisterHeterCallback"
           << " does nothing when no pslib";
@@ -701,13 +699,14 @@ void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
-#if (defined PADDLE_WITH_CUDA) && (defined PADDLE_WITH_PSLIB)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined PADDLE_WITH_PSLIB)
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm, int batch_size, const paddle::platform::Place& place,
-    cudaStream_t stream, cudaEvent_t event) {
+    gpuStream_t stream, gpuEvent_t event) {
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
@@ -722,8 +721,13 @@ void FleetWrapper::PushDenseVarsAsync(
     memory::Copy(platform::CUDAPinnedPlace(), pin_g,
                  BOOST_GET_CONST(platform::CUDAPlace, place), g_data,
                  sizeof(float) * count, stream);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipEventRecord(event, stream));
+    hipEventSynchronize(event);
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
     cudaEventSynchronize(event);
+#endif
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {
@@ -1231,6 +1235,24 @@ void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
   }
 #else
   VLOG(0) << "FleetWrapper::LoadWhitelist does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::SaveMultiTableOnePath(const std::vector<int>& table_ids,
+                                         const std::string& path,
+                                         const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_multi_table_one_path(
+      table_ids, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "save model failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveMultiTableOnePath does nothing when no pslib";
 #endif
 }
 

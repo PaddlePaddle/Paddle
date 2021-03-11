@@ -58,13 +58,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/pybind/ascend_wrapper_py.h"
+#endif
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -79,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifdef PADDLE_WITH_NCCL
@@ -102,12 +105,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/pybind/communicator_py.h"
-#endif
-
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
+#endif
+
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
 #include "pybind11/stl.h"
@@ -1307,6 +1310,7 @@ All parameter, weight, gradient are variables in Paddle.
        "The module will return special predefined variable name in Paddle")
       .def("empty", []() { return kEmptyVarName; })
       .def("temp", []() { return kTempVarName; });
+
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
       .def_static("create",
@@ -1983,11 +1987,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
-#ifdef PADDLE_WITH_CUDA
-  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
-  m.def("get_cublas_switch", platform::AllowTF32Cublas);
-#endif  // PADDLE_WITH_CUDA
-
   using VarQuantScale =
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
@@ -2079,10 +2078,10 @@ All parameter, weight, gradient are variables in Paddle.
                                               exec_strategy=exec_strategy)
         )DOC");
 
-  py::enum_<ExecutionStrategy::UseDevice>(exec_strategy, "UseDevice")
-      .value("CPU", ExecutionStrategy::UseDevice::kCPU)
-      .value("CUDA", ExecutionStrategy::UseDevice::kCUDA)
-      .value("XPU", ExecutionStrategy::UseDevice::kXPU);
+  py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
+      .value("CPU", paddle::platform::DeviceType::CPU)
+      .value("CUDA", paddle::platform::DeviceType::CUDA)
+      .value("XPU", paddle::platform::DeviceType::XPU);
 
   exec_strategy.def(py::init())
       .def_property(
@@ -2116,7 +2115,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "_use_device",
           [](const ExecutionStrategy &self) { return self.use_device_; },
-          [](ExecutionStrategy &self, ExecutionStrategy::UseDevice use_device) {
+          [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
             self.use_device_ = use_device;
           })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
               // use_device isn‘t exposed to users.
@@ -2809,8 +2808,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
+#endif
+#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+  BindPSGPUWrapper(&m);
 #endif
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
@@ -2829,13 +2832,22 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifdef PADDLE_WITH_ASCEND
+  BindAscendWrapper(&m);
+  BindAscendGraph(&m);
+#endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
 #endif
-#ifdef PADDLE_WITH_DISTRIBUTE
-  BindCommunicator(&m);
+
+#if defined PADDLE_WITH_PSCORE
+  BindDistFleetWrapper(&m);
+  BindPSHost(&m);
   BindCommunicatorContext(&m);
-  BindLargeScaleKV(&m);
+  BindDistCommunicator(&m);
+  BindHeterClient(&m);
+  BindGraphNode(&m);
+  BindGraphService(&m);
 #endif
 }
 }  // namespace pybind

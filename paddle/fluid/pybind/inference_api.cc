@@ -199,6 +199,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
+    case PaddleDType::INT8:
+      tensor.copy_to_cpu<int8_t>(static_cast<int8_t *>(array.mutable_data()));
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, UINT8 and "
@@ -222,6 +225,12 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       break;
     case PaddleDType::FLOAT32:
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    case PaddleDType::UINT8:
+      tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT8:
+      tensor.CopyToCpu(static_cast<int8_t *>(array.mutable_data()));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -369,7 +378,8 @@ void BindPaddlePlace(py::module *m) {
   py::enum_<PaddlePlace>(*m, "PaddlePlace")
       .value("UNK", PaddlePlace::kUNK)
       .value("CPU", PaddlePlace::kCPU)
-      .value("GPU", PaddlePlace::kGPU);
+      .value("GPU", PaddlePlace::kGPU)
+      .value("XPU", PaddlePlace::kXPU);
 }
 
 void BindPaddlePredictor(py::module *m) {
@@ -398,6 +408,7 @@ void BindNativeConfig(py::module *m) {
   py::class_<NativeConfig, PaddlePredictor::Config>(*m, "NativeConfig")
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
+      .def_readwrite("use_xpu", &NativeConfig::use_xpu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)
@@ -459,7 +470,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("l3_workspace_size"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
+      .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
+      .def("xpu_device_id", &AnalysisConfig::xpu_device_id)
       .def("memory_pool_init_size_mb",
            &AnalysisConfig::memory_pool_init_size_mb)
       .def("fraction_of_gpu_memory_for_pool",
@@ -495,6 +508,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
+           py::arg("dla_core") = 0)
+      .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
@@ -527,7 +543,10 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def("pass_builder", &AnalysisConfig::pass_builder,
+      .def("pass_builder",
+           [](AnalysisConfig &self) {
+             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+           },
            py::return_value_policy::reference);
 }
 

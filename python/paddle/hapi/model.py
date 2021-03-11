@@ -31,7 +31,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-from paddle.fluid.framework import in_dygraph_mode, Variable
+from paddle.fluid.framework import in_dygraph_mode, Variable, _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
@@ -167,6 +167,7 @@ def prepare_distributed_context(place=None):
         place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
             else fluid.CUDAPlace(0)
 
+    place = _get_paddle_place(place)
     strategy = fluid.dygraph.parallel.ParallelStrategy()
     strategy.nranks = ParallelEnv().nranks
     strategy.local_rank = ParallelEnv().local_rank
@@ -620,6 +621,7 @@ class DynamicGraphAdapter(object):
 
         self._input_info = None
         if self._nranks > 1:
+            dist.init_parallel_env()
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
             stradegy.local_rank = ParallelEnv().local_rank
@@ -887,7 +889,6 @@ class Model(object):
 
         # init backend
         if fluid.in_dygraph_mode():
-            dist.init_parallel_env()
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -942,6 +943,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
+    @paddle.no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -993,6 +995,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
+    @paddle.no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.

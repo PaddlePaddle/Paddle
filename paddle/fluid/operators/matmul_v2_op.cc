@@ -150,6 +150,27 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       context->SetOutputDim(y_grad_name, y_dims);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto out_grad_name = framework::GradVarName("Out");
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, out_grad_name),
+        ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
+  }
 };
 
 template <typename T>

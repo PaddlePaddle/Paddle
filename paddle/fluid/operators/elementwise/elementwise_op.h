@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -109,7 +110,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -279,14 +280,28 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       return (ctx.Input<Tensor>("X")->dims() == ctx.Input<Tensor>("Y")->dims());
     };
 
-    if (this->CanMKLDNNBeUsed(ctx) && (ctx.Type() != "elementwise_add_grad" ||
-                                       CanMKLDNNElementwiseAddGradBeUsed())) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        (ctx.Type() != "elementwise_add_grad" ||
+         CanMKLDNNElementwiseAddGradBeUsed())) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -317,13 +332,26 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -352,17 +380,31 @@ class ElementwiseOpDoubleGradWithoutDXDY
                      "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
-      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
+      input_data_type =
+          OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
     }
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 

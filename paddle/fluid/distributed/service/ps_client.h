@@ -24,9 +24,13 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 
 namespace paddle {
 namespace distributed {
+
+using paddle::distributed::PsRequestMessage;
+using paddle::distributed::PsResponseMessage;
 
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
@@ -66,7 +70,8 @@ class PSClient {
       int max_retry) = 0;
 
   // 触发table数据退场
-  virtual std::future<int32_t> shrink(uint32_t table_id) = 0;
+  virtual std::future<int32_t> shrink(uint32_t table_id,
+                                      const std::string threshold) = 0;
 
   // 全量table进行数据load
   virtual std::future<int32_t> load(const std::string &epoch,
@@ -131,11 +136,38 @@ class PSClient {
                                               std::vector<uint64_t> *keys,
                                               int pserver_idx) = 0;
 
+  virtual std::future<int32_t> push_global_step(int table_id,
+                                                int64_t *total_send_data,
+                                                void *done) = 0;
+
+  // recv table from server and save it in LodTensor
+  virtual int32_t recv_and_save_table(const uint64_t table_id,
+                                      const std::string &path) = 0;
+
   virtual void finalize_worker() = 0;
   // client to client, 消息发送
   virtual std::future<int32_t> send_client2client_msg(int msg_type,
                                                       int to_client_id,
                                                       const std::string &msg) {
+    LOG(FATAL) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+  virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id,
+                                      int sample_size,
+                                      std::vector<GraphNode> &res) {
+    LOG(FATAL) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+  virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
+                                               int server_index, int start,
+                                               int size,
+                                               std::vector<GraphNode> &res) {
     LOG(FATAL) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -198,7 +230,7 @@ class PSClient {
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  //处理client2client消息
 };
-REGISTER_REGISTERER(PSClient);
+REGISTER_PSCORE_REGISTERER(PSClient);
 
 class PSClientFactory {
  public:

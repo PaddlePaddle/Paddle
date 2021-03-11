@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <cstdint>
-#include <iostream>
-#include <unordered_set>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
@@ -30,6 +27,9 @@
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {

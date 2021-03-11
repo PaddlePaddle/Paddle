@@ -100,14 +100,12 @@ class _ConvNd(layers.Layer):
         self._padding_mode = padding_mode
         self.output_padding = output_padding
         if dims != 1:
-            self._padding, self._padding_algorithm = _update_padding_nd(
+            self._updated_padding, self._padding_algorithm = _update_padding_nd(
                 padding, channel_last, dims)
 
         if transposed:
             filter_shape = [self._in_channels, out_channels // groups
                             ] + self._kernel_size
-            self._padding, self._padding_algorithm = _update_padding_nd(
-                padding, channel_last, dims)
         else:
             if in_channels % groups != 0:
                 raise ValueError("in_channels must be divisible by groups.")
@@ -118,7 +116,8 @@ class _ConvNd(layers.Layer):
                 self._reversed_padding_repeated_twice = _reverse_repeat_list(
                     _paired_padding, 2)
 
-                self._padding, _ = _update_padding_nd(0, channel_last, dims)
+                self._updated_padding, self._padding_algorithm = _update_padding_nd(
+                    0, channel_last, dims)
 
             filter_shape = [out_channels, in_channels // groups
                             ] + self._kernel_size
@@ -148,6 +147,23 @@ class _ConvNd(layers.Layer):
                                           out_channels % in_channels == 0):
             self._op_type = 'depthwise_conv2d'
             self._use_cudnn = False
+
+    def extra_repr(self):
+        main_str = '{_in_channels}, {_out_channels}, kernel_size={_kernel_size}'
+        if self._stride != [1] * len(self._stride):
+            main_str += ', stride={_stride}'
+        if self._padding != 0:
+            main_str += ', padding={_padding}'
+        if self._padding_mode is not 'zeros':
+            main_str += ', padding_mode={_padding_mode}'
+        if self.output_padding != 0:
+            main_str += ', output_padding={_output_padding}'
+        if self._dilation != [1] * len(self._dilation):
+            main_str += ', dilation={_dilation}'
+        if self._groups != 1:
+            main_str += ', groups={_groups}'
+        main_str += ', data_format={_data_format}'
+        return main_str.format(**self.__dict__)
 
 
 class Conv1D(_ConvNd):
@@ -634,7 +650,7 @@ class Conv2D(_ConvNd):
             self.weight,
             bias=self.bias,
             stride=self._stride,
-            padding=self._padding,
+            padding=self._updated_padding,
             padding_algorithm=self._padding_algorithm,
             dilation=self._dilation,
             groups=self._groups,
@@ -951,7 +967,7 @@ class Conv3D(_ConvNd):
             self.weight,
             bias=self.bias,
             stride=self._stride,
-            padding=self._padding,
+            padding=self._updated_padding,
             padding_algorithm=self._padding_algorithm,
             dilation=self._dilation,
             groups=self._groups,

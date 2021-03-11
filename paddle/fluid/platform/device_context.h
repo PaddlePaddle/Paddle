@@ -30,6 +30,20 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/cuda_helper.h"  // NOLINT
+#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/fluid/platform/dynload/rocblas.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/dynload/rccl.h"
+#endif
+#include "paddle/fluid/platform/gpu_info.h"  // NOLINT
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/data_layout.h"
@@ -40,7 +54,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -52,17 +66,32 @@ struct GpuDevice;
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu_info.h"
 #endif
 
 namespace paddle {
 namespace platform {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /*Set the value of the global variable allow_tf32_cublas*/
 void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
 bool AllowTF32Cublas();
+/*Set the value of the global variable allow_tf32_cudnn*/
+void SetAllowTF32Cudnn(bool active);
+/*Get the global variable allow_tf32_cudnn value*/
+bool AllowTF32Cudnn();
 #endif  // PADDLE_WITH_CUDA
+
+enum DeviceType {
+  CPU = 0,
+  CUDA = 1,
+  XPU = 2,
+};
+
+constexpr DeviceType kCPU = DeviceType::CPU;
+constexpr DeviceType kCUDA = DeviceType::CUDA;
+constexpr DeviceType kXPU = DeviceType::XPU;
 
 class DeviceContext {
  public:
@@ -107,9 +136,20 @@ class XPUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+#ifdef PADDLE_WITH_XPU_BKCL
+  /*! \brief  Return bkcl context. */
+  BKCLContext_t bkcl_context() const { return bkcl_context_; }
+
+  /*! \brief  Set bkcl context. */
+  void set_bkcl_context(BKCLContext_t context) { bkcl_context_ = context; }
+#endif
+
  private:
   XPUPlace place_;
   xpu::Context* context_;
+#ifdef PADDLE_WITH_XPU_BKCL
+  BKCLContext_t bkcl_context_;
+#endif
 
   // Need to be the same with other DeviceContext,
   // Eventhough eigen_device_ is not used in XPU
@@ -123,7 +163,7 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 };
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
@@ -149,13 +189,19 @@ class CUDAContext {
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
 
-  const cudaStream_t& RawStream() { return stream_->raw_stream(); }
+  const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
+#ifdef PADDLE_WITH_HIP
+  const miopenHandle_t& CudnnHandle() const { return cudnn_handle_; }
+#else
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
+#endif
 
+#ifndef PADDLE_WITH_HIP
   const cusolverDnHandle_t& CusolverDnHandle() const {
     return cusolver_dn_handle_;
   }
+#endif
 
   const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
     return cublas_handle_;
@@ -192,6 +238,11 @@ class CUDAContext {
  private:
   void InitEigenContext();
 
+#ifdef PADDLE_WITH_HIP
+  void InitCuBlasContext() {
+    cublas_handle_.reset(new CublasHandleHolder(RawStream()));
+  }
+#else
   void InitCuBlasContext() {
     cublas_handle_.reset(
         new CublasHandleHolder(RawStream(), CUBLAS_DEFAULT_MATH));
@@ -206,9 +257,32 @@ class CUDAContext {
 #endif  // CUDA_VERSION >= 9000
     }
   }
+#endif
 
   void InitCuDNNContext() {
     if (dynload::HasCUDNN()) {
+#ifdef PADDLE_WITH_HIP
+      size_t miopen_major, miopen_minor, miopen_patch;
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenGetVersion(
+          &miopen_major, &miopen_minor, &miopen_patch));
+      auto local_miopen_version =
+          (miopen_major * 1000 + miopen_minor * 100 + miopen_patch) / 100;
+      auto compile_miopen_version = MIOPEN_VERSION / 100;
+      if (local_miopen_version < static_cast<size_t>(compile_miopen_version)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "WARNING: device: " << place_.device
+            << ". The installed Paddle is compiled with MIOPEN "
+            << compile_miopen_version / 10 << "." << compile_miopen_version % 10
+            << ", but MIOPEN version in your machine is "
+            << local_miopen_version / 10 << "." << local_miopen_version % 10
+            << ", which may cause serious incompatible bug. "
+            << "Please recompile or reinstall Paddle with compatible MIOPEN "
+               "version.";
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenCreate(&cudnn_handle_));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::miopenSetStream(cudnn_handle_, RawStream()));
+#else
       auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
       if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
@@ -225,20 +299,27 @@ class CUDAContext {
       PADDLE_RETRY_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
       PADDLE_RETRY_CUDA_SUCCESS(
           dynload::cudnnSetStream(cudnn_handle_, RawStream()));
+#endif
     } else {
       cudnn_handle_ = nullptr;
     }
   }
 
+#ifndef PADDLE_WITH_HIP
   void InitCuSolverContext() {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusolverDnCreate(&cusolver_dn_handle_));
     PADDLE_RETRY_CUDA_SUCCESS(
         dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
   }
+#endif
 
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenDestroy(cudnn_handle_));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
+#endif
     }
     cudnn_handle_ = nullptr;
   }
@@ -249,22 +330,30 @@ class CUDAContext {
     cublas_tf32_tensor_core_handle_.reset();
   }
 
+#ifndef PADDLE_WITH_HIP
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           dynload::cusolverDnDestroy(cusolver_dn_handle_));
     }
   }
+#endif
 
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
   std::unique_ptr<stream::CUDAStream> stream_;
+#ifdef PADDLE_WITH_HIP
+  miopenHandle_t cudnn_handle_;
+#else
   cudnnHandle_t cudnn_handle_;
+#endif
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tf32_tensor_core_handle_;
+#ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle_;
+#endif
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
@@ -313,8 +402,15 @@ class CUDADeviceContext : public DeviceContext {
     return context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
-  /*! \brief  Return cudnn  handle in the device context. */
+/*! \brief  Return cudnn  handle in the device context. */
+#ifdef PADDLE_WITH_HIP
+  miopenHandle_t cudnn_handle() const;
+#else
   cudnnHandle_t cudnn_handle() const;
+#endif
+
+  /*! \brief  Return cublas handle in the device context. */
+  cublasHandle_t cublas_handle() const;
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
    *  functions without interrupting by other threads.
@@ -325,12 +421,14 @@ class CUDADeviceContext : public DeviceContext {
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
+#ifndef PADDLE_WITH_HIP
   cusolverDnHandle_t cusolver_dn_handle() const;
+#endif
 
   /*! \brief  Return cuda stream in the device context. */
-  cudaStream_t stream() const;
+  gpuStream_t stream() const;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const { return nccl_comm_; }
 
@@ -339,7 +437,7 @@ class CUDADeviceContext : public DeviceContext {
 #endif
 
   template <typename Callback>
-  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+  void RecordEvent(gpuEvent_t ev, Callback callback) const {
     return context()->Stream()->RecordEvent(ev, callback);
   }
 
@@ -381,7 +479,7 @@ class CUDADeviceContext : public DeviceContext {
 
   mutable std::mutex cudnn_handle_mtx_;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
   // NCCL collective operations provides fast collectives over multiple GPUs
   // both within and across nodes.
@@ -495,8 +593,12 @@ class MKLDNNDeviceContextThreadLocals {
     // Recently registered data_format. This is needed to
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
+    // MKL-DNN stream used for execution of primitives (per-thread)
+    mkldnn::engine cur_engine;
+    mkldnn::stream cur_stream;
 
     Body();
+    ~Body();
     void set_cur_mkldnn_session_id(size_t sid);
     size_t get_cur_mkldnn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);
@@ -504,6 +606,8 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
+    const mkldnn::engine& get_engine(void);
+    mkldnn::stream& get_stream(void);
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -542,7 +646,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
-  const mkldnn::engine& GetEngine() const { return engine_; }
+  const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
   void ResetBlobMap();
@@ -552,8 +656,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const std::string& GetKeySuffix(void) const { return key_suffix_; }
 
   // Disable adding  thread ID to the key
-  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; };
-  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; };
+  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; }
+  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; }
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
@@ -564,6 +668,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Set data to blob (i.e. name/data pair). Create blob if not existing
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
+  // Calculate number of oneDNN objects cached
+  unsigned int GetCachedObjectsNumber(void);
+
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
@@ -572,7 +679,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   }
 
  private:
-  mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;

@@ -13,11 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
-#include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -203,11 +208,11 @@ REGISTER_PASS_CAPABILITY(mul_gru_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));
 REGISTER_PASS_CAPABILITY(fc_gru_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("mul", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("gru", 0)
-            .EQ("fusion_gru", 0));
+            .LE("fusion_gru", 1));

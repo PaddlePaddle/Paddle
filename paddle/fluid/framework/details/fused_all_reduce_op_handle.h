@@ -33,22 +33,31 @@ namespace platform {
 class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
                          const size_t num_of_all_reduce,
                          const platform::NCCLCommunicator *ctxs);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+struct FusedAllReduceOpHandle : public AllReduceOpHandle {
+  FusedAllReduceOpHandle(ir::Node *node,
+                         const std::vector<Scope *> &local_scopes,
+                         const std::vector<platform::Place> &places,
+                         const size_t num_of_all_reduce,
+                         const platform::BKCLCommunicator *ctxs);
 #else
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,

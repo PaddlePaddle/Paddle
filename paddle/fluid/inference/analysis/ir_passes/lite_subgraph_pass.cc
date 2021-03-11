@@ -271,6 +271,13 @@ void LiteSubgraphPass::SetUpEngine(
       paddle::lite_api::Place({target_type, precision_type}),
       paddle::lite_api::Place({target_type, PRECISION(kInt64)}),
       paddle::lite_api::Place({target_type, PRECISION(kFloat)}),
+#ifdef PADDLE_WITH_ARM
+      paddle::lite_api::Place({TARGET(kARM), precision_type}),
+      paddle::lite_api::Place({TARGET(kARM), PRECISION(kFloat)}),
+#else
+      paddle::lite_api::Place({TARGET(kX86), precision_type}),
+      paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+#endif
       paddle::lite_api::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;

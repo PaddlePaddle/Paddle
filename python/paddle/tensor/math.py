@@ -25,6 +25,7 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable,
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+from .manipulation import _print_warning_in_static_mode
 
 # TODO: define math functions
 # yapf: disable
@@ -47,8 +48,6 @@ from ..fluid.layers import exp    #DEFINE_ALIAS
 from ..fluid.layers import floor    #DEFINE_ALIAS
 from ..fluid.layers import log    #DEFINE_ALIAS
 from ..fluid.layers import reciprocal    #DEFINE_ALIAS
-from ..fluid.layers import reduce_all    #DEFINE_ALIAS
-from ..fluid.layers import reduce_any    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_max    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_min    #DEFINE_ALIAS
 # from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
@@ -70,6 +69,8 @@ from ..fluid import layers
 __all__ = [
         'abs',
         'acos',
+        'all',
+        'any',
         'asin',
         'atan',
         'ceil',
@@ -99,6 +100,7 @@ __all__ = [
         'stanh',
         'sum',
         'tanh',
+        'tanh_',
         'add_n',
         'max',
         'maximum',
@@ -156,11 +158,11 @@ def pow(x, y, name=None):
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
 
@@ -168,16 +170,24 @@ def pow(x, y, name=None):
 
             import paddle
 
-            # example 1: y is a float
-            x = paddle.to_tensor([1, 2, 3])
-            y = 2
-            res = paddle.pow(x, y)
-            print(res) # [1 4 9]
-            
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+
+            # example 1: y is a float or int
+            res = paddle.pow(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+            res = paddle.pow(x, 2.5)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1.         , 5.65685415 , 15.58845711])
+
             # example 2: y is a Tensor
-            y = paddle.full(shape=[1], fill_value=2, dtype='float32')
+            y = paddle.to_tensor([2], dtype='float32')
             res = paddle.pow(x, y)
-            print(res) # [1 4 9]
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
 
     """
     # in dynamic graph mode
@@ -1961,6 +1971,17 @@ def tanh(x, name=None):
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
     return out
 
+def tanh_(x, name=None):
+    r"""
+    Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_tanh`.
+    """
+    if in_dygraph_mode():
+        return core.ops.tanh_(x)
+
+    _print_warning_in_static_mode("tanh")
+    return tanh(x, name)
+
 def increment(x, value=1.0, name=None):
     """
     The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
@@ -2027,16 +2048,14 @@ def all(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
@@ -2051,8 +2070,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
-            out4 = paddle.all(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[False], [True]]
+            out4 = paddle.all(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
             
     """
@@ -2123,16 +2142,14 @@ def any(x, axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import numpy as np
             
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
-            x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
+            x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
-            x = layers.cast(x, 'bool')
+            x = paddle.cast(x, 'bool')
             
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
@@ -2147,8 +2164,8 @@ def any(x, axis=None, keepdim=False, name=None):
             print(out3)
             
             # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
-            out4 = paddle.any(x, axis=1, keep_dim=True)
-            out4 = layers.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.any(x, axis=1, keepdim=True)
+            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
             print(out4)
             
     """

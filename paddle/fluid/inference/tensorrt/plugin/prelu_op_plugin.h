@@ -66,11 +66,14 @@ class PReluPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &prelu_mode);
     mode_ = std::string(prelu_mode);
   }
-  ~PReluPlugin() { cudaFree(p_gpu_weight_); }
+  ~PReluPlugin() {}
   int initialize() override;
+  void terminate() override;
 
   PReluPlugin* clone() const override {
-    return new PReluPlugin(weight_.data(), weight_.size(), mode_);
+    auto* ptr = new PReluPlugin(weight_.data(), weight_.size(), mode_);
+    ptr->p_gpu_weight_ = p_gpu_weight_;
+    return ptr;
   }
 
   const char* getPluginType() const override { return "prelu_plugin"; }
@@ -100,7 +103,7 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &prelu_mode);
     mode_ = std::string(prelu_mode);
   }
-  ~PReluPluginDynamic() { cudaFree(p_gpu_weight_); }
+  ~PReluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
     ptr->p_gpu_weight_ = p_gpu_weight_;

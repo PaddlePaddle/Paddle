@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <cmath>
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -68,54 +67,6 @@ TEST(AnalysisPredictor, use_gpu) {
                 12e-5);
   }
 }
-
-#ifdef LITE_SUBGRAPH_WITH_XPU
-TEST(AnalysisPredictor, use_xpu) {
-  std::string model_dir = FLAGS_infer_model + "/" + "model";
-  AnalysisConfig config;
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
-  config.EnableXpu(100);
-  config.SetModel(model_dir + "/model", model_dir + "/params");
-
-  std::vector<PaddleTensor> inputs;
-  auto predictor = CreatePaddlePredictor(config);
-  const int batch = 1;
-  const int channel = 3;
-  const int height = 318;
-  const int width = 318;
-  const int input_num = batch * channel * height * width;
-  std::vector<float> input(input_num, 1);
-
-  PaddleTensor in;
-  in.shape = {batch, channel, height, width};
-  in.data =
-      PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
-  in.dtype = PaddleDType::FLOAT32;
-  inputs.emplace_back(in);
-
-  std::vector<PaddleTensor> outputs;
-  ASSERT_TRUE(predictor->Run(inputs, &outputs));
-
-  const std::vector<float> truth_values = {
-      127.84,   738.088,  1013.22,  -438.055, 366.451,  927.585,  736.341,
-      -633.776, -329.904, -430.149, -633.082, -146.597, -1324.19, -1349.29,
-      -242.68,  117.541,  -801.704, -391.428, -404.756, 453.995,  515.373,
-      -133.003, 69.3941,  590.056,  -1434.66, -1070.81, 307.093,  400.463,
-      -316.094, -587.089, -161.033, 800.357,  -96.4212, 748.706,  868.226,
-      -447.936, 112.782,  1127.24,  47.4587,  677.698,  593.126,  -336.462,
-      551.328,  397.816,  78.3572,  -715.269, 406.002,  404.149,  246.067,
-      -8.4649,  131.345,  -647.951,
-  };
-
-  const size_t expected_size = 1;
-  EXPECT_EQ(outputs.size(), expected_size);
-  float* data_o = static_cast<float*>(outputs[0].data.data());
-  for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                10e-5);
-  }
-}
-#endif
 
 }  // namespace inference
 }  // namespace paddle

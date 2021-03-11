@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gflags/gflags.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #endif
 
@@ -45,7 +45,7 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDA related related FLAG
@@ -84,7 +84,7 @@ DEFINE_string(selected_gpus, "",
               "share-memory only.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDNN related FLAG
@@ -167,7 +167,7 @@ DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
             "batch_norm, default is False.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * NCCL related FLAG
@@ -377,7 +377,7 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * Memory related FLAG
@@ -498,8 +498,14 @@ DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
+#ifdef PADDLE_ON_INFERENCE
+static const int32_t kDefaultCallStackLevel = 2;
+#else
+static const int32_t kDefaultCallStackLevel = 1;
+#endif
+
 DEFINE_int32(
-    call_stack_level, 1,
+    call_stack_level, kDefaultCallStackLevel,
     "Determine the call stack to print when error or exeception happens."
     // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
     // "If FLAGS_call_stack_level == 0, only the error message summary will be "

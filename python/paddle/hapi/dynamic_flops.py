@@ -16,7 +16,7 @@ import paddle
 import warnings
 import paddle.nn as nn
 import numpy as np
-from .static_flops import static_flops
+from .static_flops import static_flops, Table
 
 __all__ = ['flops']
 
@@ -121,7 +121,7 @@ def count_convNd(m, x, y):
     bias_ops = 1 if m.bias is not None else 0
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops)
-    m.total_ops += total_ops
+    m.total_ops += abs(int(total_ops))
 
 
 def count_leaky_relu(m, x, y):
@@ -135,15 +135,14 @@ def count_bn(m, x, y):
     nelements = x.numel()
     if not m.training:
         total_ops = 2 * nelements
-
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_linear(m, x, y):
     total_mul = m.weight.shape[0]
     num_elements = y.numel()
     total_ops = total_mul * num_elements
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_avgpool(m, x, y):
@@ -161,8 +160,7 @@ def count_adap_avgpool(m, x, y):
     kernel_ops = total_add + total_div
     num_elements = y.numel()
     total_ops = kernel_ops * num_elements
-
-    m.total_ops += int(total_ops)
+    m.total_ops += abs(int(total_ops))
 
 
 def count_zero_ops(m, x, y):
@@ -173,7 +171,7 @@ def count_parameters(m, x, y):
     total_params = 0
     for p in m.parameters():
         total_params += p.numel()
-    m.total_params[0] = int(total_params)
+    m.total_params[0] = abs(int(total_params))
 
 
 def count_io_info(m, x, y):
@@ -221,7 +219,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         if m_type in custom_ops:
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
-                print("Customize Function has been appied to {}".format(m_type))
+                print("Customize Function has been applied to {}".format(
+                    m_type))
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
@@ -254,30 +253,24 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
-        total_ops += m.total_ops
-        total_params += m.total_params
-    if hasattr(m, 'total_ops') and hasattr(m, 'total_params'):
-        total_ops = int(total_ops)
-        total_params = int(total_params)
+        if set(['total_ops', 'total_params', 'input_shape',
+                'output_shape']).issubset(set(list(m._buffers.keys()))):
+            total_ops += m.total_ops
+            total_params += m.total_params
 
     if training:
         model.train()
     for handler in handler_collection:
         handler.remove()
 
-    try:
-        from prettytable import PrettyTable
-    except ImportError:
-        raise ImportError(
-            "paddle.flops() requires package `prettytable`, place install it firstly using `pip install prettytable`. "
-        )
-    table = PrettyTable(
+    table = Table(
         ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
 
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
-        if "total_ops" in m._buffers:
+        if set(['total_ops', 'total_params', 'input_shape',
+                'output_shape']).issubset(set(list(m._buffers.keys()))):
             table.add_row([
                 m.full_name(), list(m.input_shape.numpy()),
                 list(m.output_shape.numpy()), int(m.total_params),
@@ -287,8 +280,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             m._buffers.pop("total_params")
             m._buffers.pop('input_shape')
             m._buffers.pop('output_shape')
-    if (print_detail):
-        print(table)
-    print('Total Flops: {}     Total Params: {}'.format(total_ops,
-                                                        total_params))
-    return total_ops
+    if print_detail:
+        table.print_table()
+    print('Total Flops: {}     Total Params: {}'.format(
+        int(total_ops), int(total_params)))
+    return int(total_ops)

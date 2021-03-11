@@ -157,9 +157,13 @@ class Test_Detach(unittest.TestCase):
         except Exception as e:
             # Here is to check
             assert type(e) == AssertionError
-            assert str(
-                e
-            ) == "'detach' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            assert str(e) == (
+                "'detach' should be called by imperative Varible "
+                "in imperative mode, please run it in dygraph mode. You can "
+                "turn off paddle.enable_static() if you are in static mode, "
+                "or turn off ProgramTranslator if you are using "
+                "@paddle.jit.to_static. If you have to run ProgramTranslator, "
+                "please use other API to replace 'detach'")
 
 
 class TestInplace(unittest.TestCase):

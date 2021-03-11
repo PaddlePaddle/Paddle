@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -63,8 +64,6 @@ static bool gProfileStarted = false;
 std::once_flag p2p_init_flag;
 #endif
 
-using UseDevice = paddle::framework::details::ExecutionStrategy::UseDevice;
-
 class ParallelExecutorPrivate {
  public:
   ParallelExecutorPrivate(const std::vector<platform::Place> &places,
@@ -95,7 +94,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-  bool IsUseCUDA(UseDevice use_device);
+  bool IsUseCUDA(DeviceType use_device);
 
   void SetHasFeed(size_t dev_idx, bool has_feed = true);
 
@@ -169,7 +168,9 @@ class ParallelExecutorPrivate {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
             platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
-            platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
+            platform::errors::PreconditionNotMet(
+                "PaddlePaddle failed to get NCCL unique ID. It may due to your "
+                "system settings or NCCL library error, please debug on NCCL"));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -272,6 +273,90 @@ class ParallelExecutorPrivate {
   }
 #endif
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+  void InitBKCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
+    VLOG(1) << "bkcl comm num:" << bst.bkcl_comm_num_ << ", nranks:" << nranks_
+            << ", num_trainers:" << bst.num_trainers_
+            << ", trainer_id:" << bst.trainer_id_;
+
+    PADDLE_ENFORCE_EQ(bst.use_hierarchical_allreduce_, false,
+                      platform::errors::Unimplemented(
+                          "xpu doesn't support use_hierarchical_allreduce"));
+
+    std::vector<BKCLUniqueId *> flat_bkcl_ids;
+    if (nranks_ == 1) {
+      // FIXME(gongwb): need not to create bkclid when nranks==1
+      bkcl_ctxs_->InitFlatCtxs(places_, flat_bkcl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
+      return;
+    }
+
+    if (bst.enable_parallel_graph_) {
+      VLOG(1) << "use only one bkclid in pg model";
+
+      BKCLUniqueId *bkcl_id = nullptr;
+
+      std::string var_name = platform::GetFlatBKCLVarName(0);
+      auto bkcl_id_var = scope->FindVar(var_name);
+      std::unique_ptr<BKCLUniqueId> id(new BKCLUniqueId());
+      if (bkcl_id_var) {
+        bkcl_id = bkcl_id_var->GetMutable<BKCLUniqueId>();
+      } else {
+        PADDLE_ENFORCE_EQ(
+            bkcl_get_unique_id(id.get()), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl get unique id failed"));
+        bkcl_id = id.get();
+      }
+
+      flat_bkcl_ids.push_back(bkcl_id);
+
+      bkcl_ctxs_->InitFlatCtxs(places_, flat_bkcl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
+      VLOG(1) << "init bst bkcl context complete!";
+      return;
+    }
+
+    // num_trainers ==1 && places > 1
+    if (bst.num_trainers_ == 1) {
+      bkcl_ctxs_->InitFlatCtxs(places_, flat_bkcl_ids, bst.num_trainers_,
+                               bst.trainer_id_);
+      return;
+    }
+
+    for (int i = 0; i < static_cast<int>(bst.bkcl_comm_num_); i++) {
+      std::string var_name = platform::GetFlatBKCLVarName(i);
+      auto bkcl_id_var = scope->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          bkcl_id_var,
+          platform::errors::NotFound("can't find %s bkcl_id_var", var_name));
+      auto bkcl_id = bkcl_id_var->GetMutable<BKCLUniqueId>();
+      flat_bkcl_ids.push_back(bkcl_id);
+    }
+
+    bkcl_ctxs_->InitFlatCtxs(places_, flat_bkcl_ids, bst.num_trainers_,
+                             bst.trainer_id_);
+  }
+
+  void InitOrGetBKCLCommunicator(framework::Scope *scope,
+                                 const BuildStrategy &bst) {
+    const std::string var_name = "BKCLCommunicator";
+    auto var = scope->FindVar(var_name);
+    if (var != nullptr) {
+      PADDLE_ENFORCE_EQ(var->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "if %s exists, it must be initialized", var_name));
+      VLOG(1) << "find " << var_name
+              << " in scope, so use it and does not recreate!";
+      bkcl_ctxs_ = var->GetMutable<platform::BKCLCommunicator>();
+      return;
+    }
+
+    VLOG(1) << "not find " << var_name << " in scope, so recreate it!";
+    bkcl_ctxs_ = scope->Var(var_name)->GetMutable<platform::BKCLCommunicator>();
+    InitBKCLCtxs(scope, bst);
+  }
+#endif
+
   inline bool IsPersistable(const std::string &name) const {
     auto iter = is_persistable_.find(name);
     return iter != is_persistable_.end() && iter->second;
@@ -288,9 +373,11 @@ class ParallelExecutorPrivate {
 
 #if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
-  UseDevice use_device_;
+  DeviceType use_device_;
   bool use_all_reduce_;
   size_t nranks_;
 
@@ -300,8 +387,8 @@ class ParallelExecutorPrivate {
   details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
 };
 
-bool ParallelExecutorPrivate::IsUseCUDA(UseDevice use_device) {
-  return use_device == UseDevice::kCUDA;
+bool ParallelExecutorPrivate::IsUseCUDA(DeviceType use_device) {
+  return use_device == p::kCUDA;
 }
 
 void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
@@ -348,7 +435,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
     addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
+    addto_pass->Set(ir::kUseCuda, new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply inplace_addto_op_pass";
     graph = addto_pass->Apply(graph);
     VLOG(10) << "inplace_addto_op_pass Applied";
@@ -359,7 +446,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
         ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
     inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == UseDevice::kCUDA));
+    inplace_pass->Set(ir::kUseCuda, new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
@@ -375,7 +462,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
     cross_op_memory_reuse_pass->Set(ir::kUseCuda,
-                                    new bool(use_device_ == UseDevice::kCUDA));
+                                    new bool(use_device_ == p::kCUDA));
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
@@ -564,9 +651,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
 
   std::string device_name;
-  if (member_->use_device_ == UseDevice::kCPU) {
+  if (member_->use_device_ == p::kCPU) {
     device_name = "CPU";
-  } else if (member_->use_device_ == UseDevice::kCUDA) {
+  } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
   } else {
     device_name = "XPU";
@@ -642,6 +729,27 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with CUDA."));
+#endif
+  }
+  if (member_->use_device_ == p::kXPU && member_->nranks_ > 1) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+    member_->InitOrGetBKCLCommunicator(scope, member_->build_strategy_);
+
+    auto *bkcl_ctxs =
+        member_->bkcl_ctxs_->GetSyncBatchNormCtx(scope, member_->places_);
+    auto &pool = platform::DeviceContextPool::Instance();
+    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
+      auto *dev_ctx = static_cast<platform::XPUDeviceContext *>(
+          pool.Get(member_->places_[dev_id]));
+      auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[dev_id]);
+      dev_ctx->set_bkcl_context(bkcl_ctx.comm());
+    }
+#else
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with XPU."));
 #endif
   }
   // broadcast parameters from the 0th device to others:
@@ -671,39 +779,55 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
         graph, {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, 1,
-        member_->IsUseCUDA(member_->use_device_), member_->nccl_ctxs_);
+        {member_->local_scopes_[0]}, 1, member_->use_device_,
+        member_->nccl_ctxs_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = member_->build_strategy_.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, 1,
-          member_->IsUseCUDA(member_->use_device_), member_->nccl_ctxs_);
+          {member_->local_scopes_[i]}, 1, member_->use_device_,
+          member_->nccl_ctxs_);
       async_graphs[i] = graphs[i];
     }
   } else {
     graph = member_->build_strategy_.Apply(
         graph, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->IsUseCUDA(member_->use_device_),
-        member_->nccl_ctxs_);
+        member_->nranks_, member_->use_device_, member_->nccl_ctxs_);
+  }
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  if (member_->build_strategy_.async_mode_) {
+    VLOG(3) << "use local async mode";
+    graph = member_->build_strategy_.Apply(
+        graph, {member_->places_[0]}, loss_var_name,
+        {member_->local_scopes_[0]}, 1, member_->use_device_,
+        member_->bkcl_ctxs_);
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
+      graphs[i] = member_->build_strategy_.Apply(
+          graphs[i], {member_->places_[i]}, loss_var_name,
+          {member_->local_scopes_[i]}, 1, member_->use_device_,
+          member_->bkcl_ctxs_);
+      async_graphs[i] = graphs[i];
+    }
+  } else {
+    graph = member_->build_strategy_.Apply(
+        graph, member_->places_, loss_var_name, member_->local_scopes_,
+        member_->nranks_, member_->use_device_, member_->bkcl_ctxs_);
   }
 #else
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
         graph, {member_->places_[0]}, loss_var_name,
-        {member_->local_scopes_[0]}, 1,
-        member_->IsUseCUDA(member_->use_device_));
+        {member_->local_scopes_[0]}, 1, member_->use_device_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       graphs[i] = member_->build_strategy_.Apply(
           graphs[i], {member_->places_[i]}, loss_var_name,
-          {member_->local_scopes_[i]}, 1,
-          member_->IsUseCUDA(member_->use_device_));
+          {member_->local_scopes_[i]}, 1, member_->use_device_);
       async_graphs[i] = graphs[i];
     }
   } else {
     graph = member_->build_strategy_.Apply(
         graph, member_->places_, loss_var_name, member_->local_scopes_,
-        member_->nranks_, member_->IsUseCUDA(member_->use_device_));
+        member_->nranks_, member_->use_device_);
   }
 #endif
 
@@ -723,6 +847,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
       member_->is_persistable_.emplace(node->Var()->Name(),
                                        node->Var()->Persistable());
+    }
+  }
+
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      var_infos.emplace_back();
+      var_infos.back() = fused_var.second;
+
+      member_->is_persistable_.emplace(fused_var.first,
+                                       fused_var.second.persistable_);
     }
   }
 
@@ -799,10 +934,23 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
             exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
             member_->places_, graph));
       } else {
-        VLOG(3) << "use FastThreadedSSAGraphExecutor";
-        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-            member_->places_, graph));
+        if (member_->use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU)
+          VLOG(3) << "use BindThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::BindThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+#else
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Paddle can't use XPU device since it's not compiled with XPU,"
+              "Please recompile or reinstall Paddle with XPU support."));
+#endif
+        } else {
+          VLOG(3) << "use FastThreadedSSAGraphExecutor";
+          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+              exec_strategy, member_->local_scopes_,
+              member_->local_exec_scopes_, member_->places_, graph));
+        }
       }
       final_graphs.emplace_back(graph);
     }
@@ -884,6 +1032,64 @@ void ParallelExecutor::BCastParamsToDevices(
         nccl_ctxs->WaitAll();
       }
 #endif
+    } else if (paddle::platform::is_xpu_place(main_tensor.place())) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+      std::vector<void *> buffers;
+      buffers.reserve(member_->places_.size());
+      size_t numel = main_tensor.numel();
+      // TODO(liuyuhui): BKCL only support parameters using float type,
+      // other parameters need to be strongly converted to float before
+      // broadcasting,
+      // but broadcast is equivalent to no type of operation, does not affect
+      // correctness.
+      BKCLDataType data_type = BKCL_FLOAT;
+      // BKCLDataType data_type = platform::ToBKCLDataType(main_tensor.type());
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        auto place = member_->places_[i];
+        void *buffer;
+
+        if (i == 0 && trainer_id == 0) {
+          buffer = const_cast<void *>(main_tensor.data<void>());
+        } else {
+          auto local_scope = member_->local_scopes_[i];
+          auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
+          t->Resize(dims);
+          buffer = t->mutable_data(place, main_tensor.type());
+        }
+        buffers.push_back(buffer);
+      }
+
+      PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
+                        platform::errors::PreconditionNotMet(
+                            "variables' buffer size to bcast is %d, which is "
+                            "NOT equal to places size %d",
+                            buffers.size(), member_->places_.size()));
+      {
+        auto *bkcl_ctxs = member_->bkcl_ctxs_->DefaultFlatCtx();
+
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_start(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_start failed"));
+        for (size_t i = 0; i < member_->places_.size(); ++i) {
+          auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
+          auto broadcast_numel = numel;
+          if (main_tensor.type() == framework::proto::VarType::INT64) {
+            broadcast_numel *= 2;
+          }
+          PADDLE_ENFORCE_EQ(
+              bkcl_broadcast(bkcl_ctx.comm(), buffers[i], buffers[i],
+                             broadcast_numel, data_type, 0, NULL),
+              BKCL_SUCCESS,
+              platform::errors::Unavailable("bkcl_broadcast failed"));
+        }
+        PADDLE_ENFORCE_EQ(
+            bkcl_group_end(), BKCL_SUCCESS,
+            platform::errors::Unavailable("bkcl_group_end failed"));
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+#endif
     } else {
       platform::CPUPlace cpu;
       for (size_t i = 1; i < member_->places_.size(); ++i) {
@@ -916,8 +1122,6 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event(
-      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();

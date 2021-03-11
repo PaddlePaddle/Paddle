@@ -64,39 +64,70 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         if trainer_id == 0:
             wait_server_ready(other_trainers)
 
-        nccl_id_var = startup_program.global_block().create_var(
-            name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+        if core.is_compiled_with_cuda():
+            comm_id_var = startup_program.global_block().create_var(
+                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
 
-        for i in range(1, build_strategy.nccl_comm_num):
-            startup_program.global_block().create_var(
-                name="NCCLID_{}".format(i),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-
-        if build_strategy.use_hierarchical_allreduce:
-            for i in range(0, build_strategy.nccl_comm_num):
+            for i in range(1, build_strategy.nccl_comm_num):
                 startup_program.global_block().create_var(
-                    name="Hierarchical_inter_NCCLID_{}".format(i),
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup_program.global_block().create_var(
-                    name="Hierarchical_exter_NCCLID_{}".format(i),
+                    name="NCCLID_{}".format(i),
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
 
-        startup_program.global_block().append_op(
-            type="gen_nccl_id",
-            inputs={},
-            outputs={"NCCLID": nccl_id_var},
-            attrs={
-                "trainers": trainer_endpoints,
-                "trainer_id": trainer_id,
-                "nccl_comm_num": build_strategy.nccl_comm_num,
-                "use_hierarchical_allreduce":
-                build_strategy.use_hierarchical_allreduce,
-                "hierarchical_allreduce_inter_ranks":
-                build_strategy.hierarchical_allreduce_inter_nranks
-            })
+            if build_strategy.use_hierarchical_allreduce:
+                for i in range(0, build_strategy.nccl_comm_num):
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+                    startup_program.global_block().create_var(
+                        name="Hierarchical_exter_NCCLID_{}".format(i),
+                        persistable=True,
+                        type=core.VarDesc.VarType.RAW)
+
+            startup_program.global_block().append_op(
+                type="gen_nccl_id",
+                inputs={},
+                outputs={"NCCLID": comm_id_var},
+                attrs={
+                    "trainers": trainer_endpoints,
+                    "trainer_id": trainer_id,
+                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    build_strategy.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_ranks":
+                    build_strategy.hierarchical_allreduce_inter_nranks
+                })
+        elif core.is_compiled_with_xpu():
+            comm_id_var = startup_program.global_block().create_var(
+                name="BKCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+
+            #NOTE(liuyuhui) Baidu Kunlun Communication Library(BKCL) currently do not support multi machines.
+            assert build_strategy.bkcl_comm_num == 1, \
+                "Baidu Kunlun Communication Library(BKCL) currently do not support multi machines."
+            for i in range(1, build_strategy.bkcl_comm_num):
+                startup_program.global_block().create_var(
+                    name="BKCLID_{}".format(i),
+                    persistable=True,
+                    type=core.VarDesc.VarType.RAW)
+
+            startup_program.global_block().append_op(
+                type="gen_bkcl_id",
+                inputs={},
+                outputs={"BKCLID": comm_id_var},
+                attrs={
+                    "trainers": trainer_endpoints,
+                    "trainer_id": trainer_id,
+                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    build_strategy.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_ranks":
+                    build_strategy.hierarchical_allreduce_inter_nranks
+                })
+        else:
+            raise ValueError(
+                "comm_id must be generated in paddlepaddle-xpu or paddlepaddle-gpu."
+            )
 
     def _try_to_compile(self, startup_program, main_program, loss):
         dist_strategy = self.user_defined_strategy
@@ -165,7 +196,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         main_program._hierarchical_allreduce_inter_nranks = local_build_strategy.hierarchical_allreduce_inter_nranks
 
         # TODO(guru4elephant): should be an independent optimizer
-        self._setup_nccl_op(startup_program, main_program, local_build_strategy)
+        if worker_num > 1:
+            self._setup_nccl_op(startup_program, main_program,
+                                local_build_strategy)
 
         local_build_strategy.num_trainers = self.role_maker._worker_num()
         local_build_strategy.trainer_id = self.role_maker._worker_index()

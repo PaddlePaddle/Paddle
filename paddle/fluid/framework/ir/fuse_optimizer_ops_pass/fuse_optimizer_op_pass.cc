@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
-#include <algorithm>
-#include <set>
-#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -76,6 +72,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
 
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
+  if (!result.Has(details::kStartupProgramDescs)) {
+    result.Set(details::kStartupProgramDescs, new details::ProgramDescs);
+  }
   if (!result.Has(details::kProgramDescs)) {
     result.Set(details::kProgramDescs, new details::ProgramDescs);
   }
@@ -100,7 +99,12 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         fused_var_set.count(fused_var_name), 0,
         platform::errors::AlreadyExists(
             "The fused variable(%s) already exists.", fused_var_name));
-    fused_var_set.insert(fused_var_name);
+    // FIXME(wangxi). update persistable
+    details::VariableInfo var_info;
+    var_info.name_ = fused_var_name;
+    var_info.type_ = proto::VarType::LOD_TENSOR;
+    var_info.persistable_ = false;
+    fused_var_set.insert({fused_var_name, var_info});
     fused_vars_name.emplace(var_name, fused_var_name);
   }
 
@@ -151,8 +155,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         return;
       }
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
-      auto iter =
-          std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
+
+      auto iter = fused_vars.find(fused_grad.front());
       PADDLE_ENFORCE_EQ(
           iter != fused_vars.end(), true,
           platform::errors::NotFound("Not found the fused gradient variable."));

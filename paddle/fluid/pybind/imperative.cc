@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -31,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -160,7 +162,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   }
   VLOG(5) << "Init Tensor as: / name: " << name
           << " / persistable: " << persistable << " / zero_copy: " << zero_copy
-          << " / stop_gradient: " << stop_gradient;
+          << " / stop_gradient: " << stop_gradient << " / at " << place;
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -174,8 +176,8 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
                                                const py::array &array) {
-  VLOG(4) << "Init VarBase from numpy: ";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
+  VLOG(4) << "Init VarBase from numpy at " << place;
   InitTensorForVarBase(self, array, place);
 }
 
@@ -322,6 +324,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->start)->tp_name)));
     }
     if (*start < 0) *start += length;
+    *start = std::max(*start, static_cast<Py_ssize_t>(0));
   }
   if (r->stop == Py_None) {
     *stop = *step < 0 ? -1 : length;
@@ -335,6 +338,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
     if (*stop < 0) *stop += length;
+    *stop = std::min(*stop, length);
   }
   if (*stop > length) return -1;
   if (*start >= length) return -1;
@@ -380,7 +384,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len) {
+      if (start >= dim_len || start < 0) {
         std::string str_error_message =
             "The starting index " + std::to_string(s_t) +
             " of slice is out of bounds in tensor " + std::to_string(dim) +
@@ -579,26 +583,76 @@ void BindImperative(py::module *m_ptr) {
               py::object &value_obj) {
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
-             auto self_numpy = TensorToPyArray(*self_tensor);
-
+             PyObject *index_ptr = !PyTuple_Check(_index.ptr())
+                                       ? PyTuple_Pack(1, _index.ptr())
+                                       : _index.ptr();
+             // 1. Check argumnets
+             // 1.1 Check whether value obj is a tensor.
+             bool value_is_tensor = true;
+             bool parse_index = true;
              if (py::isinstance<py::array>(value_obj) ||
                  py::isinstance<py::int_>(value_obj) ||
                  py::isinstance<py::float_>(value_obj)) {
-               auto value_numpy = value_obj;
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               value_is_tensor = false;
+             }
 
-             } else {
-               auto value =
-                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+             // 1.2 Check whether _index can be parsed.
+             const int size = PyTuple_GET_SIZE(index_ptr);
+             for (int dim = 0; dim < size; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index_ptr, dim);
+               if (!(PyCheckInteger(slice_item) || PySlice_Check(slice_item))) {
+                 parse_index = false;
+                 break;
+               }
+             }
+
+             // 2. Call op set_value to speed up if the condition is met,
+             // otherwise call TensorToPyArray.
+             // TODO(liym27): Try not to call TensorToPyArray because it always
+             // copys data to cpu place, which reduces performance.
+             if (parse_index && value_is_tensor) {
+               std::vector<int> axes, starts, ends, steps, decrease_axis,
+                   infer_flags;
+               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
+                                  &steps, &decrease_axis, &infer_flags);
+
+               framework::AttributeMap attrs = {{"axes", axes},
+                                                {"starts", starts},
+                                                {"ends", ends},
+                                                {"steps", steps}};
+
+               imperative::NameVarBaseMap ins = {{"Input", {self}}};
+               imperative::NameVarBaseMap outs = {{"Out", {self}}};
+
                auto value_tensor =
-                   value->MutableVar()->GetMutable<framework::LoDTensor>();
-               auto value_numpy = TensorToPyArray(*value_tensor);
+                   value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+               ins.insert({"ValueTensor", {value_tensor}});
 
-               self_numpy[_index] = value_numpy;
-               SetTensorFromPyArray(self_tensor, self_numpy,
-                                    self_tensor->place(), true);
+               const auto &tracer = imperative::GetCurrentTracer();
+               {
+                 // Release gil and do tracing
+                 py::gil_scoped_release release;
+                 tracer->TraceOp("set_value", ins, outs, std::move(attrs));
+               }
+             } else {
+               auto self_numpy = TensorToPyArray(*self_tensor);
+
+               if (value_is_tensor) {
+                 auto value =
+                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
+                 auto value_tensor =
+                     value->MutableVar()->GetMutable<framework::LoDTensor>();
+                 auto value_numpy = TensorToPyArray(*value_tensor);
+
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               } else {
+                 auto value_numpy = value_obj;
+                 self_numpy[_index] = value_numpy;
+                 SetTensorFromPyArray(self_tensor, self_numpy,
+                                      self_tensor->place(), true);
+               }
              }
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
@@ -696,44 +750,69 @@ void BindImperative(py::module *m_ptr) {
                 x = linear(data)
                 print(x.numpy())
        )DOC")
-      .def(
-          "detach",
-          [](const imperative::VarBase &self)
-              -> std::shared_ptr<imperative::VarBase> {
-                PADDLE_ENFORCE_EQ(
-                    self.Var().IsInitialized(), true,
-                    platform::errors::InvalidArgument(
-                        "Tensor %s has not been initialized!", self.Name()));
+      .def("detach",
+           [](const imperative::VarBase
+                  &self) -> std::shared_ptr<imperative::VarBase> {
+             PADDLE_ENFORCE_EQ(
+                 self.Var().IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "Tensor %s has not been initialized!", self.Name()));
 
-                PADDLE_ENFORCE_EQ(
-                    self.Var().IsType<framework::LoDTensor>() ||
-                        self.Var().IsType<framework::SelectedRows>(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
-                        self.Name()));
+             PADDLE_ENFORCE_EQ(
+                 self.Var().IsType<framework::LoDTensor>() ||
+                     self.Var().IsType<framework::SelectedRows>(),
+                 true,
+                 platform::errors::InvalidArgument(
+                     "Type of Tensor[%s] must be LoDTensor or SelectedRows!",
+                     self.Name()));
 
-                auto detach_var = std::make_shared<imperative::VarBase>(
-                    true, "detach_" + self.Name());
+             auto detach_var = std::make_shared<imperative::VarBase>(
+                 true, "detach_" + self.Name());
 
-                detach_var->SetPersistable(self.Persistable());
-                detach_var->SetType(self.Type());
-                detach_var->SetDataType(self.DataType());
+             detach_var->SetPersistable(self.Persistable());
+             detach_var->SetType(self.Type());
+             detach_var->SetDataType(self.DataType());
 
-                // NOTE(liym27):
-                // Call Variable::SharePlaceholderWith but not
-                // Tensor::ShareDataWith or Tensor::ShareBufferWith, because
-                // `detach_var` should share the same TensorInplaceVersion with
-                // `self`, and only SharePlaceholderWith can also share the same
-                // TensorInplaceVersion, which is used to check whether inplace
-                // operations are correct.
-                detach_var->MutableVar()->SharePlaceholderWith(self.Var());
+             if (self.Var().IsType<framework::LoDTensor>()) {
+               const auto &origin_tensor =
+                   self.Var().Get<framework::LoDTensor>();
+               PADDLE_ENFORCE_EQ(
+                   origin_tensor.IsInitialized(), true,
+                   platform::errors::InvalidArgument(
+                       "Tensor %s has not been initialized!", self.Name()));
 
-                VLOG(3) << "The detached Tensor(" << detach_var->Name()
-                        << ") share data with " << self.Name();
-                return detach_var;
-              },
-          py::return_value_policy::take_ownership, R"DOC(
+               auto *detach_tensor =
+                   detach_var->MutableVar()->GetMutable<framework::LoDTensor>();
+               detach_tensor->ShareDataWith(origin_tensor);
+               // NOTE(liym27): Call ShareInplaceVersionCounterWith to share the
+               // same TensorInplaceVersion, which is used to check whether
+               // inplace
+               // operations are correct.
+               detach_tensor->ShareInplaceVersionCounterWith(origin_tensor);
+             } else {
+               const auto &origin_selected_rows =
+                   self.Var().Get<framework::SelectedRows>();
+               PADDLE_ENFORCE_EQ(
+                   origin_selected_rows.value().IsInitialized(), true,
+                   platform::errors::InvalidArgument(
+                       "Tensor %s has not been initialized!", self.Name()));
+
+               auto *detach_selected_rows =
+                   detach_var->MutableVar()
+                       ->GetMutable<framework::SelectedRows>();
+               detach_selected_rows->set_height(origin_selected_rows.height());
+               detach_selected_rows->set_rows(origin_selected_rows.rows());
+               detach_selected_rows->mutable_value()->ShareDataWith(
+                   origin_selected_rows.value());
+               detach_selected_rows->mutable_value()
+                   ->ShareInplaceVersionCounterWith(
+                       origin_selected_rows.value());
+             }
+             VLOG(3) << "The detached Tensor(" << detach_var->Name()
+                     << ") share data with " << self.Name();
+             return detach_var;
+           },
+           py::return_value_policy::take_ownership, R"DOC(
 
         Returns a new Tensor, detached from the current graph.
         It will share data with origin Tensor and always doesn't have a Tensor copy.
@@ -1032,21 +1111,52 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             // Note(zhiqiu): Since NewVarBase may use GpuCopyAsync to
+             // copy data from the tensor of self to the tensor of new varbase,
+             // we need to ensure that the varbase self is not destructed until
+             // the GpuCopyAsync is completed. Otherwise, the memory may be
+             // freed
+             // when varbase self is destructed.
+             // To do that, we increase the reference count of self by 1 and
+             // add a cuda event to wait the GpuCopyAsync's completion.
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self,
-              const platform::CUDAPinnedPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPinnedPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::XPUPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::XPUPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("_copy_to",
-           [](const imperative::VarBase &self, const platform::CUDAPlace &place,
-              bool blocking) { return self.NewVarBase(place, blocking); },
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::CUDAPlace &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
            py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
@@ -1147,15 +1257,28 @@ void BindImperative(py::module *m_ptr) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::XPUPlace>(obj)) {
               auto p = obj.cast<platform::XPUPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPinnedPlace *>();
               self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
+            } else if (py::isinstance<platform::Place>(obj)) {
+              auto p = obj.cast<platform::Place *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
@@ -1169,27 +1292,30 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
-      .def(
-          "_set_amp_op_list",
-          [](imperative::Tracer &self,
-             std::unordered_set<std::string> &allow_ops,
-             std::unordered_set<std::string> &block_ops) {
-            // NOTE(zhiqiu): The automatic conversion in pybind11 between
-            // c++
-            // STL and python set/list/dict involve a copy operation that
-            // prevents pass-by-reference semantics, so it is ok to swap.
-            // The reaseon why not directly pass
-            // std::shared_ptr<std::unordered_set<std::string>>
-            // is that pybind11 forbid shared_ptr<T> where T is not custom
-            // type.
-            imperative::AmpOperators::Instance().GetAllowOps()->swap(allow_ops);
-            imperative::AmpOperators::Instance().GetBlockOps()->swap(block_ops);
-          })
+      .def("_set_amp_op_list",
+           [](imperative::Tracer &self,
+              std::unordered_set<std::string> &allow_ops,
+              std::unordered_set<std::string> &block_ops) {
+             // NOTE(zhiqiu): The automatic conversion in pybind11 between
+             // c++
+             // STL and python set/list/dict involve a copy operation that
+             // prevents pass-by-reference semantics, so it is ok to swap.
+             // The reaseon why not directly pass
+             // std::shared_ptr<std::unordered_set<std::string>>
+             // is that pybind11 forbid shared_ptr<T> where T is not custom
+             // type.
+             imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+                 allow_ops);
+             imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+                 block_ops);
+             VLOG(4) << "AMP operators changed, "
+                     << imperative::AmpOperators::Instance();
+           })
       .def("_get_amp_op_list",
            [](imperative::Tracer &self) {
              return std::make_tuple(
-                 *(imperative::AmpOperators::Instance().GetAllowOps()),
-                 *(imperative::AmpOperators::Instance().GetBlockOps()));
+                 *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+                 *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
@@ -1261,7 +1387,13 @@ void BindImperative(py::module *m_ptr) {
                       return self.current_endpoint_;
                     },
                     [](imperative::ParallelStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; });
+                       const std::string &ep) { self.current_endpoint_ = ep; })
+      .def_property(
+          "nrings",
+          [](const imperative::ParallelStrategy &self) { return self.nrings_; },
+          [](imperative::ParallelStrategy &self, int nrings) {
+            self.nrings_ = nrings;
+          });
 
   m.def(
       "dygraph_partial_grad",
@@ -1280,37 +1412,44 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
-  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
-             std::shared_ptr<imperative::NCCLParallelContext>>(
-      m, "NCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const platform::CUDAPlace &>())
-      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
 
   py::class_<imperative::Reducer, std::shared_ptr<imperative::Reducer>>(
       m, "Reducer", R"DOC()DOC")
-      .def(py::init(
-          [](const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
-             const std::vector<std::vector<size_t>> &group_indices,
-             const std::vector<bool> &is_sparse_gradient,
-             std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-             const std::vector<size_t> &group_size_limits) {
-            return imperative::Reducer::SetInstance(
-                vars, group_indices, is_sparse_gradient, parallel_ctx,
-                group_size_limits);
-          }))
+      .def(py::init<const std::vector<std::shared_ptr<imperative::VarBase>> &,
+                    const std::vector<std::vector<size_t>> &,
+                    const std::vector<bool> &,
+                    std::shared_ptr<imperative::ParallelContext>,
+                    const std::vector<size_t> &, bool>())
       .def("prepare_for_backward", &imperative::Reducer::PrepareForBackward,
-           py::call_guard<py::gil_scoped_release>());
+           py::arg("vars"), py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size", &imperative::AssignGroupBySize, py::arg("vars"),
         py::arg("is_sparse_gradient"),
         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
         py::arg("tensor_indices") = std::vector<int64_t>{},
         py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_NCCL)
+  py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::NCCLParallelContext>>(
+      m, "NCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CUDAPlace &>())
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  py::class_<imperative::BKCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::BKCLParallelContext>>(
+      m, "BKCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::XPUPlace &>())
+      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
 #endif
 }
 

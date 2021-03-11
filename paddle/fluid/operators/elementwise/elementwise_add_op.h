@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
+#include <cuda.h>
+#include <cuda_fp16.h>
 #include "cub/cub.cuh"
 #endif
 #endif
@@ -177,10 +179,12 @@ __global__ void MatrixColReduce(const T *__restrict__ in, T *__restrict__ out,
   }
 }
 
+#if CUDA_VERSION >= 10000
 template <int SIZE>
 __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
                                        __half2 *__restrict__ out, size_t width,
                                        size_t height) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   int by = blockIdx.y;
   __half2 zero = __half2half2(static_cast<__half>(0));
@@ -194,7 +198,9 @@ __global__ void VecFP16MatrixColReduce(const __half2 *__restrict__ in,
 
     atomicAdd(&(out[idx]), sum);
   }
+#endif
 }
+#endif
 
 template <typename T>
 __global__ void MatrixReduceLongWidth(const T *__restrict__ in, T *out,
@@ -309,7 +315,9 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     // skip out
     auto *out = dout;
 
-#ifdef PADDLE_WITH_CUDA
+// TODO(@wangchaochaohu, zhouwei35): Fix conv_transpose2d API(dataformat NHWC)
+// error in Windows
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 #ifdef __NVCC__
 
     int axis = ctx.Attr<int>("axis");
@@ -361,6 +369,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
       int max_blocks = std::max(max_physical_threads / (block_x * block_y), 1);
       int theory_block = (width + blocks.x - 1) / blocks.x;
       dim3 grids(std::min(theory_block, max_blocks));
+#if CUDA_VERSION >= 10000
       if (std::is_same<T, paddle::platform::float16>::value && width < 2048 &&
           width % 2 == 0 && height % 64 == 0) {
         auto &dev_ctx =
@@ -378,6 +387,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
                                                                  width, height);
         return;
       }
+#endif
 
       if (width / height < 32) {
         MatrixColReduce<T, block_x, block_y><<<grids, blocks, 0, stream>>>(

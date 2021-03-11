@@ -14,7 +14,7 @@
 
 # TODO: define the extention functions
 
-__all__ = ['diag_embed', 'row_conv']
+__all__ = ['diag_embed']
 
 import numpy as np
 from ...fluid.data_feeder import check_dtype
@@ -137,65 +137,4 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
                'dim2': dim2},
         outputs={'Out': [out]})
     out.stop_gradient = True
-    return out
-
-
-@templatedoc()
-def row_conv(input, weight, act=None):
-    """
-
-    ${comment}
-
-    Args:
-        input (Tensor):  the input(X) is a LodTensor or tensor, LodTensor(X) 
-            supports variable time-length input sequences. The underlying 
-            tensor in this LoDTensor is a matrix with shape (T, D), where 
-            T is the total time steps in this mini-batch and D is the input 
-            data dimension. 
-            If the input is a padded minibatch, the shape of the input is 
-            (N, T, D), N is batch size, T is the max time steps in the batch,
-             D is the input data dimension.
-        weight (Tensor): The weight. A Tensor with shape 
-            (future_context_size + 1, D), where future_context_size is the 
-            context size of the RowConv operator.
-        act (str): Non-linear activation to be applied to output variable.
-
-    Returns:
-        ${out_comment}.
-
-    Examples:
-        .. code-block:: python
-
-            from paddle import fluid, nn
-            import paddle.nn.functional as F
-            import numpy as np
-
-            batch_size = 4
-            time_steps = 8
-            feature_size = 6
-            context_size = 4
-            x = np.random.randn(batch_size, time_steps, feature_size).astype(np.float32)
-            weight = np.random.randn(context_size + 1, feature_size).astype(np.float32)
-
-            x_var = paddle.to_tensor(x)
-            w_var = paddle.to_tensor(weight)
-            y_var = F.extension.row_conv(x_var, w_var)
-            print(y_var.shape)
-
-            # [4, 8, 6]
-    """
-
-    if in_dygraph_mode():
-        pre_act = core.ops.row_conv(input, weight)
-        out = dygraph_utils._append_activation_in_dygraph(pre_act, act)
-        return out
-    else:
-        helper = LayerHelper('row_conv', **locals())
-        dtype = helper.input_dtype()
-
-        inputs = {'X': [input], 'Filter': [weight]}
-        pre_act = helper.create_variable_for_type_inference(dtype)
-        outputs = {'Out': [pre_act]}
-        helper.append_op(type='row_conv', inputs=inputs, outputs=outputs)
-        out = helper.append_activation(pre_act)
     return out

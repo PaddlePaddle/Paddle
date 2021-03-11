@@ -262,7 +262,37 @@ def convert_len(var):
         return len(var)
 
 
-def convert_var_shape(x):
+def convert_var_shape(x, idx=None, in_control_flow=False):
+    """
+    A function representation of the shape of variable.
+    """
+
+    def has_negative(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negative > 0
+
+    # When `x` is Variable, call nn.shape(x) in following cases:
+    #  (1) The shape of `x` is used in control flow condition.
+    #      ```
+    #      if x.shape[0] == 1:
+    #          y = XX
+    #      ```
+    #  (2) The dim to be used is negative
+    #      ```
+    #      # Assume x.shape=[3, -1] in static mode
+    #      y = paddle.reshape(x, shape=[1, x.shape[1]])
+    #      ```
+    if isinstance(x, Variable) and (in_control_flow or has_negative(x.shape,
+                                                                    idx)):
+        return nn.shape(x) if idx is None else nn.shape(x)[idx]
+    else:
+        return x.shape if idx is None else x.shape[idx]
+
+
+def convert_var_shape_simple(x):
     """
     A function representation of the shape of variable.
     """
@@ -270,6 +300,40 @@ def convert_var_shape(x):
         return nn.shape(x)
     else:
         return x.shape
+
+
+def eval_if_exist_else_none(name):
+    try:
+        return eval(name)
+    except:
+        return None
+
+
+def choose_shape_attr_or_api(attr_shape, api_shape, idx=None):
+    """
+    Input can be attribute `x.shape` or api `shape(x)`, this function
+    chooses which one to return to use in dy2stat.
+
+    Note: sometimes users write `x.shape[3]`, so attr_shape can be an integer.
+    """
+    if api_shape is None:
+        return attr_shape if idx is None else attr_shape[idx]
+    if not isinstance(attr_shape, (list, tuple)):
+        # some variables like x.shape[0] is no longer a list or tuple
+        if isinstance(attr_shape, int) and attr_shape < 0:
+            return api_shape if idx is None else api_shape[idx]
+        return attr_shape if idx is None else attr_shape[idx]
+
+    def has_negative(list_shape, idx=None):
+        if idx is not None:
+            return list_shape[idx] < 0
+
+        num_negative = sum([1 if i < 0 else 0 for i in list_shape])
+        return num_negative > 0
+
+    if has_negative(attr_shape, idx):
+        return api_shape if idx is None else api_shape[idx]
+    return attr_shape if idx is None else attr_shape[idx]
 
 
 def convert_shape_compare(left, *args):

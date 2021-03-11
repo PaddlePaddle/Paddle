@@ -20,6 +20,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "brpc/channel.h"
 #include "brpc/controller.h"
@@ -34,13 +35,31 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
 
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
+namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-using MultiVarMsg = ::paddle::MultiVariableMessage;
-using VarMsg = ::paddle::VariableMessage;
+using MultiVarMsg = ::paddle::distributed::MultiVariableMessage;
+using VarMsg = ::paddle::distributed::VariableMessage;
 
 class HeterService;
+
 typedef int32_t (HeterService::*serviceHandlerFunc)(
     const PsRequestMessage& request, PsResponseMessage& response,
     brpc::Controller* cntl);
@@ -49,7 +68,7 @@ typedef std::function<void(void*)> HeterRpcCallbackFunc;
 typedef std::function<int(const MultiVarMsg*, MultiVarMsg*, brpc::Controller*)>
     HeterServiceHandler;
 
-class HeterService : public ::paddle::PsService {
+class HeterService : public ::paddle::distributed::PsService {
  public:
   HeterService() {
     _service_handler_map[PS_STOP_SERVER] = &HeterService::stop_heter_worker;
@@ -60,8 +79,8 @@ class HeterService : public ::paddle::PsService {
   virtual ~HeterService() {}
 
   virtual void service(::google::protobuf::RpcController* controller,
-                       const ::paddle::PsRequestMessage* request,
-                       ::paddle::PsResponseMessage* response,
+                       const PsRequestMessage* request,
+                       PsResponseMessage* response,
                        ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string log_label("ReceiveCmd-");
@@ -82,7 +101,7 @@ class HeterService : public ::paddle::PsService {
       response->set_err_code(service_ret);
       response->set_err_msg("server internal error");
     }
-  };
+  }
 
   void SendAndRecvVariable(::google::protobuf::RpcController* controller,
                            const MultiVarMsg* request, MultiVarMsg* response,
@@ -134,6 +153,10 @@ class HeterServer {
   virtual ~HeterServer() {}
 
   void Stop() {
+    VLOG(0) << "HeterServer Stop()";
+    std::unique_lock<std::mutex> lock(mutex_);
+    stoped_ = true;
+    cv_.notify_all();
     server_.Stop(1000);
     server_.Join();
   }
@@ -162,6 +185,10 @@ class HeterServer {
 
  private:
   static std::shared_ptr<HeterServer> s_instance_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+  std::condition_variable condition_ready_;
+  bool stoped_ = false;
   std::string endpoint_;
 
  protected:
@@ -169,7 +196,7 @@ class HeterServer {
   HeterService service_;
   DISABLE_COPY_AND_ASSIGN(HeterServer);
   std::mutex mutex_ready_;
-  std::condition_variable condition_ready_;
+
   int ready_;
 };
 
@@ -215,6 +242,7 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   int Handle(const MultiVarMsg* request, MultiVarMsg* response,
              brpc::Controller* cntl) override {
     platform::RecordEvent record_event("RequestSendAndRecvHandler->Handle");
+    FLAGS_eager_delete_tensor_gb = -1;
     auto& local_scope = scope_->NewScope();
     auto message_name = request->message_name();
     auto& request_io_buffer = cntl->request_attachment();

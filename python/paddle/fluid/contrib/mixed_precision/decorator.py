@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ... import core
 from ... import default_main_program
 from ... import default_startup_program
+from ... import framework
 from ... import layers
-from ... import unique_name
 from ... import program_guard
+from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import rewrite_program
+from .fp16_utils import cast_model_to_fp16
+from .fp16_utils import cast_parameters_to_fp16
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .amp_nn import check_finite_and_unscale
 from .amp_nn import update_loss_scaling
+import types
+import warnings
 
 __all__ = ["decorate"]
 
@@ -38,7 +44,7 @@ class OptimizerWithMixedPrecision(object):
 
     Args:
         optimizer (Optimizer): A common Optimizer object.
-        amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
+        amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling (float): The initial loss scaling factor.
         use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
         incr_every_n_steps(int): Increases loss scaling every n consecutive 
@@ -50,12 +56,16 @@ class OptimizerWithMixedPrecision(object):
                            scaling.
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
+        use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
+        use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
+                           Default None, which means that its value is equal to `use_pure_fp16`.
 
     """
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
                  use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
+                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio, use_pure_fp16,
+                 use_fp16_guard):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -68,6 +78,9 @@ class OptimizerWithMixedPrecision(object):
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
+        self._use_pure_fp16 = use_pure_fp16
+        self._use_fp16_guard = use_fp16_guard
+        self._to_fp16_var_names = None
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = incr_every_n_steps
             self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
@@ -151,23 +164,105 @@ class OptimizerWithMixedPrecision(object):
         train_program = loss.block.program
         self._train_program = train_program
 
-        with program_guard(train_program, startup_program):
+        with program_guard(self._train_program, startup_program):
             self._init_amp_var()
 
-            rewrite_program(train_program, self._amp_lists)
-            self._scaled_loss = loss * self._loss_scaling
+            if self._use_pure_fp16:
+                self._to_fp16_var_names = cast_model_to_fp16(
+                    self._train_program, self._amp_lists, self._use_fp16_guard)
+            else:
+                rewrite_program(self._train_program, self._amp_lists)
+
+            if loss.dtype != core.VarDesc.VarType.FP32:
+                loss = loss.astype('float32')
+            # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
+            # the model can be optimized.
+            if self._use_dynamic_loss_scaling or self._init_loss_scaling != 1.0:
+                self._scaled_loss = loss * self._loss_scaling
+            else:
+                self._scaled_loss = loss
+
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
-            # Change the op_role_var attr for some ops, so that gradients
-            # transferred across GPUs can be FP16.
-            update_role_var_grad(train_program, params_grads)
         return params_grads
+
+    def amp_init(self,
+                 place,
+                 scope=None,
+                 test_program=None,
+                 use_fp16_test=False):
+        """
+        Init the amp training, such as cast fp32 parameters to fp16 type.
+  
+        Args:
+            place(CUDAPlace): place is used to initialize 
+                fp16 parameters with fp32 values.
+            scope(Scope): The scope is used to find fp32 parameters.
+            test_program(Program): The program is used for testing.
+            use_fp16_test(bool): Whether to use fp16 testing.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+                import paddle.nn.functional as F
+                paddle.enable_static()
+
+                def run_example_code():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                    # 1) Use fp16_guard to control the range of fp16 kernels used.
+                    with paddle.static.amp.fp16_guard():
+                        bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                        pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                        hidden = paddle.static.nn.fc(pool, size=10)
+                        loss = paddle.mean(hidden)
+                    # 2) Create the optimizer and set `multi_precision` to True.
+                    # Setting `multi_precision` to True can avoid the poor accuracy
+                    # or the slow convergence in a way. 
+                    optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                    # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                    amp_list = paddle.static.amp.CustomOpLists(
+                        custom_black_list=['pool2d'])
+                    # 4) The entry of Paddle AMP.
+                    # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer,
+                        amp_list,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True)
+                    # If you don't use the default_startup_program(), you sholud pass
+                    # your defined `startup_program` into `minimize`.
+                    optimizer.minimize(loss)
+                    exe.run(paddle.static.default_startup_program())
+                    # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                    # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                    optimizer.amp_init(place, scope=paddle.static.global_scope())
+                    
+                if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                    run_example_code()       
+        """
+        assert self._train_program is not None, \
+            "Please call the minimize method first."
+        if self._use_pure_fp16:
+            cast_parameters_to_fp16(place, self._train_program, scope,
+                                    self._to_fp16_var_names)
+        if test_program is not None:
+            if self._use_pure_fp16:
+                cast_model_to_fp16(test_program, self._amp_lists,
+                                   self._use_fp16_guard)
+            elif use_fp16_test:
+                rewrite_program(test_program, self._amp_lists)
 
     def apply_gradients(self, params_grads):
         """
         Check scaled gradients to determine whether to update loss scaling and update 
-        parameters by their scaled gradients, 
+        parameters by their scaled gradients.
   
         Args:
             params_grads (list): A list of params and scaled grads.
@@ -176,39 +271,99 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
+        update_role_var_grad(self._train_program, params_grads)
+
+        # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
+        # the model can be optimized.
+        if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
+            return self._optimizer.apply_gradients(params_grads)
+
         grads = [g for _, g in params_grads]
-        if not self._is_distributed:
-            with self._train_program._optimized_guard(grads):
-                grads, found_inf = check_finite_and_unscale(
-                    grads, self._loss_scaling, name="find_infinite_scale")
-        else:
+        fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+        fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16]
+        assert len(fp32_grads) + len(fp16_grads) == len(grads), \
+            "Data types of all grads must be either fp16 or fp32."
+
+        found_infs = []
+        if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
-            found_infs = []
             for p, g in params_grads:
                 with self._train_program._optimized_guard([p, g]):
                     _, found_inf = check_finite_and_unscale(
                         [g, ], self._loss_scaling, name="find_infinite_scale")
                     found_infs.append(found_inf)
+        elif self._use_pure_fp16:
+            if fp32_grads:
+                with self._train_program._optimized_guard(fp32_grads):
+                    _, fp32_found_inf = check_finite_and_unscale(
+                        fp32_grads,
+                        self._loss_scaling,
+                        name="find_infinite_scale_fp32")
+                found_infs.append(fp32_found_inf)
+            if fp16_grads:
+                with self._train_program._optimized_guard(fp16_grads):
+                    _, fp16_found_inf = check_finite_and_unscale(
+                        fp16_grads,
+                        self._loss_scaling,
+                        name="find_infinite_scale_fp16")
+                found_infs.append(fp16_found_inf)
+        else:
+            with self._train_program._optimized_guard(grads):
+                _, found_inf = check_finite_and_unscale(
+                    grads, self._loss_scaling, name="find_infinite_scale")
 
         if self._use_dynamic_loss_scaling:
-            if self._is_distributed:
+            if self._is_distributed or self._use_pure_fp16:
                 with self._train_program._optimized_guard([]):
                     all_infs = layers.concat(found_infs)
                     found_inf = layers.reduce_any(all_infs)
 
-            with self._train_program._optimized_guard([]):
-                update_loss_scaling(
-                    grads,
-                    found_inf,
-                    self._loss_scaling,
-                    self._num_good_steps,
-                    self._num_bad_steps,
-                    self._incr_every_n_steps,
-                    self._decr_every_n_nan_or_inf,
-                    self._incr_ratio,
-                    self._decr_ratio,
-                    name="update_loss_scaling")
+            if self._use_pure_fp16:
+                stop_update = False
+                with self._train_program._optimized_guard([]):
+                    if fp32_grads:
+                        update_loss_scaling(
+                            fp32_grads,
+                            found_inf,
+                            self._loss_scaling,
+                            self._num_good_steps,
+                            self._num_bad_steps,
+                            self._incr_every_n_steps,
+                            self._decr_every_n_nan_or_inf,
+                            self._incr_ratio,
+                            self._decr_ratio,
+                            stop_update=stop_update,
+                            name="update_loss_scaling_fp32")
+                        stop_update = True
+                    if fp16_grads:
+                        update_loss_scaling(
+                            fp16_grads,
+                            found_inf,
+                            self._loss_scaling,
+                            self._num_good_steps,
+                            self._num_bad_steps,
+                            self._incr_every_n_steps,
+                            self._decr_every_n_nan_or_inf,
+                            self._incr_ratio,
+                            self._decr_ratio,
+                            stop_update=stop_update,
+                            name="update_loss_scaling_fp16")
+            else:
+                with self._train_program._optimized_guard([]):
+                    update_loss_scaling(
+                        grads,
+                        found_inf,
+                        self._loss_scaling,
+                        self._num_good_steps,
+                        self._num_bad_steps,
+                        self._incr_every_n_steps,
+                        self._decr_every_n_nan_or_inf,
+                        self._incr_ratio,
+                        self._decr_ratio,
+                        name="update_loss_scaling")
 
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
@@ -238,6 +393,13 @@ class OptimizerWithMixedPrecision(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
+        opt_dict = self._optimizer.__class__.__dict__
+        if 'minimize' in opt_dict and isinstance(opt_dict['minimize'],
+                                                 types.FunctionType):
+            warnings.warn(
+                "The decorated optimizer has its own `minimize` method, but it will not be executed."
+            )
+
         scaled_params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -257,13 +419,15 @@ def decorate(optimizer,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
              decr_ratio=0.8,
-             use_dynamic_loss_scaling=True):
+             use_dynamic_loss_scaling=True,
+             use_pure_fp16=False,
+             use_fp16_guard=None):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
         optimizer(Optimizer): A common Optimizer.
-        amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
+        amp_lists (CustomOpLists): An CustomOpLists object.
         init_loss_scaling(float): The initial loss scaling factor.
         incr_every_n_steps(int): Increases loss scaling every n consecutive 
                                  steps with finite gradients.
@@ -275,27 +439,88 @@ def decorate(optimizer,
         decr_ratio(float): The less-than-one-multiplier to use when decreasing 
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
+        use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
+        use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
+                           Default None, which means that its value equals to `use_pure_fp16`.
 
     Returns:
         An optimizer acting like a normal one but with mixed-precision training 
         enabled.
 
-    Examples:
-	.. code-block:: python
+    Examples 1:
+	    .. code-block:: python
 
-	    loss = network()
-            optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	
-            mp_optimizer = fluid.contrib.mixed_precision.decorate(
-	              optimizer=optimizer, init_loss_scaling=8.0)
-	
+            # black&white list based strategy example
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            data = static.data(name='X', shape=[None, 1], dtype='float32')
+            hidden = static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
+            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+
+            mp_optimizer = static.amp.decorate(
+                    optimizer=optimizer, init_loss_scaling=8.0)
+
             ops, param_grads = mp_optimizer.minimize(loss)
             scaled_loss = mp_optimizer.get_scaled_loss()
+
+    Examples 2:
+        .. code-block:: python
+
+            # pure fp16 training example
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+
+            def run_example_code():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+                conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+                # 1) Use fp16_guard to control the range of fp16 kernels used.
+                with paddle.static.amp.fp16_guard():
+                    bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                    pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                    hidden = paddle.static.nn.fc(pool, size=10)
+                    loss = paddle.mean(hidden)
+                # 2) Create the optimizer and set `multi_precision` to True.
+                # Setting `multi_precision` to True can avoid the poor accuracy
+                # or the slow convergence in a way. 
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
+                # 3) These ops in `custom_black_list` will keep in the float32 computation type.
+                amp_list = paddle.static.amp.CustomOpLists(
+                    custom_black_list=['pool2d'])
+                # 4) The entry of Paddle AMP.
+                # Enable pure fp16 training by setting `use_pure_fp16` to True.
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    amp_list,
+                    init_loss_scaling=128.0,
+                    use_dynamic_loss_scaling=True,
+                    use_pure_fp16=True)
+                # If you don't use the default_startup_program(), you sholud pass
+                # your defined `startup_program` into `minimize`.
+                optimizer.minimize(loss)
+                exe.run(paddle.static.default_startup_program())
+                # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
+                # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
+                optimizer.amp_init(place, scope=paddle.static.global_scope())
+                
+            if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+                run_example_code()
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
+
+    if use_fp16_guard is None:
+        use_fp16_guard = use_pure_fp16
+
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
+        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
+        use_pure_fp16, use_fp16_guard)
 
     return mp_optimizer

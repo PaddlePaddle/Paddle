@@ -212,7 +212,7 @@ function cmake_base() {
     fi
 
     if [ "$SYSTEM" == "Darwin" ]; then
-        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
     else
@@ -220,13 +220,8 @@ function cmake_base() {
     fi
 
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
-    grpc_flag=${WITH_GRPC:-${distibuted_flag}}
-
-    if [ "$SYSTEM" == "Darwin" ]; then
-        gloo_flag="OFF"
-    else
-        gloo_flag=${distibuted_flag}
-    fi
+    grpc_flag="OFF"
+    gloo_flag=${distibuted_flag}
 
     cat <<EOF
     ========================================
@@ -254,11 +249,13 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_PSCORE=${distibuted_flag}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
-        -DLITE_GIT_TAG=develop
+        -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -289,11 +286,13 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+        -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
-        -DLITE_GIT_TAG=develop \
+        -DLITE_GIT_TAG=release/v2.8 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -396,6 +395,7 @@ EOF
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_Size: $buildSize"
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -405,8 +405,10 @@ EOF
         fi
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
         echo "Build Size: $buildSize"
+        echo "ipipe_log_param_Build_Size: $buildSize"
         PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         echo "PR whl Size: $PR_whlSize"
+        echo "ipipe_log_param_PR_whl_Size: $PR_whlSize"
     fi
 }
 
@@ -431,6 +433,7 @@ function cmake_gen_and_build() {
     build $2
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 }
 
 function build_mac() {
@@ -468,6 +471,7 @@ function cmake_gen_and_build_mac() {
     build_mac
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 }
 
 function run_test() {
@@ -655,6 +659,7 @@ EOF
         #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
         set +x
@@ -711,6 +716,10 @@ function generate_upstream_develop_api_spec() {
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
 }
 
 function generate_api_spec() {
@@ -937,8 +946,10 @@ EOF
     num=$(echo $testcases|grep -o '\^'|wc -l)
     if [ "$2" == "" ]; then
         echo "exclusive TestCases count is $num"
+        echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
     else
         echo "$2 card TestCases count is $num"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num"
     fi
 }
 
@@ -984,13 +995,20 @@ function card_test() {
     fi
 
     testcases=$1
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if (( $# > 1 )); then
         cardnumber=$2
         if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
             cardnumber=$CUDA_DEVICE_COUNT
         fi
+        if (( $# > 2 )); then
+            parallel_job=`expr $3 \* $parallel_level_base`
+        else
+            parallel_job=$parallel_level_base
+        fi
     else
         cardnumber=$CUDA_DEVICE_COUNT
+        parallel_job=$parallel_level_base
     fi
 
     if [[ "$testcases" == "" ]]; then
@@ -1000,6 +1018,9 @@ function card_test() {
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    echo "****************************************************************"
+    echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
+    echo "****************************************************************"
     for (( i = 0; i < $NUM_PROC; i++ )); do
         # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
         # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
@@ -1014,15 +1035,15 @@ function card_test() {
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -1030,8 +1051,10 @@ function card_test() {
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
     set +m
 }
@@ -1056,6 +1079,18 @@ set -x
                 set -x
             fi
         fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
+                set -x
+            fi
+        fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
@@ -1069,13 +1104,23 @@ set -x
 set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
+        single_card_tests_eight_parallel='^job$'    # cases list which would run 8 job each time with single GPU
+        single_card_tests_tetrad_parallel='^job$'   # cases list which would run 4 job each time with single GPU
+        single_card_tests_non_parallel_1='^job$'    # cases list which would run 1 job each time with single GPU
+        single_card_tests_non_parallel_2='^job$'    # cases list which would run 1 job each time with single GPU
+        single_card_tests='^job$' # all cases list which would take one graph card
         exclusive_tests=''        # cases list which would be run exclusively
-        single_card_tests=''      # cases list which would take one graph card
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+
+        UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+        output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
+        eight_parallel_job=$(echo $output | cut -d ";" -f 1)
+        tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
+        non_parallel_job=$(echo $output | cut -d ";" -f 3)
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1129,20 +1174,16 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
-                    if [[ "${#single_card_tests}" -gt 10000 ]];then
-                        if [[ "$single_card_tests_1" == "" ]]; then 
-                            single_card_tests_1="^$testcase$"
-                        else
-                            single_card_tests_1="$single_card_tests_1|^$testcase$"
-                        fi
-                        continue
-                    fi
-
-                    if [[ "$single_card_tests" == "" ]]; then
-                        single_card_tests="^$testcase$"
+                    if [[ $(echo $eight_parallel_job | grep $testcase) != "" ]]; then
+                        single_card_tests_eight_parallel="$single_card_tests_eight_parallel|^$testcase$"
+                    elif [[ $(echo $tetrad_parallel_jog | grep $testcase) != "" ]]; then
+                        single_card_tests_tetrad_parallel="$single_card_tests_tetrad_parallel|^$testcase$"
+                    elif [[ "${#single_card_tests_non_parallel_1}" -gt 10000 ]];then
+                        single_card_tests_non_parallel_2="$single_card_tests_non_parallel_2|^$testcase$"
                     else
-                        single_card_tests="$single_card_tests|^$testcase$"
+                        single_card_tests_non_parallel_1="$single_card_tests_non_parallel_1|^$testcase$"
                     fi
+                    single_card_tests="$single_card_tests|^$testcase$"
                 fi
                 is_exclusive=''
                 is_multicard=''
@@ -1151,10 +1192,12 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1    # run cases with single GPU
-        card_test "$single_card_tests_1" 1    # run cases with single GPU
-        card_test "$multiple_card_tests" 2  # run cases with two GPUs
-        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        card_test "$single_card_tests_eight_parallel" 1 8     # run cases 8 job each time with single GPU
+        card_test "$single_card_tests_tetrad_parallel" 1 4    # run cases 4 job each time with single GPU
+        card_test "$single_card_tests_non_parallel_1" 1       # run cases 1 job each time with single GPU
+        card_test "$single_card_tests_non_parallel_2" 1       # run cases 1 job each time with single GPU
+        card_test "$multiple_card_tests" 2    # run cases with two GPUs
+        card_test "$exclusive_tests"          # run cases exclusively, in this cases would be run with 4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1182,9 +1225,7 @@ set +x
                         for line in ${retry_unittests[@]} ;
                             do
 
-                                one_card_tests=$single_card_tests'|'$single_card_tests_1
-
-                                read tmp_one_tmp <<< "$( echo $one_card_tests | grep -oEi $line )"
+                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
                                 read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
                                 read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
 
@@ -1330,6 +1371,7 @@ function parallel_test() {
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
+    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
 
 function enable_unused_var_check() {
@@ -1609,6 +1651,7 @@ EOF
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 
     build_size "paddle_inference"
 }
@@ -1639,7 +1682,8 @@ EOF
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
-    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
+    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
+    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
@@ -1658,6 +1702,7 @@ EOF
     EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
+    echo "ipipe_log_param_Test_Fluid_Lib_Train_Total_Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
@@ -1685,10 +1730,26 @@ function example() {
 function collect_ccache_hits() {
     rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
     echo "ccache hit rate: ${rate}%"
+    echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%"
 }
 
 
 function test_op_benchmark() {
+    # The PR will pass quickly when get approval from specific person.
+    # Xreki 12538138, luotao1 6836917, GaoWei8 53294385
+    set +x
+    approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
+    if [ "${approval_line}" != "" ]; then
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 53294385 12538138 6836917)
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "TRUE" ]; then
+            echo "==================================="
+            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "==================================="
+            exit 0
+        fi
+    fi
+    set -x
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
@@ -1850,6 +1911,11 @@ function main() {
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
+        ;;
+      check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}

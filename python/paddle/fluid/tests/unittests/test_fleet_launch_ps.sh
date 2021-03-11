@@ -17,6 +17,9 @@
 set -e
 
 function test_launch_ps(){
+    server_port_0=${PADDLE_DIST_UT_PORT}
+    server_port_1=$(( PADDLE_DIST_UT_PORT + 1 ))
+    echo "server_port_0:${server_port_0} server_port_1=${server_port_1}"
     python -m paddle.distributed.fleet.launch --server_num=2 --worker_num=2 fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
@@ -25,7 +28,7 @@ function test_launch_ps(){
         exit -1
     fi
 
-    python -m paddle.distributed.fleet.launch --servers="127.0.0.1:6780,127.0.0.1:6781" --workers="127.0.0.1:6782,127.0.0.1:6783" fleet_ps_training.py 2> ut.elog
+    python -m paddle.distributed.fleet.launch --servers="127.0.0.1:${server_port_0},127.0.0.1:${server_port_1}" --workers="127.0.0.1:6782,127.0.0.1:6783" fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
     else
@@ -33,7 +36,7 @@ function test_launch_ps(){
         exit -1
     fi
 
-    python -m paddle.distributed.fleet.launch --servers="127.0.0.1:6780,127.0.0.1:6781" --workers="127.0.0.1,127.0.0.1" fleet_ps_training.py 2> ut.elog
+    python -m paddle.distributed.fleet.launch --servers="127.0.0.1:${server_port_0},127.0.0.1:${server_port_1}" --workers="127.0.0.1,127.0.0.1" fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
     else
@@ -52,7 +55,7 @@ function test_launch_ps_heter(){
     fi
 }
 
-if [[ ${WITH_GPU} == "OFF" ]]; then
+if [[ ${WITH_GPU} == "OFF" && ("${WITH_ROCM}x" == "x" || ${WITH_ROCM} == "OFF") ]]; then
     echo "in cpu test mode"
     test_launch_ps
     exit 0

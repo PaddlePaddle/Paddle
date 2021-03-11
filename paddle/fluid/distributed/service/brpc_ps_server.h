@@ -17,13 +17,25 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
-
-#include <memory>
-#include <vector>
+#include "paddle/fluid/distributed/service/brpc_utils.h"
 #include "paddle/fluid/distributed/service/server.h"
+
+namespace brpc {
+class Controller;
+}  // namespace brpc
+namespace google {
+namespace protobuf {
+class Closure;
+class RpcController;
+}  // namespace protobuf
+}  // namespace google
 
 namespace paddle {
 namespace distributed {
+
+class PsRequestMessage;
+class PsResponseMessage;
+class Table;
 
 class BrpcPsServer : public PSServer {
  public:
@@ -43,7 +55,6 @@ class BrpcPsServer : public PSServer {
 
  private:
   virtual int32_t initialize();
-
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool stoped_ = false;
@@ -52,19 +63,19 @@ class BrpcPsServer : public PSServer {
   std::vector<std::shared_ptr<brpc::Channel>> _pserver_channels;
 };
 
-class PsService;
+class BrpcPsService;
 
-typedef int32_t (PsService::*serviceHandlerFunc)(
+typedef int32_t (BrpcPsService::*serviceHandlerFunc)(
     Table *table, const PsRequestMessage &request, PsResponseMessage &response,
     brpc::Controller *cntl);
 
-class PsService : public PsBaseService {
+class BrpcPsService : public PsBaseService {
  public:
   virtual int32_t initialize() override;
 
   virtual void service(::google::protobuf::RpcController *controller,
-                       const ::paddle::PsRequestMessage *request,
-                       ::paddle::PsResponseMessage *response,
+                       const PsRequestMessage *request,
+                       PsResponseMessage *response,
                        ::google::protobuf::Closure *done) override;
 
  private:
@@ -108,6 +119,9 @@ class PsService : public PsBaseService {
                         PsResponseMessage &response, brpc::Controller *cntl);
 
   int32_t print_table_stat(Table *table, const PsRequestMessage &request,
+                           PsResponseMessage &response, brpc::Controller *cntl);
+
+  int32_t push_global_step(Table *table, const PsRequestMessage &request,
                            PsResponseMessage &response, brpc::Controller *cntl);
 
   bool _is_initialize_shard_info;

@@ -136,6 +136,9 @@ TEST(ConvActivationFusePass, conv_leaky_relu_fuse_pass) {
 }
 TEST(ConvActivationFusePass, conv_relu6_fuse_pass) { MainTest("relu6"); }
 TEST(ConvActivationFusePass, conv_swish_fuse_pass) { MainTest("swish"); }
+TEST(ConvActivationFusePass, conv_hard_swish_fuse_pass) {
+  MainTest("hard_swish");
+}
 
 }  // namespace ir
 }  // namespace framework

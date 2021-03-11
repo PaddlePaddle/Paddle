@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
-#include <algorithm>
 
 namespace paddle {
 namespace framework {
@@ -161,7 +160,9 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   }
   PADDLE_ENFORCE_GE(seq_len, 0,
                     platform::errors::InvalidArgument(
-                        "RecurrentOp gets invalid sequence length."));
+                        "RecurrentOp gets invalid sequence length. Expected "
+                        "seq_len >= 0. Received seq_len = %d",
+                        seq_len));
   return seq_len;
 }
 

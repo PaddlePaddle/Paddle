@@ -381,6 +381,16 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
         self.axis = 2
 
 
+class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 1, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 0
+
+
 class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -441,7 +451,8 @@ class TestAddOp(unittest.TestCase):
 class TestComplexElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
-        self.init_base_dtype()
+        self.dtype = np.float64
+        self.shape = (2, 3, 4, 5)
         self.init_input_output()
         self.init_grad_input_output()
 
@@ -456,17 +467,15 @@ class TestComplexElementwiseAddOp(OpTest):
         self.dtype = np.float64
 
     def init_input_output(self):
-        self.x = np.random.random(
-            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
-                (2, 3, 4, 5)).astype(self.dtype)
-        self.y = np.random.random(
-            (2, 3, 4, 5)).astype(self.dtype) + 1J * np.random.random(
-                (2, 3, 4, 5)).astype(self.dtype)
+        self.x = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1J * np.ones(
-            (2, 3, 4, 5), self.dtype)
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
         self.grad_x = self.grad_out
         self.grad_y = self.grad_out
 
@@ -495,6 +504,20 @@ class TestComplexElementwiseAddOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out])
+
+
+class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
+            self.shape, self.dtype)
+        self.grad_x = np.real(self.grad_out)
+        self.grad_y = self.grad_out
 
 
 if __name__ == '__main__':

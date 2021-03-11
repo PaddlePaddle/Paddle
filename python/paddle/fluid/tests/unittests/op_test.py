@@ -221,12 +221,18 @@ def copy_bits_from_float_to_uint16(f):
     return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
 
 
-def convert_float_to_uint16(float_list):
+def convert_float_to_uint16(float_list, data_format="NCHW"):
+    if data_format == "NHWC":
+        float_list = np.transpose(float_list, [0, 3, 1, 2])
+
     new_output = []
     for x in np.nditer(float_list):
         new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+    new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
 
-    return np.reshape(new_output, float_list.shape).view(np.uint16)
+    if data_format == "NHWC":
+        new_output = np.transpose(new_output, [0, 2, 3, 1])
+    return new_output
 
 
 class OpTest(unittest.TestCase):
@@ -855,7 +861,7 @@ class OpTest(unittest.TestCase):
                                place,
                                no_check_set=None,
                                inplace_atol=None):
-        """Chech the inplace correctness of given op (self.op_type).
+        """Check the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
 
         Args:
@@ -935,7 +941,7 @@ class OpTest(unittest.TestCase):
                             fwd_res,
                             grad_op_desc,
                             inplace_atol=None):
-        """Chech the inplace correctness of given grad_op_desc.
+        """Check the inplace correctness of given grad_op_desc.
 
         Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
         It works like _check_forward_inplace, but the way to construct program and feed_map differs.
@@ -1291,7 +1297,6 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
@@ -1616,7 +1621,7 @@ class OpTest(unittest.TestCase):
             targets = [
                 outputs[name] for name in outputs if name in output_names
             ]
-            inputs = [inputs[name] for name in inputs if name in input_to_check]
+            inputs = [inputs[name] for name in input_to_check if name in inputs]
             grad_inputs = paddle.static.gradients(targets, inputs, grad_outputs,
                                                   no_grad_set)
             fetch_list = grad_inputs
