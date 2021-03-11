@@ -13,8 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
+import six
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -23,8 +26,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-import numpy as np
-import six
 
 DTYPE_LIST = ["float32"] if core.is_compiled_with_rocm(
 ) else ["float32", "float64"]
