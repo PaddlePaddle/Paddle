@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <iostream>
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <vector>
@@ -26,6 +27,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/distributed/distributed_pb.h"
 #include "paddle/fluid/platform/port.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+class Variable;
+}  // namespace framework
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -79,7 +95,8 @@ inline framework::proto::VarType::Type ToVarType(
     case sendrecv::VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW("Not support type %d", type);
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Not support type id: %d.", type));
   }
 }
 

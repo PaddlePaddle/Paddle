@@ -58,18 +58,20 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
     int rois_batch_size;
-    if (ctx.HasInput("RoisLod")) {
-      auto* rois_lod_t = ctx.Input<framework::Tensor>("RoisLod");
-      rois_batch_size = rois_lod_t->numel();
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
       PADDLE_ENFORCE_EQ(
-          rois_batch_size - 1, batch_size,
+          rois_batch_size, batch_size,
           platform::errors::InvalidArgument("The rois_batch_size and imgs "
                                             "batch_size must be the same."));
-      auto* rois_lod = rois_lod_t->data<int64_t>();
-      for (int n = 0; n < rois_batch_size - 1; ++n) {
-        for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
           roi_batch_id_data[i] = n;
         }
+        start += rois_num_data[n];
       }
     } else {
       auto rois_lod = rois->lod().back();
@@ -185,14 +187,16 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
           roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
       int rois_batch_size;
-      if (ctx.HasInput("RoisLod")) {
-        auto* rois_lod_t = ctx.Input<framework::Tensor>("RoisLod");
-        rois_batch_size = rois_lod_t->numel();
-        auto* rois_lod = rois_lod_t->data<int64_t>();
-        for (int n = 0; n < rois_batch_size - 1; ++n) {
-          for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+      if (ctx.HasInput("RoisNum")) {
+        auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+        rois_batch_size = rois_num_t->numel();
+        auto* rois_num_data = rois_num_t->data<int>();
+        int start = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int i = start; i < start + rois_num_data[n]; ++i) {
             roi_batch_id_data[i] = n;
           }
+          start += rois_num_data[n];
         }
       } else {
         auto rois_lod = rois->lod().back();

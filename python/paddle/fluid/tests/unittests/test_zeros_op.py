@@ -39,15 +39,15 @@ class ApiZerosTest(unittest.TestCase):
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype="float64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.program_guard(Program()):
+        with paddle.static.program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
@@ -55,7 +55,7 @@ class ApiZerosTest(unittest.TestCase):
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
@@ -64,7 +64,7 @@ class ApiZerosTest(unittest.TestCase):
             out_np = np.zeros(shape=(1), dtype='float32')
             out = paddle.zeros(shape=[1], dtype="float32")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result = exe.run(fetch_list=[out])
             self.assertEqual((result == out_np).all(), True)
 
@@ -72,7 +72,7 @@ class ApiZerosTest(unittest.TestCase):
         with program_guard(Program()):
             zeros = fluid.layers.zeros(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
@@ -81,13 +81,13 @@ class ApiZerosTest(unittest.TestCase):
 class ApiZerosError(unittest.TestCase):
     def test_errors(self):
         def test_error1():
-            with paddle.program_guard(fluid.Program()):
+            with paddle.static.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=10, dtype="int64")
 
         self.assertRaises(TypeError, test_error1)
 
         def test_error2():
-            with paddle.program_guard(fluid.Program()):
+            with paddle.static.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=[10], dtype="int8")
 
         self.assertRaises(TypeError, test_error2)

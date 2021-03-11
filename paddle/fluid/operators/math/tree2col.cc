@@ -55,7 +55,11 @@ void Tree2ColUtil::construct_tree(const paddle::Tensor &EdgeSet,
                                   std::vector<std::vector<int>> *tr,
                                   size_t *node_count) {
   auto edge_set_dims = EdgeSet.dims();
-  PADDLE_ENFORCE_EQ(edge_set_dims[1], 2);
+  PADDLE_ENFORCE_EQ(edge_set_dims[1], 2,
+                    platform::errors::InvalidArgument(
+                        "The second dimension of the EdgeSet shall be 2, but "
+                        "got %ld != 2. Please check the input value.",
+                        edge_set_dims[1]));
   int64_t edge_count = EdgeSet.numel();
 
   const int *edge_data = EdgeSet.data<int>();

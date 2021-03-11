@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -29,11 +30,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+class Graph;
 template <typename PassType>
 struct PassRegistrar;
 
 typedef std::unordered_set<std::string> PassRecorder;
 constexpr char kPassRecorder[] = "pass_recorder";
+constexpr char kEmbEltwiseLayernormPass[] =
+    "embedding_eltwise_layernorm_fuse_pass_flag";
+constexpr char kMultiheadMatmulPass[] = "multihead_matmul_fuse_pass_flag";
 
 class Pass {
  public:
@@ -201,9 +206,19 @@ class PassRegistry {
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    PADDLE_ENFORCE_EQ(Has(pass_type), true,
-                      platform::errors::InvalidArgument(
-                          "Pass %s has not been registered.", pass_type));
+    if (pass_type == "tensorrt_subgraph_pass") {
+      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+                        platform::errors::InvalidArgument(
+                            "Pass %s has not been registered. Please "
+                            "use the paddle inference library "
+                            "compiled with tensorrt or disable "
+                            "the tensorrt engine in inference configuration! ",
+                            pass_type));
+    } else {
+      PADDLE_ENFORCE_EQ(Has(pass_type), true,
+                        platform::errors::InvalidArgument(
+                            "Pass %s has not been registered.", pass_type));
+    }
     return map_.at(pass_type)();
   }
 

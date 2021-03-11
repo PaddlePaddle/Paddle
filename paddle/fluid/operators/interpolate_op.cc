@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -104,12 +107,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE(
-      "bilinear" == interp_method || "nearest" == interp_method ||
-          "bicubic" == interp_method,
-      "Interpolation method can only be \"bilinear\" or \"nearest\" when "
-      "Input(X) dimension is 4, but got method = %s .",
-      interp_method);
+  PADDLE_ENFORCE_EQ("bilinear" == interp_method || "nearest" == interp_method ||
+                        "bicubic" == interp_method,
+                    true, platform::errors::InvalidArgument(
+                              "Interpolation method can only be \"bilinear\" "
+                              "or \"nearest\" or \"bicubic\" when "
+                              "Input(X) dimension is 4, but got method is %s.",
+                              interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -169,13 +173,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
         out_size_dim.size(), 1,
-        platform::errors::InvalidArgument(
-            "OutSize's dimension size must be 1, but got dimension = %d .",
-            out_size_dim.size()));
+        platform::errors::InvalidArgument("OutSize's dimension size must be 1, "
+                                          "but got dimension size is %d .",
+                                          out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
         out_size_dim[0], 2,
         platform::errors::InvalidArgument(
-            "OutSize's dim[0] must be 2, but got dimention = %d .",
+            "OutSize's dimension[0] must be 2, but got dimension[0] is %d .",
             out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
@@ -264,12 +268,15 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
 
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
-    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                      "OutSize's dimension size must be 1, but got size =%d .",
-                      out_size_dim.size());
+    PADDLE_ENFORCE_EQ(
+        out_size_dim.size(), 1,
+        platform::errors::InvalidArgument(
+            "OutSize's dimension size must be 1, but got size is %d.",
+            out_size_dim.size()));
     PADDLE_ENFORCE_EQ(out_size_dim[0], 3,
-                      "OutSize's dim[0] must be 3, but got size = %d .",
-                      out_size_dim[0]);
+                      platform::errors::InvalidArgument(
+                          "OutSize's dim[0] must be 3, but got size is %d.",
+                          out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -289,10 +296,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of InterpolateOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of InterpolationOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Interpolate");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Interpolate");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     PADDLE_ENFORCE(
@@ -300,7 +305,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
         platform::errors::Unimplemented(
             "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
-
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
       Interpolate1DInferShapeCheck(ctx);
@@ -316,13 +320,41 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto interp_method = ctx.Attr<std::string>("interp_method");
+    // TODO(danqing): support other interp_method
+    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
+        (interp_method == "nearest" || interp_method == "bilinear")) {
+      layout = framework::DataLayout::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_layout");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
@@ -392,6 +424,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
@@ -534,9 +569,10 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InterpolateGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "InterpolateGrad");
+
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);

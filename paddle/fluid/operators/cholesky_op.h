@@ -59,22 +59,24 @@ class CholeskyCPUKernel : public framework::OpKernel<T> {
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
             Eigen::UpLoType::Upper>
             llt_decomposition(input);
-        PADDLE_ENFORCE_EQ(
-            llt_decomposition.info(), Eigen::Success,
-            platform::errors::InvalidArgument(
-                "Cholesky decomposition was not successful. The input matrice "
-                "might not be not be positive definite."));
+        PADDLE_ENFORCE_EQ(llt_decomposition.info(), Eigen::Success,
+                          platform::errors::InvalidArgument(
+                              "Cholesky decomposition was not successful. The "
+                              "%d-th input matrice "
+                              "might not be not be positive definite.",
+                              i));
         output = llt_decomposition.matrixU();
       } else {
         Eigen::LLT<
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
             Eigen::UpLoType::Lower>
             llt_decomposition(input);
-        PADDLE_ENFORCE_EQ(
-            llt_decomposition.info(), Eigen::Success,
-            platform::errors::InvalidArgument(
-                "Cholesky decomposition was not successful. The input matrice "
-                "might not be not be positive definite."));
+        PADDLE_ENFORCE_EQ(llt_decomposition.info(), Eigen::Success,
+                          platform::errors::InvalidArgument(
+                              "Cholesky decomposition was not successful. The "
+                              "%d-th input matrice "
+                              "might not be not be positive definite.",
+                              i));
         output = llt_decomposition.matrixL();
       }
     }

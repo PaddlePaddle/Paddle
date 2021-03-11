@@ -19,8 +19,10 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
+from paddle.fluid.layer_helper import LayerHelper
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
 
 
@@ -205,27 +207,28 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
     def test_functional_paddle_imperative_dygraph_context(self):
-        self.assertFalse(paddle.imperative.enabled())
-        paddle.enable_imperative()
-        self.assertTrue(paddle.imperative.enabled())
+        self.assertFalse(paddle.in_dynamic_mode())
+        paddle.disable_static()
+        self.assertTrue(paddle.in_dynamic_mode())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = paddle.imperative.to_variable(np_inp)
+        var_inp = paddle.to_tensor(np_inp)
         mlp = MLP(input_size=2)
         out = mlp(var_inp)
         dy_out1 = out.numpy()
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
-        paddle.disable_imperative()
-        self.assertFalse(paddle.imperative.enabled())
-        with paddle.imperative.guard():
-            self.assertTrue(paddle.imperative.enabled())
-            var_inp = paddle.imperative.to_variable(np_inp)
-            mlp = MLP(input_size=2)
-            out = mlp(var_inp)
-            dy_out2 = out.numpy()
-            out.backward()
-            dy_grad2 = mlp._linear1.weight.gradient()
-        self.assertFalse(paddle.imperative.enabled())
+        paddle.enable_static()
+        self.assertFalse(paddle.in_dynamic_mode())
+        paddle.disable_static()
+        self.assertTrue(paddle.in_dynamic_mode())
+        var_inp = paddle.to_tensor(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out2 = out.numpy()
+        out.backward()
+        dy_grad2 = mlp._linear1.weight.gradient()
+        paddle.enable_static()
+        self.assertFalse(paddle.in_dynamic_mode())
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
@@ -281,7 +284,7 @@ class TestImperative(unittest.TestCase):
             l0 = fluid.Linear(2, 2)
             self.assertTrue(l0.weight._grad_ivar() is None)
             l1 = fluid.Linear(2, 2)
-            with paddle.imperative.no_grad():
+            with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
@@ -312,9 +315,8 @@ class TestImperative(unittest.TestCase):
                 inputs2.append(tmp)
             ret2 = fluid.layers.sums(inputs2)
             loss2 = fluid.layers.reduce_sum(ret2)
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            loss2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            loss2.backward()
 
             self.assertTrue(np.allclose(ret.numpy(), x * 10))
             self.assertTrue(np.allclose(inputs[0].gradient(), x))
@@ -331,7 +333,7 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.numpy()
             except Exception as e:
-                assert type(e) == core.EnforceNotMet
+                assert type(e) == ValueError
 
             try:
                 new_variable.backward()
@@ -401,9 +403,8 @@ class TestImperative(unittest.TestCase):
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)
             dy_out2 = x2.numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            x2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            x2.backward()
             dy_grad2 = l2._x_for_debug.gradient()
 
         with new_program_scope():
@@ -440,9 +441,8 @@ class TestImperative(unittest.TestCase):
             mlp2 = MLP(input_size=2)
             out2 = mlp2(var_inp2)
             dy_out2 = out2.numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            out2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            out2.backward()
             dy_grad2 = mlp2._linear1.weight.gradient()
 
         with new_program_scope():
@@ -476,6 +476,123 @@ class TestImperative(unittest.TestCase):
         self.assertEqual(mlp._linear1, sublayers[0])
         self.assertEqual(mlp._linear2, sublayers[1])
         self.assertEqual(len(sublayers), 2)
+
+    def test_gradient_accumulation(self):
+        def test_single_api(sort_sum_gradient):
+            fluid.set_flags({'FLAGS_sort_sum_gradient': sort_sum_gradient})
+            x = paddle.to_tensor(5., stop_gradient=False)
+            for i in range(10):
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                self.assertEqual(x.grad, (i + 1) * 500)
+            x.clear_gradient()
+            self.assertEqual(x.grad, 0.)
+            for i in range(10):
+                y = paddle.pow(x, 4.0)
+                y.backward()
+                self.assertEqual(x.grad, (i + 1) * 500)
+            x.clear_grad()
+            self.assertEqual(x.grad, 0.)
+
+        def test_simple_net(sort_sum_gradient):
+            fluid.set_flags({'FLAGS_sort_sum_gradient': sort_sum_gradient})
+            x = paddle.to_tensor(5., stop_gradient=False)
+            y = paddle.to_tensor(2., stop_gradient=False)
+            z = paddle.to_tensor(3., stop_gradient=False)
+
+            def fun(x, y, z):
+                loss1 = x * x * y
+                loss2 = x * z
+                loss1.backward(retain_graph=True)
+                loss2.backward(retain_graph=True)
+                self.assertTrue(np.array_equal(x.grad, [23.]))
+                self.assertTrue(np.array_equal(y.grad, [25.]))
+                self.assertTrue(np.array_equal(z.grad, [5.]))
+                x.clear_grad()
+                y.clear_grad()
+                z.clear_grad()
+
+                dx = paddle.grad([loss1], x, create_graph=True)[0]
+                loss = loss1 + loss2 + dx
+                # loss = x*x*y + x*z + 2*x*y
+                return loss
+
+            loss = fun(x, y, z)
+            loss.backward(retain_graph=True)
+            # x.grad = 2*x*y + z + 2*y = 27 
+            self.assertTrue(np.array_equal(x.grad, [27]))
+
+            loss.backward(retain_graph=True)
+            self.assertTrue(np.array_equal(x.grad, [54]))
+
+            loss.backward()
+            self.assertTrue(np.array_equal(x.grad, [81]))
+
+            with self.assertRaises(RuntimeError):
+                loss.backward()
+
+            loss1 = x * x * y
+            loss2 = x * z
+            dx = paddle.grad([loss1], x, create_graph=True)[0]
+            loss = loss1 + loss2 + dx
+            loss.backward()
+            self.assertTrue(np.array_equal(dx.grad, [1]))
+            self.assertTrue(np.array_equal(x.grad, [108]))
+
+        def test_mlp(sort_sum_gradient):
+            fluid.set_flags({'FLAGS_sort_sum_gradient': sort_sum_gradient})
+            input_size = 5
+            paddle.seed(1)
+            mlp1 = MLP(input_size=input_size)
+            # generate the gradient of each step
+            mlp2 = MLP(input_size=input_size)
+
+            expected_weight1_grad = 0.
+            expected_bias1_grad = 0.
+            expected_weight2_grad = 0.
+            expected_bias2_grad = 0.
+
+            for batch_id in range(100):
+                x = paddle.uniform([10, input_size])
+                detach_x = x.detach()
+                clear_loss = mlp2(detach_x)
+                clear_loss.backward()
+                expected_weight1_grad = expected_weight1_grad + mlp2._linear1.weight.grad
+                expected_bias1_grad = expected_bias1_grad + mlp2._linear1.bias.grad
+                expected_weight2_grad = expected_weight2_grad + mlp2._linear2.weight.grad
+                expected_bias2_grad = expected_bias2_grad + mlp2._linear2.bias.grad
+
+                loss = mlp1(x)
+                loss.backward()
+
+                self.assertTrue(np.array_equal(loss.grad, [1]))
+                self.assertTrue(
+                    np.allclose(mlp1._linear1.weight.grad,
+                                expected_weight1_grad))
+                self.assertTrue(
+                    np.allclose(mlp1._linear1.bias.grad, expected_bias1_grad))
+                self.assertTrue(
+                    np.allclose(mlp1._linear2.weight.grad,
+                                expected_weight2_grad))
+                self.assertTrue(
+                    np.allclose(mlp1._linear2.bias.grad, expected_bias2_grad))
+
+                mlp2.clear_gradients()
+                self.assertTrue(np.array_equal(clear_loss.grad, [1]))
+                if ((batch_id + 1) % 10) == 0:
+                    mlp1.clear_gradients()
+                    expected_weight1_grad = 0.
+                    expected_bias1_grad = 0.
+                    expected_weight2_grad = 0.
+                    expected_bias2_grad = 0.
+
+        with fluid.dygraph.guard():
+            test_single_api(False)
+            test_single_api(True)
+            test_simple_net(False)
+            test_simple_net(True)
+            test_mlp(False)
+            test_mlp(True)
 
     def test_dygraph_vs_static(self):
         np_inp1 = np.random.rand(4, 3, 3)
@@ -550,9 +667,8 @@ class TestImperative(unittest.TestCase):
             simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            outs2[3].backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            outs2[3].backward()
             dy_grad_h2o2 = simple_rnn2._cell._h2o_w.gradient()
             dy_grad_h2h2 = simple_rnn2._cell._h2h_w.gradient()
             dy_grad_i2h2 = simple_rnn2._cell._i2h_w.gradient()
@@ -628,6 +744,41 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
 
+    def test_append_activation_in_dygraph3(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        helper = LayerObjectHelper(fluid.unique_name.generate("test"))
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        helper = LayerHelper(
+            fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a)
+            res2 = fluid.layers.relu(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+        func = helper.append_activation
+        with fluid.dygraph.guard(fluid.core.CPUPlace()):
+            a = fluid.dygraph.to_variable(a_np)
+            fluid.set_flags({'FLAGS_use_mkldnn': True})
+            try:
+                res1 = func(a)
+            finally:
+                fluid.set_flags({'FLAGS_use_mkldnn': False})
+            res2 = fluid.layers.relu(a)
+        self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
@@ -655,4 +806,5 @@ class TestDygraphGuardWithError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -47,6 +50,8 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     ops_.push_back(local_op_ptr);
     continue;
   }
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      program, 0, ops_);
 }
 
 void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
@@ -180,10 +185,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
     writer_.Flush();
   }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
 }
@@ -211,10 +215,9 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
 }

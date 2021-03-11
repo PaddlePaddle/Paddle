@@ -14,8 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
 
-#include <algorithm>
-#include "paddle/fluid/string/string_helper.h"
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -155,7 +160,9 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   }
   PADDLE_ENFORCE_GE(seq_len, 0,
                     platform::errors::InvalidArgument(
-                        "RecurrentOp gets invalid sequence length."));
+                        "RecurrentOp gets invalid sequence length. Expected "
+                        "seq_len >= 0. Received seq_len = %d",
+                        seq_len));
   return seq_len;
 }
 

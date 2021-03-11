@@ -20,18 +20,18 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
+
+#include "glog/logging.h"
 #include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 
-#include "glog/logging.h"
-
 namespace paddle {
 namespace framework {
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
 template <typename T>

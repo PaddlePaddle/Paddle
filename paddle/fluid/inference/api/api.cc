@@ -62,9 +62,9 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     if (other.length() && other.data())
       memcpy(data_, other.data(), other.length());
     else if (other.length())
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid argument, null pointer data with length %u is passed",
-          other.length());
+          other.length()));
 
     length_ = other.length();
     memory_owned_ = true;
@@ -92,7 +92,8 @@ void PaddleBuf::Resize(size_t length) {
     length_ = length;
     memory_owned_ = true;
   } else {
-    PADDLE_THROW("The memory is allocated externally, can not Resized");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "The memory is allocated externally, can not Resized"));
   }
 }
 
@@ -105,11 +106,21 @@ void PaddleBuf::Reset(void *data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0UL);
+    PADDLE_ENFORCE_GT(
+        length_, 0UL,
+        platform::errors::PreconditionNotMet(
+            "The memory used in PaddleBuf %d should be greater than 0",
+            length_));
     delete[] static_cast<char *>(data_);
     data_ = nullptr;
     length_ = 0;
   }
+}
+
+NativeConfig::NativeConfig() {
+  LOG(WARNING) << "The paddle::NativeConfig interface is going to be "
+                  "deprecated in the next release, plase use the latest "
+                  "paddle_infer::Config instead.";
 }
 
 std::string get_version() {
@@ -125,7 +136,7 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   LOG(WARNING)
       << "The function \"UpdateDllFlag\" is only used to update the flag "
          "on the Windows shared library";
-  ret = google::SetCommandLineOption(name, value);
+  ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
 
   PADDLE_ENFORCE_EQ(
       ret.empty(), false,
@@ -134,5 +145,11 @@ std::string UpdateDllFlag(const char *name, const char *value) {
   LOG(INFO) << ret;
   return ret;
 }
+
+#ifdef PADDLE_WITH_CRYPTO
+std::shared_ptr<framework::Cipher> MakeCipher(const std::string &config_file) {
+  return framework::CipherFactory::CreateCipher(config_file);
+}
+#endif
 
 }  // namespace paddle

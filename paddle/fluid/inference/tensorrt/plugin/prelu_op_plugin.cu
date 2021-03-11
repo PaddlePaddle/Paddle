@@ -39,6 +39,13 @@ int PReluPlugin::initialize() {
   return 0;
 }
 
+void PReluPlugin::terminate() {
+  if (p_gpu_weight_) {
+    cudaFree(p_gpu_weight_);
+    p_gpu_weight_ = nullptr;
+  }
+}
+
 nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
                                                 const nvinfer1::Dims *inputDims,
                                                 int nbInputs) {
@@ -79,6 +86,12 @@ int PReluPlugin::enqueue(int batch_size, const void *const *inputs,
 }
 
 #if IS_TRT_VERSION_GE(6000)
+
+void PReluPluginDynamic::terminate() {
+  if (p_gpu_weight_) {
+    cudaFree(p_gpu_weight_);
+  }
+}
 
 int PReluPluginDynamic::initialize() {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());

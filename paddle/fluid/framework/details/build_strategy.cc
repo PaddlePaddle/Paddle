@@ -15,15 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
-#include <memory>
-#include <unordered_set>
-#include <utility>
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
@@ -164,7 +157,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+    AppendPassWithCheck(strategy_.fuse_bn_add_act_ops_, "fuse_bn_add_act_pass");
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #else
     LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
@@ -235,7 +230,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
               AppendPass("reduce_mode_multi_devices_pass").get();
           break;
         default:
-          PADDLE_THROW("Unknown reduce strategy.");
+          PADDLE_THROW(
+              platform::errors::Unimplemented("Unknown reduce strategy."));
       }
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
@@ -310,11 +306,14 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL)
-                                const bool use_cuda,
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+                                DeviceType use_device,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+                                DeviceType use_device,
+                                platform::BKCLCommunicator *bkcl_ctxs) const {
 #else
-                                const bool use_cuda) const {
+                                DeviceType use_device) const {
 #endif
   VLOG(1) << "apply all passes";
   // Create a default one if not finalized by user.
@@ -333,10 +332,17 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_NCCL)
-      platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      platform::NCCLCommunicator *nctx =
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      // ToDo: more check
+      platform::BKCLCommunicator *bkcl_ctx =
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, bkcl_ctx);
 #endif
     } else if (pass->Type() == "fuse_all_reduce_op_pass") {
       pass->Erase(kNRanks);
@@ -346,11 +352,23 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_NCCL)
-      platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      platform::NCCLCommunicator *nctx =
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      platform::BKCLCommunicator *nctx =
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+                        platform::errors::Unimplemented(
+                            "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
@@ -361,31 +379,49 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_NCCL)
-      platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      platform::NCCLCommunicator *nctx =
+          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
+      pass->Set<bool>(kUseHierarchicalAllReduce,
+                      new bool(use_hierarchical_allreduce_));
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+      platform::BKCLCommunicator *nctx =
+          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
+      pass->Erase(kBKCLCtxs);
+      pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
+      pass->Erase(kUseHierarchicalAllReduce);
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+                        platform::errors::Unimplemented(
+                            "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
       VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
               << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
-      if (!use_cuda) {
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fusion_group_pass") {
-      pass->Set<bool>("use_gpu", new bool(use_cuda));
-      if (!use_cuda) {
+      pass->Set<bool>("use_gpu", new bool((use_device == p::kCUDA)));
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
-      if (!use_cuda) {
+      if (use_device != p::kCUDA) {
         LOG(WARNING) << "fuse_bn_act_pass is only supported on "
+                        "GPU, skipped.";
+        continue;
+      }
+    } else if (pass->Type() == "fuse_bn_add_act_pass") {
+      if (use_device != p::kCUDA) {
+        LOG(WARNING) << "fuse_bn_add_act_pass is only supported on "
                         "GPU, skipped.";
         continue;
       }
@@ -393,7 +429,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
-      if (!use_cuda) {
+      if (use_device != p::kCUDA) {
         VLOG(1) << "backward_optimizer_op_deps_pass is only supported on "
                    "GPU, skipped.";
         continue;
@@ -415,6 +451,7 @@ USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
 USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(fuse_bn_act_pass);
+USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
@@ -438,6 +475,7 @@ USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif

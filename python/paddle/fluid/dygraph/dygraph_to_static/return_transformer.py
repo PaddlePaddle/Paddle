@@ -20,6 +20,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
@@ -251,10 +252,7 @@ class ReturnTransformer(gast.NodeTransformer):
                 value=return_value_nodes)
             node.body.insert(0, assign_return_value_node)
             node.body[:0] = assign_zero_nodes
-        # Prepend control flow boolean nodes such as '__return@1 = False'
-        for name in self.return_name[node]:
-            assign_false_node = create_fill_constant_node(name, False)
-            node.body.insert(0, assign_false_node)
+
         # Prepend no value placeholders
         for name in self.return_no_value_name[node]:
             assign_no_value_node = create_fill_constant_node(
@@ -270,6 +268,8 @@ class ReturnTransformer(gast.NodeTransformer):
         self.return_name[cur_func_node].append(return_name)
         max_return_length = self.pre_analysis.get_func_max_return_length(
             cur_func_node)
+        parent_node_of_return = self.ancestor_nodes[-2]
+
         for ancestor_index in reversed(range(len(self.ancestor_nodes) - 1)):
             ancestor = self.ancestor_nodes[ancestor_index]
             cur_node = self.ancestor_nodes[ancestor_index + 1]
@@ -277,18 +277,21 @@ class ReturnTransformer(gast.NodeTransformer):
                        "body") and index_in_list(ancestor.body, cur_node) != -1:
                 if cur_node == node:
                     self._replace_return_in_stmt_list(
-                        ancestor.body, cur_node, return_name, max_return_length)
+                        ancestor.body, cur_node, return_name, max_return_length,
+                        parent_node_of_return)
                 self._replace_after_node_to_if_in_stmt_list(
-                    ancestor.body, cur_node, return_name)
+                    ancestor.body, cur_node, return_name, parent_node_of_return)
             elif hasattr(ancestor, "orelse") and index_in_list(ancestor.orelse,
                                                                cur_node) != -1:
                 if cur_node == node:
-                    self._replace_return_in_stmt_list(ancestor.orelse, cur_node,
-                                                      return_name,
-                                                      max_return_length)
+                    self._replace_return_in_stmt_list(
+                        ancestor.orelse, cur_node, return_name,
+                        max_return_length, parent_node_of_return)
                 self._replace_after_node_to_if_in_stmt_list(
-                    ancestor.orelse, cur_node, return_name)
+                    ancestor.orelse, cur_node, return_name,
+                    parent_node_of_return)
 
+            # If return node in while loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.While):
                 cond_var_node = gast.UnaryOp(
                     op=gast.Not(),
@@ -301,6 +304,7 @@ class ReturnTransformer(gast.NodeTransformer):
                     op=gast.And(), values=[ancestor.test, cond_var_node])
                 continue
 
+            # If return node in for loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.For):
                 cond_var_node = gast.UnaryOp(
                     op=gast.Not(),
@@ -321,12 +325,24 @@ class ReturnTransformer(gast.NodeTransformer):
         # return_node is replaced so we shouldn't return here
 
     def _replace_return_in_stmt_list(self, stmt_list, return_node, return_name,
-                                     max_return_length):
+                                     max_return_length, parent_node_of_return):
+
         assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:
             return False
-        assign_nodes = [create_fill_constant_node(return_name, True)]
+
+        assign_nodes = []
+        # Here assume that the parent node of return is gast.If
+        if isinstance(parent_node_of_return, gast.If):
+            # Prepend control flow boolean nodes such as '__return@1 = True'
+            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, True)".format(
+                return_name,
+                ast_to_source_code(parent_node_of_return.test).strip())
+
+            assign_true_node = gast.parse(node_str).body[0]
+            assign_nodes.append(assign_true_node)
+
         cur_func_node = self.function_def[-1]
         return_length = get_return_size(return_node)
         if return_length < max_return_length:
@@ -409,14 +425,15 @@ class ReturnTransformer(gast.NodeTransformer):
         stmt_list[i:] = assign_nodes
         return True
 
-    def _replace_after_node_to_if_in_stmt_list(self, stmt_list, node,
-                                               return_name):
+    def _replace_after_node_to_if_in_stmt_list(
+            self, stmt_list, node, return_name, parent_node_of_return):
         i = index_in_list(stmt_list, node)
         if i < 0 or i >= len(stmt_list):
             return False
         if i == len(stmt_list) - 1:
             # No need to add, we consider this as added successfully
             return True
+
         if_stmt = gast.If(test=gast.UnaryOp(
             op=gast.Not(),
             operand=gast.Name(
@@ -426,5 +443,16 @@ class ReturnTransformer(gast.NodeTransformer):
                 type_comment=None)),
                           body=stmt_list[i + 1:],
                           orelse=[])
+
         stmt_list[i + 1:] = [if_stmt]
+
+        # Here assume that the parent node of return is gast.If
+        if isinstance(parent_node_of_return, gast.If):
+            # Prepend control flow boolean nodes such as '__return@1 = False'
+            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, False)".format(
+                return_name,
+                ast_to_source_code(parent_node_of_return.test).strip())
+            assign_false_node = gast.parse(node_str).body[0]
+
+            stmt_list[i:i] = [assign_false_node]
         return True

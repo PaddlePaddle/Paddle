@@ -27,9 +27,10 @@ static inline T NormalizeL1(T* x, size_t len) {
   // (This comment is from the old LinearChainCRFLayer.)
   // Right now, we just bet that sum won't be zero. If this really happens, we
   // will figure out what should be done then.
-  PADDLE_ENFORCE(sum,
-                 "The unnormalized probabilities of all possible unfinished "
-                 "sequences must be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      sum, 0., platform::errors::InvalidArgument(
+                   "The unnormalized probabilities of all possible unfinished "
+                   "sequences must be greater than 0."));
   T s = 1. / sum;
   for (size_t i = 0; i < len; ++i) x[i] *= s;
   return sum;
@@ -46,9 +47,6 @@ struct ScalarMul {
 using framework::LoDTensor;
 using framework::LoD;
 using framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
@@ -84,13 +82,19 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
-      PADDLE_ENFORCE_EQ(seq_num, emission_dims[0],
-                        "the size of Input(length) must be equal to "
-                        "emission_dims[0].");
+      PADDLE_ENFORCE_EQ(
+          seq_num, emission_dims[0],
+          platform::errors::InvalidArgument(
+              "the size of Input(length) must be equal to "
+              "emission_dims[0]. But input_size = %d, emission_dims[0] = %d.",
+              seq_num, emission_dims[0]));
       auto label_dims = label->dims();
-      PADDLE_ENFORCE_EQ(seq_num, label_dims[0],
-                        "the size of Input(length) must be equal to "
-                        "label_dims[0].");
+      PADDLE_ENFORCE_EQ(
+          seq_num, label_dims[0],
+          platform::errors::InvalidArgument(
+              "the size of Input(length) must be equal to "
+              "label_dims[0]. But input_size = %d, label_dims[0] = %d.",
+              seq_num, label_dims[0]));
 
       batch_size = emission_dims[0] * emission_dims[1];
       tag_num = emission_dims[2];
@@ -102,7 +106,9 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       math::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
       in_lod = ctx.Input<LoDTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
+      PADDLE_ENFORCE_NE(in_lod.size(), 0,
+                        platform::errors::InvalidArgument(
+                            "Input(Label) must be a sequence."));
       seq_num = in_lod[0].size() - 1;
       batch_size = emission_dims[0];
       tag_num = emission_dims[1];
@@ -118,16 +124,16 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         platform::CPUPlace());
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto x = EigenMatrix<T>::From(emission_weights_tmp);
-    auto x_row_max = EigenMatrix<T>::From(emission_row_max);
+    auto x = framework::EigenMatrix<T>::From(emission_weights_tmp);
+    auto x_row_max = framework::EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
             .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
-    auto x_exps = EigenMatrix<T>::From(emission_exps_tmp);
+    auto x_exps = framework::EigenMatrix<T>::From(emission_exps_tmp);
     x_exps.device(place) =
         (x - x_row_max.broadcast(Eigen::DSizes<int, 2>(1, tag_num))).exp();
-    auto w = EigenMatrix<T>::From(*transition_weights);
-    auto w_exps = EigenMatrix<T>::From(*transition_exps);
+    auto w = framework::EigenMatrix<T>::From(*transition_weights);
+    auto w_exps = framework::EigenMatrix<T>::From(*transition_exps);
     w_exps.device(place) = w.exp();
     T* log_likelihood = ll->data<T>();
     for (int64_t i = 0; i < seq_num; ++i) {
@@ -204,7 +210,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     const int64_t* lbl = label.data<int64_t>();
     PADDLE_ENFORCE_LT(
         static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)), tag_num,
-        "An invalid tag label that execesses the largest tag number.");
+        platform::errors::InvalidArgument(
+            "An invalid tag label that execesses the largest tag number."));
 
     // Calculate the nominator part, which depends on the label sequence.
     ll += w[lbl[0]] /*start transition*/ + x[lbl[0]] +
@@ -254,7 +261,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
       in_lod = ctx.Input<LoDTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
+      PADDLE_ENFORCE_NE(in_lod.size(), 0,
+                        platform::errors::InvalidArgument(
+                            "Input(Label) must be a sequence."));
       seq_num = static_cast<int64_t>(in_lod[0].size() - 1);
     }
 
@@ -343,9 +352,9 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       NormalizeL1<T>(beta_value + k * tag_num, tag_num);
     }
 
-    auto x_grad_mat = EigenMatrix<T>::From(*emission_grad);
-    auto alpha_mat = EigenMatrix<T>::From(alpha);
-    auto beta_mat = EigenMatrix<T>::From(*beta);
+    auto x_grad_mat = framework::EigenMatrix<T>::From(*emission_grad);
+    auto alpha_mat = framework::EigenMatrix<T>::From(alpha);
+    auto beta_mat = framework::EigenMatrix<T>::From(*beta);
 
     auto* place = ctx.eigen_device();
     auto prob = alpha_mat * beta_mat;
@@ -369,13 +378,13 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
             x_grad_mat(/*to end state*/ seq_length - 1, k);
       }
 
-      auto x_exps_mat = EigenMatrix<T>::From(emission_exps);
+      auto x_exps_mat = framework::EigenMatrix<T>::From(emission_exps);
 
       // TODO(caoying): Fix this to avoid using this local variable if we can
       // profile the training process.
       Tensor tmp;
       tmp.mutable_data<T>(beta->dims(), platform::CPUPlace());
-      auto tmp_mat = EigenMatrix<T>::From(tmp);
+      auto tmp_mat = framework::EigenMatrix<T>::From(tmp);
       auto prob = beta_mat * x_exps_mat;
       auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
                          .reshape(Eigen::DSizes<int, 2>(seq_length, 1))

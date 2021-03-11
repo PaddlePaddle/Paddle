@@ -35,6 +35,7 @@ from . import mixed_precision
 from .mixed_precision import *
 from . import layers
 from .layers import *
+from . import optimizer
 
 __all__ = []
 __all__ += decoder.__all__
@@ -46,3 +47,4 @@ __all__ += utils.__all__
 __all__ += extend_optimizer.__all__
 __all__ += ['mixed_precision']
 __all__ += layers.__all__
+__all__ += optimizer.__all__

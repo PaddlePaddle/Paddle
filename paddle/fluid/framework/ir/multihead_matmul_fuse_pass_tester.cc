@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -131,6 +132,12 @@ TEST(MultiHeadMatmulFusePass, basic) {
                         "After the multihead_matmul pass, there should be one "
                         "multihead_matmul op, but the result is %d",
                         num_fused_nodes_after));
+}
+
+TEST(MultiHeadMatmulFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("multihead_matmul_fuse_pass_v2"));
 }
 
 }  // namespace ir

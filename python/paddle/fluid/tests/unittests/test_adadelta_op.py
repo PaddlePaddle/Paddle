@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
 
 
 class TestAdadeltaOp1(OpTest):
@@ -106,6 +108,55 @@ class TestAdadeltaOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestAdadeltaV2(unittest.TestCase):
+    def test_adadelta_dygraph(self):
+        paddle.disable_static(paddle.CPUPlace())
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Adadelta(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=0.01)
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adadelta(self):
+        place = fluid.CPUPlace()
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+
+            rms_optimizer = paddle.optimizer.Adadelta(learning_rate=0.1)
+            rms_optimizer.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(
+                paddle.dataset.uci_housing.train(), batch_size=1)
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            for data in train_reader():
+                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
+    def test_raise_error(self):
+        self.assertRaises(ValueError, paddle.optimizer.Adadelta, None)
+        self.assertRaises(
+            ValueError, paddle.optimizer.Adadelta, learning_rate=0.1, rho=None)
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.Adadelta,
+            learning_rate=0.1,
+            epsilon=None)
 
 
 if __name__ == "__main__":

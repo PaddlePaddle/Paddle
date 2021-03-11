@@ -15,6 +15,16 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -58,10 +68,11 @@ class FcOpConverter : public OpConverter {
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
+    float in_scale = 0.;
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale =
+      in_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
@@ -122,7 +133,7 @@ class FcOpConverter : public OpConverter {
     float* bias_data = nullptr;
     int bias_num = 0;
     if (with_bias) {
-      auto* b_v = scope.FindVar(op_desc.Input("Bias").front());
+      auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data =
           engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);
@@ -174,6 +185,9 @@ class FcOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
+      if (enable_int8) {
+        engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
+      }
     } else {
       PADDLE_ENFORCE_NE(input_dims, 1,
                         platform::errors::InvalidArgument(
@@ -191,6 +205,9 @@ class FcOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
+      if (enable_int8) {
+        engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
+      }
     }
     regist_fc(reshape_itensor, n_output, weight, bias);
   }

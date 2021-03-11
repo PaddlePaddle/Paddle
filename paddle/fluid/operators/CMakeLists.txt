@@ -20,10 +20,13 @@ add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
 
+
 if(WITH_DISTRIBUTE)
-    add_subdirectory(distributed)
-    add_subdirectory(distributed_ops)
     add_subdirectory(collective)
+endif()
+
+if (WITH_PSCORE)
+    add_subdirectory(pscore)
 endif()
 
 add_subdirectory(amp)
@@ -45,13 +48,11 @@ endif()
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
-    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+        SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    endif()
 endif()
 
-SET(OP_PREFETCH_DEPS "")
-if (WITH_DISTRIBUTE)
-    SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
-endif()
 
 SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
@@ -62,12 +63,21 @@ if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op
-    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+if(WITH_UNITY_BUILD)
+    # Load Unity Build rules for operators in paddle/fluid/operators.
+    include(unity_build_rule.cmake)
+endif()
 
-if (WITH_GPU)
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
+        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
+
+if (WITH_GPU OR WITH_ROCM)
+    if(WITH_ROCM)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     # warpctc_op needs cudnn 7 above
-    if (${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+    elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
@@ -78,6 +88,10 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
+op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
+op_library(eye_op DEPS ${OP_HEADER_DEPS})
+op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
+
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
 if (WITH_DGC)
@@ -86,18 +100,26 @@ if (WITH_DGC)
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
 
+cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor device_memory_aligment)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows
+lod_tensor maxouting unpooling pooling lod_rank_table context_project
+sequence_pooling segment_pooling executor device_memory_aligment generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc matrix_inverse)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper boost)
-if (WITH_GPU)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper boost ps_gpu_wrapper)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
+if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
+if (WITH_ASCEND)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ascend_wrapper)
+endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
@@ -111,6 +133,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
+cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
 cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
@@ -118,9 +141,12 @@ cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_t
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
-nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
 if (WITH_GPU)
+    nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
     nv_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
+elseif(WITH_ROCM)
+    hip_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
+    hip_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
 else()
     cc_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc DEPS tensor device_context eigen3)
 endif()
@@ -137,4 +163,13 @@ cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_o
 
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
+include(mkldnn/caching_tests.cmake)
+include(mkldnn/nhwc_op_tests.cmake)
+endif()
+
+if(WITH_UNITY_BUILD)
+    # Using Unity Build to compile operators, `register_operator` will cause
+    # the unity library to lose some symbols.
+    # The specified link dependency needs to be displayed here.
+    target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()

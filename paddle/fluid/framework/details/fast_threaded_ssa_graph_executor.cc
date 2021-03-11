@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+
 #include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/details/fetch_op_handle.h"
+
+#include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -47,7 +50,9 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-  PADDLE_ENFORCE_GT(op_deps_.size(), 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(op_deps_.size(), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The graph doesn't have operators."));
   PrepareAtomicOpDeps();
 }
 
@@ -120,6 +125,11 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
+
+  for (auto &place : places_) {
+    fetch_ctxs_.Get(place)->Wait();
+  }
+
   return fetches;
 }
 
@@ -162,8 +172,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_, return_merged);
+    auto *op = new FetchAsyncOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                      &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -172,6 +182,14 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     for (auto *var : vars) {
       op->AddInput(var);
+    }
+
+    for (auto *var : vars) {
+      auto *op = var->GeneratedOp();
+      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
+      if (compute_op) {
+        compute_op->SetLockAndRecordEventFree(false);
+      }
     }
 
     int dep = static_cast<int>(op->NotReadyInputSize());
@@ -213,6 +231,23 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
       OpHandleBase *op_to_run = op_queue.back();
       op_queue.pop_back();
 
+      // The Op involves data transfer of multiple devices may block other
+      // computations emit. For example:
+      // 1 step, queue=[Share, Allreduce], which Share is high priority
+      // 2 step, Share exec, pending_op=Grad, queue=[Allreduce, Grad]
+      // 3 step, Allreduce run with sync. Although Allreduce and Grad do not
+      // have topo dependency, but Grad must wait for Allreduce to complete
+      // before scheduling.
+      // In this scenario, calculation and communication may not overlap.
+      // Therefore, emit the op in the queue before running multi device op.
+      if (op_to_run->IsMultiDeviceTransfer()) {
+        while (!op_queue.empty()) {
+          OpHandleBase *post_op = op_queue.back();
+          op_queue.pop_back();
+          RunOpAsync(op_deps, post_op, complete_q);
+        }
+      }
+
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
@@ -228,6 +263,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
             op_queue.push_back(pending_op);
+          } else if (pending_op->IsMultiDeviceTransfer()) {
+            // multi device ops should be scheduled prior to computing ops
+            op_queue.push_front(pending_op);
           } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
@@ -261,7 +299,7 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
 const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 
 void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
-  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchAsyncOpHandle *>(op)) {
     traced_ops_.emplace_back(op);
   }
 }
@@ -292,7 +330,7 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
     VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_device_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;

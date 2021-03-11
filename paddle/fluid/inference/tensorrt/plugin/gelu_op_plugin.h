@@ -26,16 +26,16 @@ namespace plugin {
 
 class GeluPlugin : public PluginTensorRT {
  public:
-  GeluPlugin() {}
+  explicit GeluPlugin(const bool with_fp16) { with_fp16_ = with_fp16; }
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
-  GeluPlugin(void const* serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
+  GeluPlugin(void const* serial_data, size_t serial_length) {
+    deserializeBase(serial_data, serial_length);
   }
 
   ~GeluPlugin() {}
-  GeluPlugin* clone() const override { return new GeluPlugin(); }
+  GeluPlugin* clone() const override { return new GeluPlugin(with_fp16_); }
 
   const char* getPluginType() const override { return "gelu_plugin"; }
   int getNbOutputs() const override { return 1; }
@@ -43,8 +43,8 @@ class GeluPlugin : public PluginTensorRT {
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override;
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
-                                     int nbInputDims) override;
-  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+                                     int nb_input_dims) override;
+  int enqueue(int batch_size, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream) override;
 
  protected:
@@ -63,51 +63,97 @@ class GeluPlugin : public PluginTensorRT {
 #if IS_TRT_VERSION_GE(6000)
 class GeluPluginDynamic : public DynamicPluginTensorRT {
  public:
-  GeluPluginDynamic() {}
-  GeluPluginDynamic(void const* serialData, size_t serialLength) {}
+  explicit GeluPluginDynamic(const bool with_fp16) { with_fp16_ = with_fp16; }
+  GeluPluginDynamic(void const* serial_data, size_t serial_length) {
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+  }
 
   ~GeluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new GeluPluginDynamic();
+    return new GeluPluginDynamic(with_fp16_);
   }
 
   const char* getPluginType() const override { return "gelu_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
+  size_t getSerializationSize() const override {
+    return SerializedSize(with_fp16_);
+  }
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, with_fp16_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) override;
+      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder) override;
 
   bool supportsFormatCombination(int pos,
-                                 const nvinfer1::PluginTensorDesc* inOut,
-                                 int nbInputs, int nbOutputs) override;
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs, int nb_outputs) override;
 
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
-                       int nbInputs,
+                       int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) override {}
+                       int nb_outputs) override {}
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
-                          int nbInputs,
+                          int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const override {
+                          int nb_outputs) const override {
     return 0;
   }
 
-  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
-              const nvinfer1::PluginTensorDesc* outputDesc,
+  int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+              const nvinfer1::PluginTensorDesc* output_desc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream) override;
   nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* inputTypes,
-                                       int nbInputs) const override;
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const override;
 
   void destroy() override { delete this; }
 };
+
+class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  GeluPluginV2Creator() {}
+  const char* getPluginName() const override { return "gelu_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    auto plugin = new GeluPluginDynamic(serial_data, serial_length);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* lib_namespace) override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+REGISTER_TRT_PLUGIN_V2(GeluPluginV2Creator);
 #endif
 
 }  // namespace plugin

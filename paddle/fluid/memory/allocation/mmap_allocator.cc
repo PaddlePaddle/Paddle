@@ -19,13 +19,11 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include <random>
 #include <string>
-#include <utility>
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {

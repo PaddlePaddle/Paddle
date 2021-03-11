@@ -21,15 +21,19 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
-
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
+struct DummyVarHandle;
+struct VarHandle;
+
 namespace f = paddle::framework;
 namespace p = paddle::platform;
+
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -43,26 +47,54 @@ struct TestBroadcastOpHandle {
   std::vector<VarHandleBase*> vars_;
   std::vector<std::unique_ptr<ir::Node>> nodes_;
   std::vector<p::Place> place_list_;
-  bool use_gpu_;
-#if defined(PADDLE_WITH_NCCL)
+  DeviceType use_device_;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  std::unique_ptr<platform::BKCLContextMap> bkcl_ctxs_;
 #endif
 
   void WaitAll() {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
 #endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+    if (bkcl_ctxs_) {
+      bkcl_ctxs_->WaitAll();
+    }
+#endif
   }
 
-  void InitCtxOnGpu(bool use_gpu) {
-    use_gpu_ = use_gpu;
-    if (use_gpu_) {
-#if defined(PADDLE_WITH_NCCL)
+  void InitCtxOnDevice(DeviceType use_device) {
+    use_device_ = use_device;
+    if (use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+      int count = p::GetXPUDeviceCount();
+      if (count <= 1) {
+        LOG(WARNING) << "Cannot test multi-xpu Broadcast, because the XPU "
+                        "device count is "
+                     << count;
+        exit(0);
+      }
+      for (int i = 0; i < count; ++i) {
+        auto p = p::XPUPlace(i);
+        place_list_.push_back(p);
+        ctxs_.emplace_back(new p::XPUDeviceContext(p));
+      }
+      bkcl_ctxs_.reset(new platform::BKCLContextMap(place_list_));
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
+#endif
+    } else if (use_device_ == p::kCUDA) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -77,7 +109,8 @@ struct TestBroadcastOpHandle {
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(place_list_));
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
     } else {
       int count = 8;
@@ -86,7 +119,10 @@ struct TestBroadcastOpHandle {
         place_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_XPU_BKCL)
+      bkcl_ctxs_.reset(nullptr);
+#endif
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -106,21 +142,25 @@ struct TestBroadcastOpHandle {
 
     nodes_.emplace_back(
         ir::CreateNodeForTest("node0", ir::Node::Type::kOperation));
-    if (use_gpu_) {
-#if defined(PADDLE_WITH_NCCL)
+    if (use_device_ == p::kCUDA) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_, nccl_ctxs_.get());
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
+#endif
+    } else if (use_device_ == p::kXPU) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+      op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
+                                         place_list_, bkcl_ctxs_.get());
+#else
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-#if defined(PADDLE_WITH_NCCL)
-      op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
-                                         place_list_, nccl_ctxs_.get());
-#else
       op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
                                          place_list_);
-#endif
     }
 
     op_handle_->SetLocalExecScopes(scope_map);
@@ -143,7 +183,7 @@ struct TestBroadcastOpHandle {
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < place_list_.size(); ++j) {
-      if (!use_gpu_) {
+      if (use_device_ != p::kCUDA) {
         op_handle_->SetDeviceContext(place_list_[j], ctxs_[j].get());
       }
       nodes_.emplace_back(
@@ -169,7 +209,9 @@ struct TestBroadcastOpHandle {
                                    float val_scalar = 0.0) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
 
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                        varname));
     auto lod_tensor = var->GetMutable<f::LoDTensor>();
     std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
@@ -192,7 +234,9 @@ struct TestBroadcastOpHandle {
     }
 
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                        varname));
     auto selected_rows = var->GetMutable<f::SelectedRows>();
     auto value = selected_rows->mutable_value();
     value->mutable_data<float>(kDims, place_list_[input_scope_idx]);
@@ -209,13 +253,24 @@ struct TestBroadcastOpHandle {
                          const std::vector<float>& send_vector,
                          const std::vector<int64_t>& rows, int height) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                        varname));
     auto& selected_rows = var->Get<f::SelectedRows>();
     auto rt = selected_rows.value();
-    PADDLE_ENFORCE_EQ(selected_rows.height(), height, "height is not equal.");
+    PADDLE_ENFORCE_EQ(selected_rows.height(), height,
+                      platform::errors::InvalidArgument(
+                          "The height of SelectedRows is not equal to "
+                          "the expected, expect %d, but got %ld.",
+                          height, selected_rows.height()));
 
     for (size_t k = 0; k < selected_rows.rows().size(); ++k) {
-      PADDLE_ENFORCE_EQ(selected_rows.rows()[k], rows[k]);
+      PADDLE_ENFORCE_EQ(
+          selected_rows.rows()[k], rows[k],
+          platform::errors::InvalidArgument(
+              "The item at position %zu of rows of SelectedRows "
+              "is not equal to the expected, expect %ld, but got %ld.",
+              k, rows[k], selected_rows.rows()[k]));
     }
 
     p::CPUPlace cpu_place;
@@ -233,9 +288,15 @@ struct TestBroadcastOpHandle {
                       framework::Scope* scope) {
     p::CPUPlace cpu_place;
     auto var = scope->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                        varname));
     auto tensor = var->Get<f::LoDTensor>();
-    PADDLE_ENFORCE_EQ(tensor.lod(), lod, "lod is not equal.");
+    PADDLE_ENFORCE_EQ(tensor.lod(), lod,
+                      platform::errors::InvalidArgument(
+                          "The LoD of tensor is not equal to "
+                          "the expected, expect %s, but got %s.",
+                          lod, tensor.lod()));
     f::Tensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);
@@ -248,7 +309,8 @@ struct TestBroadcastOpHandle {
     f::LoD lod{{0, 10, 20}};
     auto send_vector = InitLoDTensor("input", input_scope_idx, lod);
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t j = 0; j < place_list_.size(); ++j) {
@@ -262,7 +324,8 @@ struct TestBroadcastOpHandle {
     int height = static_cast<int>(kDims[0] * 2);
     auto send_vector = InitSelectedRows("input", input_scope_idx, rows, height);
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
     for (size_t j = 0; j < place_list_.size(); ++j) {

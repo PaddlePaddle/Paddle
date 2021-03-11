@@ -15,55 +15,88 @@
 import unittest
 import numpy as np
 from numpy.random import random as rand
-from paddle import complex as cpx
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
-layers = {
-    "add": cpx.elementwise_add,
-    "sub": cpx.elementwise_sub,
-    "mul": cpx.elementwise_mul,
-    "div": cpx.elementwise_div,
+paddle_apis = {
+    "add": paddle.add,
+    "sub": paddle.subtract,
+    "mul": paddle.multiply,
+    "div": paddle.divide,
 }
 
 
 class TestComplexElementwiseLayers(unittest.TestCase):
     def setUp(self):
-        self._dtype = "float64"
-        self._places = [fluid.CPUPlace()]
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+            self._places.append(paddle.CUDAPlace(0))
 
-    def calc(self, x, y, layer_type, place):
+    def paddle_calc(self, x, y, op, place):
         with dg.guard(place):
-            var_x = dg.to_variable(x)
-            var_y = dg.to_variable(y)
-            return layers[layer_type](var_x, var_y).numpy()
+            x_t = dg.to_variable(x)
+            y_t = dg.to_variable(y)
+            return paddle_apis[op](x_t, y_t).numpy()
 
-    def compare(self, x, y):
+    def assert_check(self, pd_result, np_result, place):
+        self.assertTrue(
+            np.allclose(pd_result, np_result),
+            "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+            format(place, pd_result[~np.isclose(pd_result, np_result)],
+                   np_result[~np.isclose(pd_result, np_result)]))
+
+    def compare_by_basic_api(self, x, y):
         for place in self._places:
-            self.assertTrue(np.allclose(self.calc(x, y, "add", place), x + y))
-            self.assertTrue(np.allclose(self.calc(x, y, "sub", place), x - y))
-            self.assertTrue(np.allclose(self.calc(x, y, "mul", place), x * y))
-            self.assertTrue(np.allclose(self.calc(x, y, "div", place), x / y))
+            self.assert_check(
+                self.paddle_calc(x, y, "add", place), x + y, place)
+            self.assert_check(
+                self.paddle_calc(x, y, "sub", place), x - y, place)
+            self.assert_check(
+                self.paddle_calc(x, y, "mul", place), x * y, place)
+            self.assert_check(
+                self.paddle_calc(x, y, "div", place), x / y, place)
+
+    def compare_op_by_basic_api(self, x, y):
+        for place in self._places:
+            with dg.guard(place):
+                var_x = dg.to_variable(x)
+                var_y = dg.to_variable(y)
+                self.assert_check((var_x + var_y).numpy(), x + y, place)
+                self.assert_check((var_x - var_y).numpy(), x - y, place)
+                self.assert_check((var_x * var_y).numpy(), x * y, place)
+                self.assert_check((var_x / var_y).numpy(), x / y, place)
 
     def test_complex_xy(self):
-        x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
-            [2, 3, 4, 5]).astype(self._dtype)
-        y = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
-            [2, 3, 4, 5]).astype(self._dtype)
-        self.compare(x, y)
+        for dtype in self._dtypes:
+            x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]).astype(dtype)
+            y = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]).astype(dtype)
+
+            self.compare_by_basic_api(x, y)
+            self.compare_op_by_basic_api(x, y)
 
     def test_complex_x_real_y(self):
-        x = rand([2, 3, 4, 5]).astype(self._dtype) + 1j * rand(
-            [2, 3, 4, 5]).astype(self._dtype)
-        y = rand([4, 5]).astype(self._dtype)
-        self.compare(x, y)
+        for dtype in self._dtypes:
+            x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]).astype(dtype)
+            y = rand([4, 5]).astype(dtype)
+
+            # promote types cases
+            self.compare_by_basic_api(x, y)
+            self.compare_op_by_basic_api(x, y)
 
     def test_real_x_complex_y(self):
-        x = rand([2, 3, 4, 5]).astype(self._dtype)
-        y = rand([5]).astype(self._dtype) + 1j * rand([5]).astype(self._dtype)
-        self.compare(x, y)
+        for dtype in self._dtypes:
+            x = rand([2, 3, 4, 5]).astype(dtype)
+            y = rand([5]).astype(dtype) + 1j * rand([5]).astype(dtype)
+
+            # promote types cases
+            self.compare_by_basic_api(x, y)
+            self.compare_op_by_basic_api(x, y)
 
 
 if __name__ == '__main__':

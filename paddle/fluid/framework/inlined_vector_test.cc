@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/inlined_vector.h"
+
 #include <cstdlib>
 #include <ctime>
-#include <iostream>
-#include <vector>
+
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 namespace paddle {

@@ -9,15 +9,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/string/printf.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -36,8 +42,12 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("endpoints");
     std::string dirname = Attr<std::string>("dirname");
     std::string varname = Attr<std::string>("varname");
-    auto is_slice = Attr<bool>("is_slice");
-    VLOG(1) << "is_slice: " << is_slice;
+    auto mode = Attr<int>("mode");
+
+    if (mode != 0 && mode != 1 && mode != 2) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "mode expected in [0/1/2], but got %d", mode));
+    }
 
     std::vector<std::string> slice_varnames =
         Attr<std::vector<std::string>>("slice_varnames");
@@ -52,11 +62,12 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       auto save_path =
           string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
 
-      rpc_client->AsyncCheckpointNotify(epmap[i], save_path,
-                                        remote_varnames[i]);
+      rpc_client->AsyncCheckpointNotify(epmap[i], save_path, remote_varnames[i],
+                                        mode);
 
       VLOG(3) << "checkpoint notify sending with path: " << save_path
-              << " and var:" << slice_varnames[i] << " to " << epmap[i];
+              << " and var:" << slice_varnames[i] << " to " << epmap[i]
+              << " with mode " << mode;
     }
     PADDLE_ENFORCE_EQ(
         rpc_client->Wait(), true,
@@ -79,9 +90,8 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         "slice_varnames", "(string vector) the slice vars need to be saved");
     AddAttr<std::vector<std::string>>(
         "remote_varnames", "(string vector) the slice vars need to be saved");
-    AddAttr<bool>(
-        "is_slice",
-        "is_slice=True means the var has been slice by parameter server");
+    AddAttr<int>("mode", "mode=0/1/2 means nothing/save base/save delta")
+        .SetDefault(0);
     AddComment(R"DOC(
 CheckpointNotify operator
 This operator will send lookup table and it's checkpoint direcoty to listen_and_serve op at

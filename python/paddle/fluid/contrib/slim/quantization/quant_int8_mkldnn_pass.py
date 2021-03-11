@@ -16,6 +16,7 @@ import numpy as np
 from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
+from ....framework import _get_paddle_place
 
 __all__ = ['QuantInt8MkldnnPass']
 
@@ -37,10 +38,11 @@ class QuantInt8MkldnnPass(object):
     """
 
     def __init__(self, _scope=None, _place=None):
-        """
+        r"""
         Args:
             scope(fluid.Scope): scope is used to initialize the new parameters.
-            place(fluid.CPUPlace): place is used to initialize the new parameters.
+            place(fluid.CPUPlace|str): place is used to initialize the new parameters.
+            When it is string, it can be only 'cpu'.
 
 
         Examples:
@@ -60,7 +62,7 @@ class QuantInt8MkldnnPass(object):
         """
 
         self._scope = _scope
-        self._place = _place
+        self._place = _get_paddle_place(_place)
 
         self._quantize_type = [
             'fake_quantize_moving_average_abs_max',

@@ -15,11 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 
 namespace paddle {
@@ -33,6 +35,110 @@ namespace operators {
   }
 
 using Tensor = framework::Tensor;
+using DDim = framework::DDim;
+
+inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
+                           const std::vector<int>& reduced_dims,
+                           std::vector<int>* perm_axis) {
+  // check if it's a reduced dim
+  std::vector<bool> src_dims_check(src_dims.size(), false);
+  size_t src_size = src_dims.size();
+  size_t reduce_size = reduced_dims.size();
+  for (size_t i = 0; i < reduce_size; ++i) {
+    dst_dims->at(src_size - reduce_size + i) = src_dims[reduced_dims[i]];
+    (*perm_axis)[src_size - reduce_size + i] = reduced_dims[i];
+    src_dims_check[reduced_dims[i]] = true;
+  }
+
+  size_t offset = 0;
+  for (size_t i = 0; i < src_dims_check.size(); ++i) {
+    bool is_reduced = src_dims_check[i];
+    if (!is_reduced) {
+      (*perm_axis)[offset] = i;
+      dst_dims->at(offset++) = src_dims[i];
+    }
+  }
+}
+
+template <typename DeviceContext, typename OutT>
+void GetShuffledInput(const framework::ExecutionContext& context,
+                      const Tensor* input, Tensor* shuffled_input,
+                      const std::vector<int>& dims) {
+  DDim shuffled_dims(input->dims());
+  std::vector<int> perm_axis(input->dims().size());
+  GetShuffledDim(input->dims(), &shuffled_dims, dims, &perm_axis);
+
+  shuffled_input->Resize(shuffled_dims);
+  shuffled_input->mutable_data<OutT>(context.GetPlace());
+
+  math::TransposeNormal<DeviceContext, OutT> trans;
+  trans(context.template device_context<DeviceContext>(), *input,
+        shuffled_input, perm_axis);
+}
+
+inline void GetOriginDimFromShuffled(const DDim& src_dim,
+                                     const std::vector<int>& dims,
+                                     std::vector<int>* origin_dim) {
+  DDim shuffled_dims(src_dim);
+  size_t n = src_dim.size();
+  std::vector<int> perm_axis(n);
+  GetShuffledDim(src_dim, &shuffled_dims, dims, &perm_axis);
+  for (size_t i = 0; i < n; ++i) {
+    (*origin_dim)[perm_axis[i]] = i;
+  }
+}
+
+template <typename DeviceContext, typename OutT, typename Functor>
+void HandleLargeDim(const framework::ExecutionContext& context,
+                    const Tensor* input, Tensor* output,
+                    const std::vector<int>& dims, bool keep_dim) {
+  //  shuffle the reduced dim to the end
+  Tensor shuffled_input;
+  GetShuffledInput<DeviceContext, OutT>(context, input, &shuffled_input, dims);
+
+  // transpose to 2D tensor whose shape is {unreduced, reduced}.
+  const int64_t unreduced = output->numel();
+  const int64_t reduced = shuffled_input.numel() / unreduced;
+  shuffled_input.Resize({unreduced, reduced});
+  DDim output_dim = output->dims();
+  output->Resize({unreduced});
+  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+      context.template device_context<DeviceContext>(), shuffled_input, output,
+      {1}, keep_dim);
+  output->Resize(output_dim);
+}
+
+template <typename DeviceContext, typename T, typename Functor>
+void HandleLargeDimGrad(const framework::ExecutionContext& context,
+                        const framework::Tensor* x,
+                        const framework::Tensor* out,
+                        const framework::Tensor* dout, framework::Tensor* dx,
+                        const std::vector<int>& dims) {
+  const int64_t unreduced = out->numel();
+  const int64_t reduced = x->numel() / unreduced;
+  DDim out_dim(out->dims());
+  DDim x_dim(x->dims());
+  // transpose and reshape X
+  Tensor shuffled_x;
+  GetShuffledInput<DeviceContext, T>(context, x, &shuffled_x, dims);
+  DDim shuffled_dim = shuffled_x.dims();
+  shuffled_x.Resize({unreduced, reduced});
+  // reshape dX {unreduced, reduced}
+  dx->Resize({unreduced, reduced});
+  ReduceGradFunctor<DeviceContext, T, 2, Functor>(
+      context.template device_context<DeviceContext>(), shuffled_x, *out, *dout,
+      dx, {1});
+  // transpose dX
+  std::vector<int> origin_axis(x_dim.size());
+  GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
+  Tensor dx_tmp;
+  framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
+  dx_tmp.Resize(shuffled_dim);
+  dx->Resize(x_dim);
+  math::TransposeNormal<DeviceContext, T> trans;
+  trans(context.template device_context<DeviceContext>(), dx_tmp, dx,
+        origin_axis);
+}
 
 template <typename DeviceContext, typename T, typename Functor>
 struct ReduceKernelFunctor {
@@ -68,22 +174,27 @@ struct ReduceKernelFunctor {
     } else {
       int ndim = input->dims().size();
       int rdim = dims.size();
-      HANDLE_DIM(6, 5);
-      HANDLE_DIM(6, 4);
-      HANDLE_DIM(6, 3);
-      HANDLE_DIM(6, 2);
-      HANDLE_DIM(6, 1);
-      HANDLE_DIM(5, 4);
-      HANDLE_DIM(5, 3);
-      HANDLE_DIM(5, 2);
-      HANDLE_DIM(5, 1);
-      HANDLE_DIM(4, 3);
-      HANDLE_DIM(4, 2);
-      HANDLE_DIM(4, 1);
-      HANDLE_DIM(3, 2);
-      HANDLE_DIM(3, 1);
-      HANDLE_DIM(2, 1);
-      HANDLE_DIM(1, 1);
+      if (ndim > 6) {
+        HandleLargeDim<DeviceContext, OutT, Functor>(context, input, output,
+                                                     dims, keep_dim);
+      } else {
+        HANDLE_DIM(6, 5);
+        HANDLE_DIM(6, 4);
+        HANDLE_DIM(6, 3);
+        HANDLE_DIM(6, 2);
+        HANDLE_DIM(6, 1);
+        HANDLE_DIM(5, 4);
+        HANDLE_DIM(5, 3);
+        HANDLE_DIM(5, 2);
+        HANDLE_DIM(5, 1);
+        HANDLE_DIM(4, 3);
+        HANDLE_DIM(4, 2);
+        HANDLE_DIM(4, 1);
+        HANDLE_DIM(3, 2);
+        HANDLE_DIM(3, 1);
+        HANDLE_DIM(2, 1);
+        HANDLE_DIM(1, 1);
+      }
     }
   }
 };
@@ -97,6 +208,18 @@ class ReduceKernel : public framework::OpKernel<T> {
     bool keep_dim = context.Attr<bool>("keep_dim");
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
+
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
 
     if (out_dtype < 0) {
       auto* cast_input = context.Input<Tensor>("X");
@@ -124,7 +247,6 @@ class ReduceKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 template <typename DeviceContext, typename OutT, typename Functor>
 class BoolReduceKernel : public framework::OpKernel<OutT> {
  public:
@@ -136,6 +258,18 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
 
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
+
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
 
     if (reduce_all) {
       // Flatten and reduce 1-D tensor
@@ -150,22 +284,27 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
       int ndim = input->dims().size();
       int rdim = dims.size();
       // comments for accelerating compiling temporarily.
-      //      HANDLE_DIM(6, 5);
-      //      HANDLE_DIM(6, 4);
-      //      HANDLE_DIM(6, 3);
-      //      HANDLE_DIM(6, 2);
-      //      HANDLE_DIM(6, 1);
-      //      HANDLE_DIM(5, 4);
-      //      HANDLE_DIM(5, 3);
-      //      HANDLE_DIM(5, 2);
-      //      HANDLE_DIM(5, 1);
-      HANDLE_DIM(4, 3);
-      HANDLE_DIM(4, 2);
-      HANDLE_DIM(4, 1);
-      HANDLE_DIM(3, 2);
-      HANDLE_DIM(3, 1);
-      HANDLE_DIM(2, 1);
-      HANDLE_DIM(1, 1);
+      if (ndim > 6) {
+        HandleLargeDim<DeviceContext, OutT, Functor>(context, input, output,
+                                                     dims, keep_dim);
+      } else {
+        HANDLE_DIM(6, 5);
+        HANDLE_DIM(6, 4);
+        HANDLE_DIM(6, 3);
+        HANDLE_DIM(6, 2);
+        HANDLE_DIM(6, 1);
+        HANDLE_DIM(5, 4);
+        HANDLE_DIM(5, 3);
+        HANDLE_DIM(5, 2);
+        HANDLE_DIM(5, 1);
+        HANDLE_DIM(4, 3);
+        HANDLE_DIM(4, 2);
+        HANDLE_DIM(4, 1);
+        HANDLE_DIM(3, 2);
+        HANDLE_DIM(3, 1);
+        HANDLE_DIM(2, 1);
+        HANDLE_DIM(1, 1);
+      }
     }
   }
 };
@@ -183,6 +322,17 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
 
+    // The dims has full dim, set the reduce_all is True
+    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
+    std::set<int> dims_set(dims.begin(), dims.end());
+    bool full_dim = true;
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) == dims_set.end()) {
+        full_dim = false;
+        break;
+      }
+    }
+    reduce_all = (reduce_all || full_dim);
     // NOTE: EigenTensor::From() uses tensor->data()
     // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
     // kNoNeedBufferY should set true
@@ -200,8 +350,8 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
-      auto x_reduce = EigenVector<T>::From(*input1);
-      auto x_reduce_grad = EigenVector<T>::From(*input2);
+      auto x_reduce = EigenVector<T>::Flatten(*input1);
+      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
       auto x_grad = EigenVector<T>::Flatten(*output);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
@@ -243,6 +393,10 @@ class ReduceGradKernel : public framework::OpKernel<T> {
               context.template device_context<DeviceContext>(), *input0,
               *input1, *input2, output, dims);
           break;
+        default:
+          HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
+                                                        input2, output, dims);
+          break;
       }
     }
   }
@@ -277,12 +431,6 @@ class ReduceOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimensions of ReduceOp "
-                          "should be less equal than 6. But received X's "
-                          "dimensions = %d, X's shape = [%s].",
-                          x_rank, x_dims));
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(), 0,
                       platform::errors::InvalidArgument(
@@ -293,6 +441,12 @@ class ReduceOp : public framework::OperatorWithKernel {
 
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)] "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
+      PADDLE_ENFORCE_GE(dims[i], -x_rank,
                         platform::errors::InvalidArgument(
                             "The reduce dim index %d should be in the "
                             "range [-dimension(X), dimension(X)] "
@@ -360,11 +514,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
                    "Out@GRAD", "ReduceOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6,
-                      platform::errors::InvalidArgument(
-                          "Tensors with rank at most 6 are supported by "
-                          "ReduceOp. Received tensor with rank %d.",
-                          x_rank));
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,

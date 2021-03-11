@@ -122,8 +122,8 @@ class SliceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(end, start,
                         platform::errors::InvalidArgument(
                             "Attr(ends) should be greater than attr(starts) in "
-                            "slice op. But received ends = %d, starts = %d.",
-                            end, start));
+                            "slice op. But received end = %d, start = %d.",
+                            ends[0], starts[0]));
       int64_t out_size = end - start;
 
       if (out_is_tensor_array) {
@@ -181,8 +181,8 @@ class SliceKernel : public framework::OpKernel<T> {
               end, start,
               platform::errors::InvalidArgument(
                   "Attr(ends) should be greater than attr(starts) in "
-                  "slice op. But received ends = %d, starts = %d.",
-                  end, start));
+                  "slice op. But received end = %d, start = %d.",
+                  ends[i], starts[i]));
           out_dims[axes[i]] = end - start;
         }
       }
@@ -191,8 +191,9 @@ class SliceKernel : public framework::OpKernel<T> {
       if (decrease_axis.size() > 0) {
         std::vector<int64_t> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+          PADDLE_ENFORCE_EQ(
+              out_dims[decrease_axis[i]], 1,
+              platform::errors::InvalidArgument("decrease dim should be 1"));
           out_dims[decrease_axis[i]] = 0;
         }
 

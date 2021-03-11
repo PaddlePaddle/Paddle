@@ -114,6 +114,16 @@ class ConvTransposeOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
+class ConvTransposeOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+};
+
 template <typename DeviceContext, typename T>
 class GemmConvTransposeKernel : public framework::OpKernel<T> {
  public:
@@ -580,7 +590,12 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(context.GetPlace());
 
     int groups = context.Attr<int>("groups");
-    PADDLE_ENFORCE_EQ(groups, filter.dims()[0]);
+    PADDLE_ENFORCE_EQ(
+        groups, filter.dims()[0],
+        platform::errors::InvalidArgument(
+            "groups should be error to the 1st dimension of filter. But "
+            "received groups is %d and filter dimension[0] is %d",
+            groups, filter.dims()[0]));
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
@@ -588,7 +603,10 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
     for (auto v : dilations) {
-      PADDLE_ENFORCE_EQ(v, 1);
+      PADDLE_ENFORCE_EQ(v, 1, platform::errors::InvalidArgument(
+                                  "dilations should be 1 in depthwise conv. "
+                                  "But received dilations is %d",
+                                  v));
     }
 
     auto in_dims = input->dims();

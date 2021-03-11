@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -45,7 +44,7 @@ void AllocateTestCases() {
     ASSERT_EQ(cpu_allocation->size(), size);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     place = platform::CUDAPlace(0);
     size = 1024;
@@ -81,7 +80,7 @@ void AllocateTestCases() {
 }
 
 TEST(Allocator, SpecifyGpuMemory) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Set to 0.0 to test FLAGS_initial_gpu_memory_in_mb and
   // FLAGS_reallocate_gpu_memory_in_mb
   FLAGS_fraction_of_gpu_memory_to_use = 0.0;

@@ -14,11 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
 
-#include <memory>
-#include <utility>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

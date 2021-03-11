@@ -18,7 +18,7 @@ For reference, please examine the code of unit test enclosed in [analyzer_int8_i
 
 * ### Create Analysis config
 
-INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/deploy/inference/native_infer_en.md#upgrade-performance-based-on-contribanalysisconfig-prerelease)
+INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/inference_deployment/inference/native_infer_en.html#a-name-use-analysisconfig-to-manage-inference-configurations-use-analysisconfig-to-manage-inference-configurations-a)
 
 * ### Create quantize config by analysis config
 

@@ -14,27 +14,26 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import time
 import threading
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.communicator import Communicator
+paddle.enable_static()
 
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.fluid as fluid
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = fluid.layers.square_error_cost(input=x, label=y)
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
 
@@ -49,10 +48,15 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(0.01)
-        strategy = StrategyFactory.create_async_strategy()
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = True
+        strategy.a_sync_configs = {"launch_barrier": False}
+
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        os.environ["TEST_MODE"] = "1"
         fleet.init_worker()
         time.sleep(10)
         fleet.stop_worker()

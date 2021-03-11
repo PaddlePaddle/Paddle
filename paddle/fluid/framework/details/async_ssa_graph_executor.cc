@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/variable_helper.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/communicator.h"
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
 namespace paddle {
@@ -43,19 +43,7 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
 }
 
 // get CommContext and remote send and recv op
-void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
-#ifdef PADDLE_WITH_DISTRIBUTE
-  // init communicator here
-  auto *instance = operators::distributed::Communicator::GetInstance();
-  auto initialized = instance ? true : false;
-  PADDLE_ENFORCE_EQ(initialized, true,
-                    platform::errors::InvalidArgument(
-                        "Communicator is not Initialized, you may use "
-                        "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
-                        "develop/markdown_doc/transpiler)"));
-
-#endif
-}
+void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) { return; }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
@@ -68,8 +56,19 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and the number of local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
+  PADDLE_ENFORCE_EQ(
+      local_scopes_.size(), local_exec_scopes_.size(),
+      platform::errors::InvalidArgument(
+          "The number of local scopes and the number of local execution scopes "
+          "should be equal, but got number of local scopes is %d and "
+          "number of local execution scopes is %d.",
+          local_scopes_.size(), local_exec_scopes_.size()));
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
@@ -139,12 +138,12 @@ FetchResultType AsyncSSAGraphExecutor::Run(
                         "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
+#if defined PADDLE_WITH_PSCORE
     if (strategy_.thread_barrier_) {
-#ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+      paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
           places_.size());
-#endif
     }
+#endif
     exception_holder_.Clear();
     StartOffPythonTrainLoop(return_merged);
   }

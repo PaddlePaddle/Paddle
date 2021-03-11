@@ -34,7 +34,8 @@ __all__ = [
     'cluster_files_reader',
 ]
 
-DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
+HOME = os.path.expanduser('~')
+DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 
 # When running unit tests, there could be multiple processes that
@@ -88,27 +89,31 @@ def download(url, module_name, md5sum, save_name=None):
         sys.stderr.write("Cache file %s not found, downloading %s \n" %
                          (filename, url))
         sys.stderr.write("Begin to download\n")
-        r = requests.get(url, stream=True)
-        total_length = r.headers.get('content-length')
+        try:
+            r = requests.get(url, stream=True)
+            total_length = r.headers.get('content-length')
 
-        if total_length is None:
-            with open(filename, 'wb') as f:
-                shutil.copyfileobj(r.raw, f)
-        else:
-            with open(filename, 'wb') as f:
-                chunk_size = 4096
-                total_length = int(total_length)
-                total_iter = total_length / chunk_size + 1
-                log_interval = total_iter / 20 if total_iter > 20 else 1
-                log_index = 0
-                for data in r.iter_content(chunk_size=chunk_size):
-                    if six.PY2:
-                        data = six.b(data)
-                    f.write(data)
-                    log_index += 1
-                    if log_index % log_interval == 0:
-                        sys.stderr.write(".")
-                    sys.stdout.flush()
+            if total_length is None:
+                with open(filename, 'wb') as f:
+                    shutil.copyfileobj(r.raw, f)
+            else:
+                with open(filename, 'wb') as f:
+                    chunk_size = 4096
+                    total_length = int(total_length)
+                    total_iter = total_length / chunk_size + 1
+                    log_interval = total_iter / 20 if total_iter > 20 else 1
+                    log_index = 0
+                    for data in r.iter_content(chunk_size=chunk_size):
+                        if six.PY2:
+                            data = six.b(data)
+                        f.write(data)
+                        log_index += 1
+                        if log_index % log_interval == 0:
+                            sys.stderr.write(".")
+                        sys.stdout.flush()
+        except Exception as e:
+            # re-try
+            continue
     sys.stderr.write("\nDownload finished\n")
     sys.stdout.flush()
     return filename
@@ -196,3 +201,14 @@ def cluster_files_reader(files_pattern,
                     yield line
 
     return reader
+
+
+def _check_exists_and_download(path, url, md5, module_name, download=True):
+    if path and os.path.exists(path):
+        return path
+
+    if download:
+        return paddle.dataset.common.download(url, module_name, md5)
+    else:
+        raise ValueError('{} not exists and auto download disabled'.format(
+            path))

@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <stdio.h>
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/io/shell.h"
 #include "paddle/fluid/string/string_helper.h"

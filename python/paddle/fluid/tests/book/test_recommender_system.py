@@ -26,6 +26,8 @@ import paddle.fluid.nets as nets
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 
+paddle.enable_static()
+
 IS_SPARSE = True
 USE_GPU = False
 BATCH_SIZE = 256

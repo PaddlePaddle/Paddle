@@ -15,13 +15,10 @@ limitations under the License. */
 #include <cmath>
 #include <cstring>
 #include <random>
-#include <vector>
-#include "gflags/gflags.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/platform/port.h"
 
 inline double GetCurrentUS() {
   struct timeval time;

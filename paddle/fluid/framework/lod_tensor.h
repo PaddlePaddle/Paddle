@@ -18,18 +18,28 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

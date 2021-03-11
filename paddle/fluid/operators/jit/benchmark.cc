@@ -14,8 +14,7 @@
 
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -23,7 +22,6 @@
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");
@@ -136,7 +134,6 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
 }
 
 using Tensor = paddle::framework::Tensor;
-
 template <typename KernelTuple, typename PlaceType>
 void BenchKernelXYZN() {
   using T = typename KernelTuple::data_type;
@@ -320,8 +317,15 @@ void BenchKernelSgd() {
   const T lr = 0.1;
   auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
                                   const int64_t upper) -> std::vector<int64_t> {
-    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1);
-    PADDLE_ENFORCE_GT(n, 0);
+    PADDLE_ENFORCE_LE(
+        static_cast<size_t>(upper - lower), n - 1,
+        paddle::platform::errors::InvalidArgument(
+            "The range of Sgd (upper - lower) should be equal to or lower "
+            "than n-1 (Sgd size -1). But upper - lower is %d and n-1 is %d.",
+            static_cast<size_t>(upper - lower), (n - 1)));
+    PADDLE_ENFORCE_GT(
+        n, 0, paddle::platform::errors::InvalidArgument(
+                  "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {
       all.push_back(i);
@@ -561,7 +565,7 @@ BENCH_FP32_CPU(VBroadcast);
 //     --max_size: the max size would be tested
 //     --filter: the bench name would be run
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   LOG(INFO) << "Burning " << FLAGS_burning << " times, Repeat " << FLAGS_repeat
             << " times.";

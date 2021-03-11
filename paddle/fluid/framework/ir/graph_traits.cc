@@ -14,10 +14,6 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
-#include <set>
-#include <utility>
-#include <vector>
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -25,6 +21,8 @@ namespace ir {
 //
 // NodesDFSIterator
 //
+class Node;
+
 NodesDFSIterator::NodesDFSIterator(const std::vector<Node *> &source) {
   for (auto *x : source) stack_.push(x);
 }

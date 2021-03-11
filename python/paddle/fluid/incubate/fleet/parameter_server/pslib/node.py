@@ -527,7 +527,7 @@ class DownpourWorker(Worker):
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
                         dense_start_table_id, sparse_table_names):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \

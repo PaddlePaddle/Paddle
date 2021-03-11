@@ -11,3 +11,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from . import spawn
+from .spawn import spawn
+
+from . import parallel
+from .parallel import init_parallel_env
+from .parallel import get_rank
+from .parallel import get_world_size
+from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from paddle.distributed.fleet.dataset import *
+
+from . import collective
+from .collective import *
+
+from .entry_attr import ProbabilityEntry
+from .entry_attr import CountFilterEntry
+
+# start multiprocess apis
+__all__ = ["spawn"]
+
+# dygraph parallel apis
+__all__ += [
+    "init_parallel_env",
+    "get_rank",
+    "get_world_size",
+    "ParallelEnv",
+    "InMemoryDataset",
+    "QueueDataset",
+]
+
+# dataset reader
+__all__ += [
+    "InMemoryDataset",
+    "QueueDataset",
+]
+
+# entry for embedding
+__all__ += [
+    "ProbabilityEntry",
+    "CountFilterEntry",
+]
+
+# collective apis
+__all__ += collective.__all__

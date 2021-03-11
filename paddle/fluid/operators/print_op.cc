@@ -12,12 +12,21 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <algorithm>
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -165,3 +174,11 @@ REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
                   ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
                   ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
                   ops::PrintOpInferShape, ops::PrintOpVarTypeInference);
+
+REGISTER_OP_VERSION(print)
+    .AddCheckpoint(
+        R"ROC(Upgrade print add a new attribute [print_tensor_layout] to "
+             "contorl whether to print tensor's layout.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "print_tensor_layout", "Whether to print the tensor's layout.",
+            true));

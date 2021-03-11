@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/attribute.h"
 
-#include <vector>
-
 namespace paddle {
 namespace framework {
 
@@ -71,6 +69,15 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       }
       return val;
     }
+
+    case proto::AttrType::FLOAT64S: {
+      std::vector<double> val(attr_desc.float64s_size());
+      for (int i = 0; i < attr_desc.float64s_size(); ++i) {
+        val[i] = attr_desc.float64s(i);
+      }
+      return val;
+    }
+
     default:
       PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
                                                  attr_desc.type()));

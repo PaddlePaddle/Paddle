@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/mean_op.h"
 
@@ -28,21 +30,16 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
 
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
-    std::normal_distribution<T> dist(mean, std);
-
-    const std::string op_type = "gaussian_random";
-    auto shape = GetShape(context, op_type);
+    auto shape = GetShape(context);
     tensor->Resize(shape);
     T* data = tensor->mutable_data<T>(context.GetPlace());
     int64_t size = tensor->numel();
+    std::normal_distribution<T> dist(mean, std);
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(engine);
+      data[i] = dist(*engine);
     }
 
     tensor->set_layout(DataLayout::kMKLDNN);

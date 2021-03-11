@@ -47,33 +47,35 @@ class TestSimpleNet(unittest.TestCase):
         for place in places:
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
-                    with paddle.imperative.guard(place):
-                        backward_strategy = paddle.imperative.BackwardStrategy()
-                        backward_strategy.sort_sum_gradient = sort_sum_gradient
-                        # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
+                    paddle.disable_static(place)
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': sort_sum_gradient
+                    })
+                    # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
-                        input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                        input = paddle.imperative.to_variable(input_word)
+                    input_word = np.array([[1, 2], [2, 1]]).astype('int64')
+                    input = paddle.to_tensor(input_word)
 
-                        simplenet = SimpleNet(20, 32, dtype)
-                        adam = SGDOptimizer(
-                            learning_rate=0.001,
-                            parameter_list=simplenet.parameters(
-                            ))  # grad_clip=grad_clip
-                        input_emb, emb = simplenet(input)
+                    simplenet = SimpleNet(20, 32, dtype)
+                    adam = SGDOptimizer(
+                        learning_rate=0.001,
+                        parameter_list=simplenet.parameters(
+                        ))  # grad_clip=grad_clip
+                    input_emb, emb = simplenet(input)
 
-                        self.assertTrue(emb.weight.gradient() is None)
-                        self.assertTrue(input_emb.gradient() is None)
+                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertTrue(input_emb.gradient() is None)
 
-                        input_emb.backward(backward_strategy)
-                        adam.minimize(input_emb)
-                        self.assertTrue(emb.weight.gradient() is not None)
+                    input_emb.backward()
+                    adam.minimize(input_emb)
+                    self.assertTrue(emb.weight.gradient() is not None)
 
-                        emb.clear_gradients()
-                        self.assertTrue(emb.weight.gradient() is None)
+                    emb.clear_gradients()
+                    self.assertTrue(emb.weight.gradient() is None)
 
-                        input_emb.clear_gradient()
-                        self.assertTrue(input_emb.gradient() is not None)
+                    input_emb.clear_gradient()
+                    self.assertTrue(input_emb.gradient() is not None)
+                    paddle.enable_static()
 
     def test_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
@@ -83,8 +85,9 @@ class TestSimpleNet(unittest.TestCase):
         for place in places:
             for sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard(place):
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = sort_sum_gradient
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': sort_sum_gradient
+                    })
                     grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
@@ -100,7 +103,7 @@ class TestSimpleNet(unittest.TestCase):
                     self.assertTrue(emb.weight.gradient() is None)
                     self.assertTrue(input_emb.gradient() is None)
 
-                    input_emb.backward(backward_strategy)
+                    input_emb.backward()
                     adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 

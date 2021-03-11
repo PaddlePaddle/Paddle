@@ -17,6 +17,7 @@ from __future__ import print_function
 import multiprocessing
 import os
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler
@@ -27,14 +28,15 @@ import sys
 from feed_data_reader import FeedDataReader
 
 __all__ = ['TestParallelExecutorBase']
+DeviceType = core.DeviceType
 
 
 class TestParallelExecutorBase(unittest.TestCase):
     @classmethod
     def check_network_convergence(cls,
                                   method,
-                                  use_cuda=True,
-                                  iter=50,
+                                  use_device=DeviceType.CUDA,
+                                  iter=5,
                                   batch_size=None,
                                   feed_dict=None,
                                   feed_data_reader=None,
@@ -64,15 +66,18 @@ class TestParallelExecutorBase(unittest.TestCase):
                 feed_data_reader, FeedDataReader
             ), "feed_data_reader must be type of FeedDataReader"
 
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main = fluid.Program()
         startup = fluid.Program()
-        startup.random_seed = 1
-        main.random_seed = 1
+
         with fluid.program_guard(main, startup):
             feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
                                               main, method, optimizer)
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if use_device == DeviceType.CUDA else fluid.XPUPlace(
+                0) if use_device == DeviceType.XPU else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
 
@@ -80,7 +85,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             enable_inplace, enable_sequential_execution, fuse_all_optimizer_ops,
             fuse_all_reduce_ops, fuse_elewise_add_act_ops,
             fuse_relu_depthwise_conv, use_fast_executor, use_ir_memory_optimize,
-            use_reduce, use_cuda)
+            use_reduce, use_device)
 
         if use_parallel_executor:
             binary = compiler.CompiledProgram(main).with_data_parallel(
@@ -92,7 +97,8 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         if batch_size is not None:
             batch_size *= fluid.core.get_cuda_device_count(
-            ) if use_cuda else int(
+            ) if use_device == DeviceType.CUDA else fluid.core.get_xpu_device_count(
+            ) if use_device == DeviceType.XPU else int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
         begin = time.time()
@@ -121,7 +127,7 @@ class TestParallelExecutorBase(unittest.TestCase):
     @classmethod
     def check_pass_conflict(cls,
                             method,
-                            use_cuda=True,
+                            use_device=DeviceType.CUDA,
                             feed_dict=None,
                             get_data_from_feeder=None,
                             use_reduce=False,
@@ -141,7 +147,9 @@ class TestParallelExecutorBase(unittest.TestCase):
             feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
                                               main, method, optimizer)
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        place = fluid.CUDAPlace(
+            0) if use_device == DeviceType.CUDA else fluid.XPUPlace(
+                0) if use_device == DeviceType.XPU else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
 
@@ -149,7 +157,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             enable_inplace, enable_sequential_execution, fuse_all_optimizer_ops,
             fuse_all_reduce_ops, fuse_elewise_add_act_ops,
             fuse_relu_depthwise_conv, use_fast_executor, use_ir_memory_optimize,
-            use_reduce, use_cuda)
+            use_reduce, use_device)
 
         binary = compiler.CompiledProgram(main).with_data_parallel(
             loss_name=loss.name,
@@ -163,7 +171,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                      fuse_all_optimizer_ops, fuse_all_reduce_ops,
                      fuse_elewise_add_act_ops, fuse_relu_depthwise_conv,
                      use_fast_executor, use_ir_memory_optimize, use_reduce,
-                     use_cuda):
+                     use_device):
         exec_strategy = fluid.ExecutionStrategy()
         if use_fast_executor:
             exec_strategy.use_experimental_executor = True
@@ -178,8 +186,16 @@ class TestParallelExecutorBase(unittest.TestCase):
         build_strategy.enable_inplace = enable_inplace
         build_strategy.enable_sequential_execution = enable_sequential_execution
 
-        if use_cuda and core.is_compiled_with_cuda():
+        if use_device == DeviceType.CUDA and core.is_compiled_with_cuda():
             build_strategy.remove_unnecessary_lock = True
+        if use_device == DeviceType.XPU and core.is_compiled_with_xpu():
+            build_strategy.fuse_elewise_add_act_ops = False
+            build_strategy.fuse_relu_depthwise_conv = False
+            build_strategy.fuse_all_optimizer_ops = False
+            build_strategy.memory_optimize = False
+            build_strategy.enable_inplace = False
+            build_strategy.enable_sequential_execution = False
+
         return build_strategy, exec_strategy
 
     @classmethod

@@ -11,10 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <unordered_map>
-
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
+#include "paddle/fluid/framework/data_type.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 
@@ -23,6 +29,7 @@ template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, platform::float16>::value ||
+      std::is_same<T, platform::bfloat16>::value ||
       std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
@@ -70,8 +77,13 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     return ctx;
   }
 
+  inline ::DLContext operator()(const platform::XPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::XPUPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
@@ -83,7 +95,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   }
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;

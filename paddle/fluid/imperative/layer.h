@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -36,9 +37,17 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
 
+class GradOpNode;
 class OpBase;
+class VariableWrapper;
 
 class ThreadSafeNameSet {
  public:
@@ -137,6 +146,8 @@ class VarBase {
 
   bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
 
+  bool IsLeaf() const { return var_->IsLeaf(); }
+
   void InnerSetOverridedStopGradient(bool stop_gradient) {
     if (var_->InnerOverridedStopGradient() == -1) {
       var_->InnerSetOverridedStopGradient(stop_gradient);
@@ -173,6 +184,10 @@ class VarBase {
 
   std::string GradVarName() { return framework::GradVarName(Name()); }
 
+  void SetGraphIsFreed(bool free) { graph_is_free_ = free; }
+
+  const bool& GraphIsFreed() const { return graph_is_free_; }
+
   void SetType(framework::proto::VarType::Type type) { var_->SetType(type); }
 
   framework::proto::VarType::Type Type() const { return var_->Type(); }
@@ -186,10 +201,24 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    var_->SetForwardDataType(data_type);
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return var_->ForwardDataType();
+  }
+
+  const platform::Place Place() const { return var_->Place(); }
+
   void ClearGradient();
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
+
+  void CopyFrom(const imperative::VarBase& src, bool blocking);
+
+  void BumpInplaceVersion();
 
  private:
   /**
@@ -206,6 +235,8 @@ class VarBase {
    * or other things like that.
    */
   std::shared_ptr<GradOpNode> grad_node_;
+
+  bool graph_is_free_ = false;
 
   mutable size_t copied_counter_ = 0;
 
@@ -225,7 +256,8 @@ class Layer {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const platform::Place& place);
+    const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
 
 }  // namespace imperative
 }  // namespace paddle

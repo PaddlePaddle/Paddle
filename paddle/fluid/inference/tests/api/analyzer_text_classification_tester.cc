@@ -22,7 +22,9 @@ struct DataReader {
       : file(new std::ifstream(path)) {}
 
   bool NextBatch(std::vector<PaddleTensor> *input, int batch_size) {
-    PADDLE_ENFORCE_EQ(batch_size, 1);
+    PADDLE_ENFORCE_EQ(batch_size, 1,
+                      paddle::platform::errors::Fatal(
+                          "The size of batch should be equal to 1."));
     std::string line;
     PaddleTensor tensor;
     tensor.dtype = PaddleDType::INT64;
@@ -81,7 +83,9 @@ TEST(Analyzer_Text_Classification, profile) {
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     LOG(INFO) << "get outputs " << outputs.back().size();
     for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);

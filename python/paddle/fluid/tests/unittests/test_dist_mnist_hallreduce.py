@@ -17,6 +17,9 @@ import unittest
 from test_dist_base import TestDistBase
 
 import os
+import paddle
+
+paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -26,6 +29,7 @@ class TestDistMnistNCCL2HAllreduce(TestDistBase):
         self._use_reduce = False
         self._use_reader_alloc = False
         self._nccl2_mode = True
+        # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
         self._use_hallreduce = True
 
     def test_dist_train(self):

@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
-#include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
+
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -46,9 +47,9 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (trainer_desc.thread_barrier()) {
-    operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
         thread_num_);
   }
 #endif
@@ -71,6 +72,10 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 }
 
 std::string MultiTrainer::GetDumpPath(int tid) {
+  if (user_define_dump_filename_ != "") {
+    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(), tid);
+  }
   return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
                                mpi_rank_, tid);
 }
@@ -102,11 +107,12 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
+    workers_[i]->CacheProgram(main_program);
   }
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
   VLOG(3) << "init other env done.";
@@ -133,7 +139,7 @@ void MultiTrainer::Run() {
 }
 
 void MultiTrainer::Finalize() {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
   root_scope_->DropKids();

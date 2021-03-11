@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+
 #include <unordered_map>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -22,6 +24,8 @@ namespace framework {
 namespace details {
 namespace f = paddle::framework;
 namespace p = paddle::platform;
+
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -36,7 +40,7 @@ struct TestReduceOpHandle {
   std::vector<p::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -44,7 +48,7 @@ struct TestReduceOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -54,7 +58,7 @@ struct TestReduceOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -69,7 +73,8 @@ struct TestReduceOpHandle {
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
     } else {
       int count = 8;
@@ -78,7 +83,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -99,14 +104,15 @@ struct TestReduceOpHandle {
 
     nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
     } else {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
                                           gpu_list_, nccl_ctxs_.get()));
 #else
@@ -164,7 +170,10 @@ struct TestReduceOpHandle {
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
       auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
-      PADDLE_ENFORCE_NOT_NULL(in_var);
+
+      PADDLE_ENFORCE_NOT_NULL(
+          in_var, platform::errors::NotFound(
+                      "Variable %s is not found in scope.", "input"));
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -178,7 +187,9 @@ struct TestReduceOpHandle {
     }
 
     auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
-    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NOT_NULL(out_var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", "out"));
     auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
@@ -187,7 +198,8 @@ struct TestReduceOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 
@@ -196,9 +208,18 @@ struct TestReduceOpHandle {
     auto &out_select_rows = out_var->Get<f::SelectedRows>();
     auto rt = out_select_rows.value();
 
-    PADDLE_ENFORCE_EQ(out_select_rows.height(), height, "height is not equal.");
+    PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
+                      platform::errors::InvalidArgument(
+                          "The height of SelectedRows is not equal to "
+                          "the expected, expect %d, but got %d.",
+                          height, out_select_rows.height()));
     for (size_t k = 0; k < out_select_rows.rows().size(); ++k) {
-      PADDLE_ENFORCE_EQ(out_select_rows.rows()[k], rows[k % rows.size()]);
+      PADDLE_ENFORCE_EQ(
+          out_select_rows.rows()[k], rows[k % rows.size()],
+          platform::errors::InvalidArgument(
+              "The item at position %d of rows of SelectedRows is not equal to "
+              "the expected, expect %d, but got %d.",
+              k, rows[k % rows.size()], out_select_rows.rows()[k]));
     }
 
     f::Tensor result_tensor;
@@ -208,7 +229,7 @@ struct TestReduceOpHandle {
     for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
-  }
+  }  // namespace details
 
   void TestReduceLodTensors(size_t output_scope_idx) {
     std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
@@ -220,7 +241,9 @@ struct TestReduceOpHandle {
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
       auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
-      PADDLE_ENFORCE_NOT_NULL(in_var);
+      PADDLE_ENFORCE_NOT_NULL(
+          in_var, platform::errors::NotFound(
+                      "Variable %s is not found in scope.", "input"));
       auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
@@ -230,7 +253,9 @@ struct TestReduceOpHandle {
     }
 
     auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
-    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NOT_NULL(out_var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", "out"));
     auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
@@ -238,7 +263,8 @@ struct TestReduceOpHandle {
 
     out_lodtensor->ShareDataWith(in_lodtensor);
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 
@@ -254,7 +280,7 @@ struct TestReduceOpHandle {
       ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
     }
   }
-};
+};  // namespace details
 
 TEST(ReduceTester, TestCPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;
@@ -270,7 +296,7 @@ TEST(ReduceTester, TestCPUReduceTestLodTensor) {
   test_op.InitReduceOp(out_scope_idx);
   test_op.TestReduceLodTensors(out_scope_idx);
 }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;

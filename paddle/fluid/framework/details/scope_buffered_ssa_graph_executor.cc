@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -37,7 +39,13 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       var_infos_(std::move(var_infos)),
       places_(std::move(places)),
       scope_monitor_(places_, local_exec_scopes_) {
-  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(
+      local_scopes_.size(), local_exec_scopes_.size(),
+      platform::errors::InvalidArgument(
+          "The number of local scopes and the number of local execution scopes "
+          "should be equal, but got number of local scopes is %d and "
+          "number of local execution scopes is %d.",
+          local_scopes_.size(), local_exec_scopes_.size()));
   PrepareLocalExeScopes();
 }
 
@@ -115,17 +123,27 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
   }
 
   const ir::Graph &graph = Graph();
+  if (!is_initialized_) {
+    // startup_program_descs only need to be executed once
+    if (graph.Has(details::kStartupProgramDescs)) {
+      auto &program_descs =
+          graph.Get<details::ProgramDescs>(details::kStartupProgramDescs);
+
+      for (auto &program_desc : program_descs) {
+        for (auto &op_desc : program_desc.Block(0).AllOps()) {
+          for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
+            auto op = OpRegistry::CreateOp(*op_desc);
+            op->Run(*local_exec_scopes_[i], places_[i]);
+          }
+        }
+      }
+    }
+    is_initialized_ = true;
+  }
+
   if (graph.Has(details::kProgramDescs)) {
     auto &program_descs =
         graph.Get<details::ProgramDescs>(details::kProgramDescs);
-    // Init vars
-    auto &fused_grad_vars = graph.Get<details::FusedVars>(details::kFusedVars);
-    for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
-      for (auto &var_name : fused_grad_vars) {
-        auto var = local_exec_scopes_[i]->Var(var_name);
-        var->GetMutable<LoDTensor>();
-      }
-    }
 
     for (auto &program_desc : program_descs) {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {

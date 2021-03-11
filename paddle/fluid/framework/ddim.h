@@ -18,6 +18,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/dim.h"
 
 namespace paddle {

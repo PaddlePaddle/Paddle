@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle
 
 
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
@@ -532,6 +533,25 @@ class TestSliceAPI(unittest.TestCase):
         assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
 
+class TestSliceApiWithTensor(unittest.TestCase):
+    def test_starts_ends_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            a = paddle.rand(shape=[4, 5, 6], dtype='float32')
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            a_1 = paddle.slice(
+                a,
+                axes=axes,
+                starts=paddle.to_tensor(
+                    starts, dtype='int32'),
+                ends=paddle.to_tensor(
+                    ends, dtype='int32'))
+            a_2 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
+
+            self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
+
+
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def setUp(self):
         self.shape = (3, 4)
@@ -661,6 +681,22 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
                 sliced = var[1.1]
 
         self.assertRaises(Exception, test_float_in_index)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestImperativeCUDAPinnedInput(unittest.TestCase):
+    def test_input_cuda_pinned_var(self):
+        with fluid.dygraph.guard():
+            data = np.random.random((2, 80, 16128)).astype('float32')
+            var = core.VarBase(
+                value=data,
+                name='',
+                persistable=False,
+                place=fluid.CUDAPinnedPlace(),
+                zero_copy=False)
+            sliced = var[:, 10:, :var.shape[1]]
+            self.assertEqual(sliced.shape, [2, 70, 80])
 
 
 if __name__ == '__main__':

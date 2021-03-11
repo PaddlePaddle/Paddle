@@ -12,37 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import print_function
 from functools import reduce
 
 import collections
 import math
 import os
-
+import warnings
+import logging
 import six
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
+LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
+
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -50,20 +42,34 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
+SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+
 
 def _get_lr_ops(program):
     lr_ops = []
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
 
+def _has_global_step(lr_ops):
+    if len(lr_ops) > 0:
+        for idx, op in enumerate(lr_ops):
+            if op.type != 'increment':
+                continue
+            counter = op.input("X")[0]
+            if counter == LEARNING_RATE_DECAY_COUNTER:
+                return True
+    return False
+
+
 def is_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_sparse') is True and op.attr(
+    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
             'is_distributed') is False:
         return True
 
@@ -75,7 +81,7 @@ def is_sparse_op(op):
 
 
 def is_distributed_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_distributed') is True:
+    if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
     if op.type == "distributed_lookup_table" and op.attr(
@@ -109,16 +115,36 @@ class MergedVariable:
         self.offsets = offsets
 
 
+def Singleton(cls):
+    _instance = {}
+
+    def _singleton(*args, **kargs):
+        if cls not in _instance:
+            _instance[cls] = cls(*args, **kargs)
+        return _instance[cls]
+
+    return _singleton
+
+
+@Singleton
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
-
-        self.min_block_size = 8192
+        self.min_block_size = 81920
 
         self.origin_main_program = main_program
         self.origin_startup_program = startup_program
+        self.origin_ps_main_program = main_program
+        self.origin_ps_startup_program = startup_program
 
         self.strategy = strategy
         self.role_maker = role_maker
+        try:
+            self.is_heter_ps_mode = role_maker._is_heter_parameter_server_mode
+        except:
+            warnings.warn(
+                "Using paddle.distributed.fleet instead of paddle.fluid.incubate.fleet"
+            )
+            self.is_heter_ps_mode = False
 
         self.origin_sparse_pairs = []
         self.origin_dense_pairs = []
@@ -135,6 +161,13 @@ class CompileTimeStrategy(object):
         self.grad_param_mapping = collections.OrderedDict()
 
         self._build_var_distributed()
+
+        self.tensor_table_dict = {}
+
+        # for heter-ps save variables
+        self.origin_merged_variables_pairs = list(self.merged_variables_pairs)
+        self.origin_merged_dense_pairs = list(self.merged_dense_pairs)
+        self.origin_merged_sparse_pairs = list(self.merged_sparse_pairs)
 
     def get_distributed_mode(self):
         trainer = self.strategy.get_trainer_runtime_config()
@@ -153,16 +186,40 @@ class CompileTimeStrategy(object):
         return trainer.mode == DistributedMode.ASYNC
 
     def get_role_id(self):
-        return self.role_maker.role_id()
+        try:
+            return self.role_maker._role_id()
+        except Exception:
+            return self.role_maker.role_id()
 
     def get_trainers(self):
-        return self.role_maker.worker_num()
+        try:
+            return self.role_maker._worker_num()
+        except Exception:
+            return self.role_maker.worker_num()
 
     def get_ps_endpoint(self):
-        return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
+        try:
+            return self.role_maker._get_pserver_endpoints()[self.get_role_id()]
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
 
     def get_ps_endpoints(self):
-        return self.role_maker.get_pserver_endpoints()
+        try:
+            return self.role_maker._get_pserver_endpoints()
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()
+
+    def get_heter_worker_endpoints(self):
+        try:
+            return self.role_maker._get_heter_worker_endpoints()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoints()
+
+    def get_heter_worker_endpoint(self):
+        try:
+            return self.role_maker._get_heter_worker_endpoint()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoint()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program
@@ -173,12 +230,42 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
+    def set_origin_ps_main_program(self, program):
+        self.origin_ps_main_program = program
+
+    def set_origin_ps_startup_program(self, program):
+        self.origin_ps_startup_program = program
+
+    def get_origin_ps_main_program(self):
+        return self.origin_ps_main_program
+
+    def get_origin_ps_startup_program(self):
+        return self.origin_ps_startup_program
+
+    def add_tensor_table(self,
+                         feed_var_name,
+                         fetch_var_name="",
+                         startup_program=None,
+                         main_program=None,
+                         tensor_table_class=""):
+        self.tensor_table_dict[feed_var_name] = {}
+        self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
+        self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
+        self.tensor_table_dict[feed_var_name][
+            "startup_program"] = startup_program
+        self.tensor_table_dict[feed_var_name]["main_program"] = main_program
+        self.tensor_table_dict[feed_var_name][
+            "tensor_table_class"] = tensor_table_class
+
+    def get_tensor_table_dict(self):
+        return self.tensor_table_dict
+
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
             endpoint = self.get_ps_endpoint()
-
         varnames = get_sparse_tablenames(self.get_origin_main_program(),
                                          is_distributed)
+
         ps_sparse_varnames = []
         for varname in varnames:
             tables = self.get_var_distributed(varname, True)
@@ -187,6 +274,55 @@ class CompileTimeStrategy(object):
                 if ep == endpoint:
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
+
+    def get_optimize_varname_on_ps(self, param_name):
+        origin_param_name, _, _ = _get_varname_parts(param_name)
+        optimize_var_names = []
+        for op in self.get_origin_main_program().global_block().ops:
+            # check all optimizer op
+            if int(op.all_attrs()["op_role"]) == 2:
+                # check param name
+                if op.input("Param")[0] != origin_param_name:
+                    continue
+                # check all input
+                for key in op.input_names:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
+                        continue
+                    # check varibale shape related param, e.g: Moment1
+                    optimize_var_names += self._get_optimizer_param_related_var_name(
+                        op, op.type, key)
+        return optimize_var_names
+
+    def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
+        """
+        Returns the names for optimizer inputs that need to be load
+        """
+        related_var_names = []
+        if op_type == "adam":
+            if varkey in ["Moment1", "Moment2"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "adagrad":
+            if varkey == "Moment":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type in ["momentum", "lars_momentum"]:
+            if varkey == "Velocity":
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "rmsprop":
+            if varkey in ["Moment", "MeanSquare"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "ftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                related_var_names.append(op.input(varkey)[0])
+        elif op_type == "sgd":
+            pass
+        else:
+            raise ValueError(
+                "Not supported optimizer for distributed training: %s" %
+                op_type)
+        return related_var_names
 
     def build_ctx(self,
                   vars,
@@ -329,7 +465,7 @@ class CompileTimeStrategy(object):
 
                 is_distributed = True if param_name in distibuted_varnames else False
 
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 
@@ -337,7 +473,9 @@ class CompileTimeStrategy(object):
             send_ctx[name] = ctx
         return send_ctx
 
-    def get_communicator_recv_context(self, recv_type=1):
+    def get_communicator_recv_context(self,
+                                      recv_type=1,
+                                      use_origin_program=False):
         # recv_type
         # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
         distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
@@ -351,13 +489,14 @@ class CompileTimeStrategy(object):
         sparse_recv_ctx = {}
         distributed_recv_ctx = {}
 
-        for merged in self.merged_variables_pairs:
+        variables_pairs = self.merged_variables_pairs if not use_origin_program else self.origin_merged_variables_pairs
+        for merged in variables_pairs:
             params = merged[0]
             if params.merged_var.name in sparse_varnames:
                 continue
 
             ctx = self.build_ctx(params, self.param_var_mapping, False, False,
-                                 False)
+                                 False, False)
             dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
@@ -386,6 +525,170 @@ class CompileTimeStrategy(object):
             "recv_type can only be 1/2/3/4, 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL"
         )
 
+    def get_the_one_trainer_send_context(self, split_dense_table):
+        if self.is_geo_mode():
+            send_ctx = {}
+            trainer_id = self.get_role_id()
+            idx = 0
+
+            distibuted_varnames = get_sparse_tablenames(
+                self.origin_main_program, True)
+            for merged in self.merged_sparse_pairs:
+                param, grad = merged
+                grad_name = grad.merged_var.name
+                param_name = param.merged_var.name
+                is_distributed = True if param_name in distibuted_varnames else False
+
+                var = self.origin_main_program.global_block().vars[
+                    grad.merged_var.name]
+                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+
+                sparse_ctx = CommContext(grad_name, [grad_name],
+                                         ["127.0.0.1:6071"], [var_numel],
+                                         [grad_name], trainer_id, True, True,
+                                         is_distributed, idx, False)
+                idx += 1
+                send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+            if len(send_ctx) == 0:
+                raise ValueError(
+                    "GeoSGD require sparse parameters in your net.")
+
+            if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
+                name, ctx = self._step_ctx(idx)
+                send_ctx[name] = ctx
+
+            return send_ctx
+        else:
+            return self.get_the_one_send_context(split_dense_table)
+
+    def get_dense_send_context(self,
+                               send_ctx,
+                               idx,
+                               merged_dense_pairs,
+                               trainer_id,
+                               split_dense_table=False):
+        if len(merged_dense_pairs) < 1:
+            return idx
+        if not split_dense_table:
+            origin_varnames = []
+            var_numel = 0
+            for merged in merged_dense_pairs:
+                grad = merged[1]
+                origin_varnames.append(grad.merged_var.name)
+                var = self.origin_main_program.global_block().vars[
+                    grad.merged_var.name]
+                var_numel += reduce(lambda x, y: x * y, var.shape)
+            grad_name = "Dense@Grad"
+            trainer_id = self.get_role_id()
+            aggregate = True
+            dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
+                                    [var_numel], origin_varnames, trainer_id,
+                                    aggregate, False, False, idx, False)
+            send_ctx[grad_name] = dense_ctx
+            idx += 1
+        else:
+            for merged in merged_dense_pairs:
+                grad = merged[1]
+                origin_varname = grad.merged_var.name
+                var = self.origin_main_program.global_block().vars[
+                    origin_varname]
+                var_numel = reduce(lambda x, y: x * y, var.shape)
+                grad_name = origin_varname
+                aggregate = True
+                dense_ctx = CommContext(grad_name, [grad_name],
+                                        ["127.0.0.1:6071"], [var_numel],
+                                        [origin_varname], trainer_id, aggregate,
+                                        False, False, idx, False)
+                send_ctx[grad_name] = dense_ctx
+                idx += 1
+        return idx
+
+    def get_the_one_send_context(self,
+                                 split_dense_table=False,
+                                 use_origin_program=False,
+                                 ep_list=None):
+        if ep_list is None:
+            ep_list = ["127.0.0.1:6071"]
+        send_ctx = {}
+        trainer_id = self.get_role_id()
+        idx = 0
+
+        merged_dense_pairs = self.origin_merged_dense_pairs if use_origin_program else self.merged_dense_pairs
+        merged_sparse_pairs = self.origin_merged_sparse_pairs if use_origin_program else self.merged_sparse_pairs
+
+        idx += self.get_dense_send_context(send_ctx, idx, merged_dense_pairs,
+                                           trainer_id, split_dense_table)
+
+        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
+                                                    True)
+        for merged in merged_sparse_pairs:
+            param, grad = merged
+            grad_name = grad.merged_var.name
+            param_name = param.merged_var.name
+            splited_varname = []
+
+            for i in range(len(ep_list)):
+                splited_varname.append("{}.block{}".format(param_name, i))
+
+            is_distributed = True if param_name in distibuted_varnames else False
+
+            var = self.origin_main_program.global_block().vars[
+                grad.merged_var.name]
+
+            shape = list(var.shape)
+            shape[0] = 0 if is_distributed else shape[0]
+
+            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
+                                     [grad_name], trainer_id, True, True,
+                                     is_distributed, idx, False)
+
+            idx += 1
+            send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+        if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
+            name, ctx = self._step_ctx(idx)
+            send_ctx[name] = ctx
+
+        return send_ctx
+
+    def get_the_one_recv_context(self,
+                                 is_dense=True,
+                                 split_dense_table=False,
+                                 use_origin_program=False):
+        recv_id_maps = {}
+        if is_dense:
+            send_ctx = self.get_the_one_send_context(
+                split_dense_table=split_dense_table,
+                use_origin_program=use_origin_program)
+            for idx, (name, ctx) in enumerate(send_ctx.items()):
+                if ctx.is_sparse():
+                    continue
+                if ctx.is_tensor_table():
+                    continue
+
+                origin_grad_varnames = ctx.origin_varnames()
+
+                param_names = []
+                for grad_varname in origin_grad_varnames:
+                    param_name = self.grad_name_to_param_name[grad_varname]
+                    param_names.append(param_name)
+                recv_id_maps[ctx.table_id()] = param_names
+        else:
+            send_ctx = self.get_the_one_send_context()
+            for idx, (name, ctx) in enumerate(send_ctx.items()):
+                if not ctx.is_sparse():
+                    continue
+
+                origin_grad_varnames = ctx.origin_varnames()
+
+                param_names = []
+                for grad_varname in origin_grad_varnames:
+                    param_name = self.grad_name_to_param_name[grad_varname]
+                    param_names.append(param_name)
+                recv_id_maps[ctx.table_id()] = param_names
+        return recv_id_maps
+
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()
 
@@ -409,14 +712,14 @@ class CompileTimeStrategy(object):
                         var_distributed.append((g.name, ep, g.shape[0]))
         return var_distributed
 
-    def _step_ctx(self):
+    def _step_ctx(self, idx):
         name = STEP_COUNTER
         trainer_id = self.get_role_id()
         endpoints = self.get_ps_endpoints()
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
         ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False, False)
+                          True, False, False, idx, True)
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):
@@ -565,16 +868,16 @@ class CompileTimeStrategy(object):
 
                 split_count = 1
 
-                # if min_block_size == -1:
-                #     split_count = 1
-                # else:
-                #     split_count = slice_count
-                #     max_pserver_count = int(
-                #         math.floor(var_numel / float(min_block_size)))
-                #     if max_pserver_count == 0:
-                #         max_pserver_count = 1
-                #     if max_pserver_count < slice_count:
-                #         split_count = max_pserver_count
+                if min_block_size == -1:
+                    split_count = 1
+                else:
+                    split_count = slice_count
+                    max_pserver_count = int(
+                        math.floor(var_numel / float(min_block_size)))
+                    if max_pserver_count == 0:
+                        max_pserver_count = 1
+                    if max_pserver_count < slice_count:
+                        split_count = max_pserver_count
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
@@ -646,8 +949,8 @@ class CompileTimeStrategy(object):
         # 3. grad_param_mapping : grad.blockx->param.blockx
         # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
 
-        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs, -1,
-                                               False)
+        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs,
+                                               self.min_block_size, False)
         sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs,
                                                self.min_block_size, True)
 
@@ -782,11 +1085,10 @@ class CompileTimeStrategy(object):
 
         def _get_sparse_varnames():
             varnames = []
-            op_types = {"lookup_table": "W"}
             for op in origin_program.global_block().ops:
-                if op.type in op_types.keys() \
+                if op.type in SPARSE_OP_TYPE_DICT.keys() \
                         and op.attr('remote_prefetch') is True:
-                    param_name = op.input(op_types[op.type])[0]
+                    param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                     varnames.append(param_name)
 
             return list(set(varnames))
@@ -797,6 +1099,30 @@ class CompileTimeStrategy(object):
 
         return sparse_param_grads, dense_param_grads
 
+    def remove_var_pair_by_grad(self, var_name):
+
+        for index, pair in enumerate(self.merged_variables_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_variables_pairs[index]
+
+        for index, pair in enumerate(self.merged_dense_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_dense_pairs[index]
+                return
+
+        for index, pair in enumerate(self.merged_sparse_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_sparse_pairs[index]
+                return
+
+        print("Not find {} in self.merge_pairs".format(var_name))
+
 
 def _is_opt_role_op(op):
     # NOTE : depend on oprole to find out whether this op is for
@@ -804,7 +1130,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 
@@ -823,6 +1149,89 @@ def _get_optimize_ops(_program):
                 continue
             opt_ops.append(op)
     return opt_ops
+
+
+def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
+    if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
+        from paddle.optimizer.lr import LRScheduler
+        assert isinstance(compiled_config.origin_main_program.lr_sheduler,
+                          LRScheduler), "must be LRScheduler"
+        ops = _get_optimize_ops(compiled_config.origin_main_program)
+        lr_param_dict = _get_lr_param_dict(ops)
+        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
+            compiled_config.origin_main_program.lr_sheduler, lr_param_dict,
+            lr_decay_steps)
+        compiled_config.add_tensor_table(
+            "@LR_DECAY_COUNTER@", lr_name, lr_decay_startup_program,
+            lr_decay_main_program, "GlobalStepTable")
+
+
+def _get_lr_param_dict(opt_ops):
+    lr_param_dict = {}
+    for op in opt_ops:
+        lr_name = op.input("LearningRate")[0]
+        param_name = op.input("Param")[0]
+        if lr_name not in lr_param_dict:
+            lr_param_dict[lr_name] = []
+        lr_param_dict[lr_name].append(param_name)
+    return lr_param_dict
+
+
+def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
+    schedler_decay = [
+        'NoamDecay', 'NaturalExpDecay', 'InverseTimeDecay', 'ExponentialDecay'
+    ]
+
+    from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
+    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
+
+    decay_main_program = fluid.framework.Program()
+    decay_startup_program = fluid.framework.Program()
+    lr_name = ""
+
+    if isinstance(lr_sheduler, ExponentialDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = exponential_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr_name = lr.name
+            logging.warn(
+                "ExponentialDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, NoamDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
+            lr_name = lr.name
+            logging.warn("NoamDecay is set, warmup steps is [ %d ]" %
+                         lr_sheduler.warmup_steps)
+    elif isinstance(lr_sheduler, NaturalExpDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
+            lr_name = lr.name
+            logging.warn(
+                "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    elif isinstance(lr_sheduler, InverseTimeDecay):
+        with fluid.program_guard(decay_main_program, decay_startup_program):
+            lr = inverse_time_decay(1.0, lr_decay_steps, lr_sheduler.gamma,
+                                    True)
+            lr_name = lr.name
+            logging.warn(
+                "InverseTimeDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
+                "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
+                "\t strategy.a_sync = True \n"
+                "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
+                % lr_decay_steps)
+    else:
+        raise ValueError(
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}".
+            format(schedler_decay))
+
+    return decay_main_program, decay_startup_program, lr_name
 
 
 def _get_varname_parts(varname):

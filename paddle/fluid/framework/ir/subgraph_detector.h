@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -23,6 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 const char kIsFunctionNode[] = "__is_function_node__";
 const char kFunctionNodeSubGraph[] = "__function_node_sub_graph__";

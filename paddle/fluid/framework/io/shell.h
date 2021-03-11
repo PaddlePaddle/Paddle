@@ -15,6 +15,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -32,6 +33,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/string_helper.h"
 

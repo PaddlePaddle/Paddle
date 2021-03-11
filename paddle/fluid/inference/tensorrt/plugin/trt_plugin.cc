@@ -24,6 +24,7 @@ void PluginTensorRT::serializeBase(void*& buffer) {
   SerializeValue(&buffer, max_batch_size_);
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, data_format_);
+  SerializeValue(&buffer, with_fp16_);
 }
 
 void PluginTensorRT::deserializeBase(void const*& serial_data,
@@ -32,11 +33,13 @@ void PluginTensorRT::deserializeBase(void const*& serial_data,
   DeserializeValue(&serial_data, &serial_length, &max_batch_size_);
   DeserializeValue(&serial_data, &serial_length, &data_type_);
   DeserializeValue(&serial_data, &serial_length, &data_format_);
+  DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() {
   return (SerializedSize(input_dims_) + SerializedSize(max_batch_size_) +
-          SerializedSize(data_type_) + SerializedSize(data_format_));
+          SerializedSize(data_type_) + SerializedSize(data_format_) +
+          SerializedSize(with_fp16_));
 }
 
 bool PluginTensorRT::supportsFormat(nvinfer1::DataType type,

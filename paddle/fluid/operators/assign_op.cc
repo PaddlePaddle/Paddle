@@ -14,8 +14,22 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/assign_op.h"
 
-#include <memory>
 #include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Variable;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -150,7 +164,7 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, plat::float16,
                                ops::AssignKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                 ops::AssignKernel, int, ops::AssignKernel,
                                 int64_t, ops::AssignKernel, bool,

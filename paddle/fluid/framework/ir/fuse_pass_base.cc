@@ -13,11 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include <unordered_map>
+
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 void FusePassBase::Init(const std::string& repr, Graph* graph) const {
   repr_ = repr;

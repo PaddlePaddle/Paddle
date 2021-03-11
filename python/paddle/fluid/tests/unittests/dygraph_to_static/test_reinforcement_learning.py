@@ -16,6 +16,7 @@ import gym
 import math
 import itertools
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph import to_variable, Layer
@@ -64,8 +65,8 @@ def train(args, place, to_static):
     env.seed(SEED)
 
     with fluid.dygraph.guard(place):
-        fluid.default_main_program().random_seed = SEED
-        fluid.default_startup_program().random_seed = SEED
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
         policy = Policy()

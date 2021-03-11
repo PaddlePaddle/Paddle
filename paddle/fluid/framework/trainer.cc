@@ -22,6 +22,8 @@ void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
 void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   dump_fields_path_ = desc.dump_fields_path();
+  need_dump_field_ = false;
+  need_dump_param_ = false;
   if (dump_fields_path_ == "") {
     VLOG(2) << "dump_fields_path_ is empty";
     return;

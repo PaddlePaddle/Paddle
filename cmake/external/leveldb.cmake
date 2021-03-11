@@ -21,20 +21,25 @@ SET(LEVELDB_LIBRARIES "${LEVELDB_INSTALL_DIR}/lib/libleveldb.a" CACHE FILEPATH "
 INCLUDE_DIRECTORIES(${LEVELDB_INCLUDE_DIR})
 
 ExternalProject_Add(
-    extern_leveldb
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    ${SHALLOW_CLONE}
-    PREFIX ${LEVELDB_SOURCES_DIR}
-    GIT_REPOSITORY "https://github.com/google/leveldb.git"
-    GIT_TAG v1.18
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
-    INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ 
+        extern_leveldb
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        PREFIX ${LEVELDB_SOURCES_DIR}
+        GIT_REPOSITORY "https://github.com/google/leveldb"
+        GIT_TAG v1.18
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
+        INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/
         && cp ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
         && cp -r ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
-    BUILD_IN_SOURCE 1
+        BUILD_IN_SOURCE 1
 )
+
+ADD_DEPENDENCIES(extern_leveldb snappy)
 
 ADD_LIBRARY(leveldb STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET leveldb PROPERTY IMPORTED_LOCATION ${LEVELDB_LIBRARIES})
 ADD_DEPENDENCIES(leveldb extern_leveldb)
+
+LIST(APPEND external_project_dependencies leveldb)
+

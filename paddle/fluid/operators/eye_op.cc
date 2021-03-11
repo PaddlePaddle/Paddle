@@ -83,7 +83,6 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-using float16 = paddle::platform::float16;
 
 REGISTER_OPERATOR(
     eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
@@ -93,4 +92,4 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(eye, ops::EyeKernel<CPU, float>,
                        ops::EyeKernel<CPU, double>,
                        ops::EyeKernel<CPU, int64_t>, ops::EyeKernel<CPU, int>,
-                       ops::EyeKernel<CPU, float16>);
+                       ops::EyeKernel<CPU, paddle::platform::float16>);

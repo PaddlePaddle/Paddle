@@ -16,8 +16,15 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+
+namespace paddle {
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -25,6 +32,10 @@ namespace operators {
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const framework::ProgramDesc &program, int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops);
+
+void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+    const framework::ProgramDesc &program, int block_id,
+    const std::vector<framework::OperatorBase *> &all_ops);
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const framework::ProgramDesc &program,

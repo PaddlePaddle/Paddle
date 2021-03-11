@@ -25,6 +25,14 @@ void *nccl_dso_handle;
 
 NCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
+#if NCCL_VERSION_CODE >= 2212
+NCCL_RAND_ROUTINE_EACH_AFTER_2212(DEFINE_WRAP)
+#endif
+
+#if NCCL_VERSION_CODE >= 2703
+NCCL_RAND_ROUTINE_EACH_AFTER_2703(DEFINE_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

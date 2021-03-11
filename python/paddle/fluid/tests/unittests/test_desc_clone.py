@@ -100,16 +100,6 @@ def get_model(batch_size):
     return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 
-def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
-    t = fluid.DistributeTranspiler()
-    t.transpile(
-        trainer_id=trainer_id,
-        program=main_program,
-        pservers=pserver_endpoints,
-        trainers=trainers)
-    return t
-
-
 def operator_equal(a, b):
     if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
@@ -170,32 +160,12 @@ def program_equal(a, b):
                         k))
                     return False
             assert (len(a.blocks) == len(b.blocks))
-
+        elif k == '_auto_checkpoint_name':
+            continue
         elif (v != b.__dict__[k]):
             raise ValueError("In program_equal not equal:{0}\n".format(k))
 
     return True
-
-
-class TestDistMnist(unittest.TestCase):
-    @unittest.skipIf(sys.platform == "win32",
-                     "Windows does not support distribution")
-    def test_desc_clone(self):
-        get_model(batch_size=20)
-
-        pserver_endpoints = "127.0.0.1:9123"
-        trainers = 1
-        current_endpoint = "127.0.0.1:9123"
-        t = get_transpiler(0,
-                           fluid.default_main_program(), pserver_endpoints,
-                           trainers)
-
-        pserver_prog = t.get_pserver_program(current_endpoint)
-        startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-        main = pserver_prog.clone()
-        startup = startup_prog.clone()
-        self.assertTrue(program_equal(main, pserver_prog))
-        self.assertTrue(program_equal(startup, startup_prog))
 
 
 class TestCloneWithStopGradient(unittest.TestCase):

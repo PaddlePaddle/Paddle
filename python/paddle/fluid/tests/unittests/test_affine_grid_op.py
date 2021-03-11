@@ -15,16 +15,23 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
-def AffineGrid(theta, size):
+def AffineGrid(theta, size, align_corners):
     n = size[0]
     w = size[3]
     h = size[2]
+    h_factor = w_factor = 1
+    if not align_corners:
+        h_factor = (h - 1) / float(h)
+        w_factor = (w - 1) / float(w)
     h_idx = np.repeat(
-        np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[:, :, np.newaxis]
+        np.linspace(-1, 1, h)[np.newaxis, :], w,
+        axis=0).T[:, :, np.newaxis] * h_factor
     w_idx = np.repeat(
-        np.linspace(-1, 1, w)[np.newaxis, :], h, axis=0)[:, :, np.newaxis]
+        np.linspace(-1, 1, w)[np.newaxis, :], h,
+        axis=0)[:, :, np.newaxis] * w_factor
     grid = np.concatenate(
         [w_idx, h_idx, np.ones([h, w, 1])], axis=2)  # h * w * 3
     grid = np.repeat(grid[np.newaxis, :], size[0], axis=0)  # n * h * w *3
@@ -43,14 +50,18 @@ class TestAffineGridOp(OpTest):
         self.initTestCase()
         self.op_type = "affine_grid"
         theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
-        theta = np.ones(self.theta_shape).astype("float32")
         self.inputs = {'Theta': theta}
-        self.attrs = {"use_cudnn": True}
+        self.attrs = {
+            "use_cudnn": self.use_cudnn,
+            "align_corners": self.align_corners
+        }
         if self.dynamic_shape:
             self.inputs['OutputShape'] = self.output_shape
         else:
             self.attrs['output_shape'] = self.output_shape
-        self.outputs = {'Output': AffineGrid(theta, self.output_shape)}
+        self.outputs = {
+            'Output': AffineGrid(theta, self.output_shape, self.align_corners)
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -62,6 +73,8 @@ class TestAffineGridOp(OpTest):
         self.theta_shape = (17, 2, 3)
         self.output_shape = np.array([17, 2, 5, 7]).astype("int32")
         self.dynamic_shape = False
+        self.use_cudnn = False
+        self.align_corners = True
 
 
 class TestAffineGridOpCase1(TestAffineGridOp):
@@ -69,7 +82,37 @@ class TestAffineGridOpCase1(TestAffineGridOp):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
+        self.use_cudnn = True
+        self.align_corners = True
+
+
+class TestAffineGridOpCase2(TestAffineGridOp):
+    def initTestCase(self):
+        self.theta_shape = (20, 2, 3)
+        self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
+        self.dynamic_shape = True
+        self.use_cudnn = False
+        self.align_corners = True
+
+
+class TestAffineGridOpCase3(TestAffineGridOp):
+    def initTestCase(self):
+        self.theta_shape = (20, 2, 3)
+        self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
+        self.dynamic_shape = True
+        self.use_cudnn = False
+        self.align_corners = False
+
+
+class TestAffineGridOpCase4(TestAffineGridOp):
+    def initTestCase(self):
+        self.theta_shape = (25, 2, 3)
+        self.output_shape = np.array([25, 2, 5, 6]).astype("int32")
+        self.dynamic_shape = False
+        self.use_cudnn = False
+        self.align_corners = False
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

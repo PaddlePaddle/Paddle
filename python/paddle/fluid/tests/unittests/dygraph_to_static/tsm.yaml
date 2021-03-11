@@ -15,7 +15,7 @@ TRAIN:
     target_size: 224
     num_reader_threads: 12
     buf_size: 1024
-    batch_size: 4 #128
+    batch_size: 2 #128
     use_gpu: True
     num_gpus: 1 #8
     filelist: "./data/dataset/kinetics/train.list"
@@ -24,7 +24,7 @@ TRAIN:
     decay_epochs: [40, 60]
     l2_weight_decay: 1e-4
     momentum: 0.9
-    total_videos: 8000 #239781
+    total_videos: 4000 #239781
 
 VALID:
     short_size: 256

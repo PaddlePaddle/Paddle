@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include <string>
-#include <unordered_set>
-#include <vector>
+
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 
@@ -63,7 +62,7 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
 bool GroupDetector::CheckPrecondition(const Node* n) {
   auto check_data_type = [&](const std::vector<Node*>& nodes) -> bool {
     bool is_first = true;
-    proto::VarType::Type data_type_0;
+    proto::VarType::Type data_type_0 = proto::VarType::BOOL;
     for (auto* n : nodes) {
       if (n && n->IsVar() && n->Var()) {
         if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {

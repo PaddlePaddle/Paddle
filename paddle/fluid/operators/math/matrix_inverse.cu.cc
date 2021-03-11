@@ -12,13 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/matrix_inverse.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
+
+namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+template <typename DeviceContext, typename T>
+class MatrixInverseFunctor;
 
 template <typename T>
 class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
@@ -99,8 +106,10 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     for (int i = 0; i < batch_size; ++i) {
       PADDLE_ENFORCE_EQ(info[i], 0,
                         platform::errors::PreconditionNotMet(
-                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
-                            info[i], info[i]));
+                            "For batch [%d]: U(%d, %d) is zero, singular U. "
+                            "Please check the matrix value and change it to a "
+                            "non-singular matrix",
+                            i, info[i], info[i]));
     }
   }
 };

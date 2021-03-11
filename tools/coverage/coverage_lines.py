@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 usage: coverage_lines.py info_file expected
 """
@@ -33,7 +47,7 @@ def get_lines(info_file):
                 hits += 1
 
     if total == 0:
-        print 'no data found'
+        print('no data found')
         exit()
 
     return hits / total
@@ -47,17 +61,17 @@ if __name__ == '__main__':
     expected = float(sys.argv[2])
 
     if not os.path.isfile(info_file):
-        print 'info file {} is not exists, ignored'.format(info_file)
+        print('info file {} is not exists, ignored'.format(info_file))
         exit()
 
     actual = get_lines(info_file)
     actual = round(actual, 3)
 
     if actual < expected:
-        print 'expected >= {} %, actual {} %, failed'.format(
-            round(expected * 100, 1), round(actual * 100, 1))
+        print('expected >= {} %, actual {} %, failed'.format(
+            round(expected * 100, 1), round(actual * 100, 1)))
 
         exit(1)
 
-    print 'expected >= {} %, actual {} %, passed'.format(
-        round(expected * 100, 1), round(actual * 100, 1))
+    print('expected >= {} %, actual {} %, passed'.format(
+        round(expected * 100, 1), round(actual * 100, 1)))

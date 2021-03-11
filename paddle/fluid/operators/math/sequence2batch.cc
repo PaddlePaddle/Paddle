@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 
@@ -29,11 +35,24 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
-                      "The src must be matrix with rank 2.");
+                      platform::errors::InvalidArgument(
+                          "The source tensor must be a matrix with rank 2, but "
+                          "got the source tensor rank is %lu. "
+                          "Please check the rank of the source tensor",
+                          src_dims.size()));
     PADDLE_ENFORCE_EQ(dst_dims.size(), 2UL,
-                      "The dst must be matrix with rank 2.");
-    PADDLE_ENFORCE_EQ(src_dims[1], dst_dims[1],
-                      "The width of src and dst must be same.");
+                      platform::errors::InvalidArgument(
+                          "The destination tensor must be a matrix with rank, "
+                          "but got the destination tensor rank is %lu. "
+                          "Please check the rank of the destination tensor",
+                          dst_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        src_dims[1], dst_dims[1],
+        platform::errors::InvalidArgument(
+            "The width of the source tensor and the destination tensor must be "
+            "same. But got %lu != %lu.Please check the rank of the source "
+            "tensor",
+            src_dims.size(), dst_dims.size()));
     auto height = dst_dims[0];
     auto width = dst_dims[1];
     auto* src_data = src.data<T>();

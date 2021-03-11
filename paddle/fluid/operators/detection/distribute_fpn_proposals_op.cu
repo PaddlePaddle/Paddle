@@ -12,8 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/memory/allocation/allocator.h>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
@@ -43,15 +50,15 @@ __global__ void GPUDistFpnProposalsHelper(
     const int nthreads, const T* rois, const int lod_size,
     const int refer_level, const int refer_scale, const int max_level,
     const int min_level, int* roi_batch_id_data, int* sub_lod_list,
-    int* target_lvls) {
+    int* target_lvls, bool pixel_offset = true) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
     // get the target level of current rois
-    T roi_area = RoIArea(offset_roi, false);
+    T roi_area = RoIArea(offset_roi, pixel_offset);
     T roi_scale = sqrt(roi_area);
     int tgt_lvl = floor(
-        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-6) + refer_level);
+        log2(roi_scale / static_cast<T>(refer_scale) + (T)1e-8) + refer_level);
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
@@ -73,15 +80,24 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int max_level = ctx.Attr<int>("max_level");
     const int refer_level = ctx.Attr<int>("refer_level");
     const int refer_scale = ctx.Attr<int>("refer_scale");
+    const bool pixel_offset = ctx.Attr<bool>("pixel_offset");
     int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
-    PADDLE_ENFORCE_EQ(
-        fpn_rois->lod().size(), 1UL,
-        platform::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
-                                          "with one level"));
+    if (!ctx.HasInput("RoisNum")) {
+      PADDLE_ENFORCE_EQ(
+          fpn_rois->lod().size(), 1UL,
+          platform::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
+                                            "with one level"));
+    }
 
-    auto fpn_rois_lod = fpn_rois->lod().back();
+    std::vector<size_t> fpn_rois_lod;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num = ctx.Input<Tensor>("RoisNum");
+      fpn_rois_lod = GetLodFromRoisNum(rois_num);
+    } else {
+      fpn_rois_lod = fpn_rois->lod().back();
+    }
     int lod_size = fpn_rois_lod.size() - 1;
     int roi_num = fpn_rois_lod[lod_size];
 
@@ -118,7 +134,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     GPUDistFpnProposalsHelper<T><<<dist_blocks, threads>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
-        sub_lod_list_data, target_lvls_data);
+        sub_lod_list_data, target_lvls_data, pixel_offset);
     dev_ctx.Wait();
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
@@ -154,6 +170,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         restore_idx_data, roi_num);
 
     int start = 0;
+    auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
+
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
       int* sub_lod_data = sub_lod.data<int>();
@@ -179,6 +197,11 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       } else {
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());
+      }
+      if (multi_rois_num.size() > 0) {
+        Tensor* rois_num_t = multi_rois_num[i];
+        TensorCopySync(sub_lod, dev_ctx.GetPlace(), rois_num_t);
+        rois_num_t->Resize({lod_size});
       }
       framework::LoD lod;
       lod.emplace_back(offset);

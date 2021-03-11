@@ -43,7 +43,9 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         in_dims.size(), 3,
-        platform::errors::InvalidArgument("The rank of Input(X) must be 3."));
+        platform::errors::InvalidArgument(
+            "Expected the rank of Input(X) is 3. But received %d.",
+            in_dims.size()));
     PADDLE_ENFORCE_EQ(mi_dims.size(), 2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(MatchIndices) must be 2."));

@@ -16,12 +16,13 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from op_test import OpTest
+import paddle
 
 
 class TestGaussianRandomOp(OpTest):
@@ -37,6 +38,7 @@ class TestGaussianRandomOp(OpTest):
             "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
+        paddle.seed(10)
 
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
@@ -233,6 +235,56 @@ class TestGaussianRandomAPI(unittest.TestCase):
         self.assertAlmostEqual(np.std(res_5), 1., delta=0.1)
         self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
         self.assertAlmostEqual(np.std(res_6), 1., delta=0.1)
+
+    def test_default_dtype(self):
+        paddle.disable_static()
+
+        def test_default_fp16():
+            paddle.framework.set_default_dtype('float16')
+            paddle.tensor.random.gaussian([2, 3])
+
+        self.assertRaises(TypeError, test_default_fp16)
+
+        def test_default_fp32():
+            paddle.framework.set_default_dtype('float32')
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+
+        def test_default_fp64():
+            paddle.framework.set_default_dtype('float64')
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+        test_default_fp64()
+        test_default_fp32()
+
+        paddle.enable_static()
+
+
+class TestStandardNormalDtype(unittest.TestCase):
+    def test_default_dtype(self):
+        paddle.disable_static()
+
+        def test_default_fp16():
+            paddle.framework.set_default_dtype('float16')
+            paddle.tensor.random.standard_normal([2, 3])
+
+        self.assertRaises(TypeError, test_default_fp16)
+
+        def test_default_fp32():
+            paddle.framework.set_default_dtype('float32')
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+
+        def test_default_fp64():
+            paddle.framework.set_default_dtype('float64')
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+        test_default_fp64()
+        test_default_fp32()
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

@@ -19,9 +19,11 @@ import unittest
 import inspect
 import gast
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 
+from paddle import to_tensor
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
@@ -45,11 +47,19 @@ def dyfunc_to_variable_3(x):
     return res
 
 
+def dyfunc_to_tensor(x):
+    res1 = paddle.to_tensor(x, dtype=None, place=None, stop_gradient=True)
+    res2 = paddle.tensor.to_tensor(data=res1)
+    res3 = to_tensor(data=res2)
+    return res3
+
+
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
-            dyfunc_to_variable, dyfunc_to_variable_2, dyfunc_to_variable_3
+            dyfunc_to_tensor, dyfunc_to_variable, dyfunc_to_variable_2,
+            dyfunc_to_variable_3
         ]
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()

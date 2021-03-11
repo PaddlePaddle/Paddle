@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 
-#include <string>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {

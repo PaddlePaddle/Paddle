@@ -15,6 +15,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
+#ifdef PADDLE_WITH_RCCL
+#include <rccl.h>
+#endif
 #include <sys/time.h>
 #include <limits>
 #include <memory>
@@ -144,7 +147,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request->set_type(::sendrecv::SELECTED_ROWS);
     payload.reset(new TensorPayload(GetSelectedRowsPayload(var, ctx, request)));
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
     const ncclUniqueId& uid = var->Get<ncclUniqueId>();
@@ -155,11 +158,15 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
     return;
 #endif
   } else {
-    PADDLE_THROW("Serialize does not support type: %s",
-                 typeid(var->Type()).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Serialize does not support type: %s", typeid(var->Type()).name()));
   }
 
-  PADDLE_ENFORCE_NOT_NULL(payload);
+  PADDLE_ENFORCE_NOT_NULL(
+      payload,
+      platform::errors::InvalidArgument(
+          "Not support type: %s, need to be LOD_TENSOR or SELECTED_ROWS.",
+          var->Type()));
 
   // FIXME(gongwb): it seems that can use zero copy.
   if (var_is_not_stable) {
@@ -168,7 +175,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
         static_cast<const char*>(payload->ptr()), payload->memory_size());
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
           static_cast<const char*>(payload->ptr()), payload->memory_size(),
@@ -186,7 +193,10 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
 
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
-    PADDLE_ENFORCE(VectorElemName(slr->rows()) == typeid(int64_t).name());
+    PADDLE_ENFORCE_EQ(VectorElemName(slr->rows()), typeid(int64_t).name(),
+                      platform::errors::InvalidArgument(
+                          "Got wrong type: %s, expect type: int64_t",
+                          VectorElemName(slr->rows())));
     size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
 
     IOBufWriter::Append(name, iobuf,
@@ -202,7 +212,9 @@ void DeserializeFromIOBuf(const ::sendrecv::VariableMessage& meta,
                           const framework::Scope* scope,
                           framework::Variable** var, int* trainer_id) {
   operators::distributed::BRPCVariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE(resp.Parse(iobuf, meta) == 0, "parse iobuf to tensor error!");
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(iobuf, meta), 0,
+      platform::errors::InvalidArgument("parse iobuf to tensor error!"));
   *var = resp.GetVar();
   *trainer_id = resp.GetTrainerId();
 }

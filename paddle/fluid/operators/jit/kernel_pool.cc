@@ -13,9 +13,6 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/kernel_pool.h"
-#include <memory>  // for shared_ptr
-#include <string>
-#include <unordered_map>
 
 namespace paddle {
 namespace operators {

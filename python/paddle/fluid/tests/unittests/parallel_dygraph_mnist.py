@@ -114,8 +114,8 @@ class TestMnist(TestParallelDyGraphRunnerBase):
         model = MNIST()
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
-        opt = fluid.optimizer.Adam(
-            learning_rate=1e-3, parameter_list=model.parameters())
+        opt = paddle.optimizer.Adam(
+            learning_rate=1e-3, parameters=model.parameters())
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):

@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+paddle.enable_static()
 
 class TestTransposeOp(OpTest):
     def setUp(self):
@@ -99,8 +100,21 @@ class TestCase7(TestTransposeOp):
         self.axis = (0, 1, 3, 2)
 
 
+class TestCase8(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+        self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
+
+
+class TestCase9(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+        self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
+
+
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
 
@@ -137,6 +151,39 @@ class TestTransposeOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_each_elem_value_check)
 
+class TestTransposeApi(unittest.TestCase):
+    def test_static_out(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name='x', shape=[2, 3, 4], dtype='float32')
+            x_trans1 = paddle.transpose(x, perm=[1, 0, 2])
+            x_trans2 = paddle.transpose(x, perm=(2, 1, 0))
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            x_np = np.random.random([2, 3, 4]).astype("float32")
+            result1, result2 = exe.run(feed={"x": x_np}, fetch_list=[x_trans1, x_trans2])
+            expected_result1 = np.transpose(x_np, [1, 0, 2])
+            expected_result2 = np.transpose(x_np, (2, 1, 0))
+            
+            np.testing.assert_array_equal(result1, expected_result1)
+            np.testing.assert_array_equal(result2, expected_result2)
+
+    def test_dygraph_out(self):
+        # This is an old test before 2.0 API so we need to disable static
+        # to trigger dygraph
+        paddle.disable_static()
+        x = paddle.randn([2, 3, 4])
+        x_trans1 = paddle.transpose(x, perm=[1, 0, 2])
+        x_trans2 = paddle.transpose(x, perm=(2, 1, 0))
+        x_np = x.numpy()
+        expected_result1 = np.transpose(x_np, [1, 0, 2])
+        expected_result2 = np.transpose(x_np, (2, 1, 0))
+
+        np.testing.assert_array_equal(x_trans1.numpy(), expected_result1)
+        np.testing.assert_array_equal(x_trans2.numpy(), expected_result2)
+        # This is an old test before 2.0 API so we enable static again after
+        # dygraph test
+        paddle.enable_static()
 
 class TestTAPI(unittest.TestCase):
     def test_out(self):

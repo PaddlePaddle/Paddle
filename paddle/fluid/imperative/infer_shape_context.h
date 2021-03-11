@@ -16,7 +16,9 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -32,8 +34,12 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
  public:
   DygraphInferShapeContext(const NameVarMap<VarType>* in,
                            const NameVarMap<VarType>* out,
-                           const framework::AttributeMap* attr)
-      : var_base_map_in_(in), var_base_map_out_(out), attrs_(attr) {}
+                           const framework::AttributeMap* attr,
+                           const std::string op_type)
+      : var_base_map_in_(in),
+        var_base_map_out_(out),
+        attrs_(attr),
+        op_type_(op_type) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
@@ -134,6 +140,28 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
 
     return vec_res;
+  }
+  std::string GetInputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_type_, idx, op_proto->inputs().size()));
+    return op_proto->inputs()[idx].name();
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_type_, idx, op_proto->outputs().size()));
+    return op_proto->outputs()[idx].name();
   }
 
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
@@ -367,6 +395,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const NameVarMap<VarType>* var_base_map_in_;
   const NameVarMap<VarType>* var_base_map_out_;
   const framework::AttributeMap* attrs_;
+  const std::string op_type_;
 };
 
 }  // namespace imperative
