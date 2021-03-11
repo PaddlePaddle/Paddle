@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -62,10 +61,6 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    Tensor shape_tensor(framework::proto::VarType::INT32);
-    shape_tensor.mutable_data<int32_t>(x->dims(), ctx.GetPlace());
-    TensorFromVector(framework::vectorize<int32_t>(x->dims()),
-                     ctx.device_context(), &shape_tensor);
 
     x_grad->mutable_data<T>(ctx.GetPlace());
 
@@ -73,8 +68,8 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner =
-        NpuOpRunner("BroadcastTo", {*out_grad, shape_tensor}, {*x_grad}, {});
+    auto runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
+                              {{"shape", framework::vectorize(x->dimx())}});
     runner.Run(stream);
   }
 };
@@ -95,4 +90,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ReduceSumGradNPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);
-#endif
