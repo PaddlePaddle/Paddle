@@ -84,25 +84,26 @@ using KernelFunc = std::vector<Tensor> (*)(
     std::vector<Tensor> inputs, std::vector<std::vector<Tensor>> vec_inputs,
     std::vector<boost::any> attrs);
 
-#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                           \
-  template <typename... Tail>                                                \
-  struct ComputeCallHelper<attr_type, Tail...> {                             \
-    template <int in_idx, int vec_in_idx, int attr_idx,                      \
-              typename... PreviousArgs>                                      \
-    static Return Compute(std::vector<Tensor> inputs,                        \
-                          std::vector<std::vector<Tensor>> vec_inputs,       \
-                          std::vector<boost::any> attrs,                     \
-                          const PreviousArgs&... pargs) {                    \
-      try {                                                                  \
-        attr_type arg = boost::any_cast<attr_type>(attrs[attr_idx]);         \
-        return ComputeCallHelper<Tail...>::template Compute<                 \
-            in_idx, vec_in_idx, attr_idx + 1>(inputs, attrs, pargs..., arg); \
-      } catch (boost::bad_any_cast&) {                                       \
-        PD_THROW(                                                            \
-            "Attribute cast error in custom operator. Expected " #attr_type  \
-            " value.");                                                      \
-      }                                                                      \
-    }                                                                        \
+#define PD_SPECIALIZE_ComputeCallHelper(attr_type)                          \
+  template <typename... Tail>                                               \
+  struct ComputeCallHelper<attr_type, Tail...> {                            \
+    template <int in_idx, int vec_in_idx, int attr_idx,                     \
+              typename... PreviousArgs>                                     \
+    static Return Compute(std::vector<Tensor> inputs,                       \
+                          std::vector<std::vector<Tensor>> vec_inputs,      \
+                          std::vector<boost::any> attrs,                    \
+                          const PreviousArgs&... pargs) {                   \
+      try {                                                                 \
+        attr_type arg = boost::any_cast<attr_type>(attrs[attr_idx]);        \
+        return ComputeCallHelper<Tail...>::template Compute<                \
+            in_idx, vec_in_idx, attr_idx + 1>(inputs, vec_inputs, attrs,    \
+                                              pargs..., arg);               \
+      } catch (boost::bad_any_cast&) {                                      \
+        PD_THROW(                                                           \
+            "Attribute cast error in custom operator. Expected " #attr_type \
+            " value.");                                                     \
+      }                                                                     \
+    }                                                                       \
   }
 
 template <typename T>

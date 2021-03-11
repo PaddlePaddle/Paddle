@@ -207,7 +207,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 "Tensors.",
                 vec_true_outs.size(), outs.size()));
         for (size_t j = 0; j < vec_true_outs.size(); ++j) {
-          CustomTensorUtils::ShareDataTo(outs.at(i), vec_true_outs.at(i));
+          CustomTensorUtils::ShareDataTo(outs.at(j), vec_true_outs.at(j));
         }
       } else {
         auto* true_out = ctx.Output<Tensor>(out_name);

@@ -23,6 +23,9 @@ set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
 py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
 set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
 
+py_test(test_custom_concat SRCS test_custom_concat.py)
+set_tests_properties(test_custom_concat PROPERTIES TIMEOUT 120)
+
 py_test(test_check_abi SRCS test_check_abi.py)
 
 cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)
