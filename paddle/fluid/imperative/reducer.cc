@@ -482,13 +482,9 @@ void Reducer::PrepareForBackward(
 
   // The first var to trigger the unused parameter
   has_marked_unused_vars_ = false;
-  if (!find_unused_vars_) {
-    return;
-  }
 
   // TODO(shenliang03) "find_unused_vars" interface will be exposed in the
   // future to handle control flow to process unused parameters
-  find_unused_vars_ = false;
 
   unused_vars_.clear();
   node_deps_.clear();
