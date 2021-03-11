@@ -36,7 +36,7 @@ DECLARE_bool(sort_sum_gradient);
 namespace paddle {
 namespace imperative {
 
-void BasicEngine::Init(VarBase* var, bool retain_graph) {
+void BasicEngine::Init(VarBase* var, bool retain_graph, VarBase* grad_tensor) {
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
   PADDLE_ENFORCE_EQ(var->GradVarBase()->GraphIsFreed(), false,
@@ -75,9 +75,15 @@ void BasicEngine::Init(VarBase* var, bool retain_graph) {
           << " as stop_gradient false";
   var->GradVarBase()->InnerSetOverridedStopGradient(false);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());
-  grad_var->Resize(fwd_var.dims());
-  grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-  operators::math::set_constant(*dev_ctx, grad_var, 1.0);
+  if (grad_tensor == nullptr) {
+    grad_var->Resize(fwd_var.dims());
+    grad_var->mutable_data(fwd_var.place(), fwd_var.type());
+    operators::math::set_constant(*dev_ctx, grad_var, 1.0);
+  } else {
+    paddle::framework::TensorCopy(
+        grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
+        *dev_ctx, grad_var);
+  }
 }
 
 void BasicEngine::CheckBackwardInputs(const OpBase& op) {

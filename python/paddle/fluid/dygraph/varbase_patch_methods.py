@@ -133,7 +133,7 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, retain_graph=False):
+    def backward(self, retain_graph=False, grad_tensor=None):
         """
         Run backward of current Graph which starts from current Tensor.
 
@@ -147,6 +147,10 @@ def monkey_patch_varbase():
                 :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
                 Defaults to False.
 
+            grad_tensor(Tensor, optional): initial gradient values of `outputs` . If `grad_tensor` is None, 
+            the initial gradient values of `outputs` would be Tensor filled with 1; 
+            if `grad_tensor` is not None, it must have the same length as `outputs`.
+            Default None.
         Returns:
             NoneType: None
 
@@ -168,6 +172,17 @@ def monkey_patch_varbase():
                 print("{}".format(x.grad))
                 # 0.
 
+                grad_tensor=paddle.to_tensor(2.)
+                for i in range(5):
+                    y = paddle.pow(x, 4.0)
+                    y.backward(grad_tensor=grad_tensor)
+                    print("{}: {}".format(i, x.grad))
+                # 0: [1000.]
+                # 1: [2000.]
+                # 2: [3000.]
+                # 3: [4000.]
+                # 4: [5000.]
+
         """
         if framework.in_dygraph_mode():
             if paddle.is_compiled_with_xpu():
@@ -176,7 +191,12 @@ def monkey_patch_varbase():
                 scaled_loss._run_backward(framework._dygraph_tracer(),
                                           retain_graph)
             else:
-                self._run_backward(framework._dygraph_tracer(), retain_graph)
+                if grad_tensor is not None:
+                    assert grad_tensor.shape == self.shape, "Variable Shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
+                        grad_tensor.name, grad_tensor.shape, self.name,
+                        self.shape)
+                self._run_backward(framework._dygraph_tracer(), retain_graph,
+                                   grad_tensor)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")

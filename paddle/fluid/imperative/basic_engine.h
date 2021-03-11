@@ -30,7 +30,8 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  void Init(VarBase* var, bool retain_graph = false);
+  void Init(VarBase* var, bool retain_graph = false,
+            VarBase* grad_tensor = nullptr);
 
   void Execute() override;
 
