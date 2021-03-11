@@ -87,10 +87,11 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
-  auto cmd = paddle::string::split_string<std::string>(path, "|");
+  auto cmd = paddle::string::split_string<std::string>(param, "|");
   std::set<std::string> cmd_set(cmd.begin(), cmd.end()); 
   bool load_edge = cmd_set.count(std::string("edge"));
   bool reverse_edge = cmd_set.count(std::string("reverse"));
+  VLOG(0) << "Reverse Edge " << reverse_edge;
    
   auto paths = paddle::string::split_string<std::string>(path, ";");
   VLOG(0) << paths.size();
