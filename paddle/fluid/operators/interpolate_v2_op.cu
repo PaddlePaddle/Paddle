@@ -383,6 +383,7 @@ __global__ void KeBilinearInterpBw(
   int out_id_w = tid % output_w;
   const int in_img_size = in_img_h * in_img_w;
   const int out_img_size = out_img_h * out_img_w;
+  const T out_pos = out[out_id_h * output_w + out_id_w];
 
   if (data_layout == DataLayout::kNCHW) {
     const int share_mem_size = 1024;
@@ -405,17 +406,17 @@ __global__ void KeBilinearInterpBw(
       T w2lambda = 1.f - w1lambda;
       T h2lambda = 1.f - h1lambda;
 
-      T out_pos = out[out_id_h * output_w + out_id_w];
+      // top_left_index is just input_index.
       int input_index = out_id_h * input_w + channel_id * in_img_size +
                         in_img_idy * in_img_w + in_img_idx;
+      int top_right_index = input_index + w_id;
+      int bot_left_index = input_index + h_id * in_img_w;
+      int bot_right_index = input_index + h_id * in_img_w + w_id;
+
       if (in_img_w < output_w) {
         s_data[0][threadIdx.x] = 0;
         s_data[1][threadIdx.x] = 0;
-
-        // top_left_index is just input_index.
-        int top_right_index = input_index + w_id;
-        int bot_left_index = input_index + h_id * in_img_w;
-        int bot_right_index = input_index + h_id * in_img_w + w_id;
+        __syncthreads();
         int in_top_max_index =
             math::blockReduceMax(top_right_index, FINAL_MASK);
         int in_bot_max_index =
@@ -472,8 +473,6 @@ __global__ void KeBilinearInterpBw(
       T h1lambda = src_h - in_img_idy;
       T w2lambda = 1.f - w1lambda;
       T h2lambda = 1.f - h1lambda;
-
-      const T out_pos = out[out_id_h * output_w + out_id_w];
 
       T* in_pos =
           &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
