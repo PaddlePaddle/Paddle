@@ -280,11 +280,6 @@ def rewrite_program_bf16(main_prog, amp_lists=None, use_bf16_guard=False):
                                            core.VarDesc.VarType.BF16,
                                            core.VarDesc.VarType.FP32)
         elif op in bf16_op_set:
-            if use_bf16_guard:
-                if not (op.has_attr('op_namescope') and
-                        (_bf16_guard_pattern in op.attr("op_namescope"))):
-                    idx += 1
-                    continue
             if op.has_attr('use_mkldnn'):
                 op._set_attr('use_mkldnn', True)
                 op._set_attr('mkldnn_data_type', 'bfloat16')

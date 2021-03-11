@@ -53,11 +53,13 @@ class TestModelCastBF16(unittest.TestCase):
             with fluid.program_guard(prog, startup_prog):
                 yield
 
-    def get_static_graph_result(self, feed, fetch_list, with_lod=False):
+    def get_static_graph_result(self, feed, fetch_list, amp_fun,
+                                with_lod=False):
         exe = fluid.Executor(core.CPUPlace())
         exe.run(fluid.default_startup_program())
         prog = fluid.default_main_program()
-        amp.rewrite_program_bf16(prog, use_bf16_guard=True)
+        if amp_fun is not None:
+            amp_fun(prog)
         return exe.run(prog,
                        feed=feed,
                        fetch_list=fetch_list,
@@ -81,7 +83,7 @@ class TestModelCastBF16(unittest.TestCase):
 
             ret = layers.elementwise_add(t, tt)
             ret = layers.elementwise_mul(ret, t)
-            ret = fluid.layers.reshape(ret, [0, 0])
+            ret = layers.reshape(ret, [0, 0])
 
             with amp.bf16_guard():
                 ret_bf16 = layers.elementwise_add(t_bf16, tt_bf16)
@@ -100,10 +102,42 @@ class TestModelCastBF16(unittest.TestCase):
                     't_bf16': n_bf16,
                     'tt_bf16': nn_bf16,
                 },
-                fetch_list=[ret_bf16, ret, ret_fp32bf16])
+                fetch_list=[ret_bf16, ret, ret_fp32bf16],
+                amp_fun=lambda prog: amp.rewrite_program_bf16(prog, use_bf16_guard=True))
 
         self.assertTrue(np.allclose(static_ret_bf16, static_ret, 1e-2))
         self.assertTrue(np.allclose(static_ret_bf16, ret_fp32bf16, 1e-2))
+
+    def test_op_rewrite(self):
+        size = 3
+        n = np.ones([size, size], dtype='float32') * 3.2
+        nn = np.ones([size, size], dtype='float32') * -2.7
+
+        with self.static_graph():
+            t = layers.data(name='t', shape=[size, size], dtype='float32')
+            tt = layers.data(name='tt', shape=[size, size], dtype='float32')
+
+            with amp.bf16_guard():
+                ret = layers.elementwise_add(t, tt)
+                ret = layers.reshape(ret, [0, 0], act='elu')
+                ret = layers.elementwise_mul(ret, t)
+            ret = layers.elementwise_add(ret, tt)
+
+            static_ret_bf16 = \
+                self.get_static_graph_result(
+                    feed={'t': n, 'tt': nn},
+                    fetch_list=[ret],
+                    amp_fun=lambda prog: amp.rewrite_program_bf16(
+                        prog,
+                        amp.AutoMixedPrecisionListsBF16(
+                            custom_fp32_varnames={'elementwise_mul'},
+                        ),
+                        use_bf16_guard=True
+                    )
+                )
+            self.assertTrue(
+                static_ret_bf16, np.ones(
+                    [size, size], dtype='float32') * -1.1)
 
 
 if __name__ == '__main__':
