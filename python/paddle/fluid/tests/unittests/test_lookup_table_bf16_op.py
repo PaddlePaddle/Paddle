@@ -27,7 +27,8 @@ from paddle import enable_static
 
 def _lookup(weights, ids):
     w_shape = weights.shape
-    out_shape = (*ids.shape[:-1], w_shape[-1])
+    out_shape = list(ids.shape[:-1])
+    out_shape.append(w_shape[-1])
     out = weights[ids.flatten()].reshape(out_shape)
     return out
 
