@@ -88,7 +88,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
         grad:
             - 0: op that generate Var
             - 1: sync_calc
-            - 2: allreduce_sum_sharding
+            - 2: reduce_sum_sharding (allreduce --> reduce)
             - 3: sync_comm
             - 4: allreuce_sum_dp (dp_grads)
             - 5: sync_comm (dp_grads)
@@ -103,7 +103,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     idx_gradient_clip_allreduce = -1
 
     for idx, op in enumerate(block.ops):
-        if op.type == "c_allreduce_sum":
+        if op.type == "c_allreduce_sum" or op.type == "c_reduce_sum" :
             if op.all_attrs()["use_calc_stream"] == False:
                 ring_id = op.desc.attr("ring_id")
                 var_name = op.desc.input_arg_names()[0]
@@ -137,11 +137,12 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                         var_name] == 0:
                     dp_grads_status[var_name] = 1
 
-        elif op.type == "c_allreduce_sum":
+        elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum" :
             if op.all_attrs()["use_calc_stream"] == False:
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
+                    assert op.type == "c_reduce_sum", "Grad in Sharding group should be reduce rather than allreduce"
                     if var_name in vars_status:
                         _status = vars_status[var_name]
                     else:
@@ -191,6 +192,8 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                         raise ValueError("There should be a sync_comm op "
                                          "after allreduce the Var: {}".format(
                                              input_name))
+                    raise ValueError("The reduce output grad [{}] should NOT be be used in Non-root rank.".format(
+                            input_name))
                 if input_name in dp_grads_status:
                     if dp_ring_id == -1:
                         if dp_grads_status[input_name] != 3:
@@ -275,6 +278,9 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for vars
     """
+    if len(comm_dep_vars) == 0:
+        return 0
+
     op_role = get_valid_op_role(block, insert_idx)
     block._insert_op_without_sync(
         insert_idx,
@@ -329,6 +335,9 @@ def insert_allreduce_ops(block, insert_idx, ring_id, allreduce_vars):
     """
     _add_allreduce_ops
     """
+    if len(allreduce_vars) == 0:
+        return 
+
     for var in allreduce_vars:
         block._insert_op_without_sync(
             insert_idx,
@@ -340,6 +349,49 @@ def insert_allreduce_ops(block, insert_idx, ring_id, allreduce_vars):
 
     return
 
+
+def get_grad_device(grad_name, shard):
+    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(grad_name)
+    base_name = None
+    # mind the traversal order 
+    possible_suffixes = ['.cast_fp16@GRAD_0','.cast_fp16@GRAD', '@GRAD_0', '@GRAD']
+    for suffix in possible_suffixes:
+        if suffix in grad_name :
+            base_name = re.sub(suffix, '', grad_name)
+            break
+
+    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(base_name)
+
+    return shard.global_param2device[base_name]
+
+
+def insert_reduce_ops(block, insert_idx, ring_id, reduce_vars, shard, op_role = OpRole.Backward, use_calc_stream = False):
+    """
+    _add_allreduce_ops
+    """
+    for var in reduce_vars:
+
+        root_id = get_grad_device(var, shard)
+        assert root_id >= 0, "root id should be a positive int".format(var)
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_reduce_sum',
+            inputs={'X': var},
+            outputs={'Out': var},
+            attrs={'ring_id': ring_id,
+                   'root_id': root_id,
+                   'use_calc_stream': use_calc_stream,
+                   OP_ROLE_KEY: op_role})
+    return
+
+def get_first_check_finite_and_unscale_op_idx(block):
+
+    for idx, op in enumerate(block.ops):
+        if op.type == "check_finite_and_unscale":
+            return idx
+
+    raise ValueError("check_finite_and_unscale does not exist in block")
+    
 
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     """

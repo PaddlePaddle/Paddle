@@ -4848,11 +4848,13 @@ class PipelineOptimizer(object):
                 new_grad_name = name + "@MERGED"
                 self._rename_arg(op, name, new_grad_name)
 
-    def _accumulate_gradients(self, block):
+    def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
+        merged_gradient_names = []
+
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # remove the cast op of fp16 grad to fp32 grad
             if self._is_optimize_op(op) and op.type == 'cast':
@@ -4874,11 +4876,10 @@ class PipelineOptimizer(object):
                 for i in range(0, len(op_role_var), 2):
                     offset = 1
                     param_name = op_role_var[i]
+                    param_grad_name = param_name + core.grad_var_suffix()
                     assert block.has_var(param_name), (
                         "parameter {} not in "
                         "current block.".format(param_name))
-                    # clear gradient
-                    param_grad_name = self._append_grad_suffix(param_name)
                     merged_param_grad_name = param_grad_name + '@MERGED'
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
@@ -4912,6 +4913,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: self._op_role.Backward,
                             })
                         offset += 1
+                        merged_grad_names.append(merged_param_grad_name)
                     else:
                         # cast gradient to fp32 to accumulate to merged gradient
                         cast_grad_var_name = param_grad_name + '@TMP'
@@ -4942,6 +4944,8 @@ class PipelineOptimizer(object):
                                 self._op_role_var_key: op_role_var
                             })
                         offset += 1
+                        merged_grad_names.append(merged_param_grad_name)
+        return merged_grad_names
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
@@ -5089,6 +5093,7 @@ class PipelineOptimizer(object):
                  parameter_list=None,
                  no_grad_set=None):
         main_block = loss.block
+        self.origin_main_block = main_block
         if startup_program is None:
             startup_program = default_startup_program()
         optimize_ops, params_grads = self._optimizer.minimize(
