@@ -244,14 +244,15 @@ void RunBrpcPushSparse() {
 
   distributed::GraphPyService gps1, gps2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
-  gps1.set_up(ips_str, 127, 0, 0, 0);
-  gps2.set_up(ips_str, 127, 1, 1, 0);
-  gps1.load_file(std::string(file_name));
+  std::vector<std::string> edge_types = { std::string("user2item")};
+  gps1.set_up(ips_str, 127, 0, 0, edge_types);
+  gps2.set_up(ips_str, 127, 1, 1, edge_types);
+  gps1.load_edge_file(std::string("user2item"), std::string(file_name), 0);
   v.clear();
-  v = gps2.pull_graph_list(0, 1, 4);
+  v = gps2.pull_graph_list(std::string("user2item"), 0, 1, 4);
   ASSERT_EQ(v[0].get_id(), 59);
   v.clear();
-  v = gps2.sample_k(96, 4);
+  v = gps2.sample_k(std::string("user2item"), 96, 4);
   ASSERT_EQ(v.size(), 3);
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService

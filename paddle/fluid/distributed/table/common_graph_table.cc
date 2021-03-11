@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <sstream>
 #include <time.h>
+#include <set>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -86,9 +87,15 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
+  auto cmd = paddle::string::split_string<std::string>(path, "|");
+  std::set<std::string> cmd_set(cmd.begin(), cmd.end()); 
+  bool load_edge = cmd_set.count(std::string("edge"));
+  bool reverse_edge = cmd_set.count(std::string("reverse"));
+   
   auto paths = paddle::string::split_string<std::string>(path, ";");
   VLOG(0) << paths.size();
   int count = 0;
+  
   for (auto path : paths) {
     std::ifstream file(path);
     std::string line;
@@ -98,6 +105,9 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
       if (values.size() < 2) continue;
       auto src_id = std::stoull(values[0]);
       auto dst_id = std::stoull(values[1]);
+      if(reverse_edge) {
+          std::swap(src_id, dst_id);
+      }
       double weight = 0;
       if (values.size() == 3) {
           weight = std::stod(values[2]);
