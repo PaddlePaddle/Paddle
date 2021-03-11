@@ -88,18 +88,18 @@ class TestReduceSumNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(32, 32)).astype('float32')
-        b_np = np.random.random(size=(32, 32)).astype('float32')
-        label_np = np.random.randint(2, size=(1)).astype('int64')
+        a_np = np.random.random(size=(2, 3, 4)).astype('float32')
+        b_np = np.random.random(size=(2, 3, 4)).astype('float32')
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
-            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
+            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[2, 1], dtype='int64')
 
             z = paddle.add(a, b)
-            z_1 = paddle.fluid.layers.reduce_sum(z)
+            z_1 = paddle.fluid.layers.reduce_sum(z, dim=-1)
 
             prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')
 

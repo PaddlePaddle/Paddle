@@ -69,7 +69,7 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     auto runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
-                              {{"shape", framework::vectorize(x->dimx())}});
+                              {{"shape", framework::vectorize(x->dims())}});
     runner.Run(stream);
   }
 };
