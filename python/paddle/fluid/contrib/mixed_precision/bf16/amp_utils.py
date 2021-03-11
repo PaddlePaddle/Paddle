@@ -21,6 +21,7 @@ from .... import framework
 from ....log_helper import get_logger
 from ....wrapped_decorator import signature_safe_contextmanager
 from .amp_lists import AutoMixedPrecisionListsBF16
+from ..fp16_utils import find_true_prev_op, find_true_post_op, _rename_arg, find_op_index
 import logging
 import numpy as np
 
@@ -43,23 +44,6 @@ def convert_float_to_uint16(in_list):
         lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
         otypes=[np.uint16])(in_list.flat)
     return np.reshape(out, in_list.shape)
-
-
-def _rename_arg(op, old_name, new_name):
-    """
-    If an op has old_name input and output, rename these input
-    args new_name.
-
-    Args:
-        op (Operator): Current operator.
-        old_name (str): The old name of input args.
-        new_name (str): The new name of input args.
-    """
-    op_desc = op.desc
-    if isinstance(op_desc, tuple):
-        op_desc = op_desc[0]
-    op_desc._rename_input(old_name, new_name)
-    op_desc._rename_output(old_name, new_name)
 
 
 def _dtype_to_str(dtype):
@@ -140,65 +124,6 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
     return num_cast_ops
-
-
-def find_true_prev_op(ops, cur_op, var_name):
-    """
-    Find the true prev op that outputs var_name variable.
-
-    Args:
-        ops (list): A list of ops.
-        cur_op (Operator): Current operator which has var_name variable.
-        var_name (string): Variable name.
-    """
-    prev_op = []
-    for op in ops:
-        if op == cur_op:
-            break
-        for out_name in op.output_names:
-            for out_var_name in op.output(out_name):
-                if out_var_name == var_name:
-                    prev_op.append(op)
-    if prev_op:
-        if not len(prev_op) == 1:
-            raise ValueError("There must be only one previous op "
-                             "that outputs {0} variable".format(var_name))
-        else:
-            return prev_op[0]
-    return None
-
-
-def find_true_post_op(ops, cur_op, var_name):
-    """
-    if there are post ops, return them, if there is no post op,
-    return None instead.
-    Args:
-        ops (list): A list of ops.
-        cur_op (Operator): Current operator which has var_name variable.
-        var_name (string): Variable name.
-    """
-    post_op = []
-    for idx, op in enumerate(ops):
-        if op == cur_op:
-            break
-
-    for i in range(idx + 1, len(ops)):
-        op = ops[i]
-        for in_name in op.input_names:
-            for in_var_name in op.input(in_name):
-                if in_var_name == var_name:
-                    post_op.append(op)
-
-    return post_op
-
-
-def find_op_index(block_desc, cur_op_desc):
-    """
-    """
-    for idx in range(block_desc.op_size()):
-        if cur_op_desc == block_desc.op(idx):
-            return idx
-    return -1
 
 
 def _is_in_fp32_varnames(op, amp_lists):
