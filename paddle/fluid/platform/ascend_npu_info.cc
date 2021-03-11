@@ -31,5 +31,3 @@ int NPUDevice::GetDeviceCount() {
 }  // namespace ascend
 }  // namespace platform
 }  // namespace paddle
-
-
