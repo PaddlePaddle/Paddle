@@ -90,7 +90,7 @@ class TestReduceSumNet(unittest.TestCase):
 
         a_np = np.random.random(size=(32, 32)).astype('float32')
         b_np = np.random.random(size=(32, 32)).astype('float32')
-        label_np = np.random.randint(2, size=(32, 1)).astype('int64')
+        label_np = np.random.randint(2, size=(1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
@@ -99,7 +99,7 @@ class TestReduceSumNet(unittest.TestCase):
                 name="label", shape=[32, 1], dtype='int64')
 
             z = paddle.add(a, b)
-            z_1 = paddle.fluid.layers.reduce_sum(z, dim=1)
+            z_1 = paddle.fluid.layers.reduce_sum(z)
 
             prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')
 
