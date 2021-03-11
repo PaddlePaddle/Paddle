@@ -52,13 +52,27 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
       size_t bytes_size = io_buffer_itr.bytes_left();
       char *buffer = new char[bytes_size];
       io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
-      int start = 0;
-      while (start < bytes_size) {
-        GraphNode node;
-        node.recover_from_buffer(buffer + start);
-        start += node.get_size();
-        res.push_back(node);
+
+      size_t num_nodes = *(size_t *)buffer;
+      int *actual_sizes = (int *)(buffer + sizeof(size_t));
+      char *node_buffer = buffer + sizeof(size_t) + sizeof(int) * num_nodes;
+      
+      std::vector<std::vector<GraphNode> > ress;
+      std::vector<GraphNode> res_;
+      int offset = 0;
+      for (size_t idx = 0; idx < num_nodes; ++idx){
+        int actual_size = actual_sizes[idx];
+        int start = 0;
+        while (start < actual_size) {
+          GraphNode node;
+          node.recover_from_buffer(node_buffer + offset + start);
+          start += node.get_size();
+          res_.push_back(node);
+        }
+        offset += actual_size;
+        ress.push_back(res_);
       }
+      res = ress[0];
     }
     closure->set_promise_value(ret);
   });
@@ -70,8 +84,11 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
   closure->request(0)->set_table_id(table_id);
   closure->request(0)->set_client_id(_client_id);
   // std::string type_str = GraphNode::node_type_to_string(type);
-  closure->request(0)->add_params((char *)&node_id, sizeof(uint64_t));
-  // closure->request(0)->add_params(type_str.c_str(), type_str.size());
+  std::vector<uint64_t> node_ids;
+  node_ids.push_back(node_id);
+  size_t num_nodes = node_ids.size();
+    
+  closure->request(0)->add_params((char *)node_ids.data(), sizeof(uint64_t)*num_nodes);
   closure->request(0)->add_params((char *)&sample_size, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());

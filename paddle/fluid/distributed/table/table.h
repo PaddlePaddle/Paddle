@@ -93,9 +93,9 @@ class Table {
     return 0;
   }
   // only for graph table
-  virtual int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
+  virtual std::future<int> random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 int &actual_size) {
-    return 0;
+    return std::future<int>();
   }
   virtual int32_t pour() { return 0; }
 
