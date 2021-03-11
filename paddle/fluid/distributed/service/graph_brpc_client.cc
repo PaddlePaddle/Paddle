@@ -102,27 +102,31 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
                                              std::vector<uint64_t> node_ids, int sample_size,
                                              std::vector<std::vector<GraphNode> > &res) {
 
-  std::vector<std::vector<uint64_t> > node_id_buckets;
-  std::vector<std::vector<uint64_t> > query_idx_buckets;
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
-
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx){
     int server_index = get_server_index_by_id(node_ids[query_idx]);
     if(server2request[server_index] == -1){
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
-      node_id_buckets.push_back(std::vector<uint64_t> ());
-      query_idx_buckets.push_back(std::vector<uint64_t> ());
     }
-    int request_idx = server2request[server_index];
-    node_id_buckets[request_idx].push_back(node_ids[query_idx]);
-    query_idx_buckets[request_idx].push_back(query_idx);
     res.push_back(std::vector<GraphNode>());
   }
   size_t request_call_num = request2server.size();
+  std::vector<std::vector<uint64_t> > node_id_buckets(request_call_num);
+  std::vector<std::vector<int> > query_idx_buckets(request_call_num);
+  for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx){
+    int server_index = get_server_index_by_id(node_ids[query_idx]);
+    int request_idx = server2request[server_index];
+    node_id_buckets[request_idx].push_back(node_ids[query_idx]);
+    query_idx_buckets[request_idx].push_back(query_idx);
+  }
+
+  for (int request_idx = 0; request_idx < request_call_num; ++request_idx){
+
+  }
   
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(request_call_num, [&, node_id_buckets, query_idx_buckets, request_call_num](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
     for (int request_idx = 0; request_idx < request_call_num; ++request_idx){
@@ -130,7 +134,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
         ret = -1;
       } else {
         VLOG(0) << "check sample response: "
-                << " " << closure->check_response(request_idx, PS_GRAPH_SAMPLE);
+              << " " << closure->check_response(request_idx, PS_GRAPH_SAMPLE);
         auto &res_io_buffer = closure->cntl(request_idx)->response_attachment();
         butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
         size_t bytes_size = io_buffer_itr.bytes_left();
@@ -141,10 +145,9 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
         int *actual_sizes = (int *)(buffer + sizeof(size_t));
         char *node_buffer = buffer + sizeof(size_t) + sizeof(int) * node_num;
         
-        //std::vector<GraphNode> res_;
         int offset = 0;
         for (size_t node_idx = 0; node_idx < node_num; ++node_idx){
-          int query_idx = query_idx_buckets[request_idx][node_idx];
+          int query_idx = query_idx_buckets.at(request_idx).at(node_idx);
           int actual_size = actual_sizes[node_idx];
           int start = 0;
           while (start < actual_size) {
