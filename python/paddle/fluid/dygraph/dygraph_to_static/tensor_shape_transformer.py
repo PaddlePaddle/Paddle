@@ -59,7 +59,7 @@ def create_convert_shape_node(var_shape_node,
 
 
 def create_choose_shape_node(attr_shape_name, api_shape_name, slice_node=None):
-    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', locals())".format(
+    eval_exist_func = "paddle.jit.dy2static.eval_if_exist_else_none('{}', globals())".format(
         api_shape_name)
     args = [attr_shape_name, eval_exist_func]
 
@@ -341,6 +341,12 @@ class TensorShapeTransformer(gast.NodeTransformer):
                             ast_to_source_code(static_shape_value_node).strip(),
                             idx)
                         sub_node = gast.parse(sub_node_str).body[0].value
+                        # Note(Aurelius84): Becuase static_shape_var_name is used in
+                        # eval_if_exist_else_none() as plain string, so it will not 
+                        # be pasred as argument in convert_loop/ifelse. We delcare it
+                        # as global var because it has unique name.
+                        update_static_shape_var_node.append(
+                            gast.Global(names=[static_shape_var_name]))
 
                         update_static_shape_var_node.append(
                             gast.Assign(
@@ -377,10 +383,13 @@ class TensorShapeTransformer(gast.NodeTransformer):
                 # x.shape becomes convert_var_shape_simple(x)
                 static_shape_value_node = ShapeAttributeTransformer().visit(
                     static_shape_value_node)
+                # Declare static_shape_var_name as global var
                 update_static_shape_var_node = [
+                    gast.Global(names=[static_shape_var_name])
+                ]
+                update_static_shape_var_node.append(
                     gast.Assign(
                         targets=[static_shape_var_node],
-                        value=static_shape_value_node)
-                ]
+                        value=static_shape_value_node))
                 self.name_to_var_shape[target_id] = static_shape_var_name
         return update_static_shape_var_node
