@@ -19,6 +19,8 @@ import numpy as np
 import random
 import unittest
 import logging
+import warnings
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -29,7 +31,7 @@ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass, QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
@@ -43,6 +45,14 @@ if core.is_compiled_with_cuda():
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+def get_vaild_warning_num(warning, w):
+    num = 0
+    for i in range(len(w)):
+        if warning in str(w[i].message):
+            num += 1
+    return num
 
 
 def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
@@ -76,9 +86,9 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         param_attr=conv2d_w2_attr,
         bias_attr=conv2d_b2_attr)
     batch_norm2 = layers.batch_norm(conv2)
-    relu6_1 = layers.relu6(batch_norm2)
+    prelu1 = layers.prelu(batch_norm2, mode='all')
     pool2 = fluid.layers.pool2d(
-        relu6_1, pool_size=2, pool_type='max', pool_stride=2)
+        prelu1, pool_size=2, pool_type='max', pool_stride=2)
 
     fc1 = fluid.layers.fc(input=pool2,
                           size=120,
@@ -132,7 +142,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 weight_attr=conv2d_w2_attr,
                 bias_attr=conv2d_b2_attr),
             BatchNorm2D(16),
-            ReLU6(),
+            PReLU(),
             MaxPool2D(
                 kernel_size=2, stride=2))
 
@@ -289,6 +299,8 @@ class TestImperativeOutSclae(unittest.TestCase):
         for param in main.all_parameters():
             if "batch_norm" in param.name:
                 param_name = param.name.replace("norm", "norm2d")
+            elif 'prelu' in param.name:
+                param_name = param.name.replace("prelu", 'p_re_lu')
             else:
                 param_name = param.name
             param_tensor = scope.var(param.name).get_tensor()
@@ -452,6 +464,29 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+
+
+class TestSaveQuantizedModel_Warning(unittest.TestCase):
+    def test_warning(self):
+        path = "./dynamic_outscale_infer_model_with_warnings/lenet"
+        imperative_out_scale = ImperativeQuantAware()
+        with fluid.dygraph.guard():
+            lenet = ImperativeLenet()
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            imperative_out_scale.save_quantized_model(
+                layer=lenet,
+                path=path,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[None, 1, 28, 28], dtype='float32')
+                ])
+
+        warning_message = "Warning: No Layer of the model while to be saved contains the out_threshold attribute, " \
+                "so the generated inference model would not contain the out_threshold."
+        num = get_vaild_warning_num(warning_message, w)
+        assert num == 1
 
 
 if __name__ == '__main__':

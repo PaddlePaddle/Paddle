@@ -490,7 +490,7 @@ class ImperativeCalcOutScale(object):
         ops_list = [key for key, _ in self._out_scale_dict.items()]
         if len(ops_list) == 0:
             warnings.warn(
-                "Warning: No Layer of the model while to be saved contains the out_threshold attribute,"
+                "Warning: No Layer of the model while to be saved contains the out_threshold attribute, "
                 "so the generated inference model would not contain the out_threshold."
             )
         else:
