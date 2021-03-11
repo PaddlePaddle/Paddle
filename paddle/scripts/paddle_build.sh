@@ -686,6 +686,7 @@ function get_precision_ut_mac() {
     set -x
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precison_cases=""
+    PRECISION_TEST="ON"
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then

@@ -256,7 +256,8 @@ class PRChecker(object):
                         print(
                             'PREC dismatch: {} not in file ut map and not md or comment'.
                             format(f))
-                        return ''
+                        continue
+                        #return ''
                 elif f.endswith('.cc') or f.endswith('.py') or f.endswith(
                         '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
@@ -268,7 +269,8 @@ class PRChecker(object):
                         print(
                             'PREC dismatch: {} not in file ut map and not new ut or comment'.
                             format(f))
-                        return ''
+                        continue
+                        #return ''
                 else:
                     print('PREC dismatch: {} not in file ut map'.format(f))
                     continue
