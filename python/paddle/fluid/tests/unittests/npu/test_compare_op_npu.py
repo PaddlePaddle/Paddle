@@ -56,6 +56,36 @@ class TestEqual(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLessthan(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "less_than"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = x < y  # all elements are not equal
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+
 class TestEqual2(TestEqual):
     def setUp(self):
         self.set_npu()
@@ -76,6 +106,26 @@ class TestEqual2(TestEqual):
         self.outputs = {'Out': out}
 
 
+class TestLessthan2(TestLessthan):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "less_than"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = x.copy()
+        y[0][1] = 1
+        out = x < y  # all elements are equal, except position [0][1]
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+        }
+        self.outputs = {'Out': out}
+
+
 class TestEqual2FP16(TestEqual2):
     def init_dtype(self):
         self.dtype = np.float16
@@ -84,6 +134,11 @@ class TestEqual2FP16(TestEqual2):
 class TestEqual2Int(TestEqual2):
     def init_dtype(self):
         self.dtype = np.int32
+
+
+class TestLessthan2FP16(TestLessthan2):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == '__main__':
