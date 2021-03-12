@@ -188,7 +188,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _wait(self, ):
         # only the first parallelsm group that init nccl need to be wait. 
         endpoints = self.sharding_group_endpoints[:]
-        current_endpoint = endpoints[self.role_maker._worker_index()]
+        current_endpoint = endpoints[self.sharding_rank]
         if self.sharding_rank == 0:
             self._collective_helper._wait(current_endpoint, endpoints)
 
