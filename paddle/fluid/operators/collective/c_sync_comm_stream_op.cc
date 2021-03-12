@@ -19,22 +19,51 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
 class CSyncCommStreamOp : public framework::OperatorWithKernel {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+  CSyncCommStreamOp(const std::string& type,
+                    const framework::VariableNameMap& inputs,
+                    const framework::VariableNameMap& outputs,
+                    const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+#if defined(PADDLE_WITH_NCCL)
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on gpu place only for now."));
+
+    int ring_id = Attr<int>("ring_id");
+    auto stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+
+#elif defined(PADDLE_WITH_ASCEND_CL)
+    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on npu place only for now."));
+    int ring_id = Attr<int>("ring_id");
+    auto stream =
+        platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU or NPU."));
+#endif
+
   }
 };
+
 
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
