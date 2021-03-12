@@ -21,12 +21,14 @@ import time
 import subprocess
 import requests
 import urllib.request
+import ssl
 import platform
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
 PADDLE_ROOT += '/'
 PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class PRChecker(object):
@@ -245,9 +247,11 @@ class PRChecker(object):
         for f in self.get_pr_files():
             current_system = platform.system()
             if current_system == "Darwin" or current_system == "Windows":
-                f = f.replace(PADDLE_ROOT, '/paddle/', 1)
-                f = f.replace('//', '/')
-            if f not in file_ut_map:
+                f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f_judge = f_judge.replace('//', '/')
+            else:
+                f_judge = f
+            if f_judge not in file_ut_map:
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):
@@ -277,7 +281,7 @@ class PRChecker(object):
                 if self.is_only_comment(f):
                     ut_list.append('map_comment_placeholder')
                 else:
-                    ut_list.extend(file_ut_map.get(f))
+                    ut_list.extend(file_ut_map.get(f_judge))
         ut_list = list(set(ut_list))
 
         if check_added_ut:
@@ -289,7 +293,7 @@ class PRChecker(object):
         if ut_list:
             ret = self.__urlretrieve(
                 'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix), 'prec_delta{}'.format(suffix))
+                    self.suffix), 'prec_delta{}'.format(self.suffix))
             if ret:
                 with open('prec_delta' + self.suffix) as delta:
                     for ut in delta:
