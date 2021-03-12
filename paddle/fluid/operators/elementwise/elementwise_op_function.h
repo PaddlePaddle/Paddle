@@ -449,7 +449,6 @@ void CommonForwardBroadcastCUDA2(
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
           x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
           func);
-
     } else {
       CommonForwardBroadcastCUDAKernel2<
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
