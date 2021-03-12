@@ -224,7 +224,7 @@ fi
 if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
     UT_list_prec=''
     re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-    for case in $UT_list; do
+    echo "$UT_list" | while read case;do
         flag=$(echo $case|grep -oE $re)
         if [ -n "$flag" ];then
             if [ -z "$UT_list_prec" ];then

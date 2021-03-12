@@ -21,12 +21,14 @@ import time
 import subprocess
 import requests
 import urllib.request
+import ssl
 import platform
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
 PADDLE_ROOT += '/'
 PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class PRChecker(object):
@@ -107,7 +109,7 @@ class PRChecker(object):
                 print(e)
                 print(
                     'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
-                    format(url, ix, ix * 10, proxy))
+                    format(url, ix, ix * 10, cur_proxy))
                 continue
             else:
                 return True
