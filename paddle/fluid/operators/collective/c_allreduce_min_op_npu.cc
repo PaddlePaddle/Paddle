@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_allreduce_min, 
-    ops::CAllReduceOpASCENDKernel<ops::kRedMin, float>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, int>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, int8_t>,
+    ops::CAllReduceOpASCENDKernel<ops::kRedMin, float>,
     ops::CAllReduceOpASCENDKernel<ops::kRedMin, plat::float16>)
