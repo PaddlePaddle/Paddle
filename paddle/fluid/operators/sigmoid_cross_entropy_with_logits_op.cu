@@ -29,7 +29,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+#ifdef __HIPCC__
+static constexpr int kNumCUDAThreads = 256;
+#else
 static constexpr int kNumCUDAThreads = 512;
+#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {

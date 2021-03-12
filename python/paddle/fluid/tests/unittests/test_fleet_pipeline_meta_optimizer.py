@@ -48,7 +48,10 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.pipeline = True
-        strategy.pipeline_configs = {'micro_batch': 2}
+        strategy.pipeline_configs = {
+            'micro_batch_size': 1,
+            'accumulate_steps': 2
+        }
 
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

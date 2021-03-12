@@ -17,6 +17,7 @@ limitations under the License. */
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/group_norm_op.h"
@@ -46,18 +47,10 @@ enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 
 template <typename T>
 __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
-#ifdef PADDLE_WITH_CUDA
   typedef cub::WarpReduce<T> WarpReduce;
-#else
-  typedef hipcub::WarpReduce<T> WarpReduce;
-#endif
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
-#ifdef PADDLE_WITH_CUDA
   if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
-#else
-  if (hipcub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
-#endif
 }
 
 template <typename T>
