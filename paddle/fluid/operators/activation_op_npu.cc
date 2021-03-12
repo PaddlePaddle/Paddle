@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -74,24 +73,19 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
     runner_pow.Run(stream);
 
     // Step 2: Construct a broadcast factor, which has the same shape with x.
-    // 2.1 Get the shape of x
-    Tensor x_shape(framework::proto::VarType::INT32);
-    x_shape.mutable_data<int32_t>({x_dims.size()}, place);
-    TensorFromVector(framework::vectorize<int32_t>(x_dims),
-                     ctx.device_context(), &x_shape);
 
-    // 2.2 Get a factor tensor with shape [1].
+    // 2.1 Get a factor tensor with shape [1].
     Tensor factor_tensor(framework::proto::VarType::FP32);
     factor_tensor.mutable_data<float>({1}, place);
     TensorFromVector(std::vector<float>{factor}, ctx.device_context(),
                      &factor_tensor);
 
-    // 2.3 Get the factor which has the shape with x and the same value with
+    // 2.2 Get the factor which has the shape with x and the same value with
     // factor.
     Tensor factor_bc_tensor(framework::proto::VarType::FP32);
     factor_bc_tensor.mutable_data<float>(x_dims, place);
-    auto runner_bc = NpuOpRunner("BroadcastTo", {factor_tensor, x_shape},
-                                 {factor_bc_tensor}, {});
+    auto runner_bc = NpuOpRunner("FillD", {factor_tensor}, {factor_bc_tensor},
+                                 {{"dims", framework::vectorize(x_dims)}});
     runner_bc.Run(stream);
 
     // Step 3: Compute x_power_mul_factor = factor * x.pow(factor-1)
@@ -109,6 +103,46 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ReluNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto runner = NpuOpRunner("Relu",
+                              {
+                                  *x,
+                              },
+                              {*out}, {});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReluGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto runner = NpuOpRunner("ReluGrad", {*dout, *out}, {*dx}, {});
+
+    runner.Run(stream);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -124,4 +158,13 @@ REGISTER_OP_NPU_KERNEL(
     ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
 
-#endif
+REGISTER_OP_NPU_KERNEL(
+    relu, ops::ReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReluNPUKernel<paddle::platform::NPUDeviceContext,
+                       paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu_grad,
+    ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);
