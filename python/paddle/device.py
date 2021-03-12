@@ -51,6 +51,7 @@ def is_compiled_with_xpu():
             import paddle
             support_xpu = paddle.device.is_compiled_with_xpu()
     """
+    print('test for prec')
     return core.is_compiled_with_xpu()
 
 
