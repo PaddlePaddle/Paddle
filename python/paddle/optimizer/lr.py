@@ -45,8 +45,6 @@ class LRScheduler(object):
         instance to schedule learning rate.
 
     Examples:
-        Here is an example of a simple ``StepDecay`` implementation. 
-        
         .. code-block:: python
             
             import paddle
