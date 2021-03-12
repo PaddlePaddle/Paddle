@@ -51,9 +51,10 @@ class MulNPUKernel : public framework::OpKernel<T> {
         runner.Run(stream);
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
         // flatten
-        Tensor tmp_flatten(x->type());
+        // Tensor tmp_flatten(x->type());
         int64_t size = x->dims()[1] * x->dims()[2];
-        x->Resize(paddle::framework::make_ddim({x->dims()[0], size}));
+        int64_t f_dim = x->dims()[0];
+        x->Resize(paddle::framework::make_ddim({f_dim, size}));
         // std::vector<int64_t> vec_flatten;
         // vec_flatten.push_back(size);
         // tmp_flatten.Resize(framework::make_ddim(vec_flatten));
@@ -63,7 +64,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         // runner_flatten.Run(stream);
         out->mutable_data<T>(ctx.GetPlace());
         // matmul
-        auto runner_matmul = NpuOpRunner("MatMul", {x, *y}, {*out}, {});
+        auto runner_matmul = NpuOpRunner("MatMul", {*x, *y}, {*out}, {});
         runner_matmul.Run(stream);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument("not suppert dims"));
