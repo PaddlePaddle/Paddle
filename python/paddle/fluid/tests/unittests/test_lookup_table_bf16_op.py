@@ -25,20 +25,20 @@ from paddle.fluid.op import Operator
 from paddle import enable_static
 
 
-def _lookup(weights, ids):
+def _lookup(weights, ids, flat_ids):
     w_shape = weights.shape
     out_shape = list(ids.shape[:-1])
     out_shape.append(w_shape[-1])
-    out = weights[ids.flatten()].reshape(out_shape)
+    out = weights[flat_ids].reshape(out_shape)
     return out
 
 
-def _get_grad(weights, ids):
+def _get_grad(weights, ids, flat_ids):
     w_shape = weights.shape
     w_grad = np.zeros((w_shape), dtype=weights.dtype)
     out_grad_shape = (np.prod(ids.shape[:-1]), w_shape[-1])
-    out_grad = weights[ids.flatten()].reshape(out_grad_shape)
-    for i, idx in enumerate(ids.flatten()):
+    out_grad = weights[flat_ids].reshape(out_grad_shape)
+    for i, idx in enumerate(flat_ids):
         w_grad[idx, :] += out_grad[i]
     return w_grad
 
@@ -52,11 +52,12 @@ class TestLookupTableBF16Op(OpTest):
 
         table = np.random.random((17, 31)).astype("float32")
         self.ids = np.random.randint(0, 17, (4, 1)).astype("int64")
+        self.flat_ids = self.ids.flatten()
 
         self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = self.w_bf16[self.ids.flatten()]
-        self.out_fp32 = table[self.ids.flatten()]
-        self.w_grad_fp32 = _get_grad(table, self.ids)
+        self.out_bf16 = _lookup(self.w_bf16, self.ids, self.flat_ids)
+        self.out_fp32 = _lookup(table, self.ids, self.flat_ids)
+        self.w_grad_fp32 = _get_grad(table, self.ids, self.flat_ids)
 
         self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
         self.outputs = {'Out': self.out_fp32}
@@ -77,34 +78,10 @@ class TestLookupTableBF16Op(OpTest):
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
-class TestLookupTableBF16OpIds4D(OpTest):
+class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
     def setUp(self):
-        self.op_type = "lookup_table"
-        self.dtype = np.uint16
-
-        table = np.random.random((17, 31)).astype("float32")
+        super().setUp()
         self.ids = np.random.randint(0, 17, (2, 4, 5, 1)).astype("int64")
-
-        self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = self.w_bf16[self.ids.flatten()].reshape((2, 4, 5, 31))
-        self.out_fp32 = table[self.ids.flatten()].reshape((2, 4, 5, 31))
-        self.w_grad_fp32 = _get_grad(table, self.ids)
-
-        self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
-        self.outputs = {'Out': self.out_fp32}
-
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['W'],
-            'Out',
-            no_grad_set=set('Ids'),
-            check_dygraph=False,
-            max_relative_error=1.5e-2,
-            user_defined_grads=[self.w_grad_fp32],
-            user_defined_grad_outputs=[self.out_bf16])
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
@@ -113,6 +90,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
     def setUp(self):
         self.ids = np.random.randint(
             low=0, high=15, size=(10, 1)).astype("int64")
+        self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
         self.w_bf16 = convert_float_to_uint16(self.w_fp32)
         self.scope = core.Scope()
@@ -147,7 +125,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
 
         # get result from Out
         result_array = np.array(out_tensor)
-        ref = _lookup(self.w_fp32, self.ids)
+        ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
         self._check_output(ref, result_array)
 
 
@@ -159,6 +137,7 @@ class TestLookupTableBF16OpWIsSelectedRows4DIds(
         super().setUp()
         self.ids = np.random.randint(
             low=0, high=15, size=(3, 4, 5, 1)).astype("int64")
+        self.flat_ids = self.ids.flatten()
 
 
 @skip_check_grad_ci(
