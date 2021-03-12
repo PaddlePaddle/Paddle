@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -36,10 +35,10 @@ class MulNPUKernel : public framework::OpKernel<T> {
             .stream();
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
+        out->mutable_data<T>(ctx.GetPlace());
         auto runner =
             NpuOpRunner("MatMul", {*x, *y}, {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
-        out->mutable_data<T>(ctx.GetPlace());
 
         runner.Run(stream);
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
@@ -52,6 +51,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         tmp_flatten.mutable_data<T>(ctx.GetPlace());
         auto runner_flatten = NpuOpRunner("Flatten", {*x}, {tmp_flatten}, {});
         runner_flatten.Run(stream);
+        out->mutable_data<T>(ctx.GetPlace());
         // matmul
         auto runner_matmul =
             NpuOpRunner("MatMul", {tmp_flatten, *y}, {*out}, {});
@@ -134,4 +134,3 @@ REGISTER_OP_NPU_KERNEL(
     mul_grad, ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
-#endif
