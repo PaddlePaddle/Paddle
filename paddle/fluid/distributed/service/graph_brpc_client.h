@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include <utility>
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
@@ -35,9 +36,9 @@ class GraphBrpcClient : public BrpcPsClient {
  public:
   GraphBrpcClient() {}
   virtual ~GraphBrpcClient() {}
-  virtual std::future<int32_t> sample(uint32_t table_id, uint64_t node_id,
-                                      int sample_size,
-                                      std::vector<GraphNode> &res);
+  virtual std::future<int32_t> sample(
+      uint32_t table_id, uint64_t node_id, int sample_size,
+      std::vector<std::pair<uint64_t, float>> &res);
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
                                                int size,

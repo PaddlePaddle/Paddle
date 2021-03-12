@@ -18,6 +18,7 @@ limitations under the License. */
 #include <iomanip>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_set>
 #include <vector>
 #include "google/protobuf/text_format.h"
 
@@ -49,10 +50,18 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 void testGraphToBuffer();
-std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
-                       std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
-                       std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
-                       std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
+// std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
+//                        std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
+//                        std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
+//                        std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
+
+std::string nodes[] = {
+    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
+    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
+    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
+    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
+    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
+    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
 char file_name[] = "nodes.txt";
 void prepare_file(char file_name[]) {
   std::ofstream ofile;
@@ -210,7 +219,7 @@ void RunBrpcPushSparse() {
       worker_ptr_->load(0, std::string(file_name), std::string(""));
 
   pull_status.wait();
-  std::vector<distributed::GraphNode> v;
+  std::vector<std::pair<uint64_t, float>> v;
   pull_status = worker_ptr_->sample(0, 37, 4, v);
   pull_status.wait();
   // for (auto g : v) {
@@ -220,40 +229,46 @@ void RunBrpcPushSparse() {
   v.clear();
   pull_status = worker_ptr_->sample(0, 96, 4, v);
   pull_status.wait();
+  std::unordered_set<int> s = { 111, 48, 247 } ASSERT_EQ(3, v.size());
   for (auto g : v) {
-    std::cout << g.get_id() << std::endl;
+    // std::cout << g.first << std::endl;
+    ASSERT_EQ(true, s.find(g.first) != s.end())
   }
-  // ASSERT_EQ(v.size(),3);
   v.clear();
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, v);
+  std::vector<distributed::GraphNode> nodes;
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
   pull_status.wait();
-  ASSERT_EQ(v.size(), 1);
-  ASSERT_EQ(v[0].get_id(), 37);
+  ASSERT_EQ(nodes.size(), 1);
+  ASSERT_EQ(nodes[0].get_id(), 37);
   // for (auto g : v) {
   //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
   // }
   // ASSERT_EQ(v.size(),1);
-  v.clear();
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, v);
+  nodes.clear();
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
   pull_status.wait();
-  ASSERT_EQ(v.size(), 1);
-  ASSERT_EQ(v[0].get_id(), 59);
-  for (auto g : v) {
+  ASSERT_EQ(nodes.size(), 1);
+  ASSERT_EQ(nodes[0].get_id(), 59);
+  for (auto g : nodes) {
     std::cout << g.get_id() << std::endl;
   }
 
   distributed::GraphPyService gps1, gps2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
-  std::vector<std::string> edge_types = { std::string("user2item")};
+  std::vector<std::string> edge_types = {std::string("user2item")};
   gps1.set_up(ips_str, 127, 0, 0, edge_types);
   gps2.set_up(ips_str, 127, 1, 1, edge_types);
   gps1.load_edge_file(std::string("user2item"), std::string(file_name), 0);
-  v.clear();
-  v = gps2.pull_graph_list(std::string("user2item"), 0, 1, 4);
-  ASSERT_EQ(v[0].get_id(), 59);
-  v.clear();
+  nodes.clear();
+  nodes = gps2.pull_graph_list(std::string("user2item"), 0, 1, 4);
+  ASSERT_EQ(nodes[0].get_id(), 59);
+  nodes.clear();
   v = gps2.sample_k(std::string("user2item"), 96, 4);
   ASSERT_EQ(v.size(), 3);
+  std::cout << "sample result" << std::endl;
+  for (auto p : v) {
+    std::cout << p.first << " " << p.second << std::endl;
+  }
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService
   // ips_str = "127.0.0.1:4211;127.0.0.1:4212"

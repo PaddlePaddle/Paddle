@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_graph_table.h"
-#include <algorithm>
-#include <sstream>
 #include <time.h>
+#include <algorithm>
 #include <set>
+#include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -88,30 +88,30 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
   auto cmd = paddle::string::split_string<std::string>(param, "|");
-  std::set<std::string> cmd_set(cmd.begin(), cmd.end()); 
+  std::set<std::string> cmd_set(cmd.begin(), cmd.end());
   bool load_edge = cmd_set.count(std::string("edge"));
   bool reverse_edge = cmd_set.count(std::string("reverse"));
   VLOG(0) << "Reverse Edge " << reverse_edge;
-   
+
   auto paths = paddle::string::split_string<std::string>(path, ";");
   VLOG(0) << paths.size();
   int count = 0;
-  
+
   for (auto path : paths) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
       auto values = paddle::string::split_string<std::string>(line, "\t");
-      count ++;
+      count++;
       if (values.size() < 2) continue;
       auto src_id = std::stoull(values[0]);
       auto dst_id = std::stoull(values[1]);
-      if(reverse_edge) {
-          std::swap(src_id, dst_id);
+      if (reverse_edge) {
+        std::swap(src_id, dst_id);
       }
-      double weight = 0;
+      float weight = 0;
       if (values.size() == 3) {
-          weight = std::stod(values[2]);
+        weight = std::stof(values[2]);
       }
       size_t src_shard_id = src_id % shard_num;
 
@@ -119,7 +119,6 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
         VLOG(0) << "will not load " << src_id << " from " << path
                 << ", please check id distribution";
         continue;
-
       }
       size_t index = src_shard_id - shard_start;
       GraphEdge *edge = new GraphEdge(dst_id, weight);
@@ -130,15 +129,15 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
 
   // Build Sampler j
   for (auto &shard : shards) {
-      auto bucket = shard.get_bucket();
-      for (int i = 0; i < bucket.size(); i++) {
-        std::list<GraphNode *>::iterator iter = bucket[i].begin();
-        while (iter != bucket[i].end()) {
-          auto node = *iter;
-          node->build_sampler();
-          iter++;
-        }
+    auto bucket = shard.get_bucket();
+    for (int i = 0; i < bucket.size(); i++) {
+      std::list<GraphNode *>::iterator iter = bucket[i].begin();
+      while (iter != bucket[i].end()) {
+        auto node = *iter;
+        node->build_sampler();
+        iter++;
       }
+    }
   }
   return 0;
 }
@@ -148,8 +147,6 @@ GraphNode *GraphTable::find_node(uint64_t id) {
     return NULL;
   }
   size_t index = shard_id - shard_start;
-  //  VLOG(0)<<"try to find node-id "<<id<<" type "<<(int)type<<"in "<<index<<"
-  //  of rank "<<_shard_idx;
   GraphNode *node = shards[index].find_node(id);
   return node;
 }
@@ -168,48 +165,22 @@ int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
         }
         std::vector<GraphEdge *> res = node->sample_k(sample_size);
         std::vector<GraphNode> node_list;
-        int total_size = 0;
-        for (auto x : res) {
-          GraphNode temp;
-          temp.set_id(x->id);
-          total_size += temp.get_size();
-          node_list.push_back(temp);
+        actual_size =
+            res.size() * (GraphNode::id_size + GraphNode::weight_size);
+        buffer = new char[actual_size];
+        int offset = 0;
+        uint64_t id;
+        float weight;
+        for (auto &x : res) {
+          id = x->get_id();
+          weight = x->get_weight();
+          memcpy(buffer + offset, &id, GraphNode::id_size);
+          offset += GraphNode::id_size;
+          memcpy(buffer + offset, &weight, GraphNode::weight_size);
+          offset += GraphNode::weight_size;
         }
-        buffer = new char[total_size];
-        int index = 0;
-        for (auto x : node_list) {
-          x.to_buffer(buffer + index);
-          index += x.get_size();
-        }
-        actual_size = total_size;
-        return 0;
       })
       .get();
-  // GraphNode *node = find_node(node_id, type);
-  // if (node == NULL) {
-  //   actual_size = 0;
-  //   rwlock_->UNLock();
-  //   return 0;
-  // }
-  // std::vector<GraphEdge *> res = node->sample_k(sample_size);
-  // std::vector<GraphNode> node_list;
-  // int total_size = 0;
-  // for (auto x : res) {
-  //   GraphNode temp;
-  //   temp.set_id(x->id);
-  //   temp.set_graph_node_type(x->type);
-  //   total_size += temp.get_size();
-  //   node_list.push_back(temp);
-  // }
-  // buffer = new char[total_size];
-  // int index = 0;
-  // for (auto x : node_list) {
-  //   x.to_buffer(buffer + index);
-  //   index += x.get_size();
-  // }
-  // actual_size = total_size;
-  // rwlock_->UNLock();
-  // return 0;
 }
 int32_t GraphTable::pull_graph_list(int start, int total_size, char *&buffer,
                                     int &actual_size) {

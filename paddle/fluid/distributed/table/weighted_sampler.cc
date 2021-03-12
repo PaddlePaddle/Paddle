@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/weighted_sampler.h"
+#include <iostream>
 namespace paddle {
 namespace distributed {
 void WeightedSampler::build(WeightedObject **v, int start, int end) {
@@ -37,11 +38,11 @@ std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
     k = count;
   }
   std::vector<WeightedObject *> sample_result;
-  double subtract;
-  std::unordered_map<WeightedSampler *, double> subtract_weight_map;
+  float subtract;
+  std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
   while (k--) {
-    double query_weight = rand() % 100000 / 100000.0;
+    float query_weight = rand() % 100000 / 100000.0;
     query_weight *= weight - subtract_weight_map[this];
     sample_result.push_back(sample(query_weight, subtract_weight_map,
                                    subtract_count_map, subtract));
@@ -49,10 +50,10 @@ std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
   return sample_result;
 }
 WeightedObject *WeightedSampler::sample(
-    double query_weight,
-    std::unordered_map<WeightedSampler *, double> &subtract_weight_map,
+    float query_weight,
+    std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
     std::unordered_map<WeightedSampler *, int> &subtract_count_map,
-    double &subtract) {
+    float &subtract) {
   if (left == NULL) {
     subtract_weight_map[this] = weight;
     subtract = weight;
@@ -61,7 +62,7 @@ WeightedObject *WeightedSampler::sample(
   }
   int left_count = left->count - subtract_count_map[left];
   int right_count = right->count - subtract_count_map[right];
-  double left_subtract = subtract_weight_map[left];
+  float left_subtract = subtract_weight_map[left];
   WeightedObject *return_id;
   if (right_count == 0 ||
       left_count > 0 && left->weight - left_subtract >= query_weight) {
