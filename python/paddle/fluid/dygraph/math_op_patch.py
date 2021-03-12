@@ -330,6 +330,5 @@ def monkey_patch_math_varbase():
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl: setattr(core.VarBase, method_name, method_impl)
-        setattr(core.VarBase, 'size', getattr(paddle.tensor, 'shape', None))
 
     _already_patch_varbase = True

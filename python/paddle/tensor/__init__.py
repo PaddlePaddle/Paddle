@@ -22,6 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
+from .attribute import size  #DEFINE_ALIAS
 from .attribute import real  #DEFINE_ALIAS
 from .attribute import imag  #DEFINE_ALIAS
 from .creation import to_tensor  #DEFINE_ALIAS

@@ -22,7 +22,63 @@ from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layers import rank  #DEFINE_ALIAS
 from ..fluid.layers import shape  #DEFINE_ALIAS
 
-__all__ = ['rank', 'shape', 'real', 'imag']
+__all__ = ['rank', 'shape', 'real', 'imag', 'size']
+
+
+def size(input, axes=None):
+    """
+    :alias_main: paddle.shape
+	:alias: paddle.shape,paddle.tensor.shape,paddle.tensor.attribute.shape
+	:old_api: paddle.fluid.layers.shape
+
+    **Shape Layer**
+
+    Get the shape of the input.
+
+    .. code-block:: text
+
+        Given N-D Tensor:
+            input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+        Then:
+            input.shape = [2, 4]
+
+    Args:
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
+                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
+
+    Returns:
+        Variable (Tensor): The shape of the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+             ndim_3_tensor = paddle.to_tensor([[[1, 2, 3, 4, 5],
+                                                [6, 7, 8, 9, 10]],
+                                               [[11, 12, 13, 14, 15],
+                                                [16, 17, 18, 19, 20]]])
+             print(ndim_3_tensor.size()) # Tensor(shape=[3], dtype=int32, place=CPUPlace, stop_gradient=True, [2, 2, 5])
+             print(ndim_3_tensor.size(2)) # Tensor(shape=[1], dtype=int32, place=CPUPlace, stop_gradient=True, [5])
+             print(ndim_3_tensor.size([-1, 0, 1])) # Tensor(shape=[3], dtype=int32, place=CPUPlace, stop_gradient=True, [5, 2, 2])
+             print(paddle.shape(ndim_3_tensor)) # Tensor(shape=[3], dtype=int32, place=CPUPlace, stop_gradient=True, [2, 2, 5])
+    """
+    check_variable_and_dtype(
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'shape')
+    check_type(axes, 'axes', (int, list, tuple, type(None)), 'shape')
+    if isinstance(axes, int):
+        axes = [axes]
+    attrs = {'axes': axes if axes is not None and axes != [] else []}
+    helper = LayerHelper('shape', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='shape',
+        inputs={'Input': input},
+        attrs=attrs,
+        outputs={'Out': out})
+
+    return out
 
 
 def _complex_to_real_dtype(dtype):
