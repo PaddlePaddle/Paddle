@@ -1,0 +1,205 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
+
+#include "unsupported/Eigen/CXX11/Tensor"
+
+namespace Eigen {
+template <typename T>
+struct NumTraits;
+}  // namespace Eigen
+
+namespace Eigen {
+
+using complex64 = paddle::platform::complex64;
+using complex128 = paddle::platform::complex128;
+
+template <>
+struct NumTraits<complex64> : GenericNumTraits<std::complex<float>> {
+  typedef float Real;
+  typedef typename NumTraits<float>::Literal Literal;
+  enum {
+    IsComplex = 1,
+    RequireInitialization = NumTraits<float>::RequireInitialization,
+    ReadCost = 2 * NumTraits<float>::ReadCost,
+    AddCost = 2 * NumTraits<Real>::AddCost,
+    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
+  };
+
+  EIGEN_DEVICE_FUNC
+  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
+  EIGEN_DEVICE_FUNC
+  static inline Real dummy_precision() {
+    return NumTraits<Real>::dummy_precision();
+  }
+  EIGEN_DEVICE_FUNC
+  static inline int digits10() { return NumTraits<Real>::digits10(); }
+};
+
+template <>
+struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
+  typedef double Real;
+  typedef typename NumTraits<double>::Literal Literal;
+  enum {
+    IsComplex = 1,
+    RequireInitialization = NumTraits<double>::RequireInitialization,
+    ReadCost = 2 * NumTraits<double>::ReadCost,
+    AddCost = 2 * NumTraits<Real>::AddCost,
+    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
+  };
+
+  EIGEN_DEVICE_FUNC
+  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
+  EIGEN_DEVICE_FUNC
+  static inline Real dummy_precision() {
+    return NumTraits<Real>::dummy_precision();
+  }
+  EIGEN_DEVICE_FUNC
+  static inline int digits10() { return NumTraits<Real>::digits10(); }
+};
+
+namespace numext {
+
+template <>
+HOSTDEVICE inline bool(isnan)(const complex64& a) {
+  return (paddle::platform::isnan)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isinf)(const complex64& a) {
+  return (paddle::platform::isinf)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isfinite)(const complex64& a) {
+  return (paddle::platform::isfinite)(a);
+}
+
+template <>
+HOSTDEVICE inline complex64 exp(const complex64& a) {
+  float com = ::expf(a.real);
+  float res_real = com * ::cosf(a.imag);
+  float res_imag = com * ::sinf(a.imag);
+  return complex64(res_real, res_imag);
+}
+
+template <>
+HOSTDEVICE inline complex64 log(const complex64& a) {
+  return paddle::platform::log(a);
+}
+
+template <>
+HOSTDEVICE inline complex64 tanh(const complex64& a) {
+  return paddle::platform::tanh(a);
+}
+
+template <>
+HOSTDEVICE inline complex64 sqrt(const complex64& a) {
+  return paddle::platform::sqrt(a);
+}
+
+template <>
+HOSTDEVICE inline complex64 ceil(const complex64& a) {
+  return complex64(::ceilf(a.real), ::ceilf(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex64 floor(const complex64& a) {
+  return complex64(::floorf(a.real), ::floor(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex64 round(const complex64& a) {
+  return complex64(::roundf(a.real), ::roundf(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex64 pow(const complex64& a, const complex64& b) {
+  return paddle::platform::pow(a, b);
+}
+
+template <>
+HOSTDEVICE inline float abs(const complex64& a) {
+  return paddle::platform::abs(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isnan)(const complex128& a) {
+  return (paddle::platform::isnan)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isinf)(const complex128& a) {
+  return (paddle::platform::isinf)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isfinite)(const complex128& a) {
+  return (paddle::platform::isfinite)(a);
+}
+
+template <>
+HOSTDEVICE inline complex128 exp(const complex128& a) {
+  double com = ::expf(a.real);
+  double res_real = com * ::cosf(a.imag);
+  double res_imag = com * ::sinf(a.imag);
+  return complex128(res_real, res_imag);
+}
+
+template <>
+HOSTDEVICE inline complex128 log(const complex128& a) {
+  return paddle::platform::log(a);
+}
+
+template <>
+HOSTDEVICE inline complex128 tanh(const complex128& a) {
+  return paddle::platform::tanh(a);
+}
+
+template <>
+HOSTDEVICE inline complex128 sqrt(const complex128& a) {
+  return paddle::platform::sqrt(a);
+}
+
+template <>
+HOSTDEVICE inline complex128 ceil(const complex128& a) {
+  return complex128(::ceilf(a.real), ::ceilf(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex128 floor(const complex128& a) {
+  return complex128(::floorf(a.real), ::floor(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex128 round(const complex128& a) {
+  return complex128(::roundf(a.real), ::roundf(a.imag));
+}
+
+template <>
+HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
+  return paddle::platform::pow(a, b);
+}
+
+template <>
+HOSTDEVICE inline double abs(const complex128& a) {
+  return paddle::platform::abs(a);
+}
+
+}  // namespace numext
+}  // namespace Eigen
