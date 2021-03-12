@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -65,6 +64,7 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
     Tensor out(x->type());
     out.mutable_data<T>(x->dims(), place);
     auto out_runner = NpuOpRunner("Gelu", {*x}, {out}, {});
+    out_runner.Run(stream);
 
     auto dx_runner = NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
     dx_runner.Run(stream);
@@ -87,4 +87,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext,
     paddle::platform::float16>);
-#endif

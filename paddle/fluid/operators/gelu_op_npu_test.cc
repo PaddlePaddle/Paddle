@@ -161,14 +161,6 @@ TEST(gelu, NPU_fp32) {
     Compare<float>(&scope, ctx);
 }
 
-/*
-TEST(gelu, NPU_fp16) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<p::float16>(&scope, ctx);
-}
-*/
-
 TEST(gelu_grad, NPU) {
     f::Scope scope;
     p::NPUDeviceContext ctx(p::NPUPlace(0));
