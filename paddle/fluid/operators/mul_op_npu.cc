@@ -33,6 +33,14 @@ class MulNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+    PADDLE_ENFORCE_EQ(x_num_col_dims, 1,
+                      platform::errors::InvalidArgument(
+                          "now only support x_num_col_dims == 1: but got %d",
+                          x_num_col_dims));
+    PADDLE_ENFORCE_EQ(y_num_col_dims, 1,
+                      platform::errors::InvalidArgument(
+                          "now only support y_num_col_dims == 1: but got %d",
+                          y_num_col_dims));
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         out->mutable_data<T>(ctx.GetPlace());
@@ -78,19 +86,23 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
             .stream();
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
-        dx->mutable_data<T>(ctx.GetPlace());
-        auto runner_dx =
-            NpuOpRunner("MatMul", {*dout, *y}, {*dx},
-                        {{"transpose_x1", false}, {"transpose_x2", true}});
+        if (dx) {
+          dx->mutable_data<T>(ctx.GetPlace());
+          auto runner_dx =
+              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+                          {{"transpose_x1", false}, {"transpose_x2", true}});
 
-        runner_dx.Run(stream);
+          runner_dx.Run(stream);
+        }
 
-        dy->mutable_data<T>(ctx.GetPlace());
-        auto runner_dy =
-            NpuOpRunner("MatMul", {*x, *dout}, {*dy},
-                        {{"transpose_x1", true}, {"transpose_x2", false}});
+        if (dy) {
+          dy->mutable_data<T>(ctx.GetPlace());
+          auto runner_dy =
+              NpuOpRunner("MatMul", {*x, *dout}, {*dy},
+                          {{"transpose_x1", true}, {"transpose_x2", false}});
 
-        runner_dy.Run(stream);
+          runner_dy.Run(stream);
+        }
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
         // flatten
         Tensor tmp_flatten(x->type());
@@ -102,20 +114,24 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         auto runner_flatten = NpuOpRunner("Flatten", {*x}, {tmp_flatten}, {});
         runner_flatten.Run(stream);
         // matmul
-        dx->mutable_data<T>(ctx.GetPlace());
-        auto runner_dx =
-            NpuOpRunner("MatMul", {*dout, *y}, {*dx},
-                        {{"transpose_x1", false}, {"transpose_x2", true}});
+        if (dx) {
+          dx->mutable_data<T>(ctx.GetPlace());
+          auto runner_dx =
+              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
+                          {{"transpose_x1", false}, {"transpose_x2", true}});
 
-        runner_dx.Run(stream);
+          runner_dx.Run(stream);
+        }
         // to do shape==2
 
-        dy->mutable_data<T>(ctx.GetPlace());
-        auto runner_dy =
-            NpuOpRunner("MatMul", {tmp_flatten, *dout}, {*dy},
-                        {{"transpose_x1", true}, {"transpose_x2", false}});
+        if (dy) {
+          dy->mutable_data<T>(ctx.GetPlace());
+          auto runner_dy =
+              NpuOpRunner("MatMul", {tmp_flatten, *dout}, {*dy},
+                          {{"transpose_x1", true}, {"transpose_x2", false}});
 
-        runner_dy.Run(stream);
+          runner_dy.Run(stream);
+        }
       }
     }
   }
