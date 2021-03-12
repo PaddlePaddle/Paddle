@@ -70,47 +70,52 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
              {y_power}, {{"power", static_cast<float>(-1)}});
     y_power_runner.Run(stream);
 
-    Tensor tensor_zeros(x->type());
-    tensor_zeros.mutable_data<T>(x->dims(), place);
-    auto tensor_zeros_runner = NpuOpRunner("ZerosLike", {*x},
-             {tensor_zeros}, {});
-    tensor_zeros_runner.Run(stream);
-
-    Tensor x_zero(paddle::framework::proto::VarType::BOOL);
-    x_zero.mutable_data<bool>(x->dims(), place);
-    auto x_zero_runner = NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
-    x_zero_runner.Run(stream);
-
-    Tensor x_nozero(paddle::framework::proto::VarType::BOOL);
-    x_nozero.mutable_data<bool>(x->dims(), place);
-    auto x_nozero_runner = NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});
-    x_nozero_runner.Run(stream);
-
-    Tensor x_nozero_f(x->type());
-    x_nozero_f.mutable_data<T>(x->dims(), place);
-    auto x_nozero_f_runner = NpuOpRunner("Cast", {x_nozero},
-             {x_nozero_f}, {{"dst_type", static_cast<int32_t>(0)}});
-    x_nozero_f_runner.Run(stream);
-
-    Tensor x_grad_w(x->type());
-    x_grad_w.mutable_data<T>(x->dims(), place);
-    auto x_grad_w_runner = NpuOpRunner("Mul", {x_nozero_f, y_power},
-             {x_grad_w}, {});
-    x_grad_w_runner.Run(stream);
-
-    Tensor y_grad_w(x->type());
-    y_grad_w.mutable_data<T>(y->dims(), place);
-    auto y_grad_w_runner = NpuOpRunner("Mul", {*out, y_power}, {y_grad_w}, {});
-    y_grad_w_runner.Run(stream);
-
     if (dx) {
       dx->mutable_data<T>(place);
+
+      Tensor tensor_zeros(x->type());
+      tensor_zeros.mutable_data<T>(x->dims(), place);
+      auto tensor_zeros_runner = NpuOpRunner("ZerosLike", {*x},
+               {tensor_zeros}, {});
+      tensor_zeros_runner.Run(stream);
+
+      Tensor x_zero(paddle::framework::proto::VarType::BOOL);
+      x_zero.mutable_data<bool>(x->dims(), place);
+      auto x_zero_runner = NpuOpRunner("Equal", {*x, tensor_zeros},
+              {x_zero}, {});
+      x_zero_runner.Run(stream);
+
+      Tensor x_nozero(paddle::framework::proto::VarType::BOOL);
+      x_nozero.mutable_data<bool>(x->dims(), place);
+      auto x_nozero_runner = NpuOpRunner("LogicalNot", {x_zero},
+              {x_nozero}, {});
+      x_nozero_runner.Run(stream);
+
+      Tensor x_nozero_f(x->type());
+      x_nozero_f.mutable_data<T>(x->dims(), place);
+      auto x_nozero_f_runner = NpuOpRunner("Cast", {x_nozero},
+               {x_nozero_f}, {{"dst_type", static_cast<int32_t>(0)}});
+      x_nozero_f_runner.Run(stream);
+
+      Tensor x_grad_w(x->type());
+      x_grad_w.mutable_data<T>(x->dims(), place);
+      auto x_grad_w_runner = NpuOpRunner("Mul", {x_nozero_f, y_power},
+               {x_grad_w}, {});
+      x_grad_w_runner.Run(stream);
+
       auto x_grad_runner = NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
       x_grad_runner.Run(stream);
     }
 
     if (dy) {
       dy->mutable_data<T>(place);
+
+      Tensor y_grad_w(x->type());
+      y_grad_w.mutable_data<T>(y->dims(), place);
+      auto y_grad_w_runner = NpuOpRunner("Mul", {*out, y_power},
+              {y_grad_w}, {});
+      y_grad_w_runner.Run(stream);
+
       auto y_grad_runner = NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
       y_grad_runner.Run(stream);
     }
