@@ -55,10 +55,6 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
     framework::NPUAttributeMap attr_input = {{"use_locking", true}};
-    std::vector<T> vec;
-    std::vector<int64_t> vec_int;
-
-    TensorToVector(*table_t, ctx.device_context(), &vec);
 
     auto runner = NpuOpRunner("ScatterAdd", {*table_t, *ids_t, *output_grad_t},
                               {*table_grad_t}, attr_input);
@@ -77,14 +73,8 @@ REGISTER_OP_NPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext,
-                                paddle::platform::float16>,
-    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
-    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, int8_t>);
+                                paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2_grad, ops::LookupTableV2GradNPUKernel<float>,
-    ops::LookupTableV2GradNPUKernel<paddle::platform::float16>,
-    ops::LookupTableV2GradNPUKernel<int>,
-    ops::LookupTableV2GradNPUKernel<uint8_t>,
-    ops::LookupTableV2GradNPUKernel<int64_t>);
+    ops::LookupTableV2GradNPUKernel<paddle::platform::float16>);

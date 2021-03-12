@@ -67,8 +67,25 @@ class TestLookupTableV2(OpTest):
     #     if self.dtype == np.float16:
     #         return
     #     self.check_grad(['X'], 'Out')
-    #
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLookupTableV2FP16(TestLookupTableV2):
+    no_need_check_grad = True
+    def init_dtype(self):
+        self.dtype = np.float16
+    
+#@unittest.skipIf(not paddle.is_compiled_with_npu(),
+#                 "core is not compiled with NPU")
+#class TestLookupTableV2Int8(TestLookupTableV2):
+#    def init_dtype(self):
+#        self.dtype = np.int8
+#
+#@unittest.skipIf(not paddle.is_compiled_with_npu(),
+#                 "core is not compiled with NPU")
+#class TestLookupTableV2UInt8(TestLookupTableV2):
+#    def init_dtype(self):
+#        self.dtype = np.uint8
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -118,6 +135,7 @@ class TestLookupTableV2Net(unittest.TestCase):
         cpu_loss = self._test(False)
         npu_loss = self._test(True)
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
+
 
 
 if __name__ == '__main__':
