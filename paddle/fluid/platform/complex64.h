@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 
+#include <complex>
 #include <cstring>
 #include <iostream>
 #include <limits>
