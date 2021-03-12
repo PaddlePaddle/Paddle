@@ -70,14 +70,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   TensorToVector(*out_t, ctx, &out_v);
   ctx.Wait();
   EXPECT_EQ(out_t->numel(), bsz * seqlen * dim);
-  /*
-  for (auto v: val){
-      std::cout << "inp " << v << std::endl;
-  }
-  for (auto v: out_v){
-      std::cout <<"res "<< v<<std::endl;
-  }
-  */
   T res = std::accumulate(out_v.begin(), out_v.end(), 0.);
   float eps = 1.e-6;
   EXPECT_LT(fabs(res - bsz * seqlen * dim * 10.), eps);
@@ -132,20 +124,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   TensorToVector(*dw_t, ctx, &w_v);
   ctx.Wait();
   EXPECT_EQ(dw_t->numel(), vocab_size * dim);
-  /*
-  for (auto v: val){
-      std::cout << "val " << v << std::endl;
-  }
-  for (auto v: val_int){
-      std::cout << "val int " << v << std::endl;
-  }
-  for (auto v: val_out){
-      std::cout << "val out " << v << std::endl;
-  }
-  for (auto v: w_v){
-      std::cout <<"grad res "<< v<<std::endl;
-  }
-  */
   T res = std::accumulate(w_v.begin(), w_v.end(), 0.);
   float eps = 1.e-6;
   EXPECT_LT(fabs(res - bsz * seqlen * dim), eps);
