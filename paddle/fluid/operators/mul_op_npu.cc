@@ -53,7 +53,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         // flatten
         Tensor tmp_flatten(x->type());
         int64_t size = x->dims()[1] * x->dims()[2];
-        x->resize(x->dims()[0], size);
+        x->Resize(paddle::framework::make_ddim({x->dims()[0], size}));
         // std::vector<int64_t> vec_flatten;
         // vec_flatten.push_back(size);
         // tmp_flatten.Resize(framework::make_ddim(vec_flatten));
