@@ -191,9 +191,7 @@ def monkey_patch_varbase():
                 scaled_loss._run_backward(framework._dygraph_tracer(),
                                           retain_graph)
             else:
-                if grad_tensor is None:
-                    grad_tensor = paddle.ones_like(self)
-                else:
+                if grad_tensor is not None:
                     assert isinstance(
                         grad_tensor, core.VarBase
                     ), "The type of grad_tensot must be paddle.VarBase"

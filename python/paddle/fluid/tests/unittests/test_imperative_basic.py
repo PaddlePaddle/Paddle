@@ -807,4 +807,5 @@ class TestDygraphGuardWithError(unittest.TestCase):
 
 if __name__ == '__main__':
     paddle.enable_static()
+    #paddle.set_device("cpu")
     unittest.main()
