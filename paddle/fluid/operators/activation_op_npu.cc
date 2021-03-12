@@ -103,6 +103,46 @@ class PowGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class ReluNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
+
+    auto runner = NpuOpRunner("Relu",
+                              {
+                                  *x,
+                              },
+                              {*out}, {});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ReluGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+
+    dx->mutable_data<T>(ctx.GetPlace());
+    auto runner = NpuOpRunner("ReluGrad", {*dout, *out}, {*dx}, {});
+
+    runner.Run(stream);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -117,3 +157,14 @@ REGISTER_OP_NPU_KERNEL(
     pow_grad, ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::PowGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu, ops::ReluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReluNPUKernel<paddle::platform::NPUDeviceContext,
+                       paddle::platform::float16>);
+
+REGISTER_OP_NPU_KERNEL(
+    relu_grad,
+    ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ReluGradNPUKernel<paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);
