@@ -96,9 +96,9 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   }
 }
 
-inline void GetPartialValue(const framework::DDim &x_dims,
-                            const framework::DDim &y_dims, int *pre, int *n,
-                            int *post, int *m, const bool is_xsize_larger) {
+inline void GetPartialValue(int *x_dims, int *y_dims, int *pre, int *n,
+                            int *post, int *m, int max_dim,
+                            const bool is_xsize_larger) {
   int i = 0;
   int anchor_n = 0;
   int anchor_post = 0;
@@ -108,13 +108,37 @@ inline void GetPartialValue(const framework::DDim &x_dims,
   *m = 1;
   auto tmp_dims = (is_xsize_larger) ? x_dims : y_dims;
 
-  for (i = 0; i < tmp_dims.size(); ++i) {
+  // printf("max_dim=%d\n", max_dim);
+  // for (int j =0; j < max_dim; ++j) {
+  //   printf("tmp_dims[%d]=%d\n", j, tmp_dims[j]);
+  // }
+  // std::cout << "_is_1st_dim_larger__ : " <<  is_xsize_larger << std::endl;
+
+  // for (int j =0; j < max_dim; ++j) {
+  //   printf("x_dims[%d]=%d\n", j, x_dims[j]);
+  // }
+  // std::cout << std::endl;
+  // for (int j =0; j < max_dim; ++j) {
+  //   printf("y_dims[%d]=%d\n", j, y_dims[j]);
+  // }
+  // std::cout << std::endl;
+
+  for (i = 0; i < max_dim; ++i) {
     if (x_dims[i] == y_dims[i]) {
       (*pre) *= tmp_dims[i];
       break;
     }
   }
-  for (++i; i < tmp_dims.size(); ++i) {
+  if (i == max_dim - 1) {
+    *post = (*pre);
+    *pre = 1;
+    for (int j = 0; j < max_dim - 1; ++j) {
+      *n *= tmp_dims[j];
+    }
+    return;
+  }
+
+  for (++i; i < max_dim; ++i) {
     if (x_dims[i] == y_dims[i]) {
       (*pre) *= tmp_dims[i];
     } else {
@@ -122,26 +146,32 @@ inline void GetPartialValue(const framework::DDim &x_dims,
       break;
     }
   }
-  for (++i; i < tmp_dims.size(); ++i) {
+  for (++i; i < max_dim; ++i) {
     if (x_dims[i] == y_dims[i]) {
       anchor_post = i;
       break;
     }
   }
+
+  // std::cout << "anchor_n   : " << anchor_n << std::endl;
+  // std::cout << "anchor_post: " << anchor_post << std::endl;
+
   for (int j = anchor_n; j < anchor_post; ++j) {
+    // printf("[n=%d]: tmp_dims[%d]=%d\n", *n, j, tmp_dims[j]);
     (*n) *= tmp_dims[j];
   }
-  for (i = anchor_post; i < tmp_dims.size(); ++i) {
+  for (i = anchor_post; i < max_dim; ++i) {
     if (x_dims[i] == y_dims[i]) {
       (*post) *= tmp_dims[i];
     } else {
       break;
     }
   }
-  if (i == tmp_dims.size()) {
+  if (i == max_dim) {
     return;
   } else {
-    for (int j = i; j < tmp_dims.size(); ++j) {
+    for (int j = i; j < max_dim; ++j) {
+      // printf("[m=%d]: tmp_dims[%d]=%d\n",*m, j, tmp_dims[j]);
       (*m) *= tmp_dims[j];
     }
   }
@@ -309,21 +339,36 @@ __global__ void CommonForwardBroadcastCUDAKernel(
   }
 }
 
-#include <iostream>
 template <typename Functor, typename T, typename OutType = T>
 __global__ void CommonForwardBroadcastCUDAKernel2(
-    const T *x_data, const T *y_data, OutType *out_data, int pre, int n,
-    int post, int m, const int total_value_num, const int value_without_pre,
-    Functor func) {
+    const T *__restrict__ x_data, const T *__restrict__ y_data,
+    OutType *out_data, const int pre, const int n, const int post, const int m,
+    const int total_value_num, const int value_without_pre, Functor func) {
   int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
   int small_arr_idx =
       (large_arr_idx / value_without_pre) * post + (large_arr_idx / m) % post;
-  // printf("[large_idx]: %d, %f\t [Small_idx]: %d, %f\n", large_arr_idx,
-  //             (double)x_data[large_arr_idx],
-  //             small_arr_idx, (double)y_data[small_arr_idx]);
+
   if (large_arr_idx < total_value_num) {
     out_data[large_arr_idx] =
         func(x_data[large_arr_idx], y_data[small_arr_idx]);
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernel3(
+    const T *__restrict__ x_data, const T *__restrict__ y_data,
+    OutType *out_data, const int pre_x, const int n_x, const int post_x,
+    const int m_x, const int pre_y, const int n_y, const int post_y,
+    const int m_y, const int value_without_pre_x, const int value_without_pre_y,
+    const int total_value_num, Functor func) {
+  int large_arr_idx = threadIdx.x + blockDim.x * blockIdx.x;
+  int small_x_idx = (large_arr_idx / value_without_pre_x) * post_x +
+                    (large_arr_idx / m_x) % post_x;
+  int small_y_idx = (large_arr_idx / value_without_pre_y) * post_y +
+                    (large_arr_idx / m_y) % post_y;
+
+  if (large_arr_idx < total_value_num) {
+    out_data[large_arr_idx] = func(x_data[small_x_idx], y_data[small_y_idx]);
   }
 }
 
@@ -381,37 +426,51 @@ void CommonForwardBroadcastCUDA(
 }
 
 template <typename Functor, typename T, typename OutType = T>
-void CommonForwardBroadcastCUDA2(const platform::CUDADeviceContext &ctx,
-                                 const framework::Tensor *x,
-                                 const framework::Tensor *y,
-                                 framework::Tensor *z, int pre, int n, int post,
-                                 int m, Functor func,
-                                 const bool is_xsize_larger = true) {
+void CommonForwardBroadcastCUDA2(
+    const platform::CUDADeviceContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *y, framework::Tensor *z, int pre, int n, int post,
+    int m, int pre_x, int n_x, int post_x, int m_x, int pre_y, int n_y,
+    int post_y, int m_y, Functor func, const bool is_x_size_larger = true,
+    const bool is_out_size_larger = false) {
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
-  int numel = pre * n * post * m;
-  int threads = platform::RoundToPowerOfTwo(numel);
-  int blocks = (numel + threads - 1) / threads;
-  const int value_without_pre = n * post * m;
-  // std::cout << "numel: " <<  numel << std::endl;
-  // std::cout << "value_without_pre: " <<  value_without_pre << std::endl;
-  // std::cout << "pre :" << pre << std::endl;
-  // std::cout << "post :" << post << std::endl;
-  // std::cout << "n :" << n << std::endl;
-  // std::cout << "m :" << m << std::endl;
+  if (is_out_size_larger) {
+    const int numel = pre_x * n_x * post_x * m_x;
+    const int value_without_pre_x = n_x * post_x * m_x;
+    const int value_without_pre_y = n_y * post_y * m_y;
+    int threads = platform::RoundToPowerOfTwo(numel);
+    int blocks = (numel + threads - 1) / threads;
 
-  if (is_xsize_larger) {
-    CommonForwardBroadcastCUDAKernel2<
-        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
-        func);
+    if (is_x_size_larger) {
+      CommonForwardBroadcastCUDAKernel3<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y,
+          m_y, value_without_pre_x, value_without_pre_y, numel, func);
+    } else {
+      CommonForwardBroadcastCUDAKernel3<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          y_data, x_data, out_data, pre_y, n_y, post_y, m_y, pre_x, n_x, post_x,
+          m_x, value_without_pre_y, value_without_pre_x, numel, func);
+    }
   } else {
-    CommonForwardBroadcastCUDAKernel2<
-        Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, pre, n, post, m, numel, value_without_pre,
-        func);
+    const int numel = pre * n * post * m;
+    const int value_without_pre = n * post * m;
+    int threads = platform::RoundToPowerOfTwo(numel);
+    int blocks = (numel + threads - 1) / threads;
+
+    if (is_x_size_larger) {
+      CommonForwardBroadcastCUDAKernel2<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
+          func);
+    } else {
+      CommonForwardBroadcastCUDAKernel2<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          y_data, x_data, out_data, pre, n, post, m, numel, value_without_pre,
+          func);
+    }
   }
 }
 #endif  // __NVCC__
@@ -1937,20 +1996,37 @@ void CommonElementwiseBroadcastForward(
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
-    int m = 1, pre = 1, post = 1, n = 1;
-    const bool x_dims_size_larger = x->numel() > y->numel() ? true : false;
-    GetPartialValue(x_dims, y_dims, &pre, &n, &post, &m, x_dims_size_larger);
-    // std::cout << "x_dims.size() :" << x_dims.size() << std::endl;
-    // std::cout << "y_dims.size() :" << y_dims.size() << std::endl;
-    // std::cout << "x_dims_size_larger : " << x_dims_size_larger << std::endl;
-    CommonForwardBroadcastCUDA2<Functor, T, OutType>(
-        ctx.template device_context<platform::CUDADeviceContext>(), x, y, z,
-        pre, n, post, m, func, x_dims_size_larger);
-// CommonForwardBroadcastCUDA<Functor, T, OutType>(
-//     x, y, z, x_dims_array.data(), y_dims_array.data(),
-//     out_dims_array.data(), max_dim,
-//     ctx.template device_context<platform::CUDADeviceContext>(), func,
-//     is_xsize_larger);
+    if (x_dims_array[0] != y_dims_array[0]) {
+      CommonForwardBroadcastCUDA<Functor, T, OutType>(
+          x, y, z, x_dims_array.data(), y_dims_array.data(),
+          out_dims_array.data(), max_dim,
+          ctx.template device_context<platform::CUDADeviceContext>(), func,
+          is_xsize_larger);
+    } else {
+      int m = 1, pre = 1, post = 1, n = 1;
+      int m_x = 1, pre_x = 1, post_x = 1, n_x = 1;
+      int m_y = 1, pre_y = 1, post_y = 1, n_y = 1;
+      const int out_size = std::accumulate(out_dims_array.data(),
+                                           out_dims_array.data() + max_dim, 1,
+                                           std::multiplies<int>());
+      const bool x_dims_size_larger = x->numel() > y->numel() ? true : false;
+      const bool out_dims_size_larger =
+          (x_dims_size_larger ? (out_size > x->numel() ? true : false)
+                              : (out_size > y->numel() ? true : false));
+      if (out_dims_size_larger) {
+        GetPartialValue(out_dims_array.data(), x_dims_array.data(), &pre_x,
+                        &n_x, &post_x, &m_x, max_dim, out_dims_size_larger);
+        GetPartialValue(out_dims_array.data(), y_dims_array.data(), &pre_y,
+                        &n_y, &post_y, &m_y, max_dim, out_dims_size_larger);
+      } else {
+        GetPartialValue(x_dims_array.data(), y_dims_array.data(), &pre, &n,
+                        &post, &m, max_dim, x_dims_size_larger);
+      }
+      CommonForwardBroadcastCUDA2<Functor, T, OutType>(
+          ctx.template device_context<platform::CUDADeviceContext>(), x, y, z,
+          pre, n, post, m, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y, m_y,
+          func, x_dims_size_larger, out_dims_size_larger);
+    }
 #endif
   } else {
     CommonForwardBroadcastCPU<Functor, T, OutType>(
