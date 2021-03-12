@@ -50,14 +50,16 @@ class MulNPUKernel : public framework::OpKernel<T> {
 
         runner.Run(stream);
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
-        // flatten
-        // Tensor tmp_flatten(x->type());
+        // reshape
+        Tensor tmp_x(x->type());
         int64_t sec_dim = x->dims()[1] * x->dims()[2];
         int64_t first_dim = x->dims()[0];
-        std::vector<int64_t> vec_dim;
-        vec_dim.push_back(first_dim);
-        vec_dim.push_back(sec_dim);
-        x->Resize(framework::make_ddim(vec_dim));
+        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        tmp_x.mutable_data<T>(ctx.GetPlace());
+        framework::TensorCopy(
+            *x, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), tmp_x);
+        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
         // std::vector<int64_t> vec_flatten;
         // vec_flatten.push_back(size);
         // tmp_flatten.Resize(framework::make_ddim(vec_flatten));
@@ -68,7 +70,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         out->mutable_data<T>(ctx.GetPlace());
         // matmul
         auto runner_matmul =
-            NpuOpRunner("MatMul", {*x, *y}, {*out},
+            NpuOpRunner("MatMul", {tmp_x, *y}, {*out},
                         {{"transpose_x1", false}, {"transpose_x2", false}});
         runner_matmul.Run(stream);
       } else {
