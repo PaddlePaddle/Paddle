@@ -38,7 +38,6 @@ function test_launch_ps(){
 }
 
 function test_launch_ps_heter(){
-    #python -m paddle.distributed.fleet.launch --server_num=2 --worker_num=2 --heter_worker_num=2 fleet_ps_training.py 2> ut.elog
     python -m paddle.distributed.fleet.launch \
         --servers="127.0.0.1:${server_port_0},127.0.0.1:${server_port_1}" \
         --workers="127.0.0.1:${worker_port_0},127.0.0.1:${worker_port_1}" \
