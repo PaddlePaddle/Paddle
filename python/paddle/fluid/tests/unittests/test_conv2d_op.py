@@ -128,6 +128,8 @@ def create_test_cudnn_class(parent):
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
@@ -185,6 +187,8 @@ def create_test_cudnn_channel_last_class(parent):
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -264,6 +268,8 @@ def create_test_cudnn_padding_SAME_class(parent):
     class TestCUDNNPaddingSMAECase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -280,6 +286,8 @@ def create_test_cudnn_padding_VALID_class(parent):
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -299,8 +307,7 @@ class TestConv2DOp(OpTest):
         self.use_mkldnn = False
         self.fuse_relu_before_depthwise_conv = False
         self.data_format = "AnyLayout"
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
-        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -693,6 +700,7 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
 class TestConv2DOpError(unittest.TestCase):
@@ -734,8 +742,7 @@ class TestConv2DOp_v2(OpTest):
         self.use_cuda = False
         self.use_mkldnn = False
         self.fuse_relu_before_depthwise_conv = False
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
-        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
