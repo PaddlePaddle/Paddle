@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+from scipy import special
 import unittest
 import sys
 sys.path.append("..")
@@ -26,24 +27,25 @@ paddle.enable_static()
 SEED = 2021
 
 
+def np_gelu(x):
+    y = 0.5 * x * (1 + special.erf(x / np.sqrt(2)))
+    return y
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseMul(OpTest):
+class TestGelu(OpTest):
     def setUp(self):
         self.set_npu()
-        self.op_type = "elementwise_mul"
+        self.op_type = "gelu"
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
         np.random.seed(SEED)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.multiply(x, y)
+        out = np_gelu(x)
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {}
         self.outputs = {'Out': out}
 
@@ -54,9 +56,9 @@ class TestElementwiseMul(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
 
-    # TODO(ascendrc): Mul grad test
+    # TODO(ascendrc): Add grad test
     # def test_check_grad(self):
     #     if self.dtype == np.float16:
     #         return
@@ -66,22 +68,18 @@ class TestElementwiseMul(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseMulFp16(OpTest):
+class TestGeluFp16(OpTest):
     def setUp(self):
         self.set_npu()
-        self.op_type = "elementwise_mul"
+        self.op_type = "gelu"
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
         np.random.seed(SEED)
         x = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        out = np.multiply(x, y)
+        out = np_gelu(x)
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.attrs = {}
         self.outputs = {'Out': out}
 
@@ -93,12 +91,12 @@ class TestElementwiseMulFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestElementwiseMulNet(unittest.TestCase):
+class TestGeluNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -108,24 +106,18 @@ class TestElementwiseMulNet(unittest.TestCase):
 
         a_np = np.random.random(size=(32, 32)).astype('float32')
         b_np = np.random.random(size=(32, 32)).astype('float32')
-        c_np = np.random.random(size=(32, 32)).astype('float32')
-        d_np = np.random.random(size=(32, 32)).astype('float32')
         label_np = np.random.randint(2, size=(32, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
-            d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64')
 
-            e = paddle.multiply(a, b)
-            f = paddle.multiply(c, d)
-            f.stop_gradient = True
-            g = paddle.multiply(e, f)
+            c = paddle.multiply(a, b)
+            d = fluid.layers.gelu(c)
 
-            fc_1 = fluid.layers.fc(input=g, size=128)
+            fc_1 = fluid.layers.fc(input=d, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -144,15 +136,12 @@ class TestElementwiseMulNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "c": c_np,
-                                             "d": d_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np,
+                      "b": b_np,
+                      "label": label_np},
+                fetch_list=[prediction, loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
@@ -163,8 +152,8 @@ class TestElementwiseMulNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, atol=1e-3))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-3))
 
 
 if __name__ == '__main__':

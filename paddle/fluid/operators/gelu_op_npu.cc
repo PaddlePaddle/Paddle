@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/fluid/operators/gelu_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -25,11 +24,10 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
+class GeluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
 
     auto* out = ctx.Output<Tensor>("Out");
 
@@ -41,39 +39,35 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
+    auto runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
+class GeluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
     auto place = ctx.GetPlace();
+
+    dx->mutable_data<T>(place);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    if (dx) {
-      dx->mutable_data<T>(place);
-      auto dx_runner = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
-      dx_runner.Run(stream);
-    }
+    Tensor out(x->type());
+    out.mutable_data<T>(x->dims(), place);
+    auto out_runner = NpuOpRunner("Gelu", {*x}, {out}, {});
+    out_runner.Run(stream);
 
-    if (dy) {
-      dy->mutable_data<T>(place);
-      auto dy_runner = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
-      dy_runner.Run(stream);
-    }
+    auto dx_runner = NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
+    dx_runner.Run(stream);
   }
 };
 
@@ -83,14 +77,13 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext,
-                                 paddle::platform::float16>);
+    gelu,
+    ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GeluNPUKernel<paddle::platform::NPUDeviceContext,
+    paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    elementwise_mul_grad,
-    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
-                                     paddle::platform::float16>);
-#endif
+    gelu_grad,
+    ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext,
+    paddle::platform::float16>);

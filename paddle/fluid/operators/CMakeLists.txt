@@ -120,6 +120,7 @@ if (WITH_ASCEND)
 endif()
 
 if (WITH_ASCEND_CL)
+  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
   cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
@@ -177,4 +178,8 @@ if(WITH_UNITY_BUILD)
     # the unity library to lose some symbols.
     # The specified link dependency needs to be displayed here.
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
+endif()
+
+if(WITH_ASCEND_CL)
+cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
 endif()
