@@ -67,9 +67,11 @@ class CommonDenseTable : public DenseTable {
   int32_t _push_dense(const float* values, size_t num);
 
  private:
-  const int task_pool_size_ = 1;
+  const int task_pool_size_ = 12;
   bool sync = true;
-  std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::shared_ptr<::ThreadPool> _pull_task_pool;
+  std::shared_ptr<::ThreadPool> _push_task_pool;
+  std::shared_ptr<::ThreadPool> _sync_task_pool;
   int param_dim_ = 0;
   int param_idx_ = 0;
   std::shared_ptr<DenseOptimizer> optimizer_;

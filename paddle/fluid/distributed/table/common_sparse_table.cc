@@ -372,6 +372,7 @@ int32_t CommonSparseTable::initialize() {
   for (int i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
+  _sync_task_pool.reset(new ::ThreadPool(1));
 
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
@@ -723,7 +724,7 @@ int32_t CommonSparseTable::push_sparse(const uint64_t* keys,
                                        const float* values, size_t num) {
   if (sync) {
     std::future<int> task =
-        _shards_task_pool[0]->enqueue([this, &keys, &values, num]() -> int {
+        _sync_task_pool->enqueue([this, &keys, &values, num]() -> int {
           for (int x = 0; x < num; ++x) {
             auto id = keys[x];
             auto has = pull_reservoir_.find(id);

@@ -38,10 +38,9 @@ void CommonDenseTable::create_initializer(const std::string& attr,
 }
 
 int32_t CommonDenseTable::initialize() {
-  _shards_task_pool.resize(task_pool_size_);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
-  }
+  _pull_task_pool.reset(new ::ThreadPool(task_pool_size_));
+  _push_task_pool.reset(new ::ThreadPool(task_pool_size_));
+  _sync_task_pool.reset(new ::ThreadPool(1));
 
   auto common = _config.common();
 
@@ -120,8 +119,13 @@ int32_t CommonDenseTable::set_global_lr(float* lr) {
 }
 
 int32_t CommonDenseTable::pull_dense(float* pull_values, size_t num) {
-  std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
-            pull_values);
+  auto task = _pull_task_pool->enqueue(
+              [this, &pull_values]() -> int {
+                std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
+                  pull_values);
+                return 0;
+              });
+  task.wait();
   return 0;
 }
 
@@ -142,8 +146,8 @@ int32_t CommonDenseTable::pour() {
 
 int32_t CommonDenseTable::push_dense(const float* values, size_t num) {
   if (sync) {
-    std::future<int> task =
-        _shards_task_pool[0]->enqueue([this, &values]() -> int {
+    auto task =
+        _sync_task_pool->enqueue([this, &values]() -> int {
           pull_reservoir_.add(values, param_dim_);
           return 0;
         });
@@ -159,23 +163,12 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
       num, param_dim_,
       paddle::platform::errors::InvalidArgument(
           "update desne numel expected %d, but got %d", param_dim_, num));
-
-  std::vector<int> buckets = bucket(param_dim_, task_pool_size_);
-  std::vector<std::future<int>> tasks(task_pool_size_);
-
-  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
-    tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &buckets, &values]() -> int {
-          auto begin = buckets[shard_id];
-          auto end = buckets[shard_id + 1];
-          optimizer_->update(values, param_dim_, begin, end);
-          return 0;
-        });
-  }
-
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
-  }
+  auto task = _push_task_pool->enqueue(
+              [this, &values]() -> int {
+                optimizer_->update(values, param_dim_, 0, param_dim_);
+                return 0;
+              });
+  task.wait();
   return 0;
 }
 

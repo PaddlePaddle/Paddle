@@ -85,6 +85,7 @@ class CommonSparseTable : public SparseTable {
  private:
   const int task_pool_size_ = 11;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::shared_ptr<::ThreadPool> _sync_task_pool;
 
   bool sync = false;
   int param_dim_ = 0;
