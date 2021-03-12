@@ -38,3 +38,7 @@ if(WITH_GPU)
 	nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor)
     endif()
 endif()
+
+if(WITH_ASCEND_CL)
+    cc_test(reduce_any_op_npu_test SRCS reduce_any_op_npu_test.cc DEPS op_registry reduce_any_op scope device_context enforce executor)
+endif()
