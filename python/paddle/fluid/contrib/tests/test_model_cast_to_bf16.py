@@ -130,7 +130,7 @@ class TestModelCastBF16(unittest.TestCase):
                     amp_fun=lambda prog: amp.rewrite_program_bf16(
                         prog,
                         amp.AutoMixedPrecisionListsBF16(
-                            custom_fp32_varnames={'elementwise_mul'},
+                            custom_fp32_varnames={'elementwise_mul_0.tmp_0'},
                         ),
                         use_bf16_guard=True
                     )
