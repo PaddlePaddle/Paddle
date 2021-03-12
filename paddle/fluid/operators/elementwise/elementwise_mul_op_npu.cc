@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -58,17 +59,21 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    dx->mutable_data<T>(place);
-    dy->mutable_data<T>(place);
-
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto dx_runner = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
-    dx_runner.Run(stream);
-    auto dy_runner = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
-    dy_runner.Run(stream);
+    if (dx) {
+      dx->mutable_data<T>(place);
+      auto dx_runner = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
+      dx_runner.Run(stream);
+    }
+
+    if (dy) {
+      dy->mutable_data<T>(place);
+      auto dy_runner = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
+      dy_runner.Run(stream);
+    }
   }
 };
 
@@ -88,3 +93,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
                                      paddle::platform::float16>);
+#endif

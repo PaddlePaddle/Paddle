@@ -122,6 +122,7 @@ class TestElementwiseMulNet(unittest.TestCase):
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
+            f.stop_gradient = True
             g = paddle.multiply(e, f)
 
             fc_1 = fluid.layers.fc(input=g, size=128)
