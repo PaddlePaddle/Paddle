@@ -40,27 +40,32 @@ class StackNPUKernel : public framework::OpKernel<T> {
     }
     */
 
-        auto x = ctx.MultiInput<Tensor>("X");
+    VLOG(2) << "aaa===";
+    auto x = ctx.MultiInput<Tensor>("X");
     int n = static_cast<int>(x.size());
     //std::vector<const T*> x_list;
-    std::vector<paddle::framework::Tensor> x_list;
+    std::vector<Tensor> x_list;
     for (int i = 0; i < n; i++) {
-      x_list.push_back(x[i]);
+      x_list.push_back(*x[i]);
     }
-
+    VLOG(2) << "bbb===";
     int axis = ctx.Attr<int>("axis");
-        int32_t N = x.size();
-    auto* out = ctx.Output<Tensor>("Out");
+    int32_t N = x.size();
+    VLOG(2) << "ccc===";
 
-    auto place = ctx.GetPlace();
+    auto* out = ctx.Output<Tensor>("Y");
+    // auto* out = ctx.Output<framework::LoDTensor>("Out");
+    //auto place = ctx.GetPlace();
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
-    out->mutable_data<T>(place);
-        auto runner = NpuOpRunner("Pack", {x_list}, {*out}, {{"axis", axis}, {"N", N}});
+    auto stream = ctx.template device_context<paddle::platform::NPUDeviceContext>().stream();
+    VLOG(2) << "ddd===";
+    out->mutable_data<T>(ctx.GetPlace());
+    // out->mutable_data<T>(place);
+    VLOG(2) << "ggg===";
+    auto runner = NpuOpRunner("Pack", x_list, {*out}, {{"axis", axis}, {"N", N}});
+    VLOG(2) << "eee===";
     runner.Run(stream);
+    VLOG(2) << "fff===";
   }
 };
 

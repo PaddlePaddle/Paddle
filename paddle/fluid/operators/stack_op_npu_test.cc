@@ -59,10 +59,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   std::cout << "22222222222" << std::endl;
 
   TensorFromVector(init_x1, ctx, tensor_x1);
-  tensor_x1->Resize({1, 10});
+  tensor_x1->Resize({5, 2});
 
   TensorFromVector(init_x2, ctx, tensor_x2);
-  tensor_x2->Resize({1, 10});
+  tensor_x2->Resize({5, 2});
+
+  // auto x_list = scope->MultiInputVar("XList");
+  // x_list.push_back(tensor_x1);
+  // x_list.push_back(tensor_x2);
 
   std::cout << "3333333333" << std::endl;
   ctx.Wait();
@@ -72,7 +76,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   // run
-  f::AttributeMap attrs = {{"axis", 1}};
+  f::AttributeMap attrs = {{"axis", 0}};
   auto op = f::OpRegistry::CreateOp("stack", {{"X", {"X1", "X2"}}},
                                     {{"Y", {"Out"}}}, attrs);
 
@@ -80,15 +84,17 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   op->Run(*scope, place);
   ctx.Wait();
 
+  std::cout << "555555555555555" << std::endl;
+
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   ctx.Wait();
 
   float expected;
-  expected = 3.0;
+  expected = 1.0;
 
-  std::cout << "555555555555555" << std::endl;
+  std::cout << "66666666666666" << std::endl;
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], static_cast<T>(expected));
   }
