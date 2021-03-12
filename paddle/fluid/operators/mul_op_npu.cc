@@ -63,14 +63,13 @@ class MulNPUKernel : public framework::OpKernel<T> {
             // runner_flatten.Run(stream);
             out->mutable_data<T>(ctx.GetPlace());
         // matmul
-        auto runner_matmul =
-            NpuOpRunner("MatMul", x, *y
-      }, {*out}, {});
-      runner_matmul.Run(stream);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument("not suppert dims"));
+        auto runner_matmul = NpuOpRunner("MatMul", {x, *y}, {*out}, {});
+        runner_matmul.Run(stream);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument("not suppert dims"));
+      }
+      // to do other
     }
-    // to do other
   }
 };
 
