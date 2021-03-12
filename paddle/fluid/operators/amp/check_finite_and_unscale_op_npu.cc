@@ -61,6 +61,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     size_t x_size = xs.size();
     for (size_t i = 0; i < x_size; ++i) {
+      found_inf_data = true;
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
@@ -68,7 +69,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       // step2: CheckNumerics
       // CheckNumerics runs on the Ascend AI CPU, which delivers poor
       // performance.
-      Tensor* tmp_checkxout = const_cast<Tensor*>(x);
       Tensor check_xout(x->type());
       check_xout.Resize(x->dims());
       check_xout.mutable_data<T>(ctx.GetPlace());
@@ -77,34 +77,35 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
             NpuOpRunner("CheckNumerics", {*x}, {check_xout},
                         {{"message", std::string("check_nan_and_inf")}});
         runner_checknumerics.Run(stream);
-        tmp_checkxout = &check_xout;
       } catch (platform::EnforceNotMet& exception) {
         LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
-        tmp_checkxout = nullptr;
+        found_inf_data = true;
+      } catch (...) {
+        LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
         found_inf_data = true;
       }
 
-      if (tmp_checkxout != nullptr) {
+      if (!found_inf_data) {
         // MatMul
         auto runner_matmul =
             NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
         runner_matmul.Run(stream);
-
-        // set found_inf to true
-        if (found_inf_data) {
-          Tensor found_inf_tensor;
-          found_inf_tensor.Resize({1});
-          bool* is_found_inf =
-              found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
-          *is_found_inf = true;
-          framework::TensorCopy(found_inf_tensor, ctx.GetPlace(), found_inf);
-        }
       } else {
         // ZerosLike
         auto runner_zeroslike = NpuOpRunner("ZerosLike", {*x}, {*out}, {});
         runner_zeroslike.Run(stream);
       }  // end if
     }    // end for
+
+    // set found_inf to true
+    if (found_inf_data) {
+      Tensor found_inf_tensor;
+      found_inf_tensor.Resize({1});
+      bool* is_found_inf =
+          found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
+      *is_found_inf = true;
+      framework::TensorCopySync(found_inf_tensor, ctx.GetPlace(), found_inf);
+    }
   }
 };
 
