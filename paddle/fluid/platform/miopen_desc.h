@@ -199,19 +199,24 @@ class FilterDescriptor {
 
   void set(const Tensor& tensor, const miopenTensorFormat_t format,
            const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
-    std::vector<int> transformed_dims;
     PADDLE_ENFORCE_EQ(format, MIOPEN_TENSOR_NCHW,
                       platform::errors::InvalidArgument(
                           "format should ONLY be NCHW in MIOPEN."));
-    transformed_dims = dims;
-    // if (groups > 1) {
-    //   transformed_dims[1] = transformed_dims[1] / groups;
-    // }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSet4dTensorDescriptor(
-        (miopenTensorDescriptor_t)desc_.get(), ToCudnnDataType(tensor.type()),
-        transformed_dims[0], transformed_dims[1], transformed_dims[2],
-        transformed_dims[3]));
+    auto dims = framework::vectorize<int>(tensor.dims());
+    std::vector<int> strides(dims.size());
+    strides[dims.size() - 1] = 1;
+    for (int i = dims.size() - 2; i >= 0; i--) {
+      strides[i] = dims[i + 1] * strides[i + 1];
+    }
+    std::vector<int> dims_with_group(dims.begin(), dims.end());
+    if (groups > 1) {
+      dims_with_group[1] = dims_with_group[1] / groups;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::miopenSetTensorDescriptor(
+        (miopenTensorDescriptor_t)(desc_.get()), ToCudnnDataType(tensor.type()),
+        static_cast<int>(dims_with_group.size()),
+        const_cast<int*>(dims_with_group.data()),
+        const_cast<int*>(strides.data())));
   }
 
  private:
