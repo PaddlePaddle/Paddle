@@ -22,6 +22,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include <unordered_map>
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
@@ -46,7 +47,7 @@ class GraphPyService {
   std::vector<int> keys;
   std::vector<std::string> server_list, port_list, host_sign_list;
   int server_size, shard_num, rank, client_id;
-  uint32_t table_id;
+  std::unordered_map<std::string, uint32_t > table_id_map;
   std::thread *server_thread, *client_thread;
 
   std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
@@ -67,7 +68,7 @@ class GraphPyService {
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
-      ::paddle::distributed::TableParameter* sparse_table_proto) {
+      ::paddle::distributed::TableParameter* sparse_table_proto, uint32_t table_id) {
     sparse_table_proto->set_table_id(table_id);
     sparse_table_proto->set_table_class("GraphTable");
     sparse_table_proto->set_shard_num(shard_num);
@@ -96,10 +97,14 @@ class GraphPyService {
     server_service_proto->set_start_server_port(0);
     server_service_proto->set_server_thread_num(12);
 
-    ::paddle::distributed::TableParameter* sparse_table_proto =
-        downpour_server_proto->add_downpour_table_param();
-    GetDownpourSparseTableProto(sparse_table_proto);
+    for(auto& tuple : this -> table_id_map) {
+        ::paddle::distributed::TableParameter* sparse_table_proto =
+            downpour_server_proto->add_downpour_table_param();
+        GetDownpourSparseTableProto(sparse_table_proto, tuple.second);
+    }
+
     return server_fleet_desc;
+
   }
 
   ::paddle::distributed::PSParameter GetWorkerProto() {
@@ -111,9 +116,11 @@ class GraphPyService {
     ::paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
         worker_proto->mutable_downpour_worker_param();
 
-    ::paddle::distributed::TableParameter* worker_sparse_table_proto =
-        downpour_worker_proto->add_downpour_table_param();
-    GetDownpourSparseTableProto(worker_sparse_table_proto);
+    for(auto& tuple : this -> table_id_map) {
+        ::paddle::distributed::TableParameter* worker_sparse_table_proto =
+            downpour_worker_proto->add_downpour_table_param();
+        GetDownpourSparseTableProto(worker_sparse_table_proto, tuple.second);
+    }
 
     ::paddle::distributed::ServerParameter* server_proto =
         worker_fleet_desc.mutable_server_param();
@@ -127,9 +134,11 @@ class GraphPyService {
     server_service_proto->set_start_server_port(0);
     server_service_proto->set_server_thread_num(12);
 
-    ::paddle::distributed::TableParameter* server_sparse_table_proto =
-        downpour_server_proto->add_downpour_table_param();
-    GetDownpourSparseTableProto(server_sparse_table_proto);
+    for(auto& tuple : this -> table_id_map) {
+        ::paddle::distributed::TableParameter* sparse_table_proto =
+            downpour_server_proto->add_downpour_table_param();
+        GetDownpourSparseTableProto(sparse_table_proto, tuple.second);
+    }
 
     return worker_fleet_desc;
   }
@@ -137,24 +146,47 @@ class GraphPyService {
   int get_server_size(int server_size) { return server_size; }
   std::vector<std::string> split(std::string& str, const char pattern);
 
-  void load_file(std::string filepath) {
-    auto status =
-        get_ps_client()->load(table_id, std::string(filepath), std::string(""));
-    status.wait();
+  void load_edge_file(std::string name, std::string filepath, bool reverse) {
+    std::string params = "edge";
+    if(reverse) {
+        params += "|reverse";
+    }
+    if (this -> table_id_map.count(name)) {
+        uint32_t table_id =  this -> table_id_map[name];
+        auto status =
+            get_ps_client()->load(table_id, std::string(filepath), params);
+        status.wait();
+    }
   }
 
-  std::vector<GraphNode> sample_k(uint64_t node_id, int sample_size) {
+  void load_node_file(std::string name, std::string filepath) {
+    std::string params = "node";
+    if (this -> table_id_map.count(name)) {
+        uint32_t table_id =  this -> table_id_map[name];
+        auto status =
+            get_ps_client()->load(table_id, std::string(filepath), params);
+        status.wait();
+    }
+  }
+
+  std::vector<GraphNode> sample_k(std::string name, uint64_t node_id, int sample_size) {
     std::vector<GraphNode> v;
-    auto status = worker_ptr->sample(table_id, node_id, sample_size, v);
-    status.wait();
+    if (this -> table_id_map.count(name)) {
+        uint32_t table_id =  this -> table_id_map[name];
+        auto status = worker_ptr->sample(table_id, node_id, sample_size, v);
+        status.wait();
+    }
     return v;
   }
-  std::vector<GraphNode> pull_graph_list(int server_index, int start,
+  std::vector<GraphNode> pull_graph_list(std::string name, int server_index, int start,
                                          int size) {
     std::vector<GraphNode> res;
-    auto status =
-        worker_ptr->pull_graph_list(table_id, server_index, start, size, res);
-    status.wait();
+    if (this -> table_id_map.count(name)) {
+        uint32_t table_id =  this -> table_id_map[name];
+        auto status =
+            worker_ptr->pull_graph_list(table_id, server_index, start, size, res);
+        status.wait();
+    }
     return res;
   }
   void start_server(std::string ip, uint32_t port) {
@@ -197,7 +229,7 @@ class GraphPyService {
     worker_ptr->configure(worker_proto, dense_regions, _ps_env, client_id);
   }
   void set_up(std::string ips_str, int shard_num, int rank, int client_id,
-              uint32_t table_id);
+              std::vector<std::string> edge_types);
   void set_keys(std::vector<int> keys) {  // just for test
     this->keys = keys;
   }
