@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,27 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-void GetSizeNPURange(T start, T end, T step, int64_t* size) {
-  PADDLE_ENFORCE_NE(step, 0, platform::errors::InvalidArgument(
-                                 "The step of range op should not be 0."));
-
-  if (start < end) {
-    PADDLE_ENFORCE_GT(
-        step, 0, platform::errors::InvalidArgument(
-                     "The step should be greater than 0 while start < end."));
-  }
-
-  if (start > end) {
-    PADDLE_ENFORCE_LT(step, 0,
-                      platform::errors::InvalidArgument(
-                          "step should be less than 0 while start > end."));
-  }
-
-  *size = std::is_integral<T>::value
-              ? ((std::abs(end - start) + std::abs(step) - 1) / std::abs(step))
-              : std::ceil(std::abs((end - start) / step));
-}
 
 template <typename DeviceContext, typename T>
 class RangeNPUKernel : public framework::OpKernel<T> {
@@ -69,7 +48,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     T step = n.data<T>()[0];
 
     int64_t size = 0;
-    GetSizeNPURange(start, end, step, &size);
+    GetSize(start, end, step, &size);
 
     out->Resize(framework::make_ddim({size}));
     out->mutable_data<T>(context.GetPlace());
