@@ -556,7 +556,6 @@ class MovingAverageAbsMaxScale(layers.Layer):
                 setattr(self._layer, "_quant_out_accum", self._accum)
         else:
             self._accum = self._layer._quant_out_accum
-        #MovingAverageAbsMaxScale._has_create = True
 
     def forward(self, input):
         if in_dygraph_mode():

@@ -339,12 +339,17 @@ class ImperativeCalcOutScale(object):
         self._register_hook_handle_list = []
         self._out_scale_dict = collections.OrderedDict()
 
-    def is_matched_layer(self, layer):
+    # Determine whether layer supports calculation out_scale
+    def _is_matched_layer(self, layer):
         if not isinstance(layer, self._out_scale_layer_type_list):
             if 'quantized_' not in layer.full_name():
                 return False
         return True
 
+    # When inferenc model is saved, the logic in hook would not be executed
+    # in program translation, so that some parameters can not created in
+    # __init__, which would cause the model to fail to save. Therefore, the
+    # parameters creation in the hook is advanced to be exected outside the hook.
     def _add_new_parameters(self, layer, name=None):
         dtype = layer._dtype if layer._dtype is not None else "float32"
         if dtype not in ["float32", "float64"]:
@@ -375,7 +380,8 @@ class ImperativeCalcOutScale(object):
             shape=[1], attr=accum_attr, dtype=dtype)
         layer._quant_out_accum.stop_gradient = True
 
-    def is_op_matched(self, layer_name, op, block):
+    # Judge whether the op in program matches the Layer in dynamic model
+    def _is_op_matched(self, layer_name, op, block):
         output_var_names = quantization_pass._get_op_output_var_names(op)
         for output_var_name in output_var_names:
             output_var_tensor = block.var(output_var_name)
@@ -383,6 +389,9 @@ class ImperativeCalcOutScale(object):
                     core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32
             ]:
                 return False
+
+        # Because the naming styles of static and dynamic graph are different,
+        # in order to avoid mistakes, we unify the name here.
         op_type = output_var_names[0].split(".")[0]
         op_type = op_type.rsplit("_", 1)[0]
         if op_type == 'depthwise_conv2d':
@@ -391,10 +400,7 @@ class ImperativeCalcOutScale(object):
             op_type = op_type.replace('prelu', 'p_re_lu')
         if 'relu' in op_type:
             op_type = op_type.replace('relu', 're_lu')
-        if op_type in layer_name:
-            return True
-        else:
-            return False
+        return op_type in layer_name
 
     def calc_out_scale(self, model):
         """
@@ -409,7 +415,7 @@ class ImperativeCalcOutScale(object):
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         for _, layer in model.named_sublayers():
-            if self.is_matched_layer(layer):
+            if self._is_matched_layer(layer):
                 self._add_new_parameters(layer)
                 forward_post_hook_handle = layer.register_forward_post_hook(
                     self._forward_post_hook)
@@ -453,7 +459,7 @@ class ImperativeCalcOutScale(object):
                                                       .numpy())
             else:
                 for _, sub_layer in self._layer.named_sublayers():
-                    if self.is_matched_layer(sub_layer):
+                    if self._is_matched_layer(sub_layer):
                         layer_name = sub_layer.full_name()
                         if hasattr(sub_layer, "layer_name"):
                             layer_name = sub_layer.layer_name
@@ -494,6 +500,13 @@ class ImperativeCalcOutScale(object):
                 "so the generated inference model would not contain the out_threshold."
             )
         else:
+            # Because the Layer in dygraph may correspond to multiple ops
+            # in static program after being saved. To ensure correctness,
+            # the outscale collected for output of dygraph Layer can only
+            # be set to the last op in the corresponding ops in static program.
+            #
+            # We can judge the execution order of the ops which corresponding
+            # to dygraph Layer by check_behind_op
             forward_op = None
             for block in inference_program.blocks:
                 for op in block.ops:
@@ -506,8 +519,8 @@ class ImperativeCalcOutScale(object):
                         if check_behind_op:
                             check_behind_op = False
                             if op.type == "elementwise_add":
-                                if self.is_op_matched(ops_list[op_count], op,
-                                                      block):
+                                if self._is_op_matched(ops_list[op_count], op,
+                                                       block):
                                     op._set_attr("out_threshold",
                                                  self._out_scale_dict[ops_list[
                                                      op_count]])
@@ -518,8 +531,8 @@ class ImperativeCalcOutScale(object):
                                 if forward_op is None:
                                     raise ValueError(
                                         "forward_op should not be None")
-                                if self.is_op_matched(ops_list[op_count],
-                                                      forward_op, block):
+                                if self._is_op_matched(ops_list[op_count],
+                                                       forward_op, block):
                                     forward_op._set_attr(
                                         "out_threshold", self._out_scale_dict[
                                             ops_list[op_count]])
@@ -535,7 +548,7 @@ class ImperativeCalcOutScale(object):
                                 "The number of Layer which has out_threshold attribute should be bigger than the op in inference model"
                             )
                             break
-                        if self.is_op_matched(ops_list[op_count], op, block):
+                        if self._is_op_matched(ops_list[op_count], op, block):
                             op._set_attr(
                                 "out_threshold",
                                 self._out_scale_dict[ops_list[op_count]])
