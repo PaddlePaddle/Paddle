@@ -105,7 +105,7 @@ class FP16Utils(object):
                 reversed_x = []
                 reversed_x_paramname = []
                 for input_name in op.desc.input('X'):
-                    param_name = input_name.strip("@GRAD")
+                    param_name = input_name.strip("@GRAD@MERGED")
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"

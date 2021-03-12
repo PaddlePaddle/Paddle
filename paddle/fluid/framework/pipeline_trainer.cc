@@ -81,7 +81,10 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
   for (auto& var : global_block.AllVars()) {
     bool is_param_grad = false;
     size_t pos = 0;
-    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos) {
+    // A magic suffix to indicated the merged gradient.
+    std::string magicSuffix = "MERGED";
+    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos &&
+        var->Name().find(magicSuffix) != std::string::npos) {
       auto prefix_name = var->Name().substr(0, pos);
       if (param_map.find(prefix_name) != param_map.end()) {
         is_param_grad = true;
