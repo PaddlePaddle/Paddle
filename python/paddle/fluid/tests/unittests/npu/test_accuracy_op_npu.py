@@ -29,7 +29,7 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestAccurary(OpTest):
+class TestAccuracy(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -63,7 +63,7 @@ class TestAccurary(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-class TestAccuracy2(TestAccurary):
+class TestAccuracy2(TestAccuracy):
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -87,7 +87,7 @@ class TestAccuracy2(TestAccurary):
         }
 
 
-class TestAccuracy3(TestAccurary):
+class TestAccuracy3(TestAccuracy):
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -111,6 +111,11 @@ class TestAccuracy3(TestAccurary):
             "Correct": correct,
             "Total": total
         }
+
+
+class TestAccuracyInt(TestAccuracy):
+    def init_dtype(self):
+        self.dtype = np.int
 
 
 if __name__ == '__main__':

@@ -2,9 +2,7 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,10 +31,6 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     auto* acc = ctx.Output<Tensor>("Accuracy");
     auto* correct = ctx.Output<Tensor>("Correct");
     auto* total = ctx.Output<Tensor>("Total");
-    acc->mutable_data<T>(ctx.GetPlace());
-    correct->mutable_data<T>(ctx.GetPlace());
-    total->mutable_data<T>(ctx.GetPlace());
-
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -70,37 +64,49 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     // cast equal
     Tensor tmp_equal_cast(label->type());
     tmp_equal_cast.Resize(label->dims());
-    tmp_equal_cast.mutable_data<T>(ctx.GetPlace());
+    tmp_equal_cast.mutable_data<float>(ctx.GetPlace());
     auto runner_cast_equal =
         NpuOpRunner("Cast", {tmp_equal}, {tmp_equal_cast},
                     {{"dst_type", static_cast<float>(ACL_FLOAT)}});
     runner_cast_equal.Run(stream);
 
     // acc
+    acc->mutable_data<float>(ctx.GetPlace());
     std::vector<int> axes_vec_1;
-    // axes_vec.push_back(static_cast<int>());
     auto runner_acc = NpuOpRunner("ReduceMeanD", {tmp_equal_cast}, {*acc},
                                   {{"keep_dims", false}, {"axes", axes_vec_1}});
     runner_acc.Run(stream);
 
     // correct
+    correct->mutable_data<float>(ctx.GetPlace());
     std::vector<int> axes_vec_2;
     auto runner_correct =
         NpuOpRunner("ReduceSumD", {tmp_equal_cast}, {*correct},
                     {{"keep_dims", false}, {"axes", axes_vec_2}});
     runner_correct.Run(stream);
 
-    // ones_tonser
+    // ones_tensor
     Tensor ones_tensor(label->type());
     ones_tensor.Resize(label->dims());
-    ones_tensor.mutable_data<T>(ctx.GetPlace());
-    auto runner_oneslike = NpuOpRunner("OnesLike", {*label}, {ones_tensor}, {});
+    ones_tensor.mutable_data<int>(ctx.GetPlace());
+    auto runner_oneslike =
+        NpuOpRunner("OnesLike", {tmp_label}, {ones_tensor}, {});
     runner_oneslike.Run(stream);
 
+    // ones_tensor_cast
+    Tensor ones_tensor_cast(label->type());
+    ones_tensor_cast.Resize(label->dims());
+    ones_tensor_cast.mutable_data<float>(ctx.GetPlace());
+    auto runner_ones_cast =
+        NpuOpRunner("Cast", {ones_tensor}, {ones_tensor_cast},
+                    {{"dst_type", static_cast<float>(ACL_FLOAT)}});
+    runner_ones_cast.Run(stream);
+
     // total
+    total->mutable_data<float>(ctx.GetPlace());
     std::vector<int> axes_vec_3;
     auto runner_total =
-        NpuOpRunner("ReduceSumD", {ones_tensor}, {*total},
+        NpuOpRunner("ReduceSumD", {ones_tensor_cast}, {*total},
                     {{"keep_dims", false}, {"axes", axes_vec_3}});
     runner_total.Run(stream);
   }
@@ -113,5 +119,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     accuracy, ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
 #endif
