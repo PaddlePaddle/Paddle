@@ -89,7 +89,7 @@ def get_worker_info():
         WorkerInfo: an instance of WorkerInfo which contains fields above.
 
     .. note::
-        For mode usage and exampls, please see :code:`paddle.io.IterableDataset`
+        For more usage and exampls, please see :code:`paddle.io.IterableDataset`
 
     Example:
 

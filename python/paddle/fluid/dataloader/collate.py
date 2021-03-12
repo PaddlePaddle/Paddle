@@ -26,7 +26,7 @@ except:
 
 def default_collate_fn(batch):
     """
-    Default batch collating function for :code:`fluid.io.DataLoader`,
+    Default batch collating function for :code:`paddle.io.DataLoader`,
     batch should be a list of samples, and each sample should be a list
     of fields as follows:
     
