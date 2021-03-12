@@ -80,7 +80,7 @@ class TestLookupTableBF16Op(OpTest):
                  "place does not support BF16 evaluation")
 class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
     def setUp(self):
-        super().setUp()
+        super(TestLookupTableBF16OpIds4D, self).setUp()
         self.ids = np.random.randint(0, 17, (2, 4, 5, 1)).astype("int64")
 
 
@@ -134,7 +134,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
 class TestLookupTableBF16OpWIsSelectedRows4DIds(
         TestLookupTableBF16OpWIsSelectedRows):
     def setUp(self):
-        super().setUp()
+        super(TestLookupTableBF16OpWIsSelectedRows4DIds, self).setUp()
         self.ids = np.random.randint(
             low=0, high=15, size=(3, 4, 5, 1)).astype("int64")
         self.flat_ids = self.ids.flatten()
