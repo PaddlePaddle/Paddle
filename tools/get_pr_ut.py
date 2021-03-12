@@ -281,6 +281,7 @@ class PRChecker(object):
                 else:
                     ut_list.extend(file_ut_map.get(f))
         ut_list = list(set(ut_list))
+        print(ut_list)
 
         if check_added_ut:
             with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
