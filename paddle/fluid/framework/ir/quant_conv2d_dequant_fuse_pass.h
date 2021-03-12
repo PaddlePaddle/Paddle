@@ -25,6 +25,8 @@ namespace ir {
 ///
 /// Fuse quant + conv2d/depthwise_conv2d/mul/fc + dequant
 ///
+class Graph;
+
 class QuantDequantFusePass : public FusePassBase {
  public:
   virtual ~QuantDequantFusePass() {}

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/functional.h>
 #include <thrust/scatter.h>
+#include <thrust/sequence.h>
 #include <thrust/unique.h>
 #include <iostream>
 #include <vector>

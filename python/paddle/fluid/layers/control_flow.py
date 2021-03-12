@@ -1098,6 +1098,10 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+    if not isinstance(input, Variable) and not isinstance(input, core.VarBase):
+        output = input
+        return
+
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         main_program = input.block.program
         parent_block = main_program.block(main_program.current_block()

@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
-#include <set>
-#include <string>
-#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 

@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
-#include "paddle/fluid/framework/ir/mkldnn/pass_test_util.h"
+#include "paddle/fluid/framework/ir/pass_test_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {

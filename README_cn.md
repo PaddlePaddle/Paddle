@@ -32,7 +32,7 @@ pip install paddlepaddle-gpu
 ```
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)
 
-PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送12小时**，**连续五天运行再加送48小时**，[前往使用免费算力](https://ai.baidu.com/support/news?action=detail&id=981)。
+PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送10小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
 
 ## 四大领先技术
 
@@ -83,7 +83,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 ## 交流与反馈
 
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
-- QQ群: 796771754 (PaddlePaddle)
+- QQ群: 778260830 (PaddlePaddle)
 - [论坛](https://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
 
 ## 版权和许可证

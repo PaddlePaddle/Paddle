@@ -9,26 +9,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include <float.h>
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/framework/program_desc.h"
-
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/trainer_desc.pb.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
 
 namespace paddle {
 namespace framework {
+
+class TrainerDesc;
 
 uint64_t SectionWorker::batch_id_(0);
 
@@ -48,7 +38,7 @@ void SectionWorker::TrainFiles() {
   std::unique_ptr<GarbageCollector> gc;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
   if (max_memory_size >= 0) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
@@ -80,7 +70,11 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+#ifdef PADDLE_WITH_RCCL
+    hipDeviceSynchronize();
+#else
     cudaDeviceSynchronize();
+#endif
   }
 
   // backward pass
@@ -99,7 +93,11 @@ void SectionWorker::TrainFiles() {
         }
       }
     }
+#ifdef PADDLE_WITH_RCCL
+    hipDeviceSynchronize();
+#else
     cudaDeviceSynchronize();
+#endif
   }
 
   // update pass

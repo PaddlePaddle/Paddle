@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto
@@ -57,6 +58,8 @@ class ScaleOpConverter : public OpConverter {
       return tmp_data;
     };
 
+    int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
+
     float* bias_ptr = create_weights(bias, "bias");
     float* scale_ptr = create_weights(scale, "scale");
 
@@ -69,19 +72,22 @@ class ScaleOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     auto input_dim = input->getDimensions();
-    PADDLE_ENFORCE_GE(input_dim.nbDims, 3,
-                      platform::errors::Fatal(
-                          "Paddle-TRT scale mode only support dimension >= 3"));
 
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
 
-    if (input_dim.nbDims == 3) {
-      // TensorRT scale layer is not supporting input dims < 4 when using
-      // explicit batch
+    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+      nvinfer1::Dims expand_shape;
+      expand_shape.nbDims = 3 + dynamic_shape_offset;
+      for (int i = 0; i < 3 + dynamic_shape_offset; i++) {
+        if (i < input_dim.nbDims) {
+          expand_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+        } else {
+          expand_shape.d[i] = 1;
+        }
+      }
       expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      nvinfer1::Dims4 target_shape(0, 0, 0, 1);  // expand 1 dims
-      expand_layer->setReshapeDimensions(target_shape);
+      expand_layer->setReshapeDimensions(expand_shape);
       input = expand_layer->getOutput(0);
     }
 
@@ -103,13 +109,15 @@ class ScaleOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(layer != nullptr, true,
                       platform::errors::Fatal("Create scale layer failed."));
 
-    if (input_dim.nbDims == 3) {
-      // TensorRT scale layer is not supporting input dims < 4 when using
-      // explicit batch
+    if (input_dim.nbDims < 3 + dynamic_shape_offset) {
+      nvinfer1::Dims squeeze_shape;
+      squeeze_shape.nbDims = input_dim.nbDims;
+      for (int i = 0; i < squeeze_shape.nbDims; i++) {
+        squeeze_shape.d[i] = input_dim.d[i] < 0 ? 0 : input_dim.d[i];
+      }
       squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
-      nvinfer1::Dims3 target_shape(0, 0, 0);  // expand 1 dims
-      squeeze_layer->setReshapeDimensions(target_shape);
+      squeeze_layer->setReshapeDimensions(squeeze_shape);
       layer = static_cast<nvinfer1::ILayer*>(squeeze_layer);
     }
     RreplenishLayerAndOutput(layer, "scale", {out_name}, test_mode);
