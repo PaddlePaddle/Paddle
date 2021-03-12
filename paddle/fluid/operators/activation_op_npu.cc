@@ -129,7 +129,7 @@ template <typename DeviceContext, typename T>
 class ReluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
@@ -138,7 +138,7 @@ class ReluGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     dx->mutable_data<T>(ctx.GetPlace());
-    auto runner = NpuOpRunner("ReluGrad", {*dout, *x}, {*dx}, {});
+    auto runner = NpuOpRunner("ReluGrad", {*dout, *out}, {*dx}, {});
 
     runner.Run(stream);
   }
