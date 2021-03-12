@@ -141,7 +141,7 @@ inline void GetPartialValue(int *x_dims, int *y_dims, int *pre, int *n,
       break;
     }
   }
-  
+
   for (int j = anchor_n; j < anchor_post; ++j) {
     (*n) *= tmp_dims[j];
   }
@@ -264,16 +264,12 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *__restrict__ x_data,
-                                  const T *__restrict__ y_data,
-                                  OutType *__restrict__ out_data, int n,
-                                  int post, const size_t total, Functor func) {
+__global__ void ElementwiseKernel(const T *x, const T *y, OutType *out, int pre,
+                                  int n, int post, int total, Functor func) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int stride = blockDim.x * gridDim.x;
-
-  for (int i = tid; i < total; i += stride) {
-    int idx = i / post % n;
-    out_data[i] = func(x_data[i], y_data[idx]);
+  int idx = tid / post % n;
+  if (tid < total) {
+    out[tid] = func(x[tid], y[idx]);
   }
 }
 
@@ -290,17 +286,14 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   int numel = pre * n * post;
   int threads = 256;
   int blocks = (numel + threads - 1) / threads;
-
   if (is_xsize_larger) {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, n, post, numel, func);
-    
-
+        x_data, y_data, out_data, pre, n, post, numel, func);
   } else {
     ElementwiseKernel<Functor, T,
                       OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, n, post, numel, func);
+        y_data, x_data, out_data, pre, n, post, numel, func);
   }
 }
 
@@ -416,7 +409,6 @@ void CommonForwardBroadcastCUDA(
       y_data, out_data, out_size, max_dim, func, is_xsize_larger);
 }
 
-
 template <typename Functor, typename T, typename OutType = T>
 void CommonForwardBroadcastCUDA2(
     const platform::CUDADeviceContext &ctx, const framework::Tensor *x,
@@ -457,6 +449,7 @@ void CommonForwardBroadcastCUDA2(
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
           x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
           func);
+
     } else {
       CommonForwardBroadcastCUDAKernel2<
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
