@@ -52,9 +52,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   in_t->Resize(f::make_ddim({3, 1, 7}));
   expand_times_t->Resize(f::make_ddim({3}));
   out_t->Resize(f::make_ddim({3, 10, 7}));
-
-  // in_t->mutable_data<T>(place);
-  // expand_times_t->mutable_data<int>(place);
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};

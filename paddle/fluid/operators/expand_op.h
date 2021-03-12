@@ -48,9 +48,7 @@ namespace paddle {
 namespace operators {
 inline std::vector<int> get_expand_times(
     const framework::ExecutionContext& ctx) {
-  std::cout << "get_expand_times" << std::endl;
   if (ctx.HasInput("ExpandTimes")) {
-    std::cout << "get_expand_times2" << std::endl;
     auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     framework::Tensor cpu_expand_tensor;
@@ -60,7 +58,6 @@ inline std::vector<int> get_expand_times(
     }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(expand_tensor->place())) {
-      std::cout << "get_expand_times3" << std::endl;
       TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }

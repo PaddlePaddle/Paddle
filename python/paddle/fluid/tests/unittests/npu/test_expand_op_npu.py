@@ -59,11 +59,17 @@ class TestExpand(OpTest):
     #     self.check_grad(['X'], 'Out')
     #
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestExpandFp16(TestExpand):
+     no_need_check_grad = True
+     def init_dtype(self):
+         self.dtype = np.float16
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSubtractNet(unittest.TestCase):
+class TestExpandNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()

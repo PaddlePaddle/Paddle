@@ -80,9 +80,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     expand, ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
-                         paddle::platform::float16>,
-    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
-    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int8_t>);
+                         paddle::platform::float16>);
 
 #endif
