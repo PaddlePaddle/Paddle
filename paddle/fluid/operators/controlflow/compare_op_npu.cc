@@ -72,12 +72,7 @@ REGISTER_OP_NPU_KERNEL(equal, ops::EqualNPUKernel<float>,
 REGISTER_OP_NPU_KERNEL(
     less_than,
     ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
-    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, int8_t>,
-    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, int64_t>);
+                           paddle::platform::float16>);
 
 #endif
