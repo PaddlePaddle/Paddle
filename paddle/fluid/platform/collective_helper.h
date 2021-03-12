@@ -57,6 +57,8 @@ class NCCLComm {
   virtual int device_id() const = 0;
   virtual ncclComm_t comm() const = 0;
   virtual gpuStream_t stream() const = 0;
+  virtual gpuEvent_t compute_event() const = 0;
+  virtual gpuEvent_t comm_event() const = 0;
   virtual CUDADeviceContext* dev_context() const = 0;
   virtual ~NCCLComm() = default;
 };

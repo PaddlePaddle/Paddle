@@ -239,7 +239,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
 
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
-          << dst_place << " by thream(" << stream << ")";
+          << dst_place << " by stream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CPU");
 #ifdef PADDLE_WITH_HIP

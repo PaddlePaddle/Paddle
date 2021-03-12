@@ -17,6 +17,7 @@ limitations under the License. */
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 
 #include <paddle/fluid/memory/allocation/allocator.h>
@@ -149,42 +150,24 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
-                                                 target_lvls_data, keys_out,
-                                                 idx_in, idx_out, roi_num);
-#else
     cub::DeviceRadixSort::SortPairs<int, int>(nullptr, temp_storage_bytes,
                                               target_lvls_data, keys_out,
                                               idx_in, idx_out, roi_num);
-#endif
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
-// Run sorting operation
-// sort target level to get corresponding index
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairs<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
-        idx_in, idx_out, roi_num);
-#else
+    // Run sorting operation
+    // sort target level to get corresponding index
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
-#endif
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
-// sort current index to get restore index
-#ifdef PADDLE_WITH_HIP
-    hipcub::DeviceRadixSort::SortPairs<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
-        restore_idx_data, roi_num);
-#else
+    // sort current index to get restore index
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
-#endif
 
     int start = 0;
     auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");

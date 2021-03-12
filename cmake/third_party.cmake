@@ -222,7 +222,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -317,6 +317,7 @@ endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
     add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 

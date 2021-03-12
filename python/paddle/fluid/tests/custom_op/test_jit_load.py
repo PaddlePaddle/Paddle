@@ -17,7 +17,7 @@ import unittest
 import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
 
 # switch to old custom op method
@@ -27,10 +27,9 @@ use_new_custom_op_load_method(False)
 custom_module = load(
     name='custom_relu2',
     sources=['relu_op.cc', 'relu_op.cu', 'relu_op3.cc', 'relu_op3.cu'],
-    interpreter='python',  # add for unittest
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI,
-    extra_cuda_cflags=extra_compile_args,  # add for split cpp/cuda flags
+    extra_cxx_cflags=extra_cc_args,  # test for cc flags
+    extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True  # add for unittest
 )
 

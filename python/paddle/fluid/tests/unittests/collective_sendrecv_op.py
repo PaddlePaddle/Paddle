@@ -46,7 +46,10 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
         ring_id = self.global_ring_id
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
-                name="tindata", shape=[10, 1000], dtype='float64')
+                name="tindata",
+                shape=[10, 1000],
+                dtype='float64',
+                append_batch_size=False)
             if self.rank == 0:
                 main_prog.global_block().append_op(
                     type="send_v2",

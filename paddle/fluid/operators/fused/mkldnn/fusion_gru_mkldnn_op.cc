@@ -89,6 +89,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     }
   }
 
+  template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightXMemory(const Tensor* weight_x,
                                                      const bool origin_mode) {
     const std::string wx_key = this->memory_key_ + "@weight_x";
@@ -98,18 +99,18 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
-      auto* weight_x_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      memcpy(weight_x_data, weight_x->data<float>(),
-             sizeof(float) * this->IC * this->G * this->OC);
+      auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
+      memcpy(weight_x_data, weight_x->data<U>(),
+             sizeof(U) * this->IC * this->G * this->OC);
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < this->IC; ++i) {
           for (int64_t j = 0; j < this->OC; ++j) {
-            weight_x_data[j] *= -1;
+            U minus_one(-1.0f);
+            weight_x_data[j] = minus_one * weight_x_data[j];
           }
           weight_x_data += 3 * this->OC;
         }
@@ -127,6 +128,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     return memory_p;
   }
 
+  template <typename U>
   std::shared_ptr<dnnl::memory> AcquireWeightHMemory(const Tensor* weight_h,
                                                      const bool origin_mode) {
     const std::string wh_key = this->memory_key_ + "@weight_h";
@@ -136,34 +138,33 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md =
           MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                        MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldigo);
+                        MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
       // oneDNN format [OC, 3OC]
-      auto* weight_h_data =
-          reinterpret_cast<float*>(user_memory.get_data_handle());
-      auto* user_weight_h_data = weight_h->data<float>();
+      auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
+      auto* user_weight_h_data = weight_h->data<U>();
 
       auto src1_iter = user_weight_h_data;
       auto src2_iter = user_weight_h_data + 2 * this->OC * this->OC;
 
       for (int64_t c = 0; c < this->OC; ++c) {
-        memcpy(weight_h_data, src1_iter, 2 * this->OC * sizeof(float));
-        memcpy(weight_h_data + 2 * this->OC, src2_iter,
-               this->OC * sizeof(float));
+        memcpy(weight_h_data, src1_iter, 2 * this->OC * sizeof(U));
+        memcpy(weight_h_data + 2 * this->OC, src2_iter, this->OC * sizeof(U));
 
         src1_iter += 2 * this->OC;
         src2_iter += this->OC;
         weight_h_data += 3 * this->OC;
       }
 
-      weight_h_data = reinterpret_cast<float*>(user_memory.get_data_handle());
+      weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
 
       if (origin_mode == false) {
         for (int64_t i = 0; i < this->OC; ++i) {
           for (int64_t j = 0; j < this->OC; ++j) {
-            weight_h_data[j] *= -1;
+            U minus_one(-1.0f);
+            weight_h_data[j] = minus_one * weight_h_data[j];
           }
           weight_h_data += 3 * this->OC;
         }
@@ -273,11 +274,34 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 
     auto input_memory_p =
         handler.AcquireInputMemoryWithReorder(input, is_reverse);
-    auto h0_memory_p = handler.AcquireH0Memory(h0);
-    auto weight_x_memory_p =
-        handler.AcquireWeightXMemory(weight_x, origin_mode);
-    auto weight_h_memory_p =
-        handler.AcquireWeightHMemory(weight_h, origin_mode);
+
+    std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
+        weight_x_memory_p;
+
+    if (weight_h->type() == paddle::framework::proto::VarType_Type_FP32) {
+      h0_memory_p = handler.template AcquireH0Memory<float>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<float>(weight_x, origin_mode);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<float>(weight_h, origin_mode);
+    } else if (weight_h->type() ==
+               paddle::framework::proto::VarType_Type_BF16) {
+      h0_memory_p =
+          handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<paddle::platform::bfloat16>(
+              weight_x, origin_mode);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
+              weight_h, origin_mode);
+    } else {
+      h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<int8_t>(weight_x, origin_mode);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<int8_t>(weight_h, origin_mode);
+    }
+
     auto bias_memory_p = handler.AcquireBiasMemory(bias, origin_mode);
     auto hidden_onednn_memory_p = handler.AcquireOutputMemory();
 

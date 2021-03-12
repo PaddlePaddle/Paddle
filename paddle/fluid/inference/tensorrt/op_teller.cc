@@ -129,13 +129,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
-      std::string padding_algorithm = "EXPLICIT";
-      if (desc.HasAttr("padding_algorithm"))
-        padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
-      if (paddings.size() > 2 ||
-          (padding_algorithm == "SAME" && op_type != "pool2d"))
-        return false;
+      if (paddings.size() > 2) return false;
     }
     if (op_type == "matmul") {
       auto* block = desc.Block();
