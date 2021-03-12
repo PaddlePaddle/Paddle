@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string>
 
-#include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -76,7 +75,8 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
     } else {
       std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &nccl_ids);
+      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);

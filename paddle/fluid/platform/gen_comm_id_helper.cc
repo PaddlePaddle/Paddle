@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -20,19 +21,22 @@ limitations under the License. */
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-
 #include <algorithm>
-#include <ostream>
 #include <string>
+#include <thread>  // NOLINT
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
+
 namespace paddle {
 namespace platform {
+
+std::once_flag SocketServer::init_flag_;
 
 constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
 
@@ -328,6 +332,22 @@ void RecvBroadCastCommID(int server_fd, std::string endpoint,
   CloseSocket(client);
 }
 
+SocketServer& SocketServer::GetInstance(const std::string& end_point) {
+  static SocketServer instance;
+  std::call_once(init_flag_, [&]() {
+    instance.server_fd_ = CreateListenSocket(end_point);
+    instance.end_point_ = end_point;
+  });
+  PADDLE_ENFORCE_NE(instance.server_fd_, -1,
+                    platform::errors::Unavailable(
+                        "listen socket failed with end_point=%s", end_point));
+  PADDLE_ENFORCE_EQ(instance.end_point_, end_point,
+                    platform::errors::InvalidArgument(
+                        "old end_point=%s must equal with new end_point=%s",
+                        instance.end_point_, end_point));
+  return instance;
+}
+
 /// template instantiation
 #define INSTANT_TEMPLATE(Type)                                              \
   template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
@@ -335,11 +355,11 @@ void RecvBroadCastCommID(int server_fd, std::string endpoint,
   template void RecvBroadCastCommID<Type>(std::string endpoint,             \
                                           std::vector<Type> * nccl_ids);
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 INSTANT_TEMPLATE(ncclUniqueId)
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
-INSTANT_TEMPLATE(bkclUniqueId)
+INSTANT_TEMPLATE(BKCLUniqueId)
 #endif
 }  // namespace platform
 }  // namespace paddle
