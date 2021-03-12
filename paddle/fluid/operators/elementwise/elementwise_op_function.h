@@ -1978,7 +1978,11 @@ void CommonElementwiseBroadcastForward(
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (x_dims_array[0] != y_dims_array[0]) {
+    /* Current opitmization notion doesn`t take the condition below into accout,
+      1. The max dimension is bigger than 4 (which stands for the nchw
+      dimension)
+      2. The first dimension coordinate is not equal between 2 input tensor. */
+    if (x_dims_array[0] != y_dims_array[0] || max_dim > 4) {
       CommonForwardBroadcastCUDA<Functor, T, OutType>(
           x, y, z, x_dims_array.data(), y_dims_array.data(),
           out_dims_array.data(), max_dim,
