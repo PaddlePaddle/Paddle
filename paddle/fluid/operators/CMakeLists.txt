@@ -124,7 +124,7 @@ if (WITH_ASCEND)
 endif()
 
 if (WITH_ASCEND_CL)
-  cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
+  cc_test(assign_op_npu_test SRCS assign_op_npu_test.cc DEPS assign_op)
   cc_library(npu_op_runner SRCS npu_op_runner.cc DEPS operator npu_info)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
