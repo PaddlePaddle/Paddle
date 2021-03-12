@@ -38,7 +38,8 @@ message ShardingConfig {
   optional int32 acc_steps = 7 [ default = 1 ];
   optional int32 schedule_mode = 8 [ default = 0 ];
   optional int32 pp_bz = 9 [ default = 1 ];
-  optional bool pp_allreduce_in_optimize = 10 [ default = true ];
+  optional bool pp_allreduce_in_optimize = 10 [ default = false ];
+  optional bool optimize_offload = 11 [ default = false ];
 }
 
 message AMPConfig {
