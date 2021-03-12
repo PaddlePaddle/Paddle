@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
@@ -54,29 +54,27 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       << ", group is " << group
       << ", tag is " << tag;
 
-    if (root == static_cast<int>(comm->rank())) {
-      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                   dtype, (uint32_t)root, group.c_str(), (void*)stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
-              << x->numel();
-    } else {
-      PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                    dtype, (uint32_t)root, group.c_str(), (void*)stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
+                                  dtype, (uint32_t)root, group.c_str(), (void*)stream));
+
+    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+            << framework::product(out->dims());
+
+    dev_ctx->Wait();
+
+    if (out != x) {
+      framework::TensorCopy(
+          *static_cast<const framework::Tensor*>(x), place,
+          *platform::DeviceContextPool::Instance().Get(place),
+          static_cast<framework::Tensor*>(out));
     }
-      if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
-      }
+    dev_ctx->Wait();
 
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
+        "PaddlePaddle should compile with NPU."));
 #endif
   }
 };
@@ -88,7 +86,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_broadcast,
-                        ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<int>,
                         ops::CBroadcastOpASCENDKernel<int8_t>,
+                        ops::CBroadcastOpASCENDKernel<float>,
                         ops::CBroadcastOpASCENDKernel<plat::float16>);
