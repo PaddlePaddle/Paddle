@@ -4543,6 +4543,9 @@ class PipelineOptimizer(object):
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
+            "pipeline_stage": local_rank,
+            "num_pipeline_stages": len(device_specs),
+            "schedule_mode": "F-then-B",
             "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
