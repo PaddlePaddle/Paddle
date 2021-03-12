@@ -216,8 +216,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             #    if self._shard.has_param(param_name):
             #        param_list.append(param_name)
             #pp_optimizer._clear_gradients(main_block, param_list) 
-            accumulated_grad_names = pp_optimizer._accumulate_gradients(
-                main_block)
+            #accumulated_grad_names = pp_optimizer._accumulate_gradients(
+            #    main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
             if self.pp_allreduce_in_optimize:
                 print("persistable FP32 grad: ")
@@ -841,8 +841,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                     ]
                     self.pp_group_size = self.pipeline_nodes
                     self.pp_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints) if
-                        (idx % self.sharding_group_size) == self.sharding_rank
+                        ep for idx, ep in enumerate(self.endpoints)
+                        if (idx % self.sharding_group_size
+                            ) == self.sharding_rank
                     ]
                 else:
                     self.mp_group_id = 0
@@ -866,12 +867,11 @@ class ShardingOptimizer(MetaOptimizerBase):
                         self._inner_parallelism_size * self.sharding_group_size)
                     self.megatron_rank = self.global_rank % self._inner_parallelism_size
                     self.sharding_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints) if
-                        (idx //
-                         (self._inner_parallelism_size *
-                          self.sharding_group_size)) == self.sharding_group_id
-                        and
-                        idx % self._inner_parallelism_size == self.megatron_rank
+                        ep for idx, ep in enumerate(self.endpoints)
+                        if (idx // (self._inner_parallelism_size *
+                                    self.sharding_group_size)
+                            ) == self.sharding_group_id and idx %
+                        self._inner_parallelism_size == self.megatron_rank
                     ]
                     print("sharding_endpoint:", self.sharding_group_endpoints)
                     print("sharding_rank:", self.sharding_rank)
