@@ -15,12 +15,10 @@
 #pragma once
 
 #include <stdint.h>
+
+#include <cstring>
+#include <iostream>
 #include <limits>
-#if !defined(_WIN32)
-#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#define PADDLE_ALIGN(x) __declspec(align(x))
-#endif
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
@@ -32,10 +30,23 @@
 #include <thrust/complex.h>  // NOLINT
 #endif
 
-#include <cstring>
+#if !defined(_WIN32)
+#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
 
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
+
+#include "complex128.h"  // NOLINT
 
 namespace paddle {
 namespace platform {
