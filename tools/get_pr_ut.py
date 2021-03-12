@@ -279,7 +279,7 @@ class PRChecker(object):
                 if self.is_only_comment(f):
                     ut_list.append('map_comment_placeholder')
                 else:
-                    ut_list.extend(file_ut_map.get(f))
+                    ut_list.extend(file_ut_map.get(f_judge))
         ut_list = list(set(ut_list))
         print(ut_list)
 
