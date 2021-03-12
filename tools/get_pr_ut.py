@@ -291,7 +291,7 @@ class PRChecker(object):
         if ut_list:
             ret = self.__urlretrieve(
                 'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix), 'prec_delta{}'.format(suffix))
+                    self.suffix), 'prec_delta{}'.format(self.suffix))
             if ret:
                 with open('prec_delta' + self.suffix) as delta:
                     for ut in delta:
