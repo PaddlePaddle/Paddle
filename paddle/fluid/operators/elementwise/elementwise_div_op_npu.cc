@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -59,9 +60,6 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    dx->mutable_data<T>(place);
-    dy->mutable_data<T>(place);
-
     auto stream =
        ctx.template device_context<paddle::platform::NPUDeviceContext>()
            .stream();
@@ -100,16 +98,22 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
              {x_grad_w}, {});
     x_grad_w_runner.Run(stream);
 
-    auto x_grad_runner = NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
-    x_grad_runner.Run(stream);
-
     Tensor y_grad_w(x->type());
     y_grad_w.mutable_data<T>(y->dims(), place);
     auto y_grad_w_runner = NpuOpRunner("Mul", {*out, y_power}, {y_grad_w}, {});
     y_grad_w_runner.Run(stream);
 
-    auto y_grad_runner = NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
-    y_grad_runner.Run(stream);
+    if (dx) {
+      dx->mutable_data<T>(place);
+      auto x_grad_runner = NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
+      x_grad_runner.Run(stream);
+    }
+
+    if (dy) {
+      dy->mutable_data<T>(place);
+      auto y_grad_runner = NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
+      y_grad_runner.Run(stream);
+    }
   }
 };
 
@@ -128,3 +132,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::ElementwiseDivGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ElementwiseDivGradNPUKernel<paddle::platform::NPUDeviceContext,
                                      paddle::platform::float16>);
+#endif
