@@ -52,9 +52,12 @@ class MulNPUKernel : public framework::OpKernel<T> {
       } else if (x->dims().size() == 3 && y->dims().size() == 2) {
         // flatten
         // Tensor tmp_flatten(x->type());
-        int64_t size = x->dims()[1] * x->dims()[2];
-        int64_t f_dim = x->dims()[0];
-        x->Resize(paddle::framework::make_ddim({f_dim, size}));
+        int64_t sec_dim = x->dims()[1] * x->dims()[2];
+        int64_t first_dim = x->dims()[0];
+        std::vector<int64_t> vec_dim;
+        vec_dim.push_back(first_dim);
+        vec_dim.push_back(sec_dim);
+        x->Resize(framework::make_ddim(vec_dim));
         // std::vector<int64_t> vec_flatten;
         // vec_flatten.push_back(size);
         // tmp_flatten.Resize(framework::make_ddim(vec_flatten));
