@@ -68,27 +68,28 @@ class MNIST(fluid.dygraph.Layer):
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=scale)),
             act="softmax")
+        self.step = 0
 
-    def forward(self, inputs, label, condition):
+    def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
 
-        if condition:
+        if self.step % 2 == 0:
             x = self._simple_img_conv_pool_2(x)
             x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
             cost = self._fc_1(x)
         else:
             x = self._simple_img_conv_pool_3(x)
+            x.stop_gradient = True
             x = fluid.layers.reshape(x, shape=[-1, self.pool_3_shape])
             cost = self._fc_2(x)
 
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
+        self.step += 1
         return avg_loss
 
 
 class TestGanNet(TestParallelDyGraphRunnerBase):
-    current_step = 0
-
     def get_model(self):
         model = MNIST()
         train_reader = paddle.batch(
@@ -107,9 +108,8 @@ class TestGanNet(TestParallelDyGraphRunnerBase):
         label = to_variable(y_data)
         label.stop_gradient = True
 
-        avg_loss = model(img, label, TestGanNet.current_step % 2 == 0)
+        avg_loss = model(img, label)
 
-        TestGanNet.current_step += 1
         return avg_loss
 
 
