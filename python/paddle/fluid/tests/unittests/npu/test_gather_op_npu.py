@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 
 paddle.enable_static()
+SEED = 2021
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -103,6 +104,59 @@ class TestGatherAPI(unittest.TestCase):
     def test_backward(self):
         # TODO(ascendrc): Test backward after add grad npu op implemented.
         pass
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestPowNet(unittest.TestCase):
+    def _test(self, run_npu=True):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(8192, 768)).astype('float32')
+        index_np = np.random.randint(0, 8192, size=(1232, 1)).astype('int32')
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            a = paddle.static.data(name="a", shape=[8192, 768], dtype='float32')
+            index = paddle.static.data(
+                name="index", shape=[1232, 1], dtype='int32')
+            a.stop_gradient = False
+            b = paddle.gather(a, index)
+
+            loss = fluid.layers.reduce_mean(b)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
+
+        if run_npu:
+            place = paddle.NPUPlace(0)
+        else:
+            place = paddle.CPUPlace()
+
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("Start run on {}".format(place))
+        for epoch in range(100):
+
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={"a": a_np,
+                                               "index": index_np},
+                                         fetch_list=[b, loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res[0]))
+
+        return pred_res, loss_res
+
+    def test_npu(self):
+        npu_pred, npu_loss = self._test(True)
+        cpu_pred, cpu_loss = self._test(False)
+
+        self.assertTrue(np.allclose(npu_pred, cpu_pred))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
 if __name__ == '__main__':
