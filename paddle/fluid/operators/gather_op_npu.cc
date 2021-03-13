@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/npu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -65,20 +66,17 @@ class GatherGradOpNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // step2: ZerosLike x in device
-    Tensor *tmp_zerox = const_cast<Tensor *>(x);
     Tensor zeroslike_xout(x->type());
     zeroslike_xout.Resize(x->dims());
-    zeroslike_xout.mutable_data<T>(ctx.GetPlace());
+    auto p = zeroslike_xout.mutable_data<T>(ctx.GetPlace());
 
-    auto runner_zeroslike =
-        NpuOpRunner("ZerosLike", {*x}, {zeroslike_xout}, {});
-    runner_zeroslike.Run(stream);
-    tmp_zerox = &zeroslike_xout;
+    platform::NPUMemsetAsync(static_cast<void *>(p), 0,
+                             zeroslike_xout.numel() * sizeof(T), stream);
 
     // step3: scatter(x_grad)
     dx->mutable_data<T>(ctx.GetPlace());
-    auto runner_scatter = NpuOpRunner("TensorScatterUpdate",
-                                      {*tmp_zerox, *index, *dout}, {*dx}, {});
+    auto runner_scatter = NpuOpRunner(
+        "TensorScatterUpdate", {zeroslike_xout, *index, *dout}, {*dx}, {});
     runner_scatter.Run(stream);
   }
 };
