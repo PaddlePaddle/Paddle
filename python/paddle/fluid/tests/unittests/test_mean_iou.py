@@ -18,6 +18,7 @@ from __future__ import division
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 def compute_mean_iou(predictions, labels, num_classes, in_wrongs, in_corrects,
@@ -110,6 +111,21 @@ class TestCase1(TestMeanIOUOp):
         self.in_wrong_num = 2
         self.in_correct_num = 2
         self.in_mean_iou_num = 2
+
+
+class TestMeanIOUOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            # The input type of accuracy_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.mean_iou, x1, y1)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="float32")
+            y2 = fluid.layers.data(name='x2', shape=[4], dtype="float32")
+            self.assertRaises(TypeError, fluid.layers.mean_iou, x2, y2)
 
 
 if __name__ == '__main__':

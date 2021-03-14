@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 
 namespace paddle {
 namespace framework {
@@ -57,8 +58,12 @@ static int64_t GetMemorySize(
         &vars,
     const std::string &var_name) {
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
-  PADDLE_ENFORCE_NOT_NULL(var_desc);
-  PADDLE_ENFORCE(IsLoDTensor(var_desc));
+  PADDLE_ENFORCE_NOT_NULL(
+      var_desc,
+      platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc), true,
+                    platform::errors::InvalidArgument(
+                        "Var(%s) must be LoDTensor.", var_name));
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
          std::accumulate(dims.begin(), dims.end(), static_cast<int64_t>(1),
@@ -189,13 +194,9 @@ class EagerDeletionPass : public ir::Pass {
 };
 
 void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
-  auto &ref_cnts =
-      Get<std::vector<AtomicReferenceCountMap>>(kRuntimeReferenceCount);
-  PADDLE_ENFORCE(ref_cnts.empty(),
-                 "kRuntimeReferenceCount should be initialized here!");
+  auto &var_infos = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);
-  ref_cnts.resize(vars.size());
 
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
@@ -208,7 +209,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   for (auto &var_ops_map : last_live_ops) {
     for (auto &var_ops_pair : var_ops_map) {
       const std::string &var_name = var_ops_pair.first;
-      for (auto *op : var_ops_pair.second) {
+      for (auto *op : var_ops_pair.second.ops()) {
         op_vars_map[op].insert(var_name);
       }
     }
@@ -224,10 +225,15 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
     auto *eager_deletion_node =
         graph->CreateEmptyNode("eager_deletion", ir::Node::Type::kOperation);
+
+    std::unordered_set<MemOptVarInfo *> var_info;
+    for (auto &var_name : var_names) {
+      var_info.insert(var_infos[op->GetScopeIdx()].at(var_name).get());
+    }
+
     auto *eager_deletion_op = new details::EagerDeletionOpHandle(
-        eager_deletion_node, op->GetScope(), op->GetPlace(), var_names,
-        gcs.at(places[op->GetScopeIdx()]).get(),
-        &(ref_cnts[op->GetScopeIdx()]));
+        eager_deletion_node, op->GetScope(), op->GetScopeIdx(), op->GetPlace(),
+        std::move(var_info), gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(
         op->Outputs().begin(), op->Outputs().end(),
@@ -250,6 +256,10 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     graph->Get<details::GraphDepVars>(details::kGraphDepVars)
         .emplace(dummy_leaf);
     eager_deletion_op->AddOutput(dummy_leaf);
+
+    eager_deletion_op->SetDeviceContext(
+        places[op->GetScopeIdx()],
+        platform::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
   }
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;
@@ -263,9 +273,18 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
 
+  auto conditional_block_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get(
+          "conditional_block_op_eager_deletion_pass");
+  conditional_block_op_eager_deletion_pass->Apply(graph);
+
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
+
+  auto recurrent_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
+  recurrent_op_eager_deletion_pass->Apply(graph);
 }
 
 }  // namespace ir
@@ -273,9 +292,11 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
-    .RequirePassAttr(paddle::framework::ir::kRuntimeReferenceCount)
+    .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)
     .RequirePassAttr(paddle::framework::ir::kLastLiveOpsOfVars)
     .RequirePassAttr(paddle::framework::ir::kAllPlaces)
     .RequirePassAttr(paddle::framework::ir::kGarbageCollector);
 
+USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
+USE_PASS(recurrent_op_eager_deletion_pass);

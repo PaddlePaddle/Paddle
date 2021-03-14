@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
@@ -35,6 +36,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace grpc {
+class ServerCompletionQueue;
+}  // namespace grpc
 
 namespace paddle {
 namespace operators {
@@ -67,7 +72,7 @@ class AsyncGRPCServer final : public RPCServer {
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
 
-  GrpcService::AsyncService service_;
+  std::unique_ptr<GrpcService::AsyncService> service_;
   std::unique_ptr<::grpc::Server> server_;
 
   // condition of the sub program

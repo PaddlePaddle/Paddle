@@ -16,10 +16,82 @@ limitations under the License. */
 #include <algorithm>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
+using Tensor = framework::Tensor;
+
+template <typename T, typename Type>
+static void FullSort(Type input_height, Type input_width, int input_dim,
+                     const framework::Tensor* input, T* t_out, Type* t_indices,
+                     bool descending) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (Type i = 0; i < input_height; ++i) {
+    std::vector<std::pair<T, Type>> col_vec;
+    col_vec.reserve(input_width);
+    if (input_dim == 1) {
+      auto e_input = EigenVector<T>::Flatten(*input);
+      for (Type j = 0; j < input_width; ++j) {
+        col_vec.push_back(std::pair<T, Type>(e_input(j), j));
+      }
+    } else {
+      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      for (Type j = 0; j < input_width; ++j) {
+        col_vec.push_back(std::pair<T, Type>(e_input(i, j), j));
+      }
+    }
+    std::sort(col_vec.begin(), col_vec.end(),
+              [&](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
+                if (descending)
+                  return l.first > r.first;
+                else
+                  return l.first < r.first;
+              });
+
+    for (Type j = 0; j < input_width; ++j) {
+      t_out[i * input_width + j] = col_vec[j].first;
+      t_indices[i * input_width + j] = col_vec[j].second;
+    }
+  }
+}
+
+template <typename T, typename Type>
+static void FullAssign(Type input_height, Type input_width, int input_dim,
+                       const framework::Tensor* input,
+                       const framework::Tensor* indices, T* t_out) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (Type i = 0; i < input_height; ++i) {
+    if (input_dim == 1) {
+      auto e_input = EigenVector<T>::Flatten(*input);
+      auto e_indices = EigenVector<Type>::Flatten(*indices);
+      for (Type j = 0; j < input_width; ++j) {
+        t_out[i * input_width + e_indices(j)] = e_input(j);
+      }
+    } else {
+      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      auto e_indices = EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
+      for (Type j = 0; j < input_width; ++j) {
+        t_out[i * input_width + e_indices(i, j)] = e_input(i, j);
+      }
+    }
+  }
+}
 
 template <typename DeviceContext, typename T>
 class ArgsortKernel : public framework::OpKernel<T> {
@@ -29,50 +101,140 @@ class ArgsortKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<framework::Tensor>("Out");
     auto* indices = ctx.Output<framework::Tensor>("Indices");
     int axis = ctx.Attr<int>("axis");
+    bool descending = ctx.Attr<bool>("descending");
 
     auto in_dims = input->dims();
     axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
-    const T* in_data = input->data<T>();
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
-    int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    int64_t groups = input->numel() / in_dims[axis];
-    int64_t stride = (axis == in_dims.size() - 1)
-                         ? 1
-                         : framework::product(framework::slice_ddim(
-                               in_dims, axis + 1, in_dims.size()));
+    // Do full sort
+    if (axis == -1 || axis + 1 == in_dims.size()) {
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_width = in_dims[in_dims.size() - 1];
 
-    for (int64_t i = 0; i < groups; ++i) {
-      int64_t idx = i;
-      std::vector<int64_t> shape_vec(in_dims.size(), 0);
-      for (int64_t dim = in_dims.size() - 1; dim >= 0; --dim) {
-        if (dim != axis) {
-          shape_vec[dim] = idx % in_dims[dim];
-          idx /= in_dims[dim];
-        }
+      int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+      FullSort<T, int64_t>(input_height, input_width, in_dims.size(), input,
+                           out_data, ids_data, descending);
+    } else {
+      // If not full sort do transpose
+      std::vector<int> trans;
+      for (int i = 0; i < axis; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(in_dims.size() - 1);
+      for (int i = axis + 1; i < in_dims.size() - 1; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(axis);
+      framework::DDim trans_dims(in_dims);
+      for (size_t i = 0; i < trans.size(); i++) {
+        trans_dims[i] = in_dims[trans[i]];
       }
 
-      int64_t start_index = shape_vec[0];
-      for (int64_t dim = 0; dim < in_dims.size() - 1; ++dim) {
-        start_index = start_index * in_dims[dim + 1] + shape_vec[dim + 1];
+      Tensor trans_inp;
+      trans_inp.mutable_data<T>(trans_dims, ctx.GetPlace());
+      int ndims = trans.size();
+      auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+      // Do transpose
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, *input,
+                                                  &trans_inp, trans);
+
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_width = trans_dims[trans_dims.size() - 1];
+
+      Tensor tmp_out;
+      T* t_out = tmp_out.mutable_data<T>(trans_dims, ctx.GetPlace());
+      output->mutable_data<T>(ctx.GetPlace());
+
+      Tensor tmp_indices;
+
+      auto* t_ind =
+          tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+
+      FullSort<T, int64_t>(input_height, input_width, in_dims.size(),
+                           &trans_inp, t_out, t_ind, descending);
+
+      indices->mutable_data<int64_t>(ctx.GetPlace());
+      TransCompute<platform::CPUDeviceContext, int64_t>(
+          ndims, dev_ctx, tmp_indices, indices, trans);
+      // transpose back
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out,
+                                                  output, trans);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ArgsortGradientKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    int axis = ctx.Attr<int>("axis");
+
+    auto in_dims = indices->dims();
+    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+
+    dX->mutable_data<T>(ctx.GetPlace());
+    auto dxt = framework::EigenVector<T>::Flatten(*dX);
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    dxt.device(place) = dxt.constant(static_cast<T>(0));
+    if (dO->numel() == 0) return;
+
+    // Do full assign
+    if (axis == -1 || axis + 1 == in_dims.size()) {
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_width = in_dims[in_dims.size() - 1];
+
+      FullAssign<T, int64_t>(input_height, input_width, in_dims.size(), dO,
+                             indices, dX->data<T>());
+    } else {
+      // If not full assign do transpose
+      std::vector<int> trans;
+      for (int i = 0; i < axis; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(in_dims.size() - 1);
+      for (int i = axis + 1; i < in_dims.size() - 1; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(axis);
+      framework::DDim trans_dims(in_dims);
+      for (size_t i = 0; i < trans.size(); i++) {
+        trans_dims[i] = in_dims[trans[i]];
       }
 
-      std::vector<int64_t> org_index_vec(in_dims[axis], start_index);
-      for (int64_t j = 1; j < in_dims[axis]; ++j) {
-        org_index_vec[j] += j * stride;
-      }
+      Tensor trans_dO;
+      trans_dO.mutable_data<T>(trans_dims, ctx.GetPlace());
+      Tensor trans_ind;
+      trans_ind.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+      int ndims = trans.size();
+      auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+      // Do transpose
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, *dO,
+                                                  &trans_dO, trans);
+      TransCompute<platform::CPUDeviceContext, int64_t>(
+          ndims, dev_ctx, *indices, &trans_ind, trans);
 
-      std::sort(org_index_vec.begin(), org_index_vec.end(),
-                [in_data](const int64_t v1, const int64_t v2) {
-                  return in_data[v1] < in_data[v2];
-                });
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
-      for (size_t j = 0; j < org_index_vec.size(); ++j) {
-        int64_t index = start_index + j * stride;
-        out_data[index] = in_data[org_index_vec[j]];
-        ids_data[index] = (org_index_vec[j] - start_index) / stride;
-      }
+      Tensor tmp_out;
+      T* t_out = tmp_out.mutable_data<T>(trans_dims, ctx.GetPlace());
+
+      FullAssign<T, int64_t>(input_height, input_width, in_dims.size(),
+                             &trans_dO, &trans_ind, t_out);
+
+      // transpose back
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out, dX,
+                                                  trans);
     }
   }
 };

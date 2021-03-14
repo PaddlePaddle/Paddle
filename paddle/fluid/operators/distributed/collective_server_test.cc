@@ -12,21 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <unistd.h>
+#include <stdlib.h>
+#include <memory>
 #include <string>
-#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor_util.h"
-
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#include "paddle/fluid/operators/math/math_function.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -98,6 +96,9 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
 }
 
 TEST(CollectiveServer, GPU) {
+  setenv("http_proxy", "", 1);
+  setenv("https_proxy", "", 1);
+
   platform::CUDAPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);

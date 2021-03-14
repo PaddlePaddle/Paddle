@@ -12,20 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_recv.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class RecvOp : public framework::OperatorBase {
  public:
@@ -36,15 +45,10 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    int do_not_run = Attr<int>("do_not_run");
-    if (do_not_run) {
-      VLOG(3) << "recv do not run!";
-      return;
-    }
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");
-    int sync_mode = Attr<int>("sync_mode");
+
     auto outs = Outputs("Out");
     bool with_barrier = Attr<bool>("with_barrier");
 
@@ -59,13 +63,15 @@ class RecvOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("recv_varnames");
 
     if (recv_varnames.size() > 0) {
-      auto recv_functor = distributed::ParameterRecv<float>();
-      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {},
-                                             trainer_id);
-      recv_functor(rpc_ctx, scope);
+      auto *communicator = distributed::Communicator::GetInstance();
+
+      if (communicator != nullptr) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "execute startup program must before fleet.init_worker"));
+      }
     } else {
+      std::vector<distributed::VarHandlePtr> rets;
       if (with_barrier) {
-        std::vector<distributed::VarHandlePtr> rets;
         for (size_t i = 0; i < outs.size(); i++) {
           std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
           VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
@@ -73,13 +79,7 @@ class RecvOp : public framework::OperatorBase {
           rets.push_back(
               rpc_client->AsyncGetVar(epmap[i], ctx, scope, varname, outs[i]));
         }
-        if (sync_mode) {
-          for (size_t i = 0; i < rets.size(); i++) {
-            PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          }
-        }
       } else {
-        std::vector<distributed::VarHandlePtr> rets;
         for (size_t i = 0; i < outs.size(); i++) {
           std::string varname = varnames.size() == 0 ? outs[i] : varnames[i];
           VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
@@ -87,9 +87,13 @@ class RecvOp : public framework::OperatorBase {
           rets.push_back(rpc_client->AsyncGetVarNoBarrier(epmap[i], ctx, scope,
                                                           varname, outs[i]));
         }
-        for (size_t i = 0; i < rets.size(); i++) {
-          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-        }
+      }
+      for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_recv " << outs[i] << "from " << epmap[i];
+        PADDLE_ENFORCE_NE(
+            rets[i]->Wait(), 0U,
+            platform::errors::ExecutionTimeout("internal error in RPCClient"));
+        VLOG(7) << "after sync_recv " << outs[i] << "from " << epmap[i];
       }
     }
   }
@@ -112,10 +116,6 @@ This operator can get variables from server side.
                                       "variables for mapping")
         .SetDefault({});
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<int>("sync_mode",
-                 "(int, default 0)"
-                 "sync recv or async recv.")
-        .SetDefault(0);
     AddAttr<bool>("with_barrier",
                   "(bool, default True) if with_barrier=False, will use "
                   "AsyncGetVarNoBarrier get variable from pserver immediately")
@@ -130,7 +130,7 @@ This operator can get variables from server side.
     AddAttr<std::vector<std::string>>(
         "recv_varnames",
         "(vector<string>) "
-        "the splited parameter varnames to be recved from pserver")
+        "the split parameter varnames to be recved from pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("do_not_run", "if recv need to really run").SetDefault(0);
   }
@@ -146,5 +146,8 @@ class RecvOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv, ops::RecvOp, paddle::framework::EmptyGradOpMaker,
-                  ops::RecvOpMaker, ops::RecvOpShapeInference);
+REGISTER_OPERATOR(
+    recv, ops::RecvOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::RecvOpMaker, ops::RecvOpShapeInference);

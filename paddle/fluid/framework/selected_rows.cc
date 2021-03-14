@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 struct ReAllocateVisitor {
@@ -113,7 +119,9 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version;
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+    PADDLE_ENFORCE_EQ(version, 0U,
+                      platform::errors::InvalidArgument(
+                          "Only version 0 SelectedRows is supported."));
   }
   {
     // the 2st field, rows information
@@ -155,24 +163,27 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
   auto iter = id_to_index_.find(key);
   if (iter == id_to_index_.end()) {
     rwlock_->UNLock();
-    if (!auto_grown) {
-      PADDLE_THROW("key %d not found", key);
-    }
+    PADDLE_ENFORCE_EQ(
+        auto_grown, true,
+        platform::errors::NotFound("Input key(%lld) is not found.", key));
     rwlock_->WRLock();
     auto map_size = id_to_index_.size();
     auto vector_size = rows_.size();
     if (map_size != vector_size) {
       rwlock_->UNLock();
-      PADDLE_THROW(
-          "id_to_index_ size %d should have the same size with rows_ %d",
-          map_size, vector_size);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Row map size(%zu) should be equal to rows size(%zu).", map_size,
+          vector_size));
     }
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
       int row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
-        PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Selected rows is full, then length exceed the length of first "
+            "dimension (%d).",
+            row_num));
       }
       // key logic to put a key into id_to_index_
       rows_.push_back(key);
@@ -203,15 +214,20 @@ void SelectedRows::SyncIndex() {
 
 void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                        bool auto_grown, bool is_test) {
-  PADDLE_ENFORCE(value->IsInitialized(),
-                 "The value tensor should be initialized.");
+  PADDLE_ENFORCE_EQ(value->IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
-    PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
-                      "output tensor should have the same shape with table "
-                      "except the dims[0].");
+    PADDLE_ENFORCE_EQ(
+        value_width, value->numel() / value->dims()[0],
+        platform::errors::InvalidArgument(
+            "Output tensor should have the same shape with table "
+            "except the first dimmension, excepted value width not counting "
+            "the first dimension is %d, actual value width is %d.",
+            value_width, value->numel() / value->dims()[0]));
     for (int i = 0; i < ids.numel(); ++i) {
       auto id = ids.data<int64_t>()[i];
       int64_t index = AutoGrownIndex(id, auto_grown, is_test);

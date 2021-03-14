@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include <memory>
+
 #include <random>
 #include <thread>  // NOLINT
-#include <utility>
-#include <vector>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 
@@ -33,7 +35,10 @@ class StubAllocation : public Allocation {
 };
 
 TEST(BestFitAllocator, test_allocation) {
-  StubAllocation stub(4UL * 1024 * 1024 * 1024);
+  // NOTE(zhiqiu): On windows with msvc compiler, unsigned long (UL) is 32bits,
+  // so 4UL * 1024 * 1024 * 1024 becomes 0.
+  // We need to use 4ULL (unsigned long long) here.
+  StubAllocation stub(4ULL * 1024 * 1024 * 1024);
   BestFitAllocator allocator(&stub);
   { auto allocation = allocator.Allocate(64); }
 
@@ -45,8 +50,8 @@ TEST(BestFitAllocator, test_allocation) {
           dynamic_cast<BestFitAllocation*>(allocation.get());
       ASSERT_NE(best_fit_allocation, nullptr);
       ASSERT_FALSE(best_fit_allocation->ChunkIterator()->is_free);
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0);
-      ASSERT_EQ(allocation->size(), 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0UL);
+      ASSERT_EQ(allocation->size(), 80UL);
       ASSERT_EQ(allocation->ptr(), nullptr);
     }
 
@@ -58,7 +63,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation2.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80UL);
     }
     allocation2.reset();
     allocation2 = allocator.Allocate(60);
@@ -66,7 +71,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation2.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80UL);
     }
 
     allocation.reset();
@@ -76,7 +81,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0UL);
     }
 
     allocation.reset();

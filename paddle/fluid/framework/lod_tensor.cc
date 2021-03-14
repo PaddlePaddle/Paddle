@@ -12,22 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdint.h>
-#include <string.h>
-#include <algorithm>
-#include <iterator>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/var_type.h"
+
+#include <stdint.h>
+
 #include "paddle/fluid/framework/version.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/memory.h"
-
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -53,9 +48,10 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  os << "\tlod: " << t.lod() << "\n";
-  os << static_cast<Tensor>(t) << "\n";
-
+  if (t.lod().size() > 0) {
+    os << "  - lod: " << t.lod() << "\n";
+  }
+  os << static_cast<Tensor>(t);
   return os;
 }
 
@@ -67,9 +63,23 @@ std::string LoDToString(const LoD &lod) {
 
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
-  PADDLE_ENFORCE_LT(level, in.size());
-  PADDLE_ENFORCE_LT(elem_begin, elem_end);
-  PADDLE_ENFORCE_LT(elem_end, in[level].size());
+  PADDLE_ENFORCE_LT(level, in.size(),
+                    platform::errors::InvalidArgument(
+                        "The input LoDTensor's lod level should be less than "
+                        "the LoD size, but received level is %d, LoD is %s.",
+                        level, in));
+  PADDLE_ENFORCE_LT(
+      elem_begin, elem_end,
+      platform::errors::InvalidArgument(
+          "The index to start slicing should be less than the index to end "
+          "slicing, but received start index is %d, end index is %d.",
+          elem_begin, elem_end));
+  PADDLE_ENFORCE_LT(
+      elem_end, in[level].size(),
+      platform::errors::InvalidArgument(
+          "The index to end slicing should be less than the input LoD size, "
+          "but received end index is %d, LoD size is %d.",
+          elem_end, in[level].size()));
 
   LoD res;
   res.resize(in.size() - level);
@@ -187,8 +197,17 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
   LoD sub_lod;
 
   for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
-    PADDLE_ENFORCE_LE(start_idx, end_idx);
-    PADDLE_ENFORCE_LT(end_idx, lod[level_idx].size());
+    PADDLE_ENFORCE_LE(start_idx, end_idx,
+                      platform::errors::InvalidArgument(
+                          "The start index should be less than the end index, "
+                          "but received start index is %d, end index is %d.",
+                          start_idx, end_idx));
+    PADDLE_ENFORCE_LT(
+        end_idx, lod[level_idx].size(),
+        platform::errors::InvalidArgument(
+            "The end index should be less than the LoD level size, but "
+            "received end index is %d, LoD level size is %d.",
+            end_idx, lod[level_idx].size()));
     std::vector<size_t> level_lens;
     for (size_t i = start_idx; i < end_idx; ++i) {
       level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
@@ -204,7 +223,10 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
 void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
-      "The lod_length should has the same size with the appended lod.");
+      platform::errors::InvalidArgument(
+          "The input LoD length should be equal to the appended LoD size, but "
+          "received input LoD length is %d, actual LoD size is %d.",
+          lod_length, lod->size()));
   if (lod->empty()) {
     for (size_t i = 0; i < lod_length.size(); ++i) {
       lod->emplace_back(1, 0);  // size = 1, value = 0;
@@ -247,14 +269,49 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx,
+                           const size_t &seek,
+                           const std::vector<int64_t> &shape) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
+                      platform::errors::InvalidArgument(
+                          "Tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
+            version));
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+  }
+  // the 3st filed, Tensor
+  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, seek, shape);
+}
+
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
-                   "tensor version %u is not supported.", version);
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+    PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
+                      platform::errors::InvalidArgument(
+                          "Tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
+            version));
   }
   {
     // the 2st field, LoD information
@@ -275,54 +332,45 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {
-  std::stringstream buffer;
-  size_t sz = tensor.size();
-  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
-  for (auto &each : tensor) {
-    SerializeToStream(buffer, each, dev_ctx);
-  }
-  writer->Write(buffer.str());
-}
-
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  if (!scanner->HasNext()) {
-    return false;
-  }
-  std::istringstream sin(scanner->Next());
-  uint32_t sz;
-  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-  auto &result = *result_ptr;
-  result.resize(sz);
-  for (uint32_t i = 0; i < sz; ++i) {
-    DeserializeFromStream(sin, &result[i], dev_ctx);
-  }
-
-  return true;
-}
-
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
+  PADDLE_ENFORCE_GT(places.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "Place number cannot be empty when splitting."));
   check_memory_size();
-  int batch_size =
-      lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
-  size_t result_size = std::min(static_cast<size_t>(batch_size), places.size());
-  size_t remainder = batch_size % places.size();
+  size_t batch_size =
+      lod().empty() ? static_cast<size_t>(dims()[0]) : lod()[0].size() - 1;
 
+  // if batch_size is 0, just return #places.size() copys of empty
+  // tensors.
+  if (batch_size == 0) {
+    std::vector<LoDTensor> empty_results;
+    empty_results.reserve(places.size());
+    for (size_t i = 0; i < places.size(); ++i) {
+      LoDTensor dst;
+      dst.Resize(dims());
+      dst.mutable_data(places[i], type());
+      if (!lod().empty()) {
+        dst.set_lod(lod());
+      }
+      empty_results.emplace_back(std::move(dst));
+    }
+    return empty_results;
+  }
+
+  auto step_width = (batch_size + places.size() - 1) / places.size();
+  auto result_size = (batch_size + step_width - 1) / step_width;
   std::vector<LoDTensor> results;
   results.reserve(result_size);
 
-  int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
-    int begin = static_cast<int>(i * step_width);
-    int end = static_cast<int>((i + 1) * step_width);
-    if (i + 1 == places.size()) {  // last
-      end += remainder;
-    }
+    auto begin = i * step_width;
+    auto end = std::min<size_t>((i + 1) * step_width, batch_size);
+    PADDLE_ENFORCE_LT(begin, end,
+                      platform::errors::InvalidArgument(
+                          "The begin index must be less than the end index, "
+                          "but received begin index is %d, end index is %d.",
+                          begin, end));
 
     LoDTensor dst;
     if (lod().empty()) {
@@ -347,7 +395,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
       }
       dst.set_lod(my_lod);
     }
-    results.emplace_back(dst);
+    results.emplace_back(std::move(dst));
   }
 
   return results;
@@ -356,23 +404,56 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors,
     platform::Place dst_place) {
-  PADDLE_ENFORCE(!lod_tensors.empty());
+  PADDLE_ENFORCE_EQ(lod_tensors.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "The LoDTensors to be merged are empty."));
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  auto new_type = lod_tensors[0]->type();
+  proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout = lod_tensors[0]->layout();
+  for (auto *t : lod_tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = t->type();
+      new_layout = t->layout();
+      break;
+    }
+  }
+
   LoD new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type, t->type());
-    PADDLE_ENFORCE_EQ(new_layout, t->layout());
-
-    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
-                      framework::product(t->dims()) / t->dims()[0]);
-    new_dim[0] += t->dims()[0];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(
+          new_type, t->type(),
+          platform::errors::InvalidArgument(
+              "LoDTensor data type does not match, expected type is %s, actual "
+              "type is %s.",
+              DataTypeToString(new_type), DataTypeToString(t->type())));
+      PADDLE_ENFORCE_EQ(
+          new_layout, t->layout(),
+          platform::errors::InvalidArgument(
+              "LoDTensor layout does not match, expected layout is %s, "
+              "actual layout is %s.",
+              DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
+      PADDLE_ENFORCE_EQ(
+          framework::product(new_dim) / new_dim[0],
+          framework::product(t->dims()) / t->dims()[0],
+          platform::errors::InvalidArgument(
+              "LoDTensor dimension does not match, all dimensions except the "
+              "first dimension need to be equal,"
+              "but expected dimension is %s, actual dimension is %s.",
+              new_dim, t->dims()));
+      new_dim[0] += t->dims()[0];
+    }
 
     auto &lod = t->lod();
-    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
+    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size(),
+                      platform::errors::InvalidArgument(
+                          "The LoD information of LoDTensor does not match, "
+                          "expected LoD is %s, actual LoD is %s.",
+                          new_lod, lod));
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
       size_t offset = sub_lod.back();
@@ -389,6 +470,9 @@ void LoDTensor::MergeLoDTensor(
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
+    if (end == begin) {
+      continue;
+    }
     auto dst = Slice(begin, end);
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;

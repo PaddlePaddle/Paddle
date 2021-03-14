@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import numpy as np
+from paddle.fluid import Program, program_guard
+from paddle import fluid
 
 
 class Segment(object):
@@ -150,7 +153,7 @@ class TestChunkEvalOp(OpTest):
         lod = []
         for i in range(len(starts) - 1):
             lod.append(starts[i + 1] - starts[i])
-        self.inputs = {'Inference': (infer, [lod]), 'Label': (label, [lod])}
+        self.set_input(infer, label, lod)
         precision = float(
             self.num_correct_chunks
         ) / self.num_infer_chunks if self.num_infer_chunks else 0
@@ -172,6 +175,9 @@ class TestChunkEvalOp(OpTest):
             'NumCorrectChunks': np.asarray(
                 [self.num_correct_chunks], dtype='int64')
         }
+
+    def set_input(self, infer, label, lod):
+        self.inputs = {'Inference': (infer, [lod]), 'Label': (label, [lod])}
 
     def setUp(self):
         self.op_type = 'chunk_eval'
@@ -196,6 +202,74 @@ class TestChunkEvalOpWithExclude(TestChunkEvalOp):
         }
         self.parse_scheme()
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 15, 18, 20
+
+
+class TestChunkEvalOpWithTensorInput(TestChunkEvalOp):
+    def set_input(self, infer, label, lod):
+        max_len = np.max(lod)
+        pad_infer = []
+        pad_label = []
+        start = 0
+        for i in range(len(lod)):
+            end = lod[i] + start
+            pad_infer.append(
+                np.pad(infer[start:end], (0, max_len - lod[i]),
+                       'constant',
+                       constant_values=(-1, )))
+            pad_label.append(
+                np.pad(label[start:end], (0, max_len - lod[i]),
+                       'constant',
+                       constant_values=(-1, )))
+            start = end
+
+        pad_infer = np.expand_dims(np.array(pad_infer, dtype='int64'), 2)
+        pad_label = np.expand_dims(np.array(pad_label, dtype='int64'), 2)
+        lod = np.array(lod, dtype='int64')
+        self.inputs = {
+            'Inference': pad_infer,
+            'Label': pad_label,
+            'SeqLength': lod
+        }
+
+
+class TestChunkEvalOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_input():
+                input_data = np.random.random(1, 1).astype("int64")
+                label_data = np.random.random(1).astype("int64")
+                fluid.layers.chunk_eval(
+                    input=input_data,
+                    label=label_data,
+                    chunk_scheme="IOB",
+                    num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_input)
+
+            def test_label():
+                input_ = fluid.data(
+                    name="input", shape=[None, 1], dtype="int64")
+                label_data = np.random.random(1).astype("int64")
+                fluid.layers.chunk_eval(
+                    input=input_,
+                    label=label_data,
+                    chunk_scheme="IOB",
+                    num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_label)
+
+            def test_type():
+                in_data = fluid.data(
+                    name="input_", shape=[None, 1], dtype="int32")
+                label = fluid.data(name="label_", shape=[1], dtype="int64")
+                fluid.layers.chunk_eval(
+                    input=in_data,
+                    label=label,
+                    chunk_scheme="IOB",
+                    num_chunk_types=3)
+
+            self.assertRaises(TypeError, test_type)
 
 
 if __name__ == '__main__':

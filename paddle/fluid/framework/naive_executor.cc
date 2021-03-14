@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/platform/denormal.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -39,16 +36,10 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 }
 
 void NaiveExecutor::Run() {
-#ifndef PADDLE_ON_INFERENCE
-  LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
-                             "cmake flag ON_INFER is not set.";
-  LOG_FIRST_N(WARNING, 5) << "Unlike the training phase, all the scopes and "
-                             "variables will be reused to save the allocation "
-                             "overhead.";
-  LOG_FIRST_N(WARNING, 5) << "Please re-compile the inference library by "
-                             "setting the cmake flag ON_INFER=ON if you are "
-                             "running Paddle Inference";
-#endif  // PADDLE_ON_INFERENCE
+#ifdef PADDLE_WITH_MKLDNN
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+  platform::ScopedFlushDenormal flush;
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
@@ -59,12 +50,16 @@ void NaiveExecutor::Run() {
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
                                     bool persistable, Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::InvalidArgument(
+                              "The Scope to hold variables is nullptr."));
 
   auto &global_block = desc.Block(block_id);
 
   const auto *anc = scope;
-  PADDLE_ENFORCE(anc->parent() != anc);
+  PADDLE_ENFORCE_NE(
+      anc->parent(), anc,
+      platform::errors::InvalidArgument("Input scope should be child scope."));
   while (anc->parent()) {
     anc = anc->parent();
   }
@@ -100,9 +95,8 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
         (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
-      string::PrettyLogEndl(string::Style::detail(), "---  skip [%s], %s -> %s",
-                            op_desc->Input("X")[0], op_desc->Type(),
-                            op_desc->Output("Out")[0]);
+      LOG(INFO) << "---  skip [" << op_desc->Input("X")[0] << "], "
+                << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
       continue;
     }
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
@@ -110,9 +104,12 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
 }
 
 LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
-  PADDLE_ENFORCE(scope_, "Need to init scope first");
+  PADDLE_ENFORCE_NOT_NULL(scope_,
+                          platform::errors::PreconditionNotMet(
+                              "Need to init scope in NaiveExecutor firstly."));
   auto *var = scope_->FindVar(name);
-  PADDLE_ENFORCE(var, "No variable [%s] in the scope");
+  PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                   "No variable [%s] in current scope.", name));
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
 }
@@ -125,6 +122,14 @@ void NaiveExecutor::CleanFeedFetchOps() {
     }
   }
   ops_.swap(ops);
+}
+
+NaiveExecutor::~NaiveExecutor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  ClearMKLDNNCache(place_);
+#endif
 }
 
 }  // namespace framework

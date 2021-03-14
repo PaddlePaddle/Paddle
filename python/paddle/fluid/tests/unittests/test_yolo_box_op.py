@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle.fluid import core
 
 
@@ -32,6 +33,9 @@ def YoloBox(x, img_size, attrs):
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
     downsample = attrs['downsample']
+    clip_bbox = attrs['clip_bbox']
+    scale_x_y = attrs['scale_x_y']
+    bias_x_y = -0.5 * (scale_x_y - 1.)
     input_size = downsample * h
 
     x = x.reshape((n, an_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
@@ -39,8 +43,10 @@ def YoloBox(x, img_size, attrs):
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
-    pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
-    pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
+    pred_box[:, :, :, :, 0] = (
+        grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y + bias_x_y) / w
+    pred_box[:, :, :, :, 1] = (
+        grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y + bias_x_y) / h
 
     anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
     anchors_s = np.array(
@@ -64,13 +70,14 @@ def YoloBox(x, img_size, attrs):
     pred_box[:, :, 2] = pred_box[:, :, 2] * img_size[:, 1][:, np.newaxis]
     pred_box[:, :, 3] = pred_box[:, :, 3] * img_size[:, 0][:, np.newaxis]
 
-    for i in range(len(pred_box)):
-        pred_box[i, :, 0] = np.clip(pred_box[i, :, 0], 0, np.inf)
-        pred_box[i, :, 1] = np.clip(pred_box[i, :, 1], 0, np.inf)
-        pred_box[i, :, 2] = np.clip(pred_box[i, :, 2], -np.inf,
-                                    img_size[i, 1] - 1)
-        pred_box[i, :, 3] = np.clip(pred_box[i, :, 3], -np.inf,
-                                    img_size[i, 0] - 1)
+    if clip_bbox:
+        for i in range(len(pred_box)):
+            pred_box[i, :, 0] = np.clip(pred_box[i, :, 0], 0, np.inf)
+            pred_box[i, :, 1] = np.clip(pred_box[i, :, 1], 0, np.inf)
+            pred_box[i, :, 2] = np.clip(pred_box[i, :, 2], -np.inf,
+                                        img_size[i, 1] - 1)
+            pred_box[i, :, 3] = np.clip(pred_box[i, :, 3], -np.inf,
+                                        img_size[i, 0] - 1)
 
     return pred_box, pred_score.reshape((n, -1, class_num))
 
@@ -87,6 +94,8 @@ class TestYoloBoxOp(OpTest):
             "class_num": self.class_num,
             "conf_thresh": self.conf_thresh,
             "downsample": self.downsample,
+            "clip_bbox": self.clip_bbox,
+            "scale_x_y": self.scale_x_y,
         }
 
         self.inputs = {
@@ -109,8 +118,77 @@ class TestYoloBoxOp(OpTest):
         self.class_num = 2
         self.conf_thresh = 0.5
         self.downsample = 32
+        self.clip_bbox = True
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.
+
+
+class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
+    def initTestCase(self):
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = False
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
+        self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.
+
+
+class TestYoloBoxOpScaleXY(TestYoloBoxOp):
+    def initTestCase(self):
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = True
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
+        self.imgsize_shape = (self.batch_size, 2)
+        self.scale_x_y = 1.2
+
+
+class TestYoloBoxDygraph(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = np.random.random([2, 14, 8, 8]).astype('float32')
+        img_size = np.ones((2, 2)).astype('int32')
+
+        x = paddle.to_tensor(x)
+        img_size = paddle.to_tensor(img_size)
+
+        boxes, scores = paddle.vision.ops.yolo_box(
+            x,
+            img_size=img_size,
+            anchors=[10, 13, 16, 30],
+            class_num=2,
+            conf_thresh=0.01,
+            downsample_ratio=8,
+            clip_bbox=True,
+            scale_x_y=1.)
+        assert boxes is not None and scores is not None
+        paddle.enable_static()
+
+
+class TestYoloBoxStatic(unittest.TestCase):
+    def test_static(self):
+        x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
+        img_size = paddle.static.data('img_size', [2, 2], 'int32')
+
+        boxes, scores = paddle.vision.ops.yolo_box(
+            x,
+            img_size=img_size,
+            anchors=[10, 13, 16, 30],
+            class_num=2,
+            conf_thresh=0.01,
+            downsample_ratio=8,
+            clip_bbox=True,
+            scale_x_y=1.)
+        assert boxes is not None and scores is not None
 
 
 if __name__ == "__main__":

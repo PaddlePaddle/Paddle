@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -23,7 +23,7 @@ namespace inference {
 
 TEST(resnet50, compare_continuous_input) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare_continuous_input(model_dir, true);
+  compare_continuous_input(model_dir, /* use_tensorrt */ true);
 }
 
 }  // namespace inference

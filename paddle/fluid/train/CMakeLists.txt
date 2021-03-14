@@ -4,28 +4,28 @@ function(train_test TARGET_NAME)
     set(multiValueArgs ARGS)
     cmake_parse_arguments(train_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(arg_list "")
-    if(train_test_ARGS)
-        foreach(arg ${train_test_ARGS})
-            list(APPEND arg_list "_${arg}")
-        endforeach()
-    else()
-        list(APPEND arg_list "_")
-    endif()
-    foreach(arg ${arg_list})
-        string(REGEX REPLACE "^_$" "" arg "${arg}")
-        cc_test(test_train_${TARGET_NAME}${arg}
+    if (NOT APPLE AND NOT WIN32)
+        cc_test(test_train_${TARGET_NAME}
                 SRCS test_train_${TARGET_NAME}.cc
-                DEPS paddle_fluid_origin
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
-        set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES DEPENDS test_${TARGET_NAME})
-        set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES LABELS "RUN_TYPE=DIST")
-    endforeach()
+                DEPS paddle_inference_shared
+                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+    else()
+        cc_test(test_train_${TARGET_NAME}
+                SRCS test_train_${TARGET_NAME}.cc
+                DEPS paddle_inference_io
+                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
+    endif()
+    if(TEST test_train_${TARGET_NAME})
+        set_tests_properties(test_train_${TARGET_NAME}
+                PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
+        if(NOT WIN32 AND NOT APPLE)
+            set_tests_properties(test_train_${TARGET_NAME}
+                    PROPERTIES TIMEOUT 150)
+        endif()
+    endif()
 endfunction(train_test)
 
 
 if(WITH_TESTING)
-  train_test(recognize_digits ARGS mlp conv)
+  train_test(recognize_digits)
 endif()

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hash_op.h"
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -26,14 +42,13 @@ class HashOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of HashOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of HashOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Hash");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Hash");
 
     auto dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dims.size(), 2UL,
-                      "The input of hash_op's dimensions must be 2");
+                      platform::errors::InvalidArgument(
+                          "The input of hash_op's dimensions must be 2"));
     std::vector<int64_t> out_dims;
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);
@@ -46,14 +61,13 @@ class HashOp : public framework::OperatorWithKernel {
 class HashOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input tensor of scale operator.");
-    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
+    AddInput("X", "(Tensor) Input tensor of hash operator.");
+    AddOutput("Out", "(Tensor) Output tensor of hash operator.");
     AddComment(R"DOC(
-**Hash Operator**
-$$Out = scale * X$$
+        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
-    AddAttr<int>("mod_by", "").SetDefault(100000);
+    AddAttr<int64_t>("mod_by", "").SetDefault(100000);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);

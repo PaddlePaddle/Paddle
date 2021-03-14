@@ -25,17 +25,24 @@ class PadOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PadOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
 
     auto x_dim = ctx->GetInputDim("X");
     auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
-                      "Size of paddings should be equal to 2 * dimension size "
-                      "of input tensor.");
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(paddings.size()), x_dim.size() * 2,
+        platform::errors::InvalidArgument(
+            "Size of 'paddings' dimension should be equal to 2 * size of "
+            "Input(X)'s dimension, but received (size of 'paddings' dimension "
+            "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
+            static_cast<int>(paddings.size()), x_dim.size() * 2));
     for (size_t i = 0; i < paddings.size(); ++i) {
-      PADDLE_ENFORCE_GE(paddings[i], 0, "paddings should >= 0.");
+      PADDLE_ENFORCE_GE(paddings[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The element of 'paddings' should >= 0, but "
+                            "received %d for index %d.",
+                            paddings[i], static_cast<int>(i)));
     }
     std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {
@@ -121,18 +128,30 @@ class PadOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class PadOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* bind = new framework::OpDesc();
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    bind->SetAttrMap(Attrs());
+  void Apply(GradOpPtr<T> bind) const override {
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("pad_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
+  }
+};
+
+template <typename T>
+class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pad");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -141,9 +160,17 @@ class PadOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker, ops::PadOpGradMaker);
-REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
+REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
+                  ops::PadOpGradMaker<paddle::framework::OpDesc>,
+                  ops::PadOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
+                  ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>);
+    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>);
+    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);

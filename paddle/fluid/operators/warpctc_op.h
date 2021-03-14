@@ -27,7 +27,52 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+template <typename DeviceContext, typename T>
+class ComputeCtcLossFunctor {
+ public:
+  ctcStatus_t operator()(const T* const activations, T* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, T* costs, void* workspace,
+                         ctcOptions options) {
+    return CTC_STATUS_EXECUTION_FAILED;
+  }
+};
+
 template <typename DeviceContext>
+class ComputeCtcLossFunctor<DeviceContext, float> {
+ public:
+  ctcStatus_t operator()(const float* const activations, float* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, float* costs, void* workspace,
+                         ctcOptions options) {
+    return platform::dynload::compute_ctc_loss(
+        activations, gradients, flat_labels, label_lengths, input_lengths,
+        static_cast<int>(alphabet_size), static_cast<int>(minibatch), costs,
+        workspace, options);
+  }
+};
+
+template <typename DeviceContext>
+class ComputeCtcLossFunctor<DeviceContext, double> {
+ public:
+  ctcStatus_t operator()(const double* const activations, double* gradients,
+                         const int* const flat_labels,
+                         const int* const label_lengths,
+                         const int* const input_lengths, int alphabet_size,
+                         int minibatch, double* costs, void* workspace,
+                         ctcOptions options) {
+    return platform::dynload::compute_ctc_loss_double(
+        activations, gradients, flat_labels, label_lengths, input_lengths,
+        static_cast<int>(alphabet_size), static_cast<int>(minibatch), costs,
+        workspace, options);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class WarpCTCFunctor {
  public:
   /*
@@ -51,46 +96,62 @@ class WarpCTCFunctor {
    * \param blank             blank label used in ctc loss function.
    * \param cpu_losss         cost of each sequence in CPU memory.
    */
-  void operator()(const framework::ExecutionContext& ctx, const float* input,
-                  float* gradient, const int* cpu_labels,
+  void operator()(const framework::ExecutionContext& ctx, const T* input,
+                  T* gradient, const int* cpu_labels,
                   const int* cpu_label_lengths, const int* cpu_input_lengths,
                   const size_t sequence_width, const size_t num_sequences,
-                  const size_t blank, float* cpu_loss) {
+                  const size_t blank, T* cpu_loss) {
     // Init warp-ctc options
     init(ctx, blank);
 
     // Compute the required workspace size.
     // There is no memory allocated operations within warp-ctc.
     size_t workspace_bytes = 0;
-    ctcStatus_t status = platform::dynload::get_workspace_size(
-        cpu_label_lengths, cpu_input_lengths, static_cast<int>(sequence_width),
-        static_cast<int>(num_sequences), options_, &workspace_bytes);
-    PADDLE_ENFORCE_EQ(CTC_STATUS_SUCCESS, status,
-                      "warp-ctc [version %d] Error in get_workspace_size: ",
-                      warpctc_version_,
-                      platform::dynload::ctcGetStatusString(status));
-    PADDLE_ENFORCE_GT(workspace_bytes, 0UL,
-                      "Bytes of workspace got by warp-ctc function, "
-                      "get_workspace_size(), should be larger than 0.");
+    ctcStatus_t status = CTC_STATUS_UNKNOWN_ERROR;
+    if (sizeof(T) == 4) {
+      status = platform::dynload::get_workspace_size(
+          cpu_label_lengths, cpu_input_lengths,
+          static_cast<int>(sequence_width), static_cast<int>(num_sequences),
+          options_, &workspace_bytes);
+    } else {
+      status = platform::dynload::get_workspace_size_double(
+          cpu_label_lengths, cpu_input_lengths,
+          static_cast<int>(sequence_width), static_cast<int>(num_sequences),
+          options_, &workspace_bytes);
+    }
+    PADDLE_ENFORCE_EQ(
+        CTC_STATUS_SUCCESS, status,
+        platform::errors::PreconditionNotMet(
+            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            warpctc_version_, platform::dynload::ctcGetStatusString(status)));
+    PADDLE_ENFORCE_GT(
+        workspace_bytes, 0UL,
+        platform::errors::InvalidArgument(
+            "Bytes of workspace got by warp-ctc function, "
+            "get_workspace_size() should be larger than 0, but received %d",
+            workspace_bytes));
 
-    Tensor workspace;
-    size_t workspace_elements = workspace_bytes / sizeof(float) + 1UL;
-    float* workspace_data = workspace.mutable_data<float>(
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
+    Tensor workspace = ctx.AllocateTmpTensor<T, DeviceContext>(
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
-        ctx.GetPlace());
-    math::SetConstant<DeviceContext, float>()(
+        dev_ctx);
+    T* workspace_data = workspace.data<T>();
+    math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &workspace,
-        static_cast<float>(0));
+        static_cast<T>(0));
 
     // compute loss and gradient
-    status = platform::dynload::compute_ctc_loss(
+    status = ComputeCtcLossFunctor<DeviceContext, T>()(
         input, gradient, cpu_labels, cpu_label_lengths, cpu_input_lengths,
         static_cast<int>(sequence_width), static_cast<int>(num_sequences),
         cpu_loss, workspace_data, options_);
-    PADDLE_ENFORCE_EQ(CTC_STATUS_SUCCESS, status,
-                      "warp-ctc [version %d] Error in compute_ctc_loss: ",
-                      warpctc_version_,
-                      platform::dynload::ctcGetStatusString(status));
+
+    PADDLE_ENFORCE_EQ(
+        CTC_STATUS_SUCCESS, status,
+        platform::errors::PreconditionNotMet(
+            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            warpctc_version_, platform::dynload::ctcGetStatusString(status)));
   }
 
  protected:
@@ -98,13 +159,15 @@ class WarpCTCFunctor {
     warpctc_version_ = platform::dynload::get_warpctc_version();
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
+// HIP not support ctcOptions in third-party warpctc
 #ifdef PADDLE_WITH_CUDA
       options_.loc = CTC_GPU;
       options_.stream = reinterpret_cast<const platform::CUDADeviceContext&>(
                             ctx.device_context())
                             .stream();
 #else
-      PADDLE_THROW("[warpctc init] GPU is not enabled.");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "[warpctc init] GPU is not enabled."));
 #endif
     } else {
       options_.loc = CTC_CPU;
@@ -128,63 +191,112 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     auto* warpctc_grad = ctx.Output<Tensor>("WarpCTCGrad");
     auto* loss = ctx.Output<Tensor>("Loss");
 
-    const size_t level = 0;
+    size_t num_sequences, sequence_width, max_sequence_length;
+    framework::Vector<size_t> logits_lod;
+    framework::Vector<size_t> label_lod;
 
-    auto logits_lod = framework::ToAbsOffset(logits->lod());
-    auto logits_dims = logits->dims();
-    PADDLE_ENFORCE_EQ(logits_dims[0],
-                      static_cast<int64_t>(logits_lod[level].back()),
-                      "The first dimension of Input(Logits) should be equal to "
-                      "the sum of all sequences' lengths.");
+    if (ctx.HasInput("LogitsLength") && ctx.HasInput("LabelLength")) {
+      num_sequences = logits->dims()[1];
+      sequence_width = logits->dims()[2];
+      max_sequence_length = logits->dims()[0];
 
-    auto label_lod = framework::ToAbsOffset(label->lod());
-    auto label_dims = label->dims();
-    PADDLE_ENFORCE_EQ(
-        label_dims[0], label->numel(),
-        "The width of each timestep in Input(Label) should be 1.");
+      auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
+      auto* labels_length = ctx.Input<framework::Tensor>("LabelLength");
+      framework::Tensor logits_length_cpu;
+      framework::Tensor labels_length_cpu;
+      framework::TensorCopy(*logits_length, platform::CPUPlace(),
+                            &logits_length_cpu);
+      framework::TensorCopy(*labels_length, platform::CPUPlace(),
+                            &labels_length_cpu);
 
-    const size_t num_sequences = logits_lod[level].size() - 1;
-    PADDLE_ENFORCE_EQ(num_sequences, label_lod[level].size() - 1,
-                      "The number of sequences of Input(Logits) should be "
-                      "equal to that of Input(Label).");
+      logits_lod.push_back(0);
+      label_lod.push_back(0);
+      for (size_t i = 0; i < num_sequences; i++) {
+        logits_lod.push_back(logits_lod[i] +
+                             logits_length_cpu.data<int64_t>()[i]);
+        label_lod.push_back(label_lod[i] +
+                            labels_length_cpu.data<int64_t>()[i]);
+      }
+    } else {
+      PADDLE_ENFORCE_GT(logits->NumLevels(), 0UL,
+                        platform::errors::InvalidArgument(
+                            "Input(Logits) Tensor of WarpCTC "
+                            "does not contain LoD information."));
+      PADDLE_ENFORCE_GT(label->NumLevels(), 0UL,
+                        platform::errors::InvalidArgument(
+                            "Input(Label) Tensor of WarpCTC "
+                            "does not contain LoD information."));
 
-    const size_t sequence_width = logits->numel() / logits_dims[0];
+      logits_lod = framework::ToAbsOffset(logits->lod())[0];
+      auto logits_dims = logits->dims();
+
+      PADDLE_ENFORCE_EQ(
+          logits_dims[0], static_cast<int64_t>(logits_lod.back()),
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(Logits) should be equal to "
+              "the sum of all sequences' lengths = %d., but received %d. ",
+              static_cast<int64_t>(logits_lod.back()), logits_dims[0]));
+
+      label_lod = framework::ToAbsOffset(label->lod())[0];
+      auto label_dims = label->dims();
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "The last dimension of Input(Label) should be 1, "
+                            "but received %d",
+                            label_dims[1]));
+
+      num_sequences = logits_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          num_sequences, label_lod.size() - 1,
+          platform::errors::InvalidArgument(
+              "The number of sequences of Input(Logits) should be "
+              "equal to that of Input(Label) = %d, but received %d",
+              label_lod.size() - 1, num_sequences));
+
+      sequence_width = logits->numel() / logits_dims[0];
+      max_sequence_length = math::MaximumSequenceLength(logits_lod);
+    }
+
     auto loss_dims =
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
     LoDTensor warpctc_logits;
-    const size_t max_sequence_length =
-        math::MaximumSequenceLength(logits_lod[level]);
     auto warpctc_logits_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
-    warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
-
-    LoDTensor cpu_pad_value;
-    T* pad_value_data =
-        cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
-    *pad_value_data = static_cast<T>(0);
-    LoDTensor pad_value;
-    if (platform::is_cpu_place(ctx.GetPlace())) {
-      pad_value = cpu_pad_value;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    Tensor warpctc_logits_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
+    warpctc_logits.ShareDataWith(warpctc_logits_tmp);
+    if (ctx.HasInput("LogitsLength")) {
+      TensorCopySync(*logits, ctx.GetPlace(), &warpctc_logits);
     } else {
-      TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
-    }
+      LoDTensor cpu_pad_value;
+      T* pad_value_data =
+          cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
+      *pad_value_data = static_cast<T>(0);
+      LoDTensor pad_value;
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        pad_value = cpu_pad_value;
+      } else {
+        TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
+      }
 
-    math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
+      math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), *logits,
+          &warpctc_logits, pad_value, -1, 0, false /* norm_by_times */,
+          math::kLengthBatchWidth);
+    }
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     std::vector<int> warpctc_label_lengths(num_sequences);
     std::vector<int> warpctc_logits_lengths(num_sequences);
 
     for (size_t i = 0; i < num_sequences; ++i) {
-      warpctc_label_lengths[i] = label_lod[level][i + 1] - label_lod[level][i];
-      warpctc_logits_lengths[i] =
-          logits_lod[level][i + 1] - logits_lod[level][i];
+      warpctc_label_lengths[i] = label_lod[i + 1] - label_lod[i];
+      warpctc_logits_lengths[i] = logits_lod[i + 1] - logits_lod[i];
     }
 
     // warpctc computes loss and gradient in one call, gradient data also stored
@@ -197,8 +309,36 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         static_cast<T>(0));
 
     // warpctc accesses labels in CPU memory
-    Tensor warpctc_label;
-    TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+    LoDTensor warpctc_label;
+    if (ctx.HasInput("LogitsLength")) {
+      warpctc_label.mutable_data<int>(
+          {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
+          platform::CPUPlace());
+      std::vector<framework::Vector<size_t>> lod;
+      lod.push_back(label_lod);
+      warpctc_label.set_lod(lod);
+
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
+            ctx.template device_context<DeviceContext>(), *label,
+            &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
+            false /*norm_by_times*/, math::kBatchLengthWidth);
+      } else {
+        LoDTensor gpu_label;
+        gpu_label.mutable_data<int>(
+            {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
+            ctx.GetPlace());
+        gpu_label.set_lod(lod);
+        math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
+            ctx.template device_context<DeviceContext>(), *label, &gpu_label,
+            label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
+            false /*norm_by_times*/, math::kBatchLengthWidth);
+        TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
+      }
+    } else {
+      TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+    }
+
     const int* warpctc_label_data = warpctc_label.data<int>();
     // warpctc stores loss in CPU memory
     Tensor warpctc_loss;
@@ -207,7 +347,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
 
-    WarpCTCFunctor<DeviceContext>()(
+    WarpCTCFunctor<DeviceContext, T>()(
         ctx, warpctc_logits_data, warpctc_grad_data, warpctc_label_data,
         warpctc_label_lengths.data(), warpctc_logits_lengths.data(),
         sequence_width, num_sequences, blank, warpctc_loss_data);
@@ -227,14 +367,62 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
-    math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *warpctc_grad,
-        logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
 
-    const T* loss_grad_data = loss_grad->data<T>();
-    math::ScaleLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), loss_grad_data,
-        logits_grad);
+    if (ctx.HasInput("LogitsLength")) {
+      size_t max_seq_length = warpctc_grad->dims()[0];
+      size_t num_sequences = warpctc_grad->dims()[1];
+      size_t seq_width = warpctc_grad->dims()[2];
+
+      auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
+      framework::Tensor logits_length_cpu;
+      framework::TensorCopy(*logits_length, platform::CPUPlace(),
+                            &logits_length_cpu);
+
+      LoDTensor logits_grad_with_lod;
+      auto logits_grad_dims =
+          framework::make_ddim({static_cast<int64_t>(max_seq_length),
+                                static_cast<int64_t>(num_sequences),
+                                static_cast<int64_t>(seq_width)});
+      T* logits_grad_cpu_data = logits_grad_with_lod.mutable_data<T>(
+          logits_grad_dims, platform::CPUPlace());
+
+      TensorCopySync(*warpctc_grad, platform::CPUPlace(),
+                     &logits_grad_with_lod);
+
+      Tensor loss_grad_cpu;
+      loss_grad_cpu.mutable_data<T>(loss_grad->dims(), platform::CPUPlace());
+      TensorCopySync(*loss_grad, platform::CPUPlace(), &loss_grad_cpu);
+
+      LoDTensor scaled_logits;
+      T* scaled_logits_data =
+          scaled_logits.mutable_data<T>(logits_grad_dims, platform::CPUPlace());
+
+      const T* loss_grad_data = loss_grad_cpu.data<T>();
+      for (size_t i = 0; i < max_seq_length; ++i) {
+        for (size_t j = 0; j < num_sequences; ++j) {
+          T scale = 1.0;
+          if (norm_by_times) {
+            scale = 1.0 / static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
+          }
+          for (size_t k = 0; k < seq_width; ++k) {
+            size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
+            scaled_logits_data[idx] =
+                logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
+          }
+        }
+      }
+
+      TensorCopySync(scaled_logits, ctx.GetPlace(), logits_grad);
+    } else {
+      math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), *warpctc_grad,
+          logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
+
+      const T* loss_grad_data = loss_grad->data<T>();
+      math::ScaleLoDTensorFunctor<DeviceContext, T>()(
+          ctx.template device_context<DeviceContext>(), loss_grad_data,
+          logits_grad);
+    }
   }
 };
 

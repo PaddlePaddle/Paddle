@@ -1,7 +1,7 @@
 # Inference High-level APIs
 This document describes the high-level inference APIs, one can use them to deploy a Paddle model for an application quickly.
 
-The APIs are described in `paddle_inference_api.h`, just one header file, and two libaries `libpaddle_fluid.so` and `libpaddle_fluid_api.so` are needed for a deployment.
+The APIs are described in `paddle_inference_api.h`, just one header file, and two libaries `libpaddle_inference.so` and `libpaddle_inference_io.so` are needed for a deployment.
 
 ## PaddleTensor
 We provide the `PaddleTensor` data structure to give a general tensor interface.
@@ -24,17 +24,16 @@ that is important when there are multiple inputs and need to distinguish which v
 ## engine
 The inference APIs has two different underlying engines
 
-- the native engine, which is consists of the native operators and framework,
-- the Anakin engine, which has an Anakin library embedded.
+- the native engine
+- the tensorrt engine
 
-The native engine takes a native Paddle model as input, and supports any model that trained by Paddle, 
-the Anakin engine is faster for some model, 
-but it can only take the Anakin model as input(user need to transform the format first manually) and currently not all Paddle models are supported.
+The native engine, which is consists of the native operators and framework, takes a native Paddle model
+as input, and supports any model that trained by Paddle.
 
 ```c++
 enum class PaddleEngineKind {
   kNative = 0,  // Use the native Fluid facility.
-  kAnakin,      // Use Anakin for inference.
+  kAutoMixedTensorRT // Automatically mixing TensorRT with the Fluid ops.
 };
 ```
 

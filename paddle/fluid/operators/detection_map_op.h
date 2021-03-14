@@ -78,11 +78,16 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
 
     auto& label_lod = in_label->lod();
     auto& detect_lod = in_detect->lod();
-    PADDLE_ENFORCE_EQ(label_lod.size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        label_lod.size(), 1UL,
+        platform::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                          "with 1 in label, but received %d.",
+                                          label_lod.size()));
     PADDLE_ENFORCE_EQ(label_lod[0].size(), detect_lod[0].size(),
-                      "The batch_size of input(Label) and input(Detection) "
-                      "must be the same.");
+                      platform::errors::InvalidArgument(
+                          "The batch_size of input(Label) and input(Detection) "
+                          "must be the same, but received %d:%d",
+                          label_lod[0].size(), detect_lod[0].size()));
 
     std::vector<std::map<int, std::vector<Box>>> gt_boxes;
     std::vector<std::map<int, std::vector<std::pair<T, Box>>>> detect_boxes;
@@ -185,7 +190,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
             box.is_difficult = true;
           boxes[label].push_back(box);
         } else {
-          PADDLE_ENFORCE_EQ(input_label.dims()[1], 5);
+          PADDLE_ENFORCE_EQ(
+              input_label.dims()[1], 5,
+              platform::errors::InvalidArgument(
+                  "The input label width"
+                  " must be 5, but received %d, please check your input data",
+                  input_label.dims()[1]));
           Box box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
           boxes[label].push_back(box);
         }
@@ -420,8 +430,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     for (auto it = label_pos_count.begin(); it != label_pos_count.end(); ++it) {
       int label = it->first;
       int label_num_pos = it->second;
-      if (label_num_pos == background_label ||
-          true_pos.find(label) == true_pos.end()) {
+      if (label_num_pos == background_label) {
+        continue;
+      }
+      if (true_pos.find(label) == true_pos.end()) {
+        count++;
         continue;
       }
       auto label_true_pos = true_pos.find(label)->second;
@@ -468,7 +481,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         mAP += average_precisions;
         ++count;
       } else {
-        LOG(FATAL) << "Unkown ap version: " << ap_type;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unkown ap version %s. Now only supports integral and l1point.",
+            ap_type));
       }
     }
     if (count != 0) mAP /= count;

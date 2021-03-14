@@ -47,7 +47,7 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       auto &while_ops = ops_pair.second.first;
       auto &while_grad_ops = ops_pair.second.second;
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-          while_ops, while_grad_ops);
+          graph->OriginProgram(), while_ops, while_grad_ops);
     }
   }
 };

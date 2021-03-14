@@ -20,7 +20,7 @@ from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import default_main_program, switch_main_program
-from paddle.fluid.framework import Program
+from paddle.fluid.framework import Program, program_guard
 import numpy as np
 
 from paddle.fluid.layers.control_flow import shrink_memory
@@ -102,6 +102,37 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
         self.assertTrue(np.allclose(tensor_np[0:2], outs[1]))
         self.assertTrue(np.allclose(tensor_np[0:1], outs[2]))
         self.assertAlmostEqual(1.0, self.sum_lodtensor(outs[3]), delta=0.01)
+
+
+class TestShrinkRNNMemoryOpError(unittest.TestCase):
+    def test_erroes(self):
+        with program_guard(Program(), Program()):
+            x = layers.zeros(dtype='int64', shape=[3, 100])
+            i = layers.zeros(dtype='int64', shape=[1])
+            rank_table_tensor = core.LoDTensor()
+            rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
+            rank_table_tensor.set(
+                np.random.random(size=(6, 1)).astype('float32'),
+                core.CPUPlace())
+            rank_table = np.random.random(size=(6, 1)).astype('float32')
+
+            # The type of x in shrink_rnn_memory must be Variable.
+            def test_x_type():
+                out = shrink_memory(x=1, i=i, table=rank_table_tensor)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            # The type of i in shrink_rnn_memory must be Variable.
+            def test_i_type():
+                out = shrink_memory(x=x, i=0, table=rank_table_tensor)
+
+            self.assertRaises(TypeError, test_i_type)
+
+            # The type of table in shrink_rnn_memory must be Variable.
+            def test_table_type():
+                out = shrink_memory(x=x, i=i, table=rank_table)
+
+            self.assertRaises(TypeError, test_table_type)
 
 
 if __name__ == '__main__':

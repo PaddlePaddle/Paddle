@@ -18,6 +18,7 @@ import unittest
 from functools import partial
 import contextlib
 import numpy as np
+import random
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -29,6 +30,7 @@ from paddle.fluid.backward import append_backward
 
 class TestL2DecayRegularizer(unittest.TestCase):
     def test_l2decay_regularizer(self):
+        paddle.enable_static()
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -66,6 +68,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
 
 class TestL1DecayRegularizer(unittest.TestCase):
     def test_l2decay_regularizer(self):
+        paddle.enable_static()
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -106,9 +109,9 @@ def bow_net(data,
             label,
             dict_dim,
             is_sparse=False,
-            emb_dim=128,
-            hid_dim=128,
-            hid_dim2=96,
+            emb_dim=8,
+            hid_dim=8,
+            hid_dim2=6,
             class_dim=2):
     """
     BOW net
@@ -124,16 +127,14 @@ def bow_net(data,
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(x=cost)
-
     return avg_cost
 
 
 class TestRegularizer(unittest.TestCase):
     def setUp(self):
-        self.word_dict = paddle.dataset.imdb.word_dict()
-        reader = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict), batch_size=8)()
-        self.train_data = [next(reader) for _ in range(5)]
+        self.word_len = 1500
+        self.train_data = [[(random.sample(range(1000), 10), [0])]
+                           for _ in range(2)]
 
     def get_places(self):
         places = [core.CPUPlace()]
@@ -169,16 +170,17 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay_regularizer(self, place, model):
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
-            avg_cost = model(data, label, len(self.word_dict))
+            avg_cost = model(data, label, self.word_len)
 
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=0.1,
@@ -188,16 +190,18 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay(self, place, model):
+        paddle.seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
-            avg_cost_l2 = model(data, label, len(self.word_dict))
+            avg_cost_l2 = model(data, label, self.word_len)
 
             param_list = fluid.default_main_program().block(0).all_parameters()
             para_sum = []
@@ -229,6 +233,47 @@ class TestRegularizer(unittest.TestCase):
                     a=dense_sparse_p_sum[0][i],
                     b=dense_sparse_p_sum[1][i],
                     rtol=5e-5)
+
+    def test_repeated_regularization(self):
+        l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
+        l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
+        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.layers.uniform_random([2, 2, 3])
+            out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
+            loss = fluid.layers.reduce_sum(out)
+            sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
+            sgd.minimize(loss)
+        with fluid.dygraph.guard():
+            input = fluid.dygraph.to_variable(
+                np.random.randn(3, 2).astype('float32'))
+            paddle.seed(1)
+            paddle.framework.random._manual_program_seed(1)
+
+            linear1 = fluid.dygraph.Linear(
+                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+            linear2 = fluid.dygraph.Linear(
+                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+
+            loss1 = linear1(input)
+            loss1.backward()
+            # set l2 regularizer in optimizer, but l1 in fluid.ParamAttr
+
+            fluid.optimizer.SGD(parameter_list=linear1.parameters(),
+                                learning_rate=1e-2,
+                                regularization=l2).minimize(loss1)
+            # only set l1 in fluid.ParamAttr
+            loss2 = linear2(input)
+            loss2.backward()
+            fluid.optimizer.SGD(parameter_list=linear2.parameters(),
+                                learning_rate=1e-2).minimize(loss2)
+            # they should both be applied by l1, and keep the same
+            self.assertTrue(
+                np.allclose(linear1.weight.numpy(), linear2.weight.numpy()),
+                "weight should use the regularization in fluid.ParamAttr!")
+            self.assertTrue(
+                np.allclose(linear1.bias.numpy(), linear2.bias.numpy()),
+                "bias should use the regularization in fluid.ParamAttr!")
 
 
 if __name__ == '__main__':

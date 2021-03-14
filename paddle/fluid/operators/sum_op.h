@@ -92,21 +92,29 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
   bool in_place = out_var == in_vars[0];
   auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
   for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-    PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                   "Only support all inputs are TensorArray");
+    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(), true,
+                      platform::errors::InvalidArgument(
+                          "Only support all inputs are TensorArray, "
+                          "but inputs[%d] is not TensorArray.",
+                          i));
     auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
 
     for (size_t i = 0; i < in_array.size(); ++i) {
-      if (in_array[i].numel() != 0) {
+      if (in_array[i].IsInitialized() && (in_array[i].numel() != 0)) {
         if (i >= out_array.size()) {
           out_array.resize(i + 1);
         }
-        if (out_array[i].numel() == 0) {
+        if (!out_array[i].IsInitialized() || (out_array[i].numel() == 0)) {
           framework::TensorCopy(in_array[i], in_array[i].place(),
                                 context.device_context(), &out_array[i]);
           out_array[i].set_lod(in_array[i].lod());
         } else {
-          PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+          PADDLE_ENFORCE_EQ(
+              out_array[i].lod(), in_array[i].lod(),
+              platform::errors::InvalidArgument(
+                  "The lod message between inputs[%d] and"
+                  " outputs[%d] must be same, but now is not same.",
+                  i, i));
           auto in = EigenVector<T>::Flatten(in_array[i]);
           auto result = EigenVector<T>::Flatten(out_array[i]);
           result.device(*context.template device_context<DeviceContext>()
@@ -128,10 +136,15 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = context.Output<LoDTensor>("Out");
-      if (!in_place) {
-        out->mutable_data<T>(context.GetPlace());
+      auto *out = out_var->GetMutable<framework::LoDTensor>();
+      auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+        auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+        if (in_0_tensor.numel() > 0) {
+          in_place = (in_0_tensor.data<T>() == out_ptr);
+        }
       }
+
       auto result = EigenVector<T>::Flatten(*out);
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();
@@ -169,7 +182,11 @@ class SumKernel : public framework::OpKernel<T> {
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
-          PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Expected type of Input(X) of %d-th must be Tensor, "
+              "SelectedRows. But got "
+              "unsupport type: %s.",
+              framework::ToTypeName(in_vars[i]->Type())));
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
@@ -177,8 +194,11 @@ class SumKernel : public framework::OpKernel<T> {
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<DeviceContext, T>(context);
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(out_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Output(out) must be Tensor, SelectedRows, "
+          "LoDTensorArray. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
   }
 };

@@ -26,17 +26,14 @@ class CVMOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CVM");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "CVM");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto cvm_dims = ctx->GetInputDim("CVM");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2UL, "Input(CVM)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(cvm_dims[1], 2UL,
-                      "The 2nd dimension of "
-                      "Input(CVM) should be 2.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "Input(X)'s rank should be 2, but got %d", x_dims.size()));
 
     if (ctx->Attrs().Get<bool>("use_cvm")) {
       ctx->SetOutputDim("Y", {x_dims[0], x_dims[1]});
@@ -52,8 +49,9 @@ class CVMOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -62,27 +60,41 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CVMGradient");
+    OP_INOUT_CHECK(ctx->HasInput("CVM"), "Input", "CVM", "CVMGradient");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                   framework::GradVarName("Y"), "CVMGradient");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "CVMGradient");
 
     auto x_dims = ctx->GetInputDim("X");
     auto cvm_dims = ctx->GetInputDim("CVM");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2, "Input(CVM)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Expect Input(X)'s rank == 2, but got %d", x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        dy_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Expect Input(X)'s rank == 2, but got %d", dy_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        cvm_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Expect Input(X)'s rank == 2, but got %d", cvm_dims.size()));
 
-    PADDLE_ENFORCE_EQ(x_dims[0], dy_dims[0],
-                      "The 1st dimension of Input(X) and Input(Y@Grad) should "
-                      "be equal.");
+    PADDLE_ENFORCE_EQ(
+        x_dims[0], dy_dims[0],
+        platform::errors::InvalidArgument(
+            "The 1st dimension of Input(X) and Input(Y@Grad) should "
+            "be equal, X is %d, Y@Grad is %d",
+            x_dims[0], dy_dims[0]));
 
-    PADDLE_ENFORCE_EQ(cvm_dims[1], 2,
-                      "When Attr(soft_label) == false, the 2nd dimension of "
-                      "Input(CVM) should be 2.");
+    PADDLE_ENFORCE_EQ(
+        cvm_dims[1], 2,
+        platform::errors::InvalidArgument(
+            "When Attr(soft_label) == false, the 2nd dimension of "
+            "Input(CVM) should be 2, but got %d cvm_dims[1]"));
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
@@ -93,8 +105,9 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 
@@ -123,30 +136,36 @@ CVM Operator.
   }
 };
 
-class CVMGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("cvm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("CVM", Input("CVM"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("CVM", this->Input("CVM"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMNoNeedBufferVarInferer, "CVM");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker, ops::CVMGradOpDescMaker);
+REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
+                  ops::CVMGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CVMGradOpMaker<paddle::imperative::OpBase>,
+                  ops::CVMNoNeedBufferVarInferer);
 
-REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp);
+REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
+                  ops::CVMGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 

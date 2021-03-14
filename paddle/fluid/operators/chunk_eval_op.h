@@ -51,7 +51,13 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     for (int i = 0; i < length; ++i) {
       int prev_tag = tag;
       int prev_type = type;
-      PADDLE_ENFORCE_LE(label[i], num_chunk_types * num_tag_types);
+      PADDLE_ENFORCE_LE(
+          label[i], num_chunk_types * num_tag_types,
+          platform::errors::InvalidArgument(
+              "The value of Input(Label) should be less than the number of "
+              "chunk types times the number of tag types, but received %d "
+              "(Label) vs %d (chunk types) * %d (tag types).",
+              label[i], num_chunk_types, num_tag_types));
       tag = label[i] % num_tag_types;
       type = label[i] / num_tag_types;
       if (in_chunk && ChunkEnd(prev_tag, prev_type, tag, type, other_chunk_type,
@@ -140,7 +146,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
       tag_end = -1;
       tag_single = -1;
     } else {
-      PADDLE_THROW("Unknown chunk scheme.");
+      PADDLE_THROW(platform::errors::InvalidArgument("Unknown chunk scheme."));
     }
     other_chunk_type = num_chunk_types = context.Attr<int>("num_chunk_types");
     excluded_chunk_types.insert(
@@ -173,18 +179,47 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     *num_correct_chunks_data = 0;
 
     auto lod = label->lod();
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE(lod == inference->lod(),
-                   "LoD must be same between Inference and Label.");
-    int num_sequences = lod[0].size() - 1;
-    for (int i = 0; i < num_sequences; ++i) {
-      int seq_length = lod[0][i + 1] - lod[0][i];
-      EvalOneSeq(inference_data + lod[0][i], label_data + lod[0][i], seq_length,
-                 &output_segments, &label_segments, num_infer_chunks_data,
-                 num_label_chunks_data, num_correct_chunks_data,
-                 num_chunk_types, num_tag_types, other_chunk_type, tag_begin,
-                 tag_inside, tag_end, tag_single, excluded_chunk_types);
+    bool use_padding = lod.empty();
+    int num_sequences = 0;
+
+    if (use_padding) {
+      auto dim1 = inference->dims()[1];
+      auto* seq_length_t = context.Input<Tensor>("SeqLength");
+      auto* seq_length_data = seq_length_t->data<int64_t>();
+      num_sequences = seq_length_t->dims()[0];
+
+      for (int i = 0; i < num_sequences; ++i) {
+        int seq_length = seq_length_data[i];
+        EvalOneSeq(inference_data + i * dim1, label_data + i * dim1, seq_length,
+                   &output_segments, &label_segments, num_infer_chunks_data,
+                   num_label_chunks_data, num_correct_chunks_data,
+                   num_chunk_types, num_tag_types, other_chunk_type, tag_begin,
+                   tag_inside, tag_end, tag_single, excluded_chunk_types);
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(
+          lod.size(), 1UL,
+          platform::errors::InvalidArgument(
+              "Only support one level LoD sequence now, but received %d.",
+              lod.size()));
+      PADDLE_ENFORCE_EQ(
+          lod, inference->lod(),
+          platform::errors::InvalidArgument(
+              "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
+              "same LoD information."));
+      num_sequences = lod[0].size() - 1;
+
+      for (int i = 0; i < num_sequences; ++i) {
+        int seq_length = lod[0][i + 1] - lod[0][i];
+        EvalOneSeq(inference_data + lod[0][i], label_data + lod[0][i],
+                   seq_length, &output_segments, &label_segments,
+                   num_infer_chunks_data, num_label_chunks_data,
+                   num_correct_chunks_data, num_chunk_types, num_tag_types,
+                   other_chunk_type, tag_begin, tag_inside, tag_end, tag_single,
+                   excluded_chunk_types);
+      }
     }
+
     *precision_data = !(*num_infer_chunks_data)
                           ? 0
                           : static_cast<T>(*num_correct_chunks_data) /

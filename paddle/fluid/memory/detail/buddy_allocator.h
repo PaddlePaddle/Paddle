@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <set>
@@ -23,7 +24,6 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -41,6 +41,8 @@ class BuddyAllocator {
  public:
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
+  // Release the unused memory pool, a real free operation for the OS.
+  uint64_t Release();
   size_t Used();
   size_t GetMinChunkSize();
   size_t GetMaxChunkSize();
@@ -76,12 +78,6 @@ class BuddyAllocator {
   /*! \brief Find the existing chunk which used to allocation */
   PoolSet::iterator FindExistChunk(size_t size);
 
-  /*! \brief Clean idle fallback allocation */
-  void CleanIdleFallBackAlloc();
-
-  /*! \brief Clean idle normal allocation */
-  void CleanIdleNormalAlloc();
-
  private:
   size_t total_used_ = 0;  // the total size of used memory
   size_t total_free_ = 0;  // the total size of free memory
@@ -99,8 +95,10 @@ class BuddyAllocator {
    */
   PoolSet pool_;
 
-  /*! Record fallback allocation count for auto-scaling */
-  size_t fallback_alloc_count_ = 0;
+  /**
+   * \brief Record the allocated chunks when Refill pool.
+   */
+  PoolSet chunks_;
 
  private:
   /*! Unify the metadata format between GPU and CPU allocations */

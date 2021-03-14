@@ -24,17 +24,22 @@ class OneHotOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of OneHotOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OneHotOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "OneHot");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "OneHot");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Rank of Input(X) should be at least 2.");
+                      platform::errors::InvalidArgument(
+                          "Input(input) rank should be at least 2, "
+                          "but received input rank (%d) less than 2",
+                          x_dims.size()));
+
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
-                        "Last dimension of Input(X) should be 1.");
+                        platform::errors::InvalidArgument(
+                            "Last dimension of Input(input) should be 1, "
+                            "but received input Last dimension(%d) != 1",
+                            x_dims[x_dims.size() - 1]));
     }
 
     framework::DDim out_dims(x_dims);
@@ -51,8 +56,9 @@ class OneHotOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -86,6 +92,11 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")
         .SetDefault(paddle::framework::proto::VarType::FP32);
+    AddAttr<bool>("allow_out_of_range",
+                  "If it is set true and the input data is out of range, "
+                  "the output tensor will be filled zeros. The default value "
+                  "is false.")
+        .SetDefault(false);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
 index values. The following example will help to explain the function of this
@@ -113,8 +124,10 @@ Out is a LoDTensor:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(one_hot, ops::OneHotOp, ops::OneHotOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    one_hot, ops::OneHotOp, ops::OneHotOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     one_hot, ops::OneHotKernel<paddle::platform::CPUDeviceContext, int>,
     ops::OneHotKernel<paddle::platform::CPUDeviceContext, int64_t>);

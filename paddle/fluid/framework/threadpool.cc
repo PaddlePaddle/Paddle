@@ -14,14 +14,16 @@
 
 #include "paddle/fluid/framework/threadpool.h"
 
+#include <thread>
+
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_int32(io_threadpool_size, 100,
              "number of threads used for doing IO, default 100");
 
-DEFINE_int32(dist_threadpool_size, 0,
-             "number of threads used for distributed executed.");
+DECLARE_int32(dist_threadpool_size);
 
 namespace paddle {
 namespace framework {
@@ -41,7 +43,8 @@ void ThreadPool::Init() {
       num_threads = FLAGS_dist_threadpool_size;
       VLOG(1) << "set dist_threadpool_size to " << num_threads;
     }
-    PADDLE_ENFORCE_GT(num_threads, 0);
+    PADDLE_ENFORCE_GT(num_threads, 0, platform::errors::InvalidArgument(
+                                          "The number of threads is 0."));
     threadpool_.reset(new ThreadPool(num_threads));
   }
 }
@@ -82,7 +85,8 @@ void ThreadPool::TaskLoop() {
       }
 
       if (tasks_.empty()) {
-        PADDLE_THROW("This thread has no task to Run");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Current thread has no task to Run."));
       }
 
       // pop a task from the task queue

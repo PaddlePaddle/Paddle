@@ -19,19 +19,24 @@ import abc
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
+from paddle.optimizer import SGD as SGD_v2
 
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
-from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.distributed.fleet.base.role_maker import RoleMakerBase
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from . import mode
 
 
 class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
-    TRANSPILER = 1
-    PSLIB = 2
-    COLLECTIVE = 3
+    PS = 1
+    COLLECTIVE = 2
+
+
+__all__ = ['Fleet', 'DistributedOptimizer']
+__all__ += mode.__all__
 
 
 class Fleet(object):
@@ -141,15 +146,27 @@ class Fleet(object):
 
         Returns:
             bool: True if this is a node of server,
-                  False if not.
+                  False if not
         """
         return self._role_maker.is_server()
+
+    def is_xpu(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
+        return self._role_maker.is_xpu()
 
     def split_files(self, files):
         """
         split files before distributed training,
-        for example, files is [a, b, c ,d, e]  and trainer_num = 2,
-        then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
+        example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
+                   0 gets [a, b, c] and trainer 1 gets [d, e].
+        example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
+                   [a], trainer 1 gets [b],  trainer 2 gets []
 
         Args:
             files(list): file list need to be read.
@@ -157,19 +174,26 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
-        file_num = len(files)
+        if not isinstance(files, list):
+            raise TypeError("files should be a list of file need to be read.")
+
         trainer_id = self.worker_index()
-        trainer_num = self.worker_num()
-        if trainer_num > file_num:
-            raise ValueError("trainer_num should be <= file_num : "
-                             "%s > %s" % (trainer_num, file_num))
-        start = 0
-        end = 0
-        for i in range(0, trainer_id + 1):
-            length = file_num / trainer_num + (i < (file_num % trainer_num))
-            start = end
-            end += length
-        return files[start:end]
+        trainers = self.worker_num()
+
+        remainder = len(files) % trainers
+        blocksize = len(files) / trainers
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]
 
     def init(self, role_maker=None):
         """
@@ -186,19 +210,37 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise ValueError("role_maker must be an instance of RoleMakerBase")
+            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
+                raise TypeError(
+                    "role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
-
         self._is_initialized = True
+
+    def all_reduce_worker(self, input, output):
+        """
+        all reduce between workers, only support array of one dim.
+
+        Args:
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
+        """
+        self._role_maker.all_reduce_worker(input, output)
+
+    def barrier_worker(self):
+        """
+        barrier between workers
+        """
+        self._role_maker.barrier_worker()
 
     @abc.abstractmethod
     def init_worker(self):
         pass
 
     @abc.abstractmethod
-    def init_server(self, model_dir=None):
+    def init_server(self, model_dir=None, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -249,8 +291,10 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__):
-            raise ValueError("optimizer must be an instance of Optimizer")
+        if not isinstance(optimizer, SGD.__bases__) \
+                and not isinstance(optimizer, OptimizerWithMixedPrecision) \
+                and not isinstance(optimizer, SGD_v2.__base__):
+            raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy

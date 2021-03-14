@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include <deque>
+
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
+
 #include "glog/logging.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -89,10 +89,10 @@ static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
          type == proto::VarType::LOD_TENSOR_ARRAY;
 }
 
-std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
-    const BlockDesc &block,
-    const std::vector<std::unique_ptr<OperatorBase>> &ops,
-    const std::vector<std::string> &skip_var_list) {
+std::unordered_map<const OperatorBase *, std::vector<std::string>>
+GetUnusedVars(const BlockDesc &block,
+              const std::vector<std::unique_ptr<OperatorBase>> &ops,
+              const std::vector<std::string> &skip_var_list) {
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
@@ -134,7 +134,7 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     }
   }
 
-  std::unordered_map<OperatorBase *, std::vector<std::string>> result;
+  std::unordered_map<const OperatorBase *, std::vector<std::string>> result;
   for (auto &name_op_idx_pair : var_op_idx_map) {
     auto &name = name_op_idx_pair.first;
     size_t op_idx = name_op_idx_pair.second;
@@ -144,8 +144,8 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
 }
 
 void DeleteUnusedTensors(
-    const Scope &scope, OperatorBase *op,
-    const std::unordered_map<OperatorBase *, std::vector<std::string>>
+    const Scope &scope, const OperatorBase *op,
+    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc) {
   auto iter = delete_vars_map.find(op);
@@ -175,8 +175,9 @@ void DeleteUnusedTensors(
         garbages.emplace_back(t.MoveMemoryHolder());
       }
     } else {
-      PADDLE_THROW("Type %s of %s is not supported eager deletion",
-                   framework::ToTypeName(var->Type()), var_name);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Type %s of variable %s is not supported eager deletion.",
+          framework::ToTypeName(var->Type()), var_name));
     }
   }
 

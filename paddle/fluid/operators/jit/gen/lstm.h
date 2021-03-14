@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/act.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
@@ -42,7 +43,8 @@ class LSTMJitCode : public VActFunc {
       } else if (type == KernelType::kVIdentity) {
         return operand_type::IDENTITY;
       } else {
-        LOG(FATAL) << "Do not support this jit::KernelType: " << type;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Do not support jit::KernelType code: %d.", type));
       }
       return operand_type::IDENTITY;
     };

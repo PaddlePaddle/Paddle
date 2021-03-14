@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
 
 TEST(DataTransform, DataLayoutFunction) {
   auto place = paddle::platform::CPUPlace();
@@ -43,3 +42,17 @@ TEST(DataTransform, DataLayoutFunction) {
   EXPECT_TRUE(in.layout() == paddle::framework::DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == paddle::framework::make_ddim({2, 3, 1, 2}));
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(DataTransform, GetDataFromTensorDNNL) {
+  auto place = paddle::platform::CPUPlace();
+  paddle::framework::Tensor in = paddle::framework::Tensor();
+  in.mutable_data<paddle::platform::bfloat16>(
+      paddle::framework::make_ddim({2, 3, 1, 2}), place);
+
+  void* in_data =
+      paddle::framework::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
+  EXPECT_EQ(in_data, paddle::platform::to_void_cast(
+                         in.data<paddle::platform::bfloat16>()));
+}
+#endif

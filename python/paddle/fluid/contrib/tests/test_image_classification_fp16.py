@@ -22,7 +22,11 @@ import sys
 import numpy
 import unittest
 import os
+import copy
 import numpy as np
+from paddle.static.amp import decorate
+
+paddle.enable_static()
 
 
 def resnet_cifar10(input, depth=32):
@@ -113,13 +117,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-        imgs = fluid.layers.cast(images, "float16")
         if net_type == "vgg":
             print("train vgg net")
-            net = vgg16_bn_drop(imgs)
+            net = vgg16_bn_drop(images)
         elif net_type == "resnet":
             print("train resnet")
-            net = resnet_cifar10(imgs, 32)
+            net = resnet_cifar10(images, 32)
         else:
             raise ValueError("%s network is not supported" % net_type)
 
@@ -134,12 +137,17 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
-        mp_optimizer = fluid.contrib.mixed_precision.decorate(
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_varnames={"loss", "conv2d_0.w_0"})
+        mp_optimizer = decorate(
             optimizer=optimizer,
+            amp_lists=amp_lists,
             init_loss_scaling=8.0,
             use_dynamic_loss_scaling=True)
 
-        scaled_loss, _, _ = mp_optimizer.minimize(avg_cost)
+        mp_optimizer.minimize(avg_cost)
+        loss_scaling = mp_optimizer.get_loss_scaling()
+        scaled_loss = mp_optimizer.get_scaled_loss()
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -231,7 +239,7 @@ def infer(use_cuda, save_dirname=None):
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
@@ -242,31 +250,16 @@ def infer(use_cuda, save_dirname=None):
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
-        # Use inference_transpiler to speedup
-        inference_transpiler_program = inference_program.clone()
-        t = fluid.transpiler.InferenceTranspiler()
-        t.transpile(inference_transpiler_program, place)
-
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-        transpiler_results = exe.run(inference_transpiler_program,
-                                     feed={feed_target_names[0]: tensor_img},
-                                     fetch_list=fetch_targets)
-
-        assert len(results[0]) == len(transpiler_results[0])
-        for i in range(len(results[0])):
-            np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=4)
-
         print("infer results: ", results[0])
 
         fluid.io.save_inference_model(save_dirname, feed_target_names,
-                                      fetch_targets, exe,
-                                      inference_transpiler_program)
+                                      fetch_targets, exe, inference_program)
 
 
 def main(net_type, use_cuda, is_local=True):
@@ -281,6 +274,132 @@ def main(net_type, use_cuda, is_local=True):
 
 
 class TestImageClassification(unittest.TestCase):
+    def test_amp_lists(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists()
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_1(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 1. w={'exp}, b=None
+        white_list.add('exp')
+        black_list.remove('exp')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'exp'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_2(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 2. w={'tanh'}, b=None
+        white_list.add('tanh')
+        gray_list.remove('tanh')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'tanh'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_3(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 3. w={'lstm'}, b=None
+        white_list.add('lstm')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'lstm'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_4(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 4. w=None, b={'conv2d'}
+        white_list.remove('conv2d')
+        black_list.add('conv2d')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'conv2d'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_5(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 5. w=None, b={'tanh'}
+        black_list.add('tanh')
+        gray_list.remove('tanh')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'tanh'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_6(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 6. w=None, b={'lstm'}
+        black_list.add('lstm')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'lstm'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_7(self):
+        # 7. w={'lstm'} b={'lstm'}
+        # raise ValueError
+        self.assertRaises(ValueError,
+                          fluid.contrib.mixed_precision.AutoMixedPrecisionLists,
+                          {'lstm'}, {'lstm'})
+
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
             main('vgg', use_cuda=True)
@@ -297,6 +416,43 @@ class TestImageClassification(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
                 yield
+
+
+class TestAmpWithNonIterableDataLoader(unittest.TestCase):
+    def decorate_with_data_loader(self):
+        main_prog = paddle.static.Program()
+        start_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            with paddle.fluid.unique_name.guard():
+                image = fluid.layers.data(
+                    name='image', shape=[3, 224, 224], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                py_reader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=4,
+                    iterable=False,
+                    use_double_buffer=False)
+
+                net = vgg16_bn_drop(image)
+                logits = fluid.layers.fc(input=net, size=10, act="softmax")
+                cost, predict = fluid.layers.softmax_with_cross_entropy(
+                    logits, label, return_softmax=True)
+                avg_cost = fluid.layers.mean(cost)
+
+                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+                    custom_black_varnames={"loss", "conv2d_0.w_0"})
+                mp_optimizer = decorate(
+                    optimizer=optimizer,
+                    amp_lists=amp_lists,
+                    init_loss_scaling=8.0,
+                    use_dynamic_loss_scaling=True)
+
+                mp_optimizer.minimize(avg_cost)
+
+    def test_non_iterable_dataloader(self):
+        self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

@@ -33,12 +33,17 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
     auto& dims = x->dims();
 
     const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),
-                      "The first dimension of Input(X) should be equal to the "
-                      "sum of all sequences' lengths.");
+    PADDLE_ENFORCE_EQ(
+        dims[0], static_cast<int64_t>(lod[level].back()),
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(X) should be equal to the sum of all "
+            "sequences' lengths. But received first dimension of Input(X) is "
+            "%d, the sum of all sequences' lengths is %d.",
+            dims[0], static_cast<int64_t>(lod[level].back())));
     PADDLE_ENFORCE_EQ(dims[0], x->numel(),
-                      "The width of each timestep in Input(X) of "
-                      "SequenceSoftmaxOp should be 1.");
+                      platform::errors::InvalidArgument(
+                          "The width of each timestep in Input(X) of "
+                          "SequenceSoftmaxOp should be 1."));
 
     out->mutable_data<T>(ctx.GetPlace());
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
@@ -99,9 +104,18 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+#ifdef PADDLE_WITH_HIP
+// MIOPEN not support float64
+REGISTER_OP_KERNEL(sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::SequenceSoftmaxCUDNNKernel<float>);
+REGISTER_OP_KERNEL(sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::SequenceSoftmaxGradCUDNNKernel<float>);
+#else
 REGISTER_OP_KERNEL(sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxCUDNNKernel<float>,
                    ops::SequenceSoftmaxCUDNNKernel<double>);
 REGISTER_OP_KERNEL(sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
                    ops::SequenceSoftmaxGradCUDNNKernel<float>,
                    ops::SequenceSoftmaxGradCUDNNKernel<double>);
+#endif

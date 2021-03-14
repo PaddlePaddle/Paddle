@@ -14,13 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Pass;
 
 class PassBuilder {
  public:

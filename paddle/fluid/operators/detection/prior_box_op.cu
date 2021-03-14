@@ -32,8 +32,7 @@ __global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
                             bool min_max_aspect_ratios_order) {
   int num_priors = max_sizes ? as_num * min_num + min_num : as_num * min_num;
   int box_num = height * width * num_priors;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < box_num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, box_num) {
     int h = i / (num_priors * width);
     int w = (i / num_priors) % width;
     int p = i % num_priors;
@@ -87,10 +86,7 @@ __global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
 template <typename T>
 __global__ void SetVariance(T* out, const T* var, const int vnum,
                             const int num) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    out[i] = var[i % vnum];
-  }
+  CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
 }
 
 template <typename T>

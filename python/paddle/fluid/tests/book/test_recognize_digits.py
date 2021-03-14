@@ -26,6 +26,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
 
+paddle.enable_static()
+
 BATCH_SIZE = 64
 
 
@@ -123,8 +125,8 @@ def train(nn_type,
                     # get test acc and loss
                     acc_val = numpy.array(acc_set).mean()
                     avg_loss_val = numpy.array(avg_loss_set).mean()
-                    if float(acc_val
-                             ) > 0.2:  # Smaller value to increase CI speed
+                    if float(acc_val) > 0.2 or pass_id == (PASS_NUM - 1):
+                        # Smaller value to increase CI speed
                         if save_dirname is not None:
                             fluid.io.save_inference_model(
                                 save_dirname, ["img"], [prediction],

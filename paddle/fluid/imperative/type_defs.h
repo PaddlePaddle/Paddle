@@ -17,27 +17,43 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 namespace paddle {
 namespace imperative {
 
+class VariableWrapper;
+class SavedVariableWrapperList;
 class VarBase;
 class OpBase;
+class GradOpNode;
+class Tracer;
 
-typedef std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
-    VarBasePtrMap;
-typedef std::vector<std::weak_ptr<VarBase>> VarBaseWeakPtrList;
-typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
-typedef std::unordered_map<
-    const VarBase*,
-    std::pair<platform::Place,
-              std::vector<std::pair<int, std::shared_ptr<VarBase>>>>>
-    BackwardSumMap;  // var_grad -> {place, {id -> var_grad@rename}}
-typedef std::unordered_map<const VarBase*, std::pair<int, bool>> GradientRef;
-// var_grad -> {ref_times, is_first_to_be_accumulate}
+using WeakNameVarBaseMap =
+    std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
+
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
+
+template <>
+struct NameVarMapTrait<VarBase> {
+  using Type = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+};
+
+template <>
+struct NameVarMapTrait<VariableWrapper> {
+  using Type = std::map<std::string, SavedVariableWrapperList>;
+};
+}  // namespace details
+
+template <typename T>
+using NameVarMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameVarBaseMap = NameVarMap<VarBase>;
+using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+
+using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 
 }  // namespace imperative
 }  // namespace paddle

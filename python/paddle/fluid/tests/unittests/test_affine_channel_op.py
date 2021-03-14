@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Unit testing for affine_channel_op
+"""
 
 from __future__ import print_function
 
@@ -18,6 +21,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 
 
 def affine_channel(x, scale, bias, layout):
@@ -36,9 +40,9 @@ class TestAffineChannelOp(OpTest):
         self.op_type = "affine_channel"
         self.init_test_case()
 
-        x = np.random.random(self.shape).astype("float32")
-        scale = np.random.random(self.C).astype("float32")
-        bias = np.random.random(self.C).astype("float32")
+        x = np.random.random(self.shape).astype("float64")
+        scale = np.random.random(self.C).astype("float64")
+        bias = np.random.random(self.C).astype("float64")
 
         y = affine_channel(x, scale, bias, self.layout)
 
@@ -59,15 +63,47 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
 
     def init_test_case(self):
-        self.shape = [2, 32, 14, 14]
-        self.C = 32
+        self.shape = [2, 100, 3, 3]
+        self.C = 100
         self.layout = 'NCHW'
+
+
+class TestAffineChannelOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_x_type():
+                input_data = np.random.random(2, 1, 2, 2).astype("float32")
+                fluid.layers.affine_channel(input_data)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[None, 1, 2, 2], dtype='int32')
+                fluid.layers.affine_channel(x2)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_scale_type():
+                x3 = fluid.layers.data(
+                    name='x3', shape=[None, 1, 2, 2], dtype='float32')
+                fluid.layers.affine_channel(x3, scale=1)
+
+            self.assertRaises(TypeError, test_scale_type)
+
+            def test_bias_type():
+                x4 = fluid.layers.data(
+                    name='x4', shape=[None, 1, 2, 2], dtype='float32')
+                fluid.layers.affine_channel(x4, bias=1)
+
+            self.assertRaises(TypeError, test_bias_type)
 
 
 class TestAffineChannelNHWC(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [2, 14, 14, 32]
-        self.C = 32
+        self.shape = [2, 3, 3, 100]
+        self.C = 100
         self.layout = 'NHWC'
 
     def test_check_grad_stopgrad_dx(self):
@@ -79,8 +115,8 @@ class TestAffineChannelNHWC(TestAffineChannelOp):
 
 class TestAffineChannel2D(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [16, 64]
-        self.C = 64
+        self.shape = [2, 100]
+        self.C = 100
         self.layout = 'NCHW'
 
     def test_check_grad_stopgrad_dx(self):
@@ -90,29 +126,28 @@ class TestAffineChannel2D(TestAffineChannelOp):
         return
 
 
-class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
-    def init_test_case(self):
-        self.shape = [4, 128, 112, 112]
-        self.C = 128
-        self.layout = 'NCHW'
+# TODO(qingqing): disable unit testing for large shape
+#class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
+#    def init_test_case(self):
+#        self.shape = [4, 128, 112, 112]
+#        self.C = 128
+#        self.layout = 'NCHW'
+#
+#    # since the gradient check is very slow in large shape, so skip check_grad
+#    def test_check_grad(self):
+#        pass
+#
+#    def test_check_grad_stopgrad_dx(self):
+#        pass
+#
+#    def test_check_grad_stopgrad_dscale_dbias(self):
+#        pass
 
-    # since the gradient check is very slow in large shape, so skip check_grad
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_stopgrad_dx(self):
-        pass
-
-    def test_check_grad_stopgrad_dscale_dbias(self):
-        pass
-
-
-class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
-    def init_test_case(self):
-        self.shape = [64, 32, 32, 512]
-        self.C = 512
-        self.layout = 'NHWC'
-
+#class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
+#    def init_test_case(self):
+#        self.shape = [64, 32, 32, 128]
+#        self.C = 128
+#        self.layout = 'NHWC'
 
 if __name__ == '__main__':
     unittest.main()

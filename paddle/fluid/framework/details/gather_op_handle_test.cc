@@ -13,15 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
-#include "gtest/gtest.h"
 
-#include "paddle/fluid/platform/device_context.h"
+#include "gtest/gtest.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
+struct DummyVarHandle;
+
 namespace f = paddle::framework;
 namespace p = paddle::platform;
+
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -44,7 +47,7 @@ struct TestGatherOpHandle {
 
   void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -58,7 +61,8 @@ struct TestGatherOpHandle {
         ctxs_.emplace_back(new p::CUDADeviceContext(p));
       }
 #else
-      PADDLE_THROW("CUDA is not support.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else {
       int count = 8;
@@ -72,14 +76,13 @@ struct TestGatherOpHandle {
 
   void InitGatherOp(size_t input_scope_idx) {
     nodes_.clear();
+    std::unordered_map<Scope*, Scope*> scope_map;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope& local_scope = local_scopes_.back()->NewScope();
-      *local_scopes_.back()
-           ->Var(details::kLocalExecScopeName)
-           ->GetMutable<Scope*>() = &local_scope;
       local_scope.Var("input");
       param_scopes_.emplace_back(&local_scope);
+      scope_map.emplace(local_scopes_.back(), param_scopes_.back());
     }
     param_scopes_[input_scope_idx]->Var("out");
 
@@ -87,6 +90,9 @@ struct TestGatherOpHandle {
         ir::CreateNodeForTest("node", ir::Node::Type::kOperation).release());
     op_handle_ =
         new GatherOpHandle(nodes_.back().get(), local_scopes_, gpu_list_);
+
+    op_handle_->SetLocalExecScopes(scope_map);
+
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
@@ -137,7 +143,9 @@ struct TestGatherOpHandle {
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
       auto in_var = param_scopes_.at(input_scope_idx)->FindVar("input");
-      PADDLE_ENFORCE_NOT_NULL(in_var);
+      PADDLE_ENFORCE_NOT_NULL(
+          in_var, platform::errors::NotFound(
+                      "The variable '%s' is not found in the scope.", "input"));
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -151,7 +159,9 @@ struct TestGatherOpHandle {
     }
 
     auto out_var = param_scopes_.at(output_scope_idx)->FindVar("out");
-    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::NotFound(
+                     "The variable '%s' is not found in the scope.", "out"));
     auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
 
     auto in_var = param_scopes_.at(output_scope_idx)->FindVar("input");
@@ -160,7 +170,8 @@ struct TestGatherOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 
@@ -169,9 +180,19 @@ struct TestGatherOpHandle {
     auto& out_select_rows = out_var->Get<f::SelectedRows>();
     auto rt = out_select_rows.value();
 
-    PADDLE_ENFORCE_EQ(out_select_rows.height(), height, "height is not equal.");
+    PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
+                      platform::errors::InvalidArgument(
+                          "The height of SelectedRows is not equal to "
+                          "the expected, expect %d, but got %d.",
+                          height, out_select_rows.height()));
+
     for (size_t k = 0; k < out_select_rows.rows().size(); ++k) {
-      PADDLE_ENFORCE_EQ(out_select_rows.rows()[k], rows[k % rows.size()]);
+      PADDLE_ENFORCE_EQ(
+          out_select_rows.rows()[k], rows[k % rows.size()],
+          platform::errors::InvalidArgument(
+              "The item at position %d of rows of SelectedRows is not equal to "
+              "the expected, expect %d, but got %d.",
+              k, rows[k % rows.size()], out_select_rows.rows()[k]));
     }
 
     f::Tensor result_tensor;
@@ -193,7 +214,7 @@ TEST(GatherTester, TestCPUGatherTestSelectedRows) {
   test_op.TestGatherSelectedRows(input_scope_idx);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 TEST(GatherTester, TestGPUGatherTestSelectedRows) {
   TestGatherOpHandle test_op;
@@ -203,6 +224,7 @@ TEST(GatherTester, TestGPUGatherTestSelectedRows) {
   test_op.TestGatherSelectedRows(input_scope_idx);
 }
 #endif
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

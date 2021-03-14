@@ -28,12 +28,29 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
+namespace framework {
+class BlockDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace analysis {
-using framework::ir::Node;
 
 std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes);
+    const std::unordered_set<framework::ir::Node *> &nodes,
+    bool sorted = false);
+
+std::unordered_set<framework::ir::Node *> GetRelatedIOVarNodes(
+    const std::vector<framework::ir::Node *> &nodes);
+
+void PrependFeedOps(framework::BlockDesc *global_block,
+                    const std::vector<std::string> &feed_target_names,
+                    std::string feed_holder_name = "feed");
+
+void PrependFetchOps(framework::BlockDesc *global_block,
+                     const std::vector<std::string> &fetch_target_names,
+                     std::string fetch_holder_name = "fetch");
 
 void RenameAndGetOutputs(
     const std::vector<framework::ir::Node *> &subgraph_nodes,

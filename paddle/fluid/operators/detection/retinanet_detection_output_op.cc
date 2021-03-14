@@ -27,25 +27,38 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("BBoxes").size(), 1UL,
-        "Input(BBoxes) of RetinanetDetectionOutput should not be null.");
+        platform::errors::InvalidArgument("The length of Input(BBoxes) should "
+                                          "be greater than 0, but received "
+                                          "BBoxes length is:%d.",
+                                          ctx->Inputs("BBoxes").size()));
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Scores").size(), 1UL,
-        "Input(Scores) of RetinanetDetectionOutput should not be null.");
+        platform::errors::InvalidArgument("The length of Input(Scores) should "
+                                          "be greater than 0, but received "
+                                          "Scores length is:%d.",
+                                          ctx->Inputs("Scores").size()));
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Anchors").size(), 1UL,
-        "Input(Anchors) of RetinanetDetectionOutput should not be null.");
+        platform::errors::InvalidArgument("The length of Input(Anchors) should "
+                                          "be greater than 0, but received "
+                                          "Anchors length is:%d.",
+                                          ctx->Inputs("Anchors").size()));
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size(),
-        "Input tensors(BBoxes and Scores) should have the same size.");
+        platform::errors::InvalidArgument(
+            "Input(BBoxes) and Input(Scores) should have the same length, but "
+            "received BBoxes length is:%d, Scores length is:%d.",
+            ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size()));
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size(),
-        "Input tensors(BBoxes and Anchors) should have the same size.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("ImInfo"),
-        "Input(ImInfo) of RetinanetDetectionOutput should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of RetinanetDetectionOutput should not be null.");
+        platform::errors::InvalidArgument(
+            "Input(BBoxes) and Input(Anchors) should have the same length, but "
+            "received BBoxes length is:%d, Anchors length is:%d.",
+            ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size()));
+    OP_INOUT_CHECK(ctx->HasInput("ImInfo"), "Input", "ImInfo",
+                   "retinanet_detection_output");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "retinanet_detection_output");
 
     auto bboxes_dims = ctx->GetInputsDim("BBoxes");
     auto scores_dims = ctx->GetInputsDim("Scores");
@@ -53,37 +66,77 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     const size_t b_n = bboxes_dims.size();
-    PADDLE_ENFORCE_GT(b_n, 0, "Input bbox tensors count should > 0.");
+    PADDLE_ENFORCE_GT(b_n, 0, platform::errors::InvalidArgument(
+                                  "The number of Variables in Input(BBoxes) "
+                                  "should be greater than 0, "
+                                  "but received number is:%d.",
+                                  b_n));
     const size_t s_n = scores_dims.size();
-    PADDLE_ENFORCE_GT(s_n, 0, "Input score tensors count should > 0.");
+    PADDLE_ENFORCE_GT(s_n, 0, platform::errors::InvalidArgument(
+                                  "The number of Variables in Input(Scores) "
+                                  "should be greater than 0, "
+                                  "but received number is:%d.",
+                                  s_n));
     const size_t a_n = anchors_dims.size();
-    PADDLE_ENFORCE_GT(a_n, 0, "Input anchor tensors count should > 0.");
-
+    PADDLE_ENFORCE_GT(a_n, 0, platform::errors::InvalidArgument(
+                                  "The number of Variables in Input(Anchors) "
+                                  "should be greater than 0, "
+                                  "but received number is:%d.",
+                                  a_n));
     auto bbox_dims = bboxes_dims[0];
     auto score_dims = scores_dims[0];
     auto anchor_dims = anchors_dims[0];
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_dims.size(), 3,
-                        "The rank of Input(Scores) must be 3");
-      PADDLE_ENFORCE_EQ(bbox_dims.size(), 3,
-                        "The rank of Input(BBoxes) must be 3");
-      PADDLE_ENFORCE_EQ(anchor_dims.size(), 2,
-                        "The rank of Input(Anchors) must be 2");
-      PADDLE_ENFORCE(bbox_dims[2] == 4,
-                     "The last dimension of Input(BBoxes) must be 4, "
-                     "represents the layout of coordinate "
-                     "[xmin, ymin, xmax, ymax]");
+      PADDLE_ENFORCE_EQ(
+          score_dims.size(), 3,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(Scores) must be 3, "
+              "but received rank is:%d.",
+              score_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          bbox_dims.size(), 3,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(BBoxes) must be 3, "
+              "but received rank is:%d.",
+              bbox_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          anchor_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(Anchors) must be 2, "
+              "but received rank is:%d.",
+              anchor_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          bbox_dims[2], 4,
+          platform::errors::InvalidArgument(
+              "The last dimension of each Variable in Input(BBoxes) must be 4 "
+              "representing the layout of coordinate [xmin, ymin, xmax, ymax], "
+              "but received dimension is:%d.",
+              bbox_dims[2]));
       PADDLE_ENFORCE_EQ(bbox_dims[1], score_dims[1],
-                        "The 2nd dimension of Input(BBoxes) must be equal to "
-                        "2nd dimension of Input(Scores), which represents the "
-                        "number of the predicted boxes.");
-
-      PADDLE_ENFORCE_EQ(anchor_dims[0], bbox_dims[1],
-                        "The 1st dimension of Input(Anchors) must be equal to "
-                        "2nd dimension of Input(BBoxes), which represents the "
-                        "number of the predicted boxes.");
+                        platform::errors::InvalidArgument(
+                            "The 2nd dimension of Variables in Input(BBoxes) "
+                            "and Input(Scores) "
+                            "must be same, which represents the number of the "
+                            "predicted boxes, "
+                            "but received BBoxes 2nd dimension is:%d, Scores "
+                            "2nd dimension is:%d.",
+                            bbox_dims[1], score_dims[1]));
+      PADDLE_ENFORCE_EQ(
+          anchor_dims[0], bbox_dims[1],
+          platform::errors::InvalidArgument(
+              "The 1st dimension of each Variables in Input(Anchors) must be "
+              "equal "
+              "to the 2nd dimension of corresponding Variables in "
+              "Input(BBoxes), "
+              "which represents the number of the predicted boxes, but "
+              "received "
+              "Anchors 1st dimension is:%d, BBoxes 2nd dimension is:%d.",
+              anchor_dims[0], bbox_dims[1]));
       PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                        "The rank of Input(ImInfo) must be 2.");
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(ImInfo) must be 2,  but "
+                            "received ImInfo rank is:%d.",
+                            im_info_dims.size()));
     }
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
@@ -94,8 +147,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("Scores")[0]);
-
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores");
     return framework::OpKernelType(input_data_type,
                                    platform::CPUPlace());  // ctx.GetPlace());
   }
@@ -558,9 +610,11 @@ empty (None).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(retinanet_detection_output, ops::RetinanetDetectionOutputOp,
-                  ops::RetinanetDetectionOutputOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    retinanet_detection_output, ops::RetinanetDetectionOutputOp,
+    ops::RetinanetDetectionOutputOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
                        ops::RetinanetDetectionOutputKernel<float>,
                        ops::RetinanetDetectionOutputKernel<double>);

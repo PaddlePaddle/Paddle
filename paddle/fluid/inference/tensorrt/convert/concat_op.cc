@@ -15,6 +15,16 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -25,7 +35,7 @@ class ConcatOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
+    VLOG(3) << "convert a paddle concat op to tensorrt concat layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -33,13 +43,13 @@ class ConcatOpConverter : public OpConverter {
     for (auto& input_name : op_desc.Input("X")) {
       itensors.push_back(engine_->GetITensor(input_name));
     }
-    int axis = boost::get<int>(op_desc.GetAttr("axis"));
-    PADDLE_ENFORCE(axis > 0,
-                   "The axis attr of Concat op should be large than 0 for trt");
+    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
                                        itensors.size());
-    axis = axis - 1;  // Remove batch dim
+    if (!engine_->with_dynamic_shape()) {
+      axis = axis - 1;  // Remove batch dim
+    }
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);

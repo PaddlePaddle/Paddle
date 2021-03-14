@@ -26,26 +26,36 @@ class SpectralNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of SpectralNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("U"),
-                   "Input(U) of SpectralNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("V"),
-                   "Input(V) of SpectralNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SpectralNormOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "SpectralNorm");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "SpectralNorm");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "SpectralNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SpectralNorm");
 
     auto dim_weight = ctx->GetInputDim("Weight");
     auto rank_weight = dim_weight.size();
-    PADDLE_ENFORCE(rank_weight >= 2 && rank_weight <= 5,
-                   "The rank of Input(Weights) can only be 2, 3,"
-                   "4, 5 for fc, conv1d, conv2d, conv3d layers.");
+    PADDLE_ENFORCE_GE(rank_weight, 2,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(Weights) should be greater equal "
+                          "than 2, but received Weight rank(%d)",
+                          rank_weight));
+    PADDLE_ENFORCE_LE(rank_weight, 5,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(Weights) should be less equal "
+                          "than 5, but received Weight rank(%d)",
+                          rank_weight));
 
     int dim = ctx->Attrs().Get<int>("dim");
     int power_iters = ctx->Attrs().Get<int>("power_iters");
-    PADDLE_ENFORCE(dim == 0 || dim == 1, "Attr(dim) can only be 0 or 1");
-    PADDLE_ENFORCE(power_iters >= 0,
-                   "Attr(power_iters) should be larger equal then 0");
+    auto dim_valid = dim == 0 || dim == 1;
+    PADDLE_ENFORCE_EQ(
+        dim_valid, true,
+        platform::errors::InvalidArgument(
+            "Attr(dim) can only be 0 or 1, but received %d", dim));
+    PADDLE_ENFORCE_GE(
+        power_iters, 0,
+        platform::errors::InvalidArgument(
+            "Attr(power_iters) should be greater equal then 0, but received %d",
+            power_iters));
 
     int h = dim_weight[dim];
     int w = 1;
@@ -59,15 +69,22 @@ class SpectralNormOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime() || (dim_u[0] > 0 && h > 0)) {
       PADDLE_ENFORCE_EQ(dim_u[0], h,
-                        "Input(U) dims[0] should be equal to "
-                        "Input(Weight) dims[Attr(dim)]");
+                        platform::errors::InvalidArgument(
+                            "Input(U) dimension[0] should be equal to "
+                            "Input(Weight) dimension[Attr(dim)], but received "
+                            "U dimension[0](%d) != Weight dimension[%d](%d)",
+                            dim_u[0], dim, h));
     }
 
     if (ctx->IsRuntime() || (dim_v[0] > 0 && w > 0)) {
       PADDLE_ENFORCE_EQ(
           dim_v[0], w,
-          "Input(V) dims[0] should be equal to "
-          "the product of Input(Weight) dims except dims[Attr(dim)]");
+          platform::errors::InvalidArgument(
+              "Input(V) dimension[0] should be equal to the product of "
+              "Input(Weight) dimension except dimension[Attr(dim)], but "
+              "received V dimension[0](%d) != product of Input(Weight) "
+              "dimension(%d)",
+              dim_v[0], w));
     }
 
     ctx->SetOutputDim("Out", dim_weight);
@@ -77,8 +94,8 @@ class SpectralNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Weight")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };
 
@@ -88,11 +105,12 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Weight",
              "The input weight tensor of spectral_norm operator, "
              "This can be a 2-D, 3-D, 4-D, 5-D tensor which is the "
-             "weights of fc, conv1d, conv2d, conv3d layer.");
+             "weights of fc, conv1d, conv2d, conv3d layer. "
+             "The data type is float32 or float64.");
     AddInput("U",
              "The weight_u tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [H, 1],"
-             "H is the 1st dimentions of Weight after reshape"
+             "H is the 1st dimensions of Weight after reshape"
              "corresponding by Attr(dim). As for Attr(dim) = 1"
              "in conv2d layer with weight shape [M, C, K1, K2]"
              "Weight will be reshape to [C, M*K1*K2], U will"
@@ -100,7 +118,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V",
              "The weight_v tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [W, 1], "
-             "W is the 2nd dimentions of Weight after reshape "
+             "W is the 2nd dimensions of Weight after reshape "
              "corresponding by Attr(dim). As for Attr(dim) = 1 "
              "in conv2d layer with weight shape [M, C, K1, K2] "
              "Weight will be reshape to [C, M*K1*K2], V will "
@@ -123,7 +141,9 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<float>("eps",
                    "epsilon for numerical stability in "
-                   "calculating norms")
+                   "calculating norms, it will be added to "
+                   "the denominator to aviod divide zero. "
+                   "Default 1e-12.")
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
@@ -165,25 +185,23 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SpectralNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SpectralNormGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("spectral_norm_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Weight", Input("Weight"));
-    op->SetInput("U", Input("U"));
-    op->SetInput("V", Input("V"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("U", this->Input("U"));
+    op->SetInput("V", this->Input("V"));
 
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
 
-    op->SetAttrMap(Attrs());
-
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -193,11 +211,16 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Weight"), "Input(Weight) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight",
+                   "SpectralNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "SpectralNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "SpectralNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "SpectralNormGrad");
+
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) should not be null"));
     auto dim_x = ctx->GetInputDim("Weight");
     if (ctx->HasOutput(framework::GradVarName("Weight"))) {
       ctx->SetOutputDim(framework::GradVarName("Weight"), dim_x);
@@ -206,8 +229,8 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Weight")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };
 
@@ -216,7 +239,8 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(spectral_norm, ops::SpectralNormOp, ops::SpectralNormOpMaker,
-                  ops::SpectralNormGradOpDescMaker);
+                  ops::SpectralNormGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(spectral_norm_grad, ops::SpectralNormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     spectral_norm,

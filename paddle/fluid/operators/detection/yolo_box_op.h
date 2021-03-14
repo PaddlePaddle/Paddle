@@ -27,15 +27,18 @@ HOSTDEVICE inline T sigmoid(T x) {
 
 template <typename T>
 HOSTDEVICE inline void GetYoloBox(T* box, const T* x, const int* anchors, int i,
-                                  int j, int an_idx, int grid_size,
-                                  int input_size, int index, int stride,
-                                  int img_height, int img_width) {
-  box[0] = (i + sigmoid<T>(x[index])) * img_width / grid_size;
-  box[1] = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
+                                  int j, int an_idx, int grid_size_h,
+                                  int grid_size_w, int input_size_h,
+                                  int input_size_w, int index, int stride,
+                                  int img_height, int img_width, float scale,
+                                  float bias) {
+  box[0] = (i + sigmoid<T>(x[index]) * scale + bias) * img_width / grid_size_w;
+  box[1] = (j + sigmoid<T>(x[index + stride]) * scale + bias) * img_height /
+           grid_size_h;
   box[2] = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
-           input_size;
+           input_size_w;
   box[3] = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] *
-           img_height / input_size;
+           img_height / input_size_h;
 }
 
 HOSTDEVICE inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
@@ -47,21 +50,23 @@ HOSTDEVICE inline int GetEntryIndex(int batch, int an_idx, int hw_idx,
 template <typename T>
 HOSTDEVICE inline void CalcDetectionBox(T* boxes, T* box, const int box_idx,
                                         const int img_height,
-                                        const int img_width) {
+                                        const int img_width, bool clip_bbox) {
   boxes[box_idx] = box[0] - box[2] / 2;
   boxes[box_idx + 1] = box[1] - box[3] / 2;
   boxes[box_idx + 2] = box[0] + box[2] / 2;
   boxes[box_idx + 3] = box[1] + box[3] / 2;
 
-  boxes[box_idx] = boxes[box_idx] > 0 ? boxes[box_idx] : static_cast<T>(0);
-  boxes[box_idx + 1] =
-      boxes[box_idx + 1] > 0 ? boxes[box_idx + 1] : static_cast<T>(0);
-  boxes[box_idx + 2] = boxes[box_idx + 2] < img_width - 1
-                           ? boxes[box_idx + 2]
-                           : static_cast<T>(img_width - 1);
-  boxes[box_idx + 3] = boxes[box_idx + 3] < img_height - 1
-                           ? boxes[box_idx + 3]
-                           : static_cast<T>(img_height - 1);
+  if (clip_bbox) {
+    boxes[box_idx] = boxes[box_idx] > 0 ? boxes[box_idx] : static_cast<T>(0);
+    boxes[box_idx + 1] =
+        boxes[box_idx + 1] > 0 ? boxes[box_idx + 1] : static_cast<T>(0);
+    boxes[box_idx + 2] = boxes[box_idx + 2] < img_width - 1
+                             ? boxes[box_idx + 2]
+                             : static_cast<T>(img_width - 1);
+    boxes[box_idx + 3] = boxes[box_idx + 3] < img_height - 1
+                             ? boxes[box_idx + 3]
+                             : static_cast<T>(img_height - 1);
+  }
 }
 
 template <typename T>
@@ -86,13 +91,17 @@ class YoloBoxKernel : public framework::OpKernel<T> {
     int class_num = ctx.Attr<int>("class_num");
     float conf_thresh = ctx.Attr<float>("conf_thresh");
     int downsample_ratio = ctx.Attr<int>("downsample_ratio");
+    bool clip_bbox = ctx.Attr<bool>("clip_bbox");
+    float scale = ctx.Attr<float>("scale_x_y");
+    float bias = -0.5 * (scale - 1.);
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
     const int w = input->dims()[3];
     const int box_num = boxes->dims()[1];
     const int an_num = anchors.size() / 2;
-    int input_size = downsample_ratio * h;
+    int input_size_h = downsample_ratio * h;
+    int input_size_w = downsample_ratio * w;
 
     const int stride = h * w;
     const int an_stride = (class_num + 5) * stride;
@@ -127,11 +136,12 @@ class YoloBoxKernel : public framework::OpKernel<T> {
 
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 0);
-            GetYoloBox<T>(box, input_data, anchors_data, l, k, j, h, input_size,
-                          box_idx, stride, img_height, img_width);
+            GetYoloBox<T>(box, input_data, anchors_data, l, k, j, h, w,
+                          input_size_h, input_size_w, box_idx, stride,
+                          img_height, img_width, scale, bias);
             box_idx = (i * box_num + j * stride + k * w + l) * 4;
-            CalcDetectionBox<T>(boxes_data, box, box_idx, img_height,
-                                img_width);
+            CalcDetectionBox<T>(boxes_data, box, box_idx, img_height, img_width,
+                                clip_bbox);
 
             int label_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 5);

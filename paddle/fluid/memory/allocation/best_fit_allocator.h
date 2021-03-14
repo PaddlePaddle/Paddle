@@ -13,10 +13,18 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
 #include <array>
 #include <list>
 #include <map>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
+
+namespace paddle {
+namespace platform {
+class Place;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace memory {

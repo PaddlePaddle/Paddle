@@ -17,14 +17,20 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : graph_(graph),
       local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       fetch_ctxs_(places),
       strategy_(strategy),
@@ -47,8 +53,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   CopyOpDeps();
 }
 
-inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
-    const std::vector<std::string> &fetch_tensors) {
+inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
@@ -65,10 +71,15 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   // Step 2. Insert FetchOps
   std::vector<OpHandleBase *> fetch_ops;
   std::unordered_set<VarHandleBase *> fetch_dependencies;
-  FeedFetchList fetch_data(fetch_tensors.size());
+  FetchResultType fetch_data;
+  if (return_merged) {
+    fetch_data = FetchList(fetch_tensors.size());
+  } else {
+    fetch_data = FetchUnmergedList(fetch_tensors.size());
+  }
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
-                 &pending_ops, &pending_vars, &fetch_data);
+                 &pending_ops, &pending_vars, &fetch_data, return_merged);
 
   exception_holder_.Clear();
   event.reset(nullptr);
@@ -80,9 +91,9 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     // run the recorded operators directly. This strategy could make the
     // execution faster.
     VLOG(3) << "Run the traced ops.";
-    RunTracedOps(traced_ops_);
-    RunTracedOps(fetch_ops);
-    if (exception_holder_.IsCaught()) {
+    bool is_exception_free =
+        RunTracedOps(traced_ops_) && RunTracedOps(fetch_ops);
+    if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
@@ -128,7 +139,10 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
         }
       }
     }
-    PADDLE_ENFORCE(ready_ops.empty());
+    PADDLE_ENFORCE_EQ(
+        ready_ops.empty(), true,
+        platform::errors::Fatal("After the execution of computation graph, "
+                                "there are unexecuted operators left."));
   }
 
   // Wait FetchOps.
@@ -137,12 +151,12 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   return fetch_data;
 }
 
-FeedFetchList ThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   for (size_t j = 0; j < strategy_.num_iteration_per_run_ - 1; ++j) {
-    RunImpl({});
+    RunImpl({}, return_merged);
   }
-  return RunImpl(fetch_tensors);
+  return RunImpl(fetch_tensors, return_merged);
 }
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
@@ -152,9 +166,10 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    FeedFetchList *fetch_data) {
+    FetchResultType *fetch_data, bool return_merged) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
+
   for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
@@ -167,16 +182,27 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars.end(),
+        platform::errors::PreconditionNotMet(
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.\n"
+            "  3. Confirm that you have used the fetch `Variable` format "
+            "instead of the string literal('%s') in `fetch_list` parameter "
+            "when using `executor.run` method. In other words, the format of "
+            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
+            "is recommended.",
+            var_name, var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_);
+    auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_,
+                                 &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -208,7 +234,11 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       ready_ops->insert(static_cast<OpHandleBase *>(op));
     }
   }
-  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
+  PADDLE_ENFORCE_EQ(
+      local_ready_vars.size(), 0,
+      platform::errors::Fatal(
+          "The number of ready variables should be 0, but got %d.",
+          local_ready_vars.size()));
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(
@@ -254,7 +284,9 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
     }
   }
   op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
-  PADDLE_ENFORCE_GT(op_deps_->num_ops_, 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(
+      op_deps_->num_ops_, 0,
+      platform::errors::InvalidArgument("The graph doesn't have operators."));
 
   for (auto ready_var : ready_vars) {
     pending_vars.erase(ready_var);
@@ -304,32 +336,35 @@ void ThreadedSSAGraphExecutor::RunOp(
   RecordOps(op);
 }
 
-void ThreadedSSAGraphExecutor::RunTracedOps(
+bool ThreadedSSAGraphExecutor::RunTracedOps(
     const std::vector<OpHandleBase *> &traced_ops) {
   for (auto &op : traced_ops) {
-    if (exception_holder_.IsCaught()) {
-      return;
-    }
-    RunOpSync(op);
+    if (!RunOpSync(op)) return false;
   }
+  return true;
 }
 
-void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-    }
+    VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_device_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
+    return true;
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
+    return false;
   }
 }
 
 void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
+#if defined PADDLE_WITH_PSCORE
+  if (strategy_.thread_barrier_) {
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+  }
+#endif
   VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
   ClearFetchOp(graph_, fetch_ops);
   exception_holder_.ReThrow();

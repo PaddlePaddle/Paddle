@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+test for sync bachnorm op.
+for both FP64 and FP16 input.
+"""
 
 from __future__ import print_function
 
@@ -18,31 +22,54 @@ import unittest
 import numpy as np
 import os
 import six
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.nn as nn
 from paddle.fluid import compiler
+from paddle.fluid import Program, program_guard
+
+from op_test import OpTest, _set_use_system_allocator
+
+_set_use_system_allocator(True)
+
+
+def create_or_get_tensor(scope, var_name, var, place):
+    """Get tensor, if not found, create a new one."""
+    tensor = scope.var(var_name).get_tensor()
+    if var is not None:
+        assert isinstance(var, np.ndarray)
+        tensor.set_recursive_sequence_lengths([])
+        tensor.set(var, place)
+    return tensor
 
 
 class TestSyncBatchNormOpTraining(unittest.TestCase):
+    """sync_batch_norm op test."""
+
     def setUp(self):
+        """Setup."""
         #self.dtype = np.float32
-        self.dtype = np.float64
-        self.N = 32
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.N = 8
         self.C = 16
-        self.H = 64
+        self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
+        self.atol = 1e-3
 
-    def build_program(self,
-                      place,
-                      layout,
-                      seed,
-                      sync_bn=False,
-                      only_forward=False):
+    def _build_program(self,
+                       place,
+                       layout,
+                       seed,
+                       sync_bn=False,
+                       only_forward=False):
+        """Build program."""
         main = fluid.Program()
         startup = fluid.Program()
         main.random_seed = seed
         startup.random_seed = seed
+        use_cudnn = self.dtype == np.float16
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 data = fluid.layers.data(
@@ -56,7 +83,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     filter_size=1,
                     param_attr=fluid.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
-                    use_cudnn=False)
+                    use_cudnn=use_cudnn)
                 bn = fluid.layers.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
@@ -65,6 +92,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
+                if core.is_compiled_with_rocm():
+                    bn = fluid.layers.cast(bn, 'float32')
+                else:
+                    bn = fluid.layers.cast(bn, 'float64')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 if not sync_bn:
@@ -74,13 +105,18 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     sgd_opt.backward(out)
         return main, startup, [out, conv, bn]
 
-    def compare(self, place, layout, only_forward):
+    def _compare(self, place, layout, only_forward):
+        """Compare results."""
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
+        scope = core.Scope()
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        data = create_or_get_tensor(scope, "input",
+                                    OpTest.np_dtype_to_fluid_dtype(data), place)
+
         # Single-GPU, N = 32 per GPU
-        main, startup, outs = self.build_program(place, layout, seed, False,
-                                                 only_forward)
+        main, startup, outs = self._build_program(place, layout, seed, False,
+                                                  only_forward)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -89,7 +125,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         bn_fetches = exe.run(program=main,
@@ -99,8 +135,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         #####################################################################
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
         assert core.get_cuda_device_count() > 1
-        main, startup, outs = self.build_program(place, layout, seed, True,
-                                                 only_forward)
+        main, startup, outs = self._build_program(place, layout, seed, True,
+                                                  only_forward)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -109,7 +145,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         for nm in fetch_names:
@@ -133,27 +169,112 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
             self.assertTrue(
                 np.allclose(
-                    bn_val, sync_bn_val, atol=1e-3),
+                    bn_val, sync_bn_val, atol=self.atol),
                 "Output (" + fetch_names[i] + ") has diff. \n" + "\nBN     " +
                 str(bn_val) + "\n" + "Sync BN " + str(sync_bn_val))
 
     def test_train(self):
+        """Test training."""
         if not core.is_compiled_with_cuda():
             return
 
         places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                self.compare(place, layout, False)
+                self._compare(place, layout, False)
 
     def test_infer(self):
+        """Test inference."""
         if not core.is_compiled_with_cuda():
             return
 
         places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                self.compare(place, layout, True)
+                self._compare(place, layout, True)
+
+
+class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
+    """sync_batch_norm op test for FP16 input."""
+
+    def setUp(self):
+        """Setup."""
+        self.dtype = np.float16
+        self.N = 8
+        self.C = 16
+        self.H = 32
+        self.W = 32
+        self.dshape = [self.N, self.C, self.H, self.W]
+        self.atol = 1e-2
+
+
+class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0))
+            self.assertRaises(TypeError, my_sync_batch_norm, x1)
+
+            # the input dtype of SyncBatchNorm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, my_sync_batch_norm, x2)
+
+
+class TestConvertSyncBatchNorm(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            compare_model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3),
+                paddle.nn.BatchNorm2D(5), paddle.nn.BatchNorm2D(5))
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3),
+                paddle.nn.BatchNorm2D(5),
+                paddle.nn.BatchNorm2D(
+                    5,
+                    weight_attr=fluid.ParamAttr(name='bn.scale'),
+                    bias_attr=fluid.ParamAttr(name='bn.bias')))
+            model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            for idx, sublayer in enumerate(compare_model.sublayers()):
+                if isinstance(sublayer, paddle.nn.BatchNorm2D):
+                    self.assertEqual(
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
+
+
+class TestConvertSyncBatchNormCase2(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        class Net(nn.Layer):
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv1 = nn.Conv2D(3, 5, 3)
+                self.bn = []
+                bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
+                self.bn.append(bn)
+
+            def forward(self, x):
+                x = self.conv1(x)
+                for bn in self.bn:
+                    x = bn(x)
+                return x
+
+        model = nn.Sequential()
+        model.add_sublayer('net1', Net())
+        model.add_sublayer('net2', Net())
+        compare_model = nn.Sequential()
+        compare_model.add_sublayer('net1', Net())
+        compare_model.add_sublayer('net2', Net())
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        self.assertEqual(len(compare_model.sublayers()), len(model.sublayers()))
 
 
 if __name__ == '__main__':

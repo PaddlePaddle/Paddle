@@ -15,6 +15,9 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 def fsp_matrix(a, b):
@@ -49,13 +52,34 @@ class TestFSPOp(OpTest):
         self.a_shape = (2, 3, 5, 6)
         self.b_shape = (2, 4, 5, 6)
 
-    @unittest.skip("Disable temporarily.")
     def test_check_output(self):
         self.check_output()
 
-    @unittest.skip("Disable temporarily.")
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Y'], 'Out')
+
+
+class BadInputTest(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                data = fluid.layers.data(name='data', shape=[3, 32, 32])
+                feature_map_0 = [1, 2, 3]
+                feature_map_1 = fluid.layers.conv2d(
+                    data, num_filters=2, filter_size=3)
+                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
+
+            self.assertRaises(TypeError, test_bad_x)
+
+            def test_bad_y():
+                data = fluid.layers.data(name='data', shape=[3, 32, 32])
+                feature_map_0 = fluid.layers.conv2d(
+                    data, num_filters=2, filter_size=3)
+                feature_map_1 = [1, 2, 3]
+                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
+
+            self.assertRaises(TypeError, test_bad_y)
 
 
 if __name__ == '__main__':

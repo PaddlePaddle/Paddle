@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 class FuseMomentumOpPass : public FuseOptimizerOpPass {
  private:
@@ -33,35 +36,57 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Momentum Ops
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &momentum_ops, ir::Graph *graph) const {
-    PADDLE_ENFORCE_GT(momentum_ops.size(), static_cast<size_t>(0));
+    PADDLE_ENFORCE_GT(
+        momentum_ops.size(), static_cast<size_t>(0),
+        platform::errors::InvalidArgument("Momentum ops must not be empyt."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = boost::get<int>(momentum_ops[0]->Op()->GetAttr(
-        OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float mu = boost::get<float>(momentum_ops[0]->Op()->GetAttr("mu"));
+    int op_role =
+        BOOST_GET_CONST(int, momentum_ops[0]->Op()->GetAttr(
+                                 OpProtoAndCheckerMaker::OpRoleAttrName()));
+    float mu = BOOST_GET_CONST(float, momentum_ops[0]->Op()->GetAttr("mu"));
     bool use_nesterov =
-        boost::get<bool>(momentum_ops[0]->Op()->GetAttr("use_nesterov"));
+        BOOST_GET_CONST(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
 
     for (auto &momentum_op : momentum_ops) {
-      PADDLE_ENFORCE_EQ(mu,
-                        boost::get<float>(momentum_op->Op()->GetAttr("mu")));
+      PADDLE_ENFORCE_EQ(
+          mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
+          platform::errors::InvalidArgument(
+              "All momentum Op's attr(mu) must be same, but there are two "
+              "different "
+              "value: %f, %f.",
+              mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu"))));
       PADDLE_ENFORCE_EQ(
           use_nesterov,
-          boost::get<bool>(momentum_op->Op()->GetAttr("use_nesterov")));
-      PADDLE_ENFORCE_EQ(op_role,
-                        boost::get<int>(momentum_op->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())));
+          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
+          platform::errors::InvalidArgument(
+              "All momentum Op's attr(use_nesterov) must be same, but there "
+              "are two different value: %d, %d.",
+              use_nesterov, BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr(
+                                                      "use_nesterov"))));
+      PADDLE_ENFORCE_EQ(
+          op_role,
+          BOOST_GET_CONST(int, momentum_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
+          platform::errors::InvalidArgument(
+              "All momentum Op's attr(op_role) must be same, but there are two "
+              "different "
+              "value: %d, %d.",
+              op_role,
+              BOOST_GET_CONST(int,
+                              momentum_op->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert momentum to graph ";
+    VLOG(6) << "Insert momentum to graph ";
     OpDesc momentum_desc(momentum_ops[0]->Op()->Block());
     momentum_desc.SetType("momentum");
     momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
@@ -77,9 +102,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     momentum_desc.SetAttr("use_nesterov", use_nesterov);
     momentum_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    auto momentum_node = graph->CreateOpNode(&momentum_desc);
-
-    InserInputAndOutputForOptOps(momentum_ops, momentum_node);
+    return graph->CreateOpNode(&momentum_desc);
   }
 };
 
@@ -87,6 +110,4 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_momentum_op_pass, paddle::framework::ir::FuseMomentumOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_momentum_op_pass, paddle::framework::ir::FuseMomentumOpPass);

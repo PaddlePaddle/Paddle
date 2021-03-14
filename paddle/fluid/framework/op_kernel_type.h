@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -64,6 +65,10 @@ class OpKernelType {
 
   size_t hash_key() const { return Hash()(*this); }
 
+  bool operator<(const OpKernelType& o) const {
+    return hash_key() < o.hash_key();
+  }
+
   bool operator==(const OpKernelType& o) const;
 
   bool operator!=(const OpKernelType& o) const { return !(*this == o); }
@@ -98,6 +103,11 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
 #endif
   return ret;
+}
+
+inline bool NeedTransformDataType(const OpKernelType& l,
+                                  const OpKernelType& r) {
+  return (l.data_type_ != r.data_type_);
 }
 
 inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {

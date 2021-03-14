@@ -25,8 +25,7 @@ template <typename T>
 __global__ void SGDKernel(const T* g, const T* p, const T* learning_rate,
                           const int num, T* p_out) {
   T lr = learning_rate[0];
-  int grid_size = blockDim.x * gridDim.x;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num; i += grid_size) {
+  CUDA_KERNEL_LOOP(i, num) {
     T g_data = g[i];
     T p_data = p[i];
     p_out[i] = p_data - lr * g_data;
@@ -46,22 +45,24 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
       // Atomic Operation to avoid concurrent write error.
       paddle::platform::CudaAtomicAdd(
           tensor_out_ptr + index,
-          -1.0 * learning_rate[0] * selected_rows_ptr[index]);
+          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }
   }
 }
 }  // namespace
 
 template <typename T>
-class SGDOpCUDAKernel : public framework::OpKernel<T> {
+class SGDOpKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          paddle::framework::ToTypeName(param_var->Type())));
 
     auto* param = ctx.Input<framework::Tensor>("Param");
     auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -72,8 +73,12 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
+      // LOG(ERROR) << "grad";
+      // LOG(ERROR) << ctx.op().Input("Grad");
       auto* grad_data = grad->data<T>();
+      // LOG(ERROR) << "param";
       auto* param_data = param->data<T>();
+      // LOG(ERROR) << "fin";
       auto* param_out_data = param_out->data<T>();
 
       int block = 512;
@@ -87,18 +92,30 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
-      PADDLE_ENFORCE_EQ(param, param_out);
+      PADDLE_ENFORCE_EQ(
+          param, param_out,
+          platform::errors::InvalidArgument(
+              "The input tensor Param of SgdOp should be equal with ParamOut "
+              "if variable's type is SelectedRows."));
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
 
       auto in_height = grad->height();
       auto out_dims = param_out->dims();
-      PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
+      PADDLE_ENFORCE_EQ(in_height, out_dims[0],
+                        platform::errors::InvalidArgument(
+                            "The input tensor Grad's height of SgdOp should be "
+                            "equal with ParamOut's dims. But received Grad's "
+                            "height [%s] and ParamOut's dims [%s]",
+                            in_height, out_dims[0]));
 
       auto& in_value = grad->value();
       auto& in_rows = grad->rows();
 
       int64_t in_row_numel = in_value.numel() / in_rows.size();
-      PADDLE_ENFORCE_EQ(in_row_numel, param_out->numel() / in_height);
+      PADDLE_ENFORCE_EQ(in_row_numel, param_out->numel() / in_height,
+                        platform::errors::InvalidArgument(
+                            "The in_row_numel of SgdOp should be equal with "
+                            "param_out's numel / in_height."));
 
       auto* in_data = in_value.data<T>();
       auto* out_data = param_out->data<T>();
@@ -114,7 +131,12 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
           out_data, in_row_numel, in_rows.size());
 
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad");
+      PADDLE_ENFORCE_EQ(false, true,
+                        platform::errors::PermissionDenied(
+                            "Unsupported Variable Type of Grad "
+                            "in SgdOp. Excepted LodTensor or "
+                            "SelectedRows, But received [%s]",
+                            paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
 };
@@ -122,5 +144,8 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sgd, ops::SGDOpCUDAKernel<float>,
-                        ops::SGDOpCUDAKernel<double>);
+namespace plat = paddle::platform;
+REGISTER_OP_CUDA_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);

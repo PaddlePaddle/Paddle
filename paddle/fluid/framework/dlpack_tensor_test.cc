@@ -15,7 +15,12 @@
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <vector>
+
+namespace paddle {
+namespace platform {
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -49,7 +54,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
     CHECK_EQ(0, dl_tensor.ctx.device_id);
   } else if (platform::is_gpu_place(place)) {
     CHECK_EQ(kDLGPU, dl_tensor.ctx.device_type);
-    CHECK_EQ(boost::get<platform::CUDAPlace>(place).device,
+    CHECK_EQ(BOOST_GET_CONST(platform::CUDAPlace, place).device,
              dl_tensor.ctx.device_id);
   } else if (platform::is_cuda_pinned_place(place)) {
     CHECK_EQ(kDLCPUPinned, dl_tensor.ctx.device_type);
@@ -73,8 +78,32 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
+void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
+                                         uint16_t lanes) {
+  DDim dims{6, 7};
+  Tensor tensor;
+  tensor.Resize(dims);
+  tensor.mutable_data<T>(place);
+
+  DLPackTensor dlpack_tensor(tensor, lanes);
+
+  ::DLManagedTensor *dl_managed_tensor =
+      dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+
+  CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+
+  for (auto i = 0; i < dims.size(); ++i) {
+    CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
+  }
+
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
+
+  dl_managed_tensor->deleter(dl_managed_tensor);
+}
+
+template <typename T>
 void TestMainLoop() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};
@@ -88,6 +117,7 @@ void TestMainLoop() {
   for (auto &p : places) {
     for (auto &l : lanes) {
       TestMain<T>(p, l);
+      TestToCudfCompatibleDLManagedTensor<T>(p, l);
     }
   }
 }

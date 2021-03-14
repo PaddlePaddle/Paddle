@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/ir/is_test_pass.h"
 
 #include <gtest/gtest.h>
@@ -102,12 +101,12 @@ TEST(IsTestPass, basic) {
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv3") {
         ASSERT_FALSE(op->HasAttr("is_test"));
       } else {
         ASSERT_TRUE(op->HasAttr("is_test"));
-        EXPECT_TRUE(boost::get<bool>(op->GetAttr("is_test")));
+        EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("is_test")));
       }
     }
   }

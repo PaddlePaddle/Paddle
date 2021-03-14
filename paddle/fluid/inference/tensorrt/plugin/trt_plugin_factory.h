@@ -26,6 +26,7 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace inference {
@@ -68,7 +69,7 @@ class TrtPluginRegistrar {
 
 #define REGISTER_TRT_PLUGIN_UNIQ(ctr, name, deserialize_func)      \
   static paddle::inference::tensorrt::plugin::TrtPluginRegistrar   \
-      trt_plugin_registrar##ctr __attribute__((unused)) =          \
+      trt_plugin_registrar##ctr UNUSED =                           \
           paddle::inference::tensorrt::plugin::TrtPluginRegistrar( \
               name, deserialize_func)
 

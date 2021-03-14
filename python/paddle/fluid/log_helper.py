@@ -31,7 +31,7 @@ def get_logger(name, level, fmt=None):
         fmt (str): Format of logger output
 
     Returns:
-        logging.Logger: logging logger with given setttings
+        logging.Logger: logging logger with given settings
 
     Examples:
         .. code-block:: python
@@ -49,4 +49,8 @@ def get_logger(name, level, fmt=None):
         handler.setFormatter(formatter)
 
     logger.addHandler(handler)
+
+    # stop propagate for propagating may print
+    # log multiple times
+    logger.propagate = False
     return logger

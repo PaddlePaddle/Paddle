@@ -39,8 +39,9 @@ template <typename DeviceContext, typename T>
 class LstmUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
     auto* x_tensor = ctx.Input<framework::Tensor>("X");
     auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
@@ -82,13 +83,13 @@ template <typename DeviceContext, typename T>
 class LstmUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
     auto x_tensor = ctx.Input<Tensor>("X");
     auto c_prev_tensor = ctx.Input<Tensor>("C_prev");
     auto c_tensor = ctx.Input<Tensor>("C");
-    auto h_tensor = ctx.Input<Tensor>("H");
 
     auto hdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("H"));
     auto cdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("C"));
@@ -100,7 +101,6 @@ class LstmUnitGradKernel : public framework::OpKernel<T> {
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();
     auto* C = c_tensor->data<T>();
-    auto* H = h_tensor->data<T>();
 
     auto* H_diff = hdiff_tensor->data<T>();
     auto* C_diff = cdiff_tensor->data<T>();
@@ -138,7 +138,6 @@ class LstmUnitGradKernel : public framework::OpKernel<T> {
       C_prev += D;
       X += 4 * D;
       C += D;
-      H += D;
       C_diff += D;
       H_diff += D;
       X_diff += 4 * D;

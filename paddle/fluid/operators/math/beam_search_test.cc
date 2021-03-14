@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
+
 #include <gtest/gtest.h>
-#include <vector>
 
 void PrepareCPUTensors(paddle::framework::LoDTensor* ids,
                        paddle::framework::LoDTensor* scores,
@@ -134,7 +134,7 @@ TEST(BeamSearch, CPU) {
                  paddle::platform::CPUPlace>();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(BeamSearch, GPU) {
   TestBeamSearch<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>();

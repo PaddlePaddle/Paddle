@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fsp_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -22,23 +23,35 @@ class FSPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of FSPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of FSPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FSPOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fsp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE(
-        x_dims.size() == 4,
-        "The Input(X) must have shape [batch_size, channel, height, width].");
-    PADDLE_ENFORCE(
-        y_dims.size() == 4,
-        "The Input(Y) must have shape [batch_size, channel, height, width].");
-    PADDLE_ENFORCE(
-        (x_dims[2] == y_dims[2]) && (x_dims[3] == y_dims[3]),
-        "The Input(X) and Input(Y) should have the same height and width.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 4UL,
+        platform::errors::InvalidArgument(
+            "The Input(X) must have shape [batch_size, channel, height, width]."
+            "Now the dimension of 'X' is %d.",
+            x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        y_dims.size(), 4UL,
+        platform::errors::InvalidArgument(
+            "The Input(Y) must have shape [batch_size, channel, height, width]."
+            "Now the dimension of 'Y' is %d.",
+            y_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dims[2], y_dims[2],
+        platform::errors::InvalidArgument(
+            "The Input(X)(%d) and Input(Y)(%d) should have the same height.",
+            x_dims[2], y_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        x_dims[3], y_dims[3],
+        platform::errors::InvalidArgument(
+            "The Input(X)(%d) and Input(Y)(%d) should have the same width.",
+            x_dims[3], y_dims[3]));
 
     ctx->SetOutputDim("Out", {x_dims[0], x_dims[1], y_dims[1]});
     ctx->ShareLoD("X", "Out");
@@ -49,8 +62,9 @@ class FSPOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
+        layout_, library_);
   }
 };
 
@@ -89,10 +103,11 @@ class FSPOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "fsp_grad");
+
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto x_grad_name = framework::GradVarName("X");
@@ -107,9 +122,29 @@ class FSPOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
+
+template <typename T>
+class FSPGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("fsp_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 
@@ -118,7 +153,8 @@ class FSPOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fsp, ops::FSPOp, ops::FSPOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FSPGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FSPGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
 REGISTER_OP_CPU_KERNEL(
     fsp, ops::FSPOpKernel<paddle::platform::CPUDeviceContext, float>,

@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <sstream>
-#include <vector>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ddim.h"
@@ -34,8 +33,8 @@ TEST(DDim, Equality) {
   // mutate a DDim
   ddim[1] = 2;
   EXPECT_EQ(ddim[1], 2);
-  paddle::framework::set(ddim, 0, 6);
-  EXPECT_EQ(paddle::framework::get(ddim, 0), 6);
+  ddim[0] = 6;
+  EXPECT_EQ(ddim[0], 6);
 
   // vectorize a DDim
   std::vector<int64_t> res_vec = paddle::framework::vectorize(vddim);
@@ -47,18 +46,6 @@ TEST(DDim, Equality) {
   EXPECT_EQ(res_vec[0], 3);
   EXPECT_EQ(res_vec[1], 2);
   EXPECT_EQ(res_vec[2], 1);
-
-  // add two DDims
-  paddle::framework::DDim ddim_sum = ddim + vddim;
-  EXPECT_EQ(ddim_sum[0], 15);
-  EXPECT_EQ(ddim_sum[1], 3);
-  EXPECT_EQ(ddim_sum[2], 10);
-
-  // multiply two DDims
-  paddle::framework::DDim ddim_mul = ddim * vddim;
-  EXPECT_EQ(ddim_mul[0], 54);
-  EXPECT_EQ(ddim_mul[1], 2);
-  EXPECT_EQ(ddim_mul[2], 25);
 
   // arity of a DDim
   EXPECT_EQ(paddle::framework::arity(ddim), 3);

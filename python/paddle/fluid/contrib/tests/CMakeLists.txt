@@ -1,15 +1,14 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-if(APPLE OR WIN32 OR NOT WITH_MKL)
-    list(REMOVE_ITEM TEST_OPS test_calibration_resnet50)
-    list(REMOVE_ITEM TEST_OPS test_calibration_mobilenetv1)
-endif()
+list(REMOVE_ITEM TEST_OPS test_multi_precision_fp16_train)
 
 foreach(src ${TEST_OPS})
-    if(src MATCHES "test_calibration_*")
-        py_test(${src} SRCS ${src}.py ENVS FLAGS_use_mkldnn=true FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI})
-    else()
         py_test(${src} SRCS ${src}.py)
-    endif()
 endforeach()
+
+py_test_modules(test_multi_precision_fp16_train MODULES test_multi_precision_fp16_train ENVS FLAGS_cudnn_deterministic=true FLAGS_cudnn_batchnorm_spatial_persistent=true FLAGS_conv_workspace_size_limit=1000)
+
+set_tests_properties(test_image_classification_fp16 PROPERTIES TIMEOUT 120)
+set_tests_properties(test_weight_decay_extend PROPERTIES TIMEOUT 120)
+set_tests_properties(test_multi_precision_fp16_train PROPERTIES TIMEOUT 120)

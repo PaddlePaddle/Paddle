@@ -13,39 +13,8 @@
 # limitations under the License.
 
 import os
-from . import core
-
-
-def process_env():
-    env = os.environ
-    device_list = []
-    if env.get('CUDA_VISIBLE_DEVICES') is not None:
-        cuda_devices = env['CUDA_VISIBLE_DEVICES']
-        if cuda_devices == "" or len(cuda_devices) == 0:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-            device_list = [0, 1]
-        elif len(cuda_devices) == 1:
-            device_list.append(0)
-        elif len(cuda_devices) > 1:
-            for i in range(len(cuda_devices.split(","))):
-                device_list.append(i)
-        return device_list
-    else:
-        if core.get_cuda_device_count() > 1:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-            return [0, 1]
-        else:
-            os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-            return [0]
-
-
-device_list = []
-if core.is_compiled_with_cuda():
-    device_list = process_env()
-else:
-    device_list = [0, 1]  # for CPU 0,1
-
-from .framework import Program, program_guard, unique_name
+import paddle
+from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
 from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers
@@ -62,27 +31,54 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
-    def __init__(self, name_scope):
-        super(SimpleLayer, self).__init__(name_scope)
-        self._fc1 = nn.FC(self.full_name(),
-                          3,
-                          param_attr=ParamAttr(initializer=Constant(value=0.1)))
+    def __init__(self, input_size):
+        super(SimpleLayer, self).__init__()
+        self._linear1 = nn.Linear(
+            input_size,
+            3,
+            param_attr=ParamAttr(initializer=Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
+        x = self._linear1(inputs)
         x = layers.reduce_sum(x)
         return x
 
 
 def run_check():
-    ''' intall check to verify if install is success
-
+    """To check whether install is successful
     This func should not be called only if you need to verify installation
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            fluid.install_check.run_check()
+
+            # If installed successfully, output may be
+            # Running Verify Fluid Program ... 
+            # W0805 04:24:59.496919 35357 device_context.cc:268] Please NOTE: device: 0, CUDA Capability: 70, Driver API Version: 10.2, Runtime API Version: 10.1
+            # W0805 04:24:59.505594 35357 device_context.cc:276] device: 0, cuDNN Version: 7.6.
+            # Your Paddle Fluid works well on SINGLE GPU or CPU.
+            # Your Paddle Fluid works well on MUTIPLE GPU or CPU.
+            # Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now
+    """
+    paddle.enable_static()
+
     print("Running Verify Fluid Program ... ")
-    use_cuda = False if not core.is_compiled_with_cuda() else True
-    place = core.CPUPlace() if not core.is_compiled_with_cuda(
-    ) else core.CUDAPlace(0)
+
+    device_list = []
+    if core.is_compiled_with_cuda():
+        try:
+            core.get_cuda_device_count()
+        except Exception as e:
+            logging.warning(
+                "You are using GPU version Paddle Fluid, But Your CUDA Device is not set properly"
+                "\n Original Error is {}".format(e))
+            return 0
+        device_list = cuda_places()
+    else:
+        device_list = [core.CPUPlace(), core.CPUPlace()]
+
     np_inp_single = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
     inp = []
     for i in range(len(device_list)):
@@ -94,24 +90,17 @@ def run_check():
         train_prog = Program()
         startup_prog = Program()
         scope = core.Scope()
-        if not use_cuda:
-            os.environ['CPU_NUM'] = "2"
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
-                    places = []
                     build_strategy = compiler.BuildStrategy()
                     build_strategy.enable_inplace = True
-                    build_strategy.memory_optimize = True
                     inp = layers.data(name="inp", shape=[2, 2])
-                    simple_layer = SimpleLayer("simple_layer")
+                    simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)
-                    exe = executor.Executor(place)
-                    if use_cuda:
-                        for i in device_list:
-                            places.append(core.CUDAPlace(i))
-                    else:
-                        places = [core.CPUPlace(), core.CPUPlace()]
+                    exe = executor.Executor(
+                        core.CUDAPlace(0) if core.is_compiled_with_cuda() and
+                        (core.get_cuda_device_count() > 0) else core.CPUPlace())
                     loss = layers.mean(out)
                     loss.persistable = True
                     optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -120,7 +109,7 @@ def run_check():
                         train_prog).with_data_parallel(
                             build_strategy=build_strategy,
                             loss_name=loss.name,
-                            places=places)
+                            places=device_list)
                     exe.run(startup_prog)
 
                     exe.run(compiled_prog,
@@ -131,20 +120,19 @@ def run_check():
         train_prog = Program()
         startup_prog = Program()
         scope = core.Scope()
-        if not use_cuda:
-            os.environ['CPU_NUM'] = "1"
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
                     inp0 = layers.data(
                         name="inp", shape=[2, 2], append_batch_size=False)
-                    simple_layer0 = SimpleLayer("simple_layer")
+                    simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(
-                        out0, parameter_list=[simple_layer0._fc1._w.name])[0]
-                    exe0 = executor.Executor(core.CPUPlace()
-                                             if not core.is_compiled_with_cuda()
-                                             else core.CUDAPlace(0))
+                        out0,
+                        parameter_list=[simple_layer0._linear1.weight.name])[0]
+                    exe0 = executor.Executor(
+                        core.CUDAPlace(0) if core.is_compiled_with_cuda() and
+                        (core.get_cuda_device_count() > 0) else core.CPUPlace())
                     exe0.run(startup_prog)
                     exe0.run(feed={inp0.name: np_inp_single},
                              fetch_list=[out0.name, param_grads[1].name])
@@ -161,7 +149,7 @@ def run_check():
     except Exception as e:
         logging.warning(
             "Your Paddle Fluid has some problem with multiple GPU. This may be caused by:"
-            "\n 1. There is only 1 GPU visible on your Device;"
+            "\n 1. There is only 1 or 0 GPU visible on your Device;"
             "\n 2. No.1 or No.2 GPU or both of them are occupied now"
             "\n 3. Wrong installation of NVIDIA-NCCL2, please follow instruction on https://github.com/NVIDIA/nccl-tests "
             "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
@@ -171,3 +159,5 @@ def run_check():
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now")
+
+    paddle.disable_static()

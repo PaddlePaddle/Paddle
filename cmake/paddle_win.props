@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <ItemDefinitionGroup>
+        <CudaCompile>
+            <!-- Project schema: Host properties -->
+            <UseHostDefines>true</UseHostDefines>
+            <Emulation>false</Emulation>
+            <HostDebugInfo Condition="'$(Configuration)' == 'Debug'">true</HostDebugInfo>
+            <HostDebugInfo Condition="'$(Configuration)' != 'Debug'">false</HostDebugInfo>
+            <FastMath>false</FastMath>
+            <Optimization>InheritFromHost</Optimization>
+            <Runtime>InheritFromHost</Runtime>
+            <RuntimeChecks>InheritFromHost</RuntimeChecks>
+            <TypeInfo>InheritFromHost</TypeInfo>
+            <Warning>InheritFromHost</Warning>
+
+            <BaseCommandLineTemplate>-ccbin "%(VCBinDir)" -x cu [GenerateRelocatableDeviceCode] [Include] [RequiredIncludes] [InterleaveSourceInPTX] [GPUDebugInfo] [GenerateLineInfo] [Keep] [KeepDir] [MaxRegCount] [PtxAsOptionV] [TargetMachinePlatform] [NvccCompilation] [CudaRuntime] [AdditionalOptions]</BaseCommandLineTemplate>
+            <BuildCommandLineTemplate>--use-local-env --cl-version $(CudaClVersion)</BuildCommandLineTemplate>
+            <BuildDynamicCommandLineTemplate>[CodeGeneration]</BuildDynamicCommandLineTemplate>
+            <CleanCommandLineTemplate>-clean</CleanCommandLineTemplate>
+            <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] $(CudaForceSynchronousPdbWrites) /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
+            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] $(CudaForceSynchronousPdbWrites) [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
+
+            <DriverApiCommandLineTemplate>%(BaseCommandLineTemplate) [CompileOut] "%(FullPath)"</DriverApiCommandLineTemplate>
+            <RuntimeApiCommandLineTemplate>%(BaseCommandLineTemplate) [HostDebugInfo] [Emulation] [FastMath] [Defines] %(HostCommandLineTemplate) [CompileOut] "%(FullPath)"</RuntimeApiCommandLineTemplate>
+
+            <CommandLineTemplate>
+# (Approximate command-line.  Settings inherited from host are not visible below.)
+# (Please see the output window after a build for the full command-line)
+
+# Driver API (NVCC Compilation Type is .cubin, .gpu, or .ptx)
+set CUDAFE_FLAGS=--sdk_dir "$(WindowsSdkDir)"
+"$(CudaToolkitNvccPath)" %(BuildCommandLineTemplate) %(DriverApiCommandLineTemplate)
+
+# Runtime API (NVCC Compilation Type is hybrid object or .c file)
+set CUDAFE_FLAGS=--sdk_dir "$(WindowsSdkDir)"
+"$(CudaToolkitNvccPath)" %(BuildCommandLineTemplate) %(RuntimeApiCommandLineTemplate)
+            </CommandLineTemplate>
+            <ExecutionDescription>Compiling CUDA source file %(Identity)...</ExecutionDescription>
+            <ExclusionDescription>Skipping CUDA source file %(Identity) (excluded from build).</ExclusionDescription>
+
+            <!-- Miscellaneous -->
+            <PropsCacheOutputFile>%(Filename)%(Extension).cache</PropsCacheOutputFile>
+            <PropsCacheOutputPath>$(IntDir)%(PropsCacheOutputFile)</PropsCacheOutputPath>
+
+            <CudaCompileCoreProject>$(MSBuildProjectFullPath)</CudaCompileCoreProject>
+        </CudaCompile>
+
+        <CudaLink>
+            <PerformDeviceLink>true</PerformDeviceLink>
+            <LinkOut>$(IntDir)$(TargetName).device-link.obj</LinkOut>
+
+            <AdditionalLibraryDirectories></AdditionalLibraryDirectories>
+            <UseHostLibraryDirectories>true</UseHostLibraryDirectories>
+            <AdditionalDependencies></AdditionalDependencies>
+            <UseHostLibraryDependencies>true</UseHostLibraryDependencies>
+
+            <GPUDebugInfo>InheritFromProject</GPUDebugInfo>
+            <Optimization>InheritFromProject</Optimization>
+
+            <!-- Implicitly inherited from the project via @(CudaCompile) -->
+            <CodeGeneration></CodeGeneration>
+            <RuntimeChecks></RuntimeChecks>
+            <Runtime></Runtime>
+            <TargetMachinePlatform></TargetMachinePlatform>
+            <TypeInfo></TypeInfo>
+            <Warning></Warning>
+
+            <Inputs></Inputs>
+
+            <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
+            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
+            <LinkCommandLineTemplate>"$(CudaToolkitNvccPath)" -dlink [LinkOut] %(HostCommandLineTemplate) [AdditionalLibraryDirectories] [AdditionalDependencies] [AdditionalOptions] [CodeGeneration] [GPUDebugInfo] [TargetMachinePlatform] [Inputs]</LinkCommandLineTemplate>
+            <CommandLineTemplate>
+# (Approximate command-line.  Settings inherited from host are not visible below.)
+# (Please see the output window after a build for the full command-line)
+
+%(LinkCommandLineTemplate)
+            </CommandLineTemplate>
+        </CudaLink>
+
+        <Link>
+            <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
+        </Link>
+
+        <ClCompile>
+            <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+        </ClCompile>
+    </ItemDefinitionGroup>
+</Project>
+

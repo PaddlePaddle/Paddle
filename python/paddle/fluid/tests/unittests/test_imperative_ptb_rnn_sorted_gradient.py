@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -28,7 +29,11 @@ import six
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
-    def test_ptb_rnn_sort_gradient_cpu_float32(self):
+    def test_ptb_rnn_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
+
+    def ptb_rnn_sort_gradient_cpu_float32(self, is_sparse):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -39,20 +44,21 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -77,23 +83,28 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
-                dy_loss.backward(backward_strategy)
+                dy_loss.backward()
                 sgd.minimize(dy_loss)
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
 
+            dy_loss_value = dy_loss.numpy()
+            dy_last_cell_value = last_cell.numpy()
+            dy_last_hidden_value = last_hidden.numpy()
+
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
@@ -150,11 +161,11 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.array_equal(static_loss_value, dy_loss.numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss_value))
         self.assertTrue(
-            np.array_equal(static_last_cell_value, last_cell.numpy()))
+            np.array_equal(static_last_cell_value, dy_last_cell_value))
         self.assertTrue(
-            np.array_equal(static_last_hidden_value, last_hidden.numpy()))
+            np.array_equal(static_last_hidden_value, dy_last_hidden_value))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):

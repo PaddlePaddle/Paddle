@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 
 namespace paddle {
 namespace platform {
@@ -28,11 +29,17 @@ void* GetCublasDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
+void* GetCusolverDsoHandle();
+void* GetNVRTCDsoHandle();
+void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetOpDsoHandle(const std::string& dso_name);
+void* GetNvtxDsoHandle();
 
+void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

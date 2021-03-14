@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/mean_iou_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -21,10 +22,6 @@ namespace paddle {
 namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
-
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 template <typename T>
 __global__ void CountCUDAKernel(const int num_classes, const int count,
@@ -41,7 +38,7 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
 
   T pred;
   T label;
-  CUDA_1D_KERNEL_LOOP(i, count) {
+  CUDA_KERNEL_LOOP(i, count) {
     pred = predictions[i];
     label = labels[i];
     if (pred == label) {
@@ -67,7 +64,7 @@ __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
     valid_count_c = 0;
   }
   __syncthreads();
-  CUDA_1D_KERNEL_LOOP(i, num_classes) {
+  CUDA_KERNEL_LOOP(i, num_classes) {
     int wrong_n = wrong[i];
     int correct_n = correct[i];
     int denominator = wrong_n + correct_n;
@@ -116,9 +113,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Temporary memory
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto tmp_ious_data = allocator.Allocate(num_classes * sizeof(float));
+    auto tmp_ious_data = memory::Alloc(dev_ctx, num_classes * sizeof(float));
     float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
 
     // Init out_wrong, out_correct and out_mean_iou

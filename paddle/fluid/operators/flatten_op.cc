@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/flatten_op.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -20,19 +24,22 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-class FlattenOpInferShape : public framework::InferShapeBase {
+class FlattenOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input (X) of Flatten op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output (Output) of Flatten op should not be null.");
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Flatten");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(axis >= 0, "The axis should be greater than or equal to 0.");
-    PADDLE_ENFORCE(
-        axis <= in_dims.size(),
-        "The axis should be less than or equal to input tensor's rank.");
+    PADDLE_ENFORCE_GE(axis, 0,
+                      platform::errors::InvalidArgument(
+                          "The axis should be greater than or equal to 0."));
+    PADDLE_ENFORCE_LE(
+        axis, in_dims.size(),
+        platform::errors::InvalidArgument(
+            "The axis should be less than or equal to input tensor's rank."));
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -58,28 +65,13 @@ class FlattenOpInferShape : public framework::InferShapeBase {
     out_shape[1] = inner;
     return out_shape;
   }
-};
 
-class FlattenOp : public framework::OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto &axis = Attr<int>("axis");
-    auto in_dims =
-        scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
-    const auto &out_dims = FlattenOpInferShape::GetOutputShape(axis, in_dims);
-
-    framework::AttributeMap attrs;
-    attrs["shape"] = out_dims;
-    attrs["inplace"] = false;
-    // Invoke Reshape Op
-    auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
-        {{"Out", {Output("Out")}}}, attrs);
-    reshape_op->Run(scope, place);
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -126,34 +118,36 @@ Case 2:
   }
 };
 
-class FlattenGradInferShape : public framework::InferShapeBase {
+class FlattenGradOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *context) const override {
     context->SetOutputDim(framework::GradVarName("X"),
                           context->GetInputDim("X"));
     context->ShareLoD("X", framework::GradVarName("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
 };
 
-class FlattenGradOp : public framework::OperatorBase {
+template <typename T>
+class FlattenGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using OperatorBase::OperatorBase;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto dx_name = Output(framework::GradVarName("X"));
-    auto dout_name = Input(framework::GradVarName("Out"));
-    auto in_dims =
-        scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
-    framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(in_dims);
-    attrs["inplace"] = false;
-
-    auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
-        attrs);
-    reshape_op->Run(scope, place);
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("flatten_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -162,13 +156,32 @@ class FlattenGradOp : public framework::OperatorBase {
 // flatten_grad, in this way, the framework can reuse the memory of X
 // immediately the flatten2_op is finished.
 // Considering compatibility issues, we could not fix flatten2_op
-class Flatten2OpInferShape : public FlattenOpInferShape {
+class Flatten2Op : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
-    FlattenOpInferShape::operator()(ctx);
-    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
-                   "Output (XShape) of Flatten op should not be null.");
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Flatten2");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten2");
+    const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_GE(axis, 0,
+                      platform::errors::InvalidArgument(
+                          "The axis should be greater than or equal to 0."));
+    PADDLE_ENFORCE_LE(
+        axis, in_dims.size(),
+        platform::errors::InvalidArgument(
+            "The axis should be less than or equal to input tensor's rank"));
+
+    const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    if (in_dims[0] == out_dims[0]) {
+      // Only pass LoD when the first dimension of output and Input(X)
+      // are the same.
+      ctx->ShareLoD("X", "Out");
+    }
+
+    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -176,29 +189,6 @@ class Flatten2OpInferShape : public FlattenOpInferShape {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
-  }
-};
-
-class Flatten2Op : public framework::OperatorBase {
- public:
-  using OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto &axis = Attr<int>("axis");
-    auto in_dims =
-        scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
-    const auto &out_dims = FlattenOpInferShape::GetOutputShape(axis, in_dims);
-
-    framework::AttributeMap attrs;
-    attrs["shape"] = out_dims;
-    attrs["inplace"] = false;
-    // Invoke Reshape Op
-    auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape2", {{"X", {Input("X")}}, {"Shape", {}}},
-        {{"Out", {Output("Out")}}, {"XShape", {Output("XShape")}}}, attrs);
-    reshape_op->Run(scope, place);
   }
 };
 
@@ -213,91 +203,275 @@ class Flatten2OpMaker : public FlattenOpMaker {
   }
 };
 
-class Flatten2GradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Flatten2GradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("flatten2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
-class Flatten2GradInferShape : public framework::InferShapeBase {
+class Flatten2GradOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("XShape"),
-                   "Input(XShape) shouldn't be null.");
-    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *context) const override {
+    OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
+                   "Flatten2Grad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "Flatten2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
 };
 
-class Flatten2GradOp : public framework::OperatorBase {
+class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
  public:
-  using OperatorBase::OperatorBase;
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto dx_name = Output(framework::GradVarName("X"));
-    auto dout_name = Input(framework::GradVarName("Out"));
-    auto xshape_name = Input("XShape");
-    auto xshape_dims =
-        scope.FindVar(xshape_name)->Get<framework::LoDTensor>().dims();
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FlattenContiguousRange");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FlattenContiguousRange");
+    const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
+    const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
+    const auto &in_dims = ctx->GetInputDim("X");
+    int in_dims_size = in_dims.size();
+    int real_start_axis = start_axis, real_stop_axis = stop_axis;
+    if (start_axis < 0) {
+      real_start_axis = start_axis + in_dims_size;
+    }
+    if (stop_axis < 0) {
+      real_stop_axis = stop_axis + in_dims_size;
+    }
+    PADDLE_ENFORCE_GE(
+        real_stop_axis, real_start_axis,
+        platform::errors::InvalidArgument("The stop_axis should be greater"
+                                          "than or equal to start_axis."));
+
+    const auto &out_dims =
+        GetOutputShape(real_start_axis, real_stop_axis, in_dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    if (in_dims[0] == out_dims[0]) {
+      // Only pass LoD when the first dimension of output and Input(X)
+      // are the same.
+      ctx->ShareLoD("X", "Out");
+    }
+
+    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
+    std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < in_dims.size(); ++i) {
+      xshape_dims[i + 1] = in_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", "XShape");
+  }
+
+  static std::vector<int32_t> GetOutputShape(const int start_axis,
+                                             const int stop_axis,
+                                             const framework::DDim &in_dims) {
+    int64_t outer = 1;
+    std::vector<int32_t> out_shape;
+    int in_dims_size = in_dims.size();
+    out_shape.reserve(in_dims_size - stop_axis + start_axis);
+
+    for (int i = 0; i < start_axis; ++i) {
+      out_shape.push_back(in_dims[i]);
+    }
+    for (int i = start_axis; i <= stop_axis; i++) {
+      outer *= in_dims[i];
+    }
+    out_shape.push_back(outer);
+    for (int i = stop_axis + 1; i < in_dims_size; i++) {
+      out_shape.push_back(in_dims[i]);
+    }
+
+    return out_shape;
+  }
+};
+
+class FlattenContiguousRangeOpMaker : public FlattenOpMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddOutput("Out",
+              "A 2D tensor is reshaped input tensor. The input dimensions"
+              "up to axis are flattened to the outer dimension of the output"
+              "and the remaining input dimensions are flattened into the inner"
+              "dimension of the output.");
+    AddAttr<int>("start_axis",
+                 "(int)"
+                 "Indicate the input start dimension (exclusive) to flatten")
+        .SetDefault(1);
+    AddAttr<int>("stop_axis",
+                 "(int)"
+                 "Indicate the input stop dimension (exclusive) to flatten")
+        .SetDefault(1);
+    AddComment(R"DOC(
+Flatten Operator
+
+Flattens the input tensor into a new matrix according to start_axis and stop_axis.
+
+Examples:
+Case 1:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    start_axis = 2, stop_axis = -1
+  We get:
+    Out.shape = (3, 100, 400)
+
+Case 2:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    start_axis = 0, stop_axis = -1
+  We get:
+    Out.shape = (3 * 100 * 100 * 4)
+)DOC");
+    AddOutput("XShape",
+              "XShape is just used to store the shape and lod of X, which will "
+              "be used in FlattenGradOp.")
+        .AsIntermediate();
+  }
+};
+
+template <typename T>
+class FlattenContiguousRangeGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("flatten_contiguous_range_grad");
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *context) const override {
+    OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
+                   "FlattenContiguousRangeGrad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
+    auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    context->SetOutputDim(framework::GradVarName("X"), x_dims);
+    context->ShareLoD("XShape", framework::GradVarName("X"));
+  }
 
-    framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
-    attrs["inplace"] = false;
-
-    auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
-    reshape_op->Run(scope, place);
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
-
-class FlattenOpInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"X", "Out"}};
-  }
-};
-
-class FlattenGradInplaceinToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
-USE_OP(reshape);
-
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
-                  ops::FlattenOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::FlattenOpInplaceInToOut);
-REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape,
-                  ops::FlattenGradInplaceinToOut);
+                  ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FlattenOpInplaceInferer);
+REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
+                  ops::FlattenGradInplaceInferer,
+                  ops::FlattenGradNoNeedBufferVarsInferer);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
-                  ops::Flatten2OpInferShape, ops::Flatten2GradOpMaker,
-                  ops::FlattenOpInplaceInToOut);
+                  ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Flatten2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::FlattenOpInplaceInferer);
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
-                  ops::Flatten2GradInferShape, ops::FlattenGradInplaceinToOut);
+                  ops::FlattenGradInplaceInferer);
+
+REGISTER_OPERATOR(
+    flatten_contiguous_range, ops::FlattenContiguousRangeOp,
+    ops::FlattenContiguousRangeOpMaker,
+    ops::FlattenContiguousRangeGradOpMaker<paddle::framework::OpDesc>,
+    ops::FlattenContiguousRangeGradOpMaker<paddle::imperative::OpBase>,
+    ops::FlattenOpInplaceInferer);
+REGISTER_OPERATOR(flatten_contiguous_range_grad,
+                  ops::FlattenContiguousRangeGradOp,
+                  ops::FlattenGradInplaceInferer);
+
+REGISTER_OP_CPU_KERNEL(
+    flatten, ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FlattenKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    flatten_grad,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    flatten2, ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, float>,
+    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, double>,
+    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
+    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    flatten2_grad,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    flatten_contiguous_range,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      float>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      double>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      int8_t>,
+    ops::FlattenContiguousRangeKernel<paddle::platform::CPUDeviceContext,
+                                      int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    flatten_contiguous_range_grad,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          float>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          double>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int8_t>,
+    ops::FlattenContiguousRangeGradKernel<paddle::platform::CPUDeviceContext,
+                                          int64_t>);

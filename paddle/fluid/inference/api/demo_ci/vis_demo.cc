@@ -16,20 +16,22 @@ limitations under the License. */
  * This file contains demo for mobilenet, se-resnext50 and ocr.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(refer, "", "path to reference result for comparison.");
-DEFINE_string(
-    data, "",
-    "path of data; each line is a record, format is "
-    "'<space splitted floats as data>\t<space splitted ints as shape'");
+DEFINE_string(data, "",
+              "path of data; each line is a record, format is "
+              "'<space split floats as data>\t<space split ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
+#ifdef PADDLE_WITH_SHARED_LIB
+DECLARE_bool(profile);
+#endif
 
 namespace paddle {
 namespace demo {
@@ -80,7 +82,7 @@ void Main(bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
   } else {

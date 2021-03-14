@@ -54,33 +54,34 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "SplitSelectedRowsOp must has input X.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "SplitSelectedRowsOp must has output Out.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "SplitSelectedRowsOp must have input X."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "SplitSelectedRowsOp must have output Out."));
   }
 };
 
 class SplitSelectedRowsOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &out_var : ctx->Output("Out")) {
-      ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS,
+                       framework::ALL_ELEMENTS);
   }
 };
 
-class SplitSelectedRowsGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitSelectedRowsGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sum");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -90,7 +91,8 @@ class SplitSelectedRowsGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(split_selected_rows, ops::SplitSelectedRowsOp,
                   ops::SplitSelectedRowsOpMaker,
-                  ops::SplitSelectedRowsGradMaker,
+                  ops::SplitSelectedRowsGradMaker<paddle::framework::OpDesc>,
+                  ops::SplitSelectedRowsGradMaker<paddle::imperative::OpBase>,
                   ops::SplitSelectedRowsOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     split_selected_rows,

@@ -31,6 +31,8 @@ namespace ir {
 // sync training, we can simulate even large batch size as if we have more
 // GPUs.
 
+class Graph;
+
 class BatchMergePass : public Pass {
  public:
   virtual ~BatchMergePass() {}

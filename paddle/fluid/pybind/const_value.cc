@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/const_value.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
@@ -34,7 +33,6 @@ void BindConstValue(pybind11::module* m) {
   m->def("kControlDepVarName",
          [] { return framework::ir::Node::kControlDepVarName; });
   m->def("kNewGradSuffix", [] { return framework::kNewGradSuffix; });
-  m->def("kMemOptSkipVars", [] { return framework::ir::kMemOptSkipVars; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");
@@ -59,16 +57,18 @@ void BindConstValue(pybind11::module* m) {
   op_proto_and_checker_maker.def(
       "kOpCreationCallstackAttrName",
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
+  op_proto_and_checker_maker.def(
+      "kOpDeviceAttrName", framework::OpProtoAndCheckerMaker::OpDeviceAttrName);
 #if defined(PADDLE_WITH_DGC)
   auto dgc = m->def_submodule("dgc");
-  dgc.def("kDGCUName", [] { return framework::details::g_dgc_u; });
-  dgc.def("kDGCVName", [] { return framework::details::g_dgc_v; });
   dgc.def("kDGCKName", [] { return framework::details::g_dgc_k; });
   dgc.def("kDGCEncodedName", [] { return framework::details::g_dgc_encoded; });
+  dgc.def("kDGCGatherName", [] { return framework::details::g_dgc_gather; });
   dgc.def("kDGCCounterName",
           [] { return framework::details::g_dgc_counter_name; });
   dgc.def("kDGCRampUpBeginStepName",
           [] { return framework::details::g_dgc_rampup_begin_step; });
+  dgc.def("kDGCNRanksName", [] { return framework::details::g_dgc_nranks; });
 #endif
 }
 

@@ -17,7 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -145,54 +147,20 @@ class TestModulatedDeformableConvOp(OpTest):
         }
         self.outputs = {'Output': output}
 
-    def has_cuda(self):
-        return core.is_compiled_with_cuda()
-
     def test_check_output(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, {'Input', 'Offset', 'Mask', 'Filter'},
-                'Output',
-                max_relative_error=0.05)
-
-    def test_check_grad_no_filter(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input', 'Offset', 'Mask'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Filter']))
-
-    def test_check_grad_no_input(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter', 'Offset', 'Mask'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Input']))
-
-    def test_check_grad_no_offset_no_mask(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input', 'Filter'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Offset', 'Mask']))
+        self.check_grad(
+            {'Input', 'Offset', 'Mask', 'Filter'},
+            'Output',
+            max_relative_error=0.05)
 
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
         self.dilations = [1, 1]
-        self.input_size = [2, 4, 4, 4]  # NCHW
+        self.input_size = [2, 8, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [4, f_c, 3, 3]
@@ -242,7 +210,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 4, 4]  # NCHW
+        self.input_size = [4, 3, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
@@ -263,14 +231,14 @@ class TestWithDilation(TestModulatedDeformableConvOp):
         self.dilations = [2, 2]
 
 
-class TestWith1x1(TestModulatedDeformableConvOp):
+class TestWith3x3(TestModulatedDeformableConvOp):
     def init_test_case(self):
-        self.pad = [0, 0]
+        self.pad = [1, 1]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
@@ -288,6 +256,65 @@ class TestWith1x1(TestModulatedDeformableConvOp):
 class TestWithGroup(TestModulatedDeformableConvOp):
     def init_group(self):
         self.groups = 2
+
+
+class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_invalid_input():
+            paddle.enable_static()
+            input = [1, 3, 32, 32]
+            offset = fluid.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32')
+            mask = fluid.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32')
+            loss = fluid.layers.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_offset():
+            paddle.enable_static()
+            input = fluid.data(
+                name='input', shape=[None, 3, 32, 32], dtype='int32')
+            offset = fluid.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32')
+            mask = fluid.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32')
+            loss = fluid.layers.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1)
+
+        self.assertRaises(TypeError, test_invalid_offset)
+
+
+class TestDeformConv2DAPI(unittest.TestCase):
+    def test_api(self):
+        def test_deform_conv2d_v1():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_v1', shape=[None, 3, 32, 32], dtype='float32')
+            offset = paddle.static.data(
+                name='offset_v1', shape=[None, 4, 32, 32], dtype='float32')
+            out = paddle.static.nn.deform_conv2d(
+                input, offset, None, num_filters=4, filter_size=1)
+
+            assert (out.shape == (-1, 4, 32, 32))
+
+        test_deform_conv2d_v1()
+
+        def test_deform_conv2d_v2():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_v2', shape=[None, 3, 32, 32], dtype='float32')
+            offset = paddle.static.data(
+                name='offset_v2', shape=[None, 4, 32, 32], dtype='float32')
+            mask = paddle.static.data(
+                name='mask_v2', shape=[None, 2, 32, 32], dtype='float32')
+            out = paddle.static.nn.deform_conv2d(
+                input, offset, mask, num_filters=4, filter_size=1)
+
+            assert (out.shape == (-1, 4, 32, 32))
+
+        test_deform_conv2d_v2()
 
 
 if __name__ == '__main__':

@@ -34,6 +34,10 @@ def dummy_func_with_no_output(x):
     pass
 
 
+def dummy_func_with_multi_input_output(x, y):
+    return np.array(x), np.array(y)
+
+
 def tanh(x):
     return np.tanh(x)
 
@@ -109,6 +113,24 @@ def simple_fc_net(img, label, use_py_func_op):
         loss += dummy_var
         fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
+        loss_out = fluid.default_main_program().current_block().create_var(
+            dtype='float32', shape=[-1, 1])
+        dummy_var_out = fluid.default_main_program().current_block().create_var(
+            dtype='float32', shape=[1])
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=(loss, dummy_var),
+            out=(loss_out, dummy_var_out))
+        assert loss == loss_out and dummy_var == dummy_var_out, \
+            "py_func failed with multi input and output"
+
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=[loss, dummy_var],
+            out=[loss_out, dummy_var_out])
+        assert loss == loss_out and dummy_var == dummy_var_out, \
+            "py_func failed with multi input and output"
+
     loss = fluid.layers.mean(loss)
     return loss
 
@@ -125,10 +147,8 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
     with fluid.program_guard(fluid.Program(), fluid.Program()):
         with fluid.scope_guard(fluid.core.Scope()):
-            fluid.default_main_program().random_seed = 1
-            fluid.default_startup_program().random_seed = 1
+            gen = paddle.seed(1)
             np.random.seed(1)
-
             img = fluid.layers.data(name='image', shape=[784], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             loss = simple_fc_net(img, label, use_py_func_op)
@@ -142,12 +162,11 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            #FIXME force use old memory optimzie strategy here to pass the unittest
-            #since open the new strategy will crash the unittest
-            fluid.memory_optimize(fluid.default_main_program())
+            train_cp = fluid.default_main_program()
 
-            train_cp = compiler.CompiledProgram(fluid.default_main_program())
             if use_parallel_executor:
+                train_cp = compiler.CompiledProgram(fluid.default_main_program(
+                ))
                 train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
@@ -168,17 +187,17 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
         self.use_parallel_executor = False
 
     def test_loss_diff(self):
-        losses = []
         for use_cuda in [True, False]:
+            losses = []
             for use_py_func_op in [True, False]:
                 L = test_main(use_cuda, use_py_func_op,
                               self.use_parallel_executor)
                 if L is not None:
                     losses.append(L)
 
-        for idx in six.moves.range(len(losses) - 1):
-            max_diff = np.max(np.abs(losses[idx] - losses[0]))
-            self.assertAlmostEqual(max_diff, 0, delta=1e-3)
+                for idx in six.moves.range(len(losses) - 1):
+                    max_diff = np.max(np.abs(losses[idx] - losses[0]))
+                    self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 
 
 class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):

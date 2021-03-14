@@ -21,7 +21,16 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -53,8 +62,10 @@ struct VarHandleBase {
 
   void AddOutput(OpHandleBase* out, ir::Node* node) {
     if (pending_ops_.find(out) == pending_ops_.end()) {
-      PADDLE_ENFORCE(out != nullptr, "The output of %s should not be nullptr",
-                     this->Node()->Name());
+      PADDLE_ENFORCE_NOT_NULL(out,
+                              platform::errors::InvalidArgument(
+                                  "The output added to VarHandle %s is NULL.",
+                                  this->Node()->Name()));
       pending_ops_.insert(out);
       node_->outputs.push_back(node);
     }
@@ -74,11 +85,15 @@ struct VarHandleBase {
 
   OpHandleBase* GeneratedOp() { return generated_op_; }
 
+  const OpHandleBase* GeneratedOp() const { return generated_op_; }
+
   const std::unordered_set<OpHandleBase*>& PendingOps() const {
     return pending_ops_;
   }
 
   ir::Node* Node() { return node_; }
+
+  const ir::Node* Node() const { return node_; }
 
  protected:
   // The operator who generate this variable. nullptr if the variable
@@ -96,6 +111,9 @@ struct VarHandleBase {
 //
 // NOTE: runtime variables have place.
 struct VarHandle : public VarHandleBase {
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
+
+ public:
   virtual ~VarHandle();
 
   std::string DebugString() const override;
@@ -108,15 +126,18 @@ struct VarHandle : public VarHandleBase {
         name_(std::move(name)),
         place_(std::move(place)) {}
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool HasEvent() { return has_event_; }
 
-  const cudaEvent_t& GetEvent() {
-    PADDLE_ENFORCE(HasEvent(), "The event is not set.");
+  const gpuEvent_t& GetEvent() {
+    PADDLE_ENFORCE_EQ(
+        HasEvent(), true,
+        platform::errors::PreconditionNotMet(
+            "The cuda event is not set, maybe InitCUDA() is not called."));
     return event_;
   }
 
-  void SetGenerateEvent(const cudaEvent_t& event) {
+  void SetGenerateEvent(const gpuEvent_t& event) {
     has_event_ = true;
     event_ = event;
   }
@@ -129,9 +150,9 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Only when this event is triggered, var is generated.
-  cudaEvent_t event_;
+  gpuEvent_t event_;
   bool has_event_{false};
 #endif
 

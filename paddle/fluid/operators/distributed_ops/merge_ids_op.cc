@@ -82,24 +82,28 @@ class MergeIdsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("Ids"),
-                   "MergeIdsOp must has multi input Ids.");
-    PADDLE_ENFORCE(ctx->HasInputs("Rows"),
-                   "MergeIdsOp must has multi input Rows.");
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must has multi input X.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "MergeIdsOp must has multi output Out.");
+    OP_INOUT_CHECK(ctx->HasInputs("Ids"), "Input", "Ids", "MergeIds");
+    OP_INOUT_CHECK(ctx->HasInputs("Rows"), "Input", "Rows", "MergeIds");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "MergeIds");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "MergeIds");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(ids_dims[0].size(), 2);
-      PADDLE_ENFORCE_EQ(ids_dims[0][1], 1);
+      PADDLE_ENFORCE_EQ(
+          ids_dims[0].size(), 2,
+          platform::errors::InvalidArgument(
+              "the ids size must be 2, but received %d", ids_dims[0].size()));
+      PADDLE_ENFORCE_EQ(
+          ids_dims[0][1], 1,
+          platform::errors::InvalidArgument(
+              "the ids dim must be 1, but received %d", ids_dims[0][1]));
     }
     auto x_var_type = ctx->GetInputsVarType("X");
     for (auto &var_type : x_var_type) {
       PADDLE_ENFORCE_EQ(var_type, framework::proto::VarType::LOD_TENSOR,
-                        "input X only support lod tensors");
+                        platform::errors::InvalidArgument(
+                            "input X only support lod tensors"));
     }
     ctx->ShareLoD("Ids", "Out");
   }
@@ -108,17 +112,15 @@ class MergeIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>("X").front()->type(), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
 class MergeIdsOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto input_type = ctx->GetType(ctx->Input("Ids")[0]);
-    for (auto &out_var : ctx->Output("Out")) {
-      ctx->SetType(out_var, input_type);
-    }
+    auto input_type = ctx->GetInputType("Ids");
+    ctx->SetOutputType("Out", input_type, framework::ALL_ELEMENTS);
   }
 };
 

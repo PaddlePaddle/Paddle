@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This is the lib for gradient checker unittest."""
 
 from __future__ import print_function
 
@@ -63,7 +64,7 @@ def _set_item(t, i, e, np_dtype):
         shape = np_t.shape
         np_t = np_t.flatten()
         np_t[i] = e
-        np_t = np_t.reshape(shape).view(np.uint16)
+        np_t = np_t.reshape(shape)
         t.set(np_t, place)
     elif np_dtype == np.float32:
         t._set_float_element(i, e)
@@ -308,7 +309,7 @@ def grad_check(x,
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
     for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+            y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):

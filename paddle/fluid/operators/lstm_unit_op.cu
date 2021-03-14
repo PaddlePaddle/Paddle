@@ -19,15 +19,10 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.c
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cross_entropy_op.h"
 #include "paddle/fluid/operators/lstm_unit_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
-
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 template <typename Dtype>
 __device__ Dtype cuda_sigmoid(const Dtype x) {
@@ -43,7 +38,7 @@ template <typename T>
 __global__ void LSTMUnitKernel(const int nthreads, const int dim,
                                const T* C_prev, const T* X, T* C, T* H,
                                const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / dim;
     const int d = index % dim;
 
@@ -63,10 +58,10 @@ __global__ void LSTMUnitKernel(const int nthreads, const int dim,
 template <typename T>
 __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
                                        const T* C_prev, const T* X, const T* C,
-                                       const T* H, const T* C_diff,
-                                       const T* H_diff, T* C_prev_diff,
-                                       T* X_diff, const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+                                       const T* C_diff, const T* H_diff,
+                                       T* C_prev_diff, T* X_diff,
+                                       const T forget_bias) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
     const int n = index / dim;
     const int d = index % dim;
     const T* X_offset = X + 4 * dim * n;
@@ -98,8 +93,9 @@ template <typename T>
 class LstmUnitOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
 
     auto* x_tensor = ctx.Input<framework::Tensor>("X");
     auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
@@ -129,8 +125,9 @@ template <typename T>
 class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
 
     auto x_tensor = ctx.Input<Tensor>("X");
     auto c_prev_tensor = ctx.Input<Tensor>("C_prev");
@@ -147,7 +144,6 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();
     auto* C = c_tensor->data<T>();
-    auto* H = h_tensor->data<T>();
 
     auto* H_diff = hdiff_tensor->data<T>();
     auto* C_diff = cdiff_tensor->data<T>();
@@ -164,9 +160,8 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
     int n = N * D;
     int grid = (n + block - 1) / block;
 
-    LSTMUnitGradientKernel<T><<<grid, block>>>(n, D, C_prev, X, C, H, C_diff,
-                                               H_diff, C_prev_diff, X_diff,
-                                               forget_bias);
+    LSTMUnitGradientKernel<T><<<grid, block>>>(
+        n, D, C_prev, X, C, C_diff, H_diff, C_prev_diff, X_diff, forget_bias);
   }
 };
 

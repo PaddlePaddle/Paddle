@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 from ..layer_helper import LayerHelper, unique_name
+from ..framework import Variable
 
 
 def _allreduce(x, out=None, reduce_type="sum", sync_mode=False):
@@ -57,4 +58,123 @@ def _broadcast(x, root, sync_mode=False):
         outputs={'Out': [x]},
         attrs={"sync_mode": sync_mode,
                "root": root})
+    return x
+
+
+def _c_allreduce(x,
+                 out=None,
+                 reduce_type='sum',
+                 ring_id=0,
+                 use_calc_stream=False):
+    helper = LayerHelper('c_allreduce', **locals())
+
+    if reduce_type not in ['sum', 'prob', 'max', 'min']:
+        raise TypeError('reduce type can only be "sum|prod|max|min]"')
+
+    op_type = 'c_allreduce_' + reduce_type
+    if out is None:
+        out = helper.create_variable(
+            name=unique_name.generate_with_ignorable_key('.'.join(
+                [x.name, op_type])),
+            shape=x.shape,
+            dtype=x.dtype,
+            type=x.type,
+            persistable=x.persistable)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'ring_id': ring_id,
+               'use_calc_stream': use_calc_stream})
+    return out
+
+
+def _c_broadcast(x, root=0, ring_id=0, use_calc_stream=False):
+    op_type = 'c_broadcast'
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={
+            'root': root,
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream
+        })
+    return x
+
+
+def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
+    op_type = 'c_allgather'
+    helper = LayerHelper(op_type, **locals())
+    out_shape = list(x.shape[:])
+    if out_shape[0] > 0:
+        out_shape[0] *= nranks
+    out = helper.create_variable(
+        name=unique_name.generate_with_ignorable_key('.'.join(
+            [x.name, op_type])),
+        shape=out_shape,
+        dtype=x.dtype,
+        type=x.type,
+        persistable=x.persistable)
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={
+            'nranks': nranks,
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream
+        })
+    return out
+
+
+def _c_reducescatter(x, nranks, ring_id=0, use_calc_stream=False):
+    if not isinstance(x, Variable):
+        raise TypeError('x must be a Variable')
+
+    if x.shape[0] > 0 and x.shape[0] % nranks != 0:
+        raise ValueError('x.shape[0](%d) cannot be evenly divided by nranks(%d)'
+                         % (x.shape[0], nranks))
+
+    op_type = 'c_reducescatter'
+    helper = LayerHelper(op_type, **locals())
+    out_shape = list(x.shape[:])
+    if out_shape[0] > 0:
+        out_shape[0] //= nranks
+    out = helper.create_variable(
+        name=unique_name.generate_with_ignorable_key('.'.join(
+            [x.name, op_type])),
+        shape=out_shape,
+        dtype=x.dtype,
+        type=x.type,
+        persistable=x.persistable)
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={
+            'nranks': nranks,
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream
+        })
+    return out
+
+
+def _c_sync_calc_stream(x):
+    op_type = 'c_sync_calc_stream'
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(type=op_type, inputs={'X': [x]}, outputs={'Out': [x]})
+    return x
+
+
+def _c_sync_comm_stream(x, ring_id):
+    op_type = 'c_sync_comm_stream'
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={'ring_id': ring_id})
     return x

@@ -49,13 +49,13 @@ class TestCropOp(OpTest):
         self.initTestCase()
         if self.crop_by_input:
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
-                'Y': np.random.random(self.crop_shape).astype("float32")
+                'X': np.random.random(self.x_shape).astype("float64"),
+                'Y': np.random.random(self.crop_shape).astype("float64")
             }
         else:
             self.attrs['shape'] = self.crop_shape
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
             }
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
@@ -66,7 +66,7 @@ class TestCropOp(OpTest):
         }
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = (2, 2)
         self.offsets = [1, 2]
 
@@ -74,7 +74,7 @@ class TestCropOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropOp):
@@ -86,8 +86,8 @@ class TestCase1(TestCropOp):
 
 class TestCase2(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (4, 8)
-        self.crop_shape = [4, 8]
+        self.x_shape = (15, 8)
+        self.crop_shape = [15, 8]
         self.offsets = [0, 0]
 
 
@@ -101,15 +101,15 @@ class TestCase3(TestCropOp):
 
 class TestCase4(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (4, 4)
-        self.crop_shape = [4, 4]
+        self.x_shape = (10, 10)
+        self.crop_shape = [10, 10]
         self.offsets = [0, 0]
         self.crop_by_input = True
 
 
 class TestCase5(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (3, 4, 5)
+        self.x_shape = (3, 4, 10)
         self.crop_shape = [2, 2, 3]
         self.offsets = [1, 0, 2]
         self.offset_by_input = True

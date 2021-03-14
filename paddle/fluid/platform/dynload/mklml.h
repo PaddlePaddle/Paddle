@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <mkl.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -50,12 +51,22 @@ extern void* mklml_dso_handle;
 #define MKLML_ROUTINE_EACH(__macro) \
   __macro(cblas_sgemm);             \
   __macro(cblas_dgemm);             \
+  __macro(cblas_cgemm);             \
+  __macro(cblas_zgemm);             \
   __macro(cblas_saxpy);             \
   __macro(cblas_daxpy);             \
+  __macro(cblas_caxpy);             \
+  __macro(cblas_zaxpy);             \
   __macro(cblas_scopy);             \
   __macro(cblas_dcopy);             \
+  __macro(cblas_ccopy);             \
+  __macro(cblas_zcopy);             \
   __macro(cblas_sgemv);             \
   __macro(cblas_dgemv);             \
+  __macro(cblas_cgemv);             \
+  __macro(cblas_zgemv);             \
+  __macro(cblas_strsm);             \
+  __macro(cblas_dtrsm);             \
   __macro(cblas_sgemm_alloc);       \
   __macro(cblas_dgemm_alloc);       \
   __macro(cblas_sgemm_pack);        \
@@ -66,6 +77,8 @@ extern void* mklml_dso_handle;
   __macro(cblas_dgemm_free);        \
   __macro(cblas_sgemm_batch);       \
   __macro(cblas_dgemm_batch);       \
+  __macro(cblas_cgemm_batch);       \
+  __macro(cblas_zgemm_batch);       \
   __macro(cblas_sdot);              \
   __macro(cblas_ddot);              \
   __macro(cblas_sasum);             \
@@ -76,8 +89,12 @@ extern void* mklml_dso_handle;
   __macro(cblas_dscal);             \
   __macro(vsAdd);                   \
   __macro(vdAdd);                   \
+  __macro(vsSub);                   \
+  __macro(vdSub);                   \
   __macro(vsMul);                   \
   __macro(vdMul);                   \
+  __macro(vsDiv);                   \
+  __macro(vdDiv);                   \
   __macro(vsExp);                   \
   __macro(vdExp);                   \
   __macro(vsSqr);                   \
@@ -88,9 +105,15 @@ extern void* mklml_dso_handle;
   __macro(vdInv);                   \
   __macro(vmsErf);                  \
   __macro(vmdErf);                  \
+  __macro(MKL_Free_Buffers);        \
   __macro(MKL_Set_Num_Threads)
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
+
+#if !defined(_WIN32)
+DYNAMIC_LOAD_MKLML_WRAP(mkl_scsrmm);
+DYNAMIC_LOAD_MKLML_WRAP(mkl_dcsrmm);
+#endif
 
 #undef DYNAMIC_LOAD_MKLML_WRAP
 

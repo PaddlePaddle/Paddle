@@ -14,7 +14,11 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_desc.h"
+#else
 #include "paddle/fluid/platform/cudnn_desc.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -31,8 +35,8 @@ class CudnnActivationKernel
     ExtractActivationTensor(context, X, Out);
     ActivationDescriptor act_desc;
     TensorDescriptor x_desc, out_desc;
-    x_desc.set(detail::Ref(X));
-    out_desc.set(detail::Ref(Out));
+    x_desc.set(GET_DATA_SAFELY(X, "Input", "X", "CudnnActivation"));
+    out_desc.set(GET_DATA_SAFELY(Out, "Output", "Out", "CudnnActivation");
   }
 };
 

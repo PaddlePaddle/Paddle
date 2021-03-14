@@ -30,17 +30,27 @@ class PReluOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE(input_num == 1);
+    size_t input_num = op_desc.Input("X").size();
+    PADDLE_ENFORCE_EQ(input_num, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Invalid input X's size of prelu TRT converter. "
+                          "Expected 1, received %d.",
+                          input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE(output_num == 1);
+    PADDLE_ENFORCE_EQ(output_num, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Invalid output Out's size of prelu TRT converter. "
+                          "Expected 1, received %d.",
+                          output_num));
     // Get attrs
-    std::string mode = boost::get<std::string>(op_desc.GetAttr("mode"));
+    std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
     //
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    PADDLE_ENFORCE_NOT_NULL(alpha_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        alpha_var, platform::errors::NotFound(
+                       "Variable Alpha of prelu TRT converter is not found."));
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;
@@ -50,13 +60,50 @@ class PReluOpConverter : public OpConverter {
     TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
-    plugin::PReluPlugin* plugin =
-        new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
+          alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+#if IS_TRT_VERSION_GE(7000)
+      float* alpha_weight_data = engine_->GetWeightCPUData(
+          op_desc.Input("Alpha")[0], alpha_tensor, false);
+      TensorRTEngine::Weight alpha_weight{
+          nvinfer1::DataType::kFLOAT, static_cast<void*>(alpha_weight_data),
+          static_cast<size_t>(alpha_tensor->numel())};
+
+      nvinfer1::Dims dims;
+      dims.nbDims = 0;
+      // jump batch dim
+      for (int i = 1; i < alpha_tensor->dims().size(); i++) {
+        dims.d[dims.nbDims++] = alpha_tensor->dims()[i];
+      }
+      for (; dims.nbDims < input->getDimensions().nbDims; dims.nbDims++) {
+        dims.d[dims.nbDims] = 1;
+      }
+
+      auto alpha_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, alpha_weight.get());
+      auto alpha_layer_output = alpha_layer->getOutput(0);
+
+      layer = TRT_ENGINE_ADD_LAYER(engine_, ParametricReLU, *input,
+                                   *alpha_layer_output);
+#else
+      plugin::PReluPlugin* plugin =
+          new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+#endif
+    }
     // keep alpha tensor to avoid release it's memory
-    engine_->weight_map[op_desc.Input("Alpha")[0]] =
-        std::move(alpha_tensor_temp);
+    engine_->SetWeights(op_desc.Input("Alpha")[0],
+                        std::move(alpha_tensor_temp));
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);

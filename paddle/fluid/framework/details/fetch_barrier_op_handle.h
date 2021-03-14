@@ -23,6 +23,17 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -31,6 +42,8 @@ namespace details {
 // **NOTE**: fetch_barrier op is special it outputs all recved variables on
 // all places if there are multiple places, must init with
 // multiple dev_ctxes_ !!!!
+
+struct VarHandleBase;
 
 struct FetchBarrierOpHandle : public OpHandleBase {
  public:
@@ -43,6 +56,8 @@ struct FetchBarrierOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
 
   bool NeedWait(VarHandleBase *in_var) override;
 

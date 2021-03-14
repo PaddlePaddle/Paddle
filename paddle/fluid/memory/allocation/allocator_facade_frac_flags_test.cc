@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_int64(gpu_allocator_retry_time);
 #endif
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -44,7 +45,7 @@ void AllocateTestCases() {
     ASSERT_EQ(cpu_allocation->size(), size);
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     place = platform::CUDAPlace(0);
     size = 1024;
@@ -80,11 +81,12 @@ void AllocateTestCases() {
 }
 
 TEST(Allocator, Allocator) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
   FLAGS_gpu_allocator_retry_time = 500;
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
 #endif
+  FLAGS_allocator_strategy = "naive_best_fit";
 
   AllocateTestCases();
 }

@@ -14,9 +14,7 @@
 
 from __future__ import print_function
 
-from . import ctr_reader
 from .distributed_reader import *
 
 __all__ = []
 __all__ += distributed_reader.__all__
-__all__ += ctr_reader.__all__

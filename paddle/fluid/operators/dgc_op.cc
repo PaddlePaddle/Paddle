@@ -25,29 +25,28 @@ class DGCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("current_step"),
-                   "Input(current_step) of DGCop should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
+                   "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCOp");
 
-    PADDLE_ENFORCE(ctx->HasOutput("U_out"),
-                   "Output(U_out) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("V_out"),
-                   "Output(V_out) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("k"),
-                   "Output(k) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
-                   "Output(EncodeGrad) of DGCop should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad",
+                   "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("GatherBuff"), "Output", "GatherBuff",
+                   "DGCOp");
   }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "current_step" || var_name == "rampup_step" ||
-        var_name == "k") {
+    if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
@@ -60,26 +59,19 @@ class DGCOp : public framework::OperatorWithKernel {
 class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("U", "(Tensor) Middle tensor of DGC");
-    AddInput("V", "(Tensor) Middle tensor of DGC");
+    AddInput("U", "(Tensor) U velocity tensor of DGC");
+    AddInput("V", "(Tensor) V velocity tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("Param", "(Tensor) Input parameter");
     AddInput("current_step", "(Tensor) Current step.");
+    AddInput("nranks", "(Tensor) nranks.");
 
-    AddOutput("U_out",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("V_out",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("EncodeGrad",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("Grad_out",
-              "(Tensor) "
-              "Output grad gradient");
-    AddOutput("k",
-              "(Tensor) "
-              "Output top-k value");
+    AddOutput("U_out", "(Tensor) Output U velocity of DGC");
+    AddOutput("V_out", "(Tensor) Output V velocity of DGC");
+    AddOutput("EncodeGrad", "(Tensor) Output encoded gradient");
+    AddOutput("Grad_out", "(Tensor) Output grad gradient");
+    AddOutput("k", "(Tensor) Output top-k value");
+    AddOutput("GatherBuff", "(Tensor) Gather buffer");
 
     AddAttr<float>("m",
                    "(float, 0.9) "
@@ -103,6 +95,16 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("rampup_step",
                    "(float, 0.0)"
                    "The period when begin k_select.");
+
+    AddAttr<float>("regular_coeff",
+                   "(float, 0.0)"
+                   "The coeff of regularization, weight decay parameter")
+        .SetDefault(0.0);
+
+    AddAttr<int>("regular_type",
+                 "(int, 0)"
+                 "The type of regularization, {0:None, 1:L1Decay, 2:L2Decay")
+        .SetDefault(0);
 
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887

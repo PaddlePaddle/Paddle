@@ -13,6 +13,7 @@
 import hashlib
 import unittest
 import os
+import io
 import numpy as np
 import time
 import sys
@@ -23,9 +24,9 @@ from PIL import Image
 import math
 from paddle.dataset.common import download
 import tarfile
-import StringIO
+import argparse
+import shutil
 
-random.seed(0)
 np.random.seed(0)
 
 DATA_DIM = 224
@@ -33,10 +34,8 @@ SIZE_FLOAT32 = 4
 SIZE_INT64 = 8
 FULL_SIZE_BYTES = 30106000008
 FULL_IMAGES = 50000
-TARGET_HASH = '22d2e0008dca693916d9595a5ea3ded8'
 FOLDER_NAME = "ILSVRC2012/"
 VALLIST_TAR_NAME = "ILSVRC2012/val_list.txt"
-CHUNK_SIZE = 8192
 
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
@@ -54,8 +53,8 @@ def crop_image(img, target_size, center):
     width, height = img.size
     size = target_size
     if center == True:
-        w_start = (width - size) / 2
-        h_start = (height - size) / 2
+        w_start = (width - size) // 2
+        h_start = (height - size) // 2
     else:
         w_start = np.random.randint(0, width - size + 1)
         h_start = np.random.randint(0, height - size + 1)
@@ -94,11 +93,9 @@ def download_concat(cache_folder, zip_path):
         file_name = os.path.join(cache_folder, data_urls[i].split('/')[-1])
         file_names.append(file_name)
         print("Downloaded part {0}\n".format(file_name))
-    if not os.path.exists(zip_path):
-        with open(zip_path, "w+") as outfile:
-            for fname in file_names:
-                with open(fname) as infile:
-                    outfile.write(infile.read())
+    with open(zip_path, "wb") as outfile:
+        for fname in file_names:
+            shutil.copyfileobj(open(fname, 'rb'), outfile)
 
 
 def print_processbar(done_percentage):
@@ -109,29 +106,7 @@ def print_processbar(done_percentage):
     sys.stdout.flush()
 
 
-def check_integrity(filename, target_hash):
-    print('\nThe binary file exists. Checking file integrity...\n')
-    md = hashlib.md5()
-    count = 0
-    onepart = FULL_SIZE_BYTES / CHUNK_SIZE / 100
-    with open(filename) as ifs:
-        while True:
-            buf = ifs.read(CHUNK_SIZE)
-            if count % onepart == 0:
-                done = count / onepart
-                print_processbar(done)
-            count = count + 1
-            if not buf:
-                break
-            md.update(buf)
-    hash1 = md.hexdigest()
-    if hash1 == target_hash:
-        return True
-    else:
-        return False
-
-
-def convert(tar_file, output_file):
+def convert_Imagenet_tar2bin(tar_file, output_file):
     print('Converting 50000 images to binary file ...\n')
     tar = tarfile.open(name=tar_file, mode='r:gz')
 
@@ -141,28 +116,26 @@ def convert(tar_file, output_file):
     for tarInfo in tar:
         if tarInfo.isfile() and tarInfo.name != VALLIST_TAR_NAME:
             dataset[tarInfo.name] = tar.extractfile(tarInfo).read()
-
     with open(output_file, "w+b") as ofs:
         ofs.seek(0)
         num = np.array(int(FULL_IMAGES)).astype('int64')
         ofs.write(num.tobytes())
 
-        per_percentage = FULL_IMAGES / 100
+        per_percentage = FULL_IMAGES // 100
 
+        val_info = tar.getmember(VALLIST_TAR_NAME)
+        val_list = tar.extractfile(val_info).read().decode("utf-8")
+        lines = val_list.splitlines()
         idx = 0
         for imagedata in dataset.values():
-            img = Image.open(StringIO.StringIO(imagedata))
+            img = Image.open(io.BytesIO(imagedata))
             img = process_image(img)
             np_img = np.array(img)
             ofs.write(np_img.astype('float32').tobytes())
             if idx % per_percentage == 0:
-                print_processbar(idx / per_percentage)
+                print_processbar(idx // per_percentage)
             idx = idx + 1
 
-        val_info = tar.getmember(VALLIST_TAR_NAME)
-        val_list = tar.extractfile(val_info).read()
-
-        lines = val_list.split('\n')
         val_dict = {}
         for line_idx, line in enumerate(lines):
             if line_idx == FULL_IMAGES:
@@ -191,8 +164,7 @@ def run_convert():
     try_limit = 3
 
     while not (os.path.exists(output_file) and
-               os.path.getsize(output_file) == FULL_SIZE_BYTES and
-               check_integrity(output_file, TARGET_HASH)):
+               os.path.getsize(output_file) == FULL_SIZE_BYTES):
         if os.path.exists(output_file):
             sys.stderr.write(
                 "\n\nThe existing binary file is broken. Start to generate new one...\n\n".
@@ -205,9 +177,90 @@ def run_convert():
                 "Can not convert the dataset to binary file with try limit {0}".
                 format(try_limit))
         download_concat(cache_folder, zip_path)
-        convert(zip_path, output_file)
+        convert_Imagenet_tar2bin(zip_path, output_file)
     print("\nSuccess! The binary file can be found at {0}".format(output_file))
 
 
+def convert_Imagenet_local2bin(args):
+    data_dir = args.data_dir
+    label_list_path = os.path.join(args.data_dir, args.label_list)
+    bin_file_path = os.path.join(args.data_dir, args.output_file)
+    assert data_dir, 'Once set --local, user need to provide the --data_dir'
+    with open(label_list_path) as flist:
+        lines = [line.strip() for line in flist]
+        num_images = len(lines)
+
+        with open(bin_file_path, "w+b") as of:
+            of.seek(0)
+            num = np.array(int(num_images)).astype('int64')
+            of.write(num.tobytes())
+            for idx, line in enumerate(lines):
+                img_path, label = line.split()
+                img_path = os.path.join(data_dir, img_path)
+                if not os.path.exists(img_path):
+                    continue
+
+                #save image(float32) to file
+                img = Image.open(img_path)
+                img = process_image(img)
+                np_img = np.array(img)
+                of.seek(SIZE_INT64 + SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 *
+                        idx)
+                of.write(np_img.astype('float32').tobytes())
+
+                #save label(int64_t) to file
+                label_int = (int)(label)
+                np_label = np.array(label_int)
+                of.seek(SIZE_INT64 + SIZE_FLOAT32 * DATA_DIM * DATA_DIM * 3 *
+                        num_images + idx * SIZE_INT64)
+                of.write(np_label.astype('int64').tobytes())
+
+        # The bin file should contain
+        # number of images + all images data + all corresponding labels
+        # so the file target_size should be as follows
+        target_size = SIZE_INT64 + num_images * 3 * args.data_dim * args.data_dim * SIZE_FLOAT32 + num_images * SIZE_INT64
+        if (os.path.getsize(bin_file_path) == target_size):
+            print(
+                "Success! The user data output binary file can be found at: {0}".
+                format(bin_file_path))
+        else:
+            print("Conversion failed!")
+
+
+def main_preprocess_Imagenet(args):
+    parser = argparse.ArgumentParser(
+        description="Convert the full Imagenet val set or local data to binary file.",
+        usage=None,
+        add_help=True)
+    parser.add_argument(
+        '--local',
+        action="store_true",
+        help="If used, user need to set --data_dir and then convert file")
+    parser.add_argument(
+        "--data_dir", default="", type=str, help="Dataset root directory")
+    parser.add_argument(
+        "--label_list",
+        type=str,
+        default="val_list.txt",
+        help="List of object labels with same sequence as denoted in the annotation file"
+    )
+    parser.add_argument(
+        "--output_file",
+        type=str,
+        default="imagenet_small.bin",
+        help="File path of the output binary file")
+    parser.add_argument(
+        "--data_dim",
+        type=int,
+        default=DATA_DIM,
+        help="Image preprocess with data_dim width and height")
+
+    args = parser.parse_args()
+    if args.local:
+        convert_Imagenet_local2bin(args)
+    else:
+        run_convert()
+
+
 if __name__ == '__main__':
-    run_convert()
+    main_preprocess_Imagenet(sys.argv)

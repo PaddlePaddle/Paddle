@@ -38,5 +38,9 @@ inline HOSTDEVICE float real_log(float x) { return ::logf(x); }
 
 inline HOSTDEVICE double real_log(double x) { return ::log(x); }
 
+inline HOSTDEVICE float real_min(float x, float y) { return ::fminf(x, y); }
+
+inline HOSTDEVICE double real_min(double x, double y) { return ::fmin(x, y); }
+
 }  // namespace operators
 }  // namespace paddle

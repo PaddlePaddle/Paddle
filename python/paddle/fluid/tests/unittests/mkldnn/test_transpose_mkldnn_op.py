@@ -17,30 +17,56 @@ from __future__ import print_function
 import unittest
 
 from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
+import numpy as np
 
 
 class TestTransposeMKLDNN(TestTransposeOp):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float32"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
     def init_op_type(self):
         self.op_type = "transpose2"
         self.use_mkldnn = True
         return
 
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
+
+    def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(['X'], 'Out', check_dygraph=False)
+
+    def initTestCase(self):
+        self.shape = (30, 4)
+        self.axis = (1, 0)
+
 
 class TestCase0MKLDNN(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, )
+        self.shape = (100, )
         self.axis = (0, )
 
 
 class TestCase1a(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase1b(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 

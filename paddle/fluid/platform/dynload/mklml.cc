@@ -25,6 +25,11 @@ void* mklml_dso_handle = nullptr;
 
 MKLML_ROUTINE_EACH(DEFINE_WRAP);
 
+#if !defined(_WIN32)
+DEFINE_WRAP(mkl_scsrmm);
+DEFINE_WRAP(mkl_dcsrmm);
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

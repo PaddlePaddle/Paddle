@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
@@ -44,7 +45,6 @@ TEST(AnalysisPredictor, analysis_off) {
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   // ir is turned off, so program shouldn't be optimized.
-  ASSERT_FALSE(predictor->status_program_optimized_);
   LOG(INFO) << "scope parameters " << predictor->scope_->LocalVarNames().size();
 
   // 2. Dummy Input Data
@@ -63,7 +63,7 @@ TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   config.EnableUseGpu(100, 0);
 #else
   config.DisableGpu();
@@ -76,8 +76,6 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
-  // ir is turned on, so program should be optimized.
-  ASSERT_TRUE(predictor->status_program_optimized_);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -138,6 +136,7 @@ TEST(AnalysisPredictor, ZeroCopy) {
   auto* out_data = out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
+  predictor->TryShrinkMemory();
 }
 
 TEST(AnalysisPredictor, Clone) {
@@ -256,8 +255,7 @@ class MkldnnQuantizerTest : public testing::Test {
  public:
   MkldnnQuantizerTest() {
     AnalysisConfig config(FLAGS_dirname);
-
-    predictor.reset(new AnalysisPredictor(config));
+    predictor = std::move(CreatePaddlePredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
     auto qconfig = new MkldnnQuantizerConfig();
@@ -279,7 +277,7 @@ class MkldnnQuantizerTest : public testing::Test {
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned, 0);
   }
 
   std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
@@ -488,4 +486,70 @@ TEST_F(MkldnnQuantizerTest, kl_scaling_factor_unsigned) {
 }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+  config.EnableUseGpu(100, 0);
+  config.EnableMkldnnBfloat16();
+#ifdef PADDLE_WITH_MKLDNN
+  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+    ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
+  else
+    ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
+#else
+  ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
+#endif
+}
+#endif
+
+TEST(AnalysisPredictor, bf16_pass_strategy) {
+  std::vector<std::string> passes;
+  PassStrategy passStrategy(passes);
+  passStrategy.EnableMkldnnBfloat16();
+}
+
 }  // namespace paddle
+
+namespace paddle_infer {
+
+TEST(Predictor, Run) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  w0->Reshape({4, 1});
+  w1->Reshape({4, 1});
+  w2->Reshape({4, 1});
+  w3->Reshape({4, 1});
+
+  auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
+  auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
+
+  for (int i = 0; i < 4; i++) {
+    w0_data[i] = i;
+    w1_data[i] = i;
+    w2_data[i] = i;
+    w3_data[i] = i;
+  }
+
+  predictor->Run();
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
+}
+
+}  // namespace paddle_infer

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -27,12 +28,44 @@ limitations under the License. */
 #include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
+namespace proto {
+
+class BlockDesc;
+class OpDesc;
+class OpDesc_Attr;
+class OpDesc_Var;
+class OpProto;
+class OpProto_Attr;
+class OpProto_Var;
+class OpVersion;
+class OpVersionMap;
+class OpVersionMap_OpVersionPair;
+class ProgramDesc;
+class VarDesc;
+class VarType;
+class VarType_LoDTensorArrayDesc;
+class VarType_LoDTensorDesc;
+class VarType_ReaderDesc;
+class VarType_TensorDesc;
+class VarType_Tuple;
+class Version;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -53,8 +86,10 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
+    PADDLE_ENFORCE_EQ(
+        OpInfoMap::Instance().Has(op_type), false,
+        platform::errors::AlreadyExists(
+            "Operator '%s' is registered more than once.", op_type));
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
@@ -65,10 +100,34 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
+  /**
+   * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
+   *        In dygraph mode, inputs, output, attrs will be set to empty map to
+   *        improve the execution efficiency of dygraph.
+   *        Dygraph mode will use:
+   *        framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+   *
+   * @param[str] type               The operator type.
+   * @param[map] inputs             Inputs map of the operator.
+   * @param[map] outputs            Outputs map of the operator.
+   * @param[unordered_map] attrs    Attributes map of the operator.
+   * @param[bool] attr_check
+   *            Whether do the attribute check before OperatorBase construction.
+   *            Default is true.
+   *            Attr_check is used to control the check of attribute map.
+   *            The check of attribute map have two purposes:
+   *            1. check whether the attribute item is valid or not.
+   *            2. add attribute item which has default value
+   *            if it is not in attrs.
+   *            In dygraph mode, attrs is an empty unordered_map,
+   *            attr_check is set to false, otherwise it will be failed
+   *            when check function called.
+   */
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs);
+                                                AttributeMap attrs,
+                                                bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -206,7 +265,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   }
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class)
+  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+        paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+        paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 /**
  * Macro to register OperatorKernel.
@@ -240,6 +301,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_XPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -267,6 +331,12 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, CPU, ::paddle::platform::CPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
+
+#define REGISTER_OP_XPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, XPU, ::paddle::platform::XPUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
@@ -299,7 +369,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \

@@ -58,9 +58,9 @@ class TestSpaceToDepthOp(OpTest):
         self.one_d_len = 32 * 48 * 3 * 3
 
         self.blocksize = 2
-        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x = np.random.random(self.ori_shape).astype('float64')
         self.x_1d = np.reshape(self.x, self.one_d_len)
-        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out = np.zeros(self.infered_shape).astype('float64')
         self.out_1d = np.reshape(self.out, self.one_d_len)
         self.forward = 1
 
@@ -82,9 +82,9 @@ class TestSpaceToDepthOpBasic(TestSpaceToDepthOp):
         self.one_d_len = 32 * 32 * 3 * 3
 
         self.blocksize = 2
-        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x = np.random.random(self.ori_shape).astype('float64')
         self.x_1d = np.reshape(self.x, self.one_d_len)
-        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out = np.zeros(self.infered_shape).astype('float64')
         self.out_1d = np.reshape(self.out, self.one_d_len)
         self.forward = 1
 
@@ -110,9 +110,9 @@ class TestSpaceToDepthOpWithStride3(TestSpaceToDepthOp):
         self.one_d_len = 32 * 81 * 2 * 2
 
         self.blocksize = 3
-        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x = np.random.random(self.ori_shape).astype('float64')
         self.x_1d = np.reshape(self.x, self.one_d_len)
-        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out = np.zeros(self.infered_shape).astype('float64')
         self.out_1d = np.reshape(self.out, self.one_d_len)
         self.forward = 1
 
@@ -124,9 +124,9 @@ class TestSpaceToDepthOpWithNotSquare(TestSpaceToDepthOp):
         self.one_d_len = 32 * 81 * 3 * 2
 
         self.blocksize = 3
-        self.x = np.random.random(self.ori_shape).astype('float32')
+        self.x = np.random.random(self.ori_shape).astype('float64')
         self.x_1d = np.reshape(self.x, self.one_d_len)
-        self.out = np.zeros(self.infered_shape).astype('float32')
+        self.out = np.zeros(self.infered_shape).astype('float64')
         self.out_1d = np.reshape(self.out, self.one_d_len)
         self.forward = 1
 

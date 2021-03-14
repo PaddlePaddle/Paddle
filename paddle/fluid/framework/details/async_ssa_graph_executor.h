@@ -36,20 +36,23 @@ class AsyncSSAGraphExecutor : public SSAGraphExecutor {
  public:
   AsyncSSAGraphExecutor(const ExecutionStrategy &strategy,
                         const std::vector<Scope *> &local_scopes,
+                        const std::vector<Scope *> &local_exec_scopes,
                         const std::vector<platform::Place> &places,
                         std::vector<ir::Graph *> graphs);
   ~AsyncSSAGraphExecutor() final = default;
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
  private:
-  void StartOffPythonTrainLoop();
+  void StartOffPythonTrainLoop(bool return_merged);
   void HandleException();
 
  private:
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
   std::vector<platform::Place> places_;
   std::vector<ir::Graph *> graphs_;

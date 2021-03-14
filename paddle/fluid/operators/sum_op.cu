@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -38,18 +39,14 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
                                    bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(0);
+    T total(read_dst ? out[id] : static_cast<T>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
         total += tmp[id];
       }
     }
-    if (read_dst) {
-      out[id] += total;
-    } else {
-      out[id] = total;
-    }
+    out[id] = total;
     id += blockDim.x * gridDim.x;
   }
 }
@@ -67,22 +64,6 @@ __global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
       }
     }
     id += blockDim.x * gridDim.x;
-  }
-}
-
-template <class T>
-__global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
-                                    int64_t N) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
-    const float4 *in0_4 = reinterpret_cast<float4 *>(in_0);
-    const float4 *in1_4 = reinterpret_cast<float4 *>(in_1);
-    float4 tmp;
-    tmp.x = in0_4[i].x + in1_4[i].x;
-    tmp.y = in0_4[i].y + in1_4[i].y;
-    tmp.z = in0_4[i].z + in1_4[i].z;
-    tmp.w = in0_4[i].w + in1_4[i].w;
-    reinterpret_cast<float4 *>(out)[i] = tmp;
   }
 }
 
@@ -115,8 +96,15 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   auto *out = context.Output<LoDTensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
+
   if (!in_place) {
-    out->mutable_data<T>(context.GetPlace());
+    auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+      auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+      if (in_0_tensor.numel() > 0) {
+        in_place = (in_0_tensor.data<T>() == out_ptr);
+      }
+    }
   }
 
   // Sum of two tensors
@@ -124,19 +112,19 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       in_vars[1]->IsType<framework::LoDTensor>()) {
     auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
     auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
-
-    auto length = in_0.numel();
-    if (length && in_0.IsInitialized() && in_1.IsInitialized()) {
+    int64_t length_0 = in_0.numel();
+    int64_t length_1 = in_1.numel();
+    if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0);
       auto in_1_e = EigenVector<T>::Flatten(in_1);
       result.device(place) = in_0_e + in_1_e;
-    } else if (length && in_0.IsInitialized()) {
+    } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_0);
-    } else if (length && in_1.IsInitialized()) {
+    } else if (length_1 && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_1);
@@ -159,8 +147,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   for (int i = start; i < in_num; ++i) {
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
-      in_data.emplace_back(in_i.data<T>());
       lod_length = in_i.numel();
+      if (lod_length && in_i.IsInitialized()) {
+        in_data.emplace_back(in_i.data<T>());
+      }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
@@ -179,8 +169,18 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto row_numel = sr_value.numel() / sr_rows.size();
       auto out_dims = out->dims();
 
-      PADDLE_ENFORCE_EQ(sr.height(), out_dims[0]);
-      PADDLE_ENFORCE_EQ(row_numel, out->numel() / sr.height());
+      PADDLE_ENFORCE_EQ(sr.height(), out_dims[0],
+                        platform::errors::InvalidArgument(
+                            "The table height of input must be same as output, "
+                            "but received input height is %d"
+                            ", output height is %d",
+                            sr.height(), out_dims[0]));
+      PADDLE_ENFORCE_EQ(row_numel, out->numel() / sr.height(),
+                        platform::errors::InvalidArgument(
+                            "The table width of input must be same as output, "
+                            "but received input width is %d"
+                            ", output width is %d",
+                            row_numel, out->numel() / sr.height()));
 
       auto *sr_data = sr_value.data<T>();
       auto *sr_out_data = out->data<T>();
@@ -194,10 +194,9 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     }
     if (!sr_in_out_data.empty()) {
       auto tmp_sr_in_out_array =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              sr_in_out_data.size() * sizeof(T *));
+          memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
-      memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                    tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void *>(sr_in_out_data.data()),
                    sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
@@ -213,11 +212,9 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-    memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  tmp_in_array->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
                  in_data.size() * sizeof(T *), dev_ctx.stream());
@@ -244,8 +241,11 @@ class SumKernel<platform::CUDADeviceContext, T>
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(out_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Ouput(out) must be Tensor,  SelectedRows or "
+          "LodTensorArray. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
   }
 };

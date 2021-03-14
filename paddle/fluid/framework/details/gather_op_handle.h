@@ -26,6 +26,14 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct GatherOpHandle : public OpHandleBase {
@@ -39,6 +47,8 @@ struct GatherOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
 
  private:
   const std::vector<Scope *> &local_scopes_;

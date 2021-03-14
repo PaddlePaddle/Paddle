@@ -22,13 +22,15 @@ into paddle reader creators.
 from __future__ import print_function
 
 import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 import collections
 import tarfile
 import six
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+__all__ = ['train', 'test', 'build_dict']
 
-URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
@@ -110,6 +112,10 @@ def reader_creator(filename, word_idx, n, data_type):
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov training set creator.
@@ -130,6 +136,10 @@ def train(word_idx, n, data_type=DataType.NGRAM):
                           data_type)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov test set creator.
@@ -150,17 +160,9 @@ def test(word_idx, n, data_type=DataType.NGRAM):
                           data_type)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    N = 5
-    word_dict = build_dict()
-    paddle.dataset.common.convert(path,
-                                  train(word_dict, N), 1000, "imikolov_train")
-    paddle.dataset.common.convert(path,
-                                  test(word_dict, N), 1000, "imikolov_test")

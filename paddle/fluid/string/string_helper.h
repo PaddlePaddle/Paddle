@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 
@@ -61,6 +62,9 @@ std::string format_string(const std::string& fmt, ARGS&&... args) {
 
 // remove leading and tailing spaces
 std::string trim_spaces(const std::string& str);
+
+// erase all spaces in str
+std::string erase_spaces(const std::string& str);
 
 int str_to_float(const char* str, float* v);
 
@@ -119,16 +123,18 @@ std::vector<T> split_string(const std::string& str) {
   return list;
 }
 
-template <class T>
-std::string join_strings(const std::vector<T>& strs, char delim) {
+template <class Container>
+std::string join_strings(const Container& strs, char delim) {
   std::string str;
 
-  for (size_t i = 0; i < strs.size(); i++) {
+  int i = 0;
+  for (auto& elem : strs) {
     if (i > 0) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(strs[i]);
+    str += boost::lexical_cast<std::string>(elem);
+    ++i;
   }
 
   return str;

@@ -117,13 +117,19 @@ void profile(bool memory_load = false) {
     // the first inference result
     const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
                                            48, 39, 38, 16, 25};
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0);
+    PADDLE_ENFORCE_GT(size, 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     int64_t *result = static_cast<int64_t *>(output[0].data.data());
-    for (size_t i = 0; i < std::min(11UL, size); i++) {
+    for (size_t i = 0; i < std::min<size_t>(11, size); i++) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }
   }

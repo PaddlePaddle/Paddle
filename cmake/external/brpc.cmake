@@ -14,7 +14,7 @@
 
 INCLUDE(ExternalProject)
 
-find_package(OpenSSL REQUIRED) 
+find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
 message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
@@ -37,35 +37,39 @@ set(prefix_path "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/
 
 # If minimal .a is need, you can set  WITH_DEBUG_SYMBOLS=OFF
 ExternalProject_Add(
-    extern_brpc
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    # TODO(gongwb): change to de newst repo when they changed.
-    GIT_REPOSITORY  "https://github.com/gongweibao/brpc"
-    GIT_TAG         "e9b67ec1b7458f2af5fae76451afe1e27e01b4b4"
-    PREFIX          ${BRPC_SOURCES_DIR}
-    UPDATE_COMMAND  ""
-    CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_INSTALL_PREFIX=${BRPC_INSTALL_DIR}
-                    -DCMAKE_INSTALL_LIBDIR=${BRPC_INSTALL_DIR}/lib
-                    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                    -DCMAKE_PREFIX_PATH=${prefix_path}
-                    -DWITH_GLOG=ON
-                    -DIOBUF_WITH_HUGE_BLOCK=ON
-                    -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
-                    ${EXTERNAL_OPTIONAL_ARGS}
-    LIST_SEPARATOR |
-    CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}
-                     -DCMAKE_INSTALL_LIBDIR:PATH=${BRPC_INSTALL_DIR}/lib
-                     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+        extern_brpc
+        ${EXTERNAL_PROJECT_LOG_ARGS}
+        # TODO(gongwb): change to de newst repo when they changed.
+        GIT_REPOSITORY  "https://github.com/wangjiawei04/brpc"
+        GIT_TAG         "6d79e0b17f25107c35b705ea58d888083f59ff47"
+        PREFIX          ${BRPC_SOURCES_DIR}
+        UPDATE_COMMAND  ""
+        CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+        -DCMAKE_INSTALL_PREFIX=${BRPC_INSTALL_DIR}
+        -DCMAKE_INSTALL_LIBDIR=${BRPC_INSTALL_DIR}/lib
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+        -DCMAKE_PREFIX_PATH=${prefix_path}
+        -DWITH_GLOG=ON
+        -DIOBUF_WITH_HUGE_BLOCK=ON
+        -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
+        ${EXTERNAL_OPTIONAL_ARGS}
+        LIST_SEPARATOR |
+        CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${BRPC_INSTALL_DIR}
+        -DCMAKE_INSTALL_LIBDIR:PATH=${BRPC_INSTALL_DIR}/lib
+        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
-ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog gtest snappy)
+# ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog gtest snappy)
+ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog snappy)
 ADD_LIBRARY(brpc STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET brpc PROPERTY IMPORTED_LOCATION ${BRPC_LIBRARIES})
 ADD_DEPENDENCIES(brpc extern_brpc)
 
 add_definitions(-DBRPC_WITH_GLOG)
+
+LIST(APPEND external_project_dependencies brpc)
+

@@ -16,10 +16,17 @@ from __future__ import print_function
 
 import sys
 import six
+import random
+import os
 import re
 from .graphviz import GraphPreviewGenerator
 from .proto import framework_pb2
 from google.protobuf import text_format
+from . import unique_name
+from .framework import Program, default_main_program, Variable
+from . import core
+from . import io
+from .layer_helper import LayerHelper
 
 _vartype2str_ = [
     "UNK",
@@ -273,3 +280,88 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
             add_op_link_var(opn, var, True)
 
     graph(path, show=False)
+
+
+def prepare_fast_nan_inf_debug(_program):
+    """
+    Given a program to run, insert a (reduce) sum op for every var in that program.
+    Instead of checking all vars originally defined in the program,
+    only those inserted ops will be checked in the c++ end, to detect if it contains NAN or INF.
+    Thereforce, the speed of nan/inf checking could be improved.
+    Please set ``FLAGS_fast_check_nan_inf" to open the fast nan/inf feature.
+    """
+
+    helper = LayerHelper('reduce_sum', **locals())
+
+    if _program is None:
+        _program = default_main_program()
+
+    for _block in _program.blocks:
+        # fetch vars in the current block
+        _vars_in_prog = []
+        for _var_name in _block.vars:
+            _vars_in_prog.append((_var_name, _block.vars[_var_name]))
+
+        # append sum_op in the current block
+        for _var_name, _var in _vars_in_prog:
+
+            try:
+
+                if _var.dtype == -1:
+                    continue
+
+                ## create a var for holding sum output
+                _output_var = _block.create_var(
+                    name=unique_name.generate("debug_var_" + _var_name),
+                    dtype=_var.dtype,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    persistable=False,
+                    stop_gradient=True)
+
+                ## create a sum op, input each existing var in the block
+                _block.append_op(
+                    type='sum',
+                    outputs={'Out': _output_var},
+                    inputs={'X': [_var]})
+            except Exception as e:
+                pass
+
+
+def run_fast_nan_inf_debug(executor,
+                           program=None,
+                           feed=None,
+                           fetch_list=None,
+                           feed_var_name='feed',
+                           fetch_var_name='fetch',
+                           scope=None,
+                           return_numpy=True,
+                           use_program_cache=False,
+                           dump_core=True):
+    """
+    Run a program by the given executor. Catch the exception of NAN and INF, and save persistables into the dumped core.
+    """
+
+    assert (executor is not None)
+
+    try:
+        output = executor.run(program=program,
+                              feed=feed,
+                              fetch_list=fetch_list,
+                              feed_var_name=feed_var_name,
+                              fetch_var_name=fetch_var_name,
+                              scope=scope,
+                              return_numpy=return_numpy,
+                              use_program_cache=use_program_cache)
+
+        return output
+
+    except Exception as e:
+
+        print("catch an exception:")
+        print(e)
+
+        core_filename = "core" + str(int(random.random() * 10000)) + ".pdckpt"
+        io.save_persistables(
+            executor, "./", main_program=program, filename=core_filename)
+
+        print("dumping a core into ./%s" % core_filename)

@@ -19,6 +19,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
 
+namespace grpc {
+class ByteBuffer;
+}  // namespace grpc
+
 namespace paddle {
 namespace operators {
 namespace distributed {

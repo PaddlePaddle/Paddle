@@ -16,9 +16,18 @@
 
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class Scope;
+class SelectedRows;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace details {
@@ -30,8 +39,14 @@ struct TensorArrayBatchCleaner {
     constexpr auto kTensorId = framework::VarTypeTrait<framework::Tensor>::kId;
     constexpr auto kLoDTensorId =
         framework::VarTypeTrait<framework::LoDTensor>::kId;
+    constexpr auto kSelectedRowsId =
+        framework::VarTypeTrait<framework::SelectedRows>::kId;
+    constexpr auto kFetchListId =
+        framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);
     valid_types_.insert(kLoDTensorId);
+    valid_types_.insert(kSelectedRowsId);
+    valid_types_.insert(kFetchListId);
   }
   // Collect the variables that are not Tensor or LoDTensor, and reset them to a
   // bool(trick), because some of them are containers, and some operators just

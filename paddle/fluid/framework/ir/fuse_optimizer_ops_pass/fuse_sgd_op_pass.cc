@@ -11,16 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <algorithm>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 class FuseSgdOpPass : public FuseOptimizerOpPass {
  private:
@@ -31,18 +35,21 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Sgd Ops
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
-    PADDLE_ENFORCE_GT(sgd_ops.size(), static_cast<size_t>(0));
+    PADDLE_ENFORCE_GT(
+        sgd_ops.size(), static_cast<size_t>(0),
+        platform::errors::InvalidArgument("SGD ops must not be empyt."));
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    int op_role = boost::get<int>(
+    int op_role = BOOST_GET_CONST(
+        int,
         sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    VLOG(7) << "Insert sgd to graph ";
+    VLOG(6) << "Insert sgd to graph.";
     // Add fused scale
     OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
     Sgd_desc.SetType("sgd");
@@ -56,15 +63,11 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     // NOTE: multi_devices_pass requires that every op should have a role.
     Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    auto sgd_node = graph->CreateOpNode(&Sgd_desc);
-
-    InserInputAndOutputForOptOps(sgd_ops, sgd_node);
+    return graph->CreateOpNode(&Sgd_desc);
   }
 };
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_sgd_op_pass, paddle::framework::ir::FuseSgdOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_sgd_op_pass, paddle::framework::ir::FuseSgdOpPass);

@@ -22,12 +22,19 @@ extern "C" {
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -66,10 +73,17 @@ class Scope {
 
   void EraseVars(const std::vector<std::string>& var_names);
 
+  // Erase all variables except the given `vars`
+  void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
+
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
+
+  // Get a variable in the scope or any of its ancestors. Enforce
+  /// the returned Variable is not nullptr
+  Variable* GetVar(const std::string& name) const;
 
   /// Find a variable in the current scope.
   /// Return nullptr if cannot find.
@@ -80,6 +94,9 @@ class Scope {
 
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
+
+  /// Find the scope or an ancestor scope that contains the given variable name.
+  const Scope* FindScope(const std::string& name) const;
 
   void DeleteScope(Scope* scope) const;
 
@@ -121,6 +138,9 @@ class Scope {
   // Called by FindScope.
   const Scope* FindScopeInternal(const Variable* var) const;
 
+  // Called by FindScope.
+  const Scope* FindScopeInternal(const std::string& name) const;
+
   // Called by Rename.
   void RenameInternal(const std::string& origin_name,
                       const std::string& new_name) const;
@@ -137,9 +157,12 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
   mutable RWLock kids_lock_;
   mutable RWLock vars_lock_;
+#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

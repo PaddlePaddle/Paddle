@@ -40,7 +40,7 @@ train_parameters = {
 }
 
 
-def optimizer_setting(params):
+def optimizer_setting(params, parameter_list=None):
     ls = params["learning_strategy"]
     if ls["name"] == "piecewise_decay":
         if "total_images" not in params:
@@ -54,14 +54,18 @@ def optimizer_setting(params):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        if fluid.in_dygraph_mode():
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01,
+                                            parameter_list=parameter_list)
+        else:
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
         #  optimizer = fluid.optimizer.Momentum(
-    #  learning_rate=params["lr"],
-    #  learning_rate=fluid.layers.piecewise_decay(
-    #  boundaries=bd, values=lr),
-    #  momentum=0.9,
-    #  regularization=fluid.regularizer.L2Decay(1e-4))
+        #  learning_rate=params["lr"],
+        #  learning_rate=fluid.layers.piecewise_decay(
+        #  boundaries=bd, values=lr),
+        #  momentum=0.9,
+        #  regularization=fluid.regularizer.L2Decay(1e-4))
 
     return optimizer
 
@@ -73,12 +77,13 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 10
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            resnet = ResNet("resnet")
-            optimizer = optimizer_setting(train_parameters)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+
+            resnet = ResNet()
+            optimizer = optimizer_setting(
+                train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
             import random
             random.seed = seed
@@ -114,12 +119,12 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                         if param.name not in dy_param_init_value:
                             dy_param_init_value[param.name] = param.numpy()
 
-                avg_loss.backward(backward_strategy)
+                avg_loss.backward()
 
                 dy_grad_value = {}
                 for param in resnet.parameters():
                     if param.trainable:
-                        np_array = np.array(param._ivar._grad_ivar().value()
+                        np_array = np.array(param._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
                         )] = np_array
@@ -132,13 +137,13 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            resnet = ResNet("resnet")
+            resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)

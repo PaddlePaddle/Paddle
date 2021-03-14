@@ -18,8 +18,8 @@
 #include <typeindex>
 #include <typeinfo>
 
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-
 namespace paddle {
 namespace framework {
 
@@ -30,11 +30,13 @@ class Variable {
     static_assert(
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
-    PADDLE_ENFORCE(holder_ != nullptr, "Variable must hold some thing");
-    PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
-                   "Variable must be type %s, the holding type is %s",
-                   ToTypeName(VarTypeTrait<T>::kId),
-                   ToTypeName(holder_->Type()));
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, platform::errors::NotFound("Variable is not initialized."));
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), VarTypeTrait<T>::kId,
+        platform::errors::InvalidArgument(
+            "The Variable type must be %s, but the type it holds is %s.",
+            ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -45,10 +47,11 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
-      PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
-                     "Variable must be type %s, the holding type is %s",
-                     ToTypeName(VarTypeTrait<T>::kId),
-                     ToTypeName(holder_->Type()));
+      PADDLE_ENFORCE_EQ(
+          holder_->Type(), VarTypeTrait<T>::kId,
+          platform::errors::InvalidArgument(
+              "The Variable type must be %s, but the type it holds is %s.",
+              ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     }
     return static_cast<T*>(holder_->Ptr());
   }
@@ -61,13 +64,23 @@ class Variable {
   void Clear() { holder_.reset(); }
 
   int Type() const {
-    PADDLE_ENFORCE(holder_ != nullptr, "Must hold memory");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, platform::errors::NotFound("Variable is not initialized."));
     return holder_->Type();
   }
 
  private:
+  // This method hides type T, so it doesn't appear as a template parameter of
+  // Variable.
+  framework::TensorInplaceVersion* InplaceVersionCounter();
+
+ public:
+  uint32_t CurrentInplaceVersion();
+  void BumpInplaceVersion();
+
+ private:
   struct Placeholder {
-    virtual ~Placeholder() = default;
+    virtual ~Placeholder() PADDLE_MAY_THROW {}
 
     inline int Type() const { return type_; }
     inline const void* Ptr() const { return ptr_; }
@@ -97,8 +110,48 @@ class Variable {
   };
 
   // pointers to a PlaceholderImpl object indeed.
-  std::unique_ptr<Placeholder> holder_;
+  std::shared_ptr<Placeholder> holder_;
 };
 
+inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
+  framework::TensorInplaceVersion* version_counter_ptr(nullptr);
+  if (IsType<framework::LoDTensor>()) {
+    version_counter_ptr =
+        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::Tensor>()) {
+    version_counter_ptr =
+        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
+
+  } else if (IsType<framework::SelectedRows>()) {
+    version_counter_ptr = &GetMutable<framework::SelectedRows>()
+                               ->mutable_value()
+                               ->InplaceVersionCounter();
+  } else {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
+  }
+  return version_counter_ptr;
+}
+
+inline uint32_t Variable::CurrentInplaceVersion() {
+  auto version_counter_ptr = InplaceVersionCounter();
+  if (version_counter_ptr) {
+    return version_counter_ptr->CurrentVersion();
+  } else {
+    return 0;
+  }
+}
+
+inline void Variable::BumpInplaceVersion() {
+  auto version_counter_ptr = InplaceVersionCounter();
+  if (version_counter_ptr) {
+    return version_counter_ptr->Bump();
+  } else {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
+  }
+}
 }  // namespace framework
 }  // namespace paddle

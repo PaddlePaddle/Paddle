@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils"""
+"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
 
 import os
 import sys
@@ -33,7 +33,7 @@ _logger = get_logger(
 
 
 class HDFSClient(object):
-    """
+    r"""
     A tool of HDFS 
 
     Args:
@@ -62,7 +62,7 @@ class HDFSClient(object):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
+        for k, v in configs.items():
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 
@@ -312,9 +312,9 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
         Args:
-            local_path: local path that wants to create a directiory.
+            local_path: local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)
@@ -376,7 +376,7 @@ class HDFSClient(object):
             _logger.info("HDFS list path: {} successfully".format(hdfs_path))
 
             ret_lines = []
-            regex = re.compile('\s+')
+            regex = re.compile(r'\s+')
             out_lines = output.strip().split("\n")
             for line in out_lines:
                 re_line = regex.split(line)
@@ -418,7 +418,7 @@ class HDFSClient(object):
             _logger.info("HDFS list all files: {} successfully".format(
                 hdfs_path))
             lines = []
-            regex = re.compile('\s+')
+            regex = re.compile(r'\s+')
             out_lines = output.strip().split("\n")
             for line in out_lines:
                 re_line = regex.split(line)

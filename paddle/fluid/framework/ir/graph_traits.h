@@ -15,6 +15,8 @@
 #pragma once
 
 #include <stack>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -23,6 +25,9 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 template <typename IteratorT>
 class iterator_range {
@@ -66,7 +71,7 @@ struct NodesDFSIterator
 struct NodesTSIterator
     : public std::iterator<std::forward_iterator_tag, Node *> {
   NodesTSIterator() = default;
-  NodesTSIterator(const std::vector<Node *> &source);
+  explicit NodesTSIterator(const std::vector<Node *> &source);
   NodesTSIterator(NodesTSIterator &&other)
       : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
     other.cursor_ = 0;
@@ -104,7 +109,10 @@ struct GraphTraits {
 
   static iterator_range<NodesTSIterator> TS(const Graph &g) {
     auto start_points = ExtractStartPoints(g);
-    PADDLE_ENFORCE(!start_points.empty());
+    PADDLE_ENFORCE_EQ(
+        start_points.empty(), false,
+        platform::errors::InvalidArgument(
+            "Start points of topological sorting should not be empty!"));
     NodesTSIterator x(start_points);
     return iterator_range<NodesTSIterator>(NodesTSIterator(start_points),
                                            NodesTSIterator());

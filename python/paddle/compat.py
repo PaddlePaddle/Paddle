@@ -35,7 +35,8 @@ else:
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a literal string without any encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to literal string.
@@ -53,6 +54,17 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_text(data)
+            # paddlepaddle
+
     """
     if obj is None:
         return obj
@@ -72,6 +84,18 @@ def to_text(obj, encoding='utf-8', inplace=False):
             return obj
         else:
             return set([_to_text(item, encoding) for item in obj])
+    elif isinstance(obj, dict):
+        if inplace:
+            new_obj = {}
+            for key, value in six.iteritems(obj):
+                new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
+            obj.update(new_obj)
+            return obj
+        else:
+            new_obj = {}
+            for key, value in six.iteritems(obj):
+                new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
+            return new_obj
     else:
         return _to_text(obj, encoding)
 
@@ -99,13 +123,16 @@ def _to_text(obj, encoding):
         return obj.decode(encoding)
     elif isinstance(obj, six.text_type):
         return obj
+    elif isinstance(obj, (bool, float)):
+        return obj
     else:
         return six.u(obj)
 
 
 def to_bytes(obj, encoding='utf-8', inplace=False):
     """
-      All string in PaddlePaddle should be represented as a literal string.
+    All string in PaddlePaddle should be represented as a literal string.
+    
     This function will convert object to a bytes with specific encoding.
     Especially, if the object type is a list or set container, we will iterate
     all items in the object and convert them to bytes.
@@ -124,6 +151,17 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
     Returns:
         Decoded result of obj
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data = "paddlepaddle"
+            data = paddle.compat.to_bytes(data)
+            # b'paddlepaddle'
+
     """
     if obj is None:
         return obj
@@ -188,7 +226,7 @@ def round(x, d=0):
     """
     if six.PY3:
         # The official walkaround of round in Python3 is incorrect
-        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        # we implement according this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
             p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p

@@ -16,7 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#else
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -35,7 +39,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(X->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -45,15 +49,26 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);
   }
+#ifdef PADDLE_WITH_HIP
+  miopenTensorDescriptor_t cudnn_x_desc =
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  miopenTensorDescriptor_t cudnn_y_desc =
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxForward(
+      context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_x_desc,
+      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
+      Y->mutable_data<T>(context.GetPlace())));
+#else
   cudnnTensorDescriptor_t cudnn_x_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
+#endif
 }
 
 template <typename T>
@@ -64,7 +79,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(Y->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -74,26 +89,44 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);
   }
+#ifdef PADDLE_WITH_HIP
+  miopenTensorDescriptor_t cudnn_y_desc =
+      yDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  miopenTensorDescriptor_t cudnn_xgrad_desc =
+      dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  miopenTensorDescriptor_t cudnn_ygrad_desc =
+      dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSoftmaxBackward(
+      context.cudnn_handle(), CudnnDataType<T>::kOne(), cudnn_y_desc,
+      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
+      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
+      XGrad->mutable_data<T>(context.GetPlace())));
+#else
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_xgrad_desc =
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
       CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
       XGrad->mutable_data<T>(context.GetPlace())));
+#endif
 }
 
-template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxCUDNNFunctor<float>;
-template class SoftmaxCUDNNFunctor<double>;
+template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxGradCUDNNFunctor<float>;
-template class SoftmaxGradCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<platform::float16>;
+
+// MIOPEN do not support double
+#ifndef PADDLE_WITH_HIP
+template class SoftmaxCUDNNFunctor<double>;
+template class SoftmaxGradCUDNNFunctor<double>;
+#endif
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
                               false>;

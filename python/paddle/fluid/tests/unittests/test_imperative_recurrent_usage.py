@@ -47,6 +47,8 @@ class TestRecurrentFeed(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             original_in1 = to_variable(original_np1)
             original_in2 = to_variable(original_np2)
+            original_in1.stop_gradient = False
+            original_in2.stop_gradient = False
             rt = RecurrentTest("RecurrentTest")
 
             for i in range(3):
@@ -55,6 +57,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 sum_out_value = sum_out.numpy()
                 sum_out.backward()
                 dyout = out.gradient()
+                original_in1.stop_gradient = True
                 rt.clear_gradients()
 
         with new_program_scope():

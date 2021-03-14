@@ -14,6 +14,7 @@ about: 您可以提问训练中报错、应用、出core等问题。 You could u
     2）CPU：预测若用CPU，请提供CPU型号，MKL/OpenBlas/MKLDNN/等数学库使用情况
     3）GPU：预测若用GPU，请提供GPU型号、CUDA和CUDNN版本号
     4）系统环境：请您描述系统类型、版本，例如Mac OS 10.14，Python版本
+ 注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 - 训练信息
     1）单机/多机，单卡/多卡
     2）显存信息
@@ -31,6 +32,7 @@ If there is no solution,please make sure that this is a training issue including
 -OS Platform (eg.Mac OS 10.14)
 -Other imformation: Distriuted training/informantion of operator/
 Graphics card storage
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

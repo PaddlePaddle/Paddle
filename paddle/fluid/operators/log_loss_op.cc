@@ -23,25 +23,37 @@ class LogLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predicted"),
-                   "Input(Predicted) must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) must be initialized.");
+    OP_INOUT_CHECK(ctx->HasInput("Predicted"), "Input", "Predicted", "LogLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "LogLoss");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
 
     if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
                              framework::product(label_dims) > 0)) {
-      PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+      PADDLE_ENFORCE_EQ(
+          pred_dims, label_dims,
+          platform::errors::InvalidArgument(
+              "The dimensions of Input(Predicted) must be equal to the"
+              "dimensions of Input(Labels), but received dimensions of "
+              "Input(Predicted)"
+              "is [%s], received dimensions of Input(Labels) is [%s].",
+              pred_dims, label_dims));
     }
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
-                      "The rank of Input(Predicted) must be 2 and the shape is "
-                      "[batch_size, 1].");
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(Predicted) must be 2,"
+                          "But received dimensions of Input(Predicted)"
+                          "is [%d]",
+                          pred_dims.size()));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(pred_dims[1], 1,
-                        "Each row of Input(Predicted) contains a real value, "
-                        "so the 2nd dimension of Input(X) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          pred_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "Each row of Input(Predicted) contains a real value, "
+              "so the 2nd dimension of Input(X) must be 1,"
+              "But got [%d]",
+              pred_dims[1]));
     }
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Predicted", "Loss");
@@ -87,38 +99,45 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predicted"),
-                   "Input(Predicted) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Predicted")),
-                   "Output(Predicted@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Predicted"), "Input", "Predicted",
+                   "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   framework::GradVarName("Loss"), "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Predicted")),
+                   "Output", framework::GradVarName("Predicted"),
+                   "LogLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
+    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of loss_grad must be equal to the "
+                          "dimensions of Predicted,"
+                          "But received dimensions of loss_grad is [%s], "
+                          "received Predicted is "
+                          "[%s]",
+                          loss_grad_dims, pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Predicted");
     ctx->SetOutputDim(pred_grad_name, pred_dims);
   }
 };
 
-class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LogLossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("log_loss_grad");
-    op->SetInput("Predicted", Input("Predicted"));
-    op->SetInput("Labels", Input("Labels"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    op->SetOutput(framework::GradVarName("Predicted"), InputGrad("Predicted"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Predicted", this->Input("Predicted"));
+    op->SetInput("Labels", this->Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Predicted"),
+                  this->InputGrad("Predicted"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -127,7 +146,8 @@ class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
-                  ops::LogLossGradDescMaker);
+                  ops::LogLossGradMaker<paddle::framework::OpDesc>,
+                  ops::LogLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);

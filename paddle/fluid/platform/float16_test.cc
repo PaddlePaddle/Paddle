@@ -10,12 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
-#include <vector>
-
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -144,7 +142,9 @@ TEST(float16, lod_tensor_cpu) {
 
 TEST(float16, floating) {
   // compile time assert.
-  PADDLE_ASSERT(std::is_floating_point<float16>::value);
+  PADDLE_ENFORCE_EQ(
+      std::is_floating_point<float16>::value, true,
+      platform::errors::Unavailable("The float16 support in CPU failed."));
 }
 
 TEST(float16, print) {

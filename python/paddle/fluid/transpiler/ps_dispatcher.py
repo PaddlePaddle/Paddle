@@ -19,7 +19,7 @@ class PSDispatcher(object):
     """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.
-    You need to implement the `dispatch` inferface.
+    You need to implement the `dispatch` interface.
     """
 
     def __init__(self, pserver_endpoints):
@@ -31,6 +31,9 @@ class PSDispatcher(object):
         return self._eps
 
     def reset(self):
+        """
+        reset the step counter, set it zero.
+        """
         self._step = 0
 
     def dispatch(self, varlist):
@@ -45,6 +48,8 @@ class PSDispatcher(object):
 
 class HashName(PSDispatcher):
     """
+	:api_attr: Static Graph
+
     Hash variable names to several endpoints using python
     "hash()" function.
 
@@ -69,6 +74,12 @@ class HashName(PSDispatcher):
         return hash(block_str) % total
 
     def dispatch(self, varlist):
+        """
+        use `HashName` method to dispatch variables with each parameter server.
+        Args:
+            varlist (list): a list of Variables
+
+        """
         eplist = []
         for var in varlist:
             server_id = self._hash_block(var.name(), len(self._eps))
@@ -79,7 +90,9 @@ class HashName(PSDispatcher):
 
 class RoundRobin(PSDispatcher):
     """
-    Distribute variables to serveral endpoints using
+	:api_attr: Static Graph
+
+    Distribute variables to several endpoints using
     RondRobin<https://en.wikipedia.org/wiki/Round-robin_scheduling> method.
 
     Args:
@@ -100,6 +113,12 @@ class RoundRobin(PSDispatcher):
         super(self.__class__, self).__init__(pserver_endpoints)
 
     def dispatch(self, varlist):
+        """
+        use `RoundRobin` method to dispatch variables with each parameter server.
+        Args:
+            varlist (list): a list of Variables
+
+        """
         eplist = []
         for var in varlist:
             server_for_param = self._eps[self._step]

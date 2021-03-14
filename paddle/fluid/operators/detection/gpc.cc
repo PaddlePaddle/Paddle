@@ -532,6 +532,8 @@ static int count_contours(polygon_node *polygon) {
 }
 
 static void add_left(polygon_node *p, double x, double y) {
+  PADDLE_ENFORCE_NOT_NULL(p, paddle::platform::errors::InvalidArgument(
+                                 "Input polygon node is nullptr."));
   vertex_node *nv = NULL;
 
   /* Create a new vertex node and set its fields */
@@ -587,6 +589,8 @@ static void add_right(polygon_node *p, double x, double y) {
 }
 
 static void merge_right(polygon_node *p, polygon_node *q, polygon_node *list) {
+  PADDLE_ENFORCE_NOT_NULL(p, paddle::platform::errors::InvalidArgument(
+                                 "Input polygon node is nullptr."));
   polygon_node *target = NULL;
 
   /* Label contour as external */
@@ -662,6 +666,8 @@ void add_vertex(vertex_node **t, double x, double y) {
 }
 
 void gpc_vertex_create(edge_node *e, int p, int s, double x, double y) {
+  PADDLE_ENFORCE_NOT_NULL(e, paddle::platform::errors::InvalidArgument(
+                                 "Input edge node is nullptr."));
   add_vertex(&(e->outp[p]->v[s]), x, y);
   e->outp[p]->active++;
 }
@@ -690,7 +696,8 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
 
   gpc_malloc<bbox>(box, p->num_contours * sizeof(bbox),
                    const_cast<char *>("Bounding box creation"));
-  PADDLE_ENFORCE_NOT_NULL(box);
+  PADDLE_ENFORCE_NOT_NULL(box, paddle::platform::errors::ResourceExhausted(
+                                   "Failed to malloc box memory."));
 
   /* Construct contour bounding boxes */
   for (c = 0; c < p->num_contours; c++) {
@@ -854,7 +861,9 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   /* Create an extended hole array */
   gpc_malloc<int>(extended_hole, (p->num_contours + 1) * sizeof(int),
                   const_cast<char *>("contour hole addition"));
-  PADDLE_ENFORCE_NOT_NULL(extended_hole);
+  PADDLE_ENFORCE_NOT_NULL(extended_hole,
+                          paddle::platform::errors::ResourceExhausted(
+                              "Failed to malloc extended hole memory."));
 
   /* Create an extended contour array */
   gpc_malloc<gpc_vertex_list>(extended_contour,
@@ -972,7 +981,9 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   /* Build scanbeam table from scanbeam tree */
   gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
                      const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt);
+  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
+                                   "Failed to malloc scanbeam table memory."));
+
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
   free_sbtree(&sbtree);
@@ -1014,6 +1025,9 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e0 = aet;
     e1 = aet;
     /* Set up bundle fields of first edge */
+    PADDLE_ENFORCE_NOT_NULL(aet, paddle::platform::errors::InvalidArgument(
+                                     "Edge node AET is nullptr."));
+
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;
@@ -1608,7 +1622,8 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   /* Build scanbeam table from scanbeam tree */
   gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
                      const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt);
+  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
+                                   "Failed to malloc scanbeam table memory."));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;
   free_sbtree(&sbtree);
@@ -1646,6 +1661,8 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
     e1 = aet;
 
     /* Set up bundle fields of first edge */
+    PADDLE_ENFORCE_NOT_NULL(aet, paddle::platform::errors::InvalidArgument(
+                                     "Edge node AET is nullptr."));
     aet->bundle[ABOVE][aet->type] = (aet->top.y != yb);
     aet->bundle[ABOVE][!aet->type] = 0;
     aet->bstate[ABOVE] = UNBUNDLED;
@@ -1782,7 +1799,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
                 }
                 new_tristrip(&tlist, cf, cf->xb, yb);
               }
-              edge->outp[ABOVE] = cf->outp[ABOVE];
+              if (cf) edge->outp[ABOVE] = cf->outp[ABOVE];
               gpc_vertex_create(edge, ABOVE, RIGHT, xb, yb);
               break;
             case ILI:

@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
+
 template <typename DeviceContext, typename T>
 inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
                          const framework::Tensor& in, framework::Tensor* out,
@@ -51,7 +53,9 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
       trans6(dev_ctx, in, out, axis);
       break;
     default:
-      PADDLE_THROW("Tensors with rank at most 6 are supported");
+      // for dim >= 7 situation
+      math::TransposeNormal<DeviceContext, T> trans_normal;
+      trans_normal(dev_ctx, in, out, axis);
   }
 }
 
@@ -59,14 +63,23 @@ template <typename DeviceContext, typename T>
 class TransposeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+    auto* x = context.InputVar("X");
+    auto* out = context.OutputVar("Out");
+
+    const framework::Tensor* x_tensor =
+        GetLoDTensorOrSelectedRowsValueFromVar(*x);
+    framework::Tensor* out_tensor =
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(out);
+
+    out_tensor->mutable_data<T>(context.GetPlace());
+    if (out_tensor->numel() == 0) {
+      return;
+    }
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *x, out, axis);
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, *x_tensor, out_tensor, axis);
   }
 };
 
@@ -74,13 +87,22 @@ template <typename DeviceContext, typename T>
 class TransposeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (!x_grad) return;
+    auto* out_grad = context.InputVar(framework::GradVarName("Out"));
+    auto* x_grad = context.OutputVar(framework::GradVarName("X"));
 
-    x_grad->mutable_data<T>(context.GetPlace());
+    if (!x_grad) {
+      return;
+    }
+    const framework::Tensor* out_grad_tensor =
+        GetLoDTensorOrSelectedRowsValueFromVar(*out_grad);
+    framework::Tensor* x_grad_tensor =
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(x_grad);
+
+    x_grad_tensor->mutable_data<T>(context.GetPlace());
+    if (x_grad_tensor->numel() == 0) {
+      return;
+    }
+
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     std::vector<int> reversed_axis(axis);
 
@@ -90,8 +112,8 @@ class TransposeGradKernel : public framework::OpKernel<T> {
 
     int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad, x_grad,
-                                   reversed_axis);
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad_tensor,
+                                   x_grad_tensor, reversed_axis);
   }
 };
 

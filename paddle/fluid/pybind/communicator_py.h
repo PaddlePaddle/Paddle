@@ -16,12 +16,18 @@ limitations under the License. */
 
 #include <Python.h>
 
+#include "pybind11/chrono.h"
+#include "pybind11/complex.h"
+#include "pybind11/functional.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
 namespace paddle {
 namespace pybind {
 
 void BindCommunicator(pybind11::module* m);
+void BindCommunicatorContext(pybind11::module* m);
+void BindLargeScaleKV(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

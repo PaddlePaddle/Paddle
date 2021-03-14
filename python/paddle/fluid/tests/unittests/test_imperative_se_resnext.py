@@ -21,9 +21,12 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+
+if fluid.is_compiled_with_cuda():
+    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 batch_size = 8
 train_parameters = {
@@ -42,7 +45,7 @@ train_parameters = {
 }
 
 
-def optimizer_setting(params):
+def optimizer_setting(params, parameter_list=None):
     ls = params["learning_strategy"]
     if ls["name"] == "piecewise_decay":
         if "total_images" not in params:
@@ -56,23 +59,27 @@ def optimizer_setting(params):
         #bd = [step * e for e in ls["epochs"]]
         #base_lr = params["lr"]
         #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        if fluid.in_dygraph_mode():
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01,
+                                            parameter_list=parameter_list)
+        else:
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
     return optimizer
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  groups=1,
                  act=None):
-        super(ConvBNLayer, self).__init__(name_scope)
+        super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -81,7 +88,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             act=None,
             bias_attr=None)
 
-        self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
+        self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -91,26 +98,27 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 
 class SqueezeExcitation(fluid.dygraph.Layer):
-    def __init__(self, name_scope, num_channels, reduction_ratio):
+    def __init__(self, num_channels, reduction_ratio):
 
-        super(SqueezeExcitation, self).__init__(name_scope)
-        self._pool = Pool2D(
-            self.full_name(), pool_size=0, pool_type='avg', global_pooling=True)
-        self._squeeze = FC(
-            self.full_name(),
-            size=num_channels // reduction_ratio,
+        super(SqueezeExcitation, self).__init__()
+        self._num_channels = num_channels
+        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
+        self._squeeze = Linear(
+            num_channels,
+            num_channels // reduction_ratio,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
             act='relu')
-        self._excitation = FC(
-            self.full_name(),
-            size=num_channels,
+        self._excitation = Linear(
+            num_channels // reduction_ratio,
+            num_channels,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
             act='sigmoid')
 
     def forward(self, input):
         y = self._pool(input)
+        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
         y = self._excitation(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
@@ -119,37 +127,34 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
 class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  num_channels,
                  num_filters,
                  stride,
                  cardinality,
                  reduction_ratio,
                  shortcut=True):
-        super(BottleneckBlock, self).__init__(name_scope)
+        super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
-            self.full_name(), num_filters=num_filters, filter_size=1)
+            num_channels=num_channels, num_filters=num_filters, filter_size=1)
         self.conv1 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             groups=cardinality)
         self.conv2 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act='relu')
 
         self.scale = SqueezeExcitation(
-            self.full_name(),
-            num_channels=num_filters * 4,
-            reduction_ratio=reduction_ratio)
+            num_channels=num_filters * 4, reduction_ratio=reduction_ratio)
 
         if not shortcut:
             self.short = ConvBNLayer(
-                self.full_name(),
+                num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride)
@@ -177,8 +182,8 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class SeResNeXt(fluid.dygraph.Layer):
-    def __init__(self, name_scope, layers=50, class_dim=102):
-        super(SeResNeXt, self).__init__(name_scope)
+    def __init__(self, layers=50, class_dim=102):
+        super(SeResNeXt, self).__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -191,73 +196,62 @@ class SeResNeXt(fluid.dygraph.Layer):
             depth = [3, 4, 6, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
+                num_channels=3,
                 num_filters=64,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
             depth = [3, 4, 23, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
-                num_filters=3,
+                num_channels=3,
+                num_filters=64,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
             depth = [3, 8, 36, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
-                num_filters=3,
-                filter_size=7,
+                num_channels=3,
+                num_filters=64,
+                filter_size=3,
                 stride=2,
                 act='relu')
             self.conv1 = ConvBNLayer(
-                self.full_name(),
-                num_filters=3,
-                filter_size=7,
+                num_channels=64,
+                num_filters=64,
+                filter_size=3,
                 stride=2,
                 act='relu')
             self.conv2 = ConvBNLayer(
-                self.full_name(),
-                num_filters=3,
-                filter_size=7,
-                stride=2,
+                num_channels=64,
+                num_filters=128,
+                filter_size=3,
+                stride=1,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
         num_channels = 64
+        if layers == 152:
+            num_channels = 128
         for block in range(len(depth)):
             shortcut = False
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
-                        self.full_name(),
                         num_channels=num_channels,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
@@ -269,15 +263,18 @@ class SeResNeXt(fluid.dygraph.Layer):
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
+            pool_size=7, pool_type='avg', global_pooling=True)
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = FC(self.full_name(),
-                      size=class_dim,
-                      act='softmax',
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.Uniform(-stdv, stdv)))
+        self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
+
+        self.out = Linear(
+            self.pool2d_avg_output,
+            class_dim,
+            act='softmax',
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         if self.layers == 50 or self.layers == 101:
@@ -285,14 +282,14 @@ class SeResNeXt(fluid.dygraph.Layer):
             y = self.pool(y)
         elif self.layers == 152:
             y = self.conv0(inputs)
-            y = self.conv1(inputs)
-            y = self.conv2(inputs)
+            y = self.conv1(y)
+            y = self.conv2(y)
             y = self.pool(y)
 
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.2)
+        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 
@@ -314,14 +311,13 @@ class TestImperativeResneXt(unittest.TestCase):
         batch_num = 1
         epoch_num = 1
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
-            se_resnext = SeResNeXt("se_resnext")
-            optimizer = optimizer_setting(train_parameters)
+            se_resnext = SeResNeXt()
+            optimizer = optimizer_setting(
+                train_parameters, parameter_list=se_resnext.parameters())
             np.random.seed(seed)
-            import random
-            random.seed = seed
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -347,7 +343,9 @@ class TestImperativeResneXt(unittest.TestCase):
                     label.stop_gradient = True
 
                     out = se_resnext(img)
-                    loss = fluid.layers.cross_entropy(input=out, label=label)
+                    softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                    loss = fluid.layers.cross_entropy(
+                        input=softmax_out, label=label)
                     avg_loss = fluid.layers.mean(x=loss)
 
                     dy_out = avg_loss.numpy()
@@ -358,12 +356,13 @@ class TestImperativeResneXt(unittest.TestCase):
                                 dy_param_init_value[param.name] = param.numpy()
                     avg_loss.backward()
 
-                    #dy_grad_value = {}
-                    #for param in se_resnext.parameters():
-                    #    if param.trainable:
-                    #        np_array = np.array(param._ivar._grad_ivar().value()
-                    #                            .get_tensor())
-                    #        dy_grad_value[param.name + core.grad_var_suffix()] = np_array
+                    dy_grad_value = {}
+                    for param in se_resnext.parameters():
+                        if param.trainable:
+                            np_array = np.array(param._grad_ivar().value()
+                                                .get_tensor())
+                            dy_grad_value[param.name + core.grad_var_suffix(
+                            )] = np_array
 
                     optimizer.minimize(avg_loss)
                     se_resnext.clear_gradients()
@@ -373,18 +372,16 @@ class TestImperativeResneXt(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            se_resnext = SeResNeXt("se_resnext")
+            se_resnext = SeResNeXt()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
-            import random
-            random.seed = seed
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size,
@@ -394,7 +391,8 @@ class TestImperativeResneXt(unittest.TestCase):
                 name='pixel', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+            loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
             avg_loss = fluid.layers.mean(x=loss)
             optimizer.minimize(avg_loss)
 
@@ -450,7 +448,10 @@ class TestImperativeResneXt(unittest.TestCase):
                                    len(static_grad_name_list) + grad_start_pos):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
-        self.assertTrue(np.allclose(static_out, dy_out))
+
+        self.assertTrue(
+            np.allclose(static_out, dy_out),
+            "\nstatic_out: {}\ndy_out: {}".format(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
@@ -458,19 +459,27 @@ class TestImperativeResneXt(unittest.TestCase):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-        # FIXME(Yancey1989): np.array(_ivar.value().get_tensor()) leads to memory lake
-        #self.assertEqual(len(dy_grad_value), len(static_grad_value))
-        #for key, value in six.iteritems(static_grad_value):
-        #    self.assertTrue(np.allclose(value, dy_grad_value[key]))
-        #    self.assertTrue(np.isfinite(value.all()))
-        #    self.assertFalse(np.isnan(value.any()))
+
+        self.assertEqual(len(dy_grad_value), len(static_grad_value))
+
+        for key, value in six.iteritems(static_grad_value):
+            self.assertTrue(
+                np.allclose(value, dy_grad_value[key]),
+                "\nstatic_grad_value: {}\ndy_grad_value: {}".format(
+                    value, dy_grad_value[key]))
+            self.assertTrue(np.isfinite(value.all()))
+            self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+            self.assertTrue(
+                np.allclose(value, dy_param_value[key]),
+                "\nstatic_param_value: {}\ndy_param_value: {}".format(
+                    value, dy_param_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

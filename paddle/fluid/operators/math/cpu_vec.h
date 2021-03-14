@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cmath>
 #include <functional>
 #include <string>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -160,7 +161,7 @@ inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
   end = n & ~(block - 1);
   __m256 tmp = _mm256_setzero_ps();
   for (i = 0; i < end; i += block) {
-    tmp = _mm256_add_ps(tmp, _mm256_load_ps(x + i));
+    tmp = _mm256_add_ps(tmp, _mm256_loadu_ps(x + i));
   }
 
   __m256 hsum = _mm256_hadd_ps(tmp, tmp);
@@ -621,7 +622,10 @@ class VecActivations {
     } else if (type == "identity" || type == "") {
       return vec_identity<T, isa>;
     }
-    PADDLE_THROW("Not support type: %s", type);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected type should be one of sigmod, relu, tanh, identity. But got "
+        "not support type: %s.",
+        type));
   }
 };
 

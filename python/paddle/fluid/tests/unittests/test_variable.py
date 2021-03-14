@@ -44,12 +44,14 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         self.assertRaises(ValueError,
@@ -181,6 +183,51 @@ class TestVariable(unittest.TestCase):
 
         with fluid.program_guard(default_main_program()):
             self._tostring()
+
+    def test_fake_interface_only_api(self):
+        b = default_main_program().current_block()
+        var = b.create_var(dtype="float64", lod_level=0)
+        with fluid.dygraph.guard():
+            self.assertRaises(AssertionError, var.detach)
+            self.assertRaises(AssertionError, var.numpy)
+            self.assertRaises(AssertionError, var.set_value, None)
+            self.assertRaises(AssertionError, var.backward)
+            self.assertRaises(AssertionError, var.gradient)
+            self.assertRaises(AssertionError, var.clear_gradient)
+
+    def test_variable_in_dygraph_mode(self):
+        b = default_main_program().current_block()
+        var = b.create_var(dtype="float64", shape=[1, 1])
+        with fluid.dygraph.guard():
+            self.assertTrue(var.to_string(True).startswith('name:'))
+
+            self.assertFalse(var.persistable)
+            var.persistable = True
+            self.assertTrue(var.persistable)
+
+            self.assertFalse(var.stop_gradient)
+            var.stop_gradient = True
+            self.assertTrue(var.stop_gradient)
+
+            self.assertTrue(var.name.startswith('_generated_var_'))
+            self.assertEqual(var.shape, (1, 1))
+            self.assertEqual(var.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(var.type, fluid.core.VarDesc.VarType.LOD_TENSOR)
+
+    def test_create_selected_rows(self):
+        b = default_main_program().current_block()
+
+        var = b.create_var(
+            name="var",
+            shape=[1, 1],
+            dtype="float32",
+            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            persistable=True)
+
+        def _test():
+            var.lod_level()
+
+        self.assertRaises(Exception, _test)
 
 
 if __name__ == '__main__':

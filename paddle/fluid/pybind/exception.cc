@@ -17,6 +17,21 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+/* Paddle Exception mapping rules:
+ *   - InvalidArgumentError -> ValueError
+ *   - NotFoundError -> RuntimeError
+ *   - OutOfRangeError -> IndexError
+ *   - AlreadyExistsError -> RuntimeError
+ *   - ResourceExhaustedError -> MemoryError
+ *   - PreconditionNotMetError -> RuntimeError
+ *   - PermissionDeniedError -> RuntimeError
+ *   - ExecutionTimeoutError -> RuntimeError
+ *   - UnimplementedError -> NotImplementedError
+ *   - UnavailableError -> RuntimeError
+ *   - FatalError -> SystemError
+ *   - ExternalError -> OSError
+ */
+
 void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
   static pybind11::exception<platform::EnforceNotMet> exc(*m, "EnforceNotMet");
@@ -26,12 +41,44 @@ void BindException(pybind11::module* m) {
     } catch (const platform::EOFException& e) {
       eof(e.what());
     } catch (const platform::EnforceNotMet& e) {
-      exc(e.what());
+      switch (e.code()) {
+        case paddle::platform::error::INVALID_ARGUMENT:
+          PyErr_SetString(PyExc_ValueError, e.what());
+          break;
+        case paddle::platform::error::NOT_FOUND:
+        case paddle::platform::error::ALREADY_EXISTS:
+        case paddle::platform::error::PRECONDITION_NOT_MET:
+        case paddle::platform::error::PERMISSION_DENIED:
+        case paddle::platform::error::EXECUTION_TIMEOUT:
+        case paddle::platform::error::UNAVAILABLE:
+          PyErr_SetString(PyExc_RuntimeError, e.what());
+          break;
+        case paddle::platform::error::OUT_OF_RANGE:
+          PyErr_SetString(PyExc_IndexError, e.what());
+          break;
+        case paddle::platform::error::RESOURCE_EXHAUSTED:
+          PyErr_SetString(PyExc_MemoryError, e.what());
+          break;
+        case paddle::platform::error::UNIMPLEMENTED:
+          PyErr_SetString(PyExc_NotImplementedError, e.what());
+          break;
+        case paddle::platform::error::FATAL:
+          PyErr_SetString(PyExc_SystemError, e.what());
+          break;
+        case paddle::platform::error::EXTERNAL:
+          PyErr_SetString(PyExc_OSError, e.what());
+          break;
+        default:
+          exc(e.what());
+          break;
+      }
     }
   });
 
-  m->def("__unittest_throw_exception__",
-         [] { PADDLE_THROW("test exception"); });
+  m->def("__unittest_throw_exception__", [] {
+    PADDLE_THROW(
+        platform::errors::PermissionDenied("This is a test of exception"));
+  });
 }
 
 }  // namespace pybind

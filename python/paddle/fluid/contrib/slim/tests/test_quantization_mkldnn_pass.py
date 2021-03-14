@@ -22,9 +22,10 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
+from paddle.fluid.contrib.slim.quantization import QuantInt8MkldnnPass
 from paddle.fluid import core
 
+paddle.enable_static()
 os.environ["CPU_NUM"] = "1"
 
 
@@ -55,9 +56,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
             'depthwise_conv2d': ['Input', 'Filter'],
-            # Mul int8 op is under internal test
-            # TODO Update this when mul op is merged
-            #'mul': ['X', 'Y']
+            'mul': ['X', 'Y']
         }
 
     def check_program(self, program):
@@ -92,6 +91,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                                   seed,
                                   activation_quant_type,
                                   weight_quant_type='abs_max',
+                                  quant_perf=False,
                                   for_ci=False):
         random.seed(0)
         np.random.seed(0)
@@ -110,7 +110,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup)
-        # Apply the QAT QuantizationTransformPass
+        # Apply the QuantizationTransformPass
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
@@ -150,7 +150,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         freeze_pass.apply(test_graph)
 
         # Transform quantized graph for MKL-DNN INT8 inference
-        mkldnn_int8_pass = TransformForMkldnnPass(scope=scope, place=place)
+        mkldnn_int8_pass = QuantInt8MkldnnPass(_scope=scope, _place=place)
         mkldnn_int8_pass.apply(test_graph)
         dev_name = '_cpu_'
         if not for_ci:
@@ -162,11 +162,15 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                             activation_quant_type + '_' + weight_quant_type,
                             marked_nodes)
         mkldnn_program = test_graph.to_program()
-        w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
-        # Check if weights are still integer
-        self.assertFalse(self.isinteger(np.sum(w_mkldnn)))
 
-        # Check if the conv2d output is rightly linked to fake_dequantize's 
+        # Check the transformation weights of conv2d and mul
+        conv_w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
+        mul_w_mkldnn = np.array(scope.find_var('fc_0.w_0').get_tensor())
+        # Check if weights are still integer
+        self.assertFalse(self.isinteger(np.sum(conv_w_mkldnn)))
+        self.assertFalse(self.isinteger(np.sum(mul_w_mkldnn)))
+
+        # Check if the conv2d output and mul output are correctly linked to fake_dequantize's
         # output
         self.check_program(mkldnn_program)
         if not for_ci:

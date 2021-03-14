@@ -12,11 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
 
 #include "paddle/fluid/operators/distributed/communicator.h"
 
@@ -47,7 +43,7 @@ TEST(communicator, merge_lod_tensors) {
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_tensor = scope->FindVar(out_name)->Get<LoDTensor>();
   auto *out_data = out_tensor.data<float>();
@@ -75,7 +71,7 @@ TEST(communicator, merge_selected_rows) {
     auto dims =
         framework::make_ddim({static_cast<int64_t>(rows.size()), width});
     auto *data = slr->mutable_value()->mutable_data<float>(dims, cpu_place);
-    for (auto i = 0; i < rows.size(); ++i) {
+    for (size_t i = 0; i < rows.size(); ++i) {
       for (auto j = 0; j < width; ++j) {
         data[i * width + j] = static_cast<float>(rows[i]);
       }
@@ -86,7 +82,7 @@ TEST(communicator, merge_selected_rows) {
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_slr = scope->FindVar(out_name)->Get<SelectedRows>();
   auto &out_t = out_slr.value();
@@ -97,8 +93,8 @@ TEST(communicator, merge_selected_rows) {
   for (auto i = 0; i < 10; ++i) {
     out_values.push_back(static_cast<float>(i * (10 - i)));
   }
-  for (auto i = 0; i < out_slr.rows().size(); ++i) {
-    ASSERT_EQ(out_slr.rows()[i], i);
+  for (size_t i = 0; i < out_slr.rows().size(); ++i) {
+    ASSERT_EQ(out_slr.rows()[i], static_cast<int>(i));
     for (auto j = 0; j < width; ++j) {
       ASSERT_EQ(out_data[i * width + j], out_values[i]);
     }

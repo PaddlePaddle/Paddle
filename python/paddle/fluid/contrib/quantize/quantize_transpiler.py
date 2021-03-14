@@ -25,7 +25,6 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.nn import autoincreased_step_counter
 from paddle.fluid.framework import Variable
 from paddle.fluid.executor import global_scope
-from paddle.fluid.transpiler.inference_transpiler import InferenceTranspiler
 
 __all__ = ['QuantizeTranspiler']
 
@@ -148,7 +147,7 @@ class QuantizeTranspiler(object):
         """Rewrites a training input program in place for simulated
         quantization. Insert fake quantization and de-quantization ops into
         program to simulate the error introduced by quantization. And change
-        the graident ops' input by using the faked quantization weights and
+        the gradient ops' input by using the faked quantization weights and
         activation. Since the program is transformed in place, the graph
         connection will change.
 
@@ -221,7 +220,7 @@ class QuantizeTranspiler(object):
             self.activation_quantize_type == 'range_abs_max':
             self.global_step = autoincreased_step_counter()
 
-    def freeze_program(self, program, place, fuse_bn=False, scope=None):
+    def freeze_program(self, program, place, scope=None):
         """Freeze input training program for inference.
 
         Args:
@@ -231,10 +230,6 @@ class QuantizeTranspiler(object):
         self.is_test = True
         scope = global_scope() if scope is None else scope
         program = default_main_program() if program is None else program
-
-        if fuse_bn:
-            bn_fuse_transpiler = BNFuseTranspiler()
-            bn_fuse_transpiler.transpile(program, place)
 
         persistable_vars = [
             v.name
@@ -564,58 +559,3 @@ class QuantizeTranspiler(object):
                     'Scale': scale},
             outputs={"Out": dequant_var})
         return dequant_var
-
-
-class BNFuseTranspiler(InferenceTranspiler):
-    def _fuse_param(self, current_op, bn_op, bias_op, with_bias):
-        def _update_param(op, param_name, new_param):
-            var = self.block.vars[param_name]
-            tensor = self.scope.find_var(param_name).get_tensor()
-            tensor.set(np.array(new_param), self.place)
-
-        def _load_param(param_name):
-            return np.array(self.scope.find_var(param_name).get_tensor())
-
-        bias_bn = _load_param(bn_op.input("Bias")[0])  #Bias
-        scale_bn = _load_param(bn_op.input("Scale")[0])  #Scale
-        mean_bn = _load_param(bn_op.input("Mean")[0])  #Mean
-        var_bn = _load_param(bn_op.input("Variance")[0])  #Variance
-
-        if current_op.type in ['conv2d', 'depthwise_conv2d']:
-            current_param = _load_param(
-                _original_var_name(current_op.input("Filter")[0]))
-        elif current_op.type == 'mul':
-            current_param = _load_param(
-                _original_var_name(current_op.input("Y")[0]))
-
-        std_bn = np.float32(np.sqrt(np.add(var_bn, 1e-5)))
-        tmp = np.float32(np.divide(scale_bn, std_bn))
-
-        # add bias of batch_norm_op to conv2d
-        if with_bias:
-            bias = _load_param(bias_op.input("Y"))
-        else:
-            bias = np.zeros(bias_bn.shape)
-        bias = np.float32(
-            np.add(np.multiply(np.subtract(bias, mean_bn), tmp), bias_bn))
-
-        # re-compute weight of conv2d/fc
-        tmp = tmp.reshape(tmp.shape[0], -1)
-        dst_param = current_param.reshape((tmp.shape[0], -1))
-        dst_param = np.float32(np.multiply(dst_param, tmp))
-        dst_param = dst_param.reshape(current_param.shape)
-
-        # update parameters
-        if current_op.type in ['conv2d', 'depthwise_conv2d']:
-            _update_param(current_op,
-                          _original_var_name(current_op.input("Filter")[0]),
-                          dst_param)
-        elif current_op.type == 'mul':
-            _update_param(current_op,
-                          _original_var_name(current_op.input("Y")[0]),
-                          dst_param)
-
-        _update_param(bias_op, bias_op.input("Y")[0], bias)
-
-        # collect the renamed input
-        self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]

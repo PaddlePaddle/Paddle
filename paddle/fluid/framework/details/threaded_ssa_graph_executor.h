@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <ThreadPool.h>  // ThreadPool in thrird party
+
 #include <deque>
 #include <functional>
 #include <list>
@@ -23,8 +25,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <ThreadPool.h>  // ThreadPool in thrird party
 
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
@@ -51,18 +51,21 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
 
   const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
-  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
+  inline FetchResultType RunImpl(const std::vector<std::string> &fetch_tensors,
+                                 bool return_merged);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
@@ -71,6 +74,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   // be destroyed first.
   ir::Graph *graph_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
+
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;
@@ -96,7 +101,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      FeedFetchList *fetch_data);
+                      FetchResultType *fetch_data, bool return_merged);
 
   void PrepareOpDeps();
 
@@ -106,9 +111,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
-  inline void RunOpSync(OpHandleBase *op);
+  inline bool RunOpSync(OpHandleBase *op);
 
-  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+  bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 };
 
 }  // namespace details

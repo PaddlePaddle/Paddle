@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/tensor_util.h"
+
 #include <gtest/gtest.h>
 #include <cmath>
-#include <string>
 
 namespace paddle {
 namespace framework {
@@ -58,7 +58,7 @@ TEST(TensorCopy, Tensor) {
   }
   EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     Tensor src_tensor;
     Tensor gpu_tensor;
@@ -149,7 +149,7 @@ TEST(TensorFromVector, Tensor) {
     delete cpu_place;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor cpu_tensor;
@@ -224,7 +224,7 @@ TEST(TensorToVector, Tensor) {
       EXPECT_EQ(src_ptr[i], dst[i]);
     }
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     paddle::framework::Tensor gpu_tensor;
@@ -237,6 +237,72 @@ TEST(TensorToVector, Tensor) {
 
     for (int i = 0; i < 3 * 3; ++i) {
       EXPECT_EQ(src_vec[i], dst[i]);
+    }
+  }
+#endif
+}
+
+TEST(TensorFromDLPack, Tensor) {
+  {
+    std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    paddle::framework::Tensor cpu_tensor;
+
+    cpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
+    paddle::platform::CPUPlace cpu_place;
+    paddle::platform::CPUDeviceContext cpu_ctx(cpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+    paddle::framework::DLPackTensor dlpack_tensor(cpu_tensor, 1);
+
+    paddle::framework::Tensor dst_tensor;
+    paddle::framework::TensorFromDLPack(dlpack_tensor, &dst_tensor);
+
+    auto cpu_ptr = cpu_tensor.data<int>();
+    auto src_ptr = dst_tensor.data<int>();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+    }
+  }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  {
+    std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    paddle::framework::Tensor cpu_tensor;
+    paddle::framework::Tensor gpu_tensor;
+    paddle::framework::Tensor dst_tensor;
+    paddle::framework::Tensor gpu_tensor_from_dlpack;
+
+    // Copy to CPU Tensor
+    cpu_tensor.Resize(make_ddim({3, 3}));
+    paddle::platform::CPUPlace cpu_place;
+    paddle::platform::CPUDeviceContext cpu_ctx(cpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
+
+    // Copy to GPUTensor
+    gpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
+    paddle::platform::CUDAPlace gpu_place;
+    auto& gpu_ctx =
+        *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
+    paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    gpu_ctx.Wait();
+
+    paddle::framework::DLPackTensor dlpack_tensor(gpu_tensor, 1);
+    paddle::framework::TensorFromDLPack(dlpack_tensor, &gpu_tensor_from_dlpack);
+    gpu_ctx.Wait();
+
+    // Copy from GPU to CPU tensor for comparison
+    paddle::framework::TensorCopy(gpu_tensor_from_dlpack, cpu_place, gpu_ctx,
+                                  &dst_tensor);
+    // Sync before Compare Tensors
+    gpu_ctx.Wait();
+    const int* src_ptr = src_vec.data();
+    const int* cpu_ptr = cpu_tensor.data<int>();
+    const int* dst_ptr = dst_tensor.data<int>();
+    EXPECT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
+    for (size_t i = 0; i < 9; ++i) {
+      EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
+      EXPECT_EQ(src_ptr[i], dst_ptr[i]);
     }
   }
 #endif
@@ -364,7 +430,7 @@ TEST(Tensor, FromAndToStream) {
     EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     Tensor gpu_tensor;
     gpu_tensor.Resize({2, 3});

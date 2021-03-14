@@ -14,7 +14,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/pad_op.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, float>);
+    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>);
+    pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);

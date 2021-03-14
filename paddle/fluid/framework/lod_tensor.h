@@ -18,12 +18,13 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -32,12 +33,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
-namespace recordio {
-class Writer;
-class Scanner;
-}
-
+namespace paddle {
 namespace framework {
 
 /*
@@ -123,8 +127,19 @@ class LoDTensor : public Tensor {
    * Get the start offset and end offset of an  element from LoD.
    */
   std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE_LT(level, NumLevels());
-    PADDLE_ENFORCE_LT(elem, NumElements(level));
+    PADDLE_ENFORCE_LT(
+        level, NumLevels(),
+        platform::errors::InvalidArgument(
+            "The input level of LoD is invalid, it should be less than LoD "
+            "size. The input level is %zu, the LoD size is %zu.",
+            level, NumLevels()));
+    PADDLE_ENFORCE_LT(elem, NumElements(level),
+                      platform::errors::InvalidArgument(
+                          "The input element of LoD is invalid, it should be "
+                          "less than the number of elements in its level."
+                          "The input element is %zu, the number of elements in "
+                          "its level is %zu.",
+                          elem, NumElements(level)));
     return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
   }
 
@@ -137,7 +152,12 @@ class LoDTensor : public Tensor {
    * Number of elements in a level.
    */
   size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE_LT(level, NumLevels());
+    PADDLE_ENFORCE_LT(
+        level, NumLevels(),
+        platform::errors::InvalidArgument(
+            "The input level of LoD is invalid, it should be less than LoD "
+            "size. The input level is %zu, the LoD size is %zu.",
+            level, NumLevels()));
     // the last offset is the end of last element
     return (lod_)[level].size() - 1;
   }
@@ -178,7 +198,13 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   tensor.Resize(dims);
   tensor.mutable_data<T>(place);
 
-  PADDLE_ENFORCE_EQ(num_instances, lod_level.size() - 1);
+  PADDLE_ENFORCE_EQ(
+      num_instances, lod_level.size() - 1,
+      platform::errors::InvalidArgument(
+          "The input LoDTensor instance number should be equal to the LoD "
+          "level size minus 1."
+          "The input instance number is %zu, LoD level size is %zu.",
+          num_instances, lod_level.size()));
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
@@ -215,14 +241,10 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
-
-extern void WriteToRecordIO(recordio::Writer* writer,
-                            const std::vector<LoDTensor>& tensor,
-                            const platform::DeviceContext& dev_ctx);
-
-extern bool ReadFromRecordIO(recordio::Scanner* scanner,
-                             const platform::DeviceContext& dev_ctx,
-                             std::vector<LoDTensor>* result_ptr);
+void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
+                           const platform::DeviceContext& dev_ctx,
+                           const size_t& seek,
+                           const std::vector<int64_t>& shape);
 
 /*
  * Convert between length-based LoD and offset-based LoD.

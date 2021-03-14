@@ -19,22 +19,37 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
+class GarbageCollector;
 class Scope;
+
+namespace ir {
+class Node;
+}  // namespace ir
+
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
 
 namespace details {
 
 class EagerDeletionOpHandle : public OpHandleBase {
  public:
-  EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
+  EagerDeletionOpHandle(ir::Node *node, Scope *scope, size_t scope_idx,
                         const platform::Place &place,
-                        const std::unordered_set<std::string> &var_names,
-                        GarbageCollector *gc,
-                        ir::AtomicReferenceCountMap *ref_cnts);
+                        const std::unordered_set<ir::MemOptVarInfo *> &vars,
+                        GarbageCollector *gc);
 
   ~EagerDeletionOpHandle();
 
@@ -47,19 +62,29 @@ class EagerDeletionOpHandle : public OpHandleBase {
    */
   Priority GetPriority() const override { return kHighest; }
 
+  size_t GetScopeIdx() const { return scope_idx_; }
+
  protected:
   void RunImpl() override;
+
+  void InitCUDA() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
 
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
-  const Scope *scope_;
-  std::vector<std::string> var_names_;
-  GarbageCollector *gc_;                   // not own
-  ir::AtomicReferenceCountMap *ref_cnts_;  // not own
-#ifdef PADDLE_WITH_CUDA
+  void CallOnce();
+
+  Scope *scope_;
+  size_t scope_idx_;
+  platform::Place place_;
+  std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
+  GarbageCollector *gc_;                        // not own
+  std::vector<Variable *> vars_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDADeviceContext *dev_ctx_{nullptr};
-  cudaEvent_t event_{nullptr};
+  gpuEvent_t event_{nullptr};
 #endif
 };
 

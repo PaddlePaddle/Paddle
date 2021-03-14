@@ -18,26 +18,42 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace platform {
 
-enum EventType { kMark, kPushRange, kPopRange };
+enum class EventType { kMark, kPushRange, kPopRange };
+
+enum class EventRole {
+  kOrdinary,  // only record op time with op type key
+  kInnerOp,   // record op detail time with op type key
+  kUniqueOp,  // record op detail time with op unique name key
+  kSpecial,   // record event such as PE which is outer of thread local
+};
 
 class Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id);
+  Event(EventType type, std::string name, uint32_t thread_id,
+        EventRole role = EventRole::kOrdinary);
 
   const EventType& type() const;
+  Event* parent() const { return parent_; }
+  void set_parent(Event* parent) { parent_ = parent; }
   std::string name() const { return name_; }
+  EventRole role() const { return role_; }
   uint32_t thread_id() const { return thread_id_; }
+  void set_name(std::string name) { name_ = name; }
+  void set_role(EventRole role) { role_ = role; }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifndef PADDLE_WITH_CUPTI
-  cudaEvent_t event() const { return event_; }
+  gpuEvent_t event() const { return event_; }
   int device() const { return device_; }
 #endif
 #endif
@@ -47,10 +63,13 @@ class Event {
 
  private:
   EventType type_;
-  std::string name_;
+  std::string name_{};
+  Event* parent_{nullptr};
   uint32_t thread_id_;
+  EventRole role_{};
   int64_t cpu_ns_;
-#ifdef PADDLE_WITH_CUDA
+  bool visited_status_{false};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
 
@@ -61,7 +80,7 @@ class Event {
 
  private:
 #else
-  cudaEvent_t event_ = nullptr;
+  gpuEvent_t event_ = nullptr;
   int device_ = -1;
 #endif
 #endif

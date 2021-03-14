@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "cub/cub.cuh"
 #include "paddle/fluid/operators/detection/sigmoid_focal_loss_op.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -30,10 +29,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const int *label_data,
@@ -41,7 +36,7 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const T gamma, const T alpha,
                                            const int num_classes,
                                            const int limit, T *out_data) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     int a = i / num_classes;  // current sample
     int d = i % num_classes;  // current class
@@ -79,7 +74,7 @@ __global__ void GPUSigmoidFocalLossBackward(
     const T *x_data, const int *label_data, const int *fg_num_data,
     const T gamma, const T alpha, const int num_classes, const T *dout_data,
     const int limit, T *dx_data) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
 

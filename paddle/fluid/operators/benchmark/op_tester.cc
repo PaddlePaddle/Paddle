@@ -47,7 +47,8 @@ void OpTester::Init(const OpTesterConfig &config) {
     CreateInputVarDesc();
     CreateOutputVarDesc();
   } else {
-    LOG(FATAL) << "Op \"" << config_.op_type << "\" is not registered.";
+    PADDLE_THROW(platform::errors::NotFound(
+        "Operator '%s' is not registered in OpTester.", config_.op_type));
   }
 
   if (config_.device_id >= 0) {
@@ -56,7 +57,7 @@ void OpTester::Init(const OpTesterConfig &config) {
     place_ = paddle::platform::CPUPlace();
   }
 
-  framework::InitDevices(false);
+  framework::InitDevices();
   scope_.reset(new paddle::framework::Scope());
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
@@ -76,11 +77,12 @@ void OpTester::Run() {
     if (platform::is_cpu_place(place_)) {
       platform::EnableProfiler(platform::ProfilerState::kCPU);
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::EnableProfiler(platform::ProfilerState::kAll);
       platform::SetDeviceId(config_.device_id);
 #else
-      PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "'CUDAPlace' is not supported in CPU only device."));
 #endif
     }
 
@@ -161,7 +163,8 @@ framework::proto::VarType::Type OpTester::TransToVarType(std::string str) {
   } else if (str == "fp64") {
     return framework::proto::VarType::FP64;
   } else {
-    PADDLE_THROW("Unsupported dtype %s.", str.c_str());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported dtype %s in OpTester.", str.c_str()));
   }
 }
 
@@ -169,10 +172,10 @@ void OpTester::CreateInputVarDesc() {
   std::vector<std::string> input_names = GetOpProtoInputNames();
   for (auto &name : input_names) {
     const OpInputConfig *input = config_.GetInput(name);
-    if (input == nullptr) {
-      LOG(FATAL) << "The input " << name << " of op " << config_.op_type
-                 << " is not correctlly provided.";
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        input, platform::errors::NotFound(
+                   "The input %s of operator %s is not correctlly provided.",
+                   name, config_.op_type));
 
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
@@ -207,9 +210,10 @@ void OpTester::CreateOpDesc() {
       GetOpProtoAttrNames();
   for (auto item : config_.attrs) {
     const std::string &name = item.first;
-    if (attr_types.find(name) == attr_types.end()) {
-      LOG(FATAL) << "Operator " << type_ << " do not have attr " << name;
-    }
+    PADDLE_ENFORCE_NE(
+        attr_types.find(name), attr_types.end(),
+        platform::errors::NotFound("Operator %s does not have attribute %d.",
+                                   type_, name));
 
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
@@ -231,7 +235,8 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::INTS:
       case framework::proto::AttrType::FLOATS:
       case framework::proto::AttrType::STRINGS:
-        LOG(FATAL) << "Not supported yet.";
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported STRINGS type in OpTester yet."));
         break;
       case framework::proto::AttrType::LONG: {
         int64_t value = StringTo<int64_t>(value_str);
@@ -239,7 +244,8 @@ void OpTester::CreateOpDesc() {
       } break;
       case framework::proto::AttrType::LONGS:
       default:
-        PADDLE_THROW("Unsupport attr type %d", type);
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupport attr type %d in OpTester.", type));
     }
   }
 }
@@ -289,14 +295,15 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
     }
   } else if (initializer == "file") {
     std::ifstream is(filename);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
       T value;
       is >> value;
       cpu_ptr[i] = static_cast<T>(value);
     }
     is.close();
   } else {
-    PADDLE_THROW("Unsupported initializer %s.", initializer.c_str());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported initializer %s in OpTester.", initializer.c_str()));
   }
 
   if (!platform::is_cpu_place(place_)) {
@@ -348,7 +355,8 @@ void OpTester::CreateVariables(framework::Scope *scope) {
                           static_cast<double>(1.0), item.second.initializer,
                           item.second.filename);
     } else {
-      PADDLE_THROW("Unsupported dtype %d.", data_type);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported dtype %d in OpTester.", data_type));
     }
 
     VLOG(3) << "Set lod for tensor " << var_name;
@@ -424,19 +432,19 @@ std::string OpTester::DebugString() {
     switch (attr_type) {
       case framework::proto::AttrType::BOOLEAN: {
         ss << GenSpaces(count) << "type: BOOLEAN\n";
-        ss << GenSpaces(count) << "b: " << boost::get<bool>(attr) << "\n";
+        ss << GenSpaces(count) << "b: " << BOOST_GET_CONST(bool, attr) << "\n";
       } break;
       case framework::proto::AttrType::INT: {
         ss << GenSpaces(count) << "type: INT\n";
-        ss << GenSpaces(count) << "i: " << boost::get<int>(attr) << "\n";
+        ss << GenSpaces(count) << "i: " << BOOST_GET_CONST(int, attr) << "\n";
       } break;
       case framework::proto::AttrType::FLOAT: {
         ss << GenSpaces(count) << "type: FLOAT\n";
-        ss << GenSpaces(count) << "f: " << boost::get<float>(attr) << "\n";
+        ss << GenSpaces(count) << "f: " << BOOST_GET_CONST(float, attr) << "\n";
       } break;
       case framework::proto::AttrType::STRING: {
         ss << GenSpaces(count) << "type: STRING\n";
-        ss << GenSpaces(count) << "s: \"" << boost::get<std::string>(attr)
+        ss << GenSpaces(count) << "s: \"" << BOOST_GET_CONST(std::string, attr)
            << "\"\n";
       } break;
       case framework::proto::AttrType::BOOLEANS: {
@@ -461,7 +469,8 @@ std::string OpTester::DebugString() {
       } break;
       case framework::proto::AttrType::LONG: {
         ss << GenSpaces(count) << "type: LONG\n";
-        ss << GenSpaces(count) << "l: " << boost::get<int64_t>(attr) << "\n";
+        ss << GenSpaces(count) << "l: " << BOOST_GET_CONST(int64_t, attr)
+           << "\n";
       } break;
       case framework::proto::AttrType::LONGS: {
         ss << GenSpaces(count) << "type: LONGS\n";
@@ -469,7 +478,8 @@ std::string OpTester::DebugString() {
            << "\n";
       } break;
       default:
-        PADDLE_THROW("Unsupport attr type %d", attr_type);
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupport attr type %d in OpTester.", attr_type));
     }
     ss << GenSpaces(--count) << "}\n";
   }
@@ -480,8 +490,10 @@ std::string OpTester::DebugString() {
 TEST(op_tester, base) {
   if (!FLAGS_op_config_list.empty()) {
     std::ifstream fin(FLAGS_op_config_list, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s",
-                   FLAGS_op_config_list.c_str());
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fin), true,
+        platform::errors::InvalidArgument("OpTester cannot open file %s",
+                                          FLAGS_op_config_list.c_str()));
     std::vector<OpTesterConfig> op_configs;
     while (!fin.eof()) {
       VLOG(4) << "Reading config " << op_configs.size() << "...";

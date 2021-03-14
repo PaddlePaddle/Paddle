@@ -35,16 +35,27 @@ class SeqConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SeqConcatShapeInferer : public framework::InferShapeBase {
+class SequenceConcatOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("X"),
-                   "Input(X) of Sequence Concat Op should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of Sequence Concat Op should not be null.");
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE_EQ(
+        context->HasInputs("X"), true,
+        platform::errors::NotFound("SequenceConcatOp Input(X) of Sequence "
+                                   "Concat Op should not be null."));
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("Out"), true,
+        platform::errors::NotFound("SequenceConcatOp Output(Out) of Sequence "
+                                   "Concat Op should not be null."));
 
     PADDLE_ENFORCE_GT(context->Inputs("X").size(), 1,
-                      "The number of input sequences is at least two.");
+                      platform::errors::InvalidArgument(
+                          "The number of SequenceConcatOp inputs should be "
+                          "greater than 1. But "
+                          "the number of inputs we received is %d",
+                          context->Inputs("X").size()));
     auto x_dims = context->GetInputsDim("X");
     int64_t batch_size = 0;
     int64_t feature_size = 0;
@@ -59,7 +70,12 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
       } else {
         PADDLE_ENFORCE_EQ(
             feature_size, framework::product(x_dim) / x_dim[0],
-            "Inputs of sequence concat must have same feature size");
+            platform::errors::InvalidArgument(
+                "Each input of SequenceConcatOp inputs must have same feature "
+                "size, But "
+                "the feature size we received is %d, the feature size of 1st "
+                "input is %d",
+                feature_size, framework::product(x_dim) / x_dim[0]));
       }
     }
     if (batch_size < 0) {
@@ -74,19 +90,18 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
   }
 };
 
-class SeqConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SeqConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_concat_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -102,32 +117,34 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SeqConcatGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace op = paddle::operators;
 
-REGISTER_OPERATOR(sequence_concat, paddle::framework::OperatorWithKernel,
-                  op::SeqConcatOpMaker, op::SeqConcatShapeInferer,
-                  op::SeqConcatGradOpDescMaker);
-template <typename T>
-using Kernel = op::SeqConcatKernel<paddle::platform::CPUDeviceContext, T>;
-REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
-                       Kernel<int64_t>);
+REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
+                  op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
+                  op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_concat,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, double>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int>,
+    op::SeqConcatKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
-                  op::SeqConcatGradNoNeedBufferVarsInference);
-template <typename T>
-using GradKernel =
-    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;
-REGISTER_OP_CPU_KERNEL(sequence_concat_grad, GradKernel<float>,
-                       GradKernel<double>, GradKernel<int64_t>);
+                  op::SeqConcatGradNoNeedBufferVarsInferer);
+REGISTER_OP_CPU_KERNEL(
+    sequence_concat_grad,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
+    op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

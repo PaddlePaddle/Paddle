@@ -28,6 +28,7 @@ from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
+from dist_test_utils import *
 
 from paddle.fluid import core
 
@@ -38,6 +39,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 class TestSendOp(unittest.TestCase):
     def test_send(self):
+        remove_ps_flag(os.getpid())
         # Run init_serv in a thread
         place = fluid.CPUPlace()
         # NOTE: python thread will not work here due to GIL.
@@ -55,8 +57,7 @@ class TestSendOp(unittest.TestCase):
         self.run_local(place)
         self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
 
-        # FIXME(typhoonzero): find a way to gracefully shutdown the server.
-        os.kill(p.pid, signal.SIGKILL)
+        os.kill(p.pid, signal.SIGINT)
         p.join()
 
     def _wait_ps_ready(self, pid):
@@ -112,6 +113,7 @@ class TestSendOp(unittest.TestCase):
                 dtype='float32',
                 name='X',
                 append_batch_size=False)
+            x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
             get_var = main.global_block().create_var(
@@ -121,6 +123,13 @@ class TestSendOp(unittest.TestCase):
                 shape=[32, 32])
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
 
+            # NOTE(zjl): `Send` is async send, which means that the sent 
+            # variable would be needed even though `Send` op runs. 
+            # Is it a right design? If I do not set `x.persistable = True`,
+            # this unittest would hang in rpc client after x is deleted. 
+            #
+            # BTW, `Send` is not a public API to users. So I set 
+            # `x.persistable = True` to be a hot fix of this unittest. 
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 

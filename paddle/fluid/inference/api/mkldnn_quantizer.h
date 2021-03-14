@@ -68,6 +68,7 @@ class AnalysisPredictor::MkldnnQuantizer {
                             const framework::LoDTensor& var_tensor,
                             bool is_unsigned);
   void PrepareArgument() const;
+  void ClearDeviceContext() const;
   bool RunQuantizePasses() const;
 
   std::vector<int> ExpandQuantizedBins(std::vector<int> quantized_bins,
@@ -78,7 +79,8 @@ class AnalysisPredictor::MkldnnQuantizer {
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const;
+      const framework::LoDTensor& var_tensor, bool is_unsigned,
+      bool is_transposed) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;

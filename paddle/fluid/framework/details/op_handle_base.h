@@ -18,17 +18,34 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
+
+class Scope;
+
 namespace details {
+struct VarHandleBase;
+}  // namespace details
+namespace ir {
+class Node;
+}  // namespace ir
 
-constexpr char kLocalExecScopeName[] = "@LOCAL_EXE_SCOPE@";
-
+namespace details {
+using DeviceType = paddle::platform::DeviceType;
+namespace p = paddle::platform;
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
@@ -45,15 +62,19 @@ class OpHandleBase {
     node_->WrappedBy(this);
   }
 
-  virtual ~OpHandleBase();
+  virtual ~OpHandleBase() PADDLE_MAY_THROW;
 
   std::string DebugString() const;
 
   virtual Priority GetPriority() const { return kNormal; }
 
+  virtual bool GetSkipRunning() const { return skip_running_; }
+
+  virtual void SetSkipRunning(bool skip_runing) { skip_running_ = skip_runing; }
+
   virtual std::string Name() const = 0;
 
-  void Run(bool use_cuda);
+  void Run(DeviceType use_device);
 
   virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
@@ -63,12 +84,15 @@ class OpHandleBase {
 
   // This method adds the wait events of all the input on all the device
   // context.
-  // NODE: This Wait is asynchronous operation.
-  virtual void WaitInputVarGenerated();
+  // NOTE: This Wait is asynchronous operation.
+  // NOTE: wait_for_feed is added to wait for feed var, since it has
+  // generated op, no event and cannot perform event wait. It is only
+  // used in fetch_async_op_handle currently.
+  virtual void WaitInputVarGenerated(bool wait_for_feed = false);
 
   // This method adds the wait events of all the input on the specified device
   // context.
-  // NODE: This Wait is asynchronous operation.
+  // NOTE: This Wait is asynchronous operation.
   virtual void WaitInputVarGenerated(const platform::Place &place);
 
   virtual bool NeedWait(VarHandleBase *in_var);
@@ -107,7 +131,14 @@ class OpHandleBase {
 
   ir::Node *Node() { return node_; }
 
+  const ir::Node *Node() const { return node_; }
+
+  void SetLocalExecScopes(
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
  protected:
+  virtual std::vector<Scope *> GetLocalScopes() = 0;
+
   void RunAndRecordEvent(const std::function<void()> &callback);
 
   void RunAndRecordEvent(platform::Place p,
@@ -115,13 +146,19 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
+  virtual void InitCUDA();
+  virtual void InitXPU();
+
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
-#ifdef PADDLE_WITH_CUDA
-  std::unordered_map<int, cudaEvent_t> events_;
+  std::vector<Scope *> local_exec_scopes_;
+  bool skip_running_ = false;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::unordered_map<int, gpuEvent_t> events_;
 #endif
 
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);

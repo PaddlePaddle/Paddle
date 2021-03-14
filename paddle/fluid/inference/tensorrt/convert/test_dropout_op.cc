@@ -34,6 +34,7 @@ TEST(DropoutOpConverter, main) {
   framework::OpDesc desc;
   int is_test = 1;
   float dropout_prob = 0.4;
+  std::string dropout_implementation = "upscale_in_train";
 
   desc.SetType("dropout");
   desc.SetInput("X", {"dropout-X"});
@@ -41,6 +42,8 @@ TEST(DropoutOpConverter, main) {
   desc.SetOutput("Out", {"dropout-Out"});
   desc.SetAttr("is_test", is_test);
   desc.SetAttr("dropout_prob", dropout_prob);
+
+  desc.SetAttr("dropout_implementation", dropout_implementation);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
