@@ -414,7 +414,7 @@ void CommonForwardBroadcastCUDA2(
     const platform::CUDADeviceContext &ctx, const framework::Tensor *x,
     const framework::Tensor *y, framework::Tensor *z, int pre, int n, int post,
     int m, int pre_x, int n_x, int post_x, int m_x, int pre_y, int n_y,
-    int post_y, int m_y, Functor func, const bool is_x_size_larger = true,
+    int post_y, int m_y, Functor func, const bool is_xsize_larger = true,
     const bool is_out_size_larger = false) {
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
@@ -427,7 +427,7 @@ void CommonForwardBroadcastCUDA2(
     int threads = platform::RoundToPowerOfTwo(numel);
     int blocks = (numel + threads - 1) / threads;
 
-    if (is_x_size_larger) {
+    if (is_xsize_larger) {
       CommonForwardBroadcastCUDAKernel3<
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
           x_data, y_data, out_data, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y,
@@ -444,7 +444,7 @@ void CommonForwardBroadcastCUDA2(
     int threads = platform::RoundToPowerOfTwo(numel);
     int blocks = (numel + threads - 1) / threads;
 
-    if (is_x_size_larger) {
+    if (is_xsize_larger) {
       CommonForwardBroadcastCUDAKernel2<
           Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
           x_data, y_data, out_data, pre, n, post, m, numel, value_without_pre,
@@ -1995,10 +1995,9 @@ void CommonElementwiseBroadcastForward(
       const int out_size = std::accumulate(out_dims_array.data(),
                                            out_dims_array.data() + max_dim, 1,
                                            std::multiplies<int>());
-      const bool x_dims_size_larger = x->numel() > y->numel() ? true : false;
       const bool out_dims_size_larger =
-          (x_dims_size_larger ? (out_size > x->numel() ? true : false)
-                              : (out_size > y->numel() ? true : false));
+          (is_xsize_larger ? (out_size > x->numel() ? true : false)
+                           : (out_size > y->numel() ? true : false));
       if (out_dims_size_larger) {
         GetPartialValue(out_dims_array.data(), x_dims_array.data(), &pre_x,
                         &n_x, &post_x, &m_x, max_dim, out_dims_size_larger);
@@ -2006,12 +2005,12 @@ void CommonElementwiseBroadcastForward(
                         &n_y, &post_y, &m_y, max_dim, out_dims_size_larger);
       } else {
         GetPartialValue(x_dims_array.data(), y_dims_array.data(), &pre, &n,
-                        &post, &m, max_dim, x_dims_size_larger);
+                        &post, &m, max_dim, is_xsize_larger);
       }
       CommonForwardBroadcastCUDA2<Functor, T, OutType>(
           ctx.template device_context<platform::CUDADeviceContext>(), x, y, z,
           pre, n, post, m, pre_x, n_x, post_x, m_x, pre_y, n_y, post_y, m_y,
-          func, x_dims_size_larger, out_dims_size_larger);
+          func, is_xsize_larger, out_dims_size_larger);
     }
 #endif
   } else {
