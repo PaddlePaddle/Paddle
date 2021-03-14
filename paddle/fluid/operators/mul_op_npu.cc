@@ -77,20 +77,20 @@ class MulNPUKernel : public framework::OpKernel<T> {
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
       // flatten => x.shape=[6, 4]
-      Tensor tmp_matmul(x->type());
+      Tensor tmp_x(x->type());
       int64_t first_dim = x->dims()[0] * x->dims()[1];
       int64_t sec_dim = x->dims()[2];
-      tmp_matmul.Resize(framework::make_ddim({first_dim, sec_dim}));
-      tmp_matmul.mutable_data<T>(ctx.GetPlace());
+      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+      tmp_x.mutable_data<T>(ctx.GetPlace());
       framework::TensorCopy(
           *x, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), &tmp_x);
-      tmp_matmul.Resize(framework::make_ddim({first_dim, sec_dim}));
+      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
 
       // matmul [6,4] , [4, 5] => [6, 5]
-      Tensor tmp_x1(x->type());
-      tmp_x1.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
-      tmp_x1.mutable_data<T>(ctx.GetPlace());
+      Tensor tmp_matmul(x->type());
+      tmp_matmul.Resize(framework::make_ddim({first_dim, y->dims()[1]}));
+      tmp_matmul.mutable_data<T>(ctx.GetPlace());
 
       auto runner_matmul =
           NpuOpRunner("MatMul", {tmp_x, *y}, {tmp_matmul},
@@ -101,8 +101,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
       Tensor tmp_trans(x->type());
       tmp_trans.Resize(framework::make_ddim({y->dims()[1], first_dim}));
       tmp_trans.mutable_data<T>(ctx.GetPlace());
+      std::vector<int64_t> vec_trans = {1, 0};
       auto runner_trans = NpuOpRunner("TransposeD", {tmp_matmul}, {tmp_trans},
-                                      {{"perm", {1, 0}}});
+                                      {{"perm", vec_trans}});
       runner_trans.Run(stream);
       // reshape [5, 6] => [5, 2, 3]
       Tensor tmp_re(x->type());
@@ -119,8 +120,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
           framework::make_ddim({re_first_dim, re_sec_dim, re_third_dim}));
 
       // transpose [5, 2, 3] => [2, 3, 5]
-      auto runner_trans_final =
-          NpuOpRunner("TransposeD", {tmp_re}, {*out}, {{"perm", {1, 2, 0}}});
+      std::vector<int64_t> vec_trans_final = {1, 2, 0};
+      auto runner_trans_final = NpuOpRunner("TransposeD", {tmp_re}, {*out},
+                                            {{"perm", vec_trans_final}});
       runner_trans_final.Run(stream);
     }
   }
