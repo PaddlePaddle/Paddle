@@ -65,6 +65,57 @@ class TestMulFP16(TestMul):
         self.dtype = np.float16
 
 
+class TestMul3(TestMul):
+    """
+    case 3
+    """
+
+    def config(self):
+        self.x_shape = (2, 2, 5)
+        self.y_shape = (10, 5)
+
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "mul"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+        self.config()
+        np.random.seed(SEED)
+        self.inputs = {
+            'X': np.random.random(self.x_shape).astype(self.dtype),
+            'Y': np.random.random(self.y_shape).astype(self.dtype)
+        }
+        self.outputs = {
+            'Out': np.dot(self.inputs['X'].reshape(2, 10), self.inputs['Y'])
+        }
+
+
+class TestMul4(TestMul):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.x_shape = (2, 3, 4)
+        self.y_shape = (4, 5)
+
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "mul"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+        self.config()
+        np.random.seed(SEED)
+        self.inputs = {
+            'X': np.random.random(self.x_shape).astype(self.dtype),
+            'Y': np.random.random(self.y_shape).astype(self.dtype)
+        }
+        self.attrs = {"x_num_col_dims": 2}
+        self.outputs = {
+            'Out': np.dot(self.inputs['X'].reshape(6, 4), self.inputs['Y'])
+        }
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestMulNet(unittest.TestCase):
