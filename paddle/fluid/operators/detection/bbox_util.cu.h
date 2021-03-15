@@ -279,8 +279,8 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
-  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes, mask_dev,
-                                 pixel_offset);
+  NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(
+      boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
