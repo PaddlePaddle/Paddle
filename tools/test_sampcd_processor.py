@@ -156,11 +156,29 @@ class Test_srccoms_extract(unittest.TestCase):
         os.remove(self.api_pr_spec_filename)
     def test_from_ops_py(self):
         filecont = '''
-__all__ = []
-__all__ += ['one_plus_one']
-
 def add_sample_code(obj, docstr):
     pass
+
+__unary_func__ = [
+    'exp',
+]
+
+__all__ = []
+__all__ += __unary_func__
+__all__ += ['one_plus_one']
+
+def exp():
+    pass
+add_sample_code(globals()["exp"], r"""
+Examples:
+    .. code-block:: python
+        import paddle
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = paddle.exp(x)
+        print(out)
+        # [0.67032005 0.81873075 1.10517092 1.34985881]
+""")
+
 def one_plus_one():
             return 1+1
 
@@ -186,11 +204,12 @@ add_sample_code(globals()["two_plus_two"], """
             pyfile.write(filecont)
         self.assertTrue(os.path.exists(pyfilename))
         utsp = importlib.import_module('ops')
-        methods = ['one_plus_one','two_plus_two']
+        methods = ['one_plus_one','two_plus_two','exp']
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, [], methods))
         self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 
         self.assertTrue(os.path.exists("samplecode_temp/" "two_plus_two_example.py"))
+        self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
     def test_from_not_ops_py(self):
         filecont = '''
 __all__ = [
