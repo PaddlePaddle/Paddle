@@ -228,6 +228,7 @@ int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
           memcpy(buffer + offset, &weight, GraphNode::weight_size);
           offset += GraphNode::weight_size;
         }
+        return 0;
       })
       .get();
 }
