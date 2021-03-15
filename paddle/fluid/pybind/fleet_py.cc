@@ -43,6 +43,8 @@ using paddle::distributed::FleetWrapper;
 using paddle::distributed::HeterClient;
 using paddle::distributed::GraphPyService;
 using paddle::distributed::GraphNode;
+using paddle::distributed::GraphPyServer;
+using paddle::distributed::GraphPyClient;
 
 namespace paddle {
 namespace pybind {
@@ -162,14 +164,24 @@ void BindGraphNode(py::module* m) {
       .def("get_id", &GraphNode::get_id)
       .def("get_feature", &GraphNode::get_feature);
 }
-void BindGraphService(py::module* m) {
-  py::class_<GraphPyService>(*m, "GraphPyService")
+void BindGraphPyService(py::module* m) {
+  py::class_<GraphPyService>(*m, "GraphPyService").def(py::init<>());
+}
+void BindGraphPyServer(py::module* m) {
+  py::class_<GraphPyServer>(*m, "GraphPyServer")
       .def(py::init<>())
-      .def("load_edge_file", &GraphPyService::load_edge_file)
-      .def("load_node_file", &GraphPyService::load_node_file)
-      .def("set_up", &GraphPyService::set_up)
-      .def("pull_graph_list", &GraphPyService::pull_graph_list)
-      .def("sample_k", &GraphPyService::sample_k);
+      .def("start_server", &GraphPyServer::start_server)
+      .def("set_up", &GraphPyServer::set_up);
+}
+void BindGraphPyClient(py::module* m) {
+  py::class_<GraphPyClient>(*m, "GraphPyClient")
+      .def(py::init<>())
+      .def("load_edge_file", &GraphPyClient::load_edge_file)
+      .def("load_node_file", &GraphPyClient::load_node_file)
+      .def("set_up", &GraphPyClient::set_up)
+      .def("pull_graph_list", &GraphPyClient::pull_graph_list)
+      .def("sample_k", &GraphPyClient::sample_k)
+      .def("start_client", &GraphPyClient::start_client);
 }
 
 }  // end namespace pybind

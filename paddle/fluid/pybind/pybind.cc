@@ -2847,7 +2847,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindDistCommunicator(&m);
   BindHeterClient(&m);
   BindGraphNode(&m);
-  BindGraphService(&m);
+  BindGraphPyService(&m);
+  BindGraphPyServer(&m);
+  BindGraphPyClient(&m);
 #endif
 }
 }  // namespace pybind
