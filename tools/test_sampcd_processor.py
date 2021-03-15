@@ -168,6 +168,7 @@ class Test_get_incrementapi(unittest.TestCase):
 
 class Test_get_wlist(unittest.TestCase):
     def setUp(self):
+        self.tmpDir = tempfile.mkdtemp()
         self.wlist_filename = os.path.join(self.tmpDir, 'wlist.json')
         with open(self.wlist_filename , 'w') as f:
             f.write(r'''
@@ -200,6 +201,7 @@ class Test_get_wlist(unittest.TestCase):
 )
     def tearDown(self):
         os.remove(self.wlist_filename)
+        shutil.rmtree(self.tmpDir)
     def test_get_wlist(self):
         wlist, wlist_file, gpu_not_white = get_wlist(self.wlist_filename)
         self.assertCountEqual(["xxxxx",
@@ -280,7 +282,10 @@ add_sample_code(globals()["two_plus_two"], """
             pyfile.write(filecont)
         self.assertTrue(os.path.exists(pyfilename))
         utsp = importlib.import_module('ops')
+        print('testing srccoms_extract from ops.py')
         methods = ['one_plus_one','two_plus_two','exp']
+        os.remove("samplecode_temp/" "one_plus_one_example.py") 
+        self.assertFalse(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, [], methods))
         self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 

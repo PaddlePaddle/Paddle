@@ -24,6 +24,7 @@ import paddle.fluid
 import json
 import argparse
 import shutil
+import re
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -296,7 +297,7 @@ def srccoms_extract(srcfile, wlist, methods):
 
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
-    print('processing ', srcfile.name)
+    print('processing ', srcfile.name, '; methods=', methods)
     srcfile_new,_ = os.path.splitext(srcfile.name)
     srcfile_list = srcfile_new.split('/')
     srcfile_str = ''
@@ -327,17 +328,26 @@ def srccoms_extract(srcfile, wlist, methods):
             if '' in alllist:
                 alllist.remove('')
         api_alllist_count = len(alllist)
-        print('found', api_alllist_count, 'items in file')
+        print('found', api_alllist_count, 'items in file: ', alllist)
         api_count = 0
         handled = []
         # get src contents in layers/ops.py
         if srcfile.name.find("ops.py") != -1:
             for i in range(0, len(srcls)):
-                if srcls[i].find("__doc__") != -1:
-                    opname = srcls[i][:srcls[i].find("__doc__") - 1]
+                opname = None
+                opres = re.match(r"^(\w+)\.__doc__", srcls[i])
+                if opres is not None:
+                    opname = opres.group(1)
+                else:
+                    opres = re.match(r"^add_sample_code\(globals\(\)\[\"(\w+)\"\]", srcls[i])
+                    if opres is not None:
+                        opname = opres.group(1)
+                if opname is not None:
                     if opname in wlist:
                         print(opname, 'is in the whitelist, skip it.')
                         continue
+                    else:
+                        print(opname, '\'s docstring found.')
                     comstart = i
                     for j in range(i, len(srcls)):
                         if srcls[j].find("\"\"\"") != -1:
@@ -352,16 +362,18 @@ def srccoms_extract(srcfile, wlist, methods):
                         opname)  # ops.py also has normal formatted functions
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
+                    # handled what?
+        print('handled:', handled)
         for i in range(0, len(srcls)):
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
                 if "%s%s" % (srcfile_str, fn) not in methods:
-                    print('{}{}'.format(srcfile_str, fn), 'not in methods, skip it., [fn]')
+                    print('{}:{}'.format(srcfile_str, fn), 'not in methods, skip it. [fn]')
                     continue
-                if fn in handled:
-                    continue
+                #if fn in handled:
+                #    continue
                 if fn in alllist:
                     api_count += 1
                     if fn in wlist or fn + "@" + srcfile.name in wlist:
@@ -382,8 +394,8 @@ def srccoms_extract(srcfile, wlist, methods):
                 if '%s%s' % (srcfile_str, cn) not in methods:
                     print('{}{}'.format(srcfile_str, cn), 'not in methods, skip it. [cn]')
                     continue
-                if cn in handled:
-                    continue
+                #if cn in handled:
+                #    continue
                 if cn in alllist:
                     api_count += 1
                     if cn in wlist or cn + "@" + srcfile.name in wlist:
