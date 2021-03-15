@@ -129,7 +129,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             hname(str): the name of the hint  banners , e.t. def hname.
             flushed.
         """
-        print_header(htype, hname)
+        print(htype, " name:", hname)
+        print("-----------------------")
         print("Sample code ", str(y), " extracted for ", name, "   :")
         print(sampcd)
         print("----example code check----\n")
@@ -138,11 +139,9 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
     sampcd_begins = find_all(srccom, " code-block:: python")
     if len(sampcd_begins) == 0:
-        print_header(htype, hname)
-        '''
-        detect sample codes using >>> to format
-        and consider this situation as wrong
-        '''
+        # detect sample codes using >>> to format and consider this situation as wrong
+        print(htype, " name:", hname)
+        print("-----------------------")
         if srccom.find("Examples:") != -1:
             print("----example code check----\n")
             if srccom.find(">>>") != -1:
@@ -280,11 +279,6 @@ def single_defcom_extract(start_from, srcls, is_class_begin=False):
     return fcombody
 
 
-def print_header(htype, name):
-    print(htype, " name:", name)
-    print("-----------------------")
-
-
 def srccoms_extract(srcfile, wlist, methods):
     """
     Given a source file ``srcfile``, this function will
@@ -378,7 +372,7 @@ def srccoms_extract(srcfile, wlist, methods):
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
                     # handled what?
-        logger.debug('handled: %s', str(handled))
+        logger.debug('%s already handled.', str(handled))
         for i in range(0, len(srcls)):
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
@@ -394,10 +388,13 @@ def srccoms_extract(srcfile, wlist, methods):
                 if fn in alllist:
                     api_count += 1
                     if fn in wlist or fn + "@" + srcfile.name in wlist:
+                        logger.info('[file:%s, function:%s] skip by wlist.',
+                                    srcfile_str, fn)
                         continue
                     fcombody = single_defcom_extract(i, srcls)
                     if fcombody == "":  # if no comment
-                        print_header("def", fn)
+                        print("def name:", fn)
+                        print("-----------------------")
                         print("WARNING: no comments in function ", fn,
                               ", but it deserves.")
                         continue
@@ -418,6 +415,8 @@ def srccoms_extract(srcfile, wlist, methods):
                 if cn in alllist:
                     api_count += 1
                     if cn in wlist or cn + "@" + srcfile.name in wlist:
+                        logger.info('[file:%s, class:%s] skip by wlist.',
+                                    srcfile_str, cn)
                         continue
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
@@ -449,12 +448,19 @@ def srccoms_extract(srcfile, wlist, methods):
                                 if '%s%s' % (
                                         srcfile_str, name
                                 ) not in methods:  # class method not in api.spec 
-                                    print('{}{}'.format(srcfile_str, name),
-                                          'not in methods, skip it. [name]')
+                                    logger.info(
+                                        '[file:%s, func:%s] not in methods, skip it.',
+                                        srcfile_str, name)
                                     continue
                                 if mn.startswith('_'):
+                                    logger.info(
+                                        '[file:%s, func:%s] startswith _, it\'s private method, skip it.',
+                                        srcfile_str, name)
                                     continue
                                 if name in wlist or name + "@" + srcfile.name in wlist:
+                                    logger.info(
+                                        '[file:%s, class:%s] skip by wlist.',
+                                        srcfile_str, name)
                                     continue
                                 thismethod = [thisl[indent:]
                                               ]  # method body lines
