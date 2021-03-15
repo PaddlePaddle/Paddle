@@ -229,10 +229,11 @@ void RunBrpcPushSparse() {
   v.clear();
   pull_status = worker_ptr_->sample(0, 96, 4, v);
   pull_status.wait();
-  std::unordered_set<int> s = { 111, 48, 247 } ASSERT_EQ(3, v.size());
+  std::unordered_set<int> s = { 111, 48, 247 };
+  ASSERT_EQ(3, v.size());
   for (auto g : v) {
     // std::cout << g.first << std::endl;
-    ASSERT_EQ(true, s.find(g.first) != s.end())
+    ASSERT_EQ(true, s.find(g.first) != s.end());
   }
   v.clear();
   std::vector<distributed::GraphNode> nodes;
