@@ -120,10 +120,6 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
     query_idx_buckets[request_idx].push_back(query_idx);
   }
 
-  for (int request_idx = 0; request_idx < request_call_num; ++request_idx){
-
-  }
-  
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(request_call_num, [&, node_id_buckets, query_idx_buckets, request_call_num](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
