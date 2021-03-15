@@ -281,6 +281,7 @@ def srccoms_extract(srcfile, wlist, methods):
     Args:
         srcfile(file): the source file
         wlist(list): white list
+        methods(list): only elements of this list considered.
 
     Returns:
         result: True or False
@@ -452,7 +453,7 @@ def srccoms_extract(srcfile, wlist, methods):
 
 
 def test(file_list):
-    global methods
+    global methods  # readonly
     process_result = True
     for file in file_list:
         with open(file, 'r') as src:
@@ -461,7 +462,7 @@ def test(file_list):
     return process_result
 
 def run_a_test(tc_filename):
-    global methods
+    global methods  # readonly
     process_result = True
     with open(tc_filename, 'r') as src:
         if not srccoms_extract(src, wlist, methods):
@@ -478,7 +479,7 @@ def get_filenames():
 
     '''
     filenames = []
-    global methods
+    global methods  # write
     global whl_error
     methods = []
     whl_error = []
@@ -551,10 +552,10 @@ def get_incrementapi():
     '''
     this function will get the apis that difference between API_DEV.spec and API_PR.spec.
     '''
-
-    dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
-    pr_api = get_api_md5('paddle/fluid/API_PR.spec')
-    with open('dev_pr_diff_api.spec', 'w') as f:
+    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    dev_api = get_api_md5(API_DEV_SPEC_FN)
+    pr_api = get_api_md5(API_PR_SPEC_FN)
+    with open(API_DIFF_SPEC_FN, 'w') as f:
         for key in pr_api:
             if key in dev_api:
                 if dev_api[key] != pr_api[key]:
@@ -621,6 +622,9 @@ def parse_args():
 
 methods = []
 whl_error = []
+API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
+API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
+API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 
 if __name__ == '__main__':
     args = parse_args()

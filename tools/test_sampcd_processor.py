@@ -11,6 +11,7 @@ from sampcd_processor import sampcd_extract_and_run
 from sampcd_processor import single_defcom_extract
 from sampcd_processor import srccoms_extract
 from sampcd_processor import get_api_md5
+from sampcd_processor import get_incrementapi
 
 class Test_find_all(unittest.TestCase):
     # def test_srcstr_is_None(self):
@@ -123,20 +124,46 @@ class Test_get_api_md5(unittest.TestCase):
         self.api_pr_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'one_plus_one'))""",
-                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'two_plus_two'))""",
-                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'three_plus_three'))""",
-                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'four_plus_four'))""",
+                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
+                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
+                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
+                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
                 ]))
     def tearDown(self):
         os.remove(self.api_pr_spec_filename)
         pass
     def test_get_api_md5(self):
         res = get_api_md5('paddle/fluid/API_PR.spec')
-        self.assertEqual("'one_plus_one'", res['one_plus_one'])
-        self.assertEqual("'two_plus_two'", res['two_plus_two'])
-        self.assertEqual("'three_plus_three'", res['three_plus_three'])
-        self.assertEqual("'four_plus_four'", res['four_plus_four'])
+        self.assertEqual("'md5sum of one_plus_one'", res['one_plus_one'])
+        self.assertEqual("'md5sum of two_plus_two'", res['two_plus_two'])
+        self.assertEqual("'md5sum of three_plus_three'", res['three_plus_three'])
+        self.assertEqual("'md5sum of four_plus_four'", res['four_plus_four'])
+
+class Test_get_incrementapi(unittest.TestCase):
+    def setUp(self):
+        self.api_pr_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_PR.spec'))
+        with open(self.api_pr_spec_filename, 'w') as f:
+            f.write("\n".join([
+                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
+                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
+                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
+                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
+                ]))
+        self.api_dev_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_DEV.spec'))
+        with open(self.api_dev_spec_filename, 'w') as f:
+            f.write("\n".join([
+                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
+                ]))
+        self.api_diff_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "dev_pr_diff_api.spec"))
+    def tearDown(self):
+        os.remove(self.api_pr_spec_filename)
+        os.remove(self.api_dev_spec_filename)
+        os.remove(self.api_diff_spec_filename)
+    def test_it(self):
+        get_incrementapi()
+        with open(self.api_diff_spec_filename, 'r') as f:
+            lines = f.readlines()
+            self.assertCountEqual(["two_plus_two\n", "three_plus_three\n", "four_plus_four\n"], lines)
 
 class Test_srccoms_extract(unittest.TestCase):
     def setUp(self):
