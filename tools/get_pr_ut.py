@@ -97,14 +97,14 @@ class PRChecker(object):
     def __urlretrieve(self, url, filename):
         ix = 1
         with_proxy = urllib.request.getproxies()
-        without_proxy = {'http' : '','http' : ''}
+        without_proxy = {'http': '', 'http': ''}
         while ix < 6:
             if ix // 2 == 0:
                 cur_proxy = urllib.request.ProxyHandler(without_proxy)
             else:
                 cur_proxy = urllib.request.ProxyHandler(with_proxy)
             opener = urllib.request.build_opener(cur_proxy,
-                                                urllib.request.HTTPHandler)
+                                                 urllib.request.HTTPHandler)
             urllib.request.install_opener(opener)
             try:
                 urllib.request.urlretrieve(url, filename)
@@ -119,7 +119,6 @@ class PRChecker(object):
             time.sleep(ix * 10)
             ix += 1
             
-
         return False
 
     def get_pr_files(self):
