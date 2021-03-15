@@ -22,15 +22,8 @@ class WeightedObject {
  public:
   WeightedObject() {}
   virtual ~WeightedObject() {}
-  virtual unsigned long long get_id() { return id; }
-  virtual double get_weight() { return weight; }
-
-  virtual void set_id(unsigned long long id) { this->id = id; }
-  virtual void set_weight(double weight) { this->weight = weight; }
-
- private:
-  unsigned long long id;
-  double weight;
+  virtual uint64_t get_id() = 0;
+  virtual float get_weight() = 0;
 };
 
 class WeightedSampler {
@@ -38,16 +31,16 @@ class WeightedSampler {
   WeightedSampler *left, *right;
   WeightedObject *object;
   int count;
-  double weight;
+  float weight;
   void build(WeightedObject **v, int start, int end);
   std::vector<WeightedObject *> sample_k(int k);
 
  private:
   WeightedObject *sample(
-      double query_weight,
-      std::unordered_map<WeightedSampler *, double> &subtract_weight_map,
+      float query_weight,
+      std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
       std::unordered_map<WeightedSampler *, int> &subtract_count_map,
-      double &subtract);
+      float &subtract);
 };
 }
 }
