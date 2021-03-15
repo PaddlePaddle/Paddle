@@ -118,7 +118,7 @@ class PRChecker(object):
                 return True
             time.sleep(ix * 10)
             ix += 1
-            
+
         return False
 
     def get_pr_files(self):
