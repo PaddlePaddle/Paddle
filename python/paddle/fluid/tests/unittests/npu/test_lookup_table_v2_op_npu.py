@@ -108,7 +108,6 @@ class TestLookupTableV2Net(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             emb = paddle.nn.Embedding(vocab, dim)
             ids = paddle.static.data(name="ids", shape=[bsz, seqlen], dtype='int64')
-            #res = paddle.static.nn.embedding(ids, (vocab, dim), param_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.)))
             res = emb(ids)
             loss = res.sum()
 
