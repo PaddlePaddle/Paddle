@@ -303,6 +303,12 @@ function unittests_retry(){
                         cur_order='first'
                     elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
+                        if [[ "$failed_test_lists" == "" ]]; then
+                            break
+                        else
+                            retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+                        fi
                     elif ( [[ "$exec_times" == "2" ]] );then
                         cur_order='third'
                     fi
