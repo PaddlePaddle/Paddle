@@ -178,8 +178,8 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         if (dy) {
           // flatten
           Tensor tmp_x(x->type());
-          int64_t first_dim = x->dims()[0] * x->dims()[1];
-          int64_t sec_dim = x->dims()[2];
+          int64_t sec_dim = x->dims()[1] * x->dims()[2];
+          int64_t first_dim = x->dims()[0];
           tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
           tmp_x.mutable_data<T>(ctx.GetPlace());
           framework::TensorCopy(
