@@ -25,25 +25,26 @@ from parallel_dygraph_gan import TestGanNet
 
 flag_name = os.path.splitext(__file__)[0]
 
-# class TestParallelDygraphGan(TestDistBase):
-#     def _setup_config(self):
-#         self._sync_mode = False
-#         self._nccl2_mode = True
-#         self._dygraph = True
 
-#     def test_mnist(self):
-#         if fluid.core.is_compiled_with_cuda():
-#             self.check_with_place(
-#                 "parallel_dygraph_gan.py",
-#                 delta=1e-5,
-#                 check_error_log=True,
-#                 log_name=flag_name)
+class TestParallelDygraphGan(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
 
-# class TestGanNetSpawn(TestDistSpawnRunner):
-#     def test_mnist_with_spawn(self):
-#         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-#             self.check_dist_result_with_spawn(
-#                 test_class=TestGanNet, delta=1e-5)
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_gan.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestGanNetSpawn(TestDistSpawnRunner):
+    def test_mnist_with_spawn(self):
+        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            self.check_dist_result_with_spawn(test_class=TestGanNet, delta=1e-5)
 
 
 class TestFleetDygraphGan(TestDistBase):

@@ -64,6 +64,9 @@ class ParallelContext {
   // if CPU, should do nothing.
   virtual void WaitComm(int ring_id) = 0;
 
+  // synchorize compute stream
+  virtual void SynchronizeCompute() = 0;
+
   inline int GetNRings() const { return strategy_.nrings_; }
 
   inline int64_t GetNRanks() const { return strategy_.nranks_; }
