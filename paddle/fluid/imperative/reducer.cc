@@ -317,6 +317,12 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
             })));
     var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;
   }
+
+  // for checking var is ready once
+  vars_marked_ready_.resize(vars_.size(), false);
+
+  // Initialize local used vars
+  local_used_vars_.resize(vars_.size(), 0);
 }
 
 void Reducer::InitializeDenseGroups(
@@ -470,8 +476,12 @@ void Reducer::PrepareForBackward(
     group.sparse_contents_ = nullptr;
   });
 
+  // reinitialize vars_marked_ready_ for next iteration
+  vars_marked_ready_.clear();
+  vars_marked_ready_.resize(vars_.size(), false);
+
   PADDLE_ENFORCE_EQ(
-      all_group_ready_, false,
+      groups_need_finalize_, false,
       platform::errors::PreconditionNotMet(
           "Please note that all forward outputs derived from the module "
           "parameters must participate in the calculation of losses and "
@@ -482,11 +492,12 @@ void Reducer::PrepareForBackward(
 
   // The first var to trigger the unused parameter
   has_marked_unused_vars_ = false;
-
-  // TODO(shenliang03) "find_unused_vars" interface will be exposed in the
-  // future to handle control flow to process unused parameters
-
   unused_vars_.clear();
+
+  if (!find_unused_vars_) {
+    return;
+  }
+
   node_deps_.clear();
   std::queue<std::shared_ptr<GradOpNode>> q;
   std::unordered_set<VariableWrapper *> var_visited;
@@ -561,32 +572,72 @@ void Reducer::PrepareForBackward(
 // concat + allreduce + split is emitted in turn according to next_group_.
 // 3, FinalizeBackward: after the end, synchronize each stream.
 void Reducer::AddDistHook(size_t var_index) {
+  PADDLE_ENFORCE_LT(var_index, variable_locators_.size(),
+                    platform::errors::OutOfRange(
+                        "Out of bounds variable index. it must be less"
+                        "than %d, but it is %d",
+                        variable_locators_.size(), var_index));
+
   VLOG(3) << "Var[" << var_index << "] ["
           << vars_[var_index]->GradVarBase()->Name()
           << "] arrived and triggered disthook";
-  if (!has_marked_unused_vars_) {
-    has_marked_unused_vars_ = true;
-    for (auto unused_index : unused_vars_) {
-      if (NeedRebuildGroup()) {
-        rebuild_vars_.push_back(vars_[unused_index]);
-        rebuild_var_indices_.push_back(unused_index);
-      }
-      MarkVarReady(unused_index, false);
-    }
-  }
 
+  local_used_vars_[var_index] = 1;
+
+  // rebuild group when find_unused_vars_ is false
   if (NeedRebuildGroup()) {
     rebuild_vars_.push_back(vars_[var_index]);
     rebuild_var_indices_.push_back(var_index);
   }
+
+  if (!has_marked_unused_vars_ && find_unused_vars_) {
+    has_marked_unused_vars_ = true;
+    for (const auto &unused_index : unused_vars_) {
+      MarkVarReady(unused_index, false);
+    }
+  }
+
   MarkVarReady(var_index, true);
 }
 
 void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
-  all_group_ready_ = true;
+  groups_need_finalize_ = true;
+
   const auto &var_locator = variable_locators_[var_index];
   auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
+
+  // error happened, if the var is ready before.
+  if (vars_marked_ready_[var_index]) {
+    auto error_info = string::Sprintf(
+        "Error happened, when parameter[%d][%s] has been ready before. "
+        "There may be several reasons for this error: "
+        "1) In multiple reentrant backward phase, some parameters are reused."
+        "2) Using model parameters outside of forward function. Please "
+        "make sure that model parameters are not shared in concurrent "
+        "forward-backward passes.",
+        var_index, vars_[var_index]->GradVarBase()->Name());
+
+    PADDLE_ENFORCE_EQ(has_marked_unused_vars_, false,
+                      platform::errors::PreconditionNotMet(error_info));
+
+    error_info +=
+        "3) Unused parameters retrieval is incorrect. "
+        "The return value of forward will be used to retrieve"
+        " the unused parameters of the entire model. These "
+        "gradients of unused parameters will not be synchronized "
+        "between multiple cards. However, if the unused "
+        "parameters participate in the backward calculation "
+        "again at a later time (e.g. after the forward function, "
+        "the loss calculation uses the unused "
+        "paramters of the forward and trigger backward), "
+        "its gradient will be wrong .";
+
+    PADDLE_ENFORCE_EQ(has_marked_unused_vars_, true,
+                      platform::errors::PreconditionNotMet(error_info));
+  } else {
+    vars_marked_ready_[var_index] = true;
+  }
 
   if (!group.is_sparse_) {
     // process dense group
@@ -630,6 +681,19 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   }
 
   if (next_group_ == groups_.size()) {
+    if (find_unused_vars_) {
+      VLOG(3) << "Group [" << curr_group_index << "]: Local used vars : "
+              << string::join_strings(local_used_vars_, ',');
+    }
+
+    // framework::TensorFromVector<int64_t>(
+    //     group.local_used_vars_, dev_context,
+    //     group.global_used_vars_.GetMutable<framework::LoDTensor>());
+
+    // parallel_ctx_->AllReduceByStream(group.global_used_vars_,
+    //                                  &(group.global_used_vars_), run_order,
+    //                                  false);
+
     FinalizeBackward();
   }
 }
@@ -637,6 +701,14 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 // TODO(liuyuhui): If BKCL support non-blocking communication, it should be
 // fixed as same as multi gpus card trainging.
 void Reducer::MarkGroupReady(size_t group_index) {
+  PADDLE_ENFORCE_GE(
+      group_index, next_group_,
+      platform::errors::PreconditionNotMet(
+          "The index of the incoming group must be greater "
+          "than or equal to the previously synchronized group index, "
+          "expect it to greater than or equal to %d, but got %d.",
+          next_group_, group_index));
+
   if (group_index > next_group_) {
     VLOG(3) << "It will adjust the order of group in next batch automatically";
     return;
@@ -672,7 +744,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
       }
     });
 #elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
-    FusedAllReduceSchedule(run_order, group);
+    FusedAllReduceSchedule(run_order, group, next_group_);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Not compiled with BKCL or NCCL."));
@@ -680,24 +752,29 @@ void Reducer::MarkGroupReady(size_t group_index) {
   }
 }
 
-void Reducer::FusedAllReduceSchedule(int run_order, Group &group) {
+void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
+                                     const int curr_group_index) {
+  // The overall timeline: concat > div_nranks > allreduce > split
+
+  // dev_context is used to select different stream
+  auto &dev_context = *parallel_ctx_->GetDeviceContext(run_order);
   if (group.is_sparse_) {
     if (group.sparse_contents_ != nullptr) {
-      VLOG(3) << "sparse group [" << next_group_ << "] start allreduce in ring["
-              << run_order << "]";
-      group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+      VLOG(3) << "sparse group [" << curr_group_index
+              << "] start allreduce in ring[" << run_order << "]";
+      group.DivNRanks(dev_context, nranks_);
       parallel_ctx_->AllReduceByStream(
           *group.sparse_contents_, group.sparse_contents_, run_order, false);
     } else {
-      VLOG(3) << "The sparse group[" << next_group_
+      VLOG(3) << "The sparse group[" << curr_group_index
               << "] has no var to allreduce";
     }
   } else {
-    VLOG(3) << "dense group [" << next_group_ << "] start allreduce in ring["
-            << run_order << "]";
+    VLOG(3) << "dense group [" << curr_group_index
+            << "] start allreduce in ring[" << run_order << "]";
     // Select common commstream to concat tensors
     // group.dense_tensors ---> group.dense_contents_
-    group.ConcatTensors(*parallel_ctx_->GetDeviceContext(run_order));
+    group.ConcatTensors(dev_context);
 
 // NOTE(liuyuhui): ConcatTensors use communication stream, but BKCL only support
 // default stream for communicating, so there exist some problems in
@@ -709,15 +786,32 @@ void Reducer::FusedAllReduceSchedule(int run_order, Group &group) {
       parallel_ctx_->WaitComm(run_order);
     }
 #endif
-    group.DivNRanks(*parallel_ctx_->GetDeviceContext(run_order), nranks_);
+
+    group.DivNRanks(dev_context, nranks_);
 
     // Start allreduce
     parallel_ctx_->AllReduceByStream(
         group.dense_contents_, &(group.dense_contents_), run_order, false);
 
-    // Select common commstream to split tensors
+    // Determines whether every parameter in group is used globally
+    // if (find_unused_vars_) {
+    // VLOG(3) << "Group [" << curr_group_index << "]: Local used vars : "
+    // << string::join_strings(group.local_used_vars_, ',');
+
+    // framework::TensorFromVector<int64_t>(
+    //     group.local_used_vars_, dev_context,
+    //     group.global_used_vars_.GetMutable<framework::LoDTensor>());
+
+    // parallel_ctx_->AllReduceByStream(group.global_used_vars_,
+    //                                  &(group.global_used_vars_), run_order,
+    //                                  false);
+
+    // group.SplitTensors(dev_context);
+    // }
+
+    // Select communication stream to split tensors
     // group.dense_contents_ ---> group.dense_tensors
-    group.SplitTensors(*parallel_ctx_->GetDeviceContext(run_order));
+    group.SplitTensors(dev_context);
   }
 }
 
@@ -744,13 +838,14 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 }
 
 void Reducer::FinalizeBackward() {
-  all_group_ready_ = false;
+  groups_need_finalize_ = false;
 #ifdef PADDLE_WITH_XPU_BKCL
   {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [&] { return comm_op_count_ == 0; });
   }
 #endif
+
   // Must prevent compute_stream_ starting until all comm streams have finished
   for (int i = 0; i < nrings_; ++i) {
     parallel_ctx_->WaitComm(i);
@@ -762,6 +857,8 @@ void Reducer::FinalizeBackward() {
     group_indices_ = std::move(rebuild_group_indices);
     InitializeGroups(group_indices_);
   }
+
+  // need sync bitmap
 
   VLOG(3) << "In the batch, Reducer is finished...";
 }

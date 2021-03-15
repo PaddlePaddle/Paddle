@@ -348,6 +348,7 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
                                          calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
+        find_unused_vars(bool, optional):
             
     Returns:
         Layer: The data paralleled module.
@@ -403,11 +404,13 @@ class DataParallel(layers.Layer):
                  layers,
                  strategy=None,
                  comm_buffer_size=25,
-                 last_comm_buffer_size=1):
+                 last_comm_buffer_size=1,
+                 find_unused_vars=True):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
+        self.find_unused_vars = find_unused_vars
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -474,15 +477,12 @@ class DataParallel(layers.Layer):
             "ParallelContext must be initialized before. You should use init_parallel_env() before" \
             "constructing the DataParallel."
 
-        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
-        # to handle control flow to process unused parameters
-        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size],
-            find_unused_vars)
+            self.find_unused_vars)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
@@ -496,8 +496,11 @@ class DataParallel(layers.Layer):
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
         if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs)))
+            if self.find_unused_vars:
+                self._reducer.prepare_for_backward(
+                    list(self._find_varbase(outputs)))
+            else:
+                self._reducer.prepare_for_backward(list(self._find_varbase([])))
 
         return outputs
 
