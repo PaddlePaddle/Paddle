@@ -157,7 +157,7 @@ class TestMulNet(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
-        print("Start run on {}".format(place))
+        print("TestMulNet Start run on {} . ".format(place))
         for epoch in range(100):
 
             pred_res, loss_res = exe.run(main_prog,
@@ -202,8 +202,8 @@ class TestMulNet3_2(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
-            c = paddle.static.data(name="c", shape=[4, 5], dtype='float32')
-            d = paddle.static.data(name="d", shape=[4, 5], dtype='float32')
+            c = paddle.static.data(name="c", shape=[12, 5], dtype='float32')
+            d = paddle.static.data(name="d", shape=[12, 5], dtype='float32')
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
@@ -226,7 +226,7 @@ class TestMulNet3_2(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
-        print("Start run on {}".format(place))
+        print("testMulNet3_2 tart run on {}".format(place))
         for epoch in range(100):
 
             pred_res, loss_res = exe.run(main_prog,
@@ -296,7 +296,7 @@ class TestMulNet3_2_xc2(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
-        print("Start run on {}".format(place))
+        print("TestMulNet3_2_xc2. Start run on {}".format(place))
         for epoch in range(100):
 
             pred_res, loss_res = exe.run(main_prog,
