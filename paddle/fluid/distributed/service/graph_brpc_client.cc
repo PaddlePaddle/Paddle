@@ -123,9 +123,10 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(request_call_num, [&, node_id_buckets, query_idx_buckets, request_call_num](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
+    int fail_num = 0;
     for (int request_idx = 0; request_idx < request_call_num; ++request_idx){
       if (closure->check_response(request_idx, PS_GRAPH_SAMPLE) != 0) {
-        ret = -1;
+        ++fail_num;
       } else {
         VLOG(0) << "check sample response: "
               << " " << closure->check_response(request_idx, PS_GRAPH_SAMPLE);
@@ -145,16 +146,15 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
           int actual_size = actual_sizes[node_idx];
           int start = 0;
           while (start < actual_size) {
-            //GraphNode node;
-            //node.recover_from_buffer(node_buffer + offset + start);
-            //start += node.get_size();
-            //res[query_idx].push_back(node);
             res[query_idx].push_back({*(uint64_t *)(node_buffer + offset + start),
                          *(float *)(node_buffer + offset + start + GraphNode::id_size)});
             start += GraphNode::id_size + GraphNode::weight_size;
           }
           offset += actual_size;
         }
+      }
+      if (fail_num == request_call_num){
+          ret = -1;
       }
     }
     closure->set_promise_value(ret);
