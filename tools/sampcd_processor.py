@@ -25,6 +25,7 @@ import json
 import argparse
 import shutil
 import re
+import logging
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -36,7 +37,18 @@ for example, you can run cpu version python2 testing like this:
 
 """
 
+fmt = logging.Formatter(
+    "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s")
+logger = logging.getLogger()
+console = logging.StreamHandler()
+console.setFormatter(fmt)
+logger.addHandler(console)
+
+# console.setLevel(level)
+# logger.setLevel(logging.DEBUG)
+
 RUN_ON_DEVICE = 'cpu'
+
 
 def find_all(srcstr, substr):
     """
@@ -297,8 +309,8 @@ def srccoms_extract(srcfile, wlist, methods):
 
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
-    print('processing ', srcfile.name, '; methods=', methods)
-    srcfile_new,_ = os.path.splitext(srcfile.name)
+    logger.debug('processing %s, methods: %s', srcfile.name, str(methods))
+    srcfile_new, _ = os.path.splitext(srcfile.name)
     srcfile_list = srcfile_new.split('/')
     srcfile_str = ''
     for i in range(4, len(srcfile_list)):
@@ -328,7 +340,7 @@ def srccoms_extract(srcfile, wlist, methods):
             if '' in alllist:
                 alllist.remove('')
         api_alllist_count = len(alllist)
-        print('found', api_alllist_count, 'items in file: ', alllist)
+        logger.debug('found %d items: %s', api_alllist_count, str(alllist))
         api_count = 0
         handled = []
         # get src contents in layers/ops.py
@@ -339,15 +351,16 @@ def srccoms_extract(srcfile, wlist, methods):
                 if opres is not None:
                     opname = opres.group(1)
                 else:
-                    opres = re.match(r"^add_sample_code\(globals\(\)\[\"(\w+)\"\]", srcls[i])
+                    opres = re.match(
+                        r"^add_sample_code\(globals\(\)\[\"(\w+)\"\]", srcls[i])
                     if opres is not None:
                         opname = opres.group(1)
                 if opname is not None:
                     if opname in wlist:
-                        print(opname, 'is in the whitelist, skip it.')
+                        logger.info('%s is in the whitelist, skip it.', opname)
                         continue
                     else:
-                        print(opname, '\'s docstring found.')
+                        logger.debug('%s\'s docstring found.', opname)
                     comstart = i
                     for j in range(i, len(srcls)):
                         if srcls[j].find("\"\"\"") != -1:
@@ -365,14 +378,16 @@ def srccoms_extract(srcfile, wlist, methods):
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
                     # handled what?
-        print('handled:', handled)
+        logger.debug('handled: %s', str(handled))
         for i in range(0, len(srcls)):
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
                 if "%s%s" % (srcfile_str, fn) not in methods:
-                    print('{}:{}'.format(srcfile_str, fn), 'not in methods, skip it. [fn]')
+                    logger.info(
+                        '[file:%s, function:%s] not in methods list, skip it.',
+                        srcfile_str, fn)
                     continue
                 if fn in handled:
                     continue
@@ -394,7 +409,9 @@ def srccoms_extract(srcfile, wlist, methods):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
                 if '%s%s' % (srcfile_str, cn) not in methods:
-                    print('{}{}'.format(srcfile_str, cn), 'not in methods, skip it. [cn]')
+                    logger.info(
+                        '[file:%s, class:%s] not in methods list, skip it.',
+                        srcfile_str, cn)
                     continue
                 if cn in handled:
                     continue
@@ -432,7 +449,8 @@ def srccoms_extract(srcfile, wlist, methods):
                                 if '%s%s' % (
                                         srcfile_str, name
                                 ) not in methods:  # class method not in api.spec 
-                                    print('{}{}'.format(srcfile_str, name), 'not in methods, skip it. [name]')
+                                    print('{}{}'.format(srcfile_str, name),
+                                          'not in methods, skip it. [name]')
                                     continue
                                 if mn.startswith('_'):
                                     continue
@@ -461,7 +479,7 @@ def srccoms_extract(srcfile, wlist, methods):
                                             thismtdcom, name, "method", name):
                                         process_result = False
     else:
-        print('__all__ not found in', srcfile.name)
+        logger.warning('__all__ not found in file:%s', srcfile.name)
 
     return process_result
 
@@ -475,6 +493,7 @@ def test(file_list):
                 process_result = False
     return process_result
 
+
 def run_a_test(tc_filename):
     global methods  # readonly
     process_result = True
@@ -482,6 +501,7 @@ def run_a_test(tc_filename):
         if not srccoms_extract(src, wlist, methods):
             process_result = False
     return process_result
+
 
 def get_filenames():
     '''
@@ -508,7 +528,7 @@ def get_filenames():
                 whl_error.append(api)
                 continue
             except SyntaxError:
-                print('line:{}, api:{}'.format(line, api))
+                logger.warning('line:%s, api:%s', line, api)
                 # paddle.Tensor.<lambda>
                 continue
             if len(module.split('.')) > 1:
@@ -520,13 +540,13 @@ def get_filenames():
                 filename = filename + module_py
             else:
                 filename = ''
-                print("\nWARNING:----Exception in get api filename----\n")
-                print("\n" + api + ' module is ' + module + "\n")
+                logger.warning("WARNING: Exception in getting api:%s module:%s",
+                               api, module)
             if filename != '' and filename not in filenames and os.path.exists(
                     filename):
                 filenames.append(filename)
             else:
-                print("skip file: {}".format(filename))
+                logger.info("skip file: %s", filename)
                 continue
             # get all methods
             method = ''
@@ -538,9 +558,9 @@ def get_filenames():
                 name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
             else:
                 name = ''
-                print("\nWARNING:----Exception in get api methods----\n")
-                print("\n" + line + "\n")
-                print("\n" + api + ' method is None!!!' + "\n")
+                logger.warning(
+                    "WARNING: Exception when getting api:%s, line:%s", api,
+                    line)
             for j in range(2, len(module.split('.'))):
                 method = method + '%s.' % module.split('.')[j]
             method = method + name
@@ -551,16 +571,17 @@ def get_filenames():
 
 
 def get_api_md5(path):
-        api_md5 = {}
-        API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
-                              path)
-        with open(API_spec) as f:
-            for line in f.readlines():
-                api = line.split(' ', 1)[0]
-                md5 = line.split("'document', ")[1].replace(')', '').replace(
-                    '\n', '')
-                api_md5[api] = md5
-        return api_md5
+    api_md5 = {}
+    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                          path)
+    with open(API_spec) as f:
+        for line in f.readlines():
+            api = line.split(' ', 1)[0]
+            md5 = line.split("'document', ")[1].replace(')', '').replace('\n',
+                                                                         '')
+            api_md5[api] = md5
+    return api_md5
+
 
 def get_incrementapi():
     '''
@@ -580,7 +601,7 @@ def get_incrementapi():
                 f.write('\n')
 
 
-def get_wlist(fn = "wlist.json"):
+def get_wlist(fn="wlist.json"):
     '''
     this function will get the white list of API.
 
@@ -608,9 +629,12 @@ def get_wlist(fn = "wlist.json"):
                 wlist = wlist + load_dict[key]
     return wlist, wlist_file, gpu_not_white
 
+
 arguments = [
-# flags, dest, type, default, help
+    # flags, dest, type, default, help
 ]
+
+
 def parse_args():
     """
     Parse input arguments
@@ -623,7 +647,8 @@ def parse_args():
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
     for item in arguments:
-        parser.add_argument(item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
+        parser.add_argument(
+            item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['cpu'])
@@ -633,6 +658,7 @@ def parse_args():
 
     args = parser.parse_args()
     return args
+
 
 methods = []
 whl_error = []
@@ -645,16 +671,17 @@ if __name__ == '__main__':
 
     wlist, wlist_file, gpu_not_white = get_wlist()
 
-    if args.mode  == "gpu":
+    if args.mode == "gpu":
         for _gnw in gpu_not_white:
             wlist.remove(_gnw)
     elif args.mode != "cpu":
-        print("Unrecognized argument:'", args.mode, "' , 'cpu' or 'gpu' is ",
-              "desired\n")
+        logger.error("Unrecognized argument:%s, 'cpu' or 'gpu' is desired.",
+                     args.mode)
         sys.exit("Invalid arguments")
     RUN_ON_DEVICE = args.mode
-    print("API check -- Example Code")
-    print("sample_test running under python", platform.python_version())
+    logger.info("API check -- Example Code")
+    logger.info("sample_test running under python %s",
+                platform.python_version())
 
     if os.path.exists("./samplecode_temp"):
         if not os.path.isdir("./samplecode_temp"):
@@ -666,7 +693,7 @@ if __name__ == '__main__':
     cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
     if len(filenames) == 0 and len(whl_error) == 0:
-        print("-----API_PR.spec is the same as API_DEV.spec-----")
+        logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)
     rm_file = []
     for f in filenames:
@@ -675,8 +702,9 @@ if __name__ == '__main__':
                 rm_file.append(f)
                 filenames.remove(f)
     if len(rm_file) != 0:
-        print("REMOVE white files: %s" % rm_file)
-    print("API_PR is diff from API_DEV: %s" % filenames)
+        logger.info("REMOVE white files: %s", rm_file)
+    logger.info("API_PR is diff from API_DEV: %s", filenames)
+
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     if one_part_filenum == 0:
         one_part_filenum = 1
@@ -697,32 +725,32 @@ if __name__ == '__main__':
     if not args.debug:
         shutil.rmtree("./samplecode_temp")
 
-    print("----------------End of the Check--------------------")
+    logger.info("----------------End of the Check--------------------")
     if len(whl_error) != 0:
-        print("%s is not in whl." % whl_error)
-        print("")
-        print("Please check the whl package and API_PR.spec!")
-        print("You can follow these steps in order to generate API.spec:")
-        print("1. cd ${paddle_path}, compile paddle;")
-        print("2. pip install build/python/dist/(build whl package);")
-        print(
+        logger.info("%s is not in whl.", whl_error)
+        logger.info("")
+        logger.info("Please check the whl package and API_PR.spec!")
+        logger.info("You can follow these steps in order to generate API.spec:")
+        logger.info("1. cd ${paddle_path}, compile paddle;")
+        logger.info("2. pip install build/python/dist/(build whl package);")
+        logger.info(
             "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
         )
         for temp in result:
             if not temp:
-                print("")
-                print("In addition, mistakes found in sample codes.")
-                print("Please check sample codes.")
-        print("----------------------------------------------------")
+                logger.info("")
+                logger.info("In addition, mistakes found in sample codes.")
+                logger.info("Please check sample codes.")
+        logger.info("----------------------------------------------------")
         exit(1)
     else:
         has_error = False
         for i in range(len(filenames)):
             if not result[i]:
-                print(filenames[i], ' error.')
+                logger.info('%s error.', filenames[i])
                 has_error = True
         if has_error:
-                print("Mistakes found in sample codes.")
-                print("Please check sample codes.")
-                exit(1)
-    print("Sample code check is successful!")
+            logger.info("Mistakes found in sample codes.")
+            logger.info("Please check sample codes.")
+            exit(1)
+    logger.info("Sample code check is successful!")
