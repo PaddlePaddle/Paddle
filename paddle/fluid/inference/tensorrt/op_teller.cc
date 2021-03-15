@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/data_layout.h"
 
 namespace paddle {
 namespace framework {
@@ -75,41 +76,40 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "elementwise_mul",
                                                   "conv2d_transpose",
                                                   "hard_swish"};
-  std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_mul",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "flatten2",
-      "flatten",
-  };
+  std::unordered_set<std::string> teller_set{"mul",
+                                             "matmul",
+                                             "conv2d",
+                                             "conv2d_fusion",
+                                             "pool2d",
+                                             "relu",
+                                             "softmax",
+                                             "sigmoid",
+                                             "hard_swish",
+                                             "depthwise_conv2d",
+                                             "batch_norm",
+                                             "concat",
+                                             "tanh",
+                                             "pad",
+                                             "elementwise_add",
+                                             "elementwise_mul",
+                                             "dropout",
+                                             "prelu",
+                                             "conv2d_transpose",
+                                             "leaky_relu",
+                                             "fc",
+                                             "shuffle_channel",
+                                             "swish",
+                                             "split",
+                                             "instance_norm",
+                                             "gelu",
+                                             "layer_norm",
+                                             "scale",
+                                             "stack",
+                                             "transpose2",
+                                             "transpose",
+                                             "flatten2",
+                                             "flatten",
+                                             "affine_channel"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -181,6 +181,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
+    }
+    if (op_type == "affine_channel") {
+      if (!desc.HasAttr("data_layout")) return false;
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC)
+        return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
