@@ -111,9 +111,7 @@ class TestMul4(TestMul):
             'Y': np.random.random(self.y_shape).astype(self.dtype)
         }
         self.attrs = {"x_num_col_dims": 2}
-        self.outputs = {
-            'Out': np.dot(self.inputs['X'].reshape(6, 4), self.inputs['Y'])
-        }
+        self.outputs = {'Out': np.matmul(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),

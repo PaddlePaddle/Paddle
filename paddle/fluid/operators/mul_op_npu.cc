@@ -112,6 +112,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
           framework::make_ddim({re_first_dim, re_sec_dim, re_third_dim}));
 
       // transpose [5, 2, 3] => [2, 3, 5]
+      out->mutable_data<T>(ctx.GetPlace());
       std::vector<int64_t> vec_trans_final = {1, 2, 0};
       auto runner_trans_final = NpuOpRunner("TransposeD", {tmp_re}, {*out},
                                             {{"perm", vec_trans_final}});
