@@ -35,10 +35,6 @@ class TestCast1(OpTest):
         self.op_type = "scatter"
         self.place = paddle.NPUPlace(0)
 
-        #ref_np = np.ones((3, 50)).astype("float32")
-        #index_np = np.array([1, 2]).astype("int32")
-        #updates_np = np.random.random((2, 50)).astype("float32")
-        
         ref_np = np.ones((3, 2)).astype("float32")
         index_np = np.array([1]).astype("int32")
         updates_np = np.random.random((1, 2)).astype("float32")
@@ -47,6 +43,7 @@ class TestCast1(OpTest):
         output_np[index_np] = updates_np
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+        self.attrs = {'overwrite': True}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -54,6 +51,74 @@ class TestCast1(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+
+class TestCast2(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "scatter"
+        self.place = paddle.NPUPlace(0)
+       
+        ref_np = np.ones((3, 2)).astype("int32")
+        index_np = np.array([1]).astype("int32")
+        updates_np = np.zeros((1, 2)).astype("int32")
+
+        output_np = np.copy(ref_np)
+        output_np[index_np] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+        self.attrs = {'overwrite': True}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+class TestCast3(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "scatter"
+        self.place = paddle.NPUPlace(0)
+       
+        ref_np = np.ones((3, 2)).astype("float32")
+        index_np = np.array([1]).astype("int32")
+        updates_np = np.random.random((1, 2)).astype("float32")
+
+        output_np = np.copy(ref_np)
+        output_np[index_np] += updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+        self.attrs = {'overwrite': False}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+
+class TestCast4(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "scatter"
+        self.place = paddle.NPUPlace(0)
+
+        ref_np = np.ones((3, 2)).astype("float32")
+        index_np = np.array([1, 2]).astype("int32")
+        updates_np = np.random.random((2, 2)).astype("float32")
+
+        output_np = np.copy(ref_np)
+        output_np[1] = updates_np[0]
+        output_np[2] = updates_np[1]
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+        self.attrs = {'overwrite': True}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 if __name__ == '__main__':
     unittest.main()

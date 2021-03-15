@@ -17,31 +17,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-inline framework::Tensor UnsqueezeTo(const framework::Tensor& src, int ndims) {
-   const framework::DDim& shape = src.dims();
-   int rank = shape.size();
-   framework::Tensor res;
-   res.ShareDataWith(src);
-   PADDLE_ENFORCE_LE(
-       rank, ndims,
-       platform::errors::InvalidArgument(
-           "The input Tensor's rank should be less than or equal to ndims"
-           "Received input Tensor's rank = %d, ndims = %d",
-           rank, ndims));
-   if (rank < ndims) {
-     std::vector<int64_t> new_dim(ndims, 1);
-     for (int i = ndims - rank; i < ndims; i++) {
-       new_dim[i] = shape[i - ndims + rank];
-     }
-     res.Resize(framework::make_ddim(new_dim));
-   }
-   return res;
-}
 
 using Tensor = framework::Tensor;
 
@@ -51,7 +31,7 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 
     auto* x = ctx.Input<Tensor>("X");
-    auto* ids = ctx.Input<Tensor>("Ids");
+    auto* index = ctx.Input<Tensor>("Ids");
     auto* updates = ctx.Input<Tensor>("Updates");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
@@ -60,22 +40,25 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    const auto index_dims = ids->dims();
+    framework::Tensor tmp_tensor(index->type());
+    const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
-       framework::Tensor tmp_index = UnsqueezeTo(*ids, 2);
-       ids = &tmp_index;
-     }
+      tmp_tensor.ShareDataWith(*index);
+      std::vector<int64_t> new_dim = {index_dims[0], 1};
+      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      index = &tmp_tensor;
+    }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
     if (overwrite){
-        auto runner_update = NpuOpRunner("TensorScatterUpdate", {*x, *ids, *updates}, {*out}, {});
+        auto runner_update = NpuOpRunner("TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
         runner_update.Run(stream);
     }
     else{
-        auto runner_add = NpuOpRunner("TensorScatterAdd", {*x, *ids, *updates}, {*out}, {});
+        auto runner_add = NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
         runner_add.Run(stream);
     }
   }
