@@ -53,6 +53,7 @@ class TestReduceSum(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -76,6 +77,11 @@ class TestReduceSum(OpTest):
     #         return
     #     self.check_grad(['X'], 'Out')
     #
+
+
+class TestReduceSumFP16(OpTest):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
