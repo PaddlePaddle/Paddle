@@ -101,6 +101,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
 
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
+  res.clear();
   for (int query_idx = 0; query_idx < node_ids.size(); ++query_idx){
     int server_index = get_server_index_by_id(node_ids[query_idx]);
     if(server2request[server_index] == -1){

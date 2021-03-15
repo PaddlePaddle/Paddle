@@ -220,20 +220,22 @@ void RunBrpcPushSparse() {
 
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float> > > vs;
-  std::vector<std::pair<uint64_t, float>> v;
-  pull_status = worker_ptr_->sample(0, 37, 4, v);
+  //std::vector<std::pair<uint64_t, float>> v;
+  //pull_status = worker_ptr_->sample(0, 37, 4, v);
+  pull_status = worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 37), 4, vs);
   pull_status.wait();
-  ASSERT_EQ(v.size(), 3);
-  v.clear();
-  pull_status = worker_ptr_->sample(0, 96, 4, v);
+  ASSERT_EQ(vs[0].size(), 3);
+  vs.clear();
+  //pull_status = worker_ptr_->sample(0, 96, 4, v);
+  pull_status = worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 96), 4, vs);
   pull_status.wait();
   std::unordered_set<int> s = {111, 48, 247};
-  ASSERT_EQ(3, v.size());
-  for (auto g : v) {
+  ASSERT_EQ(3, vs[0].size());
+  for (auto g : vs[0]) {
     // std::cout << g.first << std::endl;
     ASSERT_EQ(true, s.find(g.first) != s.end());
   }
-  v.clear();
+  vs.clear();
   std::vector<distributed::GraphNode> nodes;
   pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
   pull_status.wait();
@@ -277,10 +279,10 @@ void RunBrpcPushSparse() {
   nodes = client2.pull_graph_list(std::string("user2item"), 0, 1, 4);
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
-  v = client1.sample_k(std::string("user2item"), 96, 4);
-  ASSERT_EQ(v.size(), 3);
-  std::cout << "sample result" << std::endl;
-  for (auto p : v) {
+  vs = client1.batch_sample_k(std::string("user2item"), std::vector<uint64_t>(1, 96), 4);
+  ASSERT_EQ(vs[0].size(), 3);
+  std::cout << "batch sample result" << std::endl;
+  for (auto p : vs[0]) {
     std::cout << p.first << " " << p.second << std::endl;
   }
   std::vector<uint64_t> node_ids;
