@@ -161,7 +161,8 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           // to do : why dout.dims!=2
           // matmul [2, 5] * [12, 5] => [2, 12]
           Tensor tmp_matmul(y->type());
-          tmp_matmul.Resize(framework::make_ddim({dout->dims[0], y->dims[1]}));
+          tmp_matmul.Resize(
+              framework::make_ddim({dout->dims()[0], y->dims()[1]}));
           tmp_matmul.mutable_data<T>(ctx.GetPlace());
           auto runner_matmul =
               NpuOpRunner("MatMul", {*dout, *y}, {tmp_matmul},
