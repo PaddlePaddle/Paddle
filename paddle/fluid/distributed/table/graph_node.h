@@ -20,11 +20,13 @@ namespace distributed {
 // enum GraphNodeType { user = 0, item = 1, query = 2, unknown = 3 };
 class GraphEdge : public WeightedObject {
  public:
-  double weight;
-  uint64_t id;
   // GraphNodeType type;
   GraphEdge() {}
-  GraphEdge(uint64_t id, double weight) : weight(weight), id(id) {}
+  GraphEdge(uint64_t id, float weight) : id(id), weight(weight) {}
+  uint64_t get_id() { return id; }
+  float get_weight() { return weight; }
+  uint64_t id;
+  float weight;
 };
 class GraphNode {
  public:
@@ -35,7 +37,7 @@ class GraphNode {
       : id(id), feature(feature), sampler(NULL) {}
   virtual ~GraphNode() {}
   std::vector<GraphEdge *> get_graph_edge() { return edges; }
-  static int enum_size, id_size, int_size, double_size;
+  static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
   void set_id(uint64_t id) { this->id = id; }
   // GraphNodeType get_graph_node_type() { return type; }

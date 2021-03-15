@@ -16,9 +16,8 @@
 #include <cstring>
 namespace paddle {
 namespace distributed {
-int GraphNode::enum_size = sizeof(int);
+int GraphNode::weight_size = sizeof(float);
 int GraphNode::id_size = sizeof(uint64_t);
-int GraphNode::double_size = sizeof(double);
 int GraphNode::int_size = sizeof(int);
 int GraphNode::get_size() { return feature.size() + id_size + int_size; }
 void GraphNode::build_sampler() {

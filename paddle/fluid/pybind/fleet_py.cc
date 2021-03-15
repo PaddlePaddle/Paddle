@@ -165,7 +165,8 @@ void BindGraphNode(py::module* m) {
 void BindGraphService(py::module* m) {
   py::class_<GraphPyService>(*m, "GraphPyService")
       .def(py::init<>())
-      .def("load_file", &GraphPyService::load_file)
+      .def("load_edge_file", &GraphPyService::load_edge_file)
+      .def("load_node_file", &GraphPyService::load_node_file)
       .def("set_up", &GraphPyService::set_up)
       .def("pull_graph_list", &GraphPyService::pull_graph_list)
       .def("sample_k", &GraphPyService::sample_k)

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/service/graph_brpc_client.h"
 #include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Eigen/Dense"
-
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -35,9 +35,9 @@ int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
   return id % shard_num / shard_per_server;
 }
 // char* &buffer,int &actual_size
-std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
-                                             uint64_t node_id, int sample_size,
-                                             std::vector<GraphNode> &res) {
+std::future<int32_t> GraphBrpcClient::sample(
+    uint32_t table_id, uint64_t node_id, int sample_size,
+    std::vector<std::pair<uint64_t, float>> &res) {
   int server_index = get_server_index_by_id(node_id);
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
@@ -45,8 +45,6 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
     if (closure->check_response(0, PS_GRAPH_SAMPLE) != 0) {
       ret = -1;
     } else {
-      VLOG(0) << "check sample response: "
-              << " " << closure->check_response(0, PS_GRAPH_SAMPLE);
       auto &res_io_buffer = closure->cntl(0)->response_attachment();
       butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
       size_t bytes_size = io_buffer_itr.bytes_left();
@@ -62,10 +60,13 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
         int actual_size = actual_sizes[idx];
         int start = 0;
         while (start < actual_size) {
-          GraphNode node;
-          node.recover_from_buffer(node_buffer + offset + start);
-          start += node.get_size();
-          res.push_back(node);
+          //GraphNode node;
+          //node.recover_from_buffer(node_buffer + offset + start);
+          //start += node.get_size();
+          //res.push_back(node);
+          res.push_back({*(uint64_t *)(node_buffer + offset + start),
+                         *(float *)(node_buffer + offset + start + GraphNode::id_size)});
+          start += GraphNode::id_size + GraphNode::weight_size;
         }
         offset += actual_size;
       }
@@ -84,6 +85,7 @@ std::future<int32_t> GraphBrpcClient::sample(uint32_t table_id,
   size_t node_num = node_ids.size();
     
   closure->request(0)->add_params((char *)node_ids.data(), sizeof(uint64_t)*node_num);
+  //closure->request(0)->add_params((char *)&node_id, sizeof(uint64_t));
   closure->request(0)->add_params((char *)&sample_size, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
