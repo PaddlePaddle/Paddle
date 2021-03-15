@@ -157,6 +157,7 @@ def monkey_patch_varbase():
         Examples:
             .. code-block:: python
 
+                import paddle
                 x = paddle.to_tensor(5., stop_gradient=False)
                 for i in range(5):
                     y = paddle.pow(x, 4.0)
@@ -175,7 +176,7 @@ def monkey_patch_varbase():
                 grad_tensor=paddle.to_tensor(2.)
                 for i in range(5):
                     y = paddle.pow(x, 4.0)
-                    y.backward(grad_tensor=grad_tensor)
+                    y.backward(grad_tensor)
                     print("{}: {}".format(i, x.grad))
                 # 0: [1000.]
                 # 1: [2000.]
@@ -185,19 +186,19 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
+            if grad_tensor is not None:
+                assert isinstance(
+                    grad_tensor, core.
+                    VarBase), "The type of grad_tensot must be paddle.VarBase"
+                assert grad_tensor.shape == self.shape, "Variable shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
+                    grad_tensor.name, grad_tensor.shape, self.name, self.shape)
+
             if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
                 scaled_loss._run_backward(framework._dygraph_tracer(),
-                                          retain_graph)
+                                          retain_graph, grad_tensor)
             else:
-                if grad_tensor is not None:
-                    assert isinstance(
-                        grad_tensor, core.VarBase
-                    ), "The type of grad_tensot must be paddle.VarBase"
-                    assert grad_tensor.shape == self.shape, "Variable shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
-                        grad_tensor.name, grad_tensor.shape, self.name,
-                        self.shape)
                 self._run_backward(framework._dygraph_tracer(), retain_graph,
                                    grad_tensor)
         else:
