@@ -237,11 +237,15 @@ class ShardingOptimizer(MetaOptimizerBase):
 
                         # NOTE (JZ-LIANG) naive rule to support amp, if amp change, should modify here accordingly
                         if 'AMPOptimizer' in fleet._get_applied_meta_list():
-                            if ".cast_fp16@GRAD" not in input_name:
+                            # if ".cast_fp16@GRAD" not in input_name:
+                            #     continue
+                            # else:
+                            #     input_name = input_name[:input_name.find(".cast_fp16@GRAD")]
+                            if (op.type != "cast" and op.type != "layer_norm") or "@Fetch_0" not in input_name:
                                 continue
                             else:
-                                input_name = input_name[:input_name.find(".cast_fp16@GRAD")]
-                            
+                                input_name = input_name[:input_name.find("@Fetch_0")]
+                                                        
                         if input_name in self._backward_remain_anchors:
                             logging.info("backward segment:")
                             logging.info("op [{}] input [{}] output [{}]".format(op.desc.type() ,op.desc.input_arg_names(), op.desc.output_arg_names()))
@@ -314,8 +318,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._segments.insert(0, segment)
 
         if self._sharding_segment_strategy == "anchors":
-            assert len(self._forward_remain_anchors) == 0
-            assert len(self._backward_remain_anchors) == 0
+            assert len(self._forward_remain_anchors) == 0, "remain anchors {}".format(self._forward_remain_anchors)
+            assert len(self._backward_remain_anchors) == 0,  "remain anchors {}".format(self._backward_remain_anchors)
 
         for varname in sorted(var2broadcast_time, key=var2broadcast_time.get, reverse=True):
             logging.info("Sharding broadcast: [{}] times [{}]".format(var2broadcast_time[varname], varname))
