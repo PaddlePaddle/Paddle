@@ -920,17 +920,15 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,
-              bool retain_graph, imperative::VarBase *grad_tensor) {
+              bool retain_graph, std::shared_ptr<imperative::VarBase> &grad_tensor) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, retain_graph, grad_tensor);
+             engine->Init(&self, retain_graph, grad_tensor.get());
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
            },
-           py::arg("tracer"), py::arg("retain_graph"),
-           py::arg("grad_tensor") = static_cast<imperative::VarBase *>(nullptr),
            py::call_guard<py::gil_scoped_release>())
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
