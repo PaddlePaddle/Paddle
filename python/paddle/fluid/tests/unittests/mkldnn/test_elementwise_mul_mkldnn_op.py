@@ -55,11 +55,13 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
     def test_check_grad_ingore_y(self):
         pass
 
+
 class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
+
 
 ''' INT8 Tests '''
 
@@ -124,8 +126,8 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
-        self.check_output(
-            check_dygraph=(self.use_mkldnn == False), atol=int_atol)
+        self.check_output(check_dygraph=(self.use_mkldnn == False),
+                          atol=int_atol)
 
 
 class TestUint8Scales(TestInt8Scales):

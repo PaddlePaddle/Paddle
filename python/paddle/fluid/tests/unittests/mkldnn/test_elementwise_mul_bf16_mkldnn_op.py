@@ -45,12 +45,14 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X", "Y"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[np.multiply(self.x, self.y), np.multiply(self.x, self.x)],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   check_dygraph=False,
+                                   user_defined_grads=[
+                                       np.multiply(self.x, self.y),
+                                       np.multiply(self.x, self.x)
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
@@ -69,8 +71,8 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             user_defined_grad_outputs=[self.x_bf16])
 
 
-class TestElementwiseMulBroadCastingBf16MklDNNOp(
-        TestElementwiseMulBf16MklDNNOp):
+class TestElementwiseMulBroadCastingBf16MklDNNOp(TestElementwiseMulBf16MklDNNOp
+                                                 ):
     def generate_data(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(np.float32)
         self.y = np.random.uniform(1, 2, [100]).astype(np.float32)
@@ -88,20 +90,25 @@ class TestElementwiseMulBroadCastingBf16MklDNNOp(
         pass
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["X", "Y"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[np.multiply(self.x, self.y), self.compute_reduced_gradients(np.multiply(self.x, self.x))],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   check_dygraph=False,
+                                   user_defined_grads=[
+                                       np.multiply(self.x, self.y),
+                                       self.compute_reduced_gradients(
+                                           np.multiply(self.x, self.x))
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(
-            core.CPUPlace(), ["Y"],
-            "Out",
-            check_dygraph=False,
-            user_defined_grads=[self.compute_reduced_gradients(np.multiply(self.x, self.x))],
-            user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(core.CPUPlace(), ["Y"],
+                                   "Out",
+                                   check_dygraph=False,
+                                   user_defined_grads=[
+                                       self.compute_reduced_gradients(
+                                           np.multiply(self.x, self.x))
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
 
 
 if __name__ == '__main__':
