@@ -50,8 +50,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             "Out",
             check_dygraph=False,
             user_defined_grads=[
-            np.multiply(self.x, self.y),
-            np.multiply(self.x, self.x)
+                np.multiply(self.x, self.y), np.multiply(self.x, self.x)
             ],
             user_defined_grad_outputs=[self.x_bf16])
 
@@ -97,8 +96,7 @@ class TestElementwiseMulBroadCastingBf16MklDNNOp(
             check_dygraph=False,
             user_defined_grads=[
                 np.multiply(self.x, self.y),
-                self.compute_reduced_gradients(
-                    np.multiply(self.x, self.x))
+                self.compute_reduced_gradients(np.multiply(self.x, self.x))
             ],
             user_defined_grad_outputs=[self.x_bf16])
 
@@ -108,8 +106,7 @@ class TestElementwiseMulBroadCastingBf16MklDNNOp(
             "Out",
             check_dygraph=False,
             user_defined_grads=[
-                self.compute_reduced_gradients(
-                    np.multiply(self.x, self.x))
+                self.compute_reduced_gradients(np.multiply(self.x, self.x))
             ],
             user_defined_grad_outputs=[self.x_bf16])
 
