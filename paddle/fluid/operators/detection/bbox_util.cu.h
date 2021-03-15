@@ -66,7 +66,8 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   // Determine temporary device storage requirements
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
+      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num, 0,
+      sizeof(T) * 8, ctx.stream());
   // Allocate temporary storage
   auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
@@ -74,7 +75,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
-      idx_out, num);
+      idx_out, num, 0, sizeof(T) * 8, ctx.stream());
 }
 
 template <typename T>
