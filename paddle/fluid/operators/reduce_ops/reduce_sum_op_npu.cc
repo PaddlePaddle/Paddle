@@ -77,13 +77,14 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     } else {
       framework::DDim out_dims;
-      out_dims = GetOutputShape(dims, out_grad->dims());
+      out_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
+          dims, out_grad->dims());
 
       Tensor out_grad_tmp(out_grad->type());
-      out_grad_tmp->Resize(out_dims);
+      out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
 
-      auto runner = NpuOpRunner("BroadcastToD", {*out_grad_tmp}, {*x_grad},
+      auto runner = NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
                                 {{"shape", framework::vectorize(x->dims())}});
       runner.Run(stream);
     }
