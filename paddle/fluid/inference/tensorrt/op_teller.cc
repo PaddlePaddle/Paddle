@@ -159,8 +159,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       } else {
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (with_dynamic_shape) return (axis >= 0);
-        return (axis > 0);
+        if (with_dynamic_shape) {
+          if (axis < 0) return false;
+        } else {
+          if (axis <= 0) return false;
+        }
       }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
