@@ -191,13 +191,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             # pp_optimizer._rename_gradient_var_name(main_block)
             # crop ops
             for idx, op in reversed(list(enumerate(main_block.ops))):
-                # if op.type == 'fill_constant' and int(op.attr('op_role')) == 16:
-                #     out_name = op.output_arg_names[0]
-                #     if not 'GRAD' in out_name: continue
-                #     param_name = out_name.strip("@GRAD")
-                #     #if main_block.has_var(out_name): continue
-                #     if self._shard.has_param(param_name): continue
-                #     main_block._remove_op(idx)
                 if is_update_op(op):
                     op_role_var = op.attr('op_role_var')
                     param_name = op_role_var[0]
@@ -211,13 +204,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 #if self._shard.has_param(param_name): continue
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
-            #param_list = []
-            #for param_name, grad_name in params_grads:
-            #    if self._shard.has_param(param_name):
-            #        param_list.append(param_name)
-            #pp_optimizer._clear_gradients(main_block, param_list) 
-            #accumulated_grad_names = pp_optimizer._accumulate_gradients(
-            #    main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
             if self.pp_allreduce_in_optimize:
                 print("persistable FP32 grad: ")
@@ -232,26 +218,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._shard,
                     core.op_proto_and_checker_maker.OpRole.Optimize,
                     use_calc_stream=True)
-            #if not self._shard.has_param(param_name): continue
-            ##if not main_block.has_var(grad_name): continue
-            #assert main_block.has_var(grad_name)
-            #grad_var = main_block.vars[grad_name]
-            #grad_var.persistable = True
-            #main_block._insert_op(
-            #    index=0,
-            #    type='fill_constant',
-            #    inputs={},
-            #    outputs={'Out': [grad_var]},
-            #    attrs={
-            #        'shape': grad_var.shape,
-            #        'dtype': grad_var.dtype,
-            #        'value': float(0),
-            #        #self._op_device_key: device,
-            #        # a trick to run this op once per mini-batch
-            #        'op_role': core.op_proto_and_checker_maker.OpRole.LRSched,
-            #    })
 
-        pass
         main_block._sync_with_cpp()
 
         # TODO(wangxi): add optimize offload
@@ -578,6 +545,17 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.use_pipeline and self.pp_allreduce_in_optimize:
             for idx in range(len(self._segments)):
                 assert len(self._segments[idx]._allreduce_vars) == 0
+
+        # fix the _end_idx for segments[-1] if pp is used.
+        new_end_idx = self._segments[-1]._end_idx
+        for idx in range(self._segments[-1]._end_idx - 1,
+                         self._segments[-1]._start_idx - 1, -1):
+            op = block.ops[idx]
+            if op.type == "fill_constant" or op.type == "sum":
+                if "MERGED" in op.output_arg_names[0]: new_end_idx = idx + 1
+            elif op.type == "cast":
+                if "@TMP" in op.output_arg_names[0]: new_end_idx = idx + 1
+        self._segments[-1]._end_idx = new_end_idx
 
         if self._segments[-1]._allreduce_vars:
             shard_allredue_vars = self._shard.filter_grads(self._segments[-1]

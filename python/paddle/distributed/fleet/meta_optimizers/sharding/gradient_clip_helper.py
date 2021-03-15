@@ -41,7 +41,7 @@ class GradientClipHelper(object):
             for input_name in op.desc.input_arg_names():
                 if input_name in deperated_vars:
                     deperate_op = True
-                param_name = input_name.strip("@GRAD")
+                param_name = input_name.strip("@GRAD@MERGED")
                 if shard.is_param(param_name) and \
                   not shard.has_param(param_name):
                     deperate_op = True
