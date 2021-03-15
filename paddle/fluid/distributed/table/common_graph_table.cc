@@ -176,7 +176,6 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   
   for (auto &shard : shards) {
     auto bucket = shard.get_bucket();
-
     for (int i = 0; i < bucket.size(); i++) {
       std::list<GraphNode *>::iterator iter = bucket[i].begin();
       while (iter != bucket[i].end()) {
