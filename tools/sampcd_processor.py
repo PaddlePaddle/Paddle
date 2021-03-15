@@ -357,6 +357,8 @@ def srccoms_extract(srcfile, wlist, methods):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
+                    if not sampcd_extract_and_run(opcom, opname, "def", opname):
+                        process_result = False
                     api_count += 1
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
@@ -372,8 +374,8 @@ def srccoms_extract(srcfile, wlist, methods):
                 if "%s%s" % (srcfile_str, fn) not in methods:
                     print('{}:{}'.format(srcfile_str, fn), 'not in methods, skip it. [fn]')
                     continue
-                #if fn in handled:
-                #    continue
+                if fn in handled:
+                    continue
                 if fn in alllist:
                     api_count += 1
                     if fn in wlist or fn + "@" + srcfile.name in wlist:
@@ -394,8 +396,8 @@ def srccoms_extract(srcfile, wlist, methods):
                 if '%s%s' % (srcfile_str, cn) not in methods:
                     print('{}{}'.format(srcfile_str, cn), 'not in methods, skip it. [cn]')
                     continue
-                #if cn in handled:
-                #    continue
+                if cn in handled:
+                    continue
                 if cn in alllist:
                     api_count += 1
                     if cn in wlist or cn + "@" + srcfile.name in wlist:
