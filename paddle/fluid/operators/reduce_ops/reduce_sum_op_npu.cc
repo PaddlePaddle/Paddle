@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/operators/unsqueeze_op.h"
 
 namespace paddle {
 namespace operators {
@@ -61,16 +62,31 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    bool reduce_all = ctx.Attr<bool>("reduce_all");
+    bool keep_dims = ctx.Attr<bool>("keep_dim");
+    auto dims = ctx.Attr<std::vector<int>>("dim");
 
     x_grad->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+    if (keep_dims || reduce_all) {
+      auto runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
+                                {{"shape", framework::vectorize(x->dims())}});
+      runner.Run(stream);
+    } else {
+      framework::DDim out_dims;
+      out_dims = GetOutputShape(dims, out_grad->dims());
 
-    auto runner = NpuOpRunner("BroadcastToD", {*out_grad}, {*x_grad},
-                              {{"shape", framework::vectorize(x->dims())}});
-    runner.Run(stream);
+      Tensor out_grad_tmp(out_grad->type());
+      out_grad_tmp->Resize(out_dims);
+      out_grad_tmp.mutable_data<T>(ctx.GetPlace());
+
+      auto runner = NpuOpRunner("BroadcastToD", {*out_grad_tmp}, {*x_grad},
+                                {{"shape", framework::vectorize(x->dims())}});
+      runner.Run(stream);
+    }
   }
 };
 }  // namespace operators
