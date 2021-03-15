@@ -113,7 +113,7 @@ int32_t GraphTable::load_nodes(const std::string &path) {
 
       size_t shard_id = id % shard_num;
       if (shard_id >= shard_end || shard_id < shard_start) {
-        VLOG(0) << "will not load " << id << " from " << path
+        VLOG(4) << "will not load " << id << " from " << path
                 << ", please check id distribution";
         continue;
 
@@ -160,7 +160,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       size_t src_shard_id = src_id % shard_num;
 
       if (src_shard_id >= shard_end || src_shard_id < shard_start) {
-        VLOG(0) << "will not load " << src_id << " from " << path
+        VLOG(4) << "will not load " << src_id << " from " << path
                 << ", please check id distribution";
         continue;
       }
@@ -226,6 +226,7 @@ int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
           memcpy(buffer + offset, &weight, GraphNode::weight_size);
           offset += GraphNode::weight_size;
         }
+        return 0;
       })
       .get();
 }
