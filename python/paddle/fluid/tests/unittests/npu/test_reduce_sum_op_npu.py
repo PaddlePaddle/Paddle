@@ -151,5 +151,48 @@ class TestReduceSumNet2(TestReduceSumNet):
         return paddle.fluid.layers.reduce_sum(x, dim=-1, keep_dim=True)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestReduceSumNet3(TestReduceSumNet):
+    def _test(self, run_npu=True):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(2, 3, 4)).astype('float32')
+        b_np = np.random.random(size=(2, 3, 4)).astype('float32')
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
+            b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
+
+            z = paddle.add(a, b)
+            loss = fluid.layers.reduce_sum(z)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
+
+        if run_npu:
+            place = paddle.NPUPlace(0)
+        else:
+            place = paddle.CPUPlace()
+
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("Start run on {}".format(place))
+        for epoch in range(100):
+
+            loss_res = exe.run(main_prog,
+                               feed={"a": a_np,
+                                     "b": b_np},
+                               fetch_list=[loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Loss: {}".format(epoch, loss_res))
+
+        return loss_res, loss_res
+
+
 if __name__ == '__main__':
     unittest.main()
