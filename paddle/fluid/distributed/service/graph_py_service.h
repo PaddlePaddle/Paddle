@@ -44,27 +44,23 @@
 namespace paddle {
 namespace distributed {
 class GraphPyService {
-  std::vector<int> keys;
+ protected:
   std::vector<std::string> server_list, port_list, host_sign_list;
-  int server_size, shard_num, rank, client_id;
+  int server_size, shard_num;
   std::unordered_map<std::string, uint32_t> table_id_map;
-  std::thread *server_thread, *client_thread;
+  // std::thread *server_thread, *client_thread;
 
-  std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
+  // std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
 
-  std::shared_ptr<paddle::distributed::PSClient> worker_ptr;
+  // std::shared_ptr<paddle::distributed::PSClient> worker_ptr;
 
  public:
-  std::shared_ptr<paddle::distributed::PSServer> get_ps_server() {
-    return pserver_ptr;
-  }
-  std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
-    return worker_ptr;
-  }
-  int get_client_id() { return client_id; }
-  void set_client_Id(int client_Id) { this->client_id = client_id; }
-  int get_rank() { return rank; }
-  void set_rank(int rank) { this->rank = rank; }
+  // std::shared_ptr<paddle::distributed::PSServer> get_ps_server() {
+  //   return pserver_ptr;
+  // }
+  // std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
+  //   return worker_ptr;
+  // }
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
@@ -82,162 +78,58 @@ class GraphPyService {
     accessor_proto->set_accessor_class("CommMergeAccessor");
   }
 
-  ::paddle::distributed::PSParameter GetServerProto() {
-    // Generate server proto desc
-    ::paddle::distributed::PSParameter server_fleet_desc;
-    server_fleet_desc.set_shard_num(shard_num);
-    ::paddle::distributed::ServerParameter* server_proto =
-        server_fleet_desc.mutable_server_param();
-    ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
-        server_proto->mutable_downpour_server_param();
-    ::paddle::distributed::ServerServiceParameter* server_service_proto =
-        downpour_server_proto->mutable_service_param();
-    server_service_proto->set_service_class("GraphBrpcService");
-    server_service_proto->set_server_class("GraphBrpcServer");
-    server_service_proto->set_client_class("GraphBrpcClient");
-    server_service_proto->set_start_server_port(0);
-    server_service_proto->set_server_thread_num(12);
-
-    for (auto& tuple : this->table_id_map) {
-      ::paddle::distributed::TableParameter* sparse_table_proto =
-          downpour_server_proto->add_downpour_table_param();
-      GetDownpourSparseTableProto(sparse_table_proto, tuple.second);
-    }
-
-    return server_fleet_desc;
-  }
-
-  ::paddle::distributed::PSParameter GetWorkerProto() {
-    ::paddle::distributed::PSParameter worker_fleet_desc;
-    worker_fleet_desc.set_shard_num(shard_num);
-    ::paddle::distributed::WorkerParameter* worker_proto =
-        worker_fleet_desc.mutable_worker_param();
-
-    ::paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
-        worker_proto->mutable_downpour_worker_param();
-
-    for (auto& tuple : this->table_id_map) {
-      ::paddle::distributed::TableParameter* worker_sparse_table_proto =
-          downpour_worker_proto->add_downpour_table_param();
-      GetDownpourSparseTableProto(worker_sparse_table_proto, tuple.second);
-    }
-
-    ::paddle::distributed::ServerParameter* server_proto =
-        worker_fleet_desc.mutable_server_param();
-    ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
-        server_proto->mutable_downpour_server_param();
-    ::paddle::distributed::ServerServiceParameter* server_service_proto =
-        downpour_server_proto->mutable_service_param();
-    server_service_proto->set_service_class("GraphBrpcService");
-    server_service_proto->set_server_class("GraphBrpcServer");
-    server_service_proto->set_client_class("GraphBrpcClient");
-    server_service_proto->set_start_server_port(0);
-    server_service_proto->set_server_thread_num(12);
-
-    for (auto& tuple : this->table_id_map) {
-      ::paddle::distributed::TableParameter* sparse_table_proto =
-          downpour_server_proto->add_downpour_table_param();
-      GetDownpourSparseTableProto(sparse_table_proto, tuple.second);
-    }
-
-    return worker_fleet_desc;
-  }
   void set_server_size(int server_size) { this->server_size = server_size; }
   int get_server_size(int server_size) { return server_size; }
   std::vector<std::string> split(std::string& str, const char pattern);
-
-  void load_edge_file(std::string name, std::string filepath, bool reverse) {
-    std::string params = "edge";
-    if (reverse) {
-      params += "|reverse";
-    }
-    if (this->table_id_map.count(name)) {
-      uint32_t table_id = this->table_id_map[name];
-      auto status =
-          get_ps_client()->load(table_id, std::string(filepath), params);
-      status.wait();
-    }
+  void set_up(std::string ips_str, int shard_num,
+              std::vector<std::string> edge_types);
+};
+class GraphPyServer : public GraphPyService {
+ public:
+  void set_up(std::string ips_str, int shard_num,
+              std::vector<std::string> edge_types, int rank) {
+    set_rank(rank);
+    GraphPyService::set_up(ips_str, shard_num, edge_types);
+  }
+  int get_rank() { return rank; }
+  void set_rank(int rank) { this->rank = rank; }
+  void start_server();
+  ::paddle::distributed::PSParameter GetServerProto();
+  std::shared_ptr<paddle::distributed::PSServer> get_ps_server() {
+    return pserver_ptr;
   }
 
-  void load_node_file(std::string name, std::string filepath) {
-    std::string params = "node";
-    if (this->table_id_map.count(name)) {
-      uint32_t table_id = this->table_id_map[name];
-      auto status =
-          get_ps_client()->load(table_id, std::string(filepath), params);
-      status.wait();
-    }
+ protected:
+  int rank;
+  std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
+  std::thread* server_thread;
+};
+class GraphPyClient : public GraphPyService {
+ public:
+  void set_up(std::string ips_str, int shard_num,
+              std::vector<std::string> edge_types, int client_id) {
+    set_client_id(client_id);
+    GraphPyService::set_up(ips_str, shard_num, edge_types);
   }
-
+  std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
+    return worker_ptr;
+  }
+  void load_edge_file(std::string name, std::string filepath, bool reverse);
+  void load_node_file(std::string name, std::string filepath);
+  int get_client_id() { return client_id; }
+  void set_client_id(int client_id) { this->client_id = client_id; }
+  void start_client();
   std::vector<std::pair<uint64_t, float>> sample_k(std::string name,
                                                    uint64_t node_id,
-                                                   int sample_size) {
-    std::vector<std::pair<uint64_t, float>> v;
-    if (this->table_id_map.count(name)) {
-      uint32_t table_id = this->table_id_map[name];
-      auto status = worker_ptr->sample(table_id, node_id, sample_size, v);
-      status.wait();
-    }
-    return v;
-  }
+                                                   int sample_size);
   std::vector<GraphNode> pull_graph_list(std::string name, int server_index,
-                                         int start, int size) {
-    std::vector<GraphNode> res;
-    if (this->table_id_map.count(name)) {
-      uint32_t table_id = this->table_id_map[name];
-      auto status =
-          worker_ptr->pull_graph_list(table_id, server_index, start, size, res);
-      status.wait();
-    }
-    return res;
-  }
-  void start_server(std::string ip, uint32_t port) {
-    server_thread = new std::thread([this, &ip, &port]() {
-      std::function<void()> func = [this, &ip, &port]() {
-        VLOG(0) << "enter inner function ";
-        ::paddle::distributed::PSParameter server_proto =
-            this->GetServerProto();
+                                         int start, int size);
+  ::paddle::distributed::PSParameter GetWorkerProto();
 
-        auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-        _ps_env.set_ps_servers(&this->host_sign_list,
-                               this->host_sign_list.size());  // test
-        pserver_ptr = std::shared_ptr<paddle::distributed::PSServer>(
-            paddle::distributed::PSServerFactory::create(server_proto));
-        VLOG(0) << "pserver-ptr created ";
-        std::vector<framework::ProgramDesc> empty_vec;
-        framework::ProgramDesc empty_prog;
-        empty_vec.push_back(empty_prog);
-        pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
-        VLOG(0) << " starting server " << ip << " " << port;
-        pserver_ptr->start(ip, port);
-      };
-      std::thread t1(func);
-      t1.join();
-    });
-  }
-  void start_client() {
-    VLOG(0) << "in start_client " << rank;
-    std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
-    dense_regions.insert(
-        std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
-    auto regions = dense_regions[0];
-    ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
-    paddle::distributed::PaddlePSEnvironment _ps_env;
-    auto servers_ = host_sign_list.size();
-    _ps_env = paddle::distributed::PaddlePSEnvironment();
-    _ps_env.set_ps_servers(&host_sign_list, servers_);
-    worker_ptr = std::shared_ptr<paddle::distributed::PSClient>(
-        paddle::distributed::PSClientFactory::create(worker_proto));
-    worker_ptr->configure(worker_proto, dense_regions, _ps_env, client_id);
-  }
-  void set_up(std::string ips_str, int shard_num, int rank, int client_id,
-              std::vector<std::string> edge_types);
-  void set_keys(std::vector<int> keys) {  // just for test
-    this->keys = keys;
-  }
-  std::vector<int> get_keys(int start, int size) {  // just for test
-    return std::vector<int>(keys.begin() + start, keys.begin() + start + size);
-  }
+ protected:
+  int client_id;
+  std::shared_ptr<paddle::distributed::PSClient> worker_ptr;
+  std::thread* client_thread;
 };
 }
 }

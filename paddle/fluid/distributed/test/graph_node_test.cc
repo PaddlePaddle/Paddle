@@ -222,17 +222,15 @@ void RunBrpcPushSparse() {
   std::vector<std::pair<uint64_t, float>> v;
   pull_status = worker_ptr_->sample(0, 37, 4, v);
   pull_status.wait();
-  // for (auto g : v) {
-  //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
-  // }
   ASSERT_EQ(v.size(), 3);
   v.clear();
   pull_status = worker_ptr_->sample(0, 96, 4, v);
   pull_status.wait();
-  std::unordered_set<int> s = { 111, 48, 247 } ASSERT_EQ(3, v.size());
+  std::unordered_set<int> s = {111, 48, 247};
+  ASSERT_EQ(3, v.size());
   for (auto g : v) {
     // std::cout << g.first << std::endl;
-    ASSERT_EQ(true, s.find(g.first) != s.end())
+    ASSERT_EQ(true, s.find(g.first) != s.end());
   }
   v.clear();
   std::vector<distributed::GraphNode> nodes;
@@ -253,22 +251,63 @@ void RunBrpcPushSparse() {
     std::cout << g.get_id() << std::endl;
   }
 
-  distributed::GraphPyService gps1, gps2;
+  // distributed::GraphPyService gps1, gps2;
+  distributed::GraphPyServer server1, server2;
+  distributed::GraphPyClient client1, client2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
   std::vector<std::string> edge_types = {std::string("user2item")};
-  gps1.set_up(ips_str, 127, 0, 0, edge_types);
-  gps2.set_up(ips_str, 127, 1, 1, edge_types);
-  gps1.load_edge_file(std::string("user2item"), std::string(file_name), 0);
+  server1.set_up(ips_str, 127, edge_types, 0);
+  server2.set_up(ips_str, 127, edge_types, 1);
+  client1.set_up(ips_str, 127, edge_types, 0);
+  client2.set_up(ips_str, 127, edge_types, 1);
+  server1.start_server();
+  std::cout << "first server done" << std::endl;
+  server2.start_server();
+  std::cout << "second server done" << std::endl;
+  client1.start_client();
+  std::cout << "first client done" << std::endl;
+  client2.start_client();
+  std::cout << "first client done" << std::endl;
+  std::cout << "started" << std::endl;
+  client1.load_edge_file(std::string("user2item"), std::string(file_name), 0);
+  // client2.load_edge_file(std::string("user2item"), std::string(file_name),
+  // 0);
   nodes.clear();
-  nodes = gps2.pull_graph_list(std::string("user2item"), 0, 1, 4);
+  nodes = client2.pull_graph_list(std::string("user2item"), 0, 1, 4);
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
-  v = gps2.sample_k(std::string("user2item"), 96, 4);
+  v = client1.sample_k(std::string("user2item"), 96, 4);
   ASSERT_EQ(v.size(), 3);
   std::cout << "sample result" << std::endl;
   for (auto p : v) {
     std::cout << p.first << " " << p.second << std::endl;
   }
+  /*
+from paddle.fluid.core import GraphPyService
+ips_str = "127.0.0.1:4211;127.0.0.1:4212"
+server1 = GraphPyServer()
+server2 = GraphPyServer()
+client1 = GraphPyClient()
+client2 = GraphPyClient()
+edge_types = ["user2item"]
+server1.set_up(ips_str,127,edge_types,0);
+server2.set_up(ips_str,127,edge_types,1);
+client1.set_up(ips_str,127,edge_types,0);
+client2.set_up(ips_str,127,edge_types,1);
+server1.start_server();
+server2.start_server();
+client1.start_client();
+client2.start_client();
+client1.load_edge_file(user2item", "input.txt", 0);
+list = client2.pull_graph_list("user2item",0,1,4)
+for x in list:
+    print(x.get_id())
+
+list = client1.sample_k("user2item",96, 4);
+for x in list:
+    print(x.get_id())
+  */
+
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService
   // ips_str = "127.0.0.1:4211;127.0.0.1:4212"
