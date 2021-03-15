@@ -275,7 +275,7 @@ class Args(object):
     lr = 0.01
     vocab_size = 1000
     padding_size = 50
-    log_step = 2
+    log_step = 5
     train_step = 10
 
 

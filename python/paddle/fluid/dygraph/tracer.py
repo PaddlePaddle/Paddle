@@ -41,7 +41,7 @@ class Tracer(core.Tracer):
 
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
         self.trace(type, inputs, outputs, attrs,
-                   framework._current_expected_place(), self._train_mode and
+                   framework._current_expected_place(), self._has_grad and
                    not stop_gradient)
 
     def train_mode(self):

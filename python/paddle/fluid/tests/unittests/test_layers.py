@@ -3683,5 +3683,41 @@ class TestMetricsDetectionMap(unittest.TestCase):
         print(str(program))
 
 
+class ExampleNet(paddle.nn.Layer):
+    def __init__(self):
+        super(ExampleNet, self).__init__()
+        self.weight = self.create_parameter(
+            shape=[1, 1], attr=paddle.ParamAttr(trainable=False))
+
+    def forward(self):
+        # only for test parameter trainable attr
+        pass
+
+
+class TestLayerParameterTrainableSet(unittest.TestCase):
+    def test_layer_parameter_set(self):
+        with fluid.dygraph.guard():
+            net = ExampleNet()
+            self.assertFalse(net.weight.trainable)
+
+
+class TestLayerTrainingAttribute(unittest.TestCase):
+    def test_set_train_eval_in_dynamic_mode(self):
+        with fluid.dygraph.guard():
+            net = paddle.nn.Dropout()
+            net.train()
+            self.assertTrue(net.training)
+            net.eval()
+            self.assertFalse(net.training)
+
+    def test_set_train_eval_in_static_mode(self):
+        net = paddle.nn.Dropout()
+        net.train()
+        self.assertTrue(net.training)
+        net.eval()
+        self.assertFalse(net.training)
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

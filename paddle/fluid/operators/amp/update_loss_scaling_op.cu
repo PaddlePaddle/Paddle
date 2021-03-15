@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -30,6 +31,17 @@ __global__ void GpuUpdateLossScaling(
   Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
             incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
             updated_loss_scaling_data, good_out_data, bad_out_data);
+}
+
+template <typename T>
+__global__ void FillIf(T* data, const int64_t num, const T value,
+                       const bool* has_inf) {
+  if (*has_inf) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    for (int i = tid; i < num; i += blockDim.x * gridDim.x) {
+      data[i] = value;
+    }
+  }
 }
 
 template <typename T>
@@ -50,25 +62,20 @@ class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-class LazyZeroInputs<platform::CUDADeviceContext, T> {
+class LazyZeros<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
-    const auto gpu_place =
-        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
-    bool has_inf{false};
-    memory::Copy(platform::CPUPlace(), &has_inf, gpu_place, found_inf_data,
-                 sizeof(bool), dev_ctx.stream());
-    if (has_inf) {
-      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
-      for (size_t i = 0; i < xs.size(); ++i) {
-        auto* out = outs[i];
-        T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-        int num = out->numel();
-        cudaMemset(out_data, 0, num * sizeof(T));
-      }
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto* out = outs[i];
+      T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      int64_t num = out->numel();
+      int block = 1024;
+      int grid = (block - 1 + num) / block;
+      FillIf<<<grid, block, 0, dev_ctx.stream()>>>(
+          out_data, num, static_cast<T>(0), found_inf_data);
     }
   }
 };
@@ -77,8 +84,10 @@ class LazyZeroInputs<platform::CUDADeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 using GPU = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(update_loss_scaling,
                         ops::UpdateLossScalingKernel<GPU, float>,
-                        ops::UpdateLossScalingKernel<GPU, double>);
+                        ops::UpdateLossScalingKernel<GPU, double>,
+                        ops::UpdateLossScalingKernel<GPU, plat::float16>);

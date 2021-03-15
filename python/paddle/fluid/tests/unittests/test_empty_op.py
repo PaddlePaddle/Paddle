@@ -39,7 +39,7 @@ class TestEmptyOp(OpTest):
             min_value = np.nanmin(outs[0])
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
-            always_non_full_zero = max_value > min_value
+            always_non_full_zero = max_value >= min_value
             self.assertTrue(always_full_zero or always_non_full_zero,
                             'always_full_zero or always_non_full_zero.')
         elif data_type in ['bool']:
@@ -124,7 +124,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
             min_value = np.nanmin(outs[0])
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
-            always_non_full_zero = max_value > min_value
+            always_non_full_zero = max_value >= min_value
             self.assertTrue(always_full_zero or always_non_full_zero,
                             'always_full_zero or always_non_full_zero.')
         elif data_type in ['bool']:
@@ -169,7 +169,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
             min_value = np.nanmin(outs[0])
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
-            always_non_full_zero = max_value > min_value
+            always_non_full_zero = max_value >= min_value
             self.assertTrue(always_full_zero or always_non_full_zero,
                             'always_full_zero or always_non_full_zero.')
         elif data_type in ['bool']:
@@ -186,7 +186,7 @@ class TestEmptyAPI(unittest.TestCase):
     def __check_out__(self, out, dtype='float32'):
         max_value = np.nanmax(np.array(out))
         min_value = np.nanmin(np.array(out))
-        always_non_full_zero = max_value > min_value
+        always_non_full_zero = max_value >= min_value
         always_full_zero = max_value == 0.0 and min_value == 0.0
         self.assertTrue(always_full_zero or always_non_full_zero,
                         'always_full_zero or always_non_full_zero.')

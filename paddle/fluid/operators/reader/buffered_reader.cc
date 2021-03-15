@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
-#include <memory>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -43,7 +39,7 @@ BufferedReader::BufferedReader(
       buffer_size_(buffer_size),
       pin_memory_(pin_memory) {
   VLOG(1) << "BufferedReader";
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_) && !pin_memory) {
     int dev_idx = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
     compute_stream_ =
@@ -78,7 +74,7 @@ void BufferedReader::ReadAsync(size_t i) {
       return -1UL;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
     if (platform::is_gpu_place(place_)) {
       TensorVec &cuda = cuda_buffer_[i];
       if (cuda.empty()) {
@@ -104,6 +100,12 @@ void BufferedReader::ReadAsync(size_t i) {
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
         platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        // NODE(chenwehiang): When we use CUDAPinned Memory, we need call
+        // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
+        // cuda lib into device, it will cost hundreds of MB of GPU memory.
+        // If we don't set Device here, which will use CUDAPlace(0) default.
+        platform::SetDeviceId(
+            BOOST_GET_CONST(platform::CUDAPlace, place_).device);
         for (size_t i = 0; i < cpu.size(); ++i) {
           if (platform::is_cpu_place(cpu[i].place())) {
             cuda[i].Resize(cpu[i].dims());
@@ -140,10 +142,17 @@ void BufferedReader::ReadAsync(size_t i) {
         // cuda memory immediately without waiting cuda kernel ends
         platform::SetDeviceId(
             BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipEventRecord(events_[i].get(), compute_stream_));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaEventRecord(events_[i].get(), compute_stream_));
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#endif
 
         platform::RecordEvent record_event("BufferedReader:MemoryCopy");
         for (size_t i = 0; i < cpu.size(); ++i) {
@@ -172,14 +181,22 @@ void BufferedReader::ReadAsync(size_t i) {
             memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
                          cuda_pinned_place, cuda_pinned_ptr, size,
                          stream_.get());
+#ifdef PADDLE_WITH_HIP
+            PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
+#else
             PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
+#endif
           }
           cuda[i].set_lod(cpu[i].lod());
         }
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
+#endif
       }
     }
-#endif
+#endif  // @} End Group GPU Place
     return i;
   }));
 }

@@ -113,6 +113,7 @@ class TestStaticDataLoader(unittest.TestCase):
                 places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
+                return_list=False,
                 drop_last=True)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
@@ -226,7 +227,8 @@ class RandomBatchedDataset(Dataset):
         labels = []
         for _ in range(BATCH_SIZE):
             image = np.random.random([IMAGE_SIZE]).astype('float32')
-            label = np.random.randint(0, self.class_num - 1, (1, )).astype('int64')
+            label = np.random.randint(0, self.class_num - 1,
+                                      (1, )).astype('int64')
             images.append(image)
             labels.append(label)
         return np.stack(images, axis=0), np.stack(labels, axis=0)
@@ -248,6 +250,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
                 places=places,
                 num_workers=num_workers,
                 batch_size=None,
+                return_list=False,
                 drop_last=True)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 

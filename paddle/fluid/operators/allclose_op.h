@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -44,14 +46,38 @@ class AllcloseKernel : public framework::OpKernel<T> {
     // get input/output
     const auto* input = ctx.Input<Tensor>("Input");
     const auto* other = ctx.Input<Tensor>("Other");
-    const auto* rtol = ctx.Input<Tensor>("Rtol");
-    const auto* atol = ctx.Input<Tensor>("Atol");
     auto* out = ctx.Output<Tensor>("Out");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
+    double rtol_v = std::stod(ctx.Attr<std::string>("rtol"));
+    double atol_v = std::stod(ctx.Attr<std::string>("atol"));
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     GetTensorValue<DeviceContext, double> get_tensor_value;
-    double rtol_v = get_tensor_value(dev_ctx, *rtol);
-    double atol_v = get_tensor_value(dev_ctx, *atol);
+    if (ctx.HasInput("Rtol")) {
+      const auto* rtol = ctx.Input<Tensor>("Rtol");
+      PADDLE_ENFORCE_EQ(
+          rtol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Rtol) size must be 1, but get %d.", rtol->numel()));
+      PADDLE_ENFORCE_EQ(rtol->type(), framework::proto::VarType::FP64,
+                        platform::errors::InvalidArgument(
+                            "Input(Rtol) type must be double, but get %s.",
+                            framework::DataTypeToString(rtol->type())));
+      rtol_v = get_tensor_value(dev_ctx, *rtol);
+    }
+    if (ctx.HasInput("Atol")) {
+      const auto* atol = ctx.Input<Tensor>("Atol");
+      PADDLE_ENFORCE_EQ(
+          atol->numel(), 1,
+          platform::errors::InvalidArgument(
+              "Input(Atol) size must be 1, but get %d", atol->numel()));
+      PADDLE_ENFORCE_EQ(atol->type(), framework::proto::VarType::FP64,
+                        platform::errors::InvalidArgument(
+                            "Input(Atol) type must be double, but get %s",
+                            framework::DataTypeToString(atol->type())));
+      atol_v = get_tensor_value(dev_ctx, *atol);
+    }
+
     AllcloseFunctor<DeviceContext, T>()(dev_ctx, *input, *other, rtol_v, atol_v,
                                         equal_nan, out);
   }

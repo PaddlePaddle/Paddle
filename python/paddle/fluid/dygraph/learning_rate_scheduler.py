@@ -183,7 +183,7 @@ class PiecewiseDecay(LearningRateDecay):
 
 
 class NaturalExpDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies natural exponential decay to the initial learning rate.
@@ -266,7 +266,7 @@ class NaturalExpDecay(LearningRateDecay):
 
 
 class ExponentialDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies exponential decay to the learning rate.
@@ -348,7 +348,7 @@ class ExponentialDecay(LearningRateDecay):
 
 
 class InverseTimeDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies inverse time decay to the initial learning rate.
@@ -426,7 +426,7 @@ class InverseTimeDecay(LearningRateDecay):
 
 
 class PolynomialDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies polynomial decay to the initial learning rate.
@@ -520,7 +520,7 @@ class PolynomialDecay(LearningRateDecay):
 
 
 class CosineDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies cosine decay to the learning rate.
@@ -578,7 +578,7 @@ class CosineDecay(LearningRateDecay):
 
 
 class NoamDecay(LearningRateDecay):
-    """
+    r"""
     :api_attr: imperative
 
     Applies Noam decay to the initial learning rate. 

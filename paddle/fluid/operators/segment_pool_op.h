@@ -63,7 +63,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, output, static_cast<T>(0));
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     Tensor length;
     length.mutable_data<IndexT>(framework::make_ddim({1}),
@@ -71,9 +71,15 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     IndexT* length_data = length.data<IndexT>();
     const IndexT* segment_ids = segment->data<IndexT>();
 
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        hipMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
+                  hipMemcpyDeviceToHost));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
                    cudaMemcpyDeviceToHost));
+#endif
 
     IndexT length_host = length_data[0];
     length_host++;

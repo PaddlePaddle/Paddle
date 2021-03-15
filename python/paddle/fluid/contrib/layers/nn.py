@@ -46,7 +46,6 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check
 
 from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
@@ -137,7 +136,7 @@ def var_conv_2d(input,
                 act=None,
                 dtype='float32',
                 name=None):
-    """
+    r"""
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
@@ -477,7 +476,7 @@ def fused_embedding_seq_pool(input,
                              combiner='sum',
                              param_attr=None,
                              dtype='float32'):
-    """
+    r"""
     **Embedding Sequence pool**
 
     This layer is the fusion of lookup table and sequence_pool.
@@ -976,7 +975,7 @@ def sparse_embedding(input,
                              'fluid.contrib.layers.sparse_embedding')
 
     check_dtype(dtype, 'dtype', ['float32'],
-                'fluid.contrib.layers.sparse_embedding')
+                'paddle.static.nn.sparse_embedding')
 
     w = helper.create_parameter(
         attr=helper.param_attr,
@@ -993,11 +992,13 @@ def sparse_embedding(input,
     entry_str = "none"
 
     if entry is not None:
-        if not isinstance(entry, ProbabilityEntry) and not isinstance(
-                entry, CountFilterEntry):
+        if entry.__class__.__name__ not in [
+                "ProbabilityEntry", "CountFilterEntry"
+        ]:
             raise ValueError(
-                "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
-        entry_str = entry.to_attr()
+                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
+            )
+        entry_str = entry._to_attr()
 
     helper.append_op(
         type='lookup_table',
@@ -1442,7 +1443,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
 
 
 def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    """
+    r"""
     **Pull Box Extended Sparse Layer**
     This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     BoxPS lookup table. The result of this lookup is the embedding of each ID in the
@@ -1640,7 +1641,7 @@ def fused_bn_add_act(x,
                      moving_variance_name=None,
                      act=None,
                      name=None):
-    """
+    r"""
     This Op performs batch norm on input x, and adds the result to input y. Then
     it performs activation on the sum. The data format of inputs must be NHWC
     `[batch, in_height, in_width, in_channels]`.

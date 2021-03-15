@@ -37,8 +37,8 @@ class ParamAttr(object):
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_GradientClipByGlobalNorm` , 
-        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
     Parameters:
         name (str, optional): The parameter's name. Default None, meaning that the name
@@ -46,24 +46,26 @@ class ParamAttr(object):
         initializer (Initializer, optional): The method to initial this parameter. Default
                 None, meaning that the weight parameter is initialized by Xavier initializer,
                 and the bias parameter is initialized by 0.
-        learning_rate (float): The parameter's learning rate. The learning rate when
+        learning_rate (float, optional): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
-                :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If 
-                regularizer is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), 
+                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If 
+                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ), 
                 that regularizer setting in optimizer will be ignored. Default None, meaning there is 
                 no regularization.
-        trainable (bool): Whether this parameter is trainable. Default True.
-        do_model_average (bool): Whether this parameter should do model average
-                when model average is enabled. Default False.
-        need_clip (bool): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+        trainable (bool, optional): Whether this parameter is trainable. Default True.
+        do_model_average (bool, optional): Whether this parameter should do model average
+                when model average is enabled. Only used in ExponentialMovingAverage. Default True.
+        need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
+
+    Returns:
+       ParamAttr Object.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            paddle.enable_static()
 
             weight_attr = paddle.ParamAttr(name="weight",
                                            learning_rate=0.5,
@@ -210,7 +212,7 @@ class ParamAttr(object):
 
 
 class WeightNormParamAttr(ParamAttr):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Note:
@@ -226,8 +228,8 @@ class WeightNormParamAttr(ParamAttr):
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_GradientClipByGlobalNorm` , 
-        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
         
 
     Args:
@@ -245,8 +247,8 @@ class WeightNormParamAttr(ParamAttr):
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are
-            two method: :ref:`api_paddle_fluid_regularizer_L1Decay` ,
-            :ref:`api_paddle_fluid_regularizer_L2DecayRegularizer`.
+            two method: :ref:`api_paddle_regularizer_L1Decay` ,
+            :ref:`api_paddle_regularizer_L2Decay`.
             If regularizer isralso set in ``optimizer``
             (such as :ref:`api_paddle_optimizer_SGD` ), that regularizer setting in
             optimizer will be ignored. Default None, meaning there is no regularization.

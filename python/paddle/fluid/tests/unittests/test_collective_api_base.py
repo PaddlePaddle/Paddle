@@ -55,7 +55,7 @@ class TestCollectiveAPIRunnerBase(object):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
-        indata = np.random.random((10, 1000))
+        indata = np.random.random((10, 1000)).astype("float32")
         fetch_list = []
         for elem in result:
             fetch_list.append(elem.name)
@@ -169,6 +169,7 @@ class TestDistBase(unittest.TestCase):
                          path_id="0",
                          check_error_log=False,
                          need_envs={}):
+        with_gloo = '0' if backend == "nccl" else '1'
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -178,6 +179,7 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
+            "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
         }
@@ -219,5 +221,31 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "parallel_embedding":
+            result_data = tr0_out[0]
+            np.random.seed(2020)
+            need_result = np.random.rand(10, 8)
+            for i in range(result_data.shape[0]):
+                for j in range(result_data.shape[1]):
+                    data = result_data[i][j]
+                    if data >= 4: data += 1
+                    assert np.allclose(
+                        tr0_out[1][i][j], need_result[data], atol=1e-08)
+        elif col_type == "row_parallel_linear":
+            result_data = tr0_out[0]
+            np.random.seed(2020)
+            weight = np.random.rand(1000, 16)
+            need_result = np.matmul(input1, weight)
+            self.assertTrue(
+                np.allclose(
+                    result_data, need_result, rtol=1e-05, atol=1e-05))
+        elif col_type == "column_parallel_linear":
+            result_data = tr0_out[0]
+            np.random.seed(2020)
+            weight = np.random.rand(1000, 16)
+            need_result = np.matmul(input1, weight)
+            self.assertTrue(
+                np.allclose(
+                    result_data, need_result, rtol=1e-05, atol=1e-05))
         else:
             pass

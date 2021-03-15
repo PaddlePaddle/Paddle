@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, in_dygraph_mode
+from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -211,6 +211,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     return out
 
 
+@static_only
 def Print(input,
           first_n=-1,
           message=None,
@@ -1097,6 +1098,10 @@ def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
+    if not isinstance(input, Variable) and not isinstance(input, core.VarBase):
+        output = input
+        return
+
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         main_program = input.block.program
         parent_block = main_program.block(main_program.current_block()
@@ -1582,19 +1587,16 @@ def create_array(dtype):
 @templatedoc()
 def less_than(x, y, force_cpu=None, cond=None, name=None):
     """
-    :alias_main: paddle.less_than
-	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
-	:old_api: paddle.fluid.layers.less_than
 
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}.
-        y(${y_type}): ${y_comment}.
+        x(Tensor): ${x_comment}.
+        y(Tensor): ${y_comment}.
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Variable, optional): Optional output which can be any created Variable
+        cond(Tensor, optional): Optional output which can be any created Tensor
             that meets the requirements to store the result of *less_than*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Tensor will be created to store the result.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -1603,25 +1605,13 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy as np
-  
-          # Graph Organizing
-          x = fluid.layers.data(name='x', shape=[2], dtype='float64')
-          y = fluid.layers.data(name='y', shape=[2], dtype='float64')
-          result = fluid.layers.less_than(x=x, y=y)
-          # The comment lists another available method.
-          # result = fluid.layers.fill_constant(shape=[2], dtype='float64', value=0)
-          # fluid.layers.less_than(x=x, y=y, cond=result)
-  
-          # Create an executor using CPU as example
-          exe = fluid.Executor(fluid.CPUPlace())
-  
-          # Execute
-          x_i = np.array([[1, 2], [3, 4]]).astype(np.float64)
-          y_i = np.array([[2, 2], [1, 3]]).astype(np.float64)
-          result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
-          print(result_value) # [[True, False], [False, False]]
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 3, 4], dtype='float32')
+            y = paddle.to_tensor([2, 2, 1, 3], dtype='float32')
+            result = paddle.less_than(x, y)
+            print(result) # [True, False, False, False]
+
     """
     check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
                              "less_than")
@@ -2202,8 +2192,11 @@ class ConditionalBlock(object):
 
     def need_append_conditional_block_grad(self, inside_block):
         grad_sub_block_idx = inside_block.backward_block_idx
+        inside_block_idx = inside_block.idx
 
-        return grad_sub_block_idx != -1
+        # if inside_block have grad_block and grad_block is not itself,
+        # we will append conditional block grad.
+        return grad_sub_block_idx != -1 and grad_sub_block_idx != inside_block_idx
 
     def append_conditional_block_grad(self, parent_block, inside_block,
                                       conditional_block_op):
@@ -2289,9 +2282,13 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    parent_block_var = parent_block.create_var(
-        dtype=var.dtype, shape=var.shape, type=var.type)
-    assign(var, parent_block_var)
+    if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            and parent_block._find_var_recursive(var.name):
+        parent_block_var = var
+    else:
+        parent_block_var = parent_block.create_var(
+            dtype=var.dtype, shape=var.shape, type=var.type)
+        assign(var, parent_block_var)
     return parent_block_var
 
 
@@ -3012,7 +3009,7 @@ class DynamicRNN(object):
         self.mem_link = []
 
     def step_input(self, x, level=0):
-        """
+        r"""
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
@@ -3144,7 +3141,7 @@ class DynamicRNN(object):
         return array_read(array=input_array, i=self.step_idx)
 
     def static_input(self, x):
-        """
+        r"""
         This function is used to set x as DynamicRNN's static input. It is optional.
 
         - Case 1, set static input with LoD
@@ -3348,7 +3345,7 @@ class DynamicRNN(object):
                value=0.0,
                need_reorder=False,
                dtype='float32'):
-        """
+        r"""
         Create a memory Variable for DynamicRNN to deliver data cross time steps.
         It can be initialized by an existing Tensor or a constant Tensor of given
         dtype and shape.

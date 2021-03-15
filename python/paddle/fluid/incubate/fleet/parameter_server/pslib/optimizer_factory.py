@@ -15,14 +15,17 @@
 
 __all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from collections import OrderedDict
+import copy
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
+OpRole = core.op_proto_and_checker_maker.OpRole
 # this dict is for store info about pull/push sparse ops.
 FLEET_GLOBAL_DICT = {
     # global settings
@@ -82,11 +85,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
         ]
+        op_maker = core.op_proto_and_checker_maker
+        self.op_role_key = op_maker.kOpRoleAttrName()
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -144,6 +149,26 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     grads_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
+
+    def _is_optimizer_op(self, op):
+        return self.op_role_key in op.attr_names and \
+                int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+
+    def _remove_optimize_op_for_embedding(self, loss, table_name):
+        """
+        find multi-sparse-table
+        """
+        table_name = [name + "@GRAD" for name in table_name]
+        need_remove_op_index = []
+        block = loss.block.program.global_block()
+        for ids, op in list(enumerate(block.ops)):
+            if self._is_optimizer_op(op):
+                if op.input("Grad")[0] in table_name:
+                    need_remove_op_index.append(ids)
+
+        need_remove_op_index.sort(reverse=True)
+        for index in need_remove_op_index:
+            block._remove_op(index)
 
     def _find_multi_distributed_lookup_table(self, losses):
         """
@@ -314,7 +339,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
         sparse_table_to_index = OrderedDict()
         sparse_table_index = 0
-        for loss in losses:
+        for num in range(len(losses)):
+            loss = losses[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
@@ -322,6 +348,18 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                                no_grad_set),
                 key=lambda x: x[0].name)
 
+            flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
+            if flag_use_ps_gpu:
+                if not isinstance(startup_program, list):
+                    startup_program = [startup_program]
+                optimizer = copy.deepcopy(self._optimizer)
+                optimize_ops = optimizer.apply_optimize(
+                    loss,
+                    startup_program=startup_program[num],
+                    params_grads=params_grads)
+                embedding_table = self._find_multi_distributed_lookup_table(
+                    [loss])
+                self._remove_optimize_op_for_embedding(loss, embedding_table)
             # has condition_block op means multi-task 
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
@@ -722,9 +760,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_converter"] = ""
         opt_info["dump_fields"] = strategy.get("dump_fields", [])
         opt_info["dump_file_num"] = strategy.get("dump_file_num", 16)
+        opt_info["user_define_dump_filename"] = strategy.get(
+            "user_define_dump_filename", "")
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         opt_info["worker_places"] = strategy.get("worker_places", [])
+        opt_info["use_ps_gpu"] = strategy.get("use_ps_gpu", False)
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
                     "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",

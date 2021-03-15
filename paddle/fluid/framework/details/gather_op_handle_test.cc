@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
 
-#include <memory>
-#include <unordered_map>
-
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -26,6 +23,8 @@ struct DummyVarHandle;
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
+
+using DeviceType = paddle::platform::DeviceType;
 
 // test data amount
 const f::DDim kDims = {20, 20};
@@ -48,7 +47,7 @@ struct TestGatherOpHandle {
 
   void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -171,7 +170,8 @@ struct TestGatherOpHandle {
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
 
-    op_handle_->Run(false);
+    DeviceType use_device = p::kCPU;
+    op_handle_->Run(use_device);
 
     WaitAll();
 
@@ -214,7 +214,7 @@ TEST(GatherTester, TestCPUGatherTestSelectedRows) {
   test_op.TestGatherSelectedRows(input_scope_idx);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 TEST(GatherTester, TestGPUGatherTestSelectedRows) {
   TestGatherOpHandle test_op;

@@ -26,6 +26,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace nvinfer1 {
+class ITensor;
+}  // namespace nvinfer1
+
 DECLARE_bool(profile);
 
 namespace paddle {
@@ -42,7 +46,7 @@ typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
 class PluginTensorRT : public nvinfer1::IPluginExt {
  public:
-  PluginTensorRT() {}
+  PluginTensorRT() : with_fp16_(false) {}
   // It was used for TensorRT deserialization.
   // It should not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
@@ -112,12 +116,13 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   nvinfer1::PluginFormat data_format_;
 
   std::vector<nvinfer1::ITensor*> inputs_;
+  bool with_fp16_;
 };
 
 #if IS_TRT_VERSION_GE(6000)
 class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
  public:
-  DynamicPluginTensorRT() {}
+  DynamicPluginTensorRT() : with_fp16_(false) {}
   DynamicPluginTensorRT(const void* serialized_data, size_t length) {}
 
   // The Func in IPluginExt or IpluginExtV2
@@ -173,6 +178,7 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
                        size_t& serial_length);    // NOLINT
   size_t getBaseSerializationSize() const;
   void serializeBase(void*& buffer) const;  // NOLINT
+  bool with_fp16_;
 
  private:
   std::string name_space_;

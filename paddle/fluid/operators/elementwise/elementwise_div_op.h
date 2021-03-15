@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -73,10 +74,53 @@ struct DivGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
 };
 
+template <>
+struct DivGradDX<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 y_conj(y.real, -y.imag);
+    return dout / y_conj;
+  }
+};
+
+template <>
+struct DivGradDX<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 y_conj(y.real, -y.imag);
+    return dout / y_conj;
+  }
+};
+
 template <typename T>
 struct DivGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return -dout * out / y;
+  }
+};
+
+template <>
+struct DivGradDY<paddle::platform::complex64> {
+  HOSTDEVICE paddle::platform::complex64 operator()(
+      paddle::platform::complex64 x, paddle::platform::complex64 y,
+      paddle::platform::complex64 out, paddle::platform::complex64 dout) const {
+    paddle::platform::complex64 out_div_y_conj((out / y).real, -(out / y).imag);
+    return -dout * out_div_y_conj;
+  }
+};
+
+template <>
+struct DivGradDY<paddle::platform::complex128> {
+  HOSTDEVICE paddle::platform::complex128 operator()(
+      paddle::platform::complex128 x, paddle::platform::complex128 y,
+      paddle::platform::complex128 out,
+      paddle::platform::complex128 dout) const {
+    paddle::platform::complex128 out_div_y_conj((out / y).real,
+                                                -(out / y).imag);
+    return -dout * out_div_y_conj;
   }
 };
 
@@ -100,7 +144,7 @@ elementwise_div_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -160,16 +204,29 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      // only promote inputs’s types when contains complex input
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 

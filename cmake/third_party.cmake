@@ -17,7 +17,6 @@ include(ExternalProject)
 
 set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
     "A path setting third party libraries download & build directories.")
-
 set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
     "A path cache third party source code to avoid repeated download.")
 
@@ -209,11 +208,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-if(WITH_AMD_GPU)
-    include(external/rocprim)   # download, build, install rocprim
-    list(APPEND third_party_deps extern_rocprim)
-endif()
-
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
@@ -228,7 +222,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -238,7 +232,7 @@ if(WITH_PYTHON)
     list(APPEND third_party_deps extern_pybind)
 endif()
 
-IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+IF(WITH_TESTING OR WITH_DISTRIBUTE)
     include(external/gtest)     # download, build, install gtest
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
@@ -280,14 +274,23 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_DISTRIBUTE)
+if(WITH_ASCEND)
+    include(external/ascend)
+    list(APPEND third_party_deps extern_ascend)
+endif (WITH_ASCEND)
 
-    if(WITH_GRPC)
-        list(APPEND third_party_deps extern_grpc)
-    else()
-        list(APPEND third_party_deps extern_leveldb)
-        list(APPEND third_party_deps extern_brpc)
-    endif()
+if (WITH_PSCORE)
+    include(external/snappy)
+    list(APPEND third_party_deps extern_snappy)
+
+    include(external/leveldb)
+    list(APPEND third_party_deps extern_leveldb)
+        
+    include(external/brpc)
+    list(APPEND third_party_deps extern_brpc)
+
+    include(external/libmct)     # download, build, install libmct
+    list(APPEND third_party_deps extern_libmct)
 endif()
 
 if(WITH_XBYAK)
@@ -308,11 +311,14 @@ if(WITH_DGC)
 endif()
 
 if (WITH_LITE)
+    message(STATUS "Compile Paddle with Lite Engine.")
     include(external/lite)
 endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

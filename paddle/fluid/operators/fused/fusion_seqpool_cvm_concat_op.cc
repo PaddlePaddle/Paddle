@@ -31,15 +31,15 @@ void FusionSeqPoolCVMConcatOp::InferShape(
       paddle::platform::errors::InvalidArgument(
           "Output(Out) of FusionSeqPoolCVMConcatOp should not be null."));
   int axis = ctx->Attrs().Get<int>("axis");
-  PADDLE_ENFORCE_EQ(
-      axis, 1,
-      paddle::platform::errors::InvalidArgument(
-          "FusionSeqPoolCVMConcatOp only supports concat axis=1 yet."));
+  PADDLE_ENFORCE_EQ(axis, 1, paddle::platform::errors::InvalidArgument(
+                                 "FusionSeqPoolCVMConcatOp only supports "
+                                 "concat axis=1 yet, but received %d.",
+                                 axis));
   bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-  PADDLE_ENFORCE_EQ(
-      use_cvm, true,
-      paddle::platform::errors::InvalidArgument(
-          "FusionSeqPoolCVMConcatOp only supports use_cvm is true yet."));
+  PADDLE_ENFORCE_EQ(use_cvm, true, paddle::platform::errors::InvalidArgument(
+                                       "FusionSeqPoolCVMConcatOp only supports "
+                                       "use_cvm is true yet, but received %d.",
+                                       use_cvm));
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();

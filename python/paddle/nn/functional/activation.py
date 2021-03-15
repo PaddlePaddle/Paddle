@@ -15,16 +15,19 @@
 # TODO: define activation functions of neural network
 from ...fluid.layers import brelu  #DEFINE_ALIAS
 # from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 # from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
+from ...tensor.math import tanh_  #DEFINE_ALIAS
+
+from ...tensor.manipulation import _print_warning_in_static_mode
 
 __all__ = [
+    'brelu',
     'elu',
+    'elu_',
     'gelu',
     'hardshrink',
     'hardtanh',
@@ -35,15 +38,18 @@ __all__ = [
     'maxout',
     'prelu',
     'relu',
+    'relu_',
     'relu6',
     'selu',
     'softmax',
+    'softmax_',
     'softplus',
     'softshrink',
     'softsign',
     'sigmoid',
     'swish',
     'tanh',
+    'tanh_',
     'tanhshrink',
     'thresholded_relu',
     'log_softmax',
@@ -58,7 +64,7 @@ import paddle
 
 
 def elu(x, alpha=1.0, name=None):
-    """
+    r"""
     elu activation.
 
     .. math::
@@ -100,8 +106,21 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
-def gelu(x, approximate=False, name=None):
+def elu_(x, alpha=1.0, name=None):
+    r"""
+    Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_elu`.
     """
+
+    if in_dygraph_mode():
+        return core.ops.elu_(x, 'alpha', alpha)
+
+    _print_warning_in_static_mode("elu")
+    return elu(x, alpha, name)
+
+
+def gelu(x, approximate=False, name=None):
+    r"""
     gelu activation.
 
     if approximate is True
@@ -155,7 +174,7 @@ def gelu(x, approximate=False, name=None):
 
 
 def hardshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     hard shrinkage activation
 
     .. math::
@@ -204,7 +223,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
 def hardtanh(x, min=-1.0, max=1.0, name=None):
-    """
+    r"""
     hardtanh activation
 
     .. math::
@@ -253,8 +272,8 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     return out
 
 
-def hardsigmoid(x, name=None):
-    """
+def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
+    r"""
     hardsigmoid activation.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
@@ -267,12 +286,14 @@ def hardsigmoid(x, name=None):
             \\begin{aligned}
             &0, & & \\text{if } x \\leq -3 \\\\
             &1, & & \\text{if } x \\geq 3 \\\\
-            &x/6 + 1/2, & & \\text{otherwise}
+            &slope * x + offset, & & \\text{otherwise}
             \\end{aligned}
             \\right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+        slope (float, optional): The slope of hardsigmoid function. Default is 0.1666667.
+        offset (float, optional): The offset of hardsigmoid function. Default is 0.5.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -290,8 +311,7 @@ def hardsigmoid(x, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.hard_sigmoid(x, 'slope', 0.1666666666666667, 'offset',
-                                     0.5)
+        return core.ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardsigmoid')
@@ -302,13 +322,13 @@ def hardsigmoid(x, name=None):
         type='hard_sigmoid',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'slope': 0.1666666666666667,
-               'offset': 0.5})
+        attrs={'slope': slope,
+               'offset': offset})
     return out
 
 
 def hardswish(x, name=None):
-    """
+    r"""
     hardswish activation
 
     hardswish is proposed in MobileNetV3, and performs better in computational stability
@@ -357,7 +377,7 @@ def hardswish(x, name=None):
 
 
 def leaky_relu(x, negative_slope=0.01, name=None):
-    """
+    r"""
     leaky_relu activation
 
     .. math::
@@ -514,8 +534,21 @@ def relu(x, name=None):
     return out
 
 
-def log_sigmoid(x, name=None):
+def relu_(x, name=None):
     """
+    Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_relu`.
+    """
+
+    if in_dygraph_mode():
+        return core.ops.relu_(x)
+
+    _print_warning_in_static_mode("relu")
+    return relu(x, name)
+
+
+def log_sigmoid(x, name=None):
+    r"""
     log_sigmoid activation.
 
     .. math::
@@ -552,7 +585,7 @@ def log_sigmoid(x, name=None):
 
 
 def maxout(x, groups, axis=1, name=None):
-    """
+    r"""
     maxout activation.
 
     Assumed the input shape is (N, Ci, H, W).
@@ -671,7 +704,7 @@ def selu(x,
          scale=1.0507009873554804934193349852946,
          alpha=1.6732632423543772848170429916717,
          name=None):
-    """
+    r"""
     selu activation
 
     .. math::
@@ -726,7 +759,7 @@ def selu(x,
 
 
 def softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
@@ -843,7 +876,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    use_cudnn = True if axis is -1 else False
+    use_cudnn = True
 
     if in_dygraph_mode():
         outs_cast = x if dtype is None \
@@ -879,8 +912,25 @@ def softmax(x, axis=-1, dtype=None, name=None):
     return outs_softmax
 
 
-def softplus(x, beta=1, threshold=20, name=None):
+def softmax_(x, axis=-1, dtype=None, name=None):
+    r"""
+    Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_nn_cn_softmax`.
     """
+
+    if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    use_cudnn = True
+
+    if in_dygraph_mode():
+        return core.ops.softmax_(x, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    _print_warning_in_static_mode("softmax")
+    return softmax(x, axis, dtype, name)
+
+
+def softplus(x, beta=1, threshold=20, name=None):
+    r"""
     softplus activation
 
     .. math::
@@ -925,7 +975,7 @@ def softplus(x, beta=1, threshold=20, name=None):
 
 
 def softshrink(x, threshold=0.5, name=None):
-    """
+    r"""
     softshrink activation
 
     .. math::
@@ -976,7 +1026,7 @@ def softshrink(x, threshold=0.5, name=None):
 
 
 def softsign(x, name=None):
-    """
+    r"""
     softsign activation
 
     .. math::
@@ -1013,7 +1063,7 @@ def softsign(x, name=None):
 
 
 def swish(x, name=None):
-    """
+    r"""
     swish activation.
 
     .. math::
@@ -1091,7 +1141,7 @@ def tanhshrink(x, name=None):
 
 
 def thresholded_relu(x, threshold=1.0, name=None):
-    """
+    r"""
     thresholded relu activation.
 
     .. math::
@@ -1137,7 +1187,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):
-    """
+    r"""
     This operator implements the log_softmax layer. The calculation process is
     as follows:
 

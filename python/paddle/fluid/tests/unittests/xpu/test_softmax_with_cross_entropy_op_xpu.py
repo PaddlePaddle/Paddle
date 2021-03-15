@@ -13,16 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
+import sys
+sys.path.append("..")
+
+from test_softmax_op import stable_softmax
+from op_test_xpu import XPUOpTest
+import paddle.fluid.core as core
+import paddle
 
 import unittest
 import numpy as np
-import sys
-sys.path.append("..")
-import paddle
-import paddle.fluid.core as core
-
-from op_test import OpTest
-from test_softmax_op import stable_softmax
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -45,7 +45,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
     return result.reshape(label.shape)
 
 
-class TestSoftmaxWithCrossEntropyOp(OpTest):
+class TestSoftmaxWithCrossEntropyOp(XPUOpTest):
     """
     Test softmax with cross entropy operator with discreate one-hot labels.
     """
@@ -54,10 +54,11 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = False
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.axis = -1
         self.ignore_index = -1
         self.shape = [41, 37]
+        self.use_xpu = True
 
     def setUp(self):
         self.initParams()
@@ -103,7 +104,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ["Logits"], "Loss", max_relative_error=0.1)
+                place, ["Logits"], "Loss", max_relative_error=0.2)
 
 
 class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
@@ -115,6 +116,7 @@ class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
         self.axis = -1
         self.ignore_index = -1
         self.dtype = np.float32
+        self.use_xpu = True
 
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
@@ -127,7 +129,7 @@ class TestXPUSoftmaxWithCrossEntropyOp(TestSoftmaxWithCrossEntropyOp):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ["Logits"], "Loss", max_relative_error=0.1)
+                place, ["Logits"], "Loss", max_relative_error=0.2)
 
 
 class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
@@ -139,10 +141,11 @@ class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = True
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.axis = -1
         self.ignore_index = -1
         self.shape = [41, 37]
+        self.use_xpu = True
 
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
@@ -155,7 +158,7 @@ class TestXPUSoftmaxWithCrossEntropyOp2(TestXPUSoftmaxWithCrossEntropyOp):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ["Logits"], "Loss", max_relative_error=0.1)
+                place, ["Logits"], "Loss", max_relative_error=0.2)
 
 
 class TestXPUSoftmaxWithCrossEntropyOp3(TestXPUSoftmaxWithCrossEntropyOp):
@@ -170,55 +173,56 @@ class TestXPUSoftmaxWithCrossEntropyOp3(TestXPUSoftmaxWithCrossEntropyOp):
         self.shape = [41, 37]
         self.ignore_index = 5
         self.axis = -1
-        self.dtype = np.float64
+        self.dtype = np.float32
 
 
-class TestXPUSoftmaxWithCrossEntropyOpAxis1(TestXPUSoftmaxWithCrossEntropyOp):
-    """
-    Test softmax with cross entropy operator with discreate one-hot labels.
-    Given axis != -1
-    """
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpAxis1(TestXPUSoftmaxWithCrossEntropyOp):
+#     """
+#     Test softmax with cross entropy operator with discreate one-hot labels.
+#     Given axis != -1
+#     """
 
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.dtype = np.float64
-        self.axis = 0
-        self.ignore_index = -1
-        self.shape = [3, 5, 7, 11]
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.dtype = np.float32
+#         self.axis = 0
+#         self.ignore_index = -1
+#         self.shape = [3, 5, 7, 11]
 
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpAxis2(TestXPUSoftmaxWithCrossEntropyOp):
+#     """
+#     Test softmax with cross entropy operator with discreate one-hot labels.
+#     Given axis != -1
+#     """
 
-class TestXPUSoftmaxWithCrossEntropyOpAxis2(TestXPUSoftmaxWithCrossEntropyOp):
-    """
-    Test softmax with cross entropy operator with discreate one-hot labels.
-    Given axis != -1
-    """
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.dtype = np.float32
+#         self.axis = 1
+#         self.ignore_index = -1
+#         self.shape = [3, 5, 7, 11]
 
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.dtype = np.float64
-        self.axis = 1
-        self.ignore_index = -1
-        self.shape = [3, 5, 7, 11]
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpAxis3(TestXPUSoftmaxWithCrossEntropyOp):
+#     """
+#     Test softmax with cross entropy operator with discreate one-hot labels.
+#     Given axis != -1
+#     """
 
-
-class TestXPUSoftmaxWithCrossEntropyOpAxis3(TestXPUSoftmaxWithCrossEntropyOp):
-    """
-    Test softmax with cross entropy operator with discreate one-hot labels.
-    Given axis != -1
-    """
-
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.dtype = np.float64
-        self.axis = 2
-        self.ignore_index = -1
-        self.shape = [3, 5, 7, 11]
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.dtype = np.float32
+#         self.axis = 2
+#         self.ignore_index = -1
+#         self.shape = [3, 5, 7, 11]
 
 
 class TestXPUSoftmaxWithCrossEntropyOpAxis4(TestXPUSoftmaxWithCrossEntropyOp):
@@ -231,7 +235,7 @@ class TestXPUSoftmaxWithCrossEntropyOpAxis4(TestXPUSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.axis = 3
         self.ignore_index = -1
         self.shape = [3, 5, 7, 11]
@@ -248,46 +252,47 @@ class TestXPUSoftmaxWithCrossEntropyOpAxisDimEqualOne(
         self.op_type = "softmax_with_cross_entropy"
         self.numeric_stable_mode = True
         self.soft_label = False
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.axis = -1
         self.ignore_index = -1
         self.shape = [3, 5, 7, 1]
 
 
-class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis1(
-        TestXPUSoftmaxWithCrossEntropyOp):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = True
-        self.shape = [3, 5, 7, 11]
-        self.axis = 0
-        self.ignore_index = -1
-        self.dtype = np.float64
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis1(
+#         TestXPUSoftmaxWithCrossEntropyOp):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = True
+#         self.shape = [3, 5, 7, 11]
+#         self.axis = 0
+#         self.ignore_index = -1
+#         self.dtype = np.float32
 
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis2(
+#         TestXPUSoftmaxWithCrossEntropyOp2):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = True
+#         self.shape = [3, 5, 7, 11]
+#         self.axis = 1
+#         self.ignore_index = -1
+#         self.dtype = np.float32
 
-class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis2(
-        TestXPUSoftmaxWithCrossEntropyOp2):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = True
-        self.shape = [3, 5, 7, 11]
-        self.axis = 1
-        self.ignore_index = -1
-        self.dtype = np.float64
-
-
-class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis3(
-        TestXPUSoftmaxWithCrossEntropyOp2):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = True
-        self.shape = [3, 5, 7, 11]
-        self.axis = 2
-        self.ignore_index = -1
-        self.dtype = np.float64
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis3(
+#         TestXPUSoftmaxWithCrossEntropyOp2):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = True
+#         self.shape = [3, 5, 7, 11]
+#         self.axis = 2
+#         self.ignore_index = -1
+#         self.dtype = np.float32
 
 
 class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis4(
@@ -299,43 +304,44 @@ class TestXPUSoftmaxWithCrossEntropyOpSoftLabelAxis4(
         self.shape = [3, 5, 7, 11]
         self.axis = 3
         self.ignore_index = -1
-        self.dtype = np.float64
+        self.dtype = np.float32
 
 
-class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis1(
-        TestXPUSoftmaxWithCrossEntropyOp3):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.shape = [3, 5, 7, 11]
-        self.ignore_index = 1
-        self.axis = 0
-        self.dtype = np.float64
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis1(
+#         TestXPUSoftmaxWithCrossEntropyOp3):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.shape = [3, 5, 7, 11]
+#         self.ignore_index = 1
+#         self.axis = 0
+#         self.dtype = np.float32
 
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis2(
+#         TestXPUSoftmaxWithCrossEntropyOp3):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.shape = [3, 5, 7, 11]
+#         self.ignore_index = 0
+#         self.axis = 1
+#         self.dtype = np.float32
 
-class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis2(
-        TestXPUSoftmaxWithCrossEntropyOp3):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.shape = [3, 5, 7, 11]
-        self.ignore_index = 0
-        self.axis = 1
-        self.dtype = np.float64
-
-
-class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis3(
-        TestXPUSoftmaxWithCrossEntropyOp3):
-    def initParams(self):
-        self.op_type = "softmax_with_cross_entropy"
-        self.numeric_stable_mode = True
-        self.soft_label = False
-        self.shape = [3, 5, 7, 11]
-        self.ignore_index = 3
-        self.axis = 2
-        self.dtype = np.float64
+# xpu only support axis = rank -1
+# class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis3(
+#         TestXPUSoftmaxWithCrossEntropyOp3):
+#     def initParams(self):
+#         self.op_type = "softmax_with_cross_entropy"
+#         self.numeric_stable_mode = True
+#         self.soft_label = False
+#         self.shape = [3, 5, 7, 11]
+#         self.ignore_index = 3
+#         self.axis = 2
+#         self.dtype = np.float32
 
 
 class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
@@ -347,7 +353,7 @@ class TestXPUSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
         self.shape = [3, 5, 7, 11]
         self.ignore_index = 3
         self.axis = 3
-        self.dtype = np.float64
+        self.dtype = np.float32
 
 
 class TestXPUSoftmaxWithCrossEntropyOpBoundary0(
@@ -364,7 +370,7 @@ class TestXPUSoftmaxWithCrossEntropyOpBoundary0(
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.logits = np.full(self.shape, -500.0).astype(self.dtype)
 
 
@@ -382,7 +388,7 @@ class TestXPUSoftmaxWithCrossEntropyOpBoundary1(
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
 

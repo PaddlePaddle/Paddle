@@ -15,6 +15,7 @@
 import unittest
 
 from paddle.utils.download import get_weights_path_from_url
+from paddle.utils.download import get_path_from_url
 
 
 class TestDownload(unittest.TestCase):
@@ -56,6 +57,18 @@ class TestDownload(unittest.TestCase):
         ]
         for url in urls:
             self.download(url, None)
+
+    def test_get_path_from_url(self):
+        urls = [
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.zip",
+        ]
+        for url in urls:
+            get_path_from_url(url, root_dir='./test')
 
 
 if __name__ == '__main__':

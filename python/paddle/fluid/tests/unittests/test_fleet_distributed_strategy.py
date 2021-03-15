@@ -66,9 +66,12 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_pipeline_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"micro_batch": 4}
+        configs = {"micro_batch_size": 4}
         strategy.pipeline_configs = configs
-        self.assertEqual(strategy.pipeline_configs["micro_batch"], 4)
+        self.assertEqual(strategy.pipeline_configs["micro_batch_size"], 4)
+        configs = {"accumulate_steps": 2}
+        strategy.pipeline_configs = configs
+        self.assertEqual(strategy.pipeline_configs["accumulate_steps"], 2)
 
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -168,6 +171,13 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
         strategy.fuse_grad_size_in_MB = "40"
         self.assertEqual(strategy.fuse_grad_size_in_MB, 50)
+
+    def test_last_comm_group_size_MB(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.last_comm_group_size_MB = 50
+        self.assertEqual(strategy.last_comm_group_size_MB, 50)
+        with self.assertRaises(ValueError):
+            strategy.last_comm_group_size_MB = -1
 
     def test_fuse_grad_size_in_TFLOPS(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

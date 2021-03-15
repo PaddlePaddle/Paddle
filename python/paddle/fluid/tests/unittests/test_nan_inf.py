@@ -50,7 +50,8 @@ class TestNanInf(unittest.TestCase):
 
         assert returncode == 0
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find('find nan or inf'.encode()) != -1
+        assert (out + err
+                ).find('There are `nan` or `inf` in tensor'.encode()) != -1
 
 
 class TestNanInfEnv(TestNanInf):

@@ -17,7 +17,7 @@ import sys
 import os
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
-    'HeterXpuTrainer'
+    'HeterXpuTrainer', 'HeterBoxWorker'
 ]
 
 
@@ -146,6 +146,9 @@ class TrainerDesc(object):
     def _set_dump_file_num(self, dump_file_num):
         self.proto_desc.dump_file_num = dump_file_num
 
+    def _set_user_define_dump_filename(self, user_define_dump_filename):
+        self.proto_desc.user_define_dump_filename = user_define_dump_filename
+
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
@@ -165,6 +168,9 @@ class TrainerDesc(object):
     def _set_worker_places(self, worker_places):
         for place in worker_places:
             self.proto_desc.worker_places.append(place)
+
+    def _set_use_ps_gpu(self, use_ps_gpu=False):
+        self.proto_desc.use_ps_gpu = use_ps_gpu
 
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
@@ -333,6 +339,54 @@ class HeterXpuTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(HeterXpuTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "HeterXpuTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterBoxTrainer(TrainerDesc):
+    """
+    Implement of HeterBoxTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(HeterBoxTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterBoxTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterBoxTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterBoxTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class PSGPUTrainer(TrainerDesc):
+    """
+    Implement of PSGPUTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(PSGPUTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(PSGPUTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(PSGPUTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "PSGPUTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

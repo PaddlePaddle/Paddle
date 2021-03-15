@@ -17,9 +17,9 @@
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <mutex>  // NOLINT
+#include "gflags/gflags.h"
 
 DEFINE_string(
     tracer_profile_fname, "xxgperf",

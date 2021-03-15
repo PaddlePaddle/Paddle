@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
+
 #include <stdint.h>
-#include <algorithm>
+
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -281,7 +282,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {
@@ -307,7 +309,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     PADDLE_ENFORCE_EQ(
         version, 0U,
         platform::errors::InvalidArgument(
-            "Tensor version %u is not supported, only version 0 is supported.",
+            "Deserialize to tensor failed, maybe the loaded file is "
+            "not a paddle model(expected file format: 0, but %u found).",
             version));
   }
   {

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -97,6 +98,16 @@ def dyfunc_with_if_else3(x):
     n = q + 2
     x = n
     return x
+
+
+def dyfunc_with_if_else_with_list_geneator(x):
+    if 10 > 5:
+        y = paddle.add_n(
+            [paddle.full(
+                shape=[2], fill_value=v) for v in range(5)])
+    else:
+        y = x
+    return y
 
 
 def nested_if_else(x_v):

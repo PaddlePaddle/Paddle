@@ -19,6 +19,7 @@ import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
 import os
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 
@@ -32,7 +33,10 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9)
         opt = AMPOptimizer(opt)
-        opt.user_defined_strategy = strategy
+
+        self.set_strategy(strategy, 'amp')
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        opt._set_basic_info(avg_cost, role, opt, strategy)
         params_grads = opt.backward(avg_cost, startup_prog)
 
         ops = [op.type for op in avg_cost.block.ops]
@@ -47,7 +51,10 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9)
         opt = AMPOptimizer(opt)
-        opt.user_defined_strategy = strategy
+
+        self.set_strategy(strategy, 'amp')
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        opt._set_basic_info(avg_cost, role, opt, strategy)
         params_grads = opt.backward(avg_cost, startup_prog)
         with fluid.program_guard(train_prog, startup_prog):
             opt.apply_gradients(params_grads)
@@ -64,7 +71,10 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9)
         opt = AMPOptimizer(opt)
-        opt.user_defined_strategy = strategy
+
+        self.set_strategy(strategy, 'amp')
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        opt._set_basic_info(avg_cost, role, opt, strategy)
         params_grads = opt.backward(avg_cost, startup_prog)
         opt.apply_optimize(avg_cost, startup_prog, params_grads)
 
@@ -82,6 +92,37 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('cast', ops)
         self.assertIn('check_finite_and_unscale', ops)
+
+    def test_pure_fp16_optimizer(self):
+        """ test pure fp16 """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'pure_fp16')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        params = train_prog.all_parameters()
+        for param in train_prog.all_parameters():
+            self.assertEqual(param.dtype, fluid.core.VarDesc.VarType.FP16)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
+
+    def test_amp_distributed_optimizer(self):
+        """ test amp when distributed """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        self.set_strategy(strategy, 'amp')
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
+        check_count = 0
+        for name in ops:
+            if name == 'check_finite_and_unscale':
+                check_count += 1
+        self.assertEqual(check_count, len(train_prog.all_parameters()))
 
     def test_amp_recompute_optimizer(self):
         """ test amp + recompute """

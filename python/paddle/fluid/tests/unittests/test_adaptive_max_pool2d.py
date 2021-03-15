@@ -19,10 +19,11 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_test import OpTest, check_out_dtype
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle.nn.functional as F
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -268,6 +269,17 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
             #assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
+
+
+class TestOutDtype(unittest.TestCase):
+    def test_max_pool(self):
+        api_fn = F.adaptive_max_pool2d
+        shape = [1, 3, 32, 32]
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape, )],
+            expect_dtypes=['float32', 'float64'],
+            output_size=16)
 
 
 if __name__ == '__main__':

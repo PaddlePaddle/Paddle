@@ -30,7 +30,8 @@ class SimpleNet(fluid.Layer):
                  vocab_size,
                  num_steps=20,
                  init_scale=0.1,
-                 is_sparse=False):
+                 is_sparse=False,
+                 dtype="float32"):
         super(SimpleNet, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
@@ -38,7 +39,7 @@ class SimpleNet(fluid.Layer):
         self.num_steps = num_steps
         self.embedding = Embedding(
             size=[self.vocab_size, self.hidden_size],
-            dtype='float32',
+            dtype=dtype,
             is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name='embedding_param',
@@ -47,13 +48,13 @@ class SimpleNet(fluid.Layer):
         self.softmax_weight = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
-            dtype="float32",
+            dtype=dtype,
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
         self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
-            dtype="float32",
+            dtype=dtype,
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 

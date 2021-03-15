@@ -18,8 +18,8 @@
 #include <typeindex>
 #include <typeinfo>
 
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-
 namespace paddle {
 namespace framework {
 
@@ -70,6 +70,15 @@ class Variable {
   }
 
  private:
+  // This method hides type T, so it doesn't appear as a template parameter of
+  // Variable.
+  framework::TensorInplaceVersion* InplaceVersionCounter();
+
+ public:
+  uint32_t CurrentInplaceVersion();
+  void BumpInplaceVersion();
+
+ private:
   struct Placeholder {
     virtual ~Placeholder() PADDLE_MAY_THROW {}
 
@@ -101,8 +110,48 @@ class Variable {
   };
 
   // pointers to a PlaceholderImpl object indeed.
-  std::unique_ptr<Placeholder> holder_;
+  std::shared_ptr<Placeholder> holder_;
 };
 
+inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
+  framework::TensorInplaceVersion* version_counter_ptr(nullptr);
+  if (IsType<framework::LoDTensor>()) {
+    version_counter_ptr =
+        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::Tensor>()) {
+    version_counter_ptr =
+        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
+
+  } else if (IsType<framework::SelectedRows>()) {
+    version_counter_ptr = &GetMutable<framework::SelectedRows>()
+                               ->mutable_value()
+                               ->InplaceVersionCounter();
+  } else {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
+  }
+  return version_counter_ptr;
+}
+
+inline uint32_t Variable::CurrentInplaceVersion() {
+  auto version_counter_ptr = InplaceVersionCounter();
+  if (version_counter_ptr) {
+    return version_counter_ptr->CurrentVersion();
+  } else {
+    return 0;
+  }
+}
+
+inline void Variable::BumpInplaceVersion() {
+  auto version_counter_ptr = InplaceVersionCounter();
+  if (version_counter_ptr) {
+    return version_counter_ptr->Bump();
+  } else {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
+  }
+}
 }  // namespace framework
 }  // namespace paddle

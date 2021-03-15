@@ -25,7 +25,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 class TestLRNOp(OpTest):
     def get_input(self):
-        ''' TODO(gongweibao): why it's grad diff is so large?
+        r''' TODO(gongweibao): why it's grad diff is so large?
         x = np.ndarray(
             shape=(self.N, self.C, self.H, self.W), dtype=float, order='C')
         for m in range(0, self.N):

@@ -140,7 +140,7 @@ void TestMain(const std::vector<std::string>& input_names,
               std::string func_name, std::string cuda_kernel_str,
               CPUKernelFunc cpu_kernel_func) {
   // Compile the device code
-  paddle::framework::InitDevices(false, {0});
+  paddle::framework::InitDevices({0});
   platform::CUDAPlace place = platform::CUDAPlace(0);
   PrepareDeviceCode(place, func_name, cuda_kernel_str);
 

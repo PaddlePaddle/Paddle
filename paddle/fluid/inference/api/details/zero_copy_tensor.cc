@@ -18,210 +18,256 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
+namespace paddle_infer {
 
-void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
+void Tensor::Reshape(const std::vector<int> &shape) {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
-      platform::errors::PreconditionNotMet(
+      paddle::platform::errors::PreconditionNotMet(
           "Need to SetName first, so that the corresponding tensor can "
           "be retrieved."));
   PADDLE_ENFORCE_EQ(input_or_output_, true,
-                    platform::errors::PermissionDenied(
+                    paddle::platform::errors::PermissionDenied(
                         "Can't reshape the output tensor, it is readonly"));
-  PADDLE_ENFORCE_NOT_NULL(scope_, platform::errors::PreconditionNotMet(
-                                      "The scope should not be nullptr."));
-  auto *scope = static_cast<framework::Scope *>(scope_);
+  auto *scope = static_cast<paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::PreconditionNotMet(
+      var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
-  tensor->Resize(framework::make_ddim(shape));
+  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  tensor->Resize(paddle::framework::make_ddim(shape));
 }
 
 #define EAGER_GET_TENSOR    \
   if (!tensor_) {           \
     tensor_ = FindTensor(); \
   }                         \
-  auto *tensor = static_cast<framework::LoDTensor *>(tensor_);
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(tensor_);
 
 template <typename T>
-T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
+T *Tensor::mutable_data(PlaceType place) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
-      platform::errors::PreconditionNotMet(
-          "You should call ZeroCopyTensor::Reshape(const std::vector<int> "
+      paddle::platform::errors::PreconditionNotMet(
+          "You should call Tensor::Reshape(const std::vector<int> "
           "&shape)"
           "function before retrieving mutable_data from input tensor."));
   switch (static_cast<int>(place)) {
-    case static_cast<int>(PaddlePlace::kCPU): {
-      return tensor->mutable_data<T>(platform::CPUPlace());
+    case static_cast<int>(PlaceType::kCPU): {
+      return tensor->mutable_data<T>(paddle::platform::CPUPlace());
     }
-    case static_cast<int>(PaddlePlace::kGPU): {
-      return tensor->mutable_data<T>(platform::CUDAPlace(device_));
+    case static_cast<int>(PlaceType::kGPU): {
+      return tensor->mutable_data<T>(paddle::platform::CUDAPlace(device_));
+    }
+    case static_cast<int>(PlaceType::kXPU): {
+      return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
     default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupported place: %d",
-                                                 static_cast<int>(place)));
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "Only CPU / CUDA / XPU places is supported. The place `%d` is not "
+          "supported.",
+          static_cast<int>(place)));
       break;
   }
   return nullptr;
 }
 
 template <typename T>
-T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
+T *Tensor::data(PlaceType *place, int *size) const {
   EAGER_GET_TENSOR;
   auto *res = tensor->data<T>();
 
-  if (platform::is_cpu_place(tensor->place())) {
-    *place = PaddlePlace::kCPU;
-  } else if (platform::is_gpu_place(tensor->place())) {
-    *place = PaddlePlace::kGPU;
+  if (paddle::platform::is_cpu_place(tensor->place())) {
+    *place = PlaceType::kCPU;
+  } else if (paddle::platform::is_gpu_place(tensor->place())) {
+    *place = PlaceType::kGPU;
+  } else if (paddle::platform::is_xpu_place(tensor->place())) {
+    *place = PlaceType::kXPU;
   } else {
-    *place = PaddlePlace::kUNK;
+    *place = PlaceType::kUNK;
   }
 
   *size = tensor->numel();
   return res;
 }
 
-PaddleDType ZeroCopyTensor::type() const {
+DataType Tensor::type() const {
   EAGER_GET_TENSOR;
   auto type = tensor->type();
-  if (type == framework::proto::VarType::FP32) {
-    return PaddleDType::FLOAT32;
-  } else if (type == framework::proto::VarType::INT64) {
-    return PaddleDType::INT64;
-  } else if (type == framework::proto::VarType::INT32) {
-    return PaddleDType::INT32;
-  } else if (type == framework::proto::VarType::UINT8) {
-    return PaddleDType::UINT8;
+  if (type == paddle::framework::proto::VarType::FP32) {
+    return DataType::FLOAT32;
+  } else if (type == paddle::framework::proto::VarType::INT64) {
+    return DataType::INT64;
+  } else if (type == paddle::framework::proto::VarType::INT32) {
+    return DataType::INT32;
+  } else if (type == paddle::framework::proto::VarType::UINT8) {
+    return DataType::UINT8;
   }
-  return PaddleDType::FLOAT32;
+  return DataType::FLOAT32;
 }
 
 template <typename T>
-void ZeroCopyTensor::copy_from_cpu(const T *data) {
+void Tensor::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
-                    platform::errors::PreconditionNotMet(
-                        "You should call ZeroCopyTensor::Reshape(const "
+                    paddle::platform::errors::PreconditionNotMet(
+                        "You should call Tensor::Reshape(const "
                         "std::vector<int> &shape)"
                         "function before copying data from cpu."));
   size_t ele_size = tensor->numel() * sizeof(T);
 
-  if (place_ == PaddlePlace::kCPU) {
-    auto *t_data = tensor->mutable_data<T>(platform::CPUPlace());
+  if (place_ == PlaceType::kCPU) {
+    auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    platform::CUDAPlace gpu_place(device_);
+  } else if (place_ == PlaceType::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    paddle::platform::CUDAPlace gpu_place(device_);
     auto *t_data = tensor->mutable_data<T>(gpu_place);
-    auto *dev_ctx =
-        static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
+    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
 
-    memory::Copy(gpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
-                 data, ele_size, dev_ctx->stream());
+    paddle::memory::Copy(gpu_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size,
+                         dev_ctx->stream());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not compiled with CUDA, should not reach here."));
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
 #endif
+  } else if (place_ == PlaceType::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    paddle::platform::XPUPlace xpu_place(device_);
+    auto *t_data = tensor->mutable_data<T>(xpu_place);
+    paddle::memory::Copy(xpu_place, static_cast<void *>(t_data),
+                         paddle::platform::CPUPlace(), data, ele_size);
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with XPU place because paddle is not compiled "
+        "with XPU."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
 
 template <typename T>
-void ZeroCopyTensor::copy_to_cpu(T *data) {
+void Tensor::CopyToCpu(T *data) {
   EAGER_GET_TENSOR;
   auto ele_num = tensor->numel();
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  if (platform::is_cpu_place(t_place)) {
+  if (paddle::platform::is_cpu_place(t_place)) {
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
-    auto *dev_ctx =
-        static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
-    memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
-                 t_data, ele_num * sizeof(T), dev_ctx->stream());
-
-    cudaStreamSynchronize(dev_ctx->stream());
+  } else if (place_ == PlaceType::kGPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, t_place);
+    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), gpu_place, t_data,
+                         ele_num * sizeof(T), dev_ctx->stream());
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(dev_ctx->stream());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not compile with CUDA, should not reach here."));
+    cudaStreamSynchronize(dev_ctx->stream());
 #endif
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with CUDA place because paddle is not compiled "
+        "with CUDA."));
+#endif
+  } else if (place_ == PlaceType::kXPU) {
+#ifdef PADDLE_WITH_XPU
+    auto xpu_place = BOOST_GET_CONST(paddle::platform::XPUPlace, t_place);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         static_cast<void *>(data), xpu_place, t_data,
+                         ele_num * sizeof(T));
+#else
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "Can not create tensor with XPU place because paddle is not compiled "
+        "with XPU."));
+#endif
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The analysis predictor supports CPU, GPU and XPU now."));
   }
 }
-template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<float>(
-    const float *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int64_t>(
-    const int64_t *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<int32_t>(
-    const int32_t *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_from_cpu<uint8_t>(
-    const uint8_t *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<float>(float *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
-template PD_INFER_DECL void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<float>(const float *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<int64_t>(const int64_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 
-template PD_INFER_DECL float *ZeroCopyTensor::data<float>(PaddlePlace *place,
-                                                          int *size) const;
-template PD_INFER_DECL int64_t *ZeroCopyTensor::data<int64_t>(
-    PaddlePlace *place, int *size) const;
-template PD_INFER_DECL int32_t *ZeroCopyTensor::data<int32_t>(
-    PaddlePlace *place, int *size) const;
-template PD_INFER_DECL uint8_t *ZeroCopyTensor::data<uint8_t>(
-    PaddlePlace *place, int *size) const;
-template PD_INFER_DECL float *ZeroCopyTensor::mutable_data<float>(
-    PaddlePlace place);
-template PD_INFER_DECL int64_t *ZeroCopyTensor::mutable_data<int64_t>(
-    PaddlePlace place);
-template PD_INFER_DECL int32_t *ZeroCopyTensor::mutable_data<int32_t>(
-    PaddlePlace place);
-template PD_INFER_DECL uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(
-    PaddlePlace place);
+template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<uint8_t>(uint8_t *data);
+template PD_INFER_DECL void Tensor::CopyToCpu<int8_t>(int8_t *data);
 
-void *ZeroCopyTensor::FindTensor() const {
+template PD_INFER_DECL float *Tensor::data<float>(PlaceType *place,
+                                                  int *size) const;
+template PD_INFER_DECL int64_t *Tensor::data<int64_t>(PlaceType *place,
+                                                      int *size) const;
+template PD_INFER_DECL int32_t *Tensor::data<int32_t>(PlaceType *place,
+                                                      int *size) const;
+template PD_INFER_DECL uint8_t *Tensor::data<uint8_t>(PlaceType *place,
+                                                      int *size) const;
+template PD_INFER_DECL int8_t *Tensor::data<int8_t>(PlaceType *place,
+                                                    int *size) const;
+
+template PD_INFER_DECL float *Tensor::mutable_data<float>(PlaceType place);
+template PD_INFER_DECL int64_t *Tensor::mutable_data<int64_t>(PlaceType place);
+template PD_INFER_DECL int32_t *Tensor::mutable_data<int32_t>(PlaceType place);
+template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
+template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
+
+Tensor::Tensor(void *scope) : scope_{scope} {
+  PADDLE_ENFORCE_NOT_NULL(scope_,
+                          paddle::platform::errors::PreconditionNotMet(
+                              "The `scope` can not be nullptr. It should be "
+                              "set to the pointer of scope."));
+}
+
+void *Tensor::FindTensor() const {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
-      platform::errors::PreconditionNotMet(
+      paddle::platform::errors::PreconditionNotMet(
           "Need to SetName first, so that the corresponding tensor can "
           "be retrieved."));
-  PADDLE_ENFORCE_NOT_NULL(scope_, platform::errors::PreconditionNotMet(
-                                      "The scope should not be nullptr."));
-  auto *scope = static_cast<framework::Scope *>(scope_);
+  auto *scope = static_cast<paddle::framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::PreconditionNotMet(
+      var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
+  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
   return tensor;
 }
 
-std::vector<int> ZeroCopyTensor::shape() const {
+std::vector<int> Tensor::shape() const {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_NOT_NULL(
-      tensor_, platform::errors::PreconditionNotMet(
+      tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
-  return framework::vectorize<int>(tensor->dims());
+  return paddle::framework::vectorize<int>(tensor->dims());
 }
 
-void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
   EAGER_GET_TENSOR;
-  framework::LoD lod;
+  paddle::framework::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
   }
   tensor->set_lod(lod);
 }
 
-std::vector<std::vector<size_t>> ZeroCopyTensor::lod() const {
+std::vector<std::vector<size_t>> Tensor::lod() const {
   EAGER_GET_TENSOR;
   std::vector<std::vector<size_t>> res;
   for (auto &level : tensor->lod()) {
@@ -230,4 +276,13 @@ std::vector<std::vector<size_t>> ZeroCopyTensor::lod() const {
   return res;
 }
 
-}  // namespace paddle
+void Tensor::SetName(const std::string &name) { name_ = name; }
+
+const std::string &Tensor::name() const { return name_; }
+
+void Tensor::SetPlace(PlaceType place, int device) {
+  place_ = place;
+  device_ = device;
+}
+
+}  // namespace paddle_infer

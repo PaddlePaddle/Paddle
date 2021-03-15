@@ -175,7 +175,7 @@ def basic_gru(input,
               activation=None,
               dtype='float32',
               name='basic_gru'):
-    """
+    r"""
     GRU implementation using basic operator, supports multiple layers and bidirectional gru.
 
     .. math::
@@ -418,7 +418,7 @@ def basic_lstm(input,
                forget_bias=1.0,
                dtype='float32',
                name='basic_lstm'):
-    """
+    r"""
     LSTM implementation using basic operators, supports multiple layers and bidirectional LSTM.
 
     .. math::
@@ -697,7 +697,7 @@ def basic_lstm(input,
 
 
 class BasicLSTMUnit(Layer):
-    """
+    r"""
     ****
     BasicLSTMUnit class, Using basic operator to build LSTM
     The algorithm can be described as the code below.
