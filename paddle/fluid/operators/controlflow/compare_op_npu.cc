@@ -1,5 +1,4 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#ifdef PADDLE_WITH_ASCEND_CL
 
 namespace paddle {
 namespace operators {
@@ -42,6 +42,23 @@ class EqualNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+class LessThanNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* y = ctx.Input<framework::LoDTensor>("Y");
+    auto* z = ctx.Output<framework::LoDTensor>("Out");
+    // int axis = context.Attr<int>("axis");
+    z->mutable_data<bool>(ctx.GetPlace());  // allocate
+    auto runner = NpuOpRunner("Less", {*x, *y}, {*z});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    runner.Run(stream);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -51,3 +68,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(equal, ops::EqualNPUKernel<float>,
                        ops::EqualNPUKernel<plat::float16>,
                        ops::EqualNPUKernel<int>);
+
+REGISTER_OP_NPU_KERNEL(
+    less_than,
+    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LessThanNPUKernel<paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);
+
+#endif
