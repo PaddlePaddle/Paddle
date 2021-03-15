@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
-
-#include "paddle/fluid/operators/interpolate_op.h"
+#include "paddle/fluid/framework/data_layout.h"
 
 namespace paddle {
 namespace framework {
@@ -205,8 +204,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != operators::DataLayout::kNCHW &&
-          data_layout != operators::DataLayout::kNHWC)
+      if (data_layout != framework::DataLayout::kNCHW &&
+          data_layout != framework::DataLayout::kNHWC)
         return false;
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));

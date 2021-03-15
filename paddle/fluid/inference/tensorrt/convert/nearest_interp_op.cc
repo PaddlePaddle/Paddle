@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/operators/interpolate_op.h"
 
 namespace paddle {
 namespace framework {
@@ -74,9 +74,9 @@ class NearestInterpolateOpConverter : public OpConverter {
 
       bool with_dynamic = engine_->with_dynamic_shape();
 
-      int h_axis = (data_layout == operators::DataLayout::kNCHW) + with_dynamic;
+      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
       int w_axis =
-          (data_layout == operators::DataLayout::kNCHW) + 1 + with_dynamic;
+          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
 
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
@@ -88,11 +88,11 @@ class NearestInterpolateOpConverter : public OpConverter {
       scales.push_back(1.f);
     }
 
-    if (data_layout == operators::DataLayout::kNCHW) {
+    if (data_layout == framework::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == operators::DataLayout::kNHWC) {
+    } else if (data_layout == framework::DataLayout::kNHWC) {
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);
