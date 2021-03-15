@@ -42,7 +42,7 @@ class TestBackward(unittest.TestCase):
                     z_tensor = paddle.matmul(x_tensor, y_tensor)
 
                     grad_tensor = paddle.to_tensor(grad)
-                    z_tensor.backward(grad_tensor=grad_tensor)
+                    z_tensor.backward(grad_tensor)
 
                     x_grad = np.matmul(grad, y.T)
 
