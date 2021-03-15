@@ -69,7 +69,7 @@ std::list<GraphNode *>::iterator GraphShard::add_node(uint64_t id, std::string f
     return node_location.find(id)->second;
 
   int index = id % shard_num % bucket_size;
-  GraphNode *node = new GraphNode(id, std::string(""));
+  GraphNode *node = new GraphNode(id, feature);
 
   std::list<GraphNode *>::iterator iter =
       bucket[index].insert(bucket[index].end(), node);
@@ -127,7 +127,7 @@ int32_t GraphTable::load_nodes(const std::string &path) {
       }
       auto feat = paddle::string::join_strings(feature, '\t');
       size_t index = shard_id - shard_start;
-      shards[index].add_node(id, std::string(""));
+      shards[index].add_node(id, feat);
 
     }
   }
