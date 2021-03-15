@@ -15,6 +15,8 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/framework/block_desc.h"
 
+#include "paddle/fluid/operators/interpolate_op.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -110,6 +112,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+
+      "nearest_interp",
   };
 };
 
@@ -190,6 +194,25 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "gather") {
       // current not support axis from input, use default 0
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
+    }
+
+    if (op_type == "nearest_interp") {
+      std::vector<std::string> attrs{"data_layout",   "interp_method",
+                                     "align_corners", "scale",
+                                     "out_h",         "out_w"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != operators::DataLayout::kNCHW &&
+          data_layout != operators::DataLayout::kNHWC)
+        return false;
+      auto interp_method =
+          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "nearest") return false;
+    }
+
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
