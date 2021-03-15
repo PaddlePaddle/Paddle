@@ -52,7 +52,7 @@ class GraphShard {
     }
     return -1;
   }
-  std::list<GraphNode *>::iterator add_node(GraphNode *node);
+  std::list<GraphNode *>::iterator add_node(uint64_t id, std::string feature);
   GraphNode *find_node(uint64_t id);
   void add_neighboor(uint64_t id, GraphEdge *edge);
   std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
@@ -76,7 +76,13 @@ class GraphTable : public SparseTable {
   virtual int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 int &actual_size);
   virtual int32_t initialize();
+
   int32_t load(const std::string &path, const std::string &param);
+
+  int32_t load_edges(const std::string &path, bool reverse);
+
+  int32_t load_nodes(const std::string &path);
+
   GraphNode *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
