@@ -566,7 +566,7 @@ def get_incrementapi():
                 f.write('\n')
 
 
-def get_wlist():
+def get_wlist(fn = "wlist.json"):
     '''
     this function will get the white list of API.
 
@@ -579,7 +579,7 @@ def get_wlist():
     wlist_file = []
     # only white on CPU
     gpu_not_white = []
-    with open("wlist.json", 'r') as load_f:
+    with open(fn, 'r') as load_f:
         load_dict = json.load(load_f)
         for key in load_dict:
             if key == 'wlist_dir':

@@ -12,6 +12,7 @@ from sampcd_processor import single_defcom_extract
 from sampcd_processor import srccoms_extract
 from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
+from sampcd_processor import get_wlist
 
 class Test_find_all(unittest.TestCase):
     # def test_srcstr_is_None(self):
@@ -164,6 +165,54 @@ class Test_get_incrementapi(unittest.TestCase):
         with open(self.api_diff_spec_filename, 'r') as f:
             lines = f.readlines()
             self.assertCountEqual(["two_plus_two\n", "three_plus_three\n", "four_plus_four\n"], lines)
+
+class Test_get_wlist(unittest.TestCase):
+    def setUp(self):
+        self.wlist_filename = os.path.join(self.tmpDir, 'wlist.json')
+        with open(self.wlist_filename , 'w') as f:
+            f.write(r'''
+{
+    "wlist_dir":[
+        {
+            "name":"../python/paddle/fluid/contrib",
+            "annotation":""
+        },
+        {
+            "name":"../python/paddle/verison.py",
+            "annotation":""
+        }
+    ],
+    "wlist_api":[
+        {
+            "name":"xxxxx",
+            "annotation":"not a real api, just for example"
+        }
+    ],
+    "wlist_temp_api":[
+        "to_tensor",
+        "save_persistables@dygraph/checkpoint.py"
+    ],
+    "gpu_not_white":[
+        "deformable_conv"
+    ]
+}
+'''
+)
+    def tearDown(self):
+        os.remove(self.wlist_filename)
+    def test_get_wlist(self):
+        wlist, wlist_file, gpu_not_white = get_wlist(self.wlist_filename)
+        self.assertCountEqual(["xxxxx",
+            "to_tensor",
+            "save_persistables@dygraph/checkpoint.py"
+            ], wlist)
+        self.assertCountEqual([
+            "../python/paddle/fluid/contrib",
+            "../python/paddle/verison.py",
+            ], wlist_file)
+        self.assertCountEqual([
+            "deformable_conv"
+            ], gpu_not_white)
 
 class Test_srccoms_extract(unittest.TestCase):
     def setUp(self):
