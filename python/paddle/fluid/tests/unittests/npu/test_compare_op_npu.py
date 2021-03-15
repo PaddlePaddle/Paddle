@@ -68,7 +68,7 @@ class TestLessthan(OpTest):
         np.random.seed(SEED)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = x < y  # all elements are not equal
+        out = x < y 
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
