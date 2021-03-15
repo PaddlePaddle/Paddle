@@ -153,6 +153,14 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
   compute_dev_ctx->Wait();
 }
 
+void BKCLParallelContext::SynchronizeCompute() {
+  // TODO(wangxi16): [Performance optimize] Maybe need to put Wait and
+  // bkcl_allreduce to comm thread, for bkcl_allreduce is blocking now.
+  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  compute_dev_ctx->Wait();
+}
+
 void BKCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(ring_id, 0,
                     platform::errors::OutOfRange(

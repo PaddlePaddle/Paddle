@@ -651,19 +651,20 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       group_tensor.ShareDataWith(*tensor).Resize(
           {static_cast<int64_t>(length)});
     } else {
-      if (!group_tensor.IsInitialized()) {
-        group_tensor.Resize({static_cast<int64_t>(length)});
-        group_tensor.mutable_data(place_, group.dtype_);
+      // TODO(shenliang03): maybe save the memory by avoiding tensor
+      // construction
+      group_tensor.clear();
+      group_tensor.Resize({static_cast<int64_t>(length)});
+      group_tensor.mutable_data(place_, group.dtype_);
 #ifdef PADDLE_WITH_XPU_BKCL
-        if (platform::is_xpu_place(group_tensor.place())) {
-          // TODO(liuyuhui) support XPU set constant
-          VLOG(3) << "XPU doesn't support set_constant";
-        }
-#else
-        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
-#endif
+      if (platform::is_xpu_place(group_tensor.place())) {
+        // TODO(liuyuhui) support XPU set constant
+        VLOG(3) << "XPU doesn't support set_constant";
       }
+#else
+      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+#endif
     }
   } else {
     // process sparse group
@@ -682,17 +683,19 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
   if (next_group_ == groups_.size()) {
     if (find_unused_vars_) {
-      VLOG(3) << "Group [" << curr_group_index << "]: Local used vars : "
+      VLOG(0) << "Local used vars : "
               << string::join_strings(local_used_vars_, ',');
+      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      // H2D is to allreduce the local_used_vars_, here we use cal stream
+      auto *bitmap_tensor =
+          global_used_vars_.GetMutable<framework::LoDTensor>();
+      framework::TensorFromVector<int>(local_used_vars_, *dev_ctx,
+                                       bitmap_tensor);
+      parallel_ctx_->AllReduceByStream(global_used_vars_, &global_used_vars_, 0,
+                                       true);
+      framework::TensorToVector<int>(*bitmap_tensor, *dev_ctx,
+                                     &local_used_vars_);
     }
-
-    // framework::TensorFromVector<int64_t>(
-    //     group.local_used_vars_, dev_context,
-    //     group.global_used_vars_.GetMutable<framework::LoDTensor>());
-
-    // parallel_ctx_->AllReduceByStream(group.global_used_vars_,
-    //                                  &(group.global_used_vars_), run_order,
-    //                                  false);
 
     FinalizeBackward();
   }
@@ -755,7 +758,6 @@ void Reducer::MarkGroupReady(size_t group_index) {
 void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
                                      const int curr_group_index) {
   // The overall timeline: concat > div_nranks > allreduce > split
-
   // dev_context is used to select different stream
   auto &dev_context = *parallel_ctx_->GetDeviceContext(run_order);
   if (group.is_sparse_) {
@@ -788,26 +790,9 @@ void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
 #endif
 
     group.DivNRanks(dev_context, nranks_);
-
     // Start allreduce
     parallel_ctx_->AllReduceByStream(
         group.dense_contents_, &(group.dense_contents_), run_order, false);
-
-    // Determines whether every parameter in group is used globally
-    // if (find_unused_vars_) {
-    // VLOG(3) << "Group [" << curr_group_index << "]: Local used vars : "
-    // << string::join_strings(group.local_used_vars_, ',');
-
-    // framework::TensorFromVector<int64_t>(
-    //     group.local_used_vars_, dev_context,
-    //     group.global_used_vars_.GetMutable<framework::LoDTensor>());
-
-    // parallel_ctx_->AllReduceByStream(group.global_used_vars_,
-    //                                  &(group.global_used_vars_), run_order,
-    //                                  false);
-
-    // group.SplitTensors(dev_context);
-    // }
 
     // Select communication stream to split tensors
     // group.dense_contents_ ---> group.dense_tensors
@@ -837,6 +822,47 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
   return rebuild_group_indices;
 }
 
+void Reducer::ProcessUnusedDenseVars() {
+  // sync compute stream to get global used var message
+  parallel_ctx_->SynchronizeCompute();
+  VLOG(0) << "Global used vars : "
+          << string::join_strings(local_used_vars_, ',');
+  for (size_t var_index = 0; var_index < local_used_vars_.size(); ++var_index) {
+    bool global_unused = (local_used_vars_[var_index] == 0);
+    bool has_grad = vars_[var_index]->HasGradVar();
+    // global used but local unused, set grad
+    if (!global_unused) {
+      if (!has_grad) {
+        // 1. source var base
+        const auto &var_locator = variable_locators_[var_index];
+        auto group_index = var_locator.group_index;
+        auto &group = groups_[group_index];
+        auto inside_group_index = var_locator.inside_group_index;
+        auto &src_tensor = group.dense_tensors_[inside_group_index];
+        // sparse no need to check
+        if (group.is_sparse_) {
+          continue;
+        }
+        // 2. destination var base
+        auto dest_var_base = vars_[var_index];
+        VLOG(0) << "Var [" << var_index << "] [" << dest_var_base->Name()
+                << "] local unused, but global used.";
+        auto *dest_tensor =
+            dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
+        auto &dest_dims = dest_tensor->dims();
+
+        // 3. create grad var base
+        auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+
+        // 4. set grad tensor
+        auto *dest_grad_tensor =
+            grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
+        dest_grad_tensor->ShareDataWith(src_tensor).Resize(dest_dims);
+      }
+    }
+  }
+}
+
 void Reducer::FinalizeBackward() {
   groups_need_finalize_ = false;
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -858,7 +884,12 @@ void Reducer::FinalizeBackward() {
     InitializeGroups(group_indices_);
   }
 
-  // need sync bitmap
+  if (find_unused_vars_) {
+    ProcessUnusedDenseVars();
+    // Initialize local used vars
+    local_used_vars_.clear();
+    local_used_vars_.resize(vars_.size(), 0);
+  }
 
   VLOG(3) << "In the batch, Reducer is finished...";
 }

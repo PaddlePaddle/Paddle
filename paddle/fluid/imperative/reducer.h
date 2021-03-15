@@ -165,6 +165,8 @@ class Reducer {
     return !has_rebuilt_group_ && !find_unused_vars_;
   }
 
+  void ProcessUnusedDenseVars();
+
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
