@@ -122,13 +122,14 @@ std::vector<paddle::Tensor> ConcatBackwardDynamicAxis(
 }
 
 std::vector<std::vector<int64_t>> ConcatInferShapeDynamicAxis(
-    std::vector<std::vector<int64_t>> input_shapes,
-    std::vector<int64_t> axis_shape) {
+    const std::vector<std::vector<int64_t>>& input_shapes,
+    const std::vector<int64_t>& axis_shape) {
   return {std::vector<int64_t>(input_shapes[0].size(), -1)};
 }
 
 std::vector<paddle::DataType> ConcatInferDtypeDynamicAxis(
-    std::vector<paddle::DataType> input_dtypes, paddle::DataType axis_dtype) {
+    const std::vector<paddle::DataType>& input_dtypes,
+    const paddle::DataType& axis_dtype) {
   return {input_dtypes[0]};
 }
 
