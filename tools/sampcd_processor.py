@@ -674,6 +674,8 @@ API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
 
     wlist, wlist_file, gpu_not_white = get_wlist()
 
