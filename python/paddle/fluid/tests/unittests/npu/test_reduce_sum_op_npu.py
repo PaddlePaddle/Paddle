@@ -81,6 +81,10 @@ class TestReduceSum(OpTest):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestReduceSumNet(unittest.TestCase):
+    def set_reduce_sum_function(self, x):
+        # keep_dim = False
+        return paddle.fluid.layers.reduce_sum(x, dim=-1)
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -99,7 +103,7 @@ class TestReduceSumNet(unittest.TestCase):
                 name="label", shape=[2, 1], dtype='int64')
 
             z = paddle.add(a, b)
-            z_1 = paddle.fluid.layers.reduce_sum(z, dim=-1)
+            z_1 = self.set_reduce_sum_function(z)
 
             prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')
 
@@ -137,6 +141,14 @@ class TestReduceSumNet(unittest.TestCase):
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestReduceSumNet2(TestReduceSumNet):
+    def set_reduce_sum_function(self, x):
+        # keep_dim = True
+        return paddle.fluid.layers.reduce_sum(x, dim=-1, keep_dim=True)
 
 
 if __name__ == '__main__':
