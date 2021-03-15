@@ -33,14 +33,6 @@ class MulNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    PADDLE_ENFORCE_EQ(x_num_col_dims, 1,
-                      platform::errors::InvalidArgument(
-                          "now only support x_num_col_dims == 1: but got %d",
-                          x_num_col_dims));
-    PADDLE_ENFORCE_EQ(y_num_col_dims, 1,
-                      platform::errors::InvalidArgument(
-                          "now only support y_num_col_dims == 1: but got %d",
-                          y_num_col_dims));
     if (x_num_col_dims == 1 && y_num_col_dims == 1) {
       if (x->dims().size() == 2 && y->dims().size() == 2) {
         out->mutable_data<T>(ctx.GetPlace());
