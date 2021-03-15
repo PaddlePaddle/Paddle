@@ -81,7 +81,9 @@ class FP16Utils(object):
             if not FP16Utils.is_fp32_cast_op(block, op):
                 continue
             output_name = op.desc.output_arg_names()[0]
-            param_name = output_name.strip("@GRAD")
+            param_name = output_name.strip(
+                "@GRAD@MERGED"
+            ) if "@MERGED" in output_name else output_name.strip("@GRAD")
             if param_name not in shard.global_params:
                 raise ValueError("Output 'X' of cast_op must be a grad of"
                                  "model param, but {} is not a grad".format(

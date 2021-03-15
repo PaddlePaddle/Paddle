@@ -4293,7 +4293,7 @@ class PipelineOptimizer(object):
             input_name = op.input_arg_names[0]
             output_name = op.output_arg_names[0]
             if '@Fetch' in output_name:
-                post_op = self._find_real_post_op(block.ops, op, output_name)
+                post_op = self._find_post_op(block.ops, op, output_name)
                 op._set_attr('op_device', post_op.attr('op_device'))
             else:
                 prev_op = self._find_real_prev_op(block.ops, op,
@@ -4849,6 +4849,9 @@ class PipelineOptimizer(object):
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
+        merged_gradient_names = []
+        first_opt_op_idx = None
+
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             # remove the cast op of fp16 grad to fp32 grad
             if self._is_optimize_op(op) and op.type == 'cast':
@@ -4859,6 +4862,9 @@ class PipelineOptimizer(object):
                     block._remove_op(index)
                     continue
 
+            if self._is_backward_op(op) and not first_opt_op_idx:
+                first_opt_op_idx = index + 1
+
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
                 op_role_var = op.attr(self._op_role_var_key)
@@ -4868,7 +4874,7 @@ class PipelineOptimizer(object):
                 assert len(op_role_var) % 2 == 0
                 op._remove_attr(self._op_role_var_key)
                 for i in range(0, len(op_role_var), 2):
-                    offset = 1
+                    offset = 0
                     param_name = op_role_var[i]
                     assert block.has_var(param_name), (
                         "parameter {} not in "
@@ -4886,7 +4892,7 @@ class PipelineOptimizer(object):
                     merged_param_grad_var = block.var(merged_param_grad_name)
                     merged_param_grad_var.persistable = True
                     block._insert_op(
-                        index=index + offset,
+                        index=first_opt_op_idx + offset,
                         type='fill_constant',
                         inputs={},
                         outputs={'Out': [merged_param_grad_var]},
@@ -4902,7 +4908,7 @@ class PipelineOptimizer(object):
                     grad_var = block.vars[grad_name]
                     if not 'cast_fp16' in grad_name:
                         block._insert_op(
-                            index=index + offset,
+                            index=first_opt_op_idx + offset,
                             type='sum',
                             inputs={'X': [grad_var, merged_param_grad_var]},
                             outputs={'Out': merged_param_grad_var},
@@ -4918,7 +4924,7 @@ class PipelineOptimizer(object):
                                                          cast_grad_var_name)
                         cast_grad_var.persistable = False
                         block._insert_op(
-                            index=index + offset,
+                            index=first_opt_op_idx + offset,
                             type='cast',
                             inputs={'X': grad_var},
                             outputs={'Out': cast_grad_var},
@@ -4929,7 +4935,7 @@ class PipelineOptimizer(object):
                             })
                         offset += 1
                         block._insert_op(
-                            index=index + offset,
+                            index=first_opt_op_idx + offset,
                             type='sum',
                             inputs={
                                 'X': [merged_param_grad_var, cast_grad_var]
@@ -5705,10 +5711,10 @@ class RecomputeOptimizer(Optimizer):
 
             for output_var in output_vars:
                 if output_var in need_offload_checkpoint_names:
-                    assert len(
-                        output_vars
-                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
-                        output_var, op)
+                    #assert len(
+                    #    output_vars
+                    #) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                    #    output_var, op)
 
                     if output_var in self.un_offload_checkpoint_names:
                         # insert sync op if last checkpoint has not been sync
@@ -5733,14 +5739,14 @@ class RecomputeOptimizer(Optimizer):
                             format(output_var))
                 # need to sync the last need to offload checkpoint before the last checkpoint as output op
                 if output_var == last_checkpoint:
-                    assert len(
-                        output_vars
-                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
-                        output_var, op)
-                    assert last_offload_checkpoint == self.sorted_checkpoint_names[
-                        -2], "the last offload chekpoint before [{}] is suppose to be [{}], but got [{}]".format(
-                            last_checkpoint, self.sorted_checkpoint_names[-2],
-                            last_offload_checkpoint)
+                    #assert len(
+                    #    output_vars
+                    #) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                    #    output_var, op)
+                    #assert last_offload_checkpoint == self.sorted_checkpoint_names[
+                    #    -2], "the last offload chekpoint before [{}] is suppose to be [{}], but got [{}]".format(
+                    #        last_checkpoint, self.sorted_checkpoint_names[-2],
+                    #        last_offload_checkpoint)
                     # sync if last checkpoint has not been sync
                     if self.checkpoint_usage_count_and_idx[
                             last_offload_checkpoint]['idx'] == 0:
