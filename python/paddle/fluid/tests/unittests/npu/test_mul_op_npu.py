@@ -211,7 +211,7 @@ class TestMulNet3_2(unittest.TestCase):
             sum_2 = paddle.add(c, d)
             result = paddle.fluid.layers.mul(sum_1, sum_2)
 
-            fc_1 = fluid.layers.fc(input=result_re, size=8)
+            fc_1 = fluid.layers.fc(input=result, size=8)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
