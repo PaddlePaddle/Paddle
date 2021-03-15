@@ -125,12 +125,6 @@ TEST(mean, NPU_fp32) {
     Compare<float>(&scope, ctx, "mean");
 }
 
-TEST(mean, NPU_fp16) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "mean");
-}
-
 
 TEST(mean_grad, NPU_fp32) {
     f::Scope scope;
