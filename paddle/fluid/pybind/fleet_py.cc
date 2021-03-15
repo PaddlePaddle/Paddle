@@ -176,18 +176,13 @@ void BindGraphPyServer(py::module* m) {
 void BindGraphPyClient(py::module* m) {
   py::class_<GraphPyClient>(*m, "GraphPyClient")
       .def(py::init<>())
-      .def("load_edge_file", &GraphPyService::load_edge_file)
-      .def("load_node_file", &GraphPyService::load_node_file)
-      .def("set_up", &GraphPyService::set_up)
-      .def("pull_graph_list", &GraphPyService::pull_graph_list)
-      .def("sample_k", &GraphPyService::sample_k)
       .def("load_edge_file", &GraphPyClient::load_edge_file)
       .def("load_node_file", &GraphPyClient::load_node_file)
       .def("set_up", &GraphPyClient::set_up)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("sample_k", &GraphPyClient::sample_k)
-      .def("start_client", &GraphPyClient::start_client);
-      .def("batch_sample_k", &GraphPyService::batch_sample_k);
+      .def("start_client", &GraphPyClient::start_client)
+      .def("batch_sample_k", &GraphPyClient::batch_sample_k);
 }
 
 }  // end namespace pybind

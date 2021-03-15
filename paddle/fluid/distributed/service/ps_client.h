@@ -166,7 +166,7 @@ class PSClient {
   }
   virtual std::future<int32_t> batch_sample(uint32_t table_id, std::vector<uint64_t> node_ids,
                                       int sample_size,
-                                      std::vector<std::vector<GraphNode> > &res) {
+                                      std::vector<std::vector<std::pair<uint64_t, float>>> &res) {
     LOG(FATAL) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();

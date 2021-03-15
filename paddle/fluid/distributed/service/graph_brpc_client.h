@@ -41,7 +41,8 @@ class GraphBrpcClient : public BrpcPsClient {
       std::vector<std::pair<uint64_t, float>> &res);
   virtual std::future<int32_t> batch_sample(uint32_t table_id, std::vector<uint64_t> node_ids,
                                       int sample_size,
-                                      std::vector<std::vector<GraphNode> > &res);
+                                      std::vector<std::vector<std::pair<uint64_t, float>>> &res);
+                                      //std::vector<std::vector<GraphNode> > &res);
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
                                                int size,

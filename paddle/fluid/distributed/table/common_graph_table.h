@@ -73,7 +73,7 @@ class GraphTable : public SparseTable {
                                   int &actual_size);
   //virtual std::future<int> random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 //int &actual_size);
-  int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
+  virtual int32_t random_sample(uint64_t node_id, int sampe_size, char *&buffer,
                                 int &actual_size);
   virtual int32_t initialize();
   int32_t load(const std::string &path, const std::string &param);

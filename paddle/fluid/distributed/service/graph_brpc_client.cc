@@ -97,7 +97,7 @@ std::future<int32_t> GraphBrpcClient::sample(
 
 std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
                                              std::vector<uint64_t> node_ids, int sample_size,
-                                             std::vector<std::vector<GraphNode> > &res) {
+                                             std::vector<std::vector<std::pair<uint64_t, float> > > &res) {
 
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
@@ -107,7 +107,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
     }
-    res.push_back(std::vector<GraphNode>());
+    //res.push_back(std::vector<GraphNode>());
+    res.push_back(std::vector<std::pair<uint64_t, float>>());
   }
   size_t request_call_num = request2server.size();
   std::vector<std::vector<uint64_t> > node_id_buckets(request_call_num);
@@ -148,10 +149,13 @@ std::future<int32_t> GraphBrpcClient::batch_sample(uint32_t table_id,
           int actual_size = actual_sizes[node_idx];
           int start = 0;
           while (start < actual_size) {
-            GraphNode node;
-            node.recover_from_buffer(node_buffer + offset + start);
-            start += node.get_size();
-            res[query_idx].push_back(node);
+            //GraphNode node;
+            //node.recover_from_buffer(node_buffer + offset + start);
+            //start += node.get_size();
+            //res[query_idx].push_back(node);
+            res[query_idx].push_back({*(uint64_t *)(node_buffer + offset + start),
+                         *(float *)(node_buffer + offset + start + GraphNode::id_size)});
+            start += GraphNode::id_size + GraphNode::weight_size;
           }
           offset += actual_size;
         }
