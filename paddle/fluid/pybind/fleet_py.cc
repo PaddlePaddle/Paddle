@@ -180,7 +180,6 @@ void BindGraphPyClient(py::module* m) {
       .def("load_node_file", &GraphPyClient::load_node_file)
       .def("set_up", &GraphPyClient::set_up)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
-      .def("sample_k", &GraphPyClient::sample_k)
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_k", &GraphPyClient::batch_sample_k);
 }
