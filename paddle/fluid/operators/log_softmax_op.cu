@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,8 +86,6 @@ __global__ void WarpLogSoftmaxForward(T* dst, const T* src, int batch_size,
       }
     }
   }
-  printf("idx %d - elem1: %f elem2: %f elem3: %f elem4: %f\n", idx,
-         elements[0][0], elements[1][0], elements[0][1], elements[1][1]);
 
   // 2.compute max_value
   T max_value[WARP_BATCH];
