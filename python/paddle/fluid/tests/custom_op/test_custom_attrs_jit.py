@@ -40,24 +40,38 @@ custom_attrs = load(
 
 
 class TestJitCustomAttrs(unittest.TestCase):
-    def test_attr_value(self):
+    def setUp(self):
         paddle.set_device('cpu')
         # prepare test value
-        bool_attr = True
-        int_attr = 10
-        float_attr = 3.14
-        int64_attr = 10000000000
-        str_attr = "StrAttr"
-        int_vec_attr = [10, 10, 10]
-        float_vec_attr = [3.14, 3.14, 3.14]
-        int64_vec_attr = [10000000000, 10000000000, 10000000000]
-        str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
+        self.bool_attr = True
+        self.int_attr = 10
+        self.float_attr = 3.14
+        self.int64_attr = 10000000000
+        self.str_attr = "StrAttr"
+        self.int_vec_attr = [10, 10, 10]
+        self.float_vec_attr = [3.14, 3.14, 3.14]
+        self.int64_vec_attr = [10000000000, 10000000000, 10000000000]
+        self.str_vec_attr = ["StrAttr", "StrAttr", "StrAttr"]
 
+    def test_attr_value(self):
         x = paddle.ones([2, 2], dtype='float32')
         x.stop_gradient = False
         out = custom_attrs.attr_test(
-            x, bool_attr, int_attr, float_attr, int64_attr, str_attr,
-            int_vec_attr, float_vec_attr, int64_vec_attr, str_vec_attr)
+            x, self.bool_attr, self.int_attr, self.float_attr, self.int64_attr,
+            self.str_attr, self.int_vec_attr, self.float_vec_attr,
+            self.int64_vec_attr, self.str_vec_attr)
+        out.stop_gradient = False
+        out.backward()
+
+        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+
+    def test_const_attr_value(self):
+        x = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        out = custom_attrs.const_attr_test(
+            x, self.bool_attr, self.int_attr, self.float_attr, self.int64_attr,
+            self.str_attr, self.int_vec_attr, self.float_vec_attr,
+            self.int64_vec_attr, self.str_vec_attr)
         out.stop_gradient = False
         out.backward()
 
