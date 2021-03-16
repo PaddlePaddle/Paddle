@@ -287,24 +287,24 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
   uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
   int sample_size = *(uint64_t *)(request.params(1).c_str());
 
-  std::vector<std::future<int>*> tasks;
-  std::vector<char*> buffers(num_nodes);
+  std::vector<std::future<int>> tasks;
+  std::vector<char*> buffers(num_nodes, nullptr);
   std::vector<int> actual_sizes(num_nodes);
 
   for (size_t idx = 0; idx < num_nodes; ++idx){
-    //std::future<int> task = table->random_sample(node_data[idx], sample_size, 
-            //buffers[idx], actual_sizes[idx]);
-    table->random_sample(node_data[idx], sample_size, 
-            buffers[idx], actual_sizes[idx]);
-    //tasks.push_back(&task);
+    tasks.push_back(table->random_sample(node_data[idx], sample_size, 
+            buffers[idx], actual_sizes[idx]));
   }
-  //for (size_t idx = 0; idx < num_nodes; ++idx){
-    //tasks[idx]->get();
-  //}
+  for (size_t idx = 0; idx < num_nodes; ++idx){
+    tasks[idx].get();
+  }
   cntl->response_attachment().append(&num_nodes, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(), sizeof(int)*num_nodes);
   for (size_t idx = 0; idx < num_nodes; ++idx){
     cntl->response_attachment().append(buffers[idx], actual_sizes[idx]);
+    if (buffers[idx] != nullptr){
+      delete buffers[idx];
+    }
   }
   return 0;
 }
