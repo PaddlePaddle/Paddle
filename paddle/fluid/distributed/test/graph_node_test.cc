@@ -216,7 +216,7 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   auto pull_status =
-      worker_ptr_->load(0, std::string(file_name), std::string(""));
+      worker_ptr_->load(0, std::string(file_name), std::string("edge"));
 
   pull_status.wait();
   std::vector<std::pair<uint64_t, float>> v;
