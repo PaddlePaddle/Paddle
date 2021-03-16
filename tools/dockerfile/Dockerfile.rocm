@@ -5,7 +5,6 @@
 # Build: ROCM 4.0.1
 # cd Paddle/tools/dockerfile
 # docker build -f Dockerfile.rocm  \
-#        --build-arg ROCM_VERSION=4.0.1  \
 #        -t paddlepaddle/paddle-centos-rocm401-dev:latest .
 #
 # docker run -it --device=/dev/kfd --device=/dev/dri \
@@ -22,7 +21,7 @@ ENV LANGUAGE en_US.UTF-8
 RUN yum install -y epel-release deltarpm sudo openssh-server gettext-devel sqlite-devel \
         zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel \
         make bzip2 git patch unzip bison yasm diffutils automake which file kernel-headers kernel-devel \
-        net-tools numactl-devel chrpath
+        net-tools numactl-devel chrpath screen initscripts
 
 # Install devtoolset-7
 RUN yum install -y yum-utils centos-release-scl && \
@@ -45,11 +44,10 @@ RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && \
 ENV PATH=/opt/cmake-3.16/bin:${PATH}
 
 # ROCM
-ARG ROCM_VERSION
 RUN yum install -y kmod wget openblas-devel epel-release
 RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "name=ROCm" >> /etc/yum.repos.d/rocm.repo && \
-    echo "baseurl=http://repo.radeon.com/rocm/yum/${ROCM_VERSION}" >> /etc/yum.repos.d/rocm.repo && \
+    echo "baseurl=http://repo.radeon.com/rocm/yum/4.0.1" >> /etc/yum.repos.d/rocm.repo && \
     echo "enabled=1" >> /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=0" >> /etc/yum.repos.d/rocm.repo
 RUN yum install -y rocm-dev rocm-utils rocfft miopen-hip rocblas hipsparse rocrand rccl hipcub rocthrust rocprofiler-dev roctracer-dev
@@ -89,10 +87,14 @@ RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/p
     cd .. && rm -f protobuf-cpp-3.6.1.tar.gz && rm -rf protobuf-3.6.1
 
 # conda
-RUN cd /opt && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && chmod +x Miniconda3-latest-Linux-x86_64.sh
-RUN mkdir /opt/conda && ./Miniconda3-latest-Linux-x86_64.sh -b -f -p "/opt/conda" && rm -rf Miniconda3-latest-Linux-x86_64.sh
+ENV CONDA_FILE=Miniconda3-py37_4.9.2-Linux-x86_64.sh
+RUN cd /opt && wget https://repo.anaconda.com/miniconda/${CONDA_FILE} && chmod +x ${CONDA_FILE}
+RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_FILE}
 ENV PATH=/opt/conda/bin:${PATH}
-RUN conda init bash && conda install -n base jupyter 
+RUN conda init bash && conda install -n base jupyter jupyterlab
+
+# install pylint and pre-commit
+RUN /opt/conda/bin/pip install pre-commit pylint pytest astroid isort protocol PyGithub
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
