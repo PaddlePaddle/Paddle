@@ -903,29 +903,19 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
               "and input channel number is %d",
               output->dims()[1], input->dims()[1]));
     }
-    // transform tensor
-    Tensor transformed_input(input->type());
-    Tensor transformed_output(output->type());
-
-    if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(context, input,
-                                             &transformed_input);
-      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
-
-      ResizeToChannelFirst<DeviceContext, T>(context, output,
-                                             &transformed_output);
-
-    } else {
-      transformed_input = *input;
-      transformed_output = *output;
-    }
 
     // update padding and dilation
-    auto in_dims = transformed_input.dims();
+    auto in_dims = input->dims();
     auto filter_dims = filter.dims();
 
     framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_format);
+    if (data_layout != framework::DataLayout::kNHWC) {
+      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    } else {
+      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    }
 
     framework::DDim filter_data_dims =
         framework::slice_ddim(filter_dims, 2, filter_dims.size());
@@ -944,16 +934,12 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
 
     if (fuse_relu) {
       math::DepthwiseConvFunctor<DeviceContext, T, true> depthwiseConv;
-      depthwiseConv(dev_ctx, transformed_input, filter, strides, paddings,
-                    dilations, &transformed_output);
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output, data_layout);
     } else {
       math::DepthwiseConvFunctor<DeviceContext, T, false> depthwiseConv;
-      depthwiseConv(dev_ctx, transformed_input, filter, strides, paddings,
-                    dilations, &transformed_output);
-    }
-    if (channel_last) {
-      TransToChannelLast<DeviceContext, T>(context, &transformed_output,
-                                           output);
+      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
+                    output, data_layout);
     }
   }
 };

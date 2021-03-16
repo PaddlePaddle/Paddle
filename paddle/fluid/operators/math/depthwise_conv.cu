@@ -22,6 +22,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/math/depthwise_conv.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -123,7 +124,6 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
   const int batch = idx / output_width / output_height / output_channels;
 
   const int c_in = c_out / filter_multiplier;
-  const T* weight = filter_data + c_out * filter_height * filter_width;
   T value = 0;
   const int h_in_start = -padding_height + h_out * stride_height;
   const int w_in_start = -padding_width + w_out * stride_width;
@@ -145,10 +145,11 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
                          output_channels +
                      c_in;
         T in_data = input_data[offset];
+        const T* weight = filter_data + weight_offset * output_channels + c_out;
         if (fuse_relu_before_conv) {
-          value += weight[weight_offset] * max(0.0f, in_data);
+          value += weight[0] * max(0.0f, in_data);
         } else {
-          value += weight[weight_offset] * in_data;
+          value += weight[0] * in_data;
         }
       }
       weight_offset++;
@@ -161,7 +162,7 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
 }
 
 template <typename T, int c_filter, bool fuse_relu_before_conv>
-__device__ __inline__ void KernelDepthwiseConvCFilter(
+__device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
     ARG_DEFINE_KernelDepthwiseConv) {
   const int kWeghtSize = c_filter * c_filter;
   T r_weight[kWeghtSize];
@@ -182,13 +183,8 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
       const int h_in_end = h_in_start + c_filter * dilate_height;
       const int w_in_end = w_in_start + c_filter * dilate_width;
 
-      int in_offset;
-      if (data_layout != DataLayout::kNHWC) {
-        in_offset =
-            ((batch * input_channels + c_in) * input_height) * input_width;
-      } else {
-        in_offset = batch * input_height * input_width * input_channels;
-      }
+      int in_offset =
+          ((batch * input_channels + c_in) * input_height) * input_width;
 
       const int h_end = h_in_end < input_height ? h_in_end : input_height;
       const int w_end = w_in_end < input_width ? w_in_end : input_width;
@@ -201,13 +197,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
              w_in += dilate_width, w_f++) {
           if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
               w_in < input_width) {
-            int offset;
-            if (data_layout != DataLayout::kNHWC) {
-              offset = in_offset + h_in * input_width + w_in;
-            } else {
-              offset = in_offset +
-                       (h_in * input_width + w_in) * input_channels + c_in;
-            }
+            int offset = in_offset + h_in * input_width + w_in;
             if (fuse_relu_before_conv) {
               value += r_weight[h_f * c_filter + w_f] *
                        max(0.0f, input_data[offset]);
@@ -217,16 +207,56 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
           }
         }
       }
-      int index;
-      if (data_layout != DataLayout::kNHWC) {
-        index = ((batch * gridDim.x + c_out) * output_height + h_out) *
-                    output_width +
-                w_out;
-      } else {
-        index = ((batch * output_height + h_out) * output_width + w_out) *
-                    gridDim.x +
-                c_out;
+      int index =
+          ((batch * gridDim.x + c_out) * output_height + h_out) * output_width +
+          w_out;
+      output_data[index] = value;
+    }
+  }
+}
+
+template <typename T, int c_filter, bool fuse_relu_before_conv>
+__device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
+    ARG_DEFINE_KernelDepthwiseConv) {
+  const int kWeghtSize = c_filter * c_filter;
+  T r_weight[kWeghtSize];
+  const int batch = blockIdx.z;
+  int h_out = blockIdx.x * dilate_height + blockIdx.y;
+  if (h_out >= output_height) {
+    return;
+  }
+
+  for (int c_out = threadIdx.x; c_out < output_channels; c_out += blockDim.x) {
+    for (int i = 0; i < c_filter * c_filter; i++) {
+      const T* weight = filter_data + i * output_channels + c_out;
+      r_weight[i] = weight[0];
+    }
+    const int c_in = c_out / filter_multiplier;
+    for (int w_out = threadIdx.y; w_out < output_width; w_out += blockDim.y) {
+      T value = 0;
+      const int h_in_start = -padding_height + h_out * stride_height;
+      const int w_in_start = -padding_width + w_out * stride_width;
+      int in_offset = batch * input_height * input_width * input_channels;
+      for (int h_in = h_in_start, h_f = 0; h_f < c_filter;
+           h_in += dilate_height, h_f++) {
+        for (int w_in = w_in_start, w_f = 0; w_f < c_filter;
+             w_in += dilate_width, w_f++) {
+          if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
+              w_in < input_width) {
+            int offset =
+                in_offset + (h_in * input_width + w_in) * input_channels + c_in;
+            if (fuse_relu_before_conv) {
+              value += r_weight[h_f * c_filter + w_f] *
+                       max(0.0f, input_data[offset]);
+            } else {
+              value += r_weight[h_f * c_filter + w_f] * input_data[offset];
+            }
+          }
+        }
       }
+      int index = ((batch * output_height + h_out) * output_width + w_out) *
+                      output_channels +
+                  c_out;
       output_data[index] = value;
     }
   }
@@ -244,7 +274,7 @@ __global__ void KernelDepthwiseConvSp(ARG_DEFINE_KernelDepthwiseConv) {
     w_stride = c_stride;
   }
   if (c_filter == -1) {
-    if (data_layout == DataLayout::kNCHW) {
+    if (data_layout != DataLayout::kNHWC) {
       KernelDepthwiseConvNCHW<T, fuse_relu_before_conv>(
           input_data, filter_data, batch_size, output_channels, output_height,
           output_width, input_channels, input_height, input_width,
@@ -260,12 +290,21 @@ __global__ void KernelDepthwiseConvSp(ARG_DEFINE_KernelDepthwiseConv) {
           output_data, data_layout);
     }
   } else {
-    KernelDepthwiseConvCFilter<T, c_filter, fuse_relu_before_conv>(
-        input_data, filter_data, batch_size, output_channels, output_height,
-        output_width, input_channels, input_height, input_width,
-        final_filter_multiplier, filter_height, filter_width, h_stride,
-        w_stride, padding_height, padding_width, dilate_height, dilate_width,
-        output_data, data_layout);
+    if (data_layout != DataLayout::kNHWC) {
+      KernelDepthwiseConvCFilterNCHW<T, c_filter, fuse_relu_before_conv>(
+          input_data, filter_data, batch_size, output_channels, output_height,
+          output_width, input_channels, input_height, input_width,
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          output_data, data_layout);
+    } else {
+      KernelDepthwiseConvCFilterNHWC<T, c_filter, fuse_relu_before_conv>(
+          input_data, filter_data, batch_size, output_channels, output_height,
+          output_width, input_channels, input_height, input_width,
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          output_data, data_layout);
+    }
   }
 }
 
@@ -608,19 +647,45 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
     const T* filter_data = filter.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int thread = 512;
-    if (output_width > 1024 && output_width <= 2048)
-      thread = (output_width - 1) / 2 + 1;
-    else if (output_width > 512 && output_width <= 1024)
-      thread = output_width;
-#ifdef __HIPCC__
-    thread = std::min(thread, 256);
-#endif
-    int blocks = std::min(std::max(thread / output_width, 1), output_height);
-    dim3 threads(std::min(output_width, thread), blocks, 1);
-    dim3 grid(output_channels, batch_size, 1);
-    int filter_multiplier = output_channels / input_channels;
+    if (data_layout == DataLayout::kNHWC) {
+      framework::DDim filter_nhwc_dims({filter.dims()[0], filter.dims()[2],
+                                        filter.dims()[3], filter.dims()[1]});
+      framework::Tensor filter_nhwc;
+      filter_nhwc.Resize(filter_nhwc_dims);
+      filter_nhwc.mutable_data<T>(context.GetPlace());
+      std::vector<int> perm_axis({0, 2, 3, 1});
+      math::TransposeNormal<platform::CUDADeviceContext, T> trans;
+      trans(context, filter, &filter_nhwc, perm_axis);
+      filter_data = filter_nhwc.data<T>();
+    }
 
+    int thread = 512;
+    int blocks;
+    dim3 threads;
+    dim3 grid;
+    if (data_layout != DataLayout::kNHWC) {
+      if (output_width > 1024 && output_width <= 2048)
+        thread = (output_width - 1) / 2 + 1;
+      else if (output_width > 512 && output_width <= 1024)
+        thread = output_width;
+#ifdef __HIPCC__
+      thread = std::min(thread, 256);
+#endif
+      blocks = std::min(std::max(thread / output_width, 1), output_height);
+      threads = dim3(std::min(output_width, thread), blocks, 1);
+      grid = dim3(output_channels, batch_size, 1);
+    } else {
+#ifdef __HIPCC__
+      thread = std::min(thread, 256);
+#endif
+      blocks = std::min(
+          std::max(thread / output_channels, 1),
+          ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
+      threads = dim3(std::min(output_channels, thread), blocks, 1);
+      grid = dim3((output_height + dilate_height - 1) / dilate_height,
+                  dilate_height, batch_size);
+    }
+    int filter_multiplier = output_channels / input_channels;
     int nums_output =
         batch_size * output_channels * output_height * output_width;
 #ifdef __HIPCC__
