@@ -140,19 +140,16 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         // matmul
         if (dx) {
           // matmul [2, 5] * [12, 5] => [2, 12]
-          Tensor tmp_matmul(y->type());
-          tmp_matmul.Resize(
-              framework::make_ddim({dout->dims()[0], y->dims()[0]}));
-          tmp_matmul.mutable_data<T>(ctx.GetPlace());
+          dx->mutable_data<T>(ctx.GetPlace());
+          auto dx_dims = dx->dims();
+          dx->Resize(framework::make_ddim(
+              {dout->dims()[0], y->dims()[0]});
           auto runner_matmul =
-              NpuOpRunner("MatMul", {*dout, *y}, {tmp_matmul},
+              NpuOpRunner("MatMul", {*dout, *y}, {*dx},
                           {{"transpose_x1", false}, {"transpose_x2", true}});
           runner_matmul.Run(stream);
           // reshape [2, 12] => [2, 3, 4]
-          dx->mutable_data(ctx.GetPlace(), x->type());
-          framework::TensorCopy(
-              tmp_matmul, ctx.GetPlace(),
-              ctx.template device_context<platform::DeviceContext>(), dx);
+          dx->Resize(dx_dims);
         }
 
         if (dy) {
@@ -193,18 +190,15 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
 
       if (dx) {
         // tmp_dout * y [6,5] * [4,5] => [6, 4]
-        Tensor tmp_matmul(y->type());
-        tmp_matmul.Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
-        tmp_matmul.mutable_data<T>(ctx.GetPlace());
+        dx->mutable_data<T>(ctx.GetPlace());
+        auto dx_dims = dx->dims();
+        dx->Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
         auto runner_matmul =
-            NpuOpRunner("MatMul", {tmp_dout, *y}, {tmp_matmul},
+            NpuOpRunner("MatMul", {*tmp_dout, *y}, {*dx},
                         {{"transpose_x1", false}, {"transpose_x2", true}});
         runner_matmul.Run(stream);
-        // reshape [6,4] => [2, 3, 4]
-        dx->mutable_data(ctx.GetPlace(), x->type());
-        framework::TensorCopy(
-            tmp_matmul, ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(), dx);
+        // reshape [2, 12] => [2, 3, 4]
+        dx->Resize(dx_dims);
       }
       if (dy) {
         // flatten x.shape [2,3,4] => [6, 4]
