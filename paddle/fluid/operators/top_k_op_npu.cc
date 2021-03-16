@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -19,7 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void topk_assit_help(framework::Tensor* assit_tensor, int64_t dim, const framework::ExecutionContext& ctx) {
+void topk_assit_help(framework::Tensor* assit_tensor,
+                     int64_t dim, const framework::ExecutionContext& ctx) {
   const int64_t UB_SIZE = dim;
   std::vector<paddle::platform::float16> assit;
   assit.resize(2 * UB_SIZE);
@@ -28,7 +28,8 @@ void topk_assit_help(framework::Tensor* assit_tensor, int64_t dim, const framewo
   }
 
   for (int64_t i = 0; i < UB_SIZE; i++) {
-    int64_t idx = static_cast<paddle::platform::float16>(i);
+    int64_t idx = static_cast<int64_t>(
+                        static_cast<paddle::platform::float16>(i));
     int64_t gap = i - idx;
     assit[i + dim] = static_cast<paddle::platform::float16>(gap);
   }
@@ -46,9 +47,20 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Output<framework::LoDTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    bool largest = static_cast<bool>(ctx.Attr<bool>("largest"));
+    int axis = static_cast<int>(ctx.Attr<int>("axis"));
+
+    PADDLE_ENFORCE_EQ(
+      axis, -1,
+      platform::errors::InvalidArgument("TopKD only support axis == -1"));
+
+    PADDLE_ENFORCE_EQ(
+      largest, true,
+      platform::errors::InvalidArgument("TopKD only support largest == true"));
 
     output->mutable_data<paddle::platform::float16>(ctx.GetPlace());
     indices->mutable_data<paddle::platform::float16>(ctx.GetPlace());
+
 
     // prepare assit
     auto dim = input->dims().size();
@@ -57,8 +69,10 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     assist_seq_tensor.mutable_data<paddle::platform::float16>(ctx.GetPlace());
     topk_assit_help(&assist_seq_tensor, dim, ctx);
 
-    //bool sorted = true;
-    framework::NPUAttributeMap attr_input = {{"sorted", "true"}, {"k", static_cast<int>(k)}, {"dim", -1}, {"largest", true}};
+    framework::NPUAttributeMap attr_input = {{"sorted", "true"},
+                                             {"k", static_cast<int>(k)},
+                                             {"dim", 1},
+                                             {"largest", largest}};
 
     // run ascend
     auto runner = NpuOpRunner("TopKD",
@@ -71,19 +85,6 @@ class TopkNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     runner.Run(stream);
-
-    std::cout << "4444444444444444" << std::endl;
-    /*
-    std::cout << "after run "<<std::endl;
-    framework::Tensor cpu_tensor;
-    framework::TensorCopySync(*indices, platform::CPUPlace(), &cpu_tensor);
-    auto* data = cpu_tensor.data<T>();
-    auto vec_data = std::vector<T>(data, data + indices->numel());
-    for(int i=0; i<static_cast<int>(vec_data.size()); ++i){
-       VLOG(3) << " vec_data["<< i << "] = " << vec_data[i];
-    }
-    VLOG(10) << "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEnd" ;
-    */
   }
 };
 
@@ -94,5 +95,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     top_k,
-    ops::TopkNPUKernel<paddle::platform::NPUDeviceContext, paddle::platform::float16>);
-#endif
+    ops::TopkNPUKernel<paddle::platform::NPUDeviceContext,
+                                  paddle::platform::float16>);
