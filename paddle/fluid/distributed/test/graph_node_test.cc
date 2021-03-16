@@ -220,14 +220,14 @@ void RunBrpcPushSparse() {
 
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
-  for (int i = 0; i < 100000000; i++) {
-    std::vector<distributed::GraphNode> nodes;
-    pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
-    pull_status.wait();
-    pull_status =
-        worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 37), 4, vs);
-    pull_status.wait();
-  }
+  // for(int i = 0;i < 100000000;i++){
+  //   std::vector<distributed::GraphNode> nodes;
+  // pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
+  //  pull_status.wait();
+  // pull_status = worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 37), 4,
+  // vs);
+  // pull_status.wait();
+  // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
   pull_status =
