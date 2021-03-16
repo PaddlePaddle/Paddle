@@ -153,7 +153,6 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         if self.use_pipeline:
             pp_optimizer._rename_gradient_var_name(main_block)
-            pp_optimizer._accumulate_gradients(main_block)
             with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
                 f.writelines(str(main_program))
 
@@ -201,6 +200,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 #if self._shard.has_param(param_name): continue
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
+            accumulated_grad_names = pp_optimizer._accumulate_gradients(
+                main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
             if self.pp_allreduce_in_optimize:
                 print("persistable FP32 grad: ")
