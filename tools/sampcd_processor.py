@@ -655,6 +655,7 @@ arguments = [
     # flags, dest, type, default, help
     ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
     ['--logf', 'logf', str, None, 'file for logging'],
+    ['--threads', 'threads', int, 0, 'sub processes number'],
 ]
 
 
@@ -717,7 +718,6 @@ if __name__ == '__main__':
     else:
         os.mkdir(SAMPLECODE_TEMPDIR)
 
-    cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
     if len(filenames) == 0 and len(whl_error) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
@@ -732,15 +732,11 @@ if __name__ == '__main__':
         logger.info("REMOVE white files: %s", rm_file)
     logger.info("API_PR is diff from API_DEV: %s", filenames)
 
-    one_part_filenum = int(math.ceil(len(filenames) / cpus))
-    if one_part_filenum == 0:
-        one_part_filenum = 1
-    divided_file_list = [
-        filenames[i:i + one_part_filenum]
-        for i in range(0, len(filenames), one_part_filenum)
-    ]
 
-    po = multiprocessing.Pool()
+    threads = multiprocessing.cpu_count()
+    if args.threads:
+        threads = args.threads
+    po = multiprocessing.Pool(threads)
     # results = po.map_async(test, divided_file_list)
     results = po.map_async(run_a_test, filenames)
     po.close()
