@@ -102,7 +102,9 @@ class TestReduceSumNet(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
-            z = paddle.add(a, b)
+            a_1 = fluid.layers.fc(input=a, size=4, num_flatten_dims=2, act=None)
+            b_1 = fluid.layers.fc(input=b, size=4, num_flatten_dims=2, act=None)
+            z = paddle.add(a_1, b_1)
             z_1 = self.set_reduce_sum_function(z)
 
             prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')
