@@ -188,9 +188,10 @@ def monkey_patch_varbase():
         if framework.in_dygraph_mode():
             if grad_tensor is not None:
                 assert isinstance(
-                    grad_tensor, core.
-                    VarBase), "The type of grad_tensot must be paddle.VarBase"
-                assert grad_tensor.shape == self.shape, "Variable shape not match, Variable of grad_tensor [ {} ] with shape {} mismatch Variable [ {} ] with shape {}".format(
+                    grad_tensor, paddle.
+                    Tensor), "The type of grad_tensot must be paddle.Tensor"
+                assert grad_tensor.shape == self.shape, \
+                    "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape)
 
             if paddle.is_compiled_with_xpu():
