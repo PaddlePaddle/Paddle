@@ -29,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 DECLARE_bool(benchmark);
+DEFINE_int32(npu_benchmark_steps, 0,
+             "specify the step when run npu benchmark.");
 
 namespace paddle {
 namespace operators {
@@ -264,11 +266,6 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
 
-  platform::Timer timeline;
-  if(FLAGS_benchmark){
-    timeline.Start();
-  }
-
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
@@ -276,9 +273,21 @@ void NpuOpRunner::Run(aclrtStream stream) {
       stream);
 
   if(FLAGS_benchmark){
+    platform::Timer timeline;
+    timeline.Start();
+    for(int i=0;i<FLAGS_npu_benchmark_steps-1;i++){
+      aclopCompileAndExecute(
+          op_type_.c_str(), input_descs_.size(), input_descs_.data(),
+          input_buffers_.data(), output_descs_.size(), output_descs_.data(),
+          output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
+          stream);
+    }
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
     timeline.Pause();
-    VLOG(4) << "op_type: " << op_type_ << ", time:" << Timer::ElapsedUS();
+    if (FLAGS_npu_benchmark_steps > 1){
+        VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ 
+            << ",steps:" << FLAGS_npu_benchmark_steps << ",time:" << timeline.ElapsedUS()/(1.0 * FLAGS_npu_benchmark_steps);
+    }
   }
 
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
