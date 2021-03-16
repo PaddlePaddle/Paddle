@@ -78,6 +78,10 @@ class TestSGD(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
+'''
+# TODO(zhiqiu): The following test may let 0-3 card down.
+# we need to analyze it and open it.
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestNet(unittest.TestCase):
@@ -138,7 +142,7 @@ class TestNet(unittest.TestCase):
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
-
+'''
 
 if __name__ == '__main__':
     unittest.main()
