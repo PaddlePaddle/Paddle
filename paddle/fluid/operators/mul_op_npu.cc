@@ -135,7 +135,6 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         // flatten => x.shape=[6, 4]
         // matmul
         if (dx) {
-          // to do : why dout.dims!=2
           // matmul [2, 5] * [12, 5] => [2, 12]
           Tensor tmp_matmul(y->type());
           tmp_matmul.Resize(
@@ -219,7 +218,6 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         auto runner_dy =
             NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
                         {{"transpose_x1", true}, {"transpose_x2", false}});
-
         runner_dy.Run(stream);
       }
     }
