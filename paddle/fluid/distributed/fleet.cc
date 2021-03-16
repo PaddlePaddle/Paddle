@@ -177,8 +177,11 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  return pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+
+  bool training = true;
+  return pserver_ptr_->_worker_ptr->pull_sparse(pull_result_ptr.data(),
+                                                table_id, fea_keys->data(),
+                                                fea_keys->size(), training);
 }
 
 void FleetWrapper::PullSparseVarsSync(
@@ -224,8 +227,10 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  bool training = true;
   auto status = pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
+      training);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -279,7 +284,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   }
   auto* communicator = Communicator::GetInstance();
   auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), true);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
