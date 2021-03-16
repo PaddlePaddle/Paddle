@@ -18,16 +18,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void topk_assit_help(framework::Tensor* assit_tensor,
+void gen_assist_seq(framework::Tensor* assit_tensor,
                      int64_t dim, const framework::ExecutionContext& ctx) {
-  const int64_t UB_SIZE = dim;
+  const int64_t dimx2 = dim;
   std::vector<paddle::platform::float16> assit;
-  assit.resize(2 * UB_SIZE);
-  for (int64_t i = 0; i < UB_SIZE; i++) {
+  assit.resize(2 * dimx2);
+  for (int64_t i = 0; i < dimx2; i++) {
+    // for i in range [0, dim]
     assit[i] = static_cast<paddle::platform::float16>(i);
-  }
 
-  for (int64_t i = 0; i < UB_SIZE; i++) {
+    // for i in range [dim, dimx2]
     int64_t idx = static_cast<int64_t>(
                         static_cast<paddle::platform::float16>(i));
     int64_t gap = i - idx;
@@ -67,7 +67,7 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     framework::Tensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<paddle::platform::float16>(ctx.GetPlace());
-    topk_assit_help(&assist_seq_tensor, dim, ctx);
+    gen_assist_seq(&assist_seq_tensor, dim, ctx);
 
     framework::NPUAttributeMap attr_input = {{"sorted", "true"},
                                              {"k", static_cast<int>(k)},
