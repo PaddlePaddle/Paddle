@@ -23,7 +23,7 @@ template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // to do: select_rows
+    // TODO(zhiqiu): support dynamic shape and call ParameterizedTruncatedNormal
     std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
     Tensor shape_tensor(framework::proto::VarType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
