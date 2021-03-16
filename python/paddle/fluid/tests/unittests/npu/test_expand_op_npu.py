@@ -61,6 +61,25 @@ class TestExpand(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
+class TestExpandV2(TestExpand):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "expand"
+        self.place = paddle.NPUPlace(0)
+
+        self.init_dtype()
+        np.random.seed(SEED)
+        x = np.random.randn(3,1,7).astype(self.dtype)
+        out = np.tile(x, [1,10,1])
+        expand_times = np.array([1,10,1]).astype(np.int32)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x), 'ExpandTimes':  OpTest.np_dtype_to_fluid_dtype(expand_times)}
+        self.attrs = {}
+        self.outputs = {'Out': out}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestExpandFp16(TestExpand):
      no_need_check_grad = True
      def init_dtype(self):
