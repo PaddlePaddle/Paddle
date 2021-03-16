@@ -55,25 +55,23 @@ class TestDistTraningUsingAMP(unittest.TestCase):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
         for dynamic in [True, False]:
-            paddle.enable_static() if not dynamic else None
-            device = paddle.set_device('gpu')
-            use_amp = True
-            net = LeNet()
-            mnist_data = MnistDataset(mode='train', sample_num=2048)
-            inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
-            label = InputSpec([None, 1], "int64", "y")
-            model = Model(net, inputs, label)
-            optim = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=model.parameters())
-            amp_config = {"incr_ratio": 2}
-            amp_custom_lists = {"custom_black_list": {'conv2d'}}
-            model.prepare(
-                optimizer=optim,
-                loss=CrossEntropyLoss(reduction="sum"),
-                use_amp=use_amp,
-                amp_config=amp_config,
-                amp_custom_lists=amp_custom_lists)
-            model.fit(mnist_data, batch_size=64, verbose=0)
+            for amp_mode in ['O1', 'O2']:
+                paddle.enable_static() if not dynamic else None
+                device = paddle.set_device('gpu')
+                net = LeNet()
+                mnist_data = MnistDataset(mode='train', sample_num=2048)
+                inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
+                label = InputSpec([None, 1], "int64", "y")
+                model = Model(net, inputs, label)
+                optim = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=model.parameters())
+                amp_configs = {"incr_ratio": 2, "custom_black_list": {'conv2d'}}
+                model.prepare(
+                    optimizer=optim,
+                    loss=CrossEntropyLoss(reduction="sum"),
+                    amp_mode=amp_mode,
+                    amp_configs=amp_configs)
+                model.fit(mnist_data, batch_size=64, verbose=0)
 
 
 if __name__ == '__main__':

@@ -251,8 +251,8 @@ class StaticGraphAdapter(object):
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
 
-        self._use_amp = False
-        self._amp_config = {}
+        self._amp_mode = "O0"
+        self._amp_configs = {}
         self._amp_custom_lists = {}
 
     @property
@@ -454,7 +454,6 @@ class StaticGraphAdapter(object):
                 pruned_fetch_idx_name_map[i] = fetch_var.name
             else:
                 pruned_fetch_list.append(fetch_var)
-
         rets = self._executor.run(compiled_prog,
                                   feed=feed,
                                   fetch_list=pruned_fetch_list,
@@ -556,19 +555,30 @@ class StaticGraphAdapter(object):
                     dist_strategy = DistributedStrategy()
                     dist_strategy.mode = "collective"
                     dist_strategy.collective_mode = "grad_allreduce"
-                    dist_strategy.amp = self._use_amp
-                    dist_strategy.amp_config = self._amp_config.copy()
-                    dist_strategy.amp_config.update(self._amp_custom_lists)
+                    if self._amp_mode != 'O0':
+                        dist_strategy.amp = True
+                        dist_strategy.amp_configs = self._amp_configs.copy()
+                        dist_strategy.amp_configs.update(self._amp_custom_lists)
+                        dist_strategy[
+                            'use_pure_fp16'] = True if self._amp_mode == 'O2' else False
                     self.model._optimizer = fleet.distributed_optimizer(
                         self.model._optimizer, strategy=dist_strategy)
-                elif self._use_amp:
+                elif self._amp_mode != "O0":
                     amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                         **self.
                         _amp_custom_lists) if self._amp_custom_lists else None
+                    self._amp_configs.pop(
+                        'use_pure_fp16'
+                    ) if 'use_pure_fp16' in self._amp_configs else None
+                    self._amp_configs.pop(
+                        'use_fp16_guard'
+                    ) if 'use_fp16_guard' in self._amp_configs else None
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
-                        **self._amp_config)
+                        use_pure_fp16=True if self._amp_mode == "O2" else False,
+                        use_fp16_guard=False,
+                        **self._amp_configs)
 
                 self.model._optimizer.minimize(self._loss_endpoint)
 
@@ -612,6 +622,11 @@ class StaticGraphAdapter(object):
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
+        self.model._optimizer.amp_init(
+            place
+        ) if self._amp_mode == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        ) else None
+
         if self._nranks < 2:
             compiled_prog = fluid.CompiledProgram(prog)
         else:
@@ -634,8 +649,8 @@ class DynamicGraphAdapter(object):
         }
 
         self._input_info = None
-        self._use_amp = False
-        self._amp_config = {}
+        self._amp_mode = "O0"
+        self._amp_configs = {}
         self._amp_custom_lists = {}
         if self._nranks > 1:
             dist.init_parallel_env()
@@ -666,7 +681,8 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
         with paddle.amp.auto_cast(
-                enable=self._use_amp, **self._amp_custom_lists):
+                enable=False if self._amp_mode == 'O0' else True,
+                **self._amp_custom_lists):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
                     * [to_variable(x) for x in inputs])
@@ -678,8 +694,8 @@ class DynamicGraphAdapter(object):
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
 
-        if self._use_amp:
-            scaler = paddle.amp.GradScaler(**self._amp_config)
+        if self._amp_mode != "O0":
+            scaler = paddle.amp.GradScaler(**self._amp_configs)
             scaled = scaler.scale(final_loss)
             scaled.backward()
             scaler.minimize(self.model._optimizer, scaled)
@@ -841,6 +857,11 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
+    Auto mixed precision training is supported, and pure float16 training is
+    also supported in static mode while using Adam, AdamW and Momentum
+    optimizer. Before using pure float16 training, users should set
+    `multi_precision` to True when creating the optimizer.
+
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
@@ -863,7 +884,7 @@ class Model(object):
           from paddle.static import InputSpec
   
           device = paddle.set_device('cpu') # or 'gpu'
-          use_amp = False
+          amp_mode = "O0"
 
           net = nn.Sequential(
               nn.Flatten(1),
@@ -881,7 +902,7 @@ class Model(object):
           model.prepare(optim,
                         paddle.nn.CrossEntropyLoss(),
                         paddle.metric.Accuracy(),
-                        use_amp=use_amp)
+                        amp_mode=amp_mode)
           
           transform = T.Compose([
               T.Transpose(),
@@ -1272,9 +1293,8 @@ class Model(object):
                 optimizer=None,
                 loss=None,
                 metrics=None,
-                use_amp=False,
-                amp_config=None,
-                amp_custom_lists=None):
+                amp_mode="O0",
+                amp_configs=None):
         """
         Configures the model before runing.
 
@@ -1288,22 +1308,24 @@ class Model(object):
                 It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
-            use_amp (bool|None): Whether to use auto mixed precision (AMP)
-                strategy to speed up the training process. Default: False.
-            amp_config (dict|None): Some AMP configuration. Its keys contain:
-                'init_loss_scaling', 'incr_ratio', 'decr_ratio',
-                'incr_every_n_steps', 'decr_every_n_nan_or_inf',
-                'use_dynamic_loss_scaling', and it could also contain
-                'use_pure_fp16' and 'use_fp16_guard' in static mode. It could
-                be None if AMP is not used. Default: None.
-            amp_custom_lists (dict|None): Custom lists for AMP. Its keys
-                contain: 'custom_white_list' and 'custom_black_list', and it
-                could also contain 'custom_black_varnames' in static mode. It
-                could be None if AMP is not used. Default: None.
-
+            amp_mode (str|None): Mode for using auto mixed precision (AMP)
+                to speed up the training process. "O0" means float32 training,
+                "O1" means using AMP, and "O2" means pure float16 training.
+                Default: "O0".
+            amp_configs (dict|None): Some AMP configurations. In most cases,
+                it could be None. Its keys are same as low-level AMP APIs,
+                and they contain: 'init_loss_scaling', 'incr_ratio',
+                'decr_ratio', 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling', 'custom_white_list',
+                'custom_black_list' and 'custom_black_varnames' only in static
+                mode. It could be None if default parameters are chosen or AMP
+                is not used. Default: None.
         Returns:
             None
         """
+        if amp_mode == "O2" and in_dygraph_mode():
+            warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
+                "and it will be supported in future version.")
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
@@ -1337,9 +1359,18 @@ class Model(object):
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
 
-        self._adapter._use_amp = use_amp
-        self._adapter._amp_config = amp_config if amp_config else {}
-        self._adapter._amp_custom_lists = amp_custom_lists if amp_custom_lists else {}
+        self._adapter._amp_mode = amp_mode
+        self._adapter._amp_configs = amp_configs if amp_configs else {}
+        self._adapter._amp_custom_lists = {}
+        if amp_mode != "O0" and amp_configs:
+            for param_name in [
+                    'custom_white_list', 'custom_black_list',
+                    'custom_black_varnames'
+            ]:
+                if param_name in self._adapter._amp_configs:
+                    self._adapter._amp_custom_lists[
+                        param_name] = amp_configs.pop(param_name)
+
         if not in_dygraph_mode():
             self._adapter.prepare()
 
