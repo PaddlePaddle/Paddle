@@ -75,7 +75,7 @@ class TestSGD(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place, atol=1e-5, check_dygraph=False)
 
 
 '''
