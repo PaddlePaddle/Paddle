@@ -32,7 +32,7 @@ SEED = 2021
 class TestTopk(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(4)
+        self.place = paddle.NPUPlace(0)
         self.op_type = "top_k"
         self.init_dtype()
 
@@ -63,7 +63,7 @@ class TestTopk(OpTest):
 class TestTopkV2(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(4)
+        self.place = paddle.NPUPlace(0)
         self.op_type = "top_k"
         self.init_dtype()
 
