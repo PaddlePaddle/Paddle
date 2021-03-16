@@ -25,6 +25,10 @@ limitations under the License. */
 #include "acl/acl_op_compiler.h"
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/platform/stream/npu_stream.h"
+#include "paddle/fluid/platform/timer.h"
+
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace operators {
@@ -259,11 +263,24 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "output_desc.size: " << output_descs_.size();
   VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
+
+  platform::Timer timeline;
+  if(FLAGS_benchmark){
+    timeline.Start();
+  }
+
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
       output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
       stream);
+
+  if(FLAGS_benchmark){
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
+    timeline.Pause();
+    VLOG(4) << "op_type: " << op_type_ << ", time:" << Timer::ElapsedUS();
+  }
+
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
