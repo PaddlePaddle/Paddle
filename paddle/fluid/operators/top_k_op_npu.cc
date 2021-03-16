@@ -42,32 +42,40 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // read input
+std::cout << "bbbbbbbbbbbbbbbbbb" << std::endl;
     auto* input = ctx.Input<framework::LoDTensor>("X");
     auto* output = ctx.Output<framework::LoDTensor>("Out");
     auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+std::cout << "aaaaaaaaaaaaaaaaaaaaa" << std::endl;
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
+std::cout << "000000000000000011" << std::endl;
 
     output->mutable_data<paddle::platform::float16>(ctx.GetPlace());
     indices->mutable_data<int>(ctx.GetPlace());
+std::cout << "11111111" << std::endl;
 
-    // prepare assit
-    auto dim = input->dims().size();
-    framework::Tensor assist_seq_tensor;
-    assist_seq_tensor.Resize({2 * dim});
-    assist_seq_tensor.mutable_data<paddle::platform::float16>(ctx.GetPlace());
-    gen_assist_seq(&assist_seq_tensor, dim, ctx);
+    Tensor k_tensor(framework::proto::VarType::INT32);
+std::cout << "2222222222222" << std::endl;
+    k_tensor.Resize({1});
+    k_tensor.mutable_data<int32_t>(ctx.GetPlace());
+std::cout << "333333333333333" << std::endl;
+    framework::NPUAttributeMap const_attr_input = {{"value", static_cast<int>(k)}};
+std::cout << "44444444444444444" << std::endl;
+    auto runner_const = NpuOpRunner("Const", {}, {k_tensor}, const_attr_input);
+    auto stream_const =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+std::cout << "55555555555" << std::endl;
+    runner_const.Run(stream_const);
 
-    framework::NPUAttributeMap attr_input = {{"sorted", "true"},
-                                             {"k", static_cast<int>(k)},
-                                             {"dim", -1},
-                                             {"largest", true}};
 
+std::cout << "6666666666666666" << std::endl;
     // run ascend
-    auto runner = NpuOpRunner("TopKD",
-                              {*input, assist_seq_tensor},
+    auto runner = NpuOpRunner("TopK",
+                              {*input, k_tensor},
                               {*output, *indices},
-                              attr_input);
+                              {});
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
