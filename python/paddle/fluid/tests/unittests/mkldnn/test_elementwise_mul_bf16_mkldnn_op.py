@@ -74,9 +74,9 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
 class TestElementwiseMulBroadCastingBf16MklDNNOp(
         TestElementwiseMulBf16MklDNNOp):
     def generate_data(self):
-        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(np.float32)
+        self.x = np.random.uniform(1, 2, [1, 2, 3, 100]).astype(np.float32)
         self.y = np.random.uniform(1, 2, [100]).astype(np.float32)
-        self.out = np.add(self.x, self.y)
+        self.out = np.multiply(self.x, self.y)
 
     # Compute partial sums along all axes but last one
     def compute_reduced_gradients(self, out_grads):
@@ -84,10 +84,6 @@ class TestElementwiseMulBroadCastingBf16MklDNNOp(
         part_sum = np.add.reduceat(part_sum, [0], axis=1)
         part_sum = np.add.reduceat(part_sum, [0], axis=2)
         return part_sum.flatten()
-
-    # TODO: There is a problem with FWD of eltwise mul bf16. Investigating
-    def test_check_output(self):
-        pass
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
