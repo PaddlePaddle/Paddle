@@ -47,20 +47,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     auto* indices = ctx.Output<framework::LoDTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
-    bool largest = static_cast<bool>(ctx.Attr<bool>("largest"));
-    int axis = static_cast<int>(ctx.Attr<int>("axis"));
-
-    PADDLE_ENFORCE_EQ(
-      axis, -1,
-      platform::errors::InvalidArgument("TopKD only support axis == -1"));
-
-    PADDLE_ENFORCE_EQ(
-      largest, true,
-      platform::errors::InvalidArgument("TopKD only support largest == true"));
 
     output->mutable_data<paddle::platform::float16>(ctx.GetPlace());
-    indices->mutable_data<paddle::platform::float16>(ctx.GetPlace());
-
+    indices->mutable_data<int>(ctx.GetPlace());
 
     // prepare assit
     auto dim = input->dims().size();
@@ -71,8 +60,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 
     framework::NPUAttributeMap attr_input = {{"sorted", "true"},
                                              {"k", static_cast<int>(k)},
-                                             {"dim", 1},
-                                             {"largest", largest}};
+                                             {"dim", -1},
+                                             {"largest", true}};
 
     // run ascend
     auto runner = NpuOpRunner("TopKD",
@@ -97,3 +86,4 @@ REGISTER_OP_NPU_KERNEL(
     top_k,
     ops::TopkNPUKernel<paddle::platform::NPUDeviceContext,
                                   paddle::platform::float16>);
+
