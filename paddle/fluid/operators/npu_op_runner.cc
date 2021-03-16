@@ -240,7 +240,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
 
-  VLOG(4) << "NpuOpRunner::CreateTensorDesc dtype:" << dtype << " "
+  VLOG(4) << "NpuOpRunner::CreateTensorDesc op_type:" << op_type_ << ",dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
