@@ -305,8 +305,14 @@ class TensorRTEngine {
   }
 
   int GetDeviceId() { return device_id_; }
+
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
+
+  nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
+                                           int num_inputs,
+                                           plugin::PluginTensorRTV2Ext* plugin);
+
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
   }
@@ -414,6 +420,7 @@ class TensorRTEngine {
       itensor_map_;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
+  std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_pluginv2ext_;
 
   // TensorRT related internal members
   template <typename T>

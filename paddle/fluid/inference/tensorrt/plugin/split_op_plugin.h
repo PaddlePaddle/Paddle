@@ -25,7 +25,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-class SplitPlugin : public PluginTensorRT {
+class SplitPlugin : public PluginTensorRTV2Ext {
  public:
   SplitPlugin() {}
   SplitPlugin(int axis, std::vector<int> const& output_lengths, bool with_fp16)
@@ -39,8 +39,14 @@ class SplitPlugin : public PluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &output_length_);
   }
 
-  SplitPlugin* clone() const override {
-    auto* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const override {
+    return input_types[0];
+  }
+  nvinfer1::IPluginV2Ext* clone() const override {
+    SplitPlugin* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
+    ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->shareData(this);
     return ptr;
   }
@@ -53,16 +59,18 @@ class SplitPlugin : public PluginTensorRT {
 
   int initialize() override;
   void terminate() override;
-  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+  int enqueue(int batch_size, const void* const* inputs, void** outputs,
               void* workspace, cudaStream_t stream) override;
 
+  void destroy() override { delete this; }
+
  protected:
-  size_t getSerializationSize() override {
+  size_t getSerializationSize() const override {
     return SerializedSize(getPluginType()) + SerializedSize(axis_) +
            SerializedSize(output_length_) + getBaseSerializationSize();
   }
 
-  void serialize(void* buffer) override {
+  void serialize(void* buffer) const override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
@@ -82,6 +90,48 @@ class SplitPlugin : public PluginTensorRT {
  private:
   void shareData(const SplitPlugin* another);
 };
+
+// TODO(wilber): Can PluginCreater be removed.
+class SplitPluginCreator : public nvinfer1::IPluginCreator {
+ public:
+  SplitPluginCreator() {}
+  const char* getPluginName() const override { return "split_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    // not implemented
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    auto plugin = new SplitPlugin(serial_data, serial_length);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* lib_namespace) override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+REGISTER_TRT_PLUGIN_V2(SplitPluginCreator);
 
 #if IS_TRT_VERSION_GE(6000)
 class SplitPluginDynamic : public DynamicPluginTensorRT {
