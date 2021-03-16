@@ -46,9 +46,9 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     cat $PADDLE_ROOT/get_added_ut.sh
     bash $PADDLE_ROOT/get_added_ut.sh
 fi
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/br-ut
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > /$PADDLE_ROOT/pr-ut
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
