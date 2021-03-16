@@ -210,9 +210,10 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
   auto *program = block->Program();
-  auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+  auto ctx = executor.Prepare(*program, block->ID(),
+                              Attr<std::vector<std::string>>(
+                                  kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
+                              true);
 
   static std::mutex mutex;
   std::lock_guard<std::mutex> lock(mutex);
