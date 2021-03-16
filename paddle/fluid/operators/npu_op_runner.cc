@@ -240,7 +240,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
 
-  VLOG(4) << "dtype:" << dtype << " "
+  VLOG(4) << "NpuOpRunner::CreateTensorDesc dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
@@ -266,8 +266,8 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
 
+  platform::Timer timeline;
   if(FLAGS_benchmark){
-    platform::Timer timeline;
     timeline.Start();
   }
 
