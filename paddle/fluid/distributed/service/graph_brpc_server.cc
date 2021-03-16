@@ -283,27 +283,21 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
         "graph_random_sample request requires at least 2 arguments");
     return 0;
   }
-  size_t num_nodes = request.params(0).size() / sizeof(uint64_t);
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
   uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
   int sample_size = *(uint64_t *)(request.params(1).c_str());
 
-  std::vector<std::future<int>> tasks;
-  std::vector<char*> buffers(num_nodes, nullptr);
-  std::vector<int> actual_sizes(num_nodes);
+  std::vector<char*> buffers(node_num, nullptr);
+  std::vector<int> actual_sizes(node_num, 0);
+  table->random_sample(node_data, sample_size, buffers, actual_sizes);
 
-  for (size_t idx = 0; idx < num_nodes; ++idx){
-    tasks.push_back(table->random_sample(node_data[idx], sample_size, 
-            buffers[idx], actual_sizes[idx]));
-  }
-  for (size_t idx = 0; idx < num_nodes; ++idx){
-    tasks[idx].get();
-  }
-  cntl->response_attachment().append(&num_nodes, sizeof(size_t));
-  cntl->response_attachment().append(actual_sizes.data(), sizeof(int)*num_nodes);
-  for (size_t idx = 0; idx < num_nodes; ++idx){
+  cntl->response_attachment().append(&node_num, sizeof(size_t));
+  cntl->response_attachment().append(actual_sizes.data(), sizeof(int)*node_num);
+  for (size_t idx = 0; idx < node_num; ++idx){
     cntl->response_attachment().append(buffers[idx], actual_sizes[idx]);
     if (buffers[idx] != nullptr){
       delete buffers[idx];
+      buffers[idx] = nullptr;
     }
   }
   return 0;
