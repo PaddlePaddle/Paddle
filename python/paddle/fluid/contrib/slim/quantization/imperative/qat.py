@@ -17,11 +17,15 @@ import logging
 import numpy as np
 import sys
 import os
+import warnings
+
 import paddle
-from paddle.fluid import dygraph, core, framework
+from paddle.fluid import dygraph, core, framework, unique_name
 from paddle.fluid.executor import Executor
+from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.nn import Linear, Conv2D, Conv2DTranspose, MaxPool2D, MaxPool1D, BatchNorm1D, BatchNorm2D, BatchNorm3D
+from paddle.nn import Linear, Conv2D, Conv2DTranspose, MaxPool2D, MaxPool1D, BatchNorm1D, BatchNorm2D, BatchNorm3D, SyncBatchNorm
 from paddle.fluid.dygraph.nn import BatchNorm, Pool2D
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.nn.layer.activation import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU, Swish
@@ -331,9 +335,72 @@ class ImperativeCalcOutScale(object):
         self._out_scale_layer_type_list = (
             BatchNorm, BatchNorm1D, BatchNorm2D, BatchNorm3D, Conv2D, LeakyReLU,
             Linear, PReLU, Pool2D, MaxPool1D, MaxPool2D, ReLU, ReLU6, Sigmoid,
-            Softmax, Tanh, Swish)
+            Softmax, SyncBatchNorm, Tanh, Swish)
         self._register_hook_handle_list = []
         self._out_scale_dict = collections.OrderedDict()
+
+    # Determine whether layer supports calculation out_scale
+    def _is_matched_layer(self, layer):
+        if not isinstance(layer, self._out_scale_layer_type_list):
+            if 'quantized_' not in layer.full_name():
+                return False
+        return True
+
+    # When inferenc model is saved, the logic in hook would not be executed
+    # in program translation, so that some parameters can not created in
+    # __init__, which would cause the model to fail to save. Therefore, the
+    # parameters creation in the hook is advanced to be exected outside the hook.
+    def _add_new_parameters(self, layer, name=None):
+        dtype = layer._dtype if layer._dtype is not None else "float32"
+        if dtype not in ["float32", "float64"]:
+            return
+        scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
+        scale_name = unique_name.generate(scale_prefix)
+        scale_attr = ParamAttr(
+            name=scale_name, initializer=Constant(1), trainable=False)
+        layer._quant_out_scale = layer.create_parameter(
+            shape=[1], attr=scale_attr, dtype=dtype)
+        layer._quant_out_scale.stop_gradient = True
+
+        state_prefix = "{}.state".format(name) if name else 'outscale.state'
+        state_attr = ParamAttr(
+            name=unique_name.generate(state_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        layer._quant_out_state = layer.create_parameter(
+            shape=[1], attr=state_attr, dtype=dtype)
+        layer._quant_out_state.stop_gradient = True
+
+        accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
+        accum_attr = ParamAttr(
+            name=unique_name.generate(accum_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        layer._quant_out_accum = layer.create_parameter(
+            shape=[1], attr=accum_attr, dtype=dtype)
+        layer._quant_out_accum.stop_gradient = True
+
+    # Judge whether the op in program matches the Layer in dynamic model
+    def _is_op_matched(self, layer_name, op, block):
+        output_var_names = quantization_pass._get_op_output_var_names(op)
+        for output_var_name in output_var_names:
+            output_var_tensor = block.var(output_var_name)
+            if output_var_tensor.dtype not in [
+                    core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32
+            ]:
+                return False
+
+        # Because the naming styles of static and dynamic graph are different,
+        # in order to avoid mistakes, we unify the name here.
+        op_type = output_var_names[0].split(".")[0]
+        op_type = op_type.rsplit("_", 1)[0]
+        if op_type == 'depthwise_conv2d':
+            op_type = 'conv2d'
+        if 'prelu' in op_type:
+            op_type = op_type.replace('prelu', 'p_re_lu')
+        if 'relu' in op_type:
+            op_type = op_type.replace('relu', 're_lu')
+        return op_type in layer_name
 
     def calc_out_scale(self, model):
         """
@@ -348,12 +415,11 @@ class ImperativeCalcOutScale(object):
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         for _, layer in model.named_sublayers():
-            if not isinstance(layer, self._out_scale_layer_type_list):
-                if 'quantized_' not in layer.full_name():
-                    continue
-            forward_post_hook_handle = layer.register_forward_post_hook(
-                self._forward_post_hook)
-            self._register_hook_handle_list.append(forward_post_hook_handle)
+            if self._is_matched_layer(layer):
+                self._add_new_parameters(layer)
+                forward_post_hook_handle = layer.register_forward_post_hook(
+                    self._forward_post_hook)
+                self._register_hook_handle_list.append(forward_post_hook_handle)
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
@@ -380,14 +446,26 @@ class ImperativeCalcOutScale(object):
 
         assert isinstance(
             layer, dygraph.Layer), "model must be the instance of dygraph.Layer"
+        self._layer = layer
         is_dynamic_mode = False
         with dygraph.guard():
-            layer.eval()
-            for handle in self._register_hook_handle_list:
-                handle.remove()
-            for key in self._out_scale_dict:
-                self._out_scale_dict[key] = float(self._out_scale_dict[key]
-                                                  .numpy())
+            self._layer.eval()
+            if self._register_hook_handle_list is not None:
+                for handle in self._register_hook_handle_list:
+                    handle.remove()
+            if self._out_scale_dict:
+                for key in self._out_scale_dict:
+                    self._out_scale_dict[key] = float(self._out_scale_dict[key]
+                                                      .numpy())
+            else:
+                for _, sub_layer in self._layer.named_sublayers():
+                    if self._is_matched_layer(sub_layer):
+                        layer_name = sub_layer.full_name()
+                        if hasattr(sub_layer, "layer_name"):
+                            layer_name = sub_layer.layer_name
+                        if hasattr(sub_layer, "_quant_out_scale"):
+                            self._out_scale_dict[layer_name] = float(
+                                sub_layer._quant_out_scale)
 
         if paddle.in_dynamic_mode():
             is_dynamic_mode = True
@@ -413,74 +491,68 @@ class ImperativeCalcOutScale(object):
                 model_filename=model_filename,
                 params_filename=params_filename))
 
-        # Traverse all ops in the program and find out the op matching
-        # the Layer in the dynamic graph.
-        layer_var_dict = collections.OrderedDict()
-        ops_list = [key for key, _ in self._out_scale_dict.items()]
+        check_behind_op = False
         op_count = 0
-        conv_count = 0
-
-        for block in inference_program.blocks:
-            for op in block.ops:
-                if op.type in _op_real_in_out_name:
-                    if op.type in ["batch_norm", "pool2d"]:
-                        if op.type == "pool2d" and op.attr(
-                                "pooling_type") != "max":
-                            continue
-                        op_count = self.op_match(op, ops_list, op_count)
-                        if op_count >= len(ops_list):
-                            continue
-                        op._set_attr('out_threshold',
-                                     self._out_scale_dict[ops_list[op_count]])
-                        op_count += 1
-                    else:
-                        output_var_names = quantization_pass._get_op_output_var_names(
-                            op)
-                        for output_var_name in output_var_names:
-                            output_var_tensor = block.var(output_var_name)
-                            if output_var_tensor.dtype not in [
-                                    core.VarDesc.VarType.FP64,
-                                    core.VarDesc.VarType.FP32
-                            ]:
+        ops_list = [key for key, _ in self._out_scale_dict.items()]
+        if len(ops_list) == 0:
+            warnings.warn(
+                "Warning: No Layer of the model while to be saved contains the out_threshold attribute, "
+                "so the generated inference model would not contain the out_threshold."
+            )
+        else:
+            # Because the Layer in dygraph may correspond to multiple ops
+            # in static program after being saved. To ensure correctness,
+            # the outscale collected for output of dygraph Layer can only
+            # be set to the last op in the corresponding ops in static program.
+            #
+            # We can judge the execution order of the ops which corresponding
+            # to dygraph Layer by check_behind_op
+            forward_op = None
+            for block in inference_program.blocks:
+                for op in block.ops:
+                    if op.type in _op_real_in_out_name:
+                        if op_count > len(ops_list):
+                            warnings.warn(
+                                "The number of Layer which has out_threshold attribute should be bigger than the op in inference model"
+                            )
+                            break
+                        if check_behind_op:
+                            check_behind_op = False
+                            if op.type == "elementwise_add":
+                                if self._is_op_matched(ops_list[op_count], op,
+                                                       block):
+                                    op._set_attr("out_threshold",
+                                                 self._out_scale_dict[ops_list[
+                                                     op_count]])
+                                    op_count += 1
+                                    forward_op = None
                                 continue
-                            # Because the Layer in dygraph may correspond to multiple ops
-                            # in static program after being saved. To ensure correctness,
-                            # the outscale collected for output of dygraph Layer can only
-                            # be set to the last op in the corresponding ops in static program.
-                            #
-                            # We can judge the execution order of the ops which corresponding
-                            # to dygraph Layer by the name of output. And use dict to save
-                            # the corresponding relationship between the dygraph Layer and the
-                            # static graph op that needs to set the outscale attribute.
-                            if '.' not in output_var_name:
-                                continue
-                            dynamic_layer_name, var_name_suffix = output_var_name.split(
-                                ".")
-                            if dynamic_layer_name in layer_var_dict:
-                                if layer_var_dict[dynamic_layer_name][
-                                        0] < var_name_suffix:
-                                    layer_var_dict[dynamic_layer_name] = [
-                                        var_name_suffix, op
-                                    ]
                             else:
-                                layer_var_dict[dynamic_layer_name] = [
-                                    var_name_suffix, op
-                                ]
+                                if forward_op is None:
+                                    raise ValueError(
+                                        "forward_op should not be None")
+                                if self._is_op_matched(ops_list[op_count],
+                                                       forward_op, block):
+                                    forward_op._set_attr(
+                                        "out_threshold", self._out_scale_dict[
+                                            ops_list[op_count]])
+                                    op_count += 1
+                                    forward_op = None
 
-        # Because the naming styles of static and dynamic graph are different,
-        # in order to avoid mistakes, we unify the name here.
-        for (layer_name, var_name_op_list) in layer_var_dict.items():
-            if 'prelu' in layer_name:
-                layer_name = layer_name.replace('prelu', 'p_re_lu')
-            if 'relu' in layer_name:
-                layer_name = layer_name.replace('relu', 're_lu')
-            if 'conv2d' in layer_name:
-                layer_name = 'conv2d_' + str(conv_count)
-                conv_count = conv_count + 1
-            if layer_name not in self._out_scale_dict:
-                continue
-            var_name_op_list[1]._set_attr('out_threshold',
-                                          self._out_scale_dict[layer_name])
+                        if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
+                            check_behind_op = True
+                            forward_op = op
+                            continue
+                        if op_count >= len(ops_list):
+                            warnings.warn(
+                                "The number of Layer which has out_threshold attribute should be bigger than the op in inference model"
+                            )
+                            break
+                        if self._is_op_matched(ops_list[op_count], op, block):
+                            op._set_attr(
+                                "out_threshold",
+                                self._out_scale_dict[ops_list[op_count]])
+                            op_count += 1
 
         # Save the processed program.
         save_inference_model(
@@ -495,14 +567,6 @@ class ImperativeCalcOutScale(object):
         if is_dynamic_mode:
             paddle.disable_static()
 
-    def op_match(self, op, ops_list, op_count):
-        while op_count < len(ops_list) and op.type not in ops_list[op_count]:
-            op_count += 1
-        while op_count < len(ops_list) and op.type is "pool2d" and op.attr(
-                "pooling_type") != "max":
-            op_count += 1
-        return op_count
-
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
             output, (core.VarBase, framework.Variable)
@@ -512,9 +576,9 @@ class ImperativeCalcOutScale(object):
         ]:
             return
         if not hasattr(layer, "_out_scale"):
-            layer._out_scale = quant_nn.MovingAverageAbsMaxScale(
-                output.name, self._moving_rate, output.dtype)
-        scale_out = layer._out_scale(output)
+            self._out_scale = quant_nn.MovingAverageAbsMaxScale(
+                layer, output.name, self._moving_rate, output.dtype)
+        scale_out = self._out_scale(output)
         if hasattr(layer, 'layer_name'):
             layer_name = layer.layer_name
         else:

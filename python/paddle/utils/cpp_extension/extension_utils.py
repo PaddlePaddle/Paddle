@@ -781,13 +781,18 @@ def _get_api_inputs_str(op_name):
     in_names, out_names, attr_names = parse_op_info(op_name)
     # e.g: x, y, z
     param_names = in_names + attr_names
-    params_str = ','.join([p.lower() for p in param_names])
+    # NOTE(chenweihang): we add suffix `@VECTOR` for std::vector<Tensor> input,
+    # but the string contains `@` cannot used as argument name, so we split 
+    # input name by `@`, and only use first substr as argument
+    params_str = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_str = "{%s}" % ','.join(
-        ["'{}' : {}".format(in_name, in_name.lower()) for in_name in in_names])
+    ins_str = "{%s}" % ','.join([
+        "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
+        for in_name in in_names
+    ])
     # e.g: {'num': n}
     attrs_str = "{%s}" % ",".join([
-        "'{}' : {}".format(attr_name, attr_name.lower())
+        "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
         for attr_name in attr_names
     ])
     # e.g: ['Out', 'Index']

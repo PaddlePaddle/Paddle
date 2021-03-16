@@ -71,9 +71,12 @@ void EraseLoadProcessPIDs(int64_t key) {
     }                                                       \
   } while (0)
 
-#define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)             \
-  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
-    SIGNAL_HANDLE(SIGNAL);                                        \
+#define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME, ERROR_MSG)           \
+  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) {          \
+    auto _w =                                                              \
+        write(STDERR_FILENO, ERROR_MSG, sizeof(ERROR_MSG) / sizeof(char)); \
+    (void)_w;                                                              \
+    SIGNAL_HANDLE(SIGNAL);                                                 \
   }
 
 #define REGISTER_SPEC_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)        \
@@ -84,8 +87,18 @@ void EraseLoadProcessPIDs(int64_t key) {
     SIGNAL_HANDLE(SIGNAL);                                        \
   }
 
-REGISTER_SIGNAL_HANDLER(SIGSEGV, SIGSEGV_handler);
-REGISTER_SIGNAL_HANDLER(SIGBUS, SIGBUS_handler);
+REGISTER_SIGNAL_HANDLER(SIGSEGV, SIGSEGV_handler,
+                        "ERROR: Unexpected segmentation fault encountered in "
+                        "DataLoader workers.\n");
+REGISTER_SIGNAL_HANDLER(
+    SIGBUS, SIGBUS_handler,
+    "ERROR: Unexpected BUS error encountered in DataLoader worker. "
+    "This might be caused by insufficient shared memory (shm), "
+    "please check whether use_shared_memory is set and storage space "
+    "in /dev/shm is enough\n");
+REGISTER_SIGNAL_HANDLER(SIGFPE, SIGFPE_handler,
+                        "ERROR: Unexpected floating-point exception "
+                        "encountered in DataLoader worker.\n")
 REGISTER_SPEC_SIGNAL_HANDLER(SIGTERM, SIGTERM_handler);
 
 static inline void setSignalHandler(int signal,
@@ -105,6 +118,7 @@ static inline void setSignalHandler(int signal,
 void SetLoadProcessSignalHandler() {
   setSignalHandler(SIGSEGV, &SIGSEGV_handler, nullptr);
   setSignalHandler(SIGBUS, &SIGBUS_handler, nullptr);
+  setSignalHandler(SIGFPE, &SIGFPE_handler, nullptr);
   setSignalHandler(SIGTERM, &SIGTERM_handler, nullptr);
 }
 
