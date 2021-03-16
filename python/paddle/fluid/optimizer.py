@@ -4852,6 +4852,7 @@ class PipelineOptimizer(object):
             input_names = op.input_arg_names
             output_names = op.output_arg_names
             in_out_names = input_names + output_names
+            if op.type == 'cast': continue
             # append "MERGED" to the names of parameter gradients,
             # and mofify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
@@ -4873,13 +4874,16 @@ class PipelineOptimizer(object):
             if self._is_optimize_op(op) and op.type == 'cast':
                 in_name = op.input_arg_names[0]
                 out_name = op.output_arg_names[0]
-                if out_name.strip('@GRAD@MERGED') in self._param_device_map:
+                if out_name.strip('@GRAD') in self._param_device_map:
                     assert in_name.replace('.cast_fp16', '') == out_name
                     block._remove_op(index)
                     continue
 
             if self._is_backward_op(op) and not first_opt_op_idx:
                 first_opt_op_idx = index + 1
+                if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
+                    #block.ops[first_opt_op_idx]._set_attr(self._op_role_key, self._op_role.Backward)
+                    first_opt_op_idx += 1
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -4888,14 +4892,13 @@ class PipelineOptimizer(object):
                 if len(op_role_var) == 0:
                     continue
                 assert len(op_role_var) % 2 == 0
-                op._remove_attr(self._op_role_var_key)
+                #op._remove_attr(self._op_role_var_key)
                 for i in range(0, len(op_role_var), 2):
                     offset = 0
                     param_name = op_role_var[i]
+                    if not block.has_var(param_name): continue
+                    if '@BroadCast' in param_name: continue
                     param_grad_name = param_name + core.grad_var_suffix()
-                    assert block.has_var(param_name), (
-                        "parameter {} not in "
-                        "current block.".format(param_name))
                     merged_param_grad_name = param_grad_name + '@MERGED'
                     if not block.has_var(merged_param_grad_name):
                         self._create_var(block, block.vars[param_name],
@@ -4957,7 +4960,7 @@ class PipelineOptimizer(object):
                             attrs={
                                 # self._op_device_key: device,
                                 self._op_role_key: self._op_role.Backward,
-                                self._op_role_var_key: op_role_var
+                                #self._op_role_var_key: op_role_var
                             })
                         offset += 1
                         merged_gradient_names.append(merged_param_grad_name)

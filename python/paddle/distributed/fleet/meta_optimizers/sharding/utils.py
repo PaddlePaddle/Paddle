@@ -231,19 +231,20 @@ def get_valid_op_role(block, insert_idx):
     return OpRole.Forward or OpRole.Backward
     """
     op_role = block.ops[insert_idx].attr('op_role')
-    # if (insert_idx >= len(block.ops)) or (
-    #         op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
-    #     return OpRole.Backward
-    # if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
-    #     return OpRole.Forward
-
-    # return get_valid_op_role(block, insert_idx + 1)
-    if insert_idx >= len(block.ops): return OpRole.Optimize
-    if op_role == int(OpRole.Backward): return OpRole.Backward
-    if op_role == int(OpRole.Optimize): return OpRole.Optimize
+    if (insert_idx >= len(block.ops)) or (
+            op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
+        return OpRole.Backward
     if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
         return OpRole.Forward
+
     return get_valid_op_role(block, insert_idx + 1)
+
+    # if insert_idx >= len(block.ops): return OpRole.Optimize
+    # if op_role == int(OpRole.Backward): return OpRole.Backward
+    # if op_role == int(OpRole.Optimize): return OpRole.Optimize
+    # if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
+    #     return OpRole.Forward
+    # return get_valid_op_role(block, insert_idx + 1)
 
 
 def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
