@@ -37,18 +37,23 @@ for example, you can run cpu version python2 testing like this:
 
 """
 
-fmt = logging.Formatter(
-    "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s")
 logger = logging.getLogger()
-console = logging.StreamHandler()
-console.setFormatter(fmt)
-logger.addHandler(console)
-
-# console.setLevel(level)
-# logger.setLevel(logging.DEBUG)
+if logger.handlers:
+    console = logger.handlers[0]  # we assume the first handler is the one we want to configure
+else:
+    console = logging.StreamHandler()
+    logger.addHandler(console)
+console.setFormatter(logging.Formatter(
+    "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 
 RUN_ON_DEVICE = 'cpu'
-
+GPU_ID=0
+methods = []
+whl_error = []
+API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
+API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
+API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
+SAMPLECODE_TEMPDIR = 'samplecode_temp'
 
 def find_all(srcstr, substr):
     """
@@ -115,6 +120,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     Returns:
         result: True or False
     """
+    global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
 
     result = True
 
@@ -180,22 +186,20 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
         sampcd = '\n'.join(sampcd_to_write)
         if RUN_ON_DEVICE == "cpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
+            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
         if RUN_ON_DEVICE == "gpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
+            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(GPU_ID) + sampcd
         sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
 
-        if len(sampcd_begins) > 1:
-            tfname = name + "_example_" + str(y) + ".py"
-        else:
-            tfname = name + "_example" + ".py"
-        tempf = open("samplecode_temp/" + tfname, 'w')
+        tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(name,
+            '.py' if len(sampcd_begins) > 1 else '_{}.py'.format(y)))
+        tempf = open(tfname, 'w')
         tempf.write(sampcd)
         tempf.close()
         if platform.python_version()[0] == "2":
-            cmd = ["python", "samplecode_temp/" + tfname]
+            cmd = ["python", tfname]
         elif platform.python_version()[0] == "3":
-            cmd = ["python3", "samplecode_temp/" + tfname]
+            cmd = ["python3", tfname]
         else:
             print("Error: fail to parse python version!")
             result = False
@@ -216,7 +220,6 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             print(msg)
             result = False
         # msg is the returned code execution report
-        #os.remove("samplecode_temp/" + tfname)
 
     return result
 
@@ -524,7 +527,7 @@ def get_filenames():
     methods = []
     whl_error = []
     get_incrementapi()
-    API_spec = 'dev_pr_diff_api.spec'
+    API_spec = API_DIFF_SPEC_FN
     with open(API_spec) as f:
         for line in f.readlines():
             api = line.replace('\n', '')
@@ -638,6 +641,8 @@ def get_wlist(fn="wlist.json"):
 
 arguments = [
     # flags, dest, type, default, help
+    ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
+    ['--logf', 'logf', str, None, 'file for logging'],
 ]
 
 
@@ -666,16 +671,16 @@ def parse_args():
     return args
 
 
-methods = []
-whl_error = []
-API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
-API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
-API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 
 if __name__ == '__main__':
     args = parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
+    if args.logf:
+        logfHandler = logging.FileHandler(args.logf)
+        logfHandler.setFormatter(logging.Formatter(
+            "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+        logger.addHandler(logfHandler)
 
     wlist, wlist_file, gpu_not_white = get_wlist()
 
@@ -691,12 +696,12 @@ if __name__ == '__main__':
     logger.info("sample_test running under python %s",
                 platform.python_version())
 
-    if os.path.exists("./samplecode_temp"):
-        if not os.path.isdir("./samplecode_temp"):
-            os.remove("./samplecode_temp")
-            os.mkdir("./samplecode_temp")
+    if os.path.exists(SAMPLECODE_TEMPDIR):
+        if not os.path.isdir(SAMPLECODE_TEMPDIR):
+            os.remove(SAMPLECODE_TEMPDIR)
+            os.mkdir(SAMPLECODE_TEMPDIR)
     else:
-        os.mkdir("./samplecode_temp")
+        os.mkdir(SAMPLECODE_TEMPDIR)
 
     cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
@@ -731,7 +736,7 @@ if __name__ == '__main__':
 
     # delete temp files
     if not args.debug:
-        shutil.rmtree("./samplecode_temp")
+        shutil.rmtree(SAMPLECODE_TEMPDIR)
 
     logger.info("----------------End of the Check--------------------")
     if len(whl_error) != 0:
