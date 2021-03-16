@@ -757,10 +757,34 @@ void RegisterOperatorWithMetaInfo(
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 
-    // Grad InferShape (gradient's shape is same with forward input default)
-    grad_info.infer_shape_ = [grad_op_outputs](InferShapeContext* ctx) {
+    // Grad InferShape
+    grad_info.infer_shape_ = [grad_op_inputs,
+                              grad_op_outputs](InferShapeContext* ctx) {
+      // 1. if forward input exists, gradient's shape is same with forward input
+      // default
+      //    [Suitable for most situations]
+      // 2. if forward input not exists, and only contains one grad input and
+      // output,
+      //    use grad input shape as grad output shape
+      //    [Suitable for the situation that forward input is not used as
+      //    backward input]
+      // TODO(chenweihang): support set grad op infershape func if needed
       for (auto& out_name : grad_op_outputs) {
-        ctx->ShareDim(detail::NoGrad(out_name), out_name);
+        auto fwd_name = detail::NoGrad(out_name);
+        if (ctx->HasInput(fwd_name)) {
+          ctx->ShareDim(fwd_name, out_name);
+        } else {
+          PADDLE_ENFORCE_EQ(
+              grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
+              true,
+              platform::errors::Unavailable(
+                  "Custom grad operator infershape error. "
+                  "If a custom grad operator contains only one input and "
+                  "only one output, the input shape will be directly set to "
+                  "the output shape. Otherwise, Please set the forward input "
+                  "as the grad operator's input."));
+          ctx->ShareDim(grad_op_inputs[0], out_name);
+        }
       }
     };
 
