@@ -183,4 +183,5 @@ endif()
 
 if(WITH_ASCEND_CL)
 cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
+cc_test(stack_op_npu_test SRCS stack_op_npu_test.cc DEPS op_registry stack_op scope device_context enforce executor)
 endif()
