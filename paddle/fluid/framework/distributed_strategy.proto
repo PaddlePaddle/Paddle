@@ -36,6 +36,7 @@ message ShardingConfig {
   optional int32 inner_parallelism_size = 5 [ default = 8 ];
   optional string sharding_segment_strategy = 6 [ default = 'broadcast_size' ];
   repeated string sharding_segment_anchors = 7;
+  optional int32 gradient_merge_acc_step = 8 [ default = 1 ];
 }
 
 message AMPConfig {

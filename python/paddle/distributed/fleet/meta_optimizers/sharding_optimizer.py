@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
@@ -24,6 +25,10 @@ from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper impor
 from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+
+from paddle.fluid import layers
+
 import logging
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -107,8 +112,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             raise NotImplementedError(
                 "the sharding segment strategy [{}] is not implemented".format(str(self._sharding_segment_strategy)))   
-
-
+        self._gradient_merge_acc_step = int(self.user_defined_strategy.sharding_configs[
+                "gradient_merge_acc_step"])
+        self._grad2merged_grad = dict()
+        
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
@@ -150,13 +157,26 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.hybrid_dp:
             self._initialization_broadcast(startup_program)
         logging.info("########### after inner prune")
-        # check op dependecy
-        check_broadcast(main_block)
-        check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
-                            self.dp_ring_id)
+
+        with open("main_before_gm_%d" % self.role_maker._worker_index(), 'w') as f:
+            f.writelines(str(self._main_program))
+    
+        # step6: optional gradient merge
+        if self._gradient_merge_acc_step > 1:
+            self._sharding_gradient_merge(main_block)
+
+        with open("main_after_gm_%d" % self.role_maker._worker_index(), 'w') as f:
+            f.writelines(str(self._main_program))
+
+        # # check op dependecy
+        # check_broadcast(main_block)
+        # check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
+        #                     self.dp_ring_id)
         logging.info("########### after inner check")
         self._wait()
         logging.info("########### after inner wait")
+
+
         return optimize_ops, params_grads
 
     def _set_up(self, params_grads):
@@ -422,7 +442,8 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _add_broadcast_allreduce(self, block):
         """
-        _add_broadcast_allreduce
+        add broadcast allreduce op
+        if enable gradient_merge, insert related ops
         """
         if len(self._segments) < 1:
             return
@@ -430,11 +451,21 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self._segments[-1]._allreduce_vars:
             shard_allredue_vars = self._shard.filter_grads(self._segments[-1]
                                                            ._allreduce_vars)
-            if self.hybrid_dp and len(shard_allredue_vars) >= 1:
-                insert_sync_comm_ops(block, self._segments[-1]._end_idx,
-                                     self.dp_ring_id, shard_allredue_vars)
-                insert_allreduce_ops(block, self._segments[-1]._end_idx,
-                                     self.dp_ring_id, shard_allredue_vars)
+            if self._gradient_merge_acc_step <= 1:
+                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                    insert_sync_comm_ops(block, self._segments[-1]._end_idx,
+                                        self.dp_ring_id, shard_allredue_vars)
+                    insert_allreduce_ops(block, self._segments[-1]._end_idx,
+                                        self.dp_ring_id, shard_allredue_vars)
+            # gradient merge 
+            else:
+                self.create_persistable_gradients_and_insert_merge_ops(
+                    block, 
+                    self._startup_program.global_block(), 
+                    self._segments[-1]._end_idx, 
+                    shard_allredue_vars, 
+                    self._shard)
+
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
@@ -480,19 +511,27 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step2: add Sync ops
             shard_allredue_vars = self._shard.filter_grads(allreduce_vars)
-            if self.hybrid_dp and len(shard_allredue_vars) >= 1:
-                insert_sync_comm_ops(block, segment._end_idx, self.dp_ring_id,
-                                     shard_allredue_vars)
 
+            if self._gradient_merge_acc_step <= 1:
+                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                    insert_sync_comm_ops(block, segment._end_idx, self.dp_ring_id,
+                                        shard_allredue_vars)
+
+                    broad_cast_vars = [x[0] for x in broadcast_vars]
+                    if len(broad_cast_vars) > 0:
+                        insert_sync_comm_ops(block, segment._end_idx,
+                                            self.sharding_ring_id, broad_cast_vars)
+                else:
+                    comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
+                    if len(comm_dep_vars) > 0:
+                        insert_sync_comm_ops(block, segment._end_idx,
+                                            self.sharding_ring_id, comm_dep_vars)
+            # gradient merge
+            else:
                 broad_cast_vars = [x[0] for x in broadcast_vars]
                 if len(broad_cast_vars) > 0:
                     insert_sync_comm_ops(block, segment._end_idx,
-                                         self.sharding_ring_id, broad_cast_vars)
-            else:
-                comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
-                if len(comm_dep_vars) > 0:
-                    insert_sync_comm_ops(block, segment._end_idx,
-                                         self.sharding_ring_id, comm_dep_vars)
+                                        self.sharding_ring_id, broad_cast_vars)                
 
             calc_dep_vars = fill_constant_vars + [
                 k for k, v in cast_ops.items()
@@ -510,15 +549,30 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_cast_ops(block, segment._end_idx, cast_ops)
 
             # step5: add broadcast ops
+            # gradient merge
+            if self._gradient_merge_acc_step > 1:
+                self.create_persistable_gradients_and_insert_merge_ops(
+                    block, 
+                    self._startup_program.global_block(), 
+                    segment._start_idx, 
+                    shard_allredue_vars, 
+                    self._shard)
+
             insert_broadcast_ops(block, segment._start_idx,
                                  self.sharding_ring_id, broadcast_vars)
+
             # step6: add all_reduce ops
             # dp
-            if self.hybrid_dp and len(shard_allredue_vars) >= 1:
-                insert_allreduce_ops(block, segment._start_idx, self.dp_ring_id,
-                                     shard_allredue_vars)
+            if self._gradient_merge_acc_step <= 1:
+                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                    insert_allreduce_ops(block, segment._start_idx, self.dp_ring_id,
+                                        shard_allredue_vars)
+                    insert_sync_comm_ops(block, segment._start_idx,
+                                        self.sharding_ring_id, allreduce_vars)
+            # gradient merge
+            else:
                 insert_sync_comm_ops(block, segment._start_idx,
-                                     self.sharding_ring_id, allreduce_vars)
+                                        self.sharding_ring_id, allreduce_vars)
             # sharding
             # allreduce --> reduce 
             insert_reduce_ops(block, segment._start_idx,
@@ -718,4 +772,229 @@ class ShardingOptimizer(MetaOptimizerBase):
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
 
+    # sharding gradient merge
+    def create_persistable_gradients_and_insert_merge_ops(self, main_block, startup_block, insert_idx, grad_names, shard):
 
+        for grad_name in grad_names:
+            assert get_grad_device(grad_name, shard) == shard.worker_idx, "try to merge gradient not belong to current shard: [{}]".format(grad_name)
+            persistable_grad_name = grad_name + '@GradiantMerge'
+            assert grad_name not in self._grad2merged_grad, "grad [{}] already in grad2merged_grad, maybe you meet sharing weight case !".format(grad_name)
+            self._grad2merged_grad[grad_name] = persistable_grad_name
+            grad_var = main_block.var(grad_name)
+            # create var
+            gradient_merge_var = main_block.create_var(
+                name=persistable_grad_name,
+                shape=grad_var.shape,
+                dtype=grad_var.dtype,
+                persistable=True)
+            startup_gradient_merge_var = startup_block.create_var(
+                name=persistable_grad_name,
+                shape=grad_var.shape,
+                dtype=grad_var.dtype,
+                persistable=True)
+
+            # merge gradient
+            main_block._insert_op_without_sync(
+                insert_idx,
+                type="elementwise_add",
+                inputs={'X': grad_name,
+                        'Y': gradient_merge_var},
+                outputs={'Out': gradient_merge_var},
+                attrs={'axis': -1,
+                        'use_mkldnn': False,
+                        OP_ROLE_KEY: OpRole.Backward})
+
+            # startup initialization
+            startup_block.append_op(
+                type="fill_constant",
+                outputs={"Out": startup_gradient_merge_var},
+                attrs={
+                    "shape": grad_var.shape,
+                    "dtype": grad_var.dtype,
+                    "value": float(0),
+                })
+
+        main_block._sync_with_cpp()
+        startup_block._sync_with_cpp()
+
+
+
+    def _create_gm_cond(self, main_block):
+        # Add const var
+        acc_step_var = layers.create_global_var(
+            name="gradient_merge_acc_step",
+            shape=[1],
+            value=int(self._gradient_merge_acc_step),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        zero_var = layers.create_global_var(
+            name="gradient_merge_zero",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        # Add step var & cond var
+        current_step_var = layers.create_global_var(
+            name="gradient_merge_current_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
+
+        cond_var = layers.create_global_var(
+            name="gradient_merge_cond",
+            shape=[1],
+            value=bool(0),
+            dtype='bool',
+            persistable=True,
+            force_cpu=True)
+
+        with device_guard("cpu"):
+            # step_var = (step_var + 1) % k_step
+            main_block.append_op(
+                type='increment',
+                inputs={'X': [current_step_var]},
+                outputs={'Out': [current_step_var]},
+                attrs={'step': float(1),
+                OP_ROLE_KEY: OpRole.Optimize})
+
+            main_block.append_op(
+                type='elementwise_mod',
+                inputs={'X': current_step_var,
+                        'Y': acc_step_var},
+                outputs={'Out': current_step_var},
+                attrs={'axis': -1,
+                        OP_ROLE_KEY: OpRole.Optimize,
+                        'use_mkldnn': False})
+
+            # cond_var = (step_var == 0)
+            main_block.append_op(
+                type='equal',
+                inputs={'X': current_step_var,
+                        'Y': zero_var},
+                outputs={'Out': cond_var},
+                attrs={OP_ROLE_KEY: OpRole.Optimize}
+                )
+        paddle.static.Print(current_step_var, message="in FWBW last conditional")
+        return cond_var
+
+    def _true_apply_gradient(self):
+        """
+        allreduce grad@gradientmerge in dp group
+        grad@gradientmerge / acc_step
+        re-create all optimize ops of origin main block and rename them
+            cast(backward)
+            amp 
+            clip
+            opt
+        # fill constant grad@gradientmerge
+
+        """
+        # current conditional block
+        main_block = self._main_program.global_block()
+        cur_block_idx = self._main_program.current_block_idx
+        cur_block = self._main_program.current_block()
+    
+        # cur_block's forward_block & backward_block is itself
+        cur_block._set_forward_block_idx(cur_block_idx)
+
+        # allreduce grad@gradientmerge  
+        if self.hybrid_dp:
+            assert self.dp_ring_id >= 0, "dp_ring_id should larger than 0 when in sharding&DP mode"
+            for grad, merged_grad in self._grad2merged_grad.items():
+                merged_grad_var = main_block.var(merged_grad)
+                cur_block.append_op(
+                    type='c_allreduce_sum',
+                    inputs={'X': merged_grad_var},
+                    outputs={'Out': merged_grad_var},
+                    attrs={'ring_id': self.dp_ring_id,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Optimize})
+        
+        # grad@gradientmerge / acc_step
+        for grad, merged_grad in self._grad2merged_grad.items():
+            # grad /= k_steps
+            merged_grad_var = main_block.var(merged_grad)
+            cur_block.append_op(
+                type='scale',
+                inputs={'X': merged_grad_var},
+                outputs={'Out': merged_grad_var},
+                attrs={
+                    'scale': 1.0 / float(self._gradient_merge_acc_step),
+                    'bias': 0.0,
+                    'bias_after_scale': False,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+
+        # re-create optimize ops
+        for op_desc in self.original_optimize_ops_desc:
+            new_op_desc = cur_block.desc.append_op()
+            new_op_desc.copy_from(op_desc)
+
+            for input_name in new_op_desc.input_arg_names():
+                if input_name in self._grad2merged_grad:
+                    new_op_desc._rename_input(input_name, self._grad2merged_grad[input_name])
+
+            for output_name in new_op_desc.output_arg_names():
+                if output_name in self._grad2merged_grad:
+                    new_op_desc._rename_input(output_name, self._grad2merged_grad[output_name])
+            
+        cur_block._sync_with_cpp()
+        # fill zero to grad@gradientmerge
+        for grad, merged_grad in self._grad2merged_grad.items():
+            merged_grad_var = main_block.var(merged_grad)
+            cur_block.append_op(
+                type='fill_constant',
+                outputs={'Out': merged_grad_var},
+                attrs={
+                    "shape": merged_grad_var.shape,
+                    "dtype": merged_grad_var.dtype,
+                    "value": float(0),
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+
+        lr_var = main_block.var("@LR_DECAY_COUNTER@")
+        paddle.static.Print(lr_var, message="in OPTIMIZE last conditional")
+
+
+    def _sharding_gradient_merge(self, main_block):
+
+        """
+        copy all optimize ops in origin main block
+        remove all optimize ops in origin main block
+        create cond block
+
+        """
+        # copy original optimize ops to temp ops desc list
+        # remove them from block 0
+        tmp_copy_block = self._main_program._create_block()
+
+        self.original_optimize_ops_desc = []
+        for op_idx, op in reversed(list(enumerate(main_block.ops))):
+            if int(op.attr('op_role')) != int(OpRole.Optimize):
+                continue
+            else:
+                tmp_op_desc = tmp_copy_block.desc.append_op()
+                tmp_op_desc.copy_from(op.desc)
+                self.original_optimize_ops_desc.append(tmp_op_desc)
+                main_block._remove_op(op_idx, sync=False)
+        tmp_copy_block._sync_with_cpp()
+        self.original_optimize_ops_desc = list(reversed(self.original_optimize_ops_desc))
+        print("original_optimize_ops_desc :")
+        for desc in self.original_optimize_ops_desc:
+            print(desc.type(), desc.input_arg_names())
+
+        # back to block 0
+        self._main_program._rollback()
+
+        # create cond vars and ops at the end of block 0
+        cond = self._create_gm_cond(main_block)
+
+        # create cond block
+        layers.cond(cond, true_fn=self._true_apply_gradient, false_fn=None)
+        

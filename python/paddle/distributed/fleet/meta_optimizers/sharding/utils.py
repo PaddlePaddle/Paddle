@@ -548,4 +548,3 @@ def get_grad_device(grad_name, shard):
     assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(base_name)
 
     return shard.global_param2device[base_name]
-
