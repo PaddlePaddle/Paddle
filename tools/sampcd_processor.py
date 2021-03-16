@@ -123,6 +123,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
 
     result = True
+    msg = None
 
     def sampcd_header_print(name, sampcd, htype, hname):
         """
@@ -193,9 +194,9 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
         tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(name,
             '.py' if len(sampcd_begins) > 1 else '_{}.py'.format(y)))
-        tempf = open(tfname, 'w')
-        tempf.write(sampcd)
-        tempf.close()
+        logging.info('running %s', tfname)
+        with open(tfname, 'w') as tempf:
+            tempf.write(sampcd)
         if platform.python_version()[0] == "2":
             cmd = ["python", tfname]
         elif platform.python_version()[0] == "3":
@@ -218,10 +219,12 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             print("Error Raised from Sample Code ", name, " :\n")
             print(err)
             print(msg)
+            logging.warning('%s error: %s', tfname, err)
+            logging.warning('%s msg: %s', tfname, msg)
             result = False
         # msg is the returned code execution report
 
-    return result
+    return result, name, msg
 
 
 def single_defcom_extract(start_from, srcls, is_class_begin=False):
@@ -298,6 +301,7 @@ def srccoms_extract(srcfile, wlist, methods):
     """
 
     process_result = True
+    error_methods = []
     srcc = srcfile.read()
     # 2. get defs and classes header line number
     # set file pointer to its beginning
@@ -367,7 +371,9 @@ def srccoms_extract(srcfile, wlist, methods):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    if not sampcd_extract_and_run(opcom, opname, "def", opname):
+                    result,_,_ = sampcd_extract_and_run(opcom, opname, "def", opname)
+                    if not result:
+                        error_methods.append(opname)
                         process_result = False
                     api_count += 1
                     handled.append(
@@ -402,7 +408,9 @@ def srccoms_extract(srcfile, wlist, methods):
                               ", but it deserves.")
                         continue
                     else:
-                        if not sampcd_extract_and_run(fcombody, fn, "def", fn):
+                        result,_,_ = sampcd_extract_and_run(fcombody, fn, "def", fn)
+                        if not result:
+                            error_methods.append(fn)
                             process_result = False
 
             if srcls[i].startswith('class '):
@@ -424,9 +432,9 @@ def srccoms_extract(srcfile, wlist, methods):
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
                     if classcom != "":
-                        if not sampcd_extract_and_run(classcom, cn, "class",
-                                                      cn):
-
+                        result,_,_ = sampcd_extract_and_run(classcom, cn, "class", cn)
+                        if not result:
+                            error_methods.append(cn)
                             process_result = False
                     else:
                         print("WARNING: no comments in class itself ", cn,
@@ -484,13 +492,14 @@ def srccoms_extract(srcfile, wlist, methods):
                                 thismtdcom = single_defcom_extract(0,
                                                                    thismethod)
                                 if thismtdcom != "":
-                                    if not sampcd_extract_and_run(
-                                            thismtdcom, name, "method", name):
+                                    result,_,_ = sampcd_extract_and_run(thismtdcom, name, "method", name)
+                                    if not result:
+                                        error_methods.append(name)
                                         process_result = False
     else:
         logger.warning('__all__ not found in file:%s', srcfile.name)
 
-    return process_result
+    return process_result, error_methods
 
 
 def test(file_list):
@@ -507,9 +516,8 @@ def run_a_test(tc_filename):
     global methods  # readonly
     process_result = True
     with open(tc_filename, 'r') as src:
-        if not srccoms_extract(src, wlist, methods):
-            process_result = False
-    return process_result
+        process_result, error_methods  = srccoms_extract(src, wlist, methods)
+    return process_result, tc_filename, error_methods
 
 
 def get_filenames():
@@ -551,12 +559,16 @@ def get_filenames():
                 filename = ''
                 logger.warning("WARNING: Exception in getting api:%s module:%s",
                                api, module)
-            if filename != '' and filename not in filenames and os.path.exists(
-                    filename):
-                filenames.append(filename)
-            else:
-                logger.info("skip file: %s", filename)
+            if filename in filenames:
                 continue
+            elif not filename:
+                logger.warning('filename invalid: %s', line)
+                continue
+            elif not os.path.exists(filename):
+                logger.warning('file not exists: %s', filename)
+                continue
+            else:
+                filenames.append(filename)
             # get all methods
             method = ''
             if inspect.isclass(eval(api)):
@@ -685,6 +697,8 @@ if __name__ == '__main__':
     wlist, wlist_file, gpu_not_white = get_wlist()
 
     if args.mode == "gpu":
+        GPU_ID = args.gpu_id
+        logger.info("using GPU_ID %d", GPU_ID)
         for _gnw in gpu_not_white:
             wlist.remove(_gnw)
     elif args.mode != "cpu":
@@ -750,17 +764,17 @@ if __name__ == '__main__':
             "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
         )
         for temp in result:
-            if not temp:
-                logger.info("")
-                logger.info("In addition, mistakes found in sample codes.")
-                logger.info("Please check sample codes.")
+            if not temp[0]:
+                logger.info("In addition, mistakes found in sample codes: %s", temp[1])
+                logger.info("error_methods: %s", str(temp[2]))
         logger.info("----------------------------------------------------")
         exit(1)
     else:
         has_error = False
-        for i in range(len(filenames)):
-            if not result[i]:
-                logger.info('%s error.', filenames[i])
+        for temp in result:
+            if not temp[0]:
+                logger.info("In addition, mistakes found in sample codes: %s", temp[1])
+                logger.info("error_methods: %s", str(temp[2]))
                 has_error = True
         if has_error:
             logger.info("Mistakes found in sample codes.")
