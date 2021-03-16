@@ -40,8 +40,6 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     float step = context.Attr<float>("step");
     out_tensor->mutable_data<T>(context.GetPlace());
 
-    std::cout << "step: " << step << std::endl;
-
     Tensor step_tensor(x_tensor->type());
     std::vector<T> step_vec;
     step_vec.push_back(static_cast<T>(step));

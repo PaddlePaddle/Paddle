@@ -37,6 +37,7 @@ class TestIncrement(OpTest):
         self.init_dtype()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
+        self.pre_input_id = id(self.inputs['X'])
 
         self.attrs = {"Step": 1}
         self.outputs = {'Out': np.array([2])}
@@ -50,6 +51,8 @@ class TestIncrement(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+        self.post_input_id = id(self.inputs['X'])
+        self.assertEqual(self.pre_input_id, self.post_input_id)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -62,6 +65,7 @@ class TestIncrementFP16(OpTest):
         self.init_dtype()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
+        self.pre_input_id = id(self.inputs['X'])
 
         self.attrs = {"Step": 1}
         self.outputs = {'Out': np.array([2])}
@@ -74,6 +78,8 @@ class TestIncrementFP16(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+        self.post_input_id = id(self.inputs['X'])
+        self.assertEqual(self.pre_input_id, self.post_input_id)
 
 
 if __name__ == '__main__':
