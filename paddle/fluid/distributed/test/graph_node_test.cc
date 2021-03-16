@@ -236,6 +236,11 @@ void RunBrpcPushSparse() {
     ASSERT_EQ(true, s.find(g.first) != s.end());
   }
   vs.clear();
+
+  pull_status = worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 10240001024), 4, vs);
+  pull_status.wait();
+  ASSERT_EQ(0, vs[0].size());
+
   std::vector<distributed::GraphNode> nodes;
   pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
   pull_status.wait();
