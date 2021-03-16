@@ -90,12 +90,14 @@ class MulNPUKernel : public framework::OpKernel<T> {
 
       runner_matmul.Run(stream);
       // reshape [6, 5] => [2, 3, 5]
-      out.Resize(
+      (*out).Resize(
           framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
       out->mutable_data(ctx.GetPlace(), x->type());
       framework::TensorCopy(
           tmp_matmul, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), out);
+      (*out).Resize(
+          framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
     }
   }
 };
@@ -205,7 +207,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
             ctx.template device_context<platform::DeviceContext>(), dx);
       }
       if (dy) {
-        // flatten => x.shape=[6, 4]
+        // flatten x.shape [2,3,4] => [6, 4]
         Tensor tmp_x(x->type());
         int64_t first_dim = x->dims()[0] * x->dims()[1];
         int64_t sec_dim = x->dims()[2];
