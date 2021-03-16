@@ -52,24 +52,19 @@ class ReluGPUFuctor : public BaseGPUFunctor<Type> {
  public:
   // for relu forward and backward when T is double
   template <typename T>
-  __device__ __forceinline__ T Compute(const T* a);
+  __device__ __forceinline__ T Compute(const T* a) {
+#ifdef __CUDA_ARCH__ >= 350 || HIP_VERSION >= 300
+    return __ldg(a) > static_cast<T>(0.0f) ? __ldg(a) : static_cast<T>(0.0f);
+#else
+    return (*a) > static_cast<T>(0.0f) ? (*a) : static_cast<T>(0.0f);
+#endif
+  }
   // when num % vecsize != 0 this func will be used
   template <typename T>
   __device__ __forceinline__ T ComputeReminder(const T a) {
     return a > static_cast<T>(0.0f) ? a : static_cast<T>(0.0f);
   }
 };
-
-template <>
-__device__ __forceinline__ double ReluGPUFuctor<double>::Compute<double>(
-    const double* a) {
-#ifdef __CUDA_ARCH__ >= 350 || HIP_VERSION >= 300
-  return __ldg(a) > static_cast<double>(0.0f) ? __ldg(a)
-                                              : static_cast<double>(0.0f);
-#else
-  return (*a) > static_cast<double>(0.0f) ? (*a) : static_cast<double>(0.0f);
-#endif
-}
 
 template <>
 __device__ __forceinline__ float4
