@@ -106,7 +106,7 @@ class TestMeanNet(unittest.TestCase):
             d = paddle.sqrt(c)
 
             fc_1 = fluid.layers.fc(input=d, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            prediction = fluid.layers.fc(input=fc_1, size=2, act='sigmoid')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.mean(cost)
