@@ -412,10 +412,8 @@ int32_t CommonSparseTable::pull_sparse(float* pull_values,
 
   for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, shard_num, &keys, &offset_bucket,
-         &pull_values]() -> int {
+        [this, shard_id, shard_num, &pull_value, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
-          auto& offsets = offset_bucket[shard_id];
 
           std::vector<int> offsets;
           pull_value.Fission(shard_id, shard_num, &offsets);

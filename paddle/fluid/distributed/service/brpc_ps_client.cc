@@ -855,7 +855,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
       keys_counter.push_back(keys);
     }
 
-    request_buffer.append((void *)&keys_counter.data(),
+    request_buffer.append((void *)keys_counter.data(),
                           sizeof(uint32_t) * keys_counter.size());
 
     if (kv_request_count == 0) {
