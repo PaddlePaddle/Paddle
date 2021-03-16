@@ -200,11 +200,16 @@ GraphNode *GraphTable::find_node(uint64_t id) {
 uint32_t GraphTable::get_thread_pool_index(uint64_t node_id) {
   return node_id % shard_num_per_table % task_pool_size_;
 }
-int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
-                                  char *&buffer, int &actual_size) {
-  return _shards_task_pool[get_thread_pool_index(node_id)]
+int GraphTable::random_sample(uint64_t* node_ids, int sample_size,
+                                  std::vector<char*>& buffers, std::vector<int> &actual_sizes) {
+  size_t node_num = buffers.size();
+  std::vector<std::future<int>> tasks;
+  for (size_t idx = 0; idx < node_num; ++idx){
+    uint64_t node_id = node_ids[idx];
+    char* & buffer = buffers[idx];
+    int& actual_size = actual_sizes[idx];
+    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]
       ->enqueue([&]() -> int {
-
         GraphNode *node = find_node(node_id);
         if (node == NULL) {
           actual_size = 0;
@@ -227,8 +232,12 @@ int32_t GraphTable::random_sample(uint64_t node_id, int sample_size,
           offset += GraphNode::weight_size;
         }
         return 0;
-      })
-      .get();
+      }));
+  }
+  for (size_t idx = 0; idx < node_num; ++idx){
+    tasks[idx].get();
+  }
+  return 0;
 }
 int32_t GraphTable::pull_graph_list(int start, int total_size, char *&buffer,
                                     int &actual_size) {
