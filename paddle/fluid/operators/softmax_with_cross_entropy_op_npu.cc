@@ -1,15 +1,17 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/operators/math/softmax.h"
 #include <memory>
 #include <string>
@@ -32,6 +34,12 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* loss = ctx.Output<Tensor>("Loss");
 
     int cls_num = logits->dims()[1];
+    const int rank = logits->dims().size();
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    std::vector<int> axes;
+    for (auto i = axis; i < logits->dims().size(); ++i) {
+      axes.push_back(i);
+    }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -39,15 +47,22 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
 
     // softmax
     softmax->mutable_data<T>(ctx.GetPlace());
-    auto runner_softmax = NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {});
+    auto runner_softmax =
+        NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
     runner_softmax.Run(stream);
-    // cast label
-    Tensor tmp_labels(labels->type());
-    tmp_labels.Resize(labels->dims());
-    tmp_labels.mutable_data<T>(ctx.GetPlace());
-    auto runner_cast_label = NpuOpRunner("Cast", {*labels}, {tmp_labels},
-                                         {{"dst_type", static_cast<int>(3)}});
-    runner_cast_label.Run(stream);
+
+    // cast label from int64/int32 to int32
+    Tensor tmp_labels(framework::proto::VarType::INT32);
+    if (labels->type() != framework::proto::VarType::INT32) {
+      tmp_labels.Resize(labels->dims());
+      tmp_labels.mutable_data(ctx.GetPlace(), framework::proto::VarType::INT32);
+      auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT32);
+      auto runner_cast_label =
+          NpuOpRunner("Cast", {*labels}, {tmp_labels},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_label.Run(stream);
+      labels = &tmp_labels;
+    }
 
     // on and off
     Tensor on_tensor(framework::proto::VarType::INT32);
@@ -65,41 +80,34 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
     auto runner_onehot =
-        NpuOpRunner("OneHotD", {tmp_labels, on_tensor, off_tensor},
-                    {tmp_onehot}, {{"depth", cls_num}});
+        NpuOpRunner("OneHotD", {*labels, on_tensor, off_tensor}, {tmp_onehot},
+                    {{"axis", -1}, {"depth", cls_num}});
     runner_onehot.Run(stream);
 
-    // to do squeeze, infer shape first
-    PADDLE_ENFORCE_NE(
-        logits->dims()[0], 1,
-        platform::errors::InvalidArgument("logits first dim should not be 1"));
-    PADDLE_ENFORCE_NE(
-        logits->dims()[1], 1,
-        platform::errors::InvalidArgument("logits secend dim should not be 1"));
+    // cast one_hot from int32 to T
+    Tensor cast_onehot(logits->type());
+    cast_onehot.Resize(tmp_onehot.dims());
+    cast_onehot.mutable_data<T>(ctx.GetPlace());
+    auto dst_dtype = ConvertToNpuDtype(logits->type());
+    auto runner_cast_onehot =
+        NpuOpRunner("Cast", {tmp_onehot}, {cast_onehot},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
+    runner_cast_onehot.Run(stream);
 
     // SoftmaxCrossEntropyWithLogits
-    Tensor tmp_scel(logits->type());
-    std::vector<int> dim_vec;
-    dim_vec.push_back(static_cast<int>(logits->dims()[0]));
-    tmp_scel.Resize(framework::make_ddim(dim_vec));
-    tmp_scel.mutable_data<T>(ctx.GetPlace());
-    auto runner_scel = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
-                                   {*logits, tmp_onehot}, {tmp_scel}, {});
-    runner_scel.Run(stream);
+    Tensor backprop(logits->type());
+    backprop.Resize(logits->dims());
+    backprop.mutable_data<T>(ctx.GetPlace());
 
-    // to do cast type
+    loss->mutable_data<T>(ctx.GetPlace());
 
-    // Tensor tmp_cast_loss();
-    // tmp_scel.Resize(framework::make_ddim(logits->dims()[0]));
-    // tmp_scel.mutable_data<T>(ctx.GetPlace());
-    // auto runner_scel = NpuOpRunner("SoftmaxCrossEntropyWithLogits", {logits,
-    // tmp_onehot}, {tmp_scel}, {});
-    // runner_scel.Run(stream);
-    std::vector<int> axes_vec;
-    axes_vec.push_back(static_cast<int>(1));
-    auto runner_unsqueeze =
-        NpuOpRunner("Unsqueeze", {tmp_scel}, {*loss}, {{"axes", axes_vec}});
-    runner_unsqueeze.Run(stream);
+    // SoftmaxCrossEntropyWithLogits requires loss to be of shape [batch_size]
+    auto loss_dims = loss->dims();
+    loss->Resize({loss_dims[0]});
+    auto runner_s = NpuOpRunner("SoftmaxCrossEntropyWithLogits",
+                                {*logits, cast_onehot}, {*loss, backprop}, {});
+    runner_s.Run(stream);
+    loss->Resize(loss_dims);
   }
 };
 
@@ -118,13 +126,18 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    // cast label
-    Tensor tmp_labels(labels->type());
-    tmp_labels.Resize(labels->dims());
-    tmp_labels.mutable_data<T>(ctx.GetPlace());
-    auto runner_cast_label = NpuOpRunner("Cast", {*labels}, {tmp_labels},
-                                         {{"dst_type", static_cast<int>(3)}});
-    runner_cast_label.Run(stream);
+    // cast label from int64/int32 to int32
+    Tensor tmp_labels(framework::proto::VarType::INT32);
+    if (labels->type() != framework::proto::VarType::INT32) {
+      tmp_labels.Resize(labels->dims());
+      tmp_labels.mutable_data(ctx.GetPlace(), framework::proto::VarType::INT32);
+      auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT32);
+      auto runner_cast_label =
+          NpuOpRunner("Cast", {*labels}, {tmp_labels},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_label.Run(stream);
+      labels = &tmp_labels;
+    }
 
     // on and off
     Tensor on_tensor(framework::proto::VarType::INT32);
@@ -138,22 +151,34 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
 
     // one_hot
     Tensor tmp_onehot(on_tensor.type());
-    tmp_onehot.Resize(logits_grad->dims());
+    tmp_onehot.Resize(softmax->dims());
     tmp_onehot.mutable_data<int>(ctx.GetPlace());
 
     auto runner_onehot =
-        NpuOpRunner("OneHotD", {tmp_labels, on_tensor, off_tensor},
-                    {tmp_onehot}, {{"depth", cls_num}});
+        NpuOpRunner("OneHotD", {*labels, on_tensor, off_tensor}, {tmp_onehot},
+                    {{"axis", -1}, {"depth", cls_num}});
     runner_onehot.Run(stream);
+
+    // cast one_hot from int32 to T
+    Tensor cast_onehot(softmax->type());
+    cast_onehot.Resize(tmp_onehot.dims());
+    cast_onehot.mutable_data<T>(ctx.GetPlace());
+    auto dst_dtype = ConvertToNpuDtype(softmax->type());
+    auto runner_cast_onehot =
+        NpuOpRunner("Cast", {tmp_onehot}, {cast_onehot},
+                    {{"dst_type", static_cast<int>(dst_dtype)}});
+    runner_cast_onehot.Run(stream);
 
     // sub
     Tensor tmp_sub(softmax->type());
     tmp_sub.Resize(softmax->dims());
     tmp_sub.mutable_data<T>(ctx.GetPlace());
-    auto runner_sub = NpuOpRunner("Sub", {*softmax, tmp_onehot}, {tmp_sub}, {});
+    auto runner_sub =
+        NpuOpRunner("Sub", {*softmax, cast_onehot}, {tmp_sub}, {});
 
     runner_sub.Run(stream);
     // mul
+    logits_grad->mutable_data<T>(ctx.GetPlace());
     auto runner_mul =
         NpuOpRunner("Mul", {*loss_grad, tmp_sub}, {*logits_grad}, {});
     runner_mul.Run(stream);
@@ -176,4 +201,3 @@ REGISTER_OP_NPU_KERNEL(
         paddle::platform::NPUDeviceContext, float>,
     ops::SoftmaxWithCrossEntropyGradNPUKernel<
         paddle::platform::NPUDeviceContext, paddle::platform::float16>);
-#endif

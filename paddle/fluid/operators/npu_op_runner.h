@@ -82,6 +82,8 @@ class NpuOpRunner {
   aclopAttr *attr_{nullptr};
 };
 
+aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
+
 }  // namespace operators
 }  // namespace paddle
 #endif
