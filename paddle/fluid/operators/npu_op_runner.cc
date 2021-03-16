@@ -266,6 +266,11 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
 
+  if(FLAGS_benchmark){
+    platform::Timer timeline;
+    timeline.Start();
+  }
+
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),
@@ -273,21 +278,9 @@ void NpuOpRunner::Run(aclrtStream stream) {
       stream);
 
   if(FLAGS_benchmark){
-    platform::Timer timeline;
-    timeline.Start();
-    for(int i=0;i<FLAGS_npu_benchmark_steps-1;i++){
-      aclopCompileAndExecute(
-          op_type_.c_str(), input_descs_.size(), input_descs_.data(),
-          input_buffers_.data(), output_descs_.size(), output_descs_.data(),
-          output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
-          stream);
-    }
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
     timeline.Pause();
-    if (FLAGS_npu_benchmark_steps > 1){
-        VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ 
-            << ",steps:" << FLAGS_npu_benchmark_steps << ",time:" << timeline.ElapsedUS()/(1.0 * FLAGS_npu_benchmark_steps);
-    }
+    VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ << ",time:" << timeline.ElapsedUS()/1.0;
   }
 
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
