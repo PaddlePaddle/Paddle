@@ -29,10 +29,11 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
         auto* out = ctx.Output<framework::LoDTensor>("Out");
         std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
         framework::NPUAttributeMap attr_input = {{"perm", axis}};
+        out->mutable_data<T>(ctx.device_context().GetPlace());
         auto runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
         auto stream = ctx.template device_context<paddle::platform::NPUDeviceContext>().stream();
         runner.Run(stream);
-        //ctx.device_context().Wait();
+        //.Wait();
 
     }
 };
