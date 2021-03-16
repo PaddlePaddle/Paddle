@@ -60,29 +60,6 @@ class TestTransposeOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-    # TODO(ascendrc): Test grad op after it is implemented.
-    # def test_check_grad_normal(self):
-    #     self.check_grad_with_place(
-    #         self.place, ['X', 'Y'],
-    #         'Out',
-    #         max_relative_error=0.006,
-    #         check_dygraph=False)
-    #
-    # def test_check_grad_ingore_x(self):
-    #     self.check_grad_with_place(
-    #         self.place, ['Y'],
-    #         'Out',
-    #         no_grad_set=set("X"),
-    #         max_relative_error=0.006,
-    #         check_dygraph=False)
-    #
-    # def test_check_grad_ingore_y(self):
-    #     self.check_grad_with_place(
-    #         self.place, ['X'],
-    #         'Out',
-    #         no_grad_set=set("Y"),
-    #         max_relative_error=0.006,check_dygraph=False)
-
 
 if __name__ == '__main__':
     unittest.main()

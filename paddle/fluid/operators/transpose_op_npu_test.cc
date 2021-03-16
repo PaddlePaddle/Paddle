@@ -45,16 +45,15 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto* out_t = out->GetMutable<f::LoDTensor>();
   auto place = ctx.GetPlace();
 
-  int dim0=2;
-  int dim1=3;
-  TensorFromVector(std::vector<T>({0,1,2,3,4,5}), ctx, x_t);
+  int dim0 = 2;
+  int dim1 = 3;
+  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, x_t);
   ctx.Wait();
-  x_t->Resize({dim0, dim1}); 
+  x_t->Resize({dim0, dim1});
   out_t->Resize({dim0, dim1});
   ctx.Wait();
   out_t->mutable_data<T>(place);
   ctx.Wait();
-  
   f::AttributeMap attrs = {
      {"axis", std::vector<int>({1, 0})},
      {"data_format", std::string("AnyLayout")}
@@ -63,10 +62,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
                               {{"Out", {"Out"}}}, attrs);
   ctx.Wait();
   op->Run(*scope, place);
-  ctx.Wait();  
+  ctx.Wait();
   std::vector<T> out_v;
   TensorToVector(*out_t, ctx, &out_v);
-  ctx.Wait();  
+  ctx.Wait();
 
   EXPECT_EQ(out_t->numel(), dim0 * dim1);
   EXPECT_EQ(out_v[0], 0);
@@ -90,34 +89,29 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   auto* x_t = x->GetMutable<f::LoDTensor>();
   auto* out_grad_t = out_grad->GetMutable<f::LoDTensor>();
   auto* out_t = out->GetMutable<f::LoDTensor>();
-  int dim0=2;
-  int dim1=3;
+  int dim0 = 2;
+  int dim1 = 3;
   auto place = ctx.GetPlace();
 
-  TensorFromVector(std::vector<T>({0,1,2,3,4,5}), ctx, out_grad_t);
-  TensorFromVector(std::vector<T>({0,1,2,3,4,5}), ctx, x_t);
+  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, out_grad_t);
+  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, x_t);
   ctx.Wait();
-  x_grad_t->Resize({dim0, dim1}); 
-  x_t->Resize({dim0, dim1}); 
+  x_grad_t->Resize({dim0, dim1});
+  x_t->Resize({dim0, dim1});
   out_grad_t->Resize({dim0, dim1});
   out_t->Resize({dim0, dim1});
 
-  //out_grad_t->mutable_data<T>(place);
   x_grad_t->mutable_data<T>(place);
   out_t->mutable_data<T>(place);
   ctx.Wait();
-  
   f::AttributeMap attrs = {
      {"axis", std::vector<int>({1, 0})},
      {"data_format", std::string("AnyLayout")}
   };
-  /*
-     {"mkldnn_data_type", "float32"},
-     {"use_mkldnn", false},
-     {"use_quantizer", false},
-  */
-  auto op = f::OpRegistry::CreateOp("transpose_grad", {{"Out@GRAD", {"Out@GRAD"}}, {"X", {"X"}}, {"Out", {"Out"}}},
-                              {{"X@GRAD", {"X@GRAD"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "transpose_grad", 
+      {{"Out@GRAD", {"Out@GRAD"}}, {"X", {"X"}}, {"Out", {"Out"}}},
+      {{"X@GRAD", {"X@GRAD"}}}, attrs);
   op->Run(*scope, place);
   ctx.Wait();  
   std::vector<T> out_v;
