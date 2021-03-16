@@ -1017,8 +1017,8 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+      std::string engine_name = BOOST_GET_CONST(
+          std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
@@ -1195,20 +1195,6 @@ USE_TRT_CONVERTER(clip);
 
 namespace paddle_infer {
 
-void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
-
-std::vector<int> Tensor::shape() const { return tensor_->shape(); }
-
-void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  return tensor_->SetLoD(x);
-}
-
-std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
-
-const std::string &Tensor::name() const { return tensor_->name(); }
-
-DataType Tensor::type() const { return tensor_->type(); }
-
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
@@ -1221,9 +1207,7 @@ std::vector<std::string> Predictor::GetInputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetInputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetInputTensor(name);
 }
 
 std::vector<std::string> Predictor::GetOutputNames() {
@@ -1231,9 +1215,7 @@ std::vector<std::string> Predictor::GetOutputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetOutputTensor(name);
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }

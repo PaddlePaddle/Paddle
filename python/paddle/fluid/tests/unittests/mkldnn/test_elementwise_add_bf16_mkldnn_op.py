@@ -45,13 +45,13 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
-    # elementwise_add grad is just passing upper gradients to either X or Y or both
+    # elementwise_add grad (no braodcasting) is just passing upper gradients to either X or Y or both
     def test_check_grad_normal(self):
         self.check_grad_with_place(
             core.CPUPlace(), ["X", "Y"],
             "Out",
             check_dygraph=False,
-            user_defined_grads=[self.x_bf16, self.x_bf16],
+            user_defined_grads=[self.x, self.x],
             user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ingore_x(self):
@@ -59,7 +59,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             core.CPUPlace(), ["Y"],
             "Out",
             check_dygraph=False,
-            user_defined_grads=[self.y_bf16],
+            user_defined_grads=[self.y],
             user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ingore_y(self):
@@ -67,7 +67,40 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             core.CPUPlace(), ["X"],
             "Out",
             check_dygraph=False,
-            user_defined_grads=[self.x_bf16],
+            user_defined_grads=[self.x],
+            user_defined_grad_outputs=[self.x_bf16])
+
+
+class TestElementwiseAddBroadCastingBf16MklDNNOp(
+        TestElementwiseAddBf16MklDNNOp):
+    def generate_data(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(np.float32)
+        self.y = np.random.uniform(1, 2, [100]).astype(np.float32)
+        self.out = np.add(self.x, self.y)
+
+    # Compute partial sums along all axes but last one
+    def compute_reduced_gradients(self, out_grads):
+        part_sum = np.add.reduceat(out_grads, [0], axis=0)
+        part_sum = np.add.reduceat(part_sum, [0], axis=1)
+        part_sum = np.add.reduceat(part_sum, [0], axis=2)
+        return part_sum.flatten()
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[
+                self.x, self.compute_reduced_gradients(self.x)
+            ],
+            user_defined_grad_outputs=[self.x_bf16])
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            check_dygraph=False,
+            user_defined_grads=[self.compute_reduced_gradients(self.x)],
             user_defined_grad_outputs=[self.x_bf16])
 
 
