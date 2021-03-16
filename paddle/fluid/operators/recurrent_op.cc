@@ -322,8 +322,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
   auto *program = block->Program();
   auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+      *program, block->ID(), 
+      Attr<std::vector<std::string>>(kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
+      true);
 
   for (size_t step_id = 0; step_id < seq_len; ++step_id) {
     size_t seq_offset = reverse ? step_id : seq_len - step_id - 1;
