@@ -83,6 +83,11 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       Tensor out_grad_tmp(out_grad->type());
       out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
+      framework::TensorCopy(
+          *out_grad, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &out_grad_tmp);
+      out_grad_tmp.Resize(out_dims);
 
       auto runner = NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
                                 {{"shape", framework::vectorize(x->dims())}});
