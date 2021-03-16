@@ -90,7 +90,9 @@ class MulNPUKernel : public framework::OpKernel<T> {
 
       runner_matmul.Run(stream);
       // reshape [6, 5] => [2, 3, 5]
-      out->mutable_data(ctx.GetPlace(), out->type());
+      out.Resize(
+          framework::make_ddim({x->dims()[0], x->dims()[1], y->dims()[1]}));
+      out->mutable_data(ctx.GetPlace(), x->type());
       framework::TensorCopy(
           tmp_matmul, ctx.GetPlace(),
           ctx.template device_context<platform::DeviceContext>(), out);
