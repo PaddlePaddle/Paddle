@@ -771,19 +771,24 @@ void RegisterOperatorWithMetaInfo(
       // TODO(chenweihang): support set grad op infershape func if needed
       for (auto& out_name : grad_op_outputs) {
         auto fwd_name = detail::NoGrad(out_name);
-        if (ctx->HasInput(fwd_name)) {
+        if (detail::IsDuplicableVar(fwd_name)) {
+          // Duplicable forward var must as backward input
           ctx->ShareDim(fwd_name, out_name);
         } else {
-          PADDLE_ENFORCE_EQ(
-              grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
-              true,
-              platform::errors::Unavailable(
-                  "Custom grad operator infershape error. "
-                  "If a custom grad operator contains only one input and "
-                  "only one output, the input shape will be directly set to "
-                  "the output shape. Otherwise, Please set the forward input "
-                  "as the grad operator's input."));
-          ctx->ShareDim(grad_op_inputs[0], out_name);
+          if (ctx->HasInput(fwd_name)) {
+            ctx->ShareDim(fwd_name, out_name);
+          } else {
+            PADDLE_ENFORCE_EQ(
+                grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
+                true,
+                platform::errors::Unavailable(
+                    "Custom grad operator infershape error. "
+                    "If a custom grad operator contains only one input and "
+                    "only one output, the input shape will be directly set to "
+                    "the output shape. Otherwise, Please set the forward input "
+                    "as the grad operator's input."));
+            ctx->ShareDim(grad_op_inputs[0], out_name);
+          }
         }
       }
     };
