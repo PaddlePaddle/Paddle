@@ -89,34 +89,11 @@ class MulNPUKernel : public framework::OpKernel<T> {
                       {{"transpose_x1", false}, {"transpose_x2", false}});
 
       runner_matmul.Run(stream);
-      // transpose [6, 5] => [5, 6]
-      Tensor tmp_trans(x->type());
-      tmp_trans.Resize(framework::make_ddim({y->dims()[1], first_dim}));
-      tmp_trans.mutable_data<T>(ctx.GetPlace());
-      std::vector<int64_t> vec_trans = {1, 0};
-      auto runner_trans = NpuOpRunner("TransposeD", {tmp_matmul}, {tmp_trans},
-                                      {{"perm", vec_trans}});
-      runner_trans.Run(stream);
-      // reshape [5, 6] => [5, 2, 3]
-      Tensor tmp_re(x->type());
-      int64_t re_first_dim = y->dims()[1];
-      int64_t re_sec_dim = x->dims()[0];
-      int64_t re_third_dim = x->dims()[1];
-      tmp_re.Resize(
-          framework::make_ddim({re_first_dim, re_sec_dim, re_third_dim}));
-      tmp_re.mutable_data<T>(ctx.GetPlace());
+      // reshape [6, 5] => [2, 3, 5]
+      out->mutable_data(ctx.GetPlace(), out->type());
       framework::TensorCopy(
-          tmp_trans, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &tmp_re);
-      tmp_re.Resize(
-          framework::make_ddim({re_first_dim, re_sec_dim, re_third_dim}));
-
-      // transpose [5, 2, 3] => [2, 3, 5]
-      out->mutable_data<T>(ctx.GetPlace());
-      std::vector<int64_t> vec_trans_final = {1, 2, 0};
-      auto runner_trans_final = NpuOpRunner("TransposeD", {tmp_re}, {*out},
-                                            {{"perm", vec_trans_final}});
-      runner_trans_final.Run(stream);
+          tmp_matmul, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), out);
     }
   }
 };
@@ -200,17 +177,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "now only support x_num_col_dims == 2: but got %d",
                             x_num_col_dims));
-      // flatten => x.shape=[6, 4]
-      Tensor tmp_x(x->type());
-      int64_t first_dim = x->dims()[0] * x->dims()[1];
-      int64_t sec_dim = x->dims()[2];
-      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
-      tmp_x.mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(
-          *x, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &tmp_x);
-      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
-      // flatten dout
+      // tmp_dout both used by dx and dy
       Tensor tmp_dout(x->type());
       int64_t dout_first_dim = dout->dims()[0] * dout->dims()[1];
       int64_t dout_sec_dim = dout->dims()[2];
@@ -221,33 +188,33 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<platform::DeviceContext>(), &tmp_dout);
       tmp_dout.Resize(framework::make_ddim({dout_first_dim, dout_sec_dim}));
 
-      // unsqueeze => x.shape=[1, 4, 5]
-      Tensor tmp_y(y->type());
-      int64_t first_dim_y = 1;
-      int64_t sec_dim_y = y->dims()[0];
-      int64_t third_dim_y = y->dims()[1];
-      tmp_y.Resize(framework::make_ddim({first_dim_y, sec_dim_y, third_dim_y}));
-      tmp_y.mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(
-          *y, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &tmp_y);
-      tmp_y.Resize(framework::make_ddim({first_dim_y, sec_dim_y, third_dim_y}));
-      // TileWithAxis
-      Tensor tmp_tile(x->type());
-      tmp_tile.Resize(
-          framework::make_ddim({dout->dims()[0], y->dims()[0], y->dims()[1]}));
-      tmp_tile.mutable_data<T>(ctx.GetPlace());
-      auto runner_tile = NpuOpRunner("TileWithAxis", {tmp_y}, {tmp_tile},
-                                     {{"axis", 0}, {"tiles", dout->dims()[0]}});
-      runner_tile.Run(stream);
       if (dx) {
-        dx->mutable_data<T>(ctx.GetPlace());
-        auto runner_dx = NpuOpRunner("BatchMatMul", {*dout, tmp_tile}, {*dx},
-                                     {{"adj_x1", false}, {"adj_x2", true}});
-
-        runner_dx.Run(stream);
+        // tmp_dout * y [6,5] * [4,5] => [6, 4]
+        Tensor tmp_matmul(y->type());
+        tmp_matmul.Resize(framework::make_ddim({dout_first_dim, y->dims()[0]}));
+        tmp_matmul.mutable_data<T>(ctx.GetPlace());
+        auto runner_matmul =
+            NpuOpRunner("MatMul", {tmp_dout, *y}, {tmp_matmul},
+                        {{"transpose_x1", false}, {"transpose_x2", true}});
+        runner_matmul.Run(stream);
+        // reshape [6,4] => [2, 3, 4]
+        dx->mutable_data(ctx.GetPlace(), x->type());
+        framework::TensorCopy(
+            tmp_matmul, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dx);
       }
       if (dy) {
+        // flatten => x.shape=[6, 4]
+        Tensor tmp_x(x->type());
+        int64_t first_dim = x->dims()[0] * x->dims()[1];
+        int64_t sec_dim = x->dims()[2];
+        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        tmp_x.mutable_data<T>(ctx.GetPlace());
+        framework::TensorCopy(
+            *x, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), &tmp_x);
+        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        // mamtul [6,4] [6,5] =>[4,5]
         dy->mutable_data<T>(ctx.GetPlace());
         auto runner_dy =
             NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
