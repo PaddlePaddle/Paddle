@@ -48,14 +48,14 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
-    output->mutable_data<paddle::platform::float16>(ctx.GetPlace());
+    output->mutable_data<T>(ctx.GetPlace());
     indices->mutable_data<int>(ctx.GetPlace());
 
     // prepare assit
     auto dim = input->dims().size();
     framework::Tensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
-    assist_seq_tensor.mutable_data<paddle::platform::float16>(ctx.GetPlace());
+    assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
     gen_assist_seq(&assist_seq_tensor, dim, ctx);
 
     framework::NPUAttributeMap attr_input = {{"sorted", "true"},
@@ -82,8 +82,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+// Ascend Op TopKD only support input float 16 dtype
 REGISTER_OP_NPU_KERNEL(
     top_k,
     ops::TopkNPUKernel<paddle::platform::NPUDeviceContext,
                                   paddle::platform::float16>);
-
