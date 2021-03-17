@@ -32,7 +32,7 @@ SEED = 2021
 class TestSoftmax(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(0)
+        self.place = paddle.NPUPlace(4)
         self.op_type = "softmax"
         self.init_dtype()
 
@@ -82,12 +82,8 @@ class TestSoftmaxNet(unittest.TestCase):
             # 4 x 2
             prediction = fluid.layers.fc(input=fc_1, size=2)
 
-            # 2 x 4
-            prediction_t = fluid.layers.transpose(prediction, [0, 1])
-            prob_t = fluid.layers.softmax(prediction_t, axis=0)
-
             # 4 x 2
-            prob = fluid.layers.transpose(prob_t, [0, 1])
+            prob = fluid.layers.softmax(prediction, axis=1)
 
             cost = fluid.layers.cross_entropy(input=prob, label=label)
             loss = fluid.layers.mean(cost)
@@ -95,7 +91,7 @@ class TestSoftmaxNet(unittest.TestCase):
             sgd.minimize(loss)
 
         if run_npu:
-            place = paddle.NPUPlace(0)
+            place = paddle.NPUPlace(4)
         else:
             place = paddle.CPUPlace()
 
@@ -121,10 +117,9 @@ class TestSoftmaxNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-2))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-2))
 
 
 if __name__ == '__main__':
     unittest.main()
-
