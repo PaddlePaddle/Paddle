@@ -560,6 +560,23 @@ void Reducer::PrepareForBackward(
               << "] is not used";
     }
   }
+
+  if (var_index_map_.empty()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "All parameters are involved in the backward pass. "
+           "It is recommended to set find_unused_parameters to False "
+           "to improve performance. However, if unused_parameters "
+           "appears in subsequent iterative training, then an error "
+           "will occur. Please make it clear that in the subsequent "
+           "training, there will be no parameters that are not used "
+           "in the backward pass, and then set find_unused_parameters";
+  } else if (var_index_map_.size() == vars_.size()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "There is no parameter in the device involved "
+           "in the backward calculation. If there are "
+           "parameters on other devices involved in the "
+           "backward, then a serious error will occur here.";
+  }
 }
 
 // Add hook function to each leaf node. When the gradient of a leaf node is
@@ -631,7 +648,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         "again at a later time (e.g. after the forward function, "
         "the loss calculation uses the unused "
         "paramters of the forward and trigger backward), "
-        "its gradient will be wrong .";
+        "its gradient will be wrong.";
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_, true,
                       platform::errors::PreconditionNotMet(error_info));
@@ -644,6 +661,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     auto inside_group_index = var_locator.inside_group_index;
     auto length = group.length_[inside_group_index];
     auto &group_tensor = group.dense_tensors_[inside_group_index];
+
     if (is_used_var) {
       auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
       auto tensor =
@@ -663,17 +681,24 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       }
 #else
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-      operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+      if (HasGrad(var_index)) {
+        auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+        auto tensor =
+            var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+        TensorCopy(*tensor, place_, *dev_ctx, &group_tensor);
+      } else {
+        operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
+      }
 #endif
     }
   } else {
     // process sparse group
-    if (is_used_var) {
-      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-      group.sparse_contents_ = var_warpper->MutableVar();
-    } else {
-      group.sparse_contents_ = nullptr;
-    }
+    PADDLE_ENFORCE_EQ(HasGrad(var_index), true,
+                      platform::errors::PreconditionNotMet(
+                          "The sparse parameter[%d][%s] must have a gradient",
+                          var_index, vars_[var_index]->Name()));
+    auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+    group.sparse_contents_ = var_warpper->MutableVar();
   }
 
   if (--group.pending_ == 0) {
@@ -761,16 +786,11 @@ void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
   // dev_context is used to select different stream
   auto &dev_context = *parallel_ctx_->GetDeviceContext(run_order);
   if (group.is_sparse_) {
-    if (group.sparse_contents_ != nullptr) {
-      VLOG(3) << "sparse group [" << curr_group_index
-              << "] start allreduce in ring[" << run_order << "]";
-      group.DivNRanks(dev_context, nranks_);
-      parallel_ctx_->AllReduceByStream(
-          *group.sparse_contents_, group.sparse_contents_, run_order, false);
-    } else {
-      VLOG(3) << "The sparse group[" << curr_group_index
-              << "] has no var to allreduce";
-    }
+    VLOG(3) << "sparse group [" << curr_group_index
+            << "] start allreduce in ring[" << run_order << "]";
+    group.DivNRanks(dev_context, nranks_);
+    parallel_ctx_->AllReduceByStream(*group.sparse_contents_,
+                                     group.sparse_contents_, run_order, false);
   } else {
     VLOG(3) << "dense group [" << curr_group_index
             << "] start allreduce in ring[" << run_order << "]";
@@ -829,10 +849,14 @@ void Reducer::ProcessUnusedDenseVars() {
           << string::join_strings(local_used_vars_, ',');
   for (size_t var_index = 0; var_index < local_used_vars_.size(); ++var_index) {
     bool global_unused = (local_used_vars_[var_index] == 0);
-    bool has_grad = vars_[var_index]->HasGradVar();
+    bool has_grad = HasGrad(var_index);
+
     // global used but local unused, set grad
+    VLOG(0) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
+            << "global_unused:" << global_unused << "  has_grad: " << has_grad;
     if (!global_unused) {
       if (!has_grad) {
+        VLOG(0) << "start process unusedvar";
         // 1. source var base
         const auto &var_locator = variable_locators_[var_index];
         auto group_index = var_locator.group_index;
@@ -863,6 +887,11 @@ void Reducer::ProcessUnusedDenseVars() {
   }
 }
 
+bool Reducer::HasGrad(size_t var_index) {
+  const auto grad_var = vars_[var_index]->GradVarBase();
+  return (grad_var && grad_var->Var().IsInitialized());
+}
+
 void Reducer::FinalizeBackward() {
   groups_need_finalize_ = false;
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -887,11 +916,12 @@ void Reducer::FinalizeBackward() {
   if (find_unused_vars_) {
     ProcessUnusedDenseVars();
     // Initialize local used vars
+    VLOG(0) << "ProcessUnusedDenseVars is finished.";
     local_used_vars_.clear();
     local_used_vars_.resize(vars_.size(), 0);
   }
 
-  VLOG(3) << "In the batch, Reducer is finished...";
+  VLOG(0) << "In the batch, Reducer is finished...";
 }
 
 // According to the size of each parameter, it is allocated to different groups.

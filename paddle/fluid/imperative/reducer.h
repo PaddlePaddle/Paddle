@@ -167,6 +167,8 @@ class Reducer {
 
   void ProcessUnusedDenseVars();
 
+  bool HasGrad(size_t var_index);
+
  private:
   std::vector<std::shared_ptr<imperative::VarBase>> vars_;
   std::vector<std::vector<size_t>> group_indices_;
