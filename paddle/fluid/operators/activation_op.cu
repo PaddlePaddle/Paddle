@@ -109,9 +109,10 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<Type> {
 };
 
 template <>
+template <>
 __device__ __forceinline__ double ReluGradGPUFunctor<double>::Compute<double>(
     const double* a, const double* b) {
-#ifdef __CUDA_ARCH__ >= 350 || HIP_VERSION >= 300
+#ifdef __CUDA_ARCH__ >= 530 || CUDA_VERSION >= 300
   return __ldg(a) > static_cast<double>(0.0f) ? __ldg(b)
                                               : static_cast<double>(0.0f);
 #else
@@ -120,12 +121,14 @@ __device__ __forceinline__ double ReluGradGPUFunctor<double>::Compute<double>(
 }
 
 template <>
+template <>
 __device__ __forceinline__ float4
 ReluGradGPUFunctor<float>::Compute<float4>(const float4* a, const float4* b) {
   return make_float4((a->x > 0.0f) * (b->x), (a->y > 0.0f) * (b->y),
                      (a->z > 0.0f) * (b->z), (a->w > 0.0f) * (b->w));
 }
 
+template <>
 template <>
 __device__ __forceinline__ __half2
 ReluGradGPUFunctor<float16>::Compute<__half2>(const __half2* a,
@@ -203,7 +206,6 @@ class ActivationGPUKernel
                                           static_cast<size_t>(num * sizeof(T)));
 
     using VecType = typename GetVecType<T>::type;
-    // int vecsize = typename GetVecType<T>::vecsize;
     int vecsize = sizeof(VecType) / sizeof(T);
     int block = 512;
     int grid = (num + block - 1) / block;
@@ -238,15 +240,14 @@ class ActivationGradGPUKernel
     auto* forward_data = dout_data;
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
       forward_data = out->data<T>();
-      // only out
+      // Only need forward output Out
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
-      // only input
+      // Only need forward input X
       forward_data = x->data<T>();
     }
 
     using VecType = typename GetVecType<T>::type;
-    // int vecsize = typename GetVecType<T>::vecsize;
     int vecsize = sizeof(VecType) / sizeof(T);
     int block = 512;
     int grid = (numel + block - 1) / block;
