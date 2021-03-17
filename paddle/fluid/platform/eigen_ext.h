@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -26,6 +27,7 @@ namespace Eigen {
 using bfloat16 = paddle::platform::bfloat16;
 using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
+using float16 = paddle::platform::float16;
 
 template <typename T>
 struct NumTraits;
@@ -101,6 +103,33 @@ struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
   }
   EIGEN_DEVICE_FUNC
   static inline int digits10() { return NumTraits<Real>::digits10(); }
+};
+
+template <>
+struct NumTraits<float16> : GenericNumTraits<float16> {
+  enum {
+    IsSigned = true,
+    IsInteger = false,
+    IsComplex = false,
+    RequireInitialization = false
+  };
+
+  HOSTDEVICE static inline float16 epsilon() {
+    return paddle::platform::raw_uint16_to_float16(0x0800);
+  }
+  HOSTDEVICE static inline float16 dummy_precision() { return float16(1e-2f); }
+  HOSTDEVICE static inline float16 highest() {
+    return paddle::platform::raw_uint16_to_float16(0x7bff);
+  }
+  HOSTDEVICE static inline float16 lowest() {
+    return paddle::platform::raw_uint16_to_float16(0xfbff);
+  }
+  HOSTDEVICE static inline float16 infinity() {
+    return paddle::platform::raw_uint16_to_float16(0x7c00);
+  }
+  HOSTDEVICE static inline float16 quiet_NaN() {
+    return paddle::platform::raw_uint16_to_float16(0x7c01);
+  }
 };
 
 namespace numext {
@@ -300,6 +329,73 @@ HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
 template <>
 HOSTDEVICE inline double abs(const complex128& a) {
   return paddle::platform::abs(a);
+}
+
+//////////// float16 methods /////////////
+
+template <>
+HOSTDEVICE inline bool(isnan)(const float16& a) {
+  return (paddle::platform::isnan)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isinf)(const float16& a) {
+  return (paddle::platform::isinf)(a);
+}
+
+template <>
+HOSTDEVICE inline bool(isfinite)(const float16& a) {
+  return (paddle::platform::isfinite)(a);
+}
+
+template <>
+HOSTDEVICE inline float16 exp(const float16& a) {
+  return float16(::expf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 erf(const float16& a) {
+  return float16(::erff(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 log(const float16& a) {
+  return float16(::logf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 tanh(const float16& a) {
+  return float16(::tanhf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 sqrt(const float16& a) {
+  return float16(::sqrtf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 ceil(const float16& a) {
+  return float16(::ceilf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 floor(const float16& a) {
+  return float16(::floorf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 round(const float16& a) {
+  return float16(::roundf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 pow(const float16& a, const float16& b) {
+  return float16(::powf(static_cast<float>(a), static_cast<float>(b)));
+}
+
+template <>
+HOSTDEVICE inline float16 abs(const float16& a) {
+  return float16(::fabs(static_cast<float>(a)));
 }
 
 }  // namespace numext
