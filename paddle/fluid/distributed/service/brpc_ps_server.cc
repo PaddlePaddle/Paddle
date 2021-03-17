@@ -356,9 +356,15 @@ int32_t BrpcPsService::pull_sparse(Table *table,
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
   auto dim = table->value_accesor()->select_dim();
 
-  thread_local std::string req_buffer = cntl->request_attachment().to_string();
+  thread_local std::string req_buffer;
+  req_buffer.reserve(req_buffer_size);
+
+  const void *data = cntl->request_attachment().fetch(
+      const_cast<char *>(req_buffer.data()), req_buffer_size);
+
   auto value = PullSparseValue(num, dim);
-  value.DeserializeFromBytes(req_buffer);
+
+  value.DeserializeFromBytes(const_cast<void *>(data));
 
   std::vector<float> res_data;
   res_data.resize(num * dim);

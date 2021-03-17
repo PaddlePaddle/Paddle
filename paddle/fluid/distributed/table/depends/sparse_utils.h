@@ -40,14 +40,13 @@ struct PullSparseValue {
     frequencies_ = frequencies.data();
   }
 
-  void DeserializeFromBytes(std::string& buffers) {
+  void DeserializeFromBytes(void* bytes) {
     /*
     |---isTraining--------------|
     |---8*{num}B(keysData)------|
     |---4*{num}B(Frequencies)---|
     */
-
-    auto* begin = reinterpret_cast<char*>(&buffers[0]);
+    auto* begin = reinterpret_cast<char*>(bytes);
     is_training_ = reinterpret_cast<bool*>(begin)[0];
     feasigns_ = reinterpret_cast<uint64_t*>(begin + sizeof(bool));
     frequencies_ = reinterpret_cast<uint32_t*>(begin + sizeof(bool) +
