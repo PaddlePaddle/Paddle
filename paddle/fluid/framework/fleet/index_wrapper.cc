@@ -69,44 +69,45 @@ int TreeIndex::load(std::string filename) {
   return 0;
 }
 
-std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level, bool ret_code) {
+std::vector<Node*> TreeIndex::get_nodes_given_level(int level) {
   uint64_t level_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   uint64_t level_offset = level_num - 1;
 
-  std::vector<uint64_t> res;
+  std::vector<Node*> res;
   res.reserve(level_num);
   for (uint64_t i = 0; i < level_num; i++) {
     auto code = level_offset + i;
     if (data_.find(code) != data_.end()) {
-      res.push_back(code);
+      res.push_back(&(data_[code]));
     }
   }
-  if (ret_code == false) {
-    for (size_t i = 0; i < res.size(); i++) {
-      res[i] = data_[res[i]].id();
-    }
-  }
+  
   return res;
 }
 
-std::vector<uint64_t> TreeIndex::get_travel_path(uint64_t id, bool ret_code, int start_level) {
-  std::vector<uint64_t> res;
+std::vector<Node*> TreeIndex::get_travel_path(uint64_t id, int start_level) {
+  std::vector<Node*> res;
   if (id_codes_map_.find(id) == id_codes_map_.end()) {
     return res;
   }
   res.reserve(meta_.height());
   auto code = id_codes_map_[id];
-  res.push_back(code);
   int level = meta_.height() - 1;
 
-  while (--level >= start_level) {
+  while (level >= start_level) {
+    res.push_back(&(data_[code]));
     code = (code - 1) / meta_.branch();
-    res.push_back(code);
+    level --;
   }
-  if (ret_code == false) {
-    for (size_t i = 0; i < res.size(); i++) {
-      res[i] = data_[res[i]].id();
-    }
+ 
+  return res;
+}
+
+std::vector<std::vector<Node*>> TreeIndex::batch_get_travel_path(std::vector<uint64_t>& ids, int start_level) {
+  std::vector<std::vector<Node*>> res;
+  res.reserve(ids.size());
+  for (size_t i = 0; i < ids.size(); i++) {
+    res.push_back(get_travel_path(ids[i], start_level));
   }
   return res;
 }

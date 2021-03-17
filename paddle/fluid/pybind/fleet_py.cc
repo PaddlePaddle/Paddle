@@ -156,6 +156,15 @@ void BindHeterClient(py::module* m) {
 
 using paddle::framework::TreeIndex;
 using paddle::framework::IndexWrapper;
+using paddle::framework::Node;
+
+void BindIndexNode(py::module* m) {
+  py::class_<Node>(*m, "Node")
+      .def(py::init<>())
+      .def("id", [](Node& self){ return self.id(); })
+      .def("is_leaf", [](Node& self){ return self.is_leaf(); })
+      .def("probability", [](Node& self){ return self.probability(); });  
+}
 
 void BindTreeIndex(py::module* m) {
   py::class_<TreeIndex>(*m, "TreeIndex")
@@ -163,11 +172,11 @@ void BindTreeIndex(py::module* m) {
       .def("height", [](TreeIndex& self){ return self.height(); })
       .def("branch", [](TreeIndex& self){ return self.branch(); })
       .def("total_node_nums", [](TreeIndex& self) { return self.total_node_nums(); })
-      .def("get_nodes_given_level", [](TreeIndex& self, int level, bool ret_code) {
-           return self.get_nodes_given_level(level, ret_code);
+      .def("get_nodes_given_level", [](TreeIndex& self, int level) {
+           return self.get_nodes_given_level(level);
       })
       .def("get_travel_path", [](TreeIndex& self, int id, bool ret_code, int start_level) {
-           return self.get_travel_path(id, ret_code, start_level);
+           return self.get_travel_path(id, start_level);
       });
 }
 
@@ -187,7 +196,7 @@ using paddle::framework::LayerWiseSampler;
 using paddle::framework::BeamSearchSampler;
 
 void BindIndexSampler(py::module* m) {
-   py::class_<Sampler, std::shared_ptr<Sampler>>(*m, "Sampler")
+   py::class_<Sampler, std::shared_ptr<Sampler>>(*m, "IndexSampler")
       .def(py::init([](const std::string& mode, const std::string& name){
            if (mode == "by_layerwise") {
                 return Sampler::Init<LayerWiseSampler>(name);

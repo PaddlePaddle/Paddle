@@ -40,8 +40,11 @@ class TreeIndex : public Index {
   // std::vector<uint64_t> get_itemset_given_ancestor(relation, ancestor);
   // std::vector<uint64_t> get_children_given_ancestor_and_level();
   
-  std::vector<uint64_t> get_nodes_given_level(int level, bool ret_code=true);
-  std::vector<uint64_t> get_travel_path(uint64_t id, bool ret_code=true, int start_level=-1);
+  std::vector<Node*> get_nodes_given_level(int level);
+  std::vector<Node*> get_travel_path(uint64_t id, int start_level=-1);
+
+  // batch operation
+  std::vector<std::vector<Node*>> batch_get_travel_path(std::vector<uint64_t>& ids, int start_level=-1);
   
   int load(std::string path);
   std::unordered_map<uint64_t, Node> data_;
