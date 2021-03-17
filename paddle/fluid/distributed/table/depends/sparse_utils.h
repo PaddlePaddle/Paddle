@@ -42,14 +42,16 @@ struct PullSparseValue {
 
   void DeserializeFromBytes(std::string& buffers) {
     /*
-    |---isTraining---------------|
-    |---keysData-----------------|
-    |---8*{num}B(Gradient)-------|
-    |---4*{num}B(Frequencies)----|
+    |---isTraining--------------|
+    |---8*{num}B(keysData)------|
+    |---4*{num}B(Frequencies)---|
     */
-    is_training_ = static_cast<bool>(buffers[0]);
-    feasigns_ = buffers.data() + sizeof(bool);
-    frequencies_ = feasigns_ + sizeof(uint64_t) * numel_;
+
+    auto* begin = reinterpret_cast<char*>(&buffers[0]);
+    is_training_ = reinterpret_cast<bool*>(begin)[0];
+    feasigns_ = reinterpret_cast<uint64_t*>(begin + sizeof(bool));
+    frequencies_ = reinterpret_cast<uint32_t*>(begin + sizeof(bool) +
+                                               sizeof(uint64_t) * numel_);
   }
 
   void Fission(const int shard_id, const int shard_num,
