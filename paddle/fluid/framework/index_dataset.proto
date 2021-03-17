@@ -1,0 +1,18 @@
+syntax = "proto2";
+package paddle.framework;
+
+message Node {
+    required uint64 id = 1;
+    required bool is_leaf = 2;
+    required float probability = 3;
+}
+
+message TreeMeta {
+   required int32 height = 1;
+   required int32 branch = 2; 
+}
+
+message KVItem {
+    required bytes key = 1;
+    required bytes value = 2;
+}

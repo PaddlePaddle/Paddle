@@ -33,6 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/framework/fleet/index_wrapper.h"
+#include "paddle/fluid/framework/fleet/index_sampler.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
@@ -150,6 +152,52 @@ void BindHeterClient(py::module* m) {
             return HeterClient::GetInstance(endpoint, trainer_id);
           }))
       .def("stop", &HeterClient::Stop);
+}
+
+using paddle::framework::TreeIndex;
+using paddle::framework::IndexWrapper;
+
+void BindTreeIndex(py::module* m) {
+  py::class_<TreeIndex>(*m, "TreeIndex")
+      .def(py::init<>())
+      .def("height", [](TreeIndex& self){ return self.height(); })
+      .def("branch", [](TreeIndex& self){ return self.branch(); })
+      .def("total_node_nums", [](TreeIndex& self) { return self.total_node_nums(); })
+      .def("get_nodes_given_level", [](TreeIndex& self, int level, bool ret_code) {
+           return self.get_nodes_given_level(level, ret_code);
+      })
+      .def("get_travel_path", [](TreeIndex& self, int id, bool ret_code, int start_level) {
+           return self.get_travel_path(id, ret_code, start_level);
+      });
+}
+
+void BindIndexWrapper(py::module* m) {
+  py::class_<IndexWrapper, std::shared_ptr<IndexWrapper>>(*m, "IndexWrapper")
+      .def(py::init(
+          [](){
+            return IndexWrapper::GetInstancePtr();
+      }))
+      .def("insert_tree_index", &IndexWrapper::insert_tree_index)
+      .def("get_tree_index", &IndexWrapper::GetTreeIndex)
+      .def("clear_tree", &IndexWrapper::clear_tree);
+}
+
+using paddle::framework::Sampler;
+using paddle::framework::LayerWiseSampler;
+using paddle::framework::BeamSearchSampler;
+
+void BindIndexSampler(py::module* m) {
+   py::class_<Sampler, std::shared_ptr<Sampler>>(*m, "Sampler")
+      .def(py::init([](const std::string& mode, const std::string& name){
+           if (mode == "by_layerwise") {
+                return Sampler::Init<LayerWiseSampler>(name);
+           } else if (mode == "by_beamsearch") {
+                return Sampler::Init<BeamSearchSampler>(name);
+           }
+      }))
+      .def("init_layerwise_conf", &Sampler::init_layerwise_conf)
+      .def("init_beamsearch_conf", &Sampler::init_beamsearch_conf)
+      .def("sample", &Sampler::sample);
 }
 
 }  // end namespace pybind
