@@ -36,7 +36,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     const Tensor &bbox_deltas,  // [M, 4]
     const Tensor &scores,       // [N, 1]
     int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
-    float eta) {
+    float eta, bool pixel_offset) {
   // 1. pre nms
   Tensor scores_sort, index_sort;
   SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
@@ -54,7 +54,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{
         anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
-        index_sort.data<int>(), im_shape.data<T>(), proposals.data<T>()});
+        index_sort.data<int>(), im_shape.data<T>(), proposals.data<T>(),
+        pixel_offset});
   }
 
   // 3. filter
@@ -65,7 +66,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   auto stream = ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
       proposals.data<T>(), im_shape.data<T>(), min_size, pre_nms_num,
-      keep_num_t.data<int>(), keep_index.data<int>(), false);
+      keep_num_t.data<int>(), keep_index.data<int>(), false, pixel_offset);
   int keep_num;
   const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
@@ -94,7 +95,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
 
   // 4. nms
   Tensor keep_nms;
-  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
+  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms,
+         pixel_offset);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }
@@ -129,6 +131,7 @@ class CUDAGenerateProposalsV2Kernel : public framework::OpKernel<T> {
     float nms_thresh = context.Attr<float>("nms_thresh");
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
+    bool pixel_offset = context.Attr<bool>("pixel_offset");
     PADDLE_ENFORCE_GE(eta, 1.,
                       platform::errors::InvalidArgument(
                           "Not support adaptive NMS. The attribute 'eta' "
@@ -184,10 +187,10 @@ class CUDAGenerateProposalsV2Kernel : public framework::OpKernel<T> {
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
-      std::pair<Tensor, Tensor> box_score_pair =
-          ProposalForOneImage<T>(dev_ctx, im_shape_slice, anchors, variances,
-                                 bbox_deltas_slice, scores_slice, pre_nms_top_n,
-                                 post_nms_top_n, nms_thresh, min_size, eta);
+      std::pair<Tensor, Tensor> box_score_pair = ProposalForOneImage<T>(
+          dev_ctx, im_shape_slice, anchors, variances, bbox_deltas_slice,
+          scores_slice, pre_nms_top_n, post_nms_top_n, nms_thresh, min_size,
+          eta, pixel_offset);
 
       Tensor &proposals = box_score_pair.first;
       Tensor &scores = box_score_pair.second;

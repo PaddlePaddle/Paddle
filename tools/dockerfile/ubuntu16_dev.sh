@@ -32,11 +32,15 @@ function ref_whl(){
       ref_mkl=openblas
   fi
 
-  if [[ ${gcc_version} == "8.2.0" ]];then
+  if [[ ${WITH_GPU} != "ON" ]]; then
+    ref_gcc = ""
+  elif [[ ${gcc_version} == "8.2.0" ]];then
     ref_gcc=_gcc8.2
   fi
 
-  if [[ ${ref_CUDA_MAJOR} == "10" ]];then
+  if [[ ${ref_CUDA_MAJOR} == "11.0" ]];then
+      ref_version=.post110
+  elif [[ ${ref_CUDA_MAJOR} == "10" ]];then
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
       ref_version=.post101

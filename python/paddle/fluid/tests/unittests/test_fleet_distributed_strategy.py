@@ -66,9 +66,12 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_pipeline_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"micro_batch": 4}
+        configs = {"micro_batch_size": 4}
         strategy.pipeline_configs = configs
-        self.assertEqual(strategy.pipeline_configs["micro_batch"], 4)
+        self.assertEqual(strategy.pipeline_configs["micro_batch_size"], 4)
+        configs = {"accumulate_steps": 2}
+        strategy.pipeline_configs = configs
+        self.assertEqual(strategy.pipeline_configs["accumulate_steps"], 2)
 
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

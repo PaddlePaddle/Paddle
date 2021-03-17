@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from __future__ import print_function
 import unittest
-from test_custom_op import CustomOpTest, load_so
-from paddle.utils.cpp_extension.extension_utils import run_cmd
+import numpy as np
+import paddle
+
+from test_collective_base import TestDistBase
+
+paddle.enable_static()
 
 
-def compile_so():
-    """
-    Compile .so file by running setup.py config.
-    """
-    # build .so with setup.py
-    file_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = 'cd {} && python setup_build.py build'.format(file_dir)
-    run_cmd(cmd)
+class TestCWaitOp(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_allreduce_wait(self):
+        self.check_with_place(
+            "collective_allreduce_op_wait.py",
+            "allreduce",
+            check_error_log=True)
 
 
 if __name__ == '__main__':
-    compile_so()
-    load_so(so_name='librelu2_op_from_setup.so')
     unittest.main()

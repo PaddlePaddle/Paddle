@@ -35,6 +35,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
@@ -43,8 +44,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
-                                             no_calib_int8);
+    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                             with_dynamic_shape);
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -82,16 +83,30 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
                               const std::set<std::string> &engine_outputs,
-                              const std::string &predictor_id) {
+                              const std::string &predictor_id,
+                              const std::string &max_batch_size,
+                              const std::string &precision,
+                              const bool for_calibration) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
     engine_hash_key += name;
+    engine_hash_key += "#";
   }
   for (auto name : engine_outputs) {
     engine_hash_key += name;
+    engine_hash_key += "#";
   }
   engine_hash_key += predictor_id;
+  if (!for_calibration) {
+    engine_hash_key += "#";
+    engine_hash_key += max_batch_size;
+  }
+  engine_hash_key += "#";
+  engine_hash_key += precision;
+
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  VLOG(2) << "TRT engine hash key: " << engine_hash_key;
+  VLOG(2) << "TRT engine key: " << engine_key;
   return engine_key;
 }
 
@@ -244,22 +259,31 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
-  auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
-                                      std::to_string(0));
+  // serialization is affected by max_batch_size, but calibration is not.
+  // So we use seperate engine keys in serialization and calibration.
+  auto engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0),
+      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(static_cast<int>(precision_mode)), false);
+  auto calibration_engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0),
+      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(static_cast<int>(precision_mode)), true);
   auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
-  bool load_from_memory = Get<bool>("model_from_memory");
   std::string calibration_data = "";
   if (enable_int8 && use_calib_mode) {
-    calibration_data = GetTrtCalibTableData(
-        Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+    calibration_data =
+        GetTrtCalibTableData(Get<std::string>("model_opt_cache_dir"),
+                             calibration_engine_key, enable_int8);
   }
   op_desc->SetAttr("calibration_data", calibration_data);
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
   op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
+  op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
 
   std::string trt_engine_serialized_data = "";
@@ -322,8 +346,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
 
-  bool need_serialize = (use_static_engine && !load_from_memory);
-  if (need_serialize) {
+  if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
     // we can load the engine info serialized before from the disk.
@@ -351,7 +374,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, trt_engine);
 
-  if (need_serialize) {
+  if (use_static_engine) {
     nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
     trt_engine_serialized_data =
         std::string((const char *)serialized_engine_data->data(),
@@ -360,6 +383,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
                                    engine_key),
         trt_engine_serialized_data);
+    LOG(INFO) << "Save TRT Optimized Info to "
+              << GetTrtEngineSerializedPath(
+                     Get<std::string>("model_opt_cache_dir"), engine_key);
   }
 }
 
@@ -390,7 +416,7 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .LE("elementwise_add", 1)
             .LE("elementwise_mul", 1)
             .EQ("prelu", 0)
-            .LE("conv2d_transpose", 1)
+            .LE("conv2d_transpose", 2)
             .LE("leaky_relu", 1)
             .EQ("fc", 0)
             .EQ("shuffle_channel", 0)

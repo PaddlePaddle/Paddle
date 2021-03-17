@@ -38,6 +38,13 @@ __all__ = [
 ]
 
 
+def _npairs(x, n):
+    if isinstance(x, (paddle.Tensor, list)):
+        return x
+    x = [x] * (n * 2)
+    return x
+
+
 class Linear(layers.Layer):
     r"""
 
@@ -915,7 +922,8 @@ class Pad1D(layers.Layer):
     If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -968,7 +976,7 @@ class Pad1D(layers.Layer):
                  data_format="NCL",
                  name=None):
         super(Pad1D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -996,8 +1004,9 @@ class Pad2D(layers.Layer):
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -1051,7 +1060,7 @@ class Pad2D(layers.Layer):
                  data_format="NCHW",
                  name=None):
         super(Pad2D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
         self._data_format = data_format
@@ -1079,7 +1088,8 @@ class Pad3D(layers.Layer):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
@@ -1134,7 +1144,7 @@ class Pad3D(layers.Layer):
                  data_format="NCDHW",
                  name=None):
         super(Pad3D, self).__init__()
-        self._pad = padding
+        self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
         self._data_format = data_format

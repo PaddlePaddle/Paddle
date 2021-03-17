@@ -790,27 +790,31 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->AsInput()
                            ->assert_is_persistable_var()
-                           ->assert_is_op_input("batch_norm", "Scale");
+                           ->assert_is_op_input("batch_norm", "Scale")
+                           ->assert_has_n_outputs(1);
   // BN Bias
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
                           ->AsInput()
                           ->assert_is_persistable_var()
-                          ->assert_is_op_input("batch_norm", "Bias");
+                          ->assert_is_op_input("batch_norm", "Bias")
+                          ->assert_has_n_outputs(1);
   // BN Mean
   auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
                           ->AsInput()
                           ->assert_is_persistable_var()
-                          ->assert_is_op_input("batch_norm", "Mean");
+                          ->assert_is_op_input("batch_norm", "Mean")
+                          ->assert_has_n_outputs(1);
   // BN Variance
   auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("batch_norm", "Variance");
+                              ->assert_is_op_input("batch_norm", "Variance")
+                              ->assert_has_n_outputs(1);
 
   // BN output
   auto *bn_out_var = pattern->NewNode(bn_out_repr())
                          ->AsOutput()
-                         ->assert_is_op_output("batch_norm");
+                         ->assert_is_op_output("batch_norm", "Y");
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->AsOutput()
@@ -1829,9 +1833,8 @@ PDNode *patterns::OpDequant::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())
                     ->assert_is_op()
                     ->assert_more([&](Node *node) {
-                      return (node->Op()->Type() == "matmul" ||
-                              node->Op()->Type() == "conv2d" ||
-                              node->Op()->Type() == "fc");
+                      return (node->Op()->HasAttr("force_fp32_output") ||
+                              node->Op()->HasProtoAttr("force_fp32_output"));
                     });
   auto dequant_in = pattern->NewNode(dequant_in_repr())
                         ->assert_is_op_input("dequantize", "Input");
@@ -1863,6 +1866,44 @@ PDNode *patterns::DequantScale::operator()() {
   scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
 
   return scale_out;
+}
+
+PDNode *patterns::ScaleQuant::operator()() {
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("scale", "X");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto quant_in = pattern->NewNode(quant_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("quantize", "Input");
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  scale_op->LinksFrom({scale_in}).LinksTo({quant_in});
+  quant_op->LinksFrom({quant_in});
+
+  return quant_op;
+}
+
+PDNode *patterns::QuantConv::operator()() {
+  auto quant_in = pattern->NewNode(quant_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("quantize", "Input");
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+
+  auto conv_in = pattern->NewNode(conv_in_repr())
+                     ->AsInput()
+                     ->assert_is_op_input("conv2d", "Input");
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  conv_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+
+  quant_op->LinksFrom({quant_in}).LinksTo({conv_in});
+  conv_op->LinksFrom({conv_in});
+
+  return quant_op;
 }
 
 PDNode *patterns::ScaleMatmul::operator()() {
@@ -2191,10 +2232,11 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat", "conv2d", "elementwise_add", "elementwise_mul", "fc",
-           "fusion_gru", "gelu", "layer_norm", "matmul", "pool2d", "reshape2",
-           "softmax", "sum", "transpose2"});
+      std::unordered_set<std::string>({"concat", "conv2d", "conv2d_transpose",
+                                       "elementwise_add", "elementwise_mul",
+                                       "fc", "fusion_gru", "gelu", "layer_norm",
+                                       "matmul", "pool2d", "relu", "reshape2",
+                                       "softmax", "sum", "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2240,25 +2282,12 @@ PDNode *patterns::LastBfloat16Ops::operator()() {
            "bfloat16";
   });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
-
-  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-  next_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
-  });
-
   op->LinksTo({op_out});
-  next_op->LinksFrom({op_out});
-  return next_op;
+  return op_out;
 }
 
 PDNode *patterns::FirstBfloat16Ops::operator()() {
-  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-  prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
-           "bfloat16";
-  });
-  auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
+  auto *op_in = pattern->NewNode(op_in_repr())->AsInput();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
@@ -2266,7 +2295,6 @@ PDNode *patterns::FirstBfloat16Ops::operator()() {
            "bfloat16";
   });
 
-  prev_op->LinksTo({op_in});
   op->LinksFrom({op_in});
   return op;
 }
@@ -2278,27 +2306,6 @@ PDNode *patterns::DuplicatedInputs::operator()() {
            "bfloat16";
   });
   return op;
-}
-
-PDNode *patterns::UnnecessaryReorders::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-  prev_op->assert_more([&](Node *node) {
-    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
-           "bfloat16";
-  });
-
-  auto *quant_in = pattern->NewNode(quant_in_repr())
-                       ->assert_is_op_input("quantize", "Input");
-
-  auto *quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
-
-  auto *quant_out = pattern->NewNode(quant_out_repr())
-                        ->assert_is_op_output("quantize", "Output");
-
-  prev_op->LinksTo({quant_in});
-  quant_op->LinksFrom({quant_in}).LinksTo({quant_out});
-
-  return quant_out;
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {

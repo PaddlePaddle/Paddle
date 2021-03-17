@@ -23,11 +23,11 @@ site_packages_path = get_python_lib()
 # paddle include directory. Because the following path is generated after insalling
 # PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
 paddle_includes = [
-    os.path.join(site_packages_path, 'paddle/include'),
-    os.path.join(site_packages_path, 'paddle/include/third_party')
+    os.path.join(site_packages_path, 'paddle', 'include'),
+    os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
 ]
 
-# TODO(Aurelius84): Memory layout is different if build paddle with PADDLE_WITH_MKLDNN=ON,
-# and will lead to ABI problem on Coverage CI. We will handle it in next PR.
-extra_compile_args = ['-DPADDLE_WITH_MKLDNN'
-                      ] if six.PY2 and not IS_WINDOWS else []
+# Test for extra compile args
+extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']
+extra_nvcc_args = ['-O3']
+extra_compile_args = {'cc': extra_cc_args, 'nvcc': extra_nvcc_args}

@@ -521,7 +521,8 @@ class Fleet(object):
                              feeded_var_names,
                              target_vars,
                              main_program=None,
-                             export_for_deployment=True):
+                             export_for_deployment=True,
+                             mode=0):
         """
         save inference model for inference.
 
@@ -544,7 +545,7 @@ class Fleet(object):
 
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
-            export_for_deployment)
+            export_for_deployment, mode)
 
     def save_persistables(self, executor, dirname, main_program=None, mode=0):
         """
@@ -591,6 +592,9 @@ class Fleet(object):
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
+    def shrink(self, threshold):
+        self._runtime_handle._shrink(threshold)
+
     def distributed_optimizer(self, optimizer, strategy=None):
         """
         Optimizer for distributed training.
@@ -633,6 +637,11 @@ class Fleet(object):
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
+
+        # TODO(shenliang03): This is a temporary solution to support amp. In the case of a dynamic graph, 
+        # the optimizer is returned directly. This problem will be fixed in the future.
+        if paddle.fluid.framework.in_dygraph_mode():
+            return optimizer
         return self
 
     @dygraph_only

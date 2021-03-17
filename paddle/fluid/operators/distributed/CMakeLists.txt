@@ -61,7 +61,7 @@ cc_library(parameter_send SRCS parameter_send.cc DEPS sendrecvop_rpc memory)
 cc_library(parameter_recv SRCS parameter_recv.cc DEPS sendrecvop_rpc memory)
 cc_library(communicator SRCS communicator.cc DEPS scope selected_rows tensor variable_helper selected_rows_functor simple_threadpool parameter_send parameter_recv generator)
 cc_test(communicator_test SRCS communicator_test.cc DEPS communicator)
-if(WITH_GPU)
+if(WITH_GPU OR WITH_ROCM)
     cc_test(collective_server_test SRCS collective_server_test.cc 
         DEPS sendrecvop_rpc executor ${RPC_DEPS}
         selected_rows_functor  scope math_function)

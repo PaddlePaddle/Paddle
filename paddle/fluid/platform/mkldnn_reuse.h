@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -250,10 +251,12 @@ class MKLDNNHandlerT {
     astream.wait();
   }
 
+  template <typename F = T>
   std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
       const mkldnn::memory::desc& user_md,
       const mkldnn::memory::desc& target_md, void* ptr,
-      const std::string& suffix, bool is_persistent = false) {
+      const std::string& suffix, bool is_persistent = false,
+      std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     const auto target_key = key_ + suffix + "_target";
     const auto key_reorder_p = key_ + suffix + "reorder_p";
     const auto user_key = key_ + suffix + "_user";
@@ -262,6 +265,12 @@ class MKLDNNHandlerT {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
 
     if (target_memory_p == nullptr) {
+      if (custom_reorder_func) {
+        auto reordered_data =
+            custom_reorder_func(reinterpret_cast<const F*>(ptr));
+        dev_ctx_.SetBlob(key_reorder_p + "-custom_reorder", reordered_data);
+        ptr = reinterpret_cast<void*>(reordered_data.get());
+      }
       auto user_memory_p =
           std::make_shared<dnnl::memory>(user_md, engine_, ptr);
       if (user_md != target_md) {
@@ -610,6 +619,49 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
                           {scale_1});
     return attributes;
+  }
+};
+
+template <typename T>
+class ReductionMKLDNNHandler
+    : public platform::MKLDNNHandlerT<T, dnnl::reduction> {
+ public:
+  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
+                         const float eps, const MKLDNNDeviceContext& dev_ctx,
+                         const mkldnn::engine engine, platform::Place cpu_place,
+                         const Tensor* x, const Tensor* y,
+                         const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::reduction>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name,
+                                (std::to_string(static_cast<int>(algo))))) {
+    if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(
+          x->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+      PADDLE_ENFORCE_NE(
+          x->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+
+      const auto src_tz = framework::vectorize(x->dims());
+      const auto dst_tz = framework::vectorize(y->dims());
+
+      // For oneDNN dimensionality should match so we need to
+      // extend Y tensor dims with values of 1 (before and after pattern)
+      int j = 0;
+      std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
+      for (size_t i = 0; i < src_tz.size(); ++i) {
+        dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+      }
+
+      const auto src_md = dnnl::memory::desc(
+          src_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto dst_md = memory::desc(
+          dst_tz_ex, platform::MKLDNNGetDataType<T>(), x->format());
+
+      this->AcquireForwardPrimitiveDescriptor(algo, src_md, dst_md, p, eps);
+    }
   }
 };
 
@@ -1288,6 +1340,5 @@ static void SetDstMemoryQuantized(
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
 }
-
 }  // namespace platform
 }  // namespace paddle

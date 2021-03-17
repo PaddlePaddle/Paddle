@@ -39,7 +39,7 @@ BufferedReader::BufferedReader(
       buffer_size_(buffer_size),
       pin_memory_(pin_memory) {
   VLOG(1) << "BufferedReader";
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_) && !pin_memory) {
     int dev_idx = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
     compute_stream_ =
@@ -74,7 +74,7 @@ void BufferedReader::ReadAsync(size_t i) {
       return -1UL;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
     if (platform::is_gpu_place(place_)) {
       TensorVec &cuda = cuda_buffer_[i];
       if (cuda.empty()) {
@@ -142,10 +142,17 @@ void BufferedReader::ReadAsync(size_t i) {
         // cuda memory immediately without waiting cuda kernel ends
         platform::SetDeviceId(
             BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipEventRecord(events_[i].get(), compute_stream_));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            hipStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaEventRecord(events_[i].get(), compute_stream_));
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#endif
 
         platform::RecordEvent record_event("BufferedReader:MemoryCopy");
         for (size_t i = 0; i < cpu.size(); ++i) {
@@ -174,14 +181,22 @@ void BufferedReader::ReadAsync(size_t i) {
             memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
                          cuda_pinned_place, cuda_pinned_ptr, size,
                          stream_.get());
+#ifdef PADDLE_WITH_HIP
+            PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
+#else
             PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
+#endif
           }
           cuda[i].set_lod(cpu[i].lod());
         }
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_.get()));
+#else
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
+#endif
       }
     }
-#endif
+#endif  // @} End Group GPU Place
     return i;
   }));
 }
