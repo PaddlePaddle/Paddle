@@ -51,8 +51,6 @@ class SumNPUKernel : public framework::OpKernel<T> {
         runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
         runner.Run(stream);
     }
-
-    std::cout << "After Npu OP Runner "<< std::endl;
   }
 };
 
