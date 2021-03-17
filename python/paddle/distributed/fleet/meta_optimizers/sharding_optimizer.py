@@ -226,6 +226,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             logging.info("Sharding with optimize offload !")
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
+            offload_helper.offload_fp32param(main_block, startup_block)
 
         name_fetch_name_map = dict()
         for idx, op in enumerate(main_block.ops):
