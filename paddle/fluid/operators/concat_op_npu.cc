@@ -12,80 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
-static inline framework::DDim ComputeAndCheckShape(
-    const bool is_runtime, const std::vector<framework::DDim>& inputs_dims,
-    const size_t axis) {
-  const size_t n = inputs_dims.size();
-  auto out_dims = inputs_dims[0];
-  size_t in_zero_dims_size = out_dims.size();
-  for (size_t i = 1; i < n; i++) {
-    PADDLE_ENFORCE_EQ(inputs_dims[i].size(), out_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "The shape of input[0] and input[%d] "
-                          "is expected to be equal."
-                          "But received input[0]'s shape = "
-                          "[%s], input[%d]'s shape = [%s].",
-                          i, inputs_dims[0], i, inputs_dims[i]));
-    for (size_t j = 0; j < in_zero_dims_size; j++) {
-      if (j == axis) {
-        if (is_runtime) {
-          out_dims[axis] += inputs_dims[i][j];
-        } else {
-          if (inputs_dims[i][j] == -1 || out_dims[j] == -1) {
-            out_dims[axis] = -1;
-          } else {
-            out_dims[axis] += inputs_dims[i][j];
-          }
-        }
-      } else {
-        bool check_shape =
-            is_runtime || (inputs_dims[0][j] > 0 && inputs_dims[i][j] > 0);
-        if (check_shape) {
-          // check all shape in run time
-          PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
-                            platform::errors::InvalidArgument(
-                                "The %d-th dimension of input[0] and input[%d] "
-                                "is expected to be equal."
-                                "But received input[0]'s shape = "
-                                "[%s], input[%d]'s shape = [%s].",
-                                j, i, inputs_dims[0], i, inputs_dims[i]));
-        }
-        if (!is_runtime && out_dims[j] == -1 && inputs_dims[i][j] > 0) {
-          out_dims[j] = inputs_dims[i][j];
-        }
-      }
-    }
-  }
-  return out_dims;
-}
 
-static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
-  PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank, true,
-      platform::errors::InvalidArgument(
-          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
-          rank, axis));
-  if (axis < 0) {
-    axis = axis + rank;
-  }
-  return axis > 0 ? axis : 0;
-}
-
-template <typename DeviceContext, typename T>
+template <typename T>
 class ConcatNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -114,14 +47,16 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
         continue;
       }
     }
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     auto runner =
         NpuOpRunner("ConcatV2D", inputs, {*out}, {{"concat_dim", axis}});
     runner.Run(stream);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ConcatGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -155,13 +90,15 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
-        outputs.push_back((*outs[j]);
+        outputs.push_back(*outs[j]);
       }
     }
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto runner =
         NpuOpRunner("SplitD", {*out_grad}, {outputs},
                     {{"split_dim", axis}, {"num_split", outputs.size()}});
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     runner.Run(stream);
   }
 };
@@ -171,16 +108,11 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(
-    ops::ConcatNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ConcatNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::ConcatNPUKernel<paddle::platform::NPUDeviceContext,
-                         paddle::platform::float16>,
-    ops::ConcatNPUKernel<paddle::platform::NPUDeviceContext, int>);
-REGISTER_OP_NPU_KERNEL(
-    concat_grad,
-    ops::ConcatGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::ConcatGradNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::ConcatGradNPUKernel<paddle::platform::NPUDeviceContext,
-                             paddle::platform::float16>,
-    ops::ConcatGradNPUKernel<paddle::platform::NPUDeviceContext, int>);
+REGISTER_OP_NPU_KERNEL(ops::ConcatNPUKernel<float>, ops::ConcatNPUKernel<bool>,
+                       ops::ConcatNPUKernel<paddle::platform::float16>,
+                       ops::ConcatNPUKernel<int>);
+
+REGISTER_OP_NPU_KERNEL(concat_grad, ops::ConcatGradNPUKernel<float>,
+                       ops::ConcatGradNPUKernel<bool>,
+                       ops::ConcatGradNPUKernel<paddle::platform::float16>,
+                       ops::ConcatGradNPUKernel<int>);
