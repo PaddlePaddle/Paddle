@@ -29,9 +29,7 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-
 class TestStack1(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -72,11 +70,11 @@ class TestStack1(OpTest):
 
 
 class TestStack2(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
-        self.axis = -1
+        # self.axis = -1
+        self.axis = 2
         self.dtype = 'float32'
 
     def get_x_names(self):
@@ -110,6 +108,22 @@ class TestStack2(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+
+
+class TestStack3(TestStack1):
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (5, 6, 7)
+        self.axis = 1
+        self.dtype = 'float32'
+
+
+class TestStack4(TestStack1):
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (5, 6, 7)
+        self.axis = 2
+        self.dtype = 'float32'
 
 
 if __name__ == '__main__':
