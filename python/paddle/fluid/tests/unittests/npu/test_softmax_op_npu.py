@@ -64,30 +64,27 @@ class TestSoftmaxNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        a_np = np.random.random(size=(4, 32)).astype('float32')
-        b_np = np.random.random(size=(4, 32)).astype('float32')
+        a_np = np.random.random(size=(4, 5, 6)).astype('float32')
+        b_np = np.random.random(size=(4, 5, 6)).astype('float32')
         label_np = np.random.randint(2, size=(4, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[4, 32], dtype='float32')
-            b = paddle.static.data(name="b", shape=[4, 32], dtype='float32')
+            a = paddle.static.data(name="a", shape=[4, 5, 6], dtype='float32')
+            b = paddle.static.data(name="b", shape=[4, 5, 6], dtype='float32')
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype='int64')
 
             c = paddle.multiply(a, b)
             d = paddle.sqrt(c)
 
+            s = fluid.layers.softmax(d, axis=1)
+
             # 4 x 128
-            fc_1 = fluid.layers.fc(input=d, size=128)
+            fc_1 = fluid.layers.fc(input=s, size=128)
             # 4 x 2
             prediction = fluid.layers.fc(input=fc_1, size=2)
 
-            # 2 x 4
-            prediction_t = fluid.layers.transpose(prediction, [0, 1])
-            prob_t = fluid.layers.softmax(prediction_t, axis=0)
-
-            # 4 x 2
-            prob = fluid.layers.transpose(prob_t, [0, 1])
+            prob = fluid.layers.softmax(prediction, axis=-1)
 
             cost = fluid.layers.cross_entropy(input=prob, label=label)
             loss = fluid.layers.mean(cost)
@@ -127,4 +124,3 @@ class TestSoftmaxNet(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
