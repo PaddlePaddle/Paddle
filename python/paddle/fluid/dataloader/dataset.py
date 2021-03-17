@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from .. import framework
 
 __all__ = [
