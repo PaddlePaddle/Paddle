@@ -452,10 +452,16 @@ class InstallHeaders(Command):
                                    ('force', 'force'))
 
     def copy_data_type_headers(self, header):
-        data_type_headers = ['platform/complex64.h', 'platform/complex128.h']
+        if os.name == 'nt':
+            data_type_headers = ['platform\\complex64.h', 'platform\\complex128.h']
+        else:
+            data_type_headers = ['platform/complex64.h', 'platform/complex128.h']
         for dtype_header in data_type_headers:
             if dtype_header in header:
-                install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
+                if os.name == 'nt':
+                    install_dir = os.path.join(self.install_dir, "paddle\\fluid\\extension\\include")
+                else:
+                    install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
                 if not os.path.exists(install_dir):
                     self.mkpath(install_dir)
                 return self.copy_file(header, install_dir)
