@@ -34,6 +34,7 @@ if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     git remote | grep upstream
     if [ $? != 0 ]; then git remote add upstream https://github.com/PaddlePaddle/Paddle.git; fi
+    git fetch upstream
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
@@ -50,6 +51,13 @@ ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PA
 cd $PADDLE_ROOT/build
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
+echo "================================="
+echo "br-ut"
+cat $PADDLE_ROOT/br-ut
+echo "================================="
+echo "pr-ut"
+cat $PADDLE_ROOT/pr-ut
+echo "================================="
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
 echo "New-UT:"
