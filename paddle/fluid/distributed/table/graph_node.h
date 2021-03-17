@@ -44,9 +44,9 @@ class GraphNode {
   // void set_graph_node_type(GraphNodeType type) { this->type = type; }
   void set_feature(std::string feature) { this->feature = feature; }
   std::string get_feature() { return feature; }
-  virtual int get_size();
+  virtual int get_size(bool need_feature);
   virtual void build_sampler();
-  virtual void to_buffer(char *buffer);
+  virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual void add_edge(GraphEdge *edge) { edges.push_back(edge); }
   std::vector<GraphEdge *> sample_k(int k) {

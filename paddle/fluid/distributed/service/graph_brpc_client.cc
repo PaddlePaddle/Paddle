@@ -153,7 +153,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
       while (index < bytes_size) {
         GraphNode node;
         node.recover_from_buffer(buffer + index);
-        index += node.get_size();
+        index += node.get_size(true);
         res.push_back(node);
       }
     }

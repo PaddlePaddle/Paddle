@@ -338,9 +338,9 @@ void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
   s.set_feature("hhhh");
   s.set_id(65);
-  int size = s.get_size();
+  int size = s.get_size(true);
   char str[size];
-  s.to_buffer(str);
+  s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
   VLOG(0) << s.get_feature();

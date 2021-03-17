@@ -295,17 +295,7 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
                                      sizeof(int) * node_num);
   for (size_t idx = 0; idx < node_num; ++idx) {
     cntl->response_attachment().append(buffers[idx].get(), actual_sizes[idx]);
-    // if (buffers[idx] != nullptr){
-    //   delete buffers[idx];
-    //   buffers[idx] = nullptr;
-    // }
   }
-  // =======
-  //   std::unique_ptr<char[]> buffer;
-  //   int actual_size;
-  //   table->random_sample(node_id, sample_size, buffer, actual_size);
-  //   cntl->response_attachment().append(buffer.get(), actual_size);
-  // >>>>>>> Stashed changes
   return 0;
 }
 

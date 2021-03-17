@@ -226,7 +226,6 @@ int GraphTable::random_sample(uint64_t *node_ids, int sample_size,
             offset += GraphNode::id_size;
             memcpy(buffer_addr + offset, &weight, GraphNode::weight_size);
             offset += GraphNode::weight_size;
-            return 0;
           }
           return 0;
         }));
@@ -278,7 +277,7 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
   for (size_t i = 0; i < tasks.size(); i++) {
     res.push_back(tasks[i].get());
     for (size_t j = 0; j < res.back().size(); j++) {
-      size += res.back()[j]->get_size();
+      size += res.back()[j]->get_size(true);
     }
   }
   char *buffer_addr = new char[size];
@@ -286,8 +285,8 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
   int index = 0;
   for (size_t i = 0; i < res.size(); i++) {
     for (size_t j = 0; j < res[i].size(); j++) {
-      res[i][j]->to_buffer(buffer_addr + index);
-      index += res[i][j]->get_size();
+      res[i][j]->to_buffer(buffer_addr + index, true);
+      index += res[i][j]->get_size(true);
     }
   }
   actual_size = size;
