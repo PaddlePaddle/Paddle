@@ -238,7 +238,6 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-                    # tensor_list = core._convert_to_tensor_list(batch)
                     tensor_list = [
                         core._array_to_share_memory_tensor(b)
                         if isinstance(b, np.ndarray) else b._share_memory()

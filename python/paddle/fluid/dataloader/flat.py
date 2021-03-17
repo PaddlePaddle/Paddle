@@ -40,10 +40,6 @@ def _flatten_batch(batch):
                     structure.append('{}{}'.format(FIELD_PREFIX, field_idx))
                     flat_batch.append(field)
                     field_idx += 1
-                # elif isinstance(field, paddle.Tensor):
-                #     structure.append('{}{}'.format(FIELD_PREFIX, field_idx))
-                #     flat_batch.append(field.numpy())
-                #     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
                     structure.append(field)
                 elif isinstance(field, Sequence):
@@ -62,10 +58,6 @@ def _flatten_batch(batch):
                     structure[k] = '{}{}'.format(FIELD_PREFIX, field_idx)
                     flat_batch.append(field)
                     field_idx += 1
-                # elif isinstance(field, paddle.Tensor):
-                #     structure[k] = '{}{}'.format(FIELD_PREFIX, field_idx)
-                #     flat_batch.append(field.numpy())
-                #     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
                     structure[k] = field
                 elif isinstance(field, Sequence):
