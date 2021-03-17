@@ -663,9 +663,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     auto &group_tensor = group.dense_tensors_[inside_group_index];
 
     if (is_used_var) {
-      auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-      auto tensor =
-          var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto var_base = vars_[var_index]->GradVarBase();
+      auto tensor = var_base->MutableVar()->GetMutable<framework::LoDTensor>();
       group_tensor.ShareDataWith(*tensor).Resize(
           {static_cast<int64_t>(length)});
     } else {
@@ -682,9 +681,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 #else
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       if (HasGrad(var_index)) {
-        auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
+        auto var_base = vars_[var_index]->GradVarBase();
         auto tensor =
-            var_warpper->MutableVar()->GetMutable<framework::LoDTensor>();
+            var_base->MutableVar()->GetMutable<framework::LoDTensor>();
         TensorCopy(*tensor, place_, *dev_ctx, &group_tensor);
       } else {
         operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
@@ -697,8 +696,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
                       platform::errors::PreconditionNotMet(
                           "The sparse parameter[%d][%s] must have a gradient",
                           var_index, vars_[var_index]->Name()));
-    auto var_warpper = vars_[var_index]->GradVarBase()->SharedVar();
-    group.sparse_contents_ = var_warpper->MutableVar();
+    auto var_base = vars_[var_index]->GradVarBase();
+    group.sparse_contents_ = var_base->MutableVar();
   }
 
   if (--group.pending_ == 0) {
@@ -889,7 +888,24 @@ void Reducer::ProcessUnusedDenseVars() {
 
 bool Reducer::HasGrad(size_t var_index) {
   const auto grad_var = vars_[var_index]->GradVarBase();
-  return (grad_var && grad_var->Var().IsInitialized());
+  if (!grad_var || !grad_var->Var().IsInitialized()) {
+    return false;
+  }
+
+  const auto &var = grad_var->Var();
+  if (var.IsType<framework::LoDTensor>()) {
+    if (var.Get<framework::LoDTensor>().IsInitialized()) {
+      return true;
+    }
+  } else if (var.IsType<framework::SelectedRows>()) {
+    if (var.Get<framework::SelectedRows>().value().IsInitialized()) {
+      return true;
+    }
+  } else {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Only support LoDTensor and SelectedRows for gradient var"));
+  }
+  return false;
 }
 
 void Reducer::FinalizeBackward() {

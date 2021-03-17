@@ -21,12 +21,12 @@ import unittest
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
-from parallel_dygraph_gan import TestGanNet
+from parallel_dygraph_control_flow import TestControlFlow
 
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphGan(TestDistBase):
+class TestParallelDygraphControlFlow(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -35,19 +35,20 @@ class TestParallelDygraphGan(TestDistBase):
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "parallel_dygraph_gan.py",
+                "parallel_dygraph_control_flow.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
 
-class TestGanNetSpawn(TestDistSpawnRunner):
+class TestControlFlowSpawn(TestDistSpawnRunner):
     def test_mnist_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-            self.check_dist_result_with_spawn(test_class=TestGanNet, delta=1e-5)
+            self.check_dist_result_with_spawn(
+                test_class=TestControlFlow, delta=1e-5)
 
 
-class TestFleetDygraphGan(TestDistBase):
+class TestFleetDygraphControlFlow(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -57,7 +58,7 @@ class TestFleetDygraphGan(TestDistBase):
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "parallel_dygraph_gan.py",
+                "parallel_dygraph_control_flow.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
