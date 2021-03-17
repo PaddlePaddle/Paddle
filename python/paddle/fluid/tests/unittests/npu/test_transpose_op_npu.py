@@ -61,13 +61,14 @@ class TestTransposeOp(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestTransposeOpFP16(OpTest):
-    no_need_check_grad = True 
+class TestTransposeOpFP16(TestTransposeOp):
+    no_need_check_grad = True
+
     def init_dtype(self):
         self.dtype = np.float16
+
 
 if __name__ == '__main__':
     unittest.main()
