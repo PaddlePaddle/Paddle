@@ -26,18 +26,19 @@ from paddle.fluid import core
 paddle.enable_static()
 SEED = 2021
 
+NPUPlace = 5
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestIncrement(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(0)
+        self.place = paddle.NPUPlace(NPUPlace)
         self.op_type = "increment"
         self.init_dtype()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
-        self.pre_input_id = id(self.inputs['X'])
 
         self.attrs = {"Step": 1}
         self.outputs = {'Out': np.array([2])}
@@ -51,8 +52,6 @@ class TestIncrement(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
-        #self.post_input_id = id(self.inputs['X'])
-        #self.assertEqual(self.pre_input_id, self.post_input_id)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -60,7 +59,7 @@ class TestIncrement(OpTest):
 class TestIncrementFP16(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(0)
+        self.place = paddle.NPUPlace(NPUPlace)
         self.op_type = "increment"
         self.init_dtype()
 
@@ -78,33 +77,12 @@ class TestIncrementFP16(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
-        #self.post_input_id = id(self.inputs['X'])
-        #self.assertEqual(self.pre_input_id, self.post_input_id)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestIncrementInplace(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.place = paddle.NPUPlace(0)
-        self.op_type = "increment"
-        self.init_dtype()
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
-        self.attrs = {"Step": 1}
-        self.outputs = {'Out': np.array([2])}
-
-    def test_check_output(self):
-        self.set_npu()
-        self.place = paddle.NPUPlace(0)
-        self.op_type = "increment"
-        self.init_dtype()
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype('float32')), }
-        self.attrs = {"Step": 1}
-        self.outputs = {'Out': np.array([2]).astype('float32')}
-
+class TestIncrementInplace(unittest.TestCase):
+    def test_npu(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -117,7 +95,7 @@ class TestIncrementInplace(OpTest):
             a = paddle.static.data(name="a", shape=[1], dtype='float32')
             b = fluid.layers.increment(a)
 
-        place = paddle.NPUPlace(0)
+        place = paddle.NPUPlace(NPUPlace)
 
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
@@ -127,13 +105,10 @@ class TestIncrementInplace(OpTest):
             feed={"a": a_np,},
             fetch_list=[b])
 
+        print('input a id is : {}'.format(id(a)))
+        print('input b id is : {}'.format(id(b)))
+
         self.assertEqual(id(a), id(b))
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-
-    def init_dtype(self):
-        self.dtype = np.float16
 
 
 if __name__ == '__main__':
