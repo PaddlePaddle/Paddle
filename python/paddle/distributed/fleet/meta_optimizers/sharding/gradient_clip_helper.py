@@ -92,6 +92,7 @@ class GradientClipHelper(object):
                     attrs={OP_ROLE_KEY: OpRole.Optimize})
 
         for var_name in deperated_vars:
-            block._remove_var(var_name, sync=False)
+            if block.has_var(var_name):
+                block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
         return
