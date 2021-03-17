@@ -25,26 +25,41 @@ from paddle.fluid.core import AnalysisConfig
 
 class TRTAffineChannelTest(InferencePassTest):
     def setUp(self):
+        self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=[-1, 3, 64, 64], dtype='float32')
-            scale = fluid.data(name='scale', shape=[3], dtype='float32')
-            bias = fluid.data(name='bias', shape=[3], dtype='float32')
+            if self.data_layout == 'NCHW':
+                shape = [-1, self.channel, *self.hw]
+            else:
+                shape = [-1, *self.hw, self.channel]
+
+            data = fluid.data(name='data', shape=shape, dtype='float32')
+            scale = fluid.data(
+                name='scale', shape=[self.channel], dtype='float32')
+            bias = fluid.data(
+                name='bias', shape=[self.channel], dtype='float32')
             affine_channel_out = self.append_affine_channel(data, scale, bias)
             out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
 
+        shape[0] = self.bs
         self.feeds = {
-            'data': np.random.random([1, 3, 64, 64]).astype('float32'),
-            'scale': np.random.random([3]).astype('float32'),
-            'bias': np.random.random([3]).astype('float32'),
+            'data': np.random.random(shape).astype('float32'),
+            'scale': np.random.random([self.channel]).astype('float32'),
+            'bias': np.random.random([self.channel]).astype('float32'),
         }
         self.enable_trt = True
         self.trt_parameters = TRTAffineChannelTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
+    def set_params(self):
+        self.bs = 4
+        self.channel = 16
+        self.hw = (32, 32)
+        self.data_layout = 'NCHW'
+
     def append_affine_channel(self, data, scale, bias):
-        return fluid.layers.affine_channel(data, scale=scale, bias=bias)
+        return fluid.layers.affine_channel(
+            data, scale=scale, bias=bias, data_layout=self.data_layout)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -52,6 +67,14 @@ class TRTAffineChannelTest(InferencePassTest):
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TRTAffineChannelTest1(TRTAffineChannelTest):
+    def set_params(self):
+        self.bs = 4
+        self.channel = 16
+        self.hw = (32, 32)
+        self.data_layout = 'NHWC'
 
 
 if __name__ == "__main__":
