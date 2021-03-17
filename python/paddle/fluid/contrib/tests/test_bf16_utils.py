@@ -123,6 +123,34 @@ class AMPTest(unittest.TestCase):
         self.assertRaises(ValueError, amp.AutoMixedPrecisionListsBF16,
                           {'lstm'}, {'lstm'})
 
+    def test_amp_lists_8(self):
+        bf16_list = copy.copy(amp.bf16.amp_lists.bf16_list)
+        fp32_list = copy.copy(amp.bf16.amp_lists.fp32_list)
+        gray_list = copy.copy(amp.bf16.amp_lists.gray_list)
+
+        fp32_list.add('reshape2')
+        gray_list.remove('reshape2')
+
+        amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+            custom_fp32_list={'reshape2'})
+        self.assertEqual(amp_lists_.bf16_list, bf16_list)
+        self.assertEqual(amp_lists_.fp32_list, fp32_list)
+        self.assertEqual(amp_lists_.gray_list, gray_list)
+
+    def test_amp_list9_8(self):
+        bf16_list = copy.copy(amp.bf16.amp_lists.bf16_list)
+        fp32_list = copy.copy(amp.bf16.amp_lists.fp32_list)
+        gray_list = copy.copy(amp.bf16.amp_lists.gray_list)
+
+        bf16_list.add('reshape2')
+        gray_list.remove('reshape2')
+
+        amp_lists_ = amp.AutoMixedPrecisionListsBF16(
+            custom_bf16_list={'reshape2'})
+        self.assertEqual(amp_lists_.bf16_list, bf16_list)
+        self.assertEqual(amp_lists_.fp32_list, fp32_list)
+        self.assertEqual(amp_lists_.gray_list, gray_list)
+
     def test_find_op_index(self):
         block = fluid.default_main_program().global_block()
         op_desc = core.OpDesc()
