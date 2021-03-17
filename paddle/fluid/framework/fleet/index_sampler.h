@@ -19,7 +19,7 @@ class Sampler {
 
   virtual void init_layerwise_conf(const std::vector<int64_t> &layer_sample_counts) {};
   virtual void init_beamsearch_conf(const int64_t k) {};
-  virtual std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& input_targets) = 0;
+  virtual std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& input_targets, bool with_hierarchy=false) = 0;
 };
 
 class LayerWiseSampler : public Sampler {
@@ -34,7 +34,7 @@ class LayerWiseSampler : public Sampler {
           VLOG(0) << "[INFO] level " << i << " layer_counts.push_back: " << layer_sample_counts[i];
       }
   }
-  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids) override;
+  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
  
  private:
   std::vector<int64_t> layer_counts_;
@@ -51,7 +51,7 @@ class BeamSearchSampler : public Sampler{
     k_ = k;
     return;
   }
-  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids) override;
+  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
  
  private:
   int64_t k_;
