@@ -42,7 +42,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    std::string tag = ctx.Attr<std::string>("tag");
+    std::string tag = std::to_string(comm->NextTagId());
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     int destRank = ctx.Attr<int>("peer");
     int srTag = ctx.Attr<int>("srTag");
@@ -50,7 +50,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_send(
         tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), (u64)numel, dtype, destRank,
           srTag, group.c_str(), stream));
-    
+
       VLOG(3) << "Dest rank:" << destRank << " Invoke hcom send. Sent "
               << x->numel();
 
@@ -67,7 +67,7 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(send_v2, 
+REGISTER_OP_NPU_KERNEL(send_v2,
                         ops::CSendOpASCENDKernel<int>,
                         ops::CSendOpASCENDKernel<int8_t>,
                         ops::CSendOpASCENDKernel<float>,

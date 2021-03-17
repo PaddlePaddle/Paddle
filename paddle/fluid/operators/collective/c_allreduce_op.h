@@ -118,7 +118,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
 
-    // we need to pre-allocate 512 Bytes before the data 
+    // we need to pre-allocate 512 Bytes before the data
     // and 512 Bytes after the data, so the hccl allreduce
     // can work. This is a must acooding to huawei peer.
     #define PRE_MALLOC_SIZE_BYTES 512
@@ -141,10 +141,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
     void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
 
-    std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    std::string tag = std::to_string(comm->NextTagId());
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -156,7 +156,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
 
-    memory::Copy(npu_place, sendbuff, 
+    memory::Copy(npu_place, sendbuff,
                  npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
                  numel * sizeof(T),
                  stream);
@@ -195,10 +195,10 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
 
     memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
-                 npu_place, recvbuff, 
+                 npu_place, recvbuff,
                  numel * sizeof(T),
                  stream);
-    
+
     out->Resize(in->dims());
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

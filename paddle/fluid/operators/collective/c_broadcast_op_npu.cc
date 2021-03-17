@@ -48,7 +48,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    std::string tag = ctx.Attr<std::string>("tag");
+    std::string tag = std::to_string(comm->NextTagId());
 
     VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
       << ", group is " << group
