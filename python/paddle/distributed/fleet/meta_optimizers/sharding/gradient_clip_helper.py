@@ -51,7 +51,8 @@ class GradientClipHelper(object):
             if deperate_op:
                 deperate_op_idx.add(idx)
                 for output_name in op.desc.output_arg_names():
-                    deperated_vars.add(output_name)
+                    if output_name not in op.desc.input_arg_names():
+                        deperated_vars.add(output_name)
 
         if not deperated_vars:
             # got no gradient_clip op
