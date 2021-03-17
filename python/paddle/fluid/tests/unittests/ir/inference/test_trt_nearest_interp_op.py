@@ -59,9 +59,15 @@ class TRTNearestInterpTest(InferencePassTest):
     def append_nearest_interp(self, data):
         if self.scale > 0.:
             return fluid.layers.resize_nearest(
-                data, scale=self.scale, align_corners=self.align_corners)
+                data,
+                scale=self.scale,
+                align_corners=self.align_corners,
+                data_format=self.data_layout)
         return fluid.layers.resize_nearest(
-            data, out_shape=self.resize_shape, align_corners=self.align_corners)
+            data,
+            out_shape=self.resize_shape,
+            align_corners=self.align_corners,
+            data_format=self.data_layout)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -118,18 +124,18 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
 class TRTNearestInterpTest5(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
-        self.scale = 2.
+        self.scale = -1
         self.channels = 3
         self.origin_shape = (32, 32)  # HW
         self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
+        self.align_corners = True
         self.data_layout = 'NHWC'
 
 
 class TRTNearestInterpTest6(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
-        self.scale = -1
+        self.scale = 2.
         self.channels = 3
         self.origin_shape = (32, 32)  # HW
         self.resize_shape = (64, 64)  # HW
@@ -143,12 +149,23 @@ class TRTNearestInterpTest7(TRTNearestInterpTest):
         self.scale = -1
         self.channels = 3
         self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
+        self.resize_shape = (64, 64)  # HW
         self.align_corners = False
         self.data_layout = 'NHWC'
 
 
 class TRTNearestInterpTest8(TRTNearestInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -1
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
+        self.align_corners = False
+        self.data_layout = 'NHWC'
+
+
+class TRTNearestInterpTest9(TRTNearestInterpTest):
     def set_params(self):
         self.bs = 4
         self.scale = -1
