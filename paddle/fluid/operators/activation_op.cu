@@ -67,12 +67,14 @@ class ReluGPUFuctor : public BaseGPUFunctor<Type> {
 };
 
 template <>
+template <>
 __device__ __forceinline__ float4
 ReluGPUFuctor<float>::Compute<float4>(const float4* a) {
   return make_float4((a->x > 0.0f) * (a->x), (a->y > 0.0f) * (a->y),
                      (a->z > 0.0f) * (a->z), (a->w > 0.0f) * (a->w));
 }
 
+template <>
 template <>
 __device__ __forceinline__ __half2
 ReluGPUFuctor<float16>::Compute<__half2>(const __half2* a) {
