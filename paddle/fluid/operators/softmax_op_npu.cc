@@ -61,21 +61,12 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
       sec_dim *= dims[i];
     }
 
-    Tensor tmp_out(out->type());
-    tmp_out.Resize(framework::make_ddim({first_dim, sec_dim}));
-    tmp_out.mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(
-        *out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), &tmp_out);
-    tmp_out.Resize(framework::make_ddim({first_dim, sec_dim}));
+    Tensor tmp_out;
+    tmp_out.ShareDataWith(*out).Resize({first_dim, sec_dim});
 
-    Tensor tmp_dOut(dOut->type());
-    tmp_dOut.Resize(framework::make_ddim({first_dim, sec_dim}));
-    tmp_dOut.mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(
-        *dOut, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), &tmp_dOut);
-    tmp_dOut.Resize(framework::make_ddim({first_dim, sec_dim}));
+    Tensor tmp_dOut;
+    tmp_dOut.ShareDataWith(*dOut).Resize({first_dim, sec_dim});
+
 
     dX->Resize(framework::make_ddim({first_dim, sec_dim}));
     dX->mutable_data<T>(ctx.GetPlace());
