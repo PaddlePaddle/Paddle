@@ -178,14 +178,6 @@ class NPUDeviceContext : public DeviceContext {
   /*! \brief  Return npu stream in the device context. */
   aclrtStream stream() const;
 
-#ifdef PADDLE_WITH_ASCEND_HCCL
-  /*! \brief  Return bkcl context. */
-  HCCLContext_t hccl_context() const { return hccl_context_; }
-
-  /*! \brief  Set bkcl context. */
-  void set_hccl_context(HCCLContext_t context) { hccl_context_ = context; }
-#endif
-
  private:
   NPUPlace place_;
   aclrtContext context_;

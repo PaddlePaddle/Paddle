@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -28,6 +30,11 @@ limitations under the License. */
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
 namespace paddle {
@@ -106,6 +113,101 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 };
 
 template <ReduceType red_type, typename T>
+class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_ASCEND_CL)
+
+    // we need to pre-allocate 512 Bytes before the data 
+    // and 512 Bytes after the data, so the hccl allreduce
+    // can work. This is a must acooding to huawei peer.
+    #define PRE_MALLOC_SIZE_BYTES 512
+
+    auto in = ctx.Input<framework::LoDTensor>("X");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto place = ctx.GetPlace();
+    hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    int64_t numel = in->numel();
+
+    int64_t pre_tmp_size = PRE_MALLOC_SIZE_BYTES / sizeof(T);
+    int64_t tmp_numel = numel + pre_tmp_size * 2;
+
+    paddle::framework::LoDTensor tmp_in, tmp_out;
+    tmp_in.Resize({tmp_numel});
+    tmp_out.Resize({tmp_numel});
+    tmp_in.mutable_data<T>(place);  // allocate
+    tmp_out.mutable_data<T>(place);  // allocate
+
+    void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
+    void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
+
+    std::string tag = ctx.Attr<std::string>("tag");
+    int ring_id = ctx.Attr<int>("ring_id");
+    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+
+    aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
+    } else {
+      stream = comm->stream();
+    }
+
+    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+
+    memory::Copy(npu_place, sendbuff, 
+                 npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
+                 numel * sizeof(T),
+                 stream);
+
+    hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
+    switch (red_type) {
+      case kRedSum:
+        hccl_red_type = HCCL_REP_OP_SUM;
+        break;
+
+      case kRedMax:
+        hccl_red_type = HCCL_REP_OP_MAX;
+        break;
+
+      case kRedMin:
+        hccl_red_type = HCCL_REP_OP_MIN;
+        break;
+
+      case kRedProd:
+        hccl_red_type = HCCL_REP_OP_PROD;
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
+    }
+
+    VLOG(3) << "begin hccl allreduce, parameter is: "
+      << "input num: " << numel
+      << "dtype: " << dtype
+      << "hccl_red_type: " << hccl_red_type
+      << ", group is: " << group
+      << ", tag is " << tag;
+
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
+        tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
+
+    memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
+                 npu_place, recvbuff, 
+                 numel * sizeof(T),
+                 stream);
+    
+    out->Resize(in->dims());
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with NPU."));
+#endif
+  }
+};
+
+template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -114,7 +216,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<void>();
     out->Resize(in->dims());
@@ -155,7 +257,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
+        sendbuff, recvbuff, (u64)numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -170,6 +272,10 @@ class CAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allreduced result.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
+#if defined(PADDLE_WITH_ASCEND_CL)
+    AddAttr<std::string>("tag", "(string default tag) tag for all reduce.")
+        .SetDefault("tag");
+#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")

@@ -234,6 +234,16 @@ def __bootstrap__():
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
         ]
+
+    if core.is_compiled_with_npu():
+        read_env_flags += [
+            'selected_npus',
+            'fraction_of_gpu_memory_to_use',
+            'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb',
+            'gpu_memory_limit_mb',
+        ]
+
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
