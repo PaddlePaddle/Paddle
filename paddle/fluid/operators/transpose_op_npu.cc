@@ -33,7 +33,6 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
         auto runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
         auto stream = ctx.template device_context<paddle::platform::NPUDeviceContext>().stream();
         runner.Run(stream);
-        //.Wait();
 
     }
 };
