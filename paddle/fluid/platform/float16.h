@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 
-#include <cstdlib>
+#include <cmath>
 #include <iostream>
 #include <limits>
 
