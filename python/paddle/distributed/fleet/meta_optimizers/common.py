@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from ..base.private_helper_function import wait_server_ready
@@ -70,6 +71,26 @@ class CollectiveHelper(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
+
+        if core.is_compiled_with_npu():
+            endpoint_to_index_map = {
+                e: idx for idx, e in enumerate(self.role_maker._worker_endpoints)
+            }
+            block = program.global_block()
+            block.append_op(
+                type='c_comm_init_hcom',
+                inputs={},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    'device_id': os.getenv("FLAGS_selected_npus"),
+                    'rank_ids': [endpoint_to_index_map[e] for e in endpoints],
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+            return
+
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
 
