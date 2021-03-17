@@ -21,7 +21,7 @@ else()
     # It has not been used now, it can specify CUDA compile flag manualy,
     # its use is to remvoe /Zi to reduce GPU static library size. But it's dangerous
     # because CUDA will update by nvidia, then error will occur.
-    # Now, it's used in CUDA10.0->10.2
+    # Now, it's used in CUDA:[10.0, 10.2]
     set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)
 endif()
 

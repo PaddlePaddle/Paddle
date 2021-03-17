@@ -61,6 +61,8 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zm1000 /fp:fast")
+
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
 
