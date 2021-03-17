@@ -65,7 +65,7 @@ class TestModelCastBF16(unittest.TestCase):
                        fetch_list=fetch_list,
                        return_numpy=(not with_lod))
 
-    def test_elementwise_math(self):
+    def test_graph_rewrite(self):
         size = 3
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
@@ -108,11 +108,6 @@ class TestModelCastBF16(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret_bf16, static_ret, 1e-2))
         self.assertTrue(np.allclose(static_ret_bf16, ret_fp32bf16, 1e-2))
 
-    def test_op_rewrite(self):
-        size = 3
-        n = np.ones([size, size], dtype='float32') * 3.2
-        nn = np.ones([size, size], dtype='float32') * -2.7
-
         with self.static_graph():
             t = layers.data(name='t', shape=[size, size], dtype='float32')
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
@@ -134,9 +129,9 @@ class TestModelCastBF16(unittest.TestCase):
                         use_bf16_guard=True
                     )
                 )
-            self.assertTrue(
-                static_ret_bf16, np.ones(
-                    [size, size], dtype='float32') * -1.1)
+        self.assertTrue(
+            static_ret_bf16, np.ones(
+                [size, size], dtype='float32') * -1.1)
 
 
 if __name__ == '__main__':

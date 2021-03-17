@@ -137,7 +137,7 @@ class AMPTest(unittest.TestCase):
         self.assertEqual(amp_lists_.fp32_list, fp32_list)
         self.assertEqual(amp_lists_.gray_list, gray_list)
 
-    def test_amp_list9_8(self):
+    def test_amp_list_9(self):
         bf16_list = copy.copy(amp.bf16.amp_lists.bf16_list)
         fp32_list = copy.copy(amp.bf16.amp_lists.fp32_list)
         gray_list = copy.copy(amp.bf16.amp_lists.gray_list)
