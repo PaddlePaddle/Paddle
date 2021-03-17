@@ -26,18 +26,22 @@ from paddle.fluid.core import AnalysisConfig
 class TRTNearestInterpTest(InferencePassTest):
     def setUp(self):
         self.set_params()
+
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data",
-                shape=[-1, self.channels, *self.origin_shape],
-                dtype="float32")
+            if self.data_layout == 'NCHW':
+                shape = [-1, self.channels, *self.origin_shape]
+            else:
+                shape = [-1, *self.origin_shape, self.channels]
+            data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
             out = fluid.layers.batch_norm(resize_out, is_test=True)
 
-        self.feeds = {
-            "data": np.random.random(
-                [self.bs, self.channels, *self.origin_shape]).astype("float32"),
-        }
+        if self.data_layout == 'NCHW':
+            shape = [self.bs, self.channels, *self.origin_shape]
+        else:
+            shape = [self.bs, *self.origin_shape, self.channels]
+
+        self.feeds = {'data': np.random.random(shape).astype('float32'), }
         self.enable_trt = True
         self.trt_parameters = TRTNearestInterpTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
@@ -47,9 +51,10 @@ class TRTNearestInterpTest(InferencePassTest):
         self.bs = 4
         self.scale = 1
         self.channels = 3
-        self.origin_shape = (32, 32)  # CHW
-        self.resize_shape = (64, 64)  # CHW
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
         self.align_corners = True
+        self.data_layout = 'NCHW'
 
     def append_nearest_interp(self, data):
         if self.scale > 0.:
@@ -71,9 +76,10 @@ class TRTNearestInterpTest1(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # CHW
-        self.resize_shape = (64, 64)  # CHW
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
         self.align_corners = True
+        self.data_layout = 'NCHW'
 
 
 class TRTNearestInterpTest2(TRTNearestInterpTest):
@@ -81,9 +87,10 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
         self.bs = 4
         self.scale = 2.
         self.channels = 3
-        self.origin_shape = (32, 32)  # CHW
-        self.resize_shape = (64, 64)  # CHW
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
         self.align_corners = False
+        self.data_layout = 'NCHW'
 
 
 class TRTNearestInterpTest3(TRTNearestInterpTest):
@@ -91,9 +98,10 @@ class TRTNearestInterpTest3(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # CHW
-        self.resize_shape = (64, 64)  # CHW
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
         self.align_corners = False
+        self.data_layout = 'NCHW'
 
 
 class TRTNearestInterpTest4(TRTNearestInterpTest):
@@ -101,9 +109,54 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
         self.bs = 4
         self.scale = -1
         self.channels = 3
-        self.origin_shape = (32, 32)  # CHW
-        self.resize_shape = (47, 48)  # CHW
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
         self.align_corners = False
+        self.data_layout = 'NCHW'
+
+
+class TRTNearestInterpTest5(TRTNearestInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = 2.
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
+        self.align_corners = False
+        self.data_layout = 'NHWC'
+
+
+class TRTNearestInterpTest6(TRTNearestInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -1
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (64, 64)  # HW
+        self.align_corners = False
+        self.data_layout = 'NHWC'
+
+
+class TRTNearestInterpTest7(TRTNearestInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -1
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
+        self.align_corners = False
+        self.data_layout = 'NHWC'
+
+
+class TRTNearestInterpTest8(TRTNearestInterpTest):
+    def set_params(self):
+        self.bs = 4
+        self.scale = -1
+        self.channels = 3
+        self.origin_shape = (32, 32)  # HW
+        self.resize_shape = (47, 48)  # HW
+        self.align_corners = False
+        self.data_layout = 'NHWC'
 
 
 if __name__ == "__main__":
