@@ -227,6 +227,20 @@ class ShardingOptimizer(MetaOptimizerBase):
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
 
+        name_fetch_name_map = dict()
+        for idx, op in enumerate(main_block.ops):
+            if op.type == 'memcpy':
+                if not '@Fetch' in op.output_arg_names[0]: continue
+                origin_fetch_name = op.output_arg_names[0]
+                origin_name = origin_fetch_name[:origin_fetch_name.find(
+                    '@Fetch')]
+                name_fetch_name_map[origin_name] = origin_fetch_name
+            elif op.type == 'layer_norm':
+                for out_name in op.output_arg_names:
+                    if out_name not in name_fetch_name_map: continue
+                    fetch_name = name_fetch_name_map[out_name]
+                    op._rename_output(out_name, fetch_name)
+
         with open("start_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
             f.writelines(str(startup_block.program))
