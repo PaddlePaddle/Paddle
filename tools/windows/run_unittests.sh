@@ -359,7 +359,7 @@ function show_ut_retry_result() {
 }
 
 set +e
-if [ -a "$PADDLE_ROOT/added_ut" ];then
+if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 150;added_ut_error=$?
     if [ "$added_ut_error" != 0 ];then
