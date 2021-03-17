@@ -32,7 +32,7 @@ SEED = 2021
 class TestSoftmax(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = paddle.NPUPlace(4)
+        self.place = paddle.NPUPlace(0)
         self.op_type = "softmax"
         self.init_dtype()
 
@@ -91,7 +91,7 @@ class TestSoftmaxNet(unittest.TestCase):
             sgd.minimize(loss)
 
         if run_npu:
-            place = paddle.NPUPlace(4)
+            place = paddle.NPUPlace(0)
         else:
             place = paddle.CPUPlace()
 
