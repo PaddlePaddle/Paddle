@@ -4861,6 +4861,112 @@ class PipelineOptimizer(object):
                 new_grad_name = name + "@MERGED"
                 self._rename_arg(op, name, new_grad_name)
 
+    def _accumulate_gradients_with_sharding(self,
+                                            block,
+                                            pp_allreduce_in_optimize=False):
+        """
+        Create a new merged gradient for each parameter and accumulate the
+        corresponding gradient to it.
+        """
+        merged_gradient_names = []
+        first_opt_op_idx = None
+
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    block._remove_op(index)
+                    continue
+
+            #if self._is_backward_op(op) and not first_opt_op_idx:
+            #    first_opt_op_idx = index + 1
+            #    if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
+            #        #block.ops[first_opt_op_idx]._set_attr(self._op_role_key, self._op_role.Backward)
+            #        first_opt_op_idx += 1
+
+            if self._is_backward_op(op) and op.type == 'c_sync_comm_stream':
+                #op._remove_attr(self._op_role_var_key)
+                offset = 1
+                for in_name in op.input_arg_names:
+                    if '@GRAD' not in in_name: continue
+                    if 'cast_fp16@GRAD' in in_name:
+                        param_name = in_name.split('.cast_fp16@GRAD')[0]
+                    else:
+                        param_name = in_name.strip('@GRAD')
+                    print('param_name', param_name)
+                    if not block.has_var(param_name): continue
+                    #if '@BroadCast' in param_name: continue
+                    param_grad_name = param_name + core.grad_var_suffix()
+                    merged_param_grad_name = param_grad_name + '@MERGED'
+                    if not block.has_var(merged_param_grad_name):
+                        self._create_var(block, block.vars[param_name],
+                                         merged_param_grad_name)
+                    assert block.has_var(merged_param_grad_name)
+                    param_grad_var = block.var(param_grad_name)
+                    merged_param_grad_var = block.var(merged_param_grad_name)
+                    merged_param_grad_var.persistable = True
+                    block._insert_op(
+                        index=index + offset,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': [merged_param_grad_var]},
+                        attrs={
+                            'shape': merged_param_grad_var.shape,
+                            'dtype': merged_param_grad_var.dtype,
+                            'value': float(0),
+                            # a trick to run this op once per mini-batch
+                            self._op_role_key: self._op_role.Optimize.LRSched,
+                        })
+                    offset += 1
+                    grad_name = in_name
+                    grad_var = block.vars[grad_name]
+                    if not 'cast_fp16' in grad_name:
+                        block._insert_op(
+                            index=index + offset,
+                            type='sum',
+                            inputs={'X': [grad_var, merged_param_grad_var]},
+                            outputs={'Out': merged_param_grad_var},
+                            attrs={
+                                self._op_role_key: self._op_role.Backward,
+                            })
+                        offset += 1
+                        merged_gradient_names.append(merged_param_grad_name)
+                    else:
+                        # cast gradient to fp32 to accumulate to merged gradient
+                        cast_grad_var_name = param_grad_name + '@TMP'
+                        cast_grad_var = self._create_var(block, param_grad_var,
+                                                         cast_grad_var_name)
+                        cast_grad_var.persistable = False
+                        block._insert_op(
+                            index=index + offset,
+                            type='cast',
+                            inputs={'X': grad_var},
+                            outputs={'Out': cast_grad_var},
+                            attrs={
+                                'in_dtype': grad_var.dtype,
+                                'out_dtype': cast_grad_var.dtype,
+                                self._op_role_key: self._op_role.Backward,
+                            })
+                        offset += 1
+                        block._insert_op(
+                            index=index + offset,
+                            type='sum',
+                            inputs={
+                                'X': [merged_param_grad_var, cast_grad_var]
+                            },
+                            outputs={'Out': merged_param_grad_var},
+                            attrs={
+                                # self._op_device_key: device,
+                                self._op_role_key: self._op_role.Backward,
+                                #self._op_role_var_key: op_role_var
+                            })
+                        offset += 1
+                        merged_gradient_names.append(merged_param_grad_name)
+        return merged_gradient_names
+
     def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
         """
         Create a new merged gradient for each parameter and accumulate the

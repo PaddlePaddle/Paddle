@@ -202,7 +202,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 #if self._shard.has_param(param_name): continue
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
-            accumulated_grad_names = pp_optimizer._accumulate_gradients(
+            accumulated_grad_names = pp_optimizer._accumulate_gradients_with_sharding(
                 main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
             if self.pp_allreduce_in_optimize:
