@@ -67,12 +67,16 @@ class GraphShard {
 };
 class GraphTable : public SparseTable {
  public:
-  GraphTable() { rwlock_.reset(new framework::RWLock); }
+  GraphTable() {}
   virtual ~GraphTable() {}
-  virtual int32_t pull_graph_list(int start, int size, char *&buffer,
+  virtual int32_t pull_graph_list(int start, int size,
+                                  std::unique_ptr<char[]> &buffer,
                                   int &actual_size);
-  virtual int random_sample(uint64_t* node_ids, int sampe_size, std::vector<char *>&buffers,
+
+  virtual int32_t random_sample(uint64_t *node_ids, int sample_size,
+                                std::vector<std::unique_ptr<char[]>> &buffers,
                                 std::vector<int> &actual_sizes);
+
   virtual int32_t initialize();
 
   int32_t load(const std::string &path, const std::string &param);
@@ -103,7 +107,6 @@ class GraphTable : public SparseTable {
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
-  std::unique_ptr<framework::RWLock> rwlock_{nullptr};
   const int task_pool_size_ = 11;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 };

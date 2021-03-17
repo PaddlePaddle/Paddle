@@ -88,12 +88,14 @@ class Table {
   }
 
   // only for graph table
-  virtual int32_t pull_graph_list(int start, int total_size, char *&buffer,
+  virtual int32_t pull_graph_list(int start, int total_size,
+                                  std::unique_ptr<char[]> &buffer,
                                   int &actual_size) {
     return 0;
   }
   // only for graph table
-  virtual int random_sample(uint64_t* node_ids, int sampe_size, std::vector<char *>&buffers,
+  virtual int32_t random_sample(uint64_t *node_ids, int sample_size,
+                                std::vector<std::unique_ptr<char[]>> &buffers,
                                 std::vector<int> &actual_sizes) {
     return 0;
   }
