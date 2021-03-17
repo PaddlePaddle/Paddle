@@ -48,7 +48,8 @@ class GradientClipHelper(object):
             if deperate_op:
                 deperate_op_idx.add(idx)
                 for output_name in op.desc.output_arg_names():
-                    deperated_vars.add(output_name)
+                    if output_name not in op.desc.input_arg_names():
+                        deperated_vars.add(output_name)
 
         if not deperated_vars:
             # got no gradient_clip op
@@ -92,7 +93,6 @@ class GradientClipHelper(object):
                     attrs={OP_ROLE_KEY: OpRole.Optimize})
 
         for var_name in deperated_vars:
-            if block.has_var(var_name):
-                block._remove_var(var_name, sync=False)
+            block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
         return
