@@ -80,7 +80,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input tensor of temporal shift operator. "
-             "This is a 4-D tensor with shape of [N*T,  C, H, W]. "
+             "This is a 4-D tensor with shape of [N*T, C, H, W] "
+             "or [N*T, H, W, C]. "
              "While N is the batch size, T is the temporal segment "
              "number, C is the channel number, H is the height of "
              "features and W is the width of features. "
@@ -100,15 +101,23 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
         "by 1 along the temporal dimension. :attr:`shift_ratio` should be in "
         "range [0, 0.5]. Default 0.25.")
         .SetDefault(0.25);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "an optional string from: \"NHWC\", \"NCHW\". "
+        "Specify that the data format of the input and output data is "
+        "channel_first or channel_last.")
+        .SetDefault("NCHW");
 
     AddComment(R"DOC(
           This operator calculates the temporal shifting features for Input(X).
 
-          Input(X) should be in shape of [N*T, C, H, W], while N is the batch
-          size, T is the temporal segment number specified by :attr:`seg_num`, 
-          C is the channel number, H and W is the height and width of features.
+          Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while 
+          N is the batch size, T is the temporal segment number specified by 
+          :attr:`seg_num`, C is the channel number, H and W is the height and 
+          width of features.
 
-          Temporal Shifting is calculated as follows:
+          Temporal Shifting is calculated as follows when data format is NCHW:
           
           Step 1: Reshape Input(X) to [N, T, C, H, W].
 
