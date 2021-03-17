@@ -359,6 +359,16 @@ function show_ut_retry_result() {
 }
 
 set +e
+if [ -a "$PADDLE_ROOT/added_ut" ];then
+    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+    ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 150;added_ut_error=$?
+    if [ "$added_ut_error" != 0 ];then
+        echo "========================================"
+        echo "Added UT should not exceed 15 seconds"
+        echo "========================================"
+        exit 8;
+    fi
+fi
 run_unittest $eight_parallel_job 8
 run_unittest $tetrad_parallel_jog 4
 run_unittest $non_parallel_job_1
