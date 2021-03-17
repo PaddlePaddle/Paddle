@@ -142,7 +142,7 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
     for (int w_in = w_in_start; w_in < w_in_end; w_in += dilate_width) {
       if (h_in >= h_start && h_in < h_end && w_in >= w_start && w_in < w_end) {
         int offset = ((batch * input_height + h_in) * input_width + w_in) *
-                         output_channels +
+                         input_channels +
                      c_in;
         T in_data = input_data[offset];
         const T* weight = filter_data + weight_offset * output_channels + c_out;
@@ -648,12 +648,12 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     if (data_layout == DataLayout::kNHWC) {
-      framework::DDim filter_nhwc_dims({filter.dims()[0], filter.dims()[2],
-                                        filter.dims()[3], filter.dims()[1]});
+      framework::DDim filter_nhwc_dims({filter.dims()[2], filter.dims()[3],
+                                        filter.dims()[0], filter.dims()[1]});
       framework::Tensor filter_nhwc;
       filter_nhwc.Resize(filter_nhwc_dims);
       filter_nhwc.mutable_data<T>(context.GetPlace());
-      std::vector<int> perm_axis({0, 2, 3, 1});
+      std::vector<int> perm_axis({2, 3, 0, 1});
       math::TransposeNormal<platform::CUDADeviceContext, T> trans;
       trans(context, filter, &filter_nhwc, perm_axis);
       filter_data = filter_nhwc.data<T>();
