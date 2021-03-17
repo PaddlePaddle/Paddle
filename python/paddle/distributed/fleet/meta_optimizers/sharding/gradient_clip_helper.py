@@ -111,6 +111,7 @@ class GradientClipHelper(object):
             to_check_param - should_check_param)
 
         for var_name in deperated_vars:
-            block._remove_var(var_name, sync=False)
+            if block.has_var(var_name):
+                block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
         return
