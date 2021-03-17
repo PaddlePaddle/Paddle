@@ -109,6 +109,7 @@ class TestIncrementInplace(unittest.TestCase):
         print('input b id is : {}'.format(id(b)))
 
         self.assertEqual(id(a), id(b))
+        self.assertEqual(b_value[0], 2)
 
 
 if __name__ == '__main__':
