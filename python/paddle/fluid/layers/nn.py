@@ -13334,7 +13334,7 @@ def shuffle_channel(x, group, name=None):
 
 
 @templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
@@ -13348,6 +13348,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCHW" or "NHWC". Default: "NCHW".
 
     Returns:
         out(Tensor): The temporal shifting result is a tensor with the
@@ -13365,6 +13367,13 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             input = paddle.randn([6, 4, 2, 2])
             out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
+                         "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio, 'data_format', data_format)
+
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
     check_type(seg_num, 'seg_num', int, 'temporal_shift')
@@ -13375,16 +13384,15 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
 
-    if in_dygraph_mode():
-        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                       shift_ratio)
-
     helper.append_op(
         type="temporal_shift",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"seg_num": seg_num,
-               "shift_ratio": shift_ratio})
+        attrs={
+            "seg_num": seg_num,
+            "shift_ratio": shift_ratio,
+            "data_format": data_format
+        })
     return out
 
 
