@@ -4818,14 +4818,10 @@ class PipelineOptimizer(object):
         place_list = []
         for dev in device_list:
             dev_index = int(dev.split(":")[1])
-<<<<<<< HEAD
-            place_list.append(core.CUDAPlace(0))
-=======
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
             elif core.is_compiled_with_npu():
                 place_list.append(core.NPUPlace(dev_index % 1))
->>>>>>> 3ab39705ea... adapter npu (#31926)
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
