@@ -880,7 +880,7 @@ void Reducer::ProcessUnusedDenseVars() {
       auto dest_var_base = vars_[var_index];
       auto *dest_tensor =
           dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto &dest_dims = dest_tensor->dims();
+      const auto &dest_dims = dest_tensor->dims();
 
       // 3. create grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
