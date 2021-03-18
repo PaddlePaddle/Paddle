@@ -16,9 +16,14 @@ limitations under the License. */
 #include <cstdint>
 #include <string>
 
+#include "complex128.h"     // NOLINT
+#include "complex64.h"      // NOLINT
 #include "ext_exception.h"  // NOLINT
 
 namespace paddle {
+
+using complex64 = paddle::platform::complex64;
+using complex128 = paddle::platform::complex128;
 
 enum class DataType {
   BOOL,
@@ -29,6 +34,8 @@ enum class DataType {
   INT64,
   FLOAT32,
   FLOAT64,
+  COMPLEX64,
+  COMPLEX128,
   // TODO(JiabinYang) support more data types if needed.
 };
 
@@ -50,20 +57,26 @@ inline std::string ToString(DataType dtype) {
       return "float";
     case DataType::FLOAT64:
       return "double";
+    case DataType::COMPLEX64:
+      return "complex64";
+    case DataType::COMPLEX128:
+      return "complex128";
     default:
       PD_THROW("Unsupported paddle enum data type.");
   }
 }
 
-#define PD_FOR_EACH_DATA_TYPE(_) \
-  _(bool, DataType::BOOL)        \
-  _(int8_t, DataType::INT8)      \
-  _(uint8_t, DataType::UINT8)    \
-  _(int16_t, DataType::INT16)    \
-  _(int, DataType::INT32)        \
-  _(int64_t, DataType::INT64)    \
-  _(float, DataType::FLOAT32)    \
-  _(double, DataType::FLOAT64)
+#define PD_FOR_EACH_DATA_TYPE(_)    \
+  _(bool, DataType::BOOL)           \
+  _(int8_t, DataType::INT8)         \
+  _(uint8_t, DataType::UINT8)       \
+  _(int16_t, DataType::INT16)       \
+  _(int, DataType::INT32)           \
+  _(int64_t, DataType::INT64)       \
+  _(float, DataType::FLOAT32)       \
+  _(double, DataType::FLOAT64)      \
+  _(complex64, DataType::COMPLEX64) \
+  _(complex128, DataType::COMPLEX128)
 
 template <paddle::DataType T>
 struct DataTypeToCPPType;
