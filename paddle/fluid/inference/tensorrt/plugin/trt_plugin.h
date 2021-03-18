@@ -149,13 +149,14 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
     return false;
   }
 
-  virtual void configurePlugin(
-      const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-      const nvinfer1::Dims* output_dims, int32_t nb_outputs,
-      const nvinfer1::DataType* input_types,
-      const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
-      const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-      int32_t max_batch_size);
+  void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
+                       const nvinfer1::Dims* output_dims, int32_t nb_outputs,
+                       const nvinfer1::DataType* input_types,
+                       const nvinfer1::DataType* output_types,
+                       const bool* input_is_broadcast,
+                       const bool* output_is_broadcast,
+                       nvinfer1::PluginFormat float_format,
+                       int32_t max_batch_size) override;
 
   virtual IPluginV2Ext* clone() const = 0;
 

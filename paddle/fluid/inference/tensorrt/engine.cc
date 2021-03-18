@@ -356,7 +356,7 @@ nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRTV2Ext *plugin) {
-  owned_pluginv2ext_.emplace_back(plugin);
+  owned_plugin_v2ext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 

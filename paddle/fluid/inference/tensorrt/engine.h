@@ -420,7 +420,7 @@ class TensorRTEngine {
       itensor_map_;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
-  std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_pluginv2ext_;
+  std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;
 
   // TensorRT related internal members
   template <typename T>

@@ -71,7 +71,6 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   }
 
   void serialize(void* buffer) const override {
-    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, output_length_);
@@ -91,7 +90,6 @@ class SplitPlugin : public PluginTensorRTV2Ext {
   void shareData(const SplitPlugin* another);
 };
 
-// TODO(wilber): Can PluginCreater be removed.
 class SplitPluginCreator : public nvinfer1::IPluginCreator {
  public:
   SplitPluginCreator() {}
