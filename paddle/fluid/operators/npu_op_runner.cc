@@ -20,6 +20,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "acl/acl.h"
 #include "acl/acl_op_compiler.h"
@@ -240,9 +241,12 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
 
-  VLOG(4) << "NpuOpRunner::CreateTensorDesc op_type:" << op_type_ << ",dtype:" << dtype << " "
+  std::stringstream ss;
+  ss << "NpuOpRunner::CreateTensorDesc op_type:" << op_type_ << ",dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
+  VLOG(4) << ss.str();
+  desc_log_ += ss.str();
 
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
@@ -280,7 +284,8 @@ void NpuOpRunner::Run(aclrtStream stream) {
   if(FLAGS_benchmark){
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
     timeline.Pause();
-    VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ << ",time:" << timeline.ElapsedUS()/1.0;
+    VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ << ",time:" << timeline.ElapsedUS()/1.0
+        << desc_log_;
   }
 
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
