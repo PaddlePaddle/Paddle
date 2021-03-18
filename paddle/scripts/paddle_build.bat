@@ -34,7 +34,6 @@ taskkill /f /im python.exe  2>NUL
 set WITH_TPCACHE=OFF
 rmdir %cache_dir%\third_party_GPU /s/q
 rmdir %cache_dir%\third_party /s/q
-set WITH_UNITY_BUILD=OFF
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -331,16 +330,17 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
-where MSBuild
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*2/3
+
+for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
+
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
-    MSBuild /m /p:Configuration=Release /p:PreferredToolArchitecture=x64 /verbosity:%LOG_LEVEL% third_party.vcxproj
+    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 )
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
@@ -363,7 +363,7 @@ if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
         MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
     )

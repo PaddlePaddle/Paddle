@@ -113,7 +113,7 @@ if(WITH_PYTHON)
     "${op_function_generator_path}/op_function_generator ${impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 100 (\n"
+    "    if %build_times% GTR 5 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"
