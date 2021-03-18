@@ -62,6 +62,10 @@ class TestSliceOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place, ['Input'], 'Out', check_dygraph=False)
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
