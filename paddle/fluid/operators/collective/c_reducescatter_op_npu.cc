@@ -32,10 +32,10 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    std::string tag = ctx.Attr<std::string>("tag");
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
+    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     auto out_dims = in->dims();
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
@@ -43,7 +43,7 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
                           "The input tensor X's "
                           "dim[0] (%d) should be divisible by nranks(%d)",
                           out_dims[0], nranks));
-    
+
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
@@ -66,7 +66,7 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
       << "hccl_red_type: " << HCCL_REP_OP_SUM
       << ", group is: " << group
       << ", tag is " << tag;
-    
+
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_reduce_scatter(
         tag.c_str(), inputPtr, outputPtr, (u64)recv_numel, dtype, HCCL_REP_OP_SUM, group.c_str(), (void*)stream));
 #else
@@ -82,7 +82,7 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(c_reducescatter, 
+REGISTER_OP_NPU_KERNEL(c_reducescatter,
                         ops::CReduceScatterOpAscendKernel<int8_t>,
                         ops::CReduceScatterOpAscendKernel<int>,
                         ops::CReduceScatterOpAscendKernel<float>,
