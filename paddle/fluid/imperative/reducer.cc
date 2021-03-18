@@ -483,12 +483,15 @@ void Reducer::PrepareForBackward(
   PADDLE_ENFORCE_EQ(
       groups_need_finalize_, false,
       platform::errors::PreconditionNotMet(
-          "Please note that all forward outputs derived from the module "
+          "A serious error has occurred here. There may be several reasons: "
+          "1) Please note that all forward outputs derived from the module "
           "parameters must participate in the calculation of losses and "
           "subsequent gradient calculations. If not, the wrapper will hang, "
           "waiting for autograd to generate gradients for these parameters. "
           "you can use detach or stop_gradient to make the unused parameters "
-          "detached from the autograd graph."));
+          "detached from the autograd graph. "
+          "2) Used multiple forwards and one reverse. You may be able to wrap "
+          "multiple forwards in a model."));
 
   // The first var to trigger the unused parameter
   has_marked_unused_vars_ = false;
@@ -565,8 +568,8 @@ void Reducer::PrepareForBackward(
     LOG_FIRST_N(WARNING, 1)
         << "All parameters are involved in the backward pass. "
            "It is recommended to set find_unused_parameters to False "
-           "to improve performance. However, if unused_parameters "
-           "appears in subsequent iterative training, then an error "
+           "to improve performance. However, if unused parameters "
+           "appear in subsequent iterative training, then an error "
            "will occur. Please make it clear that in the subsequent "
            "training, there will be no parameters that are not used "
            "in the backward pass, and then set find_unused_parameters";
@@ -621,7 +624,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   groups_need_finalize_ = true;
 
   const auto &var_locator = variable_locators_[var_index];
-  auto group_index = var_locator.group_index;
+  const auto group_index = var_locator.group_index;
   auto &group = groups_[group_index];
 
   // error happened, if the var is ready before.
@@ -670,7 +673,6 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
     } else {
       // TODO(shenliang03): maybe save the memory
       // by avoiding tensor construction
-
       if (!group_tensor.IsInitialized()) {
         group_tensor.Resize({static_cast<int64_t>(length)});
         group_tensor.mutable_data(place_, group.dtype_);
@@ -712,8 +714,10 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
   if (next_group_ == groups_.size()) {
     if (find_unused_vars_) {
-      VLOG(0) << "Local used vars : "
+      VLOG(3) << "Local used vars : "
               << string::join_strings(local_used_vars_, ',');
+// TODO(liuyuhui): support bckl in using TensorToVector/TensorFromVector
+#if defined(PADDLE_WITH_NCCL)
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       // H2D is to allreduce the local_used_vars_, here we use cal stream
       auto *bitmap_tensor =
@@ -724,6 +728,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
                                        true);
       framework::TensorToVector<int>(*bitmap_tensor, *dev_ctx,
                                      &local_used_vars_);
+#endif
     }
 
     FinalizeBackward();
@@ -849,19 +854,19 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 void Reducer::ProcessUnusedDenseVars() {
   // sync compute stream to get global used var message
   parallel_ctx_->SynchronizeCompute();
-  VLOG(0) << "Global used vars : "
+  VLOG(3) << "Global used vars : "
           << string::join_strings(local_used_vars_, ',');
   for (size_t var_index = 0; var_index < local_used_vars_.size(); ++var_index) {
     bool global_unused = (local_used_vars_[var_index] == 0);
     bool has_grad = HasGrad(var_index);
 
     // global used but local unused, set grad
-    VLOG(0) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
+    VLOG(3) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
             << "] global_unused:" << global_unused
             << "  has_grad: " << has_grad;
     if (!global_unused) {
       if (!has_grad) {
-        VLOG(0) << "start process unusedvar";
+        VLOG(3) << "start process unusedvar";
         // 1. source var base
         const auto &var_locator = variable_locators_[var_index];
         auto group_index = var_locator.group_index;
@@ -874,8 +879,6 @@ void Reducer::ProcessUnusedDenseVars() {
         }
         // 2. destination var base
         auto dest_var_base = vars_[var_index];
-        // VLOG(0) << "Var [" << var_index << "] [" << dest_var_base->Name()
-        //         << "] local unused, but global used.";
         auto *dest_tensor =
             dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
         auto &dest_dims = dest_tensor->dims();
@@ -888,10 +891,6 @@ void Reducer::ProcessUnusedDenseVars() {
             grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
         auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
         TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
-
-        // auto *dest_grad_tensor =
-        // grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
-        // dest_grad_tensor->ShareDataWith(src_tensor); //.Resize(dest_dims);
         dest_grad_tensor->Resize(dest_dims);
       }
     }
@@ -942,14 +941,17 @@ void Reducer::FinalizeBackward() {
   }
 
   if (find_unused_vars_) {
+// TODO(liuyuhui) support xpu about Tensorcopy
+#if defined(PADDLE_WITH_NCCL)
     ProcessUnusedDenseVars();
+#endif
     // Initialize local used vars
-    VLOG(0) << "ProcessUnusedDenseVars is finished.";
+    VLOG(3) << "ProcessUnusedDenseVars is finished.";
     local_used_vars_.clear();
     local_used_vars_.resize(vars_.size(), 0);
   }
 
-  VLOG(0) << "In the batch, Reducer is finished...";
+  VLOG(3) << "In the batch, Reducer is finished...";
 }
 
 // According to the size of each parameter, it is allocated to different groups.
