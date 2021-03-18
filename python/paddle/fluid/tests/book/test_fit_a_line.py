@@ -158,6 +158,8 @@ class TestFitALine(unittest.TestCase):
         with self.program_scope_guard():
             main(use_cuda=True)
 
+    @unittest.skipIf(not fluid.core.supports_bfloat16(),
+                     "place does not support BF16 evaluation")
     def test_bf16(self):
         with self.program_scope_guard():
             main(use_cuda=False, use_bf16=True)
