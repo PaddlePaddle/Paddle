@@ -1192,6 +1192,7 @@ USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
 USE_TRT_CONVERTER(clip);
 USE_TRT_CONVERTER(gather);
+
 USE_TRT_CONVERTER(affine_channel);
 #endif
 
