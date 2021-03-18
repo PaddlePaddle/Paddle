@@ -419,6 +419,7 @@ class DataParallel(layers.Layer):
             self._strategy = _build_default_parallel_strategy()
 
         if self._strategy.nranks > 1:
+            # sync buffer and params
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
             # the size of the group, Default: 1MB. The role of this small group is: 
