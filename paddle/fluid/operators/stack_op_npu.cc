@@ -32,13 +32,13 @@ class StackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.MultiInput<Tensor>("X");
-    int n = static_cast<int>(x.size());
+    int32_t N = x.size();
 
     PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument("number of input Tensor <= 0"));
+        N, 0, platform::errors::InvalidArgument("number of input Tensor <= 0"));
 
     std::vector<paddle::framework::Tensor> x_list;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < N; i++) {
       x_list.push_back(*x[i]);
     }
 
@@ -47,7 +47,6 @@ class StackNPUKernel : public framework::OpKernel<T> {
     if (axis < 0) {
       axis = axis + x_list[0].dims().size() + 1;
     }
-    int32_t N = x.size();
     auto* out = ctx.Output<Tensor>("Y");
 
     auto place = ctx.GetPlace();
@@ -98,6 +97,7 @@ class StackNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OP_NPU_KERNEL(
     stack, ops::StackNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::StackNPUKernel<paddle::platform::NPUDeviceContext,
