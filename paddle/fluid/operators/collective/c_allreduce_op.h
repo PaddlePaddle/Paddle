@@ -138,13 +138,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     tmp_in.mutable_data<T>(place);  // allocate
     tmp_out.mutable_data<T>(place);  // allocate
 
+
     void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
     void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
 
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
-    std::string tag = std::to_string(comm->NextTagId());
+    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -153,6 +154,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
+
+    // we need to memset this memory firstly to avoid core by hccl
+    platform::NPUMemsetAsync();
 
     auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
 

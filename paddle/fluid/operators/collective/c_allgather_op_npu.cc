@@ -38,7 +38,7 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
-    std::string tag = std::to_string(comm->NextTagId());
+    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
