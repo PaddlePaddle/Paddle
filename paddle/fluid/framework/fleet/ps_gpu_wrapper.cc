@@ -64,8 +64,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   thread_keys_.resize(thread_keys_thread_num_);
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
-    for (int j = 0; j < thread_keys_shard_num_; j++) {
-    }
   }
   const std::deque<Record>& vec_data = input_channel->GetData();
   size_t total_len = vec_data.size();
@@ -148,9 +146,21 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   timeline.Pause();
   VLOG(1) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
           << " seconds.";
+  auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+
+  if (!gloo_wrapper->IsInitialized()) {
+    VLOG(0) << "GLOO is not inited";
+    gloo_wrapper->Init();
+  }
+  gloo_wrapper->Barrier();
 
   timeline.Start();
-  auto build_func = [device_num, &local_keys, &local_ptr, &device_keys,
+  std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
+  uint16_t pass_id = 0;
+
+  auto record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(table_id, pass_id, pass_values);
+
+  auto build_func = [device_num, record_status, &pass_values, &local_keys, &local_ptr, &device_keys,
                      &device_vals, &device_mutex](int i) {
     std::vector<std::vector<FeatureKey>> task_keys(device_num);
     std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(
@@ -161,7 +171,20 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
       task_keys[shard].push_back(local_keys[i][j]);
       task_ptrs[shard].push_back(local_ptr[i][j]);
     }
-
+ 
+    if (record_status) {
+      size_t local_keys_size = local_keys.size();
+      size_t pass_values_size = pass_values.size();
+      for (size_t j = 0; j < pass_values_size; j += local_keys_size) {
+        auto& shard_values = pass_values[j];
+        for (size_t pair_idx = 0; pair_idx < pass_values[j].size(); pair_idx++) {
+          auto& cur_pair = shard_values[pair_idx];
+          int shard = cur_pair.first % device_num;
+          task_keys[shard].push_back(cur_pair.first);
+          task_ptrs[shard].push_back((paddle::ps::DownpourFixedFeatureValue*)cur_pair.second);
+        }
+      }
+    }
     for (int dev = 0; dev < device_num; dev++) {
       device_mutex[dev]->lock();
 
