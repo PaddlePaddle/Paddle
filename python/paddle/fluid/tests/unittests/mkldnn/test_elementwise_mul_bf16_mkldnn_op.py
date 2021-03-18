@@ -71,7 +71,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             user_defined_grad_outputs=[self.x_bf16])
 
 
-class TestElementwiseMulBroadCastingBf16MklDNNOp(
+class TestElementwiseMulBroadcastingBf16MklDNNOp(
         TestElementwiseMulBf16MklDNNOp):
     def generate_data(self):
         self.x = np.random.uniform(1, 2, [1, 2, 3, 100]).astype(np.float32)

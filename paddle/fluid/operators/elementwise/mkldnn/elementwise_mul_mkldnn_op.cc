@@ -72,8 +72,8 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     if (dy) {
       // dy = dout*x
-      // Handler should have dy passed but for broadcasting
-      // it is not good. So we pass x (for dims)
+      // Handler is having nullptr passed instead of output tensor as
+      // we want Dst buffer to be allocated by oneDNN not to use Tensor
       platform::BinaryMKLDNNHandler<T> handler(
           dnnl::algorithm::binary_mul, axis, dev_ctx, mkldnn_engine,
           ctx.GetPlace(), dout, x, nullptr, 1.0f, 1.0f, 1.0f,
