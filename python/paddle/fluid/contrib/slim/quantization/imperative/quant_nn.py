@@ -499,6 +499,10 @@ class QuantizedNoweightLayer(layers.Layer):
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
+        # TODO (jc): support ops that have several inputs
+        if isinstance(input, list):
+            assert len(input) == 1, \
+                "The QuantizedNoweightLayer should only have one input."
         return self._layer.forward(quant_input)
 
 
