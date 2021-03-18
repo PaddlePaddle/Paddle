@@ -32,9 +32,7 @@ taskkill /f /im python.exe  2>NUL
 
 :: TODO: Temporarily，REMOVE after VS2017 is stable.
 set WITH_TPCACHE=OFF
-rmdir %cache_dir%\third_party_GPU /s/q
-rmdir %cache_dir%\third_party /s/q
-set WITH_UNITY_BUILD=OFF
+set LOG_LEVEL=normal
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -337,6 +335,7 @@ echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
+
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
@@ -358,14 +357,15 @@ set build_times=1
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z
 
+
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
     )
 )
 
