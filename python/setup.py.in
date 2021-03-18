@@ -451,12 +451,30 @@ class InstallHeaders(Command):
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
 
+    def copy_data_type_headers(self, header):
+        if os.name == 'nt':
+            data_type_headers = ['platform\\complex64.h', 'platform\\complex128.h']
+        else:
+            data_type_headers = ['platform/complex64.h', 'platform/complex128.h']
+        for dtype_header in data_type_headers:
+            if dtype_header in header:
+                if os.name == 'nt':
+                    install_dir = os.path.join(self.install_dir, "paddle\\fluid\\extension\\include")
+                else:
+                    install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
+                if not os.path.exists(install_dir):
+                    self.mkpath(install_dir)
+                return self.copy_file(header, install_dir)
+
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
         elif 'third_party' not in header:
-            # framework
+            # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            # For paddle data type headers, we also need to copy to `extension/incude`,
+            # used for new custom operator
+            self.copy_data_type_headers(header)
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
