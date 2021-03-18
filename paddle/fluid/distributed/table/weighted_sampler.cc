@@ -41,6 +41,9 @@ std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
   float subtract;
   std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
+  struct timespec tn;
+  clock_gettime(CLOCK_REALTIME, &tn);
+  srand(tn.tv_nsec);
   while (k--) {
     float query_weight = rand() % 100000 / 100000.0;
     query_weight *= weight - subtract_weight_map[this];
