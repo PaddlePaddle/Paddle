@@ -502,7 +502,7 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
-ctest.exe -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests_cpu.sh %NIGHTLY_MODE%
 
 goto:eof
 
