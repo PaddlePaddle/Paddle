@@ -856,7 +856,8 @@ void Reducer::ProcessUnusedDenseVars() {
   parallel_ctx_->SynchronizeCompute();
   VLOG(3) << "Global used vars : "
           << string::join_strings(local_used_vars_, ',');
-  for (size_t var_index = 0; var_index < local_used_vars_.size(); ++var_index) {
+
+  for (const auto &var_index : unused_vars_) {
     bool global_unused = (local_used_vars_[var_index] == 0);
 
     // global used but local unused, set grad
