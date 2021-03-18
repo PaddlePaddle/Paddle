@@ -178,7 +178,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<int64_t>, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
           "`std::vector<std::string>`, Please check whether "
           "the attribute data type and data type string are matched.",
           attr_type_str));
@@ -327,7 +327,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
-            "`std::vector<float>`, `std::vector<int64_t>, "
+            "`std::vector<float>`, `std::vector<int64_t>`, "
             "`std::vector<std::string>`, Please check whether "
             "the attribute data type and data type string are matched.",
             attr_type_str));
@@ -640,9 +640,9 @@ void RegisterOperatorWithMetaInfo(
               "Unsupported `%s` type value as custom attribute now. "
               "Supported data types include `bool`, `int`, `float`, "
               "`int64_t`, `std::string`, `std::vector<int>`, "
-              "`std::vector<float>`, `std::vector<int64_t>, "
-              "`std::vector<std::string>`, Please check whether "
-              "the attribute data type and data type string are matched.",
+              "`std::vector<float>`, `std::vector<std::string>`, "
+              "Please check whether the attribute data type and "
+              "data type string are matched.",
               attr_type_str));
         }
       }
