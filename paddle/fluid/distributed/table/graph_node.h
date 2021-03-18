@@ -20,7 +20,6 @@ namespace distributed {
 // enum GraphNodeType { user = 0, item = 1, query = 2, unknown = 3 };
 class GraphEdge : public WeightedObject {
  public:
-  // GraphNodeType type;
   GraphEdge() {}
   GraphEdge(uint64_t id, float weight) : id(id), weight(weight) {}
   uint64_t get_id() { return id; }
@@ -31,8 +30,6 @@ class GraphEdge : public WeightedObject {
 class GraphNode {
  public:
   GraphNode() { sampler = NULL; }
-  // GraphNode(uint64_t id, GraphNodeType type, std::string feature)
-  //     : id(id), type(type), feature(feature), sampler(NULL) {}
   GraphNode(uint64_t id, std::string feature)
       : id(id), feature(feature), sampler(NULL) {}
   virtual ~GraphNode() {}
@@ -40,8 +37,6 @@ class GraphNode {
   static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
   void set_id(uint64_t id) { this->id = id; }
-  // GraphNodeType get_graph_node_type() { return type; }
-  // void set_graph_node_type(GraphNodeType type) { this->type = type; }
   void set_feature(std::string feature) { this->feature = feature; }
   std::string get_feature() { return feature; }
   virtual int get_size(bool need_feature);

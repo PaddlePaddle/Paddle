@@ -183,12 +183,14 @@ void GraphPyClient::load_node_file(std::string name, std::string filepath) {
     status.wait();
   }
 }
-std::vector<std::vector<std::pair<uint64_t, float> > > GraphPyClient::batch_sample_k(
-    std::string name, std::vector<uint64_t> node_ids, int sample_size) {
-  std::vector<std::vector<std::pair<uint64_t, float> > > v;
+std::vector<std::vector<std::pair<uint64_t, float>>>
+GraphPyClient::batch_sample_k(std::string name, std::vector<uint64_t> node_ids,
+                              int sample_size) {
+  std::vector<std::vector<std::pair<uint64_t, float>>> v;
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
-    auto status = worker_ptr->batch_sample(table_id, node_ids, sample_size, v);
+    auto status =
+        worker_ptr->batch_sample_neighboors(table_id, node_ids, sample_size, v);
     status.wait();
   }
   return v;

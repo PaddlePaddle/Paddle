@@ -79,9 +79,14 @@ class GraphBrpcService : public PsBaseService {
   int32_t initialize_shard_info();
   int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
                           PsResponseMessage &response, brpc::Controller *cntl);
-  int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
-                              PsResponseMessage &response,
-                              brpc::Controller *cntl);
+  int32_t graph_random_sample_neighboors(Table *table,
+                                         const PsRequestMessage &request,
+                                         PsResponseMessage &response,
+                                         brpc::Controller *cntl);
+  int32_t graph_random_sample_nodes(Table *table,
+                                    const PsRequestMessage &request,
+                                    PsResponseMessage &response,
+                                    brpc::Controller *cntl);
   int32_t barrier(Table *table, const PsRequestMessage &request,
                   PsResponseMessage &response, brpc::Controller *cntl);
   int32_t load_one_table(Table *table, const PsRequestMessage &request,
@@ -103,6 +108,7 @@ class GraphBrpcService : public PsBaseService {
   std::mutex _initialize_shard_mutex;
   std::unordered_map<int32_t, serviceHandlerFunc> _msg_handler_map;
   std::vector<float> _ori_values;
+  const int sample_nodes_ranges = 3;
 };
 // class GraphBrpcService : public BrpcPsService {
 //  public:
