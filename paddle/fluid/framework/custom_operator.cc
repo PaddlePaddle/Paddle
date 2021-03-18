@@ -581,7 +581,7 @@ void RegisterOperatorWithMetaInfo(
       ctx->ShareDim(op_inputs[0], op_outputs[0]);
     };
   } else {
-    info.infer_shape_ = [op_inputs, op_outputs,
+    info.infer_shape_ = [op_inputs, op_outputs, op_attrs,
                          infer_shape_func](InferShapeContext* ctx) {
       std::vector<std::vector<int64_t>> input_shapes;
       std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
@@ -606,8 +606,50 @@ void RegisterOperatorWithMetaInfo(
         }
       }
 
+      std::vector<boost::any> custom_attrs;
+      for (auto& attr_str : op_attrs) {
+        auto attr_name_and_type = detail::ParseAttrStr(attr_str);
+        auto attr_name = attr_name_and_type[0];
+        auto attr_type_str = attr_name_and_type[1];
+        if (attr_type_str == "bool") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<bool>(attr_name));
+        } else if (attr_type_str == "int") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<int>(attr_name));
+        } else if (attr_type_str == "float") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<float>(attr_name));
+        } else if (attr_type_str == "int64_t") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<int64_t>(attr_name));
+        } else if (attr_type_str == "std::string") {
+          custom_attrs.emplace_back(ctx->Attrs().Get<std::string>(attr_name));
+        } else if (attr_type_str == "std::vector<int>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<int>>(attr_name));
+        } else if (attr_type_str == "std::vector<float>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<float>>(attr_name));
+        } else if (attr_type_str == "std::vector<int64_t>") {
+          // NOTE(chenweihang): InferShape can't support std::vector<int64_t>
+          // attr type, because the input type is std::vector<int64_t>, only
+          // can use one rule to parse std::vector<int64_t> parameter
+          continue;
+        } else if (attr_type_str == "std::vector<std::string>") {
+          custom_attrs.emplace_back(
+              ctx->Attrs().Get<std::vector<std::string>>(attr_name));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported `%s` type value as custom attribute now. "
+              "Supported data types include `bool`, `int`, `float`, "
+              "`int64_t`, `std::string`, `std::vector<int>`, "
+              "`std::vector<float>`, `std::vector<int64_t>, "
+              "`std::vector<std::string>`, Please check whether "
+              "the attribute data type and data type string are matched.",
+              attr_type_str));
+        }
+      }
+
       VLOG(1) << "Custom Operator: InferShape - calc output ddim.";
-      auto output_shapes = infer_shape_func(input_shapes, vec_input_shapes);
+      auto output_shapes =
+          infer_shape_func(input_shapes, vec_input_shapes, custom_attrs);
 
       VLOG(1) << "Custom Operator: InferShape - set output ddim.";
       for (size_t i = 0; i < op_outputs.size(); ++i) {
