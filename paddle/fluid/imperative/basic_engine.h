@@ -30,8 +30,10 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  void Init(VarBase* var, bool retain_graph = false,
-            VarBase* grad_tensor = nullptr);
+  void Init(const std::vector<std::shared_ptr<VarBase>>& tensors,
+            const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
+            bool retain_graph, bool create_graph,
+            const std::vector<std::shared_ptr<VarBase>>& inputs);
 
   void Execute() override;
 
@@ -47,7 +49,7 @@ class BasicEngine : public Engine {
   void Clear();
 
  private:
-  std::shared_ptr<GradOpNode> init_node_;
+  std::vector<std::shared_ptr<GradOpNode>> init_nodes_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   // The input and output of Inplace op are the same. If only `var` is used
   // as the key, then the input and output of inplace op must be gradient
@@ -75,6 +77,7 @@ class BasicEngine : public Engine {
   std::vector<GradientAccumulator*> leaf_accumulators_;
 
   bool retain_graph_;
+  bool create_graph_;
 };
 
 }  // namespace imperative

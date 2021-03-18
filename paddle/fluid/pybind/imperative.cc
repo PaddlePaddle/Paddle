@@ -924,10 +924,10 @@ void BindImperative(py::module *m_ptr) {
               std::shared_ptr<imperative::VarBase> &grad_tensor) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
-             auto *engine = tracer.GetEngine();
-             engine->Init(&self, retain_graph, grad_tensor.get());
+             // auto *engine = tracer.GetEngine();
+             // engine->Init(&self, retain_graph, grad_tensor.get());
              VLOG(3) << "Start backward";
-             engine->Execute();
+             // engine->Execute();
              VLOG(3) << "Finish backward";
            },
            py::call_guard<py::gil_scoped_release>())
@@ -1412,6 +1412,20 @@ void BindImperative(py::module *m_ptr) {
         return engine.GetResult();
       },
       py::call_guard<py::gil_scoped_release>());
+
+  m.def(
+      "dygraph_run_backward",
+      [](const std::vector<std::shared_ptr<imperative::VarBase>> &tensors,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &grad_tensors,
+         bool retain_graph, bool create_graph,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &inputs,
+         const imperative::Tracer &tracer) {
+        auto *engine = tracer.GetEngine();
+        engine->Init(tensors, grad_tensors, retain_graph, create_graph, inputs);
+        VLOG(3) << "Start backward";
+        engine->Execute();
+        VLOG(3) << "Finish backward";
+      });
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
