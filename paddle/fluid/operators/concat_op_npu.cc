@@ -50,8 +50,9 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner =
-        NpuOpRunner("ConcatV2D", inputs, {*out}, {{"concat_dim", axis}});
+    auto runner = NpuOpRunner(
+        "ConcatD", {inputs}, {*out},
+        {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}});
     runner.Run(stream);
   }
 };
@@ -59,7 +60,7 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
 template <typename T>
 class ConcatGradNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
@@ -93,9 +94,9 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
         outputs.push_back(*outs[j]);
       }
     }
-    auto runner =
-        NpuOpRunner("SplitD", {*out_grad}, {outputs},
-                    {{"split_dim", axis}, {"num_split", outputs.size()}});
+    auto runner = NpuOpRunner(
+        "SplitD", {*out_grad}, outputs,
+        {{"split_dim", axis}, {"num_split", static_cast<int>(outputs.size())}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -108,11 +109,10 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(ops::ConcatNPUKernel<float>, ops::ConcatNPUKernel<bool>,
+REGISTER_OP_NPU_KERNEL(concat, ops::ConcatNPUKernel<float>,
                        ops::ConcatNPUKernel<paddle::platform::float16>,
                        ops::ConcatNPUKernel<int>);
 
 REGISTER_OP_NPU_KERNEL(concat_grad, ops::ConcatGradNPUKernel<float>,
-                       ops::ConcatGradNPUKernel<bool>,
                        ops::ConcatGradNPUKernel<paddle::platform::float16>,
                        ops::ConcatGradNPUKernel<int>);

@@ -28,11 +28,11 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestPow(OpTest):
+class TestConcat(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "concat"
-        self.place = paddle.NPUPlace(0)
+        self.place = paddle.NPUPlace(4)
         self.init_dtype()
         self.init_test_data()
 
@@ -59,10 +59,10 @@ class TestPow(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def init_test_data(self):
-        self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
-        self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
-        self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
-        self.axis = 1
+        self.x0 = np.random.random((1, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((3, 4, 5)).astype(self.dtype)
+        self.axis = 0
 
     # TODO(ascendrc): Add grad test
     # def test_check_grad(self):
@@ -72,9 +72,11 @@ class TestPow(OpTest):
     #
 
 
+'''
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestPowNet(unittest.TestCase):
+class TestNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -84,7 +86,7 @@ class TestPowNet(unittest.TestCase):
 
         a_np = np.random.random(size=(32, 32)).astype('float32')
         b_np = np.random.random(size=(32, 32)).astype('float32')
-        label_np = np.random.randint(2, size=(32, 1)).astype('int64')
+        label_np = np.random.randint(2, size=(64, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
@@ -133,7 +135,7 @@ class TestPowNet(unittest.TestCase):
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
-
+'''
 
 if __name__ == '__main__':
     unittest.main()
