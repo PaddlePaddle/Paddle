@@ -26,7 +26,7 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops, _is_opt_role_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
@@ -391,7 +391,14 @@ def find_heter_ops(program, default_device="cpu"):
     current_default_block_ops = []
     current_heter_device = default_device
     is_heter = False
+
+    optimizer_op = []
     for op in block.ops:
+        # check if op is optimizer
+        if _is_opt_role_op(op):
+            optimizer_op.append(op)
+            continue
+
         if _is_heter_op(op, current_heter_device, default_device):
             # for gpu/xpu-op
             is_heter = True
@@ -445,6 +452,16 @@ def find_heter_ops(program, default_device="cpu"):
         warnings.warn(
             "No heterogeneous OP was found in your program , "
             " please using fluid.device_guard() to run OPs on different device.")
+
+    if len(optimizer_op) != 0:
+        # heter + geo
+        # hard code for ctr
+        for idx, op in enumerate(optimizer_op):
+            if idx == 0:
+                program_block_ops[-1].insert(-2, op)
+            else:
+                program_block_ops[-2].append(op)
+                heter_ops["gpu"][1].append(op)
 
     total_heter_ops = 0
     heter_blocks = 0
