@@ -98,7 +98,6 @@ class StackNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OP_NPU_KERNEL(
     stack, ops::StackNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::StackNPUKernel<paddle::platform::NPUDeviceContext,

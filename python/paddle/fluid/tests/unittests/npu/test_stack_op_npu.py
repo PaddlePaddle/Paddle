@@ -1,4 +1,3 @@
-~
 #  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +29,7 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-
 class TestStack1(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -73,7 +70,6 @@ class TestStack1(OpTest):
 
 
 class TestStack2(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (2, 3, 4)
@@ -112,8 +108,8 @@ class TestStack2(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-class TestStack3(OpTest):
 
+class TestStack3(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (2, 3, 4)
@@ -151,6 +147,7 @@ class TestStack3(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+
 
 if __name__ == '__main__':
     unittest.main()
