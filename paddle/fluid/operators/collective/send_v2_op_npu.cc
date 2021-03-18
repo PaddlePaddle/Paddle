@@ -42,7 +42,8 @@ class CSendOpASCENDKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    std::string tag = ctx.Attr<std::string>("tag");
+    std::string tag =
+        std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     int destRank = ctx.Attr<int>("peer");

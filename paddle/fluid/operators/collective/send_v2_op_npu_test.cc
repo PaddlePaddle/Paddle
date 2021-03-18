@@ -92,7 +92,9 @@ void TestHcomSendOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto op = f::OpRegistry::CreateOp("send_v2", {{"X", {"X"}}}, {}, attrs);
 
-  op->Run(*scope, place);
+  for (int i = 0; i < 10; i++) {
+    op->Run(*scope, place);
+  }
   VLOG(3) << "send run over";
   ctx.Wait();
 }

@@ -135,18 +135,19 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     paddle::framework::LoDTensor tmp_in, tmp_out;
     tmp_in.Resize({tmp_numel});
     tmp_out.Resize({tmp_numel});
-    tmp_in.mutable_data<T>(place);   // allocate
-    tmp_out.mutable_data<T>(place);  // allocate
+    auto p_tmp_in = tmp_in.mutable_data<T>(place);    // allocate
+    auto p_tmp_out = tmp_out.mutable_data<T>(place);  // allocate
 
     void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
     void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
 
-    std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    std::string tag =
+        std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -155,6 +156,12 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
+
+    // we need to memset this memory firstly to avoid core by hccl
+    platform::NPUMemsetAsync(static_cast<void*>(p_tmp_in), 0,
+                             tmp_numel * sizeof(T), stream);
+    platform::NPUMemsetAsync(static_cast<void*>(p_tmp_out), 0,
+                             tmp_numel * sizeof(T), stream);
 
     auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
 

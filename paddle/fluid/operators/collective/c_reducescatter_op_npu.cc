@@ -33,10 +33,11 @@ class CReduceScatterOpAscendKernel : public framework::OpKernel<T> {
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    std::string tag = ctx.Attr<std::string>("tag");
     auto place = ctx.GetPlace();
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
+    std::string tag =
+        std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
 
     auto out_dims = in->dims();
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
