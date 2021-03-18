@@ -54,6 +54,6 @@ supported_quant_layers_map = {
 
 out_scale_layers_list = (
     paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.MaxPool2D,
-    paddle.nn.BatchNorm, paddle.nn.SyncBatchNorm, paddle.nn.LeakyReLU,
-    paddle.nn.PReLU, paddle.nn.ReLU, paddle.nn.ReLU6, paddle.nn.Sigmoid,
-    paddle.nn.Softmax, paddle.nn.Tanh, paddle.nn.Swish)
+    paddle.nn.BatchNorm, paddle.nn.BatchNorm2D, paddle.nn.SyncBatchNorm,
+    paddle.nn.LeakyReLU, paddle.nn.PReLU, paddle.nn.ReLU, paddle.nn.ReLU6,
+    paddle.nn.Sigmoid, paddle.nn.Softmax, paddle.nn.Tanh, paddle.nn.Swish)
