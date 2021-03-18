@@ -136,30 +136,46 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
     if rank == 0 and wait_port:
         wait_server_ready(other_endpoints)
     block = program.global_block()
-    nccl_id_var = block.create_var(
-        name=fluid.unique_name.generate('nccl_id'),
-        persistable=True,
-        type=fluid.core.VarDesc.VarType.RAW)
+    if core.is_compiled_with_cuda():
+        nccl_id_var = block.create_var(
+            name=fluid.unique_name.generate('nccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW)
 
-    block.append_op(
-        type='c_gen_nccl_id',
-        inputs={},
-        outputs={'Out': nccl_id_var},
-        attrs={
-            'rank': rank,
-            'endpoint': current_endpoint,
-            'other_endpoints': other_endpoints
-        })
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': nccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints
+            })
 
-    block.append_op(
-        type='c_comm_init',
-        inputs={'X': nccl_id_var},
-        outputs={},
-        attrs={
-            'nranks': nranks,
-            'rank': rank,
-            'ring_id': 0,
-        })
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': nccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            })
+    elif core.is_compiled_with_npu():
+        endpoint_to_index_map = {
+            e: idx for idx, e in enumerate(endpoints)
+        }
+        block.append_op(
+            type='c_comm_init_hcom',
+            inputs={},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+                'device_id': int(os.getenv("FLAGS_selected_npus")),
+                'rank_ids': [endpoint_to_index_map[e] for e in endpoints],
+            })
 
 
 def prepare_distributed_context(place=None):

@@ -17,6 +17,7 @@ import time
 import socket
 from contextlib import closing
 from six import string_types
+from paddle.fluid import core
 
 
 def wait_server_ready(endpoints):
@@ -33,6 +34,9 @@ def wait_server_ready(endpoints):
 
            wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
+    if core.is_compiled_with_npu():
+        return
+
     assert not isinstance(endpoints, string_types)
     while True:
         all_ok = True

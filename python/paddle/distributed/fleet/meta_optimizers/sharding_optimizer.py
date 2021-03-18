@@ -265,7 +265,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
                     "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
+                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init, c_comm_init_hcom"
             ]:
                 pass
             elif op.type == "conditional_block":

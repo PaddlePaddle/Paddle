@@ -471,6 +471,7 @@ def start_local_trainers(cluster,
             "PADDLE_RANK_IN_NODE": str(idx),
             "PADDLE_LOCAL_DEVICE_IDS":",".join(t.accelerators),
             "PADDLE_WORLD_DEVICE_IDS":",".join(res),
+            "RANK_ID": "%d" % t.rank,
         }
 
         if len(t.accelerators) > 0 and pod.device_mode==DeviceMode.GPU:

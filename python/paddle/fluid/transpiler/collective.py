@@ -17,6 +17,7 @@ from __future__ import print_function
 import sys
 import math
 from functools import reduce
+import os
 
 import collections
 import six
@@ -105,30 +106,47 @@ class Collective(object):
             wait_server_ready(other_endpoints)
 
         block = program.global_block()
-        nccl_id_var = block.create_var(
-            name=unique_name.generate('nccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': nccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints,
-                self.op_role_key: OpRole.Forward
-            })
-        block.append_op(
-            type='c_comm_init',
-            inputs={'X': nccl_id_var},
-            outputs={},
-            attrs={
-                'nranks': nranks,
-                'rank': rank,
-                'ring_id': ring_id,
-                self.op_role_key: OpRole.Forward
-            })
+        if core.is_compiled_with_cuda():
+            nccl_id_var = block.create_var(
+                name=unique_name.generate('nccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            block.append_op(
+                type='c_gen_nccl_id',
+                inputs={},
+                outputs={'Out': nccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    self.op_role_key: OpRole.Forward
+                })
+            block.append_op(
+                type='c_comm_init',
+                inputs={'X': nccl_id_var},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    self.op_role_key: OpRole.Forward
+                })
+        elif core.is_compiled_with_npu():
+            endpoint_to_index_map = {
+                e: idx for idx, e in enumerate(endpoints)
+            }
+            block.append_op(
+                type='c_comm_init_hcom',
+                inputs={},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    'device_id': int(os.getenv("FLAGS_selected_npus")),
+                    'rank_ids': [endpoint_to_index_map[e] for e in endpoints],
+                    self.op_role_key: OpRole.Forward
+                })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
