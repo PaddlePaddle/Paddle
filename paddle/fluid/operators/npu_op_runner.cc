@@ -284,7 +284,7 @@ void NpuOpRunner::Run(aclrtStream stream) {
   if(FLAGS_benchmark){
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
     timeline.Pause();
-    VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ << ",time:" << timeline.ElapsedUS()/1.0
+    VLOG(4) << "NpuOpRunner::Run op_type: " << op_type_ << ",time:" << timeline.ElapsedUS()/1.0 << ","
         << desc_log_;
   }
 
