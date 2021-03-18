@@ -35,7 +35,7 @@ int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
   return id % shard_num / shard_per_server;
 }
 // char* &buffer,int &actual_size
-std::future<int32_t> GraphBrpcClient::batch_sample(
+std::future<int32_t> GraphBrpcClient::batch_sample_neighboors(
     uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
     std::vector<std::vector<std::pair<uint64_t, float>>> &res) {
   std::vector<int> request2server;
@@ -68,7 +68,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample(
         int fail_num = 0;
         for (int request_idx = 0; request_idx < request_call_num;
              ++request_idx) {
-          if (closure->check_response(request_idx, PS_GRAPH_SAMPLE) != 0) {
+          if (closure->check_response(request_idx,
+                                      PS_GRAPH_SAMPLE_NEIGHBOORS) != 0) {
             ++fail_num;
           } else {
             auto &res_io_buffer =
@@ -113,7 +114,7 @@ std::future<int32_t> GraphBrpcClient::batch_sample(
 
   for (int request_idx = 0; request_idx < request_call_num; ++request_idx) {
     int server_index = request2server[request_idx];
-    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE);
+    closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBOORS);
     closure->request(request_idx)->set_table_id(table_id);
     closure->request(request_idx)->set_client_id(_client_id);
     // std::string type_str = GraphNode::node_type_to_string(type);
@@ -132,7 +133,49 @@ std::future<int32_t> GraphBrpcClient::batch_sample(
 
   return fut;
 }
-
+std::future<int32_t> GraphBrpcClient::random_sample_nodes(
+    uint32_t table_id, int server_index, int sample_size,
+    std::vector<uint64_t> &ids) {
+  DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
+    int ret = 0;
+    auto *closure = (DownpourBrpcClosure *)done;
+    if (closure->check_response(0, PS_GRAPH_SAMPLE_NODES) != 0) {
+      ret = -1;
+    } else {
+      // VLOG(0) << "check sample response: "
+      //         << " " << closure->check_response(0, PS_PULL_GRAPH_LIST);
+      auto &res_io_buffer = closure->cntl(0)->response_attachment();
+      butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
+      size_t bytes_size = io_buffer_itr.bytes_left();
+      char buffer[bytes_size];
+      io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
+      int index = 0;
+      while (index < bytes_size) {
+        // GraphNode node;
+        // node.recover_from_buffer(buffer + index);
+        // index += node.get_size(true);
+        // res.push_back(node);
+        ids.push_back(*(uint64_t *)(buffer + index));
+        index += GraphNode::id_size;
+      }
+    }
+    closure->set_promise_value(ret);
+  });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  closure->add_promise(promise);
+  std::future<int> fut = promise->get_future();
+  ;
+  closure->request(0)->set_cmd_id(PS_GRAPH_SAMPLE_NODES);
+  closure->request(0)->set_table_id(table_id);
+  closure->request(0)->set_client_id(_client_id);
+  closure->request(0)->add_params((char *)&sample_size, sizeof(int));
+  ;
+  PsService_Stub rpc_stub(get_cmd_channel(server_index));
+  closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
+  rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
+                   closure);
+  return fut;
+}
 std::future<int32_t> GraphBrpcClient::pull_graph_list(
     uint32_t table_id, int server_index, int start, int size,
     std::vector<GraphNode> &res) {
@@ -153,7 +196,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
       while (index < bytes_size) {
         GraphNode node;
         node.recover_from_buffer(buffer + index);
-        index += node.get_size();
+        index += node.get_size(true);
         res.push_back(node);
       }
     }

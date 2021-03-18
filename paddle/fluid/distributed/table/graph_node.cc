@@ -19,17 +19,23 @@ namespace distributed {
 int GraphNode::weight_size = sizeof(float);
 int GraphNode::id_size = sizeof(uint64_t);
 int GraphNode::int_size = sizeof(int);
-int GraphNode::get_size() { return feature.size() + id_size + int_size; }
+int GraphNode::get_size(bool need_feature) {
+  return id_size + int_size + (need_feature ? feature.size() : 0);
+}
 void GraphNode::build_sampler() {
   sampler = new WeightedSampler();
   GraphEdge** arr = edges.data();
   sampler->build((WeightedObject**)arr, 0, edges.size());
 }
-void GraphNode::to_buffer(char* buffer) {
-  int size = get_size();
+void GraphNode::to_buffer(char* buffer, bool need_feature) {
+  int size = get_size(need_feature);
   memcpy(buffer, &size, int_size);
-  memcpy(buffer + int_size, feature.c_str(), feature.size());
-  memcpy(buffer + int_size + feature.size(), &id, id_size);
+  if (need_feature) {
+    memcpy(buffer + int_size, feature.c_str(), feature.size());
+    memcpy(buffer + int_size + feature.size(), &id, id_size);
+  } else {
+    memcpy(buffer + int_size, &id, id_size);
+  }
 }
 void GraphNode::recover_from_buffer(char* buffer) {
   int size;
