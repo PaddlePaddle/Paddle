@@ -21,20 +21,20 @@ using Tensor = framework::Tensor;
 using float16 = paddle::platform::float16;
 
 template <typename T>
-struct GetVecType;
+struct CudaVecType;
 
 template <>
-struct GetVecType<double> {
+struct CudaVecType<double> {
   using type = double;
 };
 
 template <>
-struct GetVecType<platform::float16> {
+struct CudaVecType<platform::float16> {
   using type = __half2;
 };
 
 template <>
-struct GetVecType<float> {
+struct CudaVecType<float> {
   using type = float4;
 };
 
@@ -50,19 +50,21 @@ class BaseGPUFunctor {
 template <typename Type>
 class ReluGPUFuctor : public BaseGPUFunctor<Type> {
  public:
+  Type zero_;
+  ReluGPUFuctor() { zero_ = static_cast<Type>(0.0f); }
   // for relu forward and backward when T is double
   template <typename T>
   __device__ __forceinline__ T Compute(const T* a) {
 #ifdef __CUDA_ARCH__ >= 350 || HIP_VERSION >= 300
-    return __ldg(a) > static_cast<T>(0.0f) ? __ldg(a) : static_cast<T>(0.0f);
+    return __ldg(a) > zero_ ? __ldg(a) : zero_;
 #else
-    return (*a) > static_cast<T>(0.0f) ? (*a) : static_cast<T>(0.0f);
+    return (*a) > zero_ ? (*a) : zero_;
 #endif
   }
   // when num % vecsize != 0 this func will be used
   template <typename T>
   __device__ __forceinline__ T ComputeReminder(const T a) {
-    return a > static_cast<T>(0.0f) ? a : static_cast<T>(0.0f);
+    return a > zero_ ? a : zero_;
   }
 };
 
@@ -70,8 +72,8 @@ template <>
 template <>
 __device__ __forceinline__ float4
 ReluGPUFuctor<float>::Compute<float4>(const float4* a) {
-  return make_float4((a->x > 0.0f) * (a->x), (a->y > 0.0f) * (a->y),
-                     (a->z > 0.0f) * (a->z), (a->w > 0.0f) * (a->w));
+  return make_float4((a->x > zero_) * (a->x), (a->y > zero_) * (a->y),
+                     (a->z > zero_) * (a->z), (a->w > zero_) * (a->w));
 }
 
 template <>
@@ -95,6 +97,8 @@ ReluGPUFuctor<float16>::Compute<__half2>(const __half2* a) {
 template <typename Type>
 class ReluGradGPUFunctor : public BaseGPUFunctor<Type> {
  public:
+  Type zero_;
+  ReluGradGPUFunctor() { zero_ = static_cast<Type>(0.0f); }
   // for relu forward and backward when T is double
   template <typename T>
   __device__ __forceinline__ T Compute(const T* a, const T* b);
@@ -102,7 +106,7 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<Type> {
   // when num % vecsize != 0 this func will be used
   template <typename T>
   __device__ __forceinline__ T ComputeReminder(const T a, const T b) {
-    return a > static_cast<T>(0) ? b : static_cast<T>(0);
+    return a > zero_ ? b : zero_;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -113,10 +117,9 @@ template <>
 __device__ __forceinline__ double ReluGradGPUFunctor<double>::Compute<double>(
     const double* a, const double* b) {
 #ifdef __CUDA_ARCH__ >= 530 || CUDA_VERSION >= 300
-  return __ldg(a) > static_cast<double>(0.0f) ? __ldg(b)
-                                              : static_cast<double>(0.0f);
+  return __ldg(a) > zero_ ? __ldg(b) : zero_;
 #else
-  return (*a) > static_cast<double>(0.0f) ? (*b) : static_cast<double>(0.0f);
+  return (*a) > zero_ ? (*b) : zero_;
 #endif
 }
 
@@ -124,8 +127,8 @@ template <>
 template <>
 __device__ __forceinline__ float4
 ReluGradGPUFunctor<float>::Compute<float4>(const float4* a, const float4* b) {
-  return make_float4((a->x > 0.0f) * (b->x), (a->y > 0.0f) * (b->y),
-                     (a->z > 0.0f) * (b->z), (a->w > 0.0f) * (b->w));
+  return make_float4((a->x > zero_) * (b->x), (a->y > zero_) * (b->y),
+                     (a->z > zero_) * (b->z), (a->w > zero_) * (b->w));
 }
 
 template <>
@@ -205,7 +208,7 @@ class ActivationGPUKernel
     T* output_data = out->mutable_data<T>(dev_ctx.GetPlace(),
                                           static_cast<size_t>(num * sizeof(T)));
 
-    using VecType = typename GetVecType<T>::type;
+    using VecType = typename CudaVecType<T>::type;
     int vecsize = sizeof(VecType) / sizeof(T);
     int block = 512;
     int grid = (num + block - 1) / block;
@@ -247,7 +250,7 @@ class ActivationGradGPUKernel
       forward_data = x->data<T>();
     }
 
-    using VecType = typename GetVecType<T>::type;
+    using VecType = typename CudaVecType<T>::type;
     int vecsize = sizeof(VecType) / sizeof(T);
     int block = 512;
     int grid = (numel + block - 1) / block;
