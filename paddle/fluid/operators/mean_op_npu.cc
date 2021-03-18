@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,11 +24,7 @@ class MeanNPUKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
-    auto reduce_ndim = x->dims().size();
     std::vector<int> axes;
-    for (auto i = 0; i < reduce_ndim; ++i) {
-      axes.push_back(i);
-    }
 
     framework::NPUAttributeMap attr_input = {
                   {"keep_dims", false},
@@ -36,14 +32,7 @@ class MeanNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> out_dims;
     out_dims.push_back(1);
-    out->Resize(framework::make_ddim(out_dims));
     out->mutable_data<T>(ctx.GetPlace());
-
-    Tensor reduced_out(x->type());
-    std::vector<int64_t> reduced_dout_dims;
-    reduced_dout_dims.push_back(1);
-    reduced_out.Resize(framework::make_ddim(reduced_dout_dims));
-    reduced_out.mutable_data<T>(ctx.GetPlace());
 
     auto runner = NpuOpRunner("ReduceMeanD",
                               {*x},
@@ -85,8 +74,7 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < IG->dims().size(); ++i) {
       dout_dims.push_back(IG->dims()[i]);
     }
-    ones.Resize(framework::make_ddim(dout_dims));
-    ones.mutable_data<T>(context.GetPlace());
+    ones.mutable_data<T>(IG->dims(), context.GetPlace());
     auto runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
