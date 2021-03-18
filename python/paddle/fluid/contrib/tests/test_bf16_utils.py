@@ -176,6 +176,7 @@ class AMPTest(unittest.TestCase):
         assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_2)
 
     def test_find_true_post_op(self):
+
         block = fluid.default_main_program().global_block()
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
