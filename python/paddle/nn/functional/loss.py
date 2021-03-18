@@ -27,7 +27,7 @@ from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
 from ...fluid.layers import npair_loss  #DEFINE_ALIAS
 from ...fluid.layers import reshape
-from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
+from ...fluid.layers import softmax_with_cross_entropy as fluid_softmax_with_cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 
 from ...fluid.layers import edit_distance  #DEFINE_ALIAS
@@ -36,6 +36,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
+from paddle.utils import deprecated
 
 __all__ = [
     'binary_cross_entropy',
@@ -1112,6 +1113,19 @@ def ctc_loss(log_probs,
     return loss_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
+def softmax_with_cross_entropy(logits,
+                               label,
+                               soft_label=False,
+                               ignore_index=-100,
+                               numeric_stable_mode=True,
+                               return_softmax=False,
+                               axis=-1):
+    return fluid_softmax_with_cross_entropy(logits, label, soft_label,
+                                            ignore_index, numeric_stable_mode,
+                                            return_softmax, axis)
+
+
 def cross_entropy(input,
                   label,
                   weight=None,
@@ -1216,7 +1230,7 @@ def cross_entropy(input,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
-        out = softmax_with_cross_entropy(
+        out = fluid_softmax_with_cross_entropy(
             input,
             label,
             soft_label=soft_label,
@@ -1230,13 +1244,13 @@ def cross_entropy(input,
             out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
-            #   because of softmax_with_cross_entropy op's inner logic, 
+            #   because of fluid_softmax_with_cross_entropy op's inner logic, 
             #   in the out tensor of this op, the loss of sample with class_index==ignore_index is 0
             #   so, reduce_sum all directly is ok
             return core.ops.reduce_sum(out, 'reduce_all', True)
         elif reduction == "mean":
             #1. if weight==none, 
-            #    numerator: reduce_sum all loss directly is ok causeof softmax_with_cross_entropy's inner logic
+            #    numerator: reduce_sum all loss directly is ok causeof fluid_softmax_with_cross_entropy's inner logic
             #    denominator: count sample num with class_index!=ignore_index
             #2. else
             #    numerator: loss's weighted sum 
@@ -1277,7 +1291,7 @@ def cross_entropy(input,
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['int32', 'int64', 'float32', 'float64'],
         'softmax_cross_entropy')
-    out = softmax_with_cross_entropy(
+    out = fluid_softmax_with_cross_entropy(
         input,
         label,
         soft_label=soft_label,
