@@ -24,7 +24,7 @@ namespace operators {
 
 #define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                   \
   case L2E:                                                                \
-    WarpLogSoftmaxForward<T, float, L2E><<<blocks, threads, 0>>>(          \
+    WarpLogSoftmaxForward<T, double, L2E><<<blocks, threads, 0>>>(         \
         dst, src, batch_count, softmax_elements_stride, softmax_elements); \
     break;
 
@@ -85,7 +85,7 @@ __global__ void WarpLogSoftmaxForward(T* dst, const T* src, int batch_size,
       int element_index = local_idx + it * kernel_warp_size;
       if (element_index < batch_element_count) {
         elements[i][it] =
-            static_cast<float>(src[i * element_count + it * kernel_warp_size]);
+            static_cast<double>(src[i * element_count + it * kernel_warp_size]);
       } else {
         elements[i][it] = -std::numeric_limits<AccT>::infinity();
       }
