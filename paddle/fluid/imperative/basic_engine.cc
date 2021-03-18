@@ -102,6 +102,8 @@ void BasicEngine::Init(
           grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
           *dev_ctx, grad_var);
     }
+
+    init_nodes_.push_back(init_node_);
   }
 }
 
