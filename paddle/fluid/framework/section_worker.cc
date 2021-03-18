@@ -113,7 +113,8 @@ void SectionWorker::TrainFiles() {
   }
 
   if (schedule_mode_ == 0) {
-    // F-then-B scheduler
+    // F-then-B scheduler which runs Forward phase for all microbatches,
+    // then runs Backward phase for all microbatches.
     // step1: run forward
     for (int i = 0; i < num_microbatches_; ++i) {
       RunForward(i, gc, unused_vars_);
@@ -125,7 +126,11 @@ void SectionWorker::TrainFiles() {
     // step3: run update
     RunUpdate(gc, unused_vars_);
   } else {
-    // 1F1B scheduler
+    // 1F1B scheduler, which runs forward phase and backward phase altertively
+    // after startup phase. For a stage, the number of microbatches for
+    // startup is num_pipeline_stages_ - pipeline_stage_ - 1, where
+    // num_pipeline_stages_ is the total number of pipeline stages and
+    // pipeline_stage_ is the pipeline stage of the current device.
     auto startup_steps = num_pipeline_stages_ - pipeline_stage_ - 1;
     VLOG(3) << "startup_steps:" << startup_steps
             << ", num_stages: " << num_pipeline_stages_

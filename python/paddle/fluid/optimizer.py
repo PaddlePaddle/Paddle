@@ -4273,6 +4273,7 @@ class PipelineOptimizer(object):
             grad_name = self._append_grad_suffix(param_name)
             if not main_block.has_var(grad_name): continue
             grad_var = main_block.vars[grad_name]
+            grad_var.persistable = True
             main_block._insert_op(
                 index=0,
                 type='fill_constant',
@@ -4517,6 +4518,7 @@ class PipelineOptimizer(object):
                 "You must use pipeline with fleet"
         local_rank = main_program._pipeline_opt['local_rank'] % len(
             device_specs)
+        self.schedule_mode = main_program._pipeline_opt['schedule_mode']
 
         place_list = []
         for dev_spec in device_specs:
@@ -4545,7 +4547,7 @@ class PipelineOptimizer(object):
             "device_worker": "Section",
             "pipeline_stage": local_rank,
             "num_pipeline_stages": len(device_specs),
-            "schedule_mode": "F-then-B",
+            "schedule_mode": self.schedule_mode,
             "inner_parallelism": len(device_specs),
             "section_program": program_list[local_rank],
             "place": place_list[local_rank],
