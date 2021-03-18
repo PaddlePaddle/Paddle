@@ -32,9 +32,7 @@ taskkill /f /im python.exe  2>NUL
 
 :: TODO: Temporarily，REMOVE after VS2017 is stable.
 set WITH_TPCACHE=OFF
-rmdir %cache_dir%\third_party_GPU /s/q
-rmdir %cache_dir%\third_party /s/q
-set WITH_UNITY_BUILD=OFF
+set LOG_LEVEL=normal
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -252,6 +250,7 @@ echo    ========================================
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 set DISTUTILS_USE_SDK=1
+set MSBUILDEMITSOLUTION=1
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
@@ -337,6 +336,7 @@ echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 set build_times=1
 :build_tp
 echo Build third_party the %build_times% time:
+
 if %GENERATOR% == "Ninja" (
     ninja third_party
 ) else (
@@ -365,7 +365,7 @@ if %GENERATOR% == "Ninja" (
     if "%WITH_CLCACHE%"=="OFF" (
         MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
     ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
     )
 )
 
