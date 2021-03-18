@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.dygraph.base import to_variable
-from paddle.distributed import fleet
 import paddle.nn.functional as F
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
@@ -29,17 +28,12 @@ paddle.seed(123)
 
 
 class SimpleNet(fluid.Layer):
-    def __init__(self,
-                 hidden_size,
-                 vocab_size,
-                 num_steps=20,
-                 init_scale=0.1,
+    def __init__(self, hidden_size, vocab_size, init_scale=0.1,
                  is_sparse=False):
         super(SimpleNet, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
-        self.num_steps = num_steps
         self.embedding = Embedding(
             size=[self.vocab_size, self.hidden_size],
             dtype='float32',
@@ -70,19 +64,12 @@ class SimpleNet(fluid.Layer):
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 
-        self.fc_weight_2 = self.create_parameter(
-            attr=fluid.ParamAttr(),
-            shape=[self.vocab_size, 1],
-            dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-self.init_scale, high=self.init_scale))
+        self.phony = self.create_parameter(shape=[1], dtype="float32")
 
     def forward(self, input, label, conf):
         x_emb = self.embedding(input)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
-
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-
         mask = conf > 0
         mask = paddle.cast(mask, dtype="int64")
         mask.stop_gradient = True
@@ -90,20 +77,8 @@ class SimpleNet(fluid.Layer):
         emb_mask_inds = paddle.nonzero(emb_mask > 0).flatten()
         emb_mask_inds.stop_gradient = True
 
-        weight = paddle.to_tensor([1], dtype='float32')
         if emb_mask_inds.numel() == 0:
-            weight = paddle.to_tensor([0], dtype='float32')
-
-            projection = fluid.layers.reshape(fc, shape=[-1, self.vocab_size])
-            projection = paddle.matmul(projection, self.fc_weight_2)
-            projection = paddle.reshape(projection, shape=[-1, 1])
-
-            output = projection[0]
-            target = label[0]
-            loss_box = F.smooth_l1_loss(
-                output, target, reduction='sum', delta=1.0)
-            loss_box = loss_box / len(conf)
-
+            loss_box = self.phony * 0
         else:
             fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
             projection = fluid.layers.reshape(fc, shape=[-1, self.vocab_size])
@@ -116,7 +91,7 @@ class SimpleNet(fluid.Layer):
                 output, target, reduction='sum', delta=1.0)
             loss_box = loss_box / len(conf)
 
-        return loss_box * weight
+        return loss_box
 
 
 # global configs
@@ -168,7 +143,6 @@ class TestControlFlow(TestParallelDyGraphRunnerBase):
         model = SimpleNet(
             hidden_size=hidden_size,
             vocab_size=vocab_size,
-            num_steps=num_steps,
             init_scale=init_scale,
             is_sparse=False)
 
@@ -193,7 +167,6 @@ class TestControlFlow(TestParallelDyGraphRunnerBase):
         conf = to_variable(conf_data)
 
         dy_loss = model(x, y, conf)
-
         return dy_loss
 
 
