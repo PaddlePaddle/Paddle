@@ -52,14 +52,16 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
-  auto cmd = paddle::string::split_string<std::string>(param, "|");
-  std::set<std::string> cmd_set(cmd.begin(), cmd.end());
-  bool reverse_edge = cmd_set.count(std::string("reverse"));
-  bool load_edge = cmd_set.count(std::string("edge"));
+
+  bool load_edge = (param[0] == 'e');
+  bool load_node = (param[0] == 'n');
   if (load_edge) {
+    bool reverse_edge = (param[1] == '<');
     return this->load_edges(path, reverse_edge);
-  } else {
-    return this->load_nodes(path);
+  }
+  if (load_node){
+    std::string node_type = param.substr(1); 
+    return this->load_nodes(path, node_type);
   }
 }
 
@@ -99,7 +101,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
   }
   return 0;
 }
-int32_t GraphTable::load_nodes(const std::string &path) {
+int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
   for (auto path : paths) {
     std::ifstream file(path);
@@ -116,7 +118,10 @@ int32_t GraphTable::load_nodes(const std::string &path) {
         continue;
       }
 
-      std::string node_type = values[0];
+      std::string nt = values[0];
+      if (nt != node_type) {
+          continue;
+      }
       std::vector<std::string> feature;
       for (size_t slice = 2; slice < values.size(); slice++) {
         feature.push_back(values[slice]);

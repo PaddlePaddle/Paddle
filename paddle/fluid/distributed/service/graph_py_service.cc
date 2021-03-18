@@ -42,7 +42,6 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
     this->table_id_map[node_types[table_id]] = this->table_id_map.size();
   }
-  // Table 0 are for nodes
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
     this->table_id_map[edge_types[table_id]] = this->table_id_map.size();
   }
@@ -165,9 +164,15 @@ void GraphPyServer::start_server() {
 }
 void GraphPyClient::load_edge_file(std::string name, std::string filepath,
                                    bool reverse) {
-  std::string params = "edge";
+  // 'e' means load edge
+  std::string params = "e";
   if (reverse) {
-    params += "|reverse";
+    // 'e<' means load edges from $2 to $1
+    params += "<";
+  }
+  else {
+    // 'e>' means load edges from $1 to $2
+    params += ">";
   }
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
@@ -178,7 +183,8 @@ void GraphPyClient::load_edge_file(std::string name, std::string filepath,
 }
 
 void GraphPyClient::load_node_file(std::string name, std::string filepath) {
-  std::string params = "node";
+  // 'n' means load nodes and 'node_type' follows
+  std::string params = "n" + name;
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
     auto status =
