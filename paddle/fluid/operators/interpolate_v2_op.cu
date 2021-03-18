@@ -390,8 +390,6 @@ __global__ void KeBilinearInterpBw(T* in, const int in_img_h,
       if (in_img_w < out_img_w) {
         s_data[0][threadIdx.x] = 0;
         s_data[1][threadIdx.x] = 0;
-        __syncthreads();
-
         int remain = nthreads - (tid & (-blockDim.x));
         int in_top_max_index =
             math::blockReduceMax(top_right_index, FINAL_MASK);
@@ -1481,9 +1479,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
     T align_type_value = (align_mode == 0 && !align_corners) ? 0.5f : 0;
-    KeBilinearInterpBw<
-        T><<<config.block_per_grid, 256, 0,  // config.thread_per_block, 0,
-             ctx.cuda_device_context().stream()>>>(
+    KeBilinearInterpBw<T><<<config.block_per_grid, 256, 0,
+                            ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_type_value, data_layout);
   } else if ("bicubic" == interp_method) {
