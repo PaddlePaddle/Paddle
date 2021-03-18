@@ -28,9 +28,9 @@ class TRTAffineChannelTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
-                shape = [-1, self.channel, *self.hw]
+                shape = [-1, self.channel, self.hw[0], self.hw[1]]
             else:
-                shape = [-1, *self.hw, self.channel]
+                shape = [-1, self.hw[0], self.hw[1], self.channel]
 
             data = fluid.data(name='data', shape=shape, dtype='float32')
             scale = fluid.data(
