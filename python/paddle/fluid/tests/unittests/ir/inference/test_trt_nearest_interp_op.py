@@ -29,17 +29,29 @@ class TRTNearestInterpTest(InferencePassTest):
 
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
-                shape = [-1, self.channels, *self.origin_shape]
+                shape = [
+                    -1, self.channels, self.origin_shape[0],
+                    self.origin_shape[1]
+                ]
             else:
-                shape = [-1, *self.origin_shape, self.channels]
+                shape = [
+                    -1, self.origin_shape[0], self.origin_shape[1],
+                    self.channels
+                ]
             data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
             out = fluid.layers.batch_norm(resize_out, is_test=True)
 
         if self.data_layout == 'NCHW':
-            shape = [self.bs, self.channels, *self.origin_shape]
+            shape = [
+                self.bs, self.channels, self.origin_shape[0],
+                self.origin_shape[1]
+            ]
         else:
-            shape = [self.bs, *self.origin_shape, self.channels]
+            shape = [
+                self.bs, self.origin_shape[0], self.origin_shape[1],
+                self.channels
+            ]
 
         self.feeds = {'data': np.random.random(shape).astype('float32'), }
         self.enable_trt = True
