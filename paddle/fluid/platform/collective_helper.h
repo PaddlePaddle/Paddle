@@ -149,8 +149,7 @@ class NCCLCommContext {
 class NPUDeviceContext;
 
 #define ENV_RANK_TABLE_FILE "RANK_TABLE_FILE"
-#define ENV_RANK_ID "RANK_ID"
-#define ENV_DEV_ID "DEV_ID"
+#define ENV_RANK_ID "PADDLE_TRAINER_ID"
 
 class HCCLComm {
  public:
