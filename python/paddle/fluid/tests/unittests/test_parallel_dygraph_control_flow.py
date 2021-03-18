@@ -64,5 +64,22 @@ class TestFleetDygraphControlFlow(TestDistBase):
                 log_name=flag_name)
 
 
+class TestFleetDygraphControlFlowAccGrad(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._use_fleet_api = True
+        self._accumulate_gradient = True
+
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_control_flow.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
 if __name__ == "__main__":
     unittest.main()
