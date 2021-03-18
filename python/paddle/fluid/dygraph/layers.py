@@ -894,9 +894,9 @@ class Layer(core.Layer):
             if not self._built:
                 with program_desc_tracing_guard(False):
                     self._build_once(*inputs, **kwargs)
-                    if parallel_helper._is_data_parallel_mode():
-                        parallel_helper._broadcast_parameters(
-                            self._parameters.values())
+                    # if parallel_helper._is_data_parallel_mode():
+                    #     parallel_helper._broadcast_parameters(
+                    #         self._parameters.values())
                 self._built = True
 
             outputs = self.forward(*inputs, **kwargs)
