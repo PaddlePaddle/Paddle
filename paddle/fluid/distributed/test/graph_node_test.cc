@@ -311,26 +311,24 @@ void RunBrpcPushSparse() {
   testSampleNodes(worker_ptr_);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
-  // pull_status = worker_ptr_->batch_sample_neighboors(
-  //     0, std::vector<uint64_t>(1, 10240001024), 4, vs);
-  // pull_status.wait();
-  // ASSERT_EQ(0, vs[0].size());
+  pull_status = worker_ptr_->batch_sample_neighboors(
+      0, std::vector<uint64_t>(1, 10240001024), 4, vs);
+  pull_status.wait();
+  ASSERT_EQ(0, vs[0].size());
 
   std::vector<distributed::GraphNode> nodes;
-  // pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
-  // pull_status.wait();
-  // ASSERT_EQ(nodes.size(), 1);
-  // ASSERT_EQ(nodes[0].get_id(), 37);
-  // nodes.clear();
-  // pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
-  // pull_status.wait();
-  // ASSERT_EQ(nodes.size(), 1);
-  // ASSERT_EQ(nodes[0].get_id(), 59);
-  // for (auto g : nodes) {
-  //   std::cout << g.get_id() << std::endl;
-  // }
-  sleep(5);
-  // distributed::GraphPyService gps1, gps2;
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
+  pull_status.wait();
+  ASSERT_EQ(nodes.size(), 1);
+  ASSERT_EQ(nodes[0].get_id(), 37);
+  nodes.clear();
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
+  pull_status.wait();
+  ASSERT_EQ(nodes.size(), 1);
+  ASSERT_EQ(nodes[0].get_id(), 59);
+  for (auto g : nodes) {
+    std::cout << g.get_id() << std::endl;
+  }
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
