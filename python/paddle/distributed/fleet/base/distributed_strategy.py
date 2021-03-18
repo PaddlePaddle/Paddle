@@ -637,7 +637,7 @@ class DistributedStrategy(object):
             strategy.find_unused_parameters = True
         """
 
-        return self.strategy.sync_batch_norm
+        return self.strategy.find_unused_parameters
 
     @find_unused_parameters.setter
     @is_strict_auto
