@@ -66,8 +66,8 @@ class SplitPlugin : public PluginTensorRTV2Ext {
 
  protected:
   size_t getSerializationSize() const override {
-    return SerializedSize(getPluginType()) + SerializedSize(axis_) +
-           SerializedSize(output_length_) + getBaseSerializationSize();
+    return SerializedSize(axis_) + SerializedSize(output_length_) +
+           getBaseSerializationSize();
   }
 
   void serialize(void* buffer) const override {
