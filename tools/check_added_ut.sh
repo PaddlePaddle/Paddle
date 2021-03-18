@@ -37,7 +37,13 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
+if [[ "SYSTEM" == "Windows_NT" ]];then
+    if [ `git branch | grep 'prec_added_ut'` ];then
+        git branch -D prec_added_ut
+    fi
+fi
 git checkout -b prec_added_ut upstream/${BRANCH}
+git branch
 mkdir prec_build
 cd prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
