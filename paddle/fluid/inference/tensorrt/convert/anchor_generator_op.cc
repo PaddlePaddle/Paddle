@@ -62,19 +62,6 @@ class AnchorGeneratorOpConverter : public OpConverter {
     const auto height = is_dynamic ? input_dims.d[2] : input_dims.d[1];
     const auto width = is_dynamic ? input_dims.d[3] : input_dims.d[2];
     const int box_num = width * height * num_anchors;
-    /*
-        std::cerr << "==========================" << std::endl;
-        std::cerr << "size of anchor_sizes: " << anchor_sizes.size() <<
-       std::endl;
-        std::cerr << "size of aspect_ratios: " << aspect_ratios.size() <<
-       std::endl;
-        std::cerr << "size of stride: " << stride.size() << std::endl;
-        std::cerr << "size of variances: " << variances.size() << std::endl;
-        std::cerr << "num_anchors: " << num_anchors << std::endl;
-        std::cerr << "height: " << height << std::endl;
-        std::cerr << "width: " << width << std::endl;
-        std::cerr << "box_num: " << box_num << std::endl;
-    */
     const nvinfer1::DataType data_type = nvinfer1::DataType::kFLOAT;
 
     nvinfer1::IPluginV2* anchor_generator_plugin = nullptr;
