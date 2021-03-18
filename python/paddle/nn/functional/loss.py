@@ -54,7 +54,7 @@ __all__ = [
     'npair_loss',
     'sigmoid_focal_loss',
     'smooth_l1_loss',
-    'softmax_with_cross_entropy',
+    'test_softmax_with_cross_entropy',
     'square_error_cost',
     'ctc_loss',
 ]
@@ -1121,6 +1121,15 @@ def test_softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
+    r"""
+    
+    ..warning:
+        This operator is deprecated since paddlepaddle 2.0.0, and it's updated to 
+        paddle.nn.functional.cross_entropy. We will remove softmax_with_cross_entropy 
+        in the future.
+        
+
+    """
     return fluid_softmax_with_cross_entropy(logits, label, soft_label,
                                             ignore_index, numeric_stable_mode,
                                             return_softmax, axis)
