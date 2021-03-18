@@ -600,13 +600,32 @@ class ImperativeCalcOutputScale(object):
             op_type = op_type.replace('relu', 're_lu')
         return op_type in layer_name
 
-    def _set_skip_quant_attr(slef, program):
+    def _set_skip_quant_attr(self, program):
         block = program.global_block()
-        ops = block.ops
-        for i, op in enumerate(ops):
-            if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
-                if ops[i - 1].type not in utils._fake_quantize_dequantize_types:
-                    op._set_attr("skip_quant", True)
+        for op in block.ops:
+            if self._is_skip_quant_op(block, op):
+                op._set_attr("skip_quant", True)
+
+    def _is_skip_quant_op(self, block, in_op):
+        """
+        The input op should be skipped quantization.
+        1. the input op should be conv2d, depthwise_conv2d or matmul
+        2. the previous ops of the input op are not fake_quantize_dequantize op 
+        """
+
+        def _find_previous_op(block, var_name):
+            for op in block.ops:
+                if var_name in op.output_arg_names:
+                    return op
+
+        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
+        if in_op.type not in target_op_types:
+            return False
+
+        previous_ops = [_find_previous_op(block, arg_name) \
+            for arg_name in in_op.input_arg_names]
+        return any(op is not None and op.type not in utils._fake_quantize_dequantize_types \
+            for op in previous_ops )
 
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
