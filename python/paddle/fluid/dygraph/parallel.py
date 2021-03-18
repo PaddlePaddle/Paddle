@@ -24,6 +24,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+import paddle.distributed as dist
+from ..layers import collective
 import warnings
 import paddle
 import itertools
@@ -428,6 +430,11 @@ class DataParallel(layers.Layer):
             self._strategy = _build_default_parallel_strategy()
 
         if self._strategy.nranks > 1:
+            # check the environment
+            assert parallel_helper.__parallel_ctx__clz__ is not None, \
+            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
+            "constructing the DataParallel."
+
             # sync buffer and params
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
@@ -459,6 +466,10 @@ class DataParallel(layers.Layer):
 
         trainable_parameters = [param for _, param in layers_param]
 
+        assert len(trainable_parameters) > 0, \
+            "This model does not have any parameters to train, and " \
+            "does not need to use DataParallel"
+
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
@@ -480,10 +491,6 @@ class DataParallel(layers.Layer):
             trainable_parameters, is_sparse_gradient,
             [self.last_comm_buffer_size, self.comm_buffer_size])
 
-        assert parallel_helper.__parallel_ctx__clz__ is not None, \
-            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
-            "constructing the DataParallel."
-
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
@@ -499,6 +506,34 @@ class DataParallel(layers.Layer):
         if isinstance(obj, dict):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
+
+    def _sync_params_buffers(self):
+        model_vars = []
+        for _, param in self._layers.state_dict().items():
+            model_vars.append(param)
+        if len(model_vars) == 0:
+            return
+
+        mega_bytes = 128 * 1024 * 1024
+        group_idx = 0
+        memory_counter = 0
+        var_groups = OrderedDict()
+        dtype = model_vars[0].dtype
+
+        for var in model_vars:
+            bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+            if memory_counter < mega_bytes and dtype == var.dtype:
+                memory_counter += bytes
+            else:
+                memory_counter = bytes
+                group_idx += 1
+            var_groups.setdefault(group_idx, []).append(var)
+
+        coalesced_vars = _coalesce_tensors(var_groups)
+
+        for coalesced_var, _, _ in coalesced_vars:
+            collective._broadcast(coalesced_var, root=0, sync_mode=True)
+        _split_tensors(coalesced_vars)
 
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
