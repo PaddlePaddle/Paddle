@@ -1,3 +1,4 @@
+~
 #  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +76,7 @@ class TestStack2(OpTest):
 
     def initDefaultParameters(self):
         self.num_inputs = 4
-        self.input_dim = (5, 6, 7)
+        self.input_dim = (2, 3, 4)
         self.axis = -1
         self.dtype = 'float32'
 
@@ -111,6 +112,45 @@ class TestStack2(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+class TestStack3(OpTest):
+
+    def initDefaultParameters(self):
+        self.num_inputs = 4
+        self.input_dim = (2, 3, 4)
+        self.axis = 1
+        self.dtype = 'float32'
+
+    def get_x_names(self):
+        x_names = []
+        for i in range(self.num_inputs):
+            x_names.append('x{}'.format(i))
+        return x_names
+
+    def setUp(self):
+        self.initDefaultParameters()
+        self.set_npu()
+        self.op_type = "stack"
+        self.place = paddle.NPUPlace(0)
+
+        self.x = []
+        for i in range(self.num_inputs):
+            self.x.append(
+                np.random.random(size=self.input_dim).astype(self.dtype))
+
+        tmp = []
+        x_names = self.get_x_names()
+        for i in range(self.num_inputs):
+            tmp.append((x_names[i], self.x[i]))
+
+        self.inputs = {'X': tmp}
+        self.outputs = {'Y': np.stack(self.x, axis=self.axis)}
+        self.attrs = {'axis': self.axis}
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 if __name__ == '__main__':
     unittest.main()
