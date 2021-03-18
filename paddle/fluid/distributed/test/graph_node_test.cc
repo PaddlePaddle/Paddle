@@ -49,6 +49,65 @@ namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
+void testSingleSampleNeighboor(
+    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  auto pull_status = worker_ptr_->batch_sample_neighboors(
+      0, std::vector<uint64_t>(1, 37), 4, vs);
+  pull_status.wait();
+
+  std::unordered_set<uint64_t> s;
+  std::unordered_set<uint64_t> s1 = {112, 45, 145};
+  for (auto g : vs[0]) {
+    s.insert(g.first);
+  }
+  ASSERT_EQ(s.size(), 3);
+  for (auto g : s) {
+    ASSERT_EQ(true, s1.find(g) != s1.end());
+  }
+  s.clear();
+  s1.clear();
+  vs.clear();
+  pull_status = worker_ptr_->batch_sample_neighboors(
+      0, std::vector<uint64_t>(1, 96), 4, vs);
+  pull_status.wait();
+  s1 = {111, 48, 247};
+  for (auto g : vs[0]) {
+    s.insert(g.first);
+  }
+  ASSERT_EQ(s.size(), 3);
+  for (auto g : s) {
+    ASSERT_EQ(true, s1.find(g) != s1.end());
+  }
+}
+
+void testBatchSampleNeighboor(
+    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+  std::vector<std::vector<std::pair<uint64_t, float>>> vs;
+  std::vector<std::uint64_t> v = {37, 96};
+  auto pull_status = worker_ptr_->batch_sample_neighboors(0, v, 4, vs);
+  pull_status.wait();
+  std::unordered_set<uint64_t> s;
+  std::unordered_set<uint64_t> s1 = {112, 45, 145};
+  for (auto g : vs[0]) {
+    s.insert(g.first);
+  }
+  ASSERT_EQ(s.size(), 3);
+  for (auto g : s) {
+    ASSERT_EQ(true, s1.find(g) != s1.end());
+  }
+  s.clear();
+  s1.clear();
+  s1 = {111, 48, 247};
+  for (auto g : vs[1]) {
+    s.insert(g.first);
+  }
+  ASSERT_EQ(s.size(), 3);
+  for (auto g : s) {
+    ASSERT_EQ(true, s1.find(g) != s1.end());
+  }
+}
+
 void testGraphToBuffer();
 // std::string nodes[] = {std::string("37\taa\t45;0.34\t145;0.31\t112;0.21"),
 //                        std::string("96\tfeature\t48;1.4\t247;0.31\t111;1.21"),
@@ -253,24 +312,9 @@ void RunBrpcPushSparse() {
   // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
-  pull_status =
-      worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 37), 4, vs);
-  pull_status.wait();
-  ASSERT_EQ(vs[0].size(), 3);
-  vs.clear();
-  // pull_status = worker_ptr_->sample(0, 96, 4, v);
-  pull_status =
-      worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 96), 4, vs);
-  pull_status.wait();
-  std::unordered_set<int> s = {111, 48, 247};
-  ASSERT_EQ(3, vs[0].size());
-  for (auto g : vs[0]) {
-    // std::cout << g.first << std::endl;
-    ASSERT_EQ(true, s.find(g.first) != s.end());
-  }
-  vs.clear();
-
-  pull_status = worker_ptr_->batch_sample(
+  testSingleSampleNeighboor(worker_ptr_);
+  testBatchSampleNeighboor(worker_ptr_);
+  pull_status = worker_ptr_->batch_sample_neighboors(
       0, std::vector<uint64_t>(1, 10240001024), 4, vs);
   pull_status.wait();
   ASSERT_EQ(0, vs[0].size());
@@ -280,10 +324,6 @@ void RunBrpcPushSparse() {
   pull_status.wait();
   ASSERT_EQ(nodes.size(), 1);
   ASSERT_EQ(nodes[0].get_id(), 37);
-  // for (auto g : v) {
-  //   std::cout << g.get_id() << " " << g.get_graph_node_type() << std::endl;
-  // }
-  // ASSERT_EQ(v.size(),1);
   nodes.clear();
   pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
   pull_status.wait();
@@ -367,12 +407,13 @@ void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
   s.set_feature("hhhh");
   s.set_id(65);
-  int size = s.get_size();
+  int size = s.get_size(true);
   char str[size];
-  s.to_buffer(str);
+  s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
   VLOG(0) << s.get_feature();
   VLOG(0) << s1.get_feature();
 }
+
 TEST(RunBrpcPushSparse, Run) { RunBrpcPushSparse(); }

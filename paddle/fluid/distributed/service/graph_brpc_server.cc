@@ -95,8 +95,10 @@ int32_t GraphBrpcService::initialize() {
   _service_handler_map[PS_STOP_PROFILER] = &GraphBrpcService::stop_profiler;
 
   _service_handler_map[PS_PULL_GRAPH_LIST] = &GraphBrpcService::pull_graph_list;
-  _service_handler_map[PS_GRAPH_SAMPLE] =
-      &GraphBrpcService::graph_random_sample;
+  _service_handler_map[PS_GRAPH_SAMPLE_NEIGHBOORS] =
+      &GraphBrpcService::graph_random_sample_neighboors;
+  _service_handler_map[PS_GRAPH_SAMPLE_NODES] =
+      &GraphBrpcService::graph_random_sample_nodes;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -267,14 +269,13 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   int size = *(int *)(request.params(1).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  table->pull_graph_list(start, size, buffer, actual_size);
+  table->pull_graph_list(start, size, buffer, actual_size, true);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }
-int32_t GraphBrpcService::graph_random_sample(Table *table,
-                                              const PsRequestMessage &request,
-                                              PsResponseMessage &response,
-                                              brpc::Controller *cntl) {
+int32_t GraphBrpcService::graph_random_sample_neighboors(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 2) {
     set_response_code(
@@ -285,29 +286,31 @@ int32_t GraphBrpcService::graph_random_sample(Table *table,
   size_t node_num = request.params(0).size() / sizeof(uint64_t);
   uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
   int sample_size = *(uint64_t *)(request.params(1).c_str());
-
   std::vector<std::unique_ptr<char[]>> buffers(node_num);
   std::vector<int> actual_sizes(node_num, 0);
-  table->random_sample(node_data, sample_size, buffers, actual_sizes);
+  table->random_sample_neighboors(node_data, sample_size, buffers,
+                                  actual_sizes);
 
   cntl->response_attachment().append(&node_num, sizeof(size_t));
   cntl->response_attachment().append(actual_sizes.data(),
                                      sizeof(int) * node_num);
   for (size_t idx = 0; idx < node_num; ++idx) {
     cntl->response_attachment().append(buffers[idx].get(), actual_sizes[idx]);
-    // if (buffers[idx] != nullptr){
-    //   delete buffers[idx];
-    //   buffers[idx] = nullptr;
-    // }
   }
-  // =======
-  //   std::unique_ptr<char[]> buffer;
-  //   int actual_size;
-  //   table->random_sample(node_id, sample_size, buffer, actual_size);
-  //   cntl->response_attachment().append(buffer.get(), actual_size);
-  // >>>>>>> Stashed changes
   return 0;
 }
+int32_t GraphBrpcService::graph_random_sample_nodes(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
+  size_t size = *(uint64_t *)(request.params(0).c_str());
+  std::unique_ptr<char[]> buffer;
+  int actual_size;
+  if (table->random_sample_nodes(size, buffer, actual_size) == 0) {
+    cntl->response_attachment().append(buffer.get(), actual_size);
+  } else
+    cntl->response_attachment().append(NULL, 0);
 
+  return 0;
+}
 }  // namespace distributed
 }  // namespace paddle

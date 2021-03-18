@@ -32,38 +32,45 @@ namespace paddle {
 namespace distributed {
 class GraphShard {
  public:
-  static int bucket_low_bound;
-  static int gcd(int s, int t) {
-    if (s % t == 0) return t;
-    return gcd(t, s % t);
-  }
+  // static int bucket_low_bound;
+  // static int gcd(int s, int t) {
+  //   if (s % t == 0) return t;
+  //   return gcd(t, s % t);
+  // }
   size_t get_size();
   GraphShard() {}
   GraphShard(int shard_num) {
     this->shard_num = shard_num;
-    bucket_size = init_bucket_size(shard_num);
-    bucket.resize(bucket_size);
+    // bucket_size = init_bucket_size(shard_num);
+    // bucket.resize(bucket_size);
   }
-  std::vector<std::list<GraphNode *>> &get_bucket() { return bucket; }
+  std::vector<GraphNode *> &get_bucket() { return bucket; }
   std::vector<GraphNode *> get_batch(int start, int total_size);
-  int init_bucket_size(int shard_num) {
-    for (int i = bucket_low_bound;; i++) {
-      if (gcd(i, shard_num) == 1) return i;
+  // int init_bucket_size(int shard_num) {
+  //   for (int i = bucket_low_bound;; i++) {
+  //     if (gcd(i, shard_num) == 1) return i;
+  //   }
+  //   return -1;
+  // }
+  std::vector<uint64_t> get_ids_by_range(int start, int end) {
+    std::vector<uint64_t> res;
+    for (int i = start; i < end && i < bucket.size(); i++) {
+      res.push_back(bucket[i]->get_id());
     }
-    return -1;
+    return res;
   }
-  std::list<GraphNode *>::iterator add_node(uint64_t id, std::string feature);
+  GraphNode *add_node(uint64_t id, std::string feature);
   GraphNode *find_node(uint64_t id);
   void add_neighboor(uint64_t id, GraphEdge *edge);
-  std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
-  get_node_location() {
+  // std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
+  std::unordered_map<uint64_t, int> get_node_location() {
     return node_location;
   }
 
  private:
-  std::unordered_map<uint64_t, std::list<GraphNode *>::iterator> node_location;
-  int bucket_size, shard_num;
-  std::vector<std::list<GraphNode *>> bucket;
+  std::unordered_map<uint64_t, int> node_location;
+  int shard_num;
+  std::vector<GraphNode *> bucket;
 };
 class GraphTable : public SparseTable {
  public:
@@ -71,12 +78,19 @@ class GraphTable : public SparseTable {
   virtual ~GraphTable() {}
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
-                                  int &actual_size);
+                                  int &actual_size, bool need_feature);
 
-  virtual int32_t random_sample(uint64_t *node_ids, int sample_size,
-                                std::vector<std::unique_ptr<char[]>> &buffers,
-                                std::vector<int> &actual_sizes);
+  virtual int32_t random_sample_neighboors(
+      uint64_t *node_ids, int sample_size,
+      std::vector<std::unique_ptr<char[]>> &buffers,
+      std::vector<int> &actual_sizes);
 
+  virtual int32_t random_sample_nodes(int sample_size,
+                                      std::unique_ptr<char[]> &buffers,
+                                      int &actual_sizes, bool need_feature);
+
+  virtual int32_t get_nodes_ids_by_ranges(
+      std::vector<std::pair<int, int>> ranges, std::vector<uint64_t> res);
   virtual int32_t initialize();
 
   int32_t load(const std::string &path, const std::string &param);
@@ -108,6 +122,7 @@ class GraphTable : public SparseTable {
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
   const int task_pool_size_ = 11;
+  const int random_sample_nodes_ranges = 3;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 };
 }
