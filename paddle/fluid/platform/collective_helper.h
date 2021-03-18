@@ -157,15 +157,10 @@ class HCCLComm {
   virtual int nranks() const = 0;
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
+  virtual HcclComm comm() const = 0;
   virtual aclrtStream stream() const = 0;
   virtual NPUDeviceContext* dev_context() const = 0;
   virtual ~HCCLComm() = default;
-
-  unsigned long NextTagId() {
-    return tag_counter_++;
-  }
- private:
-  std::atomic<unsigned long> tag_counter_;
 };
 
 // A singleton HCCL communicator context reserves communication ring ids
@@ -176,11 +171,12 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(const std::vector<int>& world_rank_ids, int rank, int dev_id,  int ring_id = 0);
-
+  HCCLComm* CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
+                          int rank, int dev_id, int ring_id);
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  HCCLComm* AssignHCCLComm(int nranks, int rank, int dev_id, int ring_id = 0);
+  HCCLComm* AssignHCCLComm(HcclComm comm, int nranks, int rank,
+                                          int dev_id, int ring_id);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   HCCLComm* Get(int ring_id) const {
@@ -217,20 +213,21 @@ class HCCLCommContext {
 
  private:
   // Init global hcom
-  HCCLCommContext() { InitHcomWorldGroup(); }
+  HCCLCommContext() {}
+  // we may use group feature in the feature
+  // HCCLCommContext() { InitHcomWorldGroup(); }
 
+  HcclComm comm_;
 
 public:
-  ~HCCLCommContext(){
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_destroy());
-  }
+  ~HCCLCommContext(){ }
 
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
   // ring id to dev-HCCLComm
   std::map<int, std::map<int, std::unique_ptr<HCCLComm>>> comm_map_;
 
-  void InitHcomWorldGroup();
+  // void InitHcomWorldGroup();
   void ReleaseHCCLComms();
 
   DISABLE_COPY_AND_ASSIGN(HCCLCommContext);
