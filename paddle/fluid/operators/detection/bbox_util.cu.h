@@ -275,7 +275,6 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
 
   const T *boxes = proposals.data<T>();
   auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-  framework::Vector<uint64_t> mask(boxes_num * col_blocks);
   auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
