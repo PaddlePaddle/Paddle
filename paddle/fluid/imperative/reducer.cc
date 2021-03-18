@@ -561,7 +561,7 @@ void Reducer::PrepareForBackward(
     }
   }
 
-  if (var_index_map_.empty()) {
+  if (unused_vars_.empty()) {
     LOG_FIRST_N(WARNING, 1)
         << "All parameters are involved in the backward pass. "
            "It is recommended to set find_unused_parameters to False "
@@ -570,7 +570,7 @@ void Reducer::PrepareForBackward(
            "will occur. Please make it clear that in the subsequent "
            "training, there will be no parameters that are not used "
            "in the backward pass, and then set find_unused_parameters";
-  } else if (var_index_map_.size() == vars_.size()) {
+  } else if (unused_vars_.size() == vars_.size()) {
     LOG_FIRST_N(WARNING, 1)
         << "There is no parameter in the device involved "
            "in the backward calculation. If there are "
@@ -668,11 +668,14 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       group_tensor.ShareDataWith(*tensor).Resize(
           {static_cast<int64_t>(length)});
     } else {
-      // TODO(shenliang03): maybe save the memory by avoiding tensor
-      // construction
-      group_tensor.clear();
-      group_tensor.Resize({static_cast<int64_t>(length)});
-      group_tensor.mutable_data(place_, group.dtype_);
+      // TODO(shenliang03): maybe save the memory
+      // by avoiding tensor construction
+
+      if (!group_tensor.IsInitialized()) {
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.mutable_data(place_, group.dtype_);
+      }
+
 #ifdef PADDLE_WITH_XPU_BKCL
       if (platform::is_xpu_place(group_tensor.place())) {
         // TODO(liuyuhui) support XPU set constant
@@ -685,7 +688,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         auto tensor =
             var_base->MutableVar()->GetMutable<framework::LoDTensor>();
         TensorCopy(*tensor, place_, *dev_ctx, &group_tensor);
+        group_tensor.Resize({static_cast<int64_t>(length)});
       } else {
+        group_tensor.Resize({static_cast<int64_t>(length)});
         operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
       }
 #endif
@@ -852,7 +857,8 @@ void Reducer::ProcessUnusedDenseVars() {
 
     // global used but local unused, set grad
     VLOG(0) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
-            << "global_unused:" << global_unused << "  has_grad: " << has_grad;
+            << "] global_unused:" << global_unused
+            << "  has_grad: " << has_grad;
     if (!global_unused) {
       if (!has_grad) {
         VLOG(0) << "start process unusedvar";
@@ -868,8 +874,8 @@ void Reducer::ProcessUnusedDenseVars() {
         }
         // 2. destination var base
         auto dest_var_base = vars_[var_index];
-        VLOG(0) << "Var [" << var_index << "] [" << dest_var_base->Name()
-                << "] local unused, but global used.";
+        // VLOG(0) << "Var [" << var_index << "] [" << dest_var_base->Name()
+        //         << "] local unused, but global used.";
         auto *dest_tensor =
             dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
         auto &dest_dims = dest_tensor->dims();
@@ -880,7 +886,13 @@ void Reducer::ProcessUnusedDenseVars() {
         // 4. set grad tensor
         auto *dest_grad_tensor =
             grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
-        dest_grad_tensor->ShareDataWith(src_tensor).Resize(dest_dims);
+        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+        TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
+
+        // auto *dest_grad_tensor =
+        // grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
+        // dest_grad_tensor->ShareDataWith(src_tensor); //.Resize(dest_dims);
+        dest_grad_tensor->Resize(dest_dims);
       }
     }
   }
