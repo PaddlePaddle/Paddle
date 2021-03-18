@@ -858,41 +858,39 @@ void Reducer::ProcessUnusedDenseVars() {
           << string::join_strings(local_used_vars_, ',');
   for (size_t var_index = 0; var_index < local_used_vars_.size(); ++var_index) {
     bool global_unused = (local_used_vars_[var_index] == 0);
-    bool has_grad = HasGrad(var_index);
 
     // global used but local unused, set grad
     VLOG(3) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
             << "] global_unused:" << global_unused
-            << "  has_grad: " << has_grad;
+            << "  has_grad: " << HasGrad(var_index);
+
     if (!global_unused) {
-      if (!has_grad) {
-        VLOG(3) << "start process unusedvar";
-        // 1. source var base
-        const auto &var_locator = variable_locators_[var_index];
-        auto group_index = var_locator.group_index;
-        auto &group = groups_[group_index];
-        auto inside_group_index = var_locator.inside_group_index;
-        auto &src_tensor = group.dense_tensors_[inside_group_index];
-        // sparse no need to check
-        if (group.is_sparse_) {
-          continue;
-        }
-        // 2. destination var base
-        auto dest_var_base = vars_[var_index];
-        auto *dest_tensor =
-            dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
-        auto &dest_dims = dest_tensor->dims();
-
-        // 3. create grad var base
-        auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
-
-        // 4. set grad tensor
-        auto *dest_grad_tensor =
-            grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
-        auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-        TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
-        dest_grad_tensor->Resize(dest_dims);
+      VLOG(3) << "start process unusedvar";
+      // 1. source var base
+      const auto &var_locator = variable_locators_[var_index];
+      auto group_index = var_locator.group_index;
+      auto &group = groups_[group_index];
+      auto inside_group_index = var_locator.inside_group_index;
+      auto &src_tensor = group.dense_tensors_[inside_group_index];
+      // sparse no need to check
+      if (group.is_sparse_) {
+        continue;
       }
+      // 2. destination var base
+      auto dest_var_base = vars_[var_index];
+      auto *dest_tensor =
+          dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto &dest_dims = dest_tensor->dims();
+
+      // 3. create grad var base
+      auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+
+      // 4. set grad tensor
+      auto *dest_grad_tensor =
+          grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
+      dest_grad_tensor->Resize(dest_dims);
     }
   }
 }
