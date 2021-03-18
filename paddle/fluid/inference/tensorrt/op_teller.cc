@@ -76,7 +76,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "elementwise_mul",
                                                   "conv2d_transpose",
                                                   "hard_swish"};
-<<<<<<< HEAD
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
