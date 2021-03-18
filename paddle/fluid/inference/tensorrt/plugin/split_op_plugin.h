@@ -39,16 +39,17 @@ class SplitPlugin : public PluginTensorRTV2Ext {
     DeserializeValue(&serial_data, &serial_length, &output_length_);
   }
 
-  nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* input_types,
-                                       int nb_inputs) const override {
-    return input_types[0];
-  }
   nvinfer1::IPluginV2Ext* clone() const override {
     SplitPlugin* ptr = new SplitPlugin(axis_, output_length_, with_fp16_);
     ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->shareData(this);
     return ptr;
+  }
+
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const override {
+    return input_types[0];
   }
 
   const char* getPluginType() const override { return "split_plugin"; }
