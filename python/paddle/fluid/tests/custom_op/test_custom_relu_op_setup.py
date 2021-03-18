@@ -171,7 +171,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         ]
 
         self.dtypes = ['float32', 'float64']
-        self.devices = ['cpu', 'gpu']
+        if paddle.is_compiled_with_cuda():
+            self.dtypes.append('float16')
+        self.devices = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.devices.append('gpu')
 
         # config seed
         SEED = 2021
@@ -181,6 +185,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static(custom_op, device, dtype, x)
@@ -194,6 +200,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_static_pe(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static_pe(custom_op, device, dtype, x)
@@ -207,6 +215,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
