@@ -33,15 +33,18 @@ std::vector<std::string> GraphPyService::split(std::string& str,
 }
 
 void GraphPyService::set_up(std::string ips_str, int shard_num,
+                            std::vector<std::string> node_types,
                             std::vector<std::string> edge_types) {
   set_shard_num(shard_num);
   // set_client_Id(client_id);
   // set_rank(rank);
 
-  this->table_id_map[std::string("")] = 0;
+  for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
+    this->table_id_map[node_types[table_id]] = this->table_id_map.size();
+  }
   // Table 0 are for nodes
   for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
-    this->table_id_map[edge_types[table_id]] = int(table_id + 1);
+    this->table_id_map[edge_types[table_id]] = this->table_id_map.size();
   }
   std::istringstream stream(ips_str);
   std::string ip;

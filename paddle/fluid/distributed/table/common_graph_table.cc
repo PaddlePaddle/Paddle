@@ -119,13 +119,16 @@ int32_t GraphTable::load_nodes(const std::string &path) {
 
       std::string node_type = values[0];
       std::vector<std::string> feature;
-      feature.push_back(node_type);
       for (size_t slice = 2; slice < values.size(); slice++) {
         feature.push_back(values[slice]);
       }
-      auto feat = paddle::string::join_strings(feature, '\t');
       size_t index = shard_id - shard_start;
-      shards[index].add_node(id, feat);
+      if(feature.size() > 0) {
+          shards[index].add_node(id, paddle::string::join_strings(feature, '\t'));
+      }
+      else {
+          shards[index].add_node(id, std::string(""));
+      }
     }
   }
   return 0;

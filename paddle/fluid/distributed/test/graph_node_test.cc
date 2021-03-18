@@ -55,14 +55,35 @@ void testGraphToBuffer();
 //                        std::string("59\ttreat\t45;0.34\t145;0.31\t112;0.21"),
 //                        std::string("97\tfood\t48;1.4\t247;0.31\t111;1.21")};
 
-std::string nodes[] = {
+std::string edges[] = {
     std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
     std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
     std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
     std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
     std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
     std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
-char file_name[] = "nodes.txt";
+char edge_file_name[] = "edges.txt";
+
+std::string nodes[] = {
+    std::string("user\t37\t0.34"),  
+    std::string("user\t96\t0.31"),
+    std::string("user\t59\t0.11"),
+    std::string("user\t97\t0.11"),
+    std::string("item\t45\t0.21"),
+    std::string("item\t145\t0.21"),
+    std::string("item\t112\t0.21"),
+    std::string("item\t48\t0.21"),
+    std::string("item\t247\t0.21"),
+    std::string("item\t111\t0.21"),
+    std::string("item\t45\t0.21"),
+    std::string("item\t145\t0.21"),
+    std::string("item\t122\t0.21"),
+    std::string("item\t48\t0.21"),
+    std::string("item\t247\t0.21"),
+    std::string("item\t111\t0.21")};
+char node_file_name[] = "nodes.txt";
+
+
 void prepare_file(char file_name[]) {
   std::ofstream ofile;
   ofile.open(file_name);
@@ -139,7 +160,7 @@ void GetDownpourSparseTableProto(
 /*-------------------------------------------------------------------------*/
 
 std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
-uint32_t port_ = 4209, port2 = 4210;
+uint32_t port_ = 4250, port2 = 4251;
 
 std::vector<std::string> host_sign_list_;
 
@@ -194,7 +215,8 @@ void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
 void RunBrpcPushSparse() {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  prepare_file(file_name);
+  prepare_file(edge_file_name);
+  prepare_file(node_file_name);
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   host_sign_list_.push_back(ph_host.serialize_to_string());
 
@@ -216,7 +238,8 @@ void RunBrpcPushSparse() {
 
   /*-----------------------Test Server Init----------------------------------*/
   auto pull_status =
-      worker_ptr_->load(0, std::string(file_name), std::string("edge"));
+      worker_ptr_->load(0, std::string(edge_file_name), std::string("edge"));
+  std::cout << "Fuck2" << std::endl;
 
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -274,11 +297,13 @@ void RunBrpcPushSparse() {
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
+  std::cout << "Fuck" << std::endl;
   std::vector<std::string> edge_types = {std::string("user2item")};
-  server1.set_up(ips_str, 127, edge_types, 0);
-  server2.set_up(ips_str, 127, edge_types, 1);
-  client1.set_up(ips_str, 127, edge_types, 0);
-  client2.set_up(ips_str, 127, edge_types, 1);
+  std::vector<std::string> node_types = {std::string("user"), std::string("item")};
+  server1.set_up(ips_str, 127, node_types, edge_types, 0);
+  server2.set_up(ips_str, 127, node_types, edge_types, 1);
+  client1.set_up(ips_str, 127, node_types, edge_types, 0);
+  client2.set_up(ips_str, 127, node_types, edge_types, 1);
   server1.start_server();
   std::cout << "first server done" << std::endl;
   server2.start_server();
@@ -288,11 +313,14 @@ void RunBrpcPushSparse() {
   client2.start_client();
   std::cout << "first client done" << std::endl;
   std::cout << "started" << std::endl;
-  client1.load_edge_file(std::string("user2item"), std::string(file_name), 0);
+  client1.load_node_file(std::string("user"), std::string(node_file_name));
+  client1.load_node_file(std::string("item"), std::string(node_file_name));
+  client1.load_edge_file(std::string("user2item"), std::string(edge_file_name), 0);
   // client2.load_edge_file(std::string("user2item"), std::string(file_name),
   // 0);
   nodes.clear();
-  nodes = client2.pull_graph_list(std::string("user2item"), 0, 1, 4);
+  nodes = client2.pull_graph_list(std::string("user"), 0, 1, 4);
+  std::cout << "node_ids: " <<  nodes[0].get_id() << std::endl;
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
   vs = client1.batch_sample_k(std::string("user2item"),
@@ -324,7 +352,8 @@ void RunBrpcPushSparse() {
   // for x in list:
   //     print(x.get_id())
 
-  std::remove(file_name);
+  std::remove(edge_file_name);
+  std::remove(node_file_name);
   LOG(INFO) << "Run stop_server";
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
