@@ -621,6 +621,34 @@ class DistributedStrategy(object):
             raise ValueError("last_comm_group_size_MB should be greater than 0")
 
     @property
+    def find_unused_parameters(self):
+        """
+        Indicating whether we are using find_unused_parameters to 
+        find unused parameters in DataParallel.
+
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.find_unused_parameters = True
+        """
+
+        return self.strategy.sync_batch_norm
+
+    @find_unused_parameters.setter
+    @is_strict_auto
+    def find_unused_parameters(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.find_unused_parameters = flag
+        else:
+            print(
+                "WARNING: find_unused_parameters should have value of bool type")
+
+    @property
     def _fuse_grad_size_in_TFLOPS(self):
         return self.strategy.fuse_grad_size_in_TFLOPS
 
