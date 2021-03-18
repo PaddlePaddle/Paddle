@@ -110,6 +110,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "roi_align",
   };
 };
 
