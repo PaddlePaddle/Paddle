@@ -5,4 +5,5 @@ nv_library(tensorrt_plugin
            instance_norm_op_plugin.cu emb_eltwise_layernorm_plugin.cu
            qkv_to_context_plugin.cu skip_layernorm_op_plugin.cu slice_op_plugin.cu
            hard_swish_op_plugin.cu stack_op_plugin.cu special_slice_plugin.cu
+           anchor_generator_op_plugin.cu
            DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
