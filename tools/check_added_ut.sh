@@ -47,9 +47,9 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     cat $PADDLE_ROOT/get_added_ut.sh
     bash $PADDLE_ROOT/get_added_ut.sh
 fi
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PADDLE_ROOT/br-ut
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
-ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' > $PADDLE_ROOT/pr-ut
+ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/pr-ut
 cd $PADDLE_ROOT
 echo "================================="
 echo "br-ut"
@@ -59,7 +59,9 @@ echo "pr-ut"
 cat $PADDLE_ROOT/pr-ut
 echo "================================="
 grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
-sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
+if [[ "$SYSTEM" == 'Linux' ]];then
+    sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
+fi
 echo "New-UT:"
 cat $PADDLE_ROOT/added_ut
 rm -rf prec_build
@@ -68,9 +70,7 @@ if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
 fi
-cat $PADDLE_ROOT/check_added_ut.sh
-git checkout -f $CURBRANCH
-cat $PADDLE_ROOT/check_added_ut.sh
+git checkout $CURBRANCH
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR

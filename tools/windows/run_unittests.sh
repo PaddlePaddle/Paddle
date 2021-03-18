@@ -36,6 +36,14 @@ else
     disable_ut_quickly=''
 fi
 
+# check added ut
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+set -e
+
+
 # /*==================Fixed Disabled Windows unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 diable_wingpu_test="^lite_mul_model_test$|\
