@@ -49,6 +49,19 @@ namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
+void testSampleNodes(
+    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+  std::vector<uint64_t> ids;
+  auto pull_status = worker_ptr_->random_sample_nodes(0, 0, 6, ids);
+  std::unordered_set<uint64_t> s;
+  std::unordered_set<uint64_t> s1 = {37, 59};
+  pull_status.wait();
+  for (auto id : ids) s.insert(id);
+  ASSERT_EQ(true, s.size() == s1.size());
+  for (auto id : s) {
+    ASSERT_EQ(true, s1.find(id) != s1.end());
+  }
+}
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -120,7 +133,8 @@ std::string nodes[] = {
     std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
     std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
     std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
-    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+    std::string("97\t247\t0.31"), std::string("97\t111\t0.21"),
+};
 char file_name[] = "nodes.txt";
 void prepare_file(char file_name[]) {
   std::ofstream ofile;
@@ -128,6 +142,11 @@ void prepare_file(char file_name[]) {
   for (auto x : nodes) {
     ofile << x << std::endl;
   }
+  // for(int i = 0;i < 10;i++){
+  //   for(int j = 0;j < 10;j++){
+  //    ofile<<i * 127 + j<<"\t"<<i <<"\t"<< 0.5<<std::endl;
+  //   }
+  //}
   ofile.close();
 }
 void GetDownpourSparseTableProto(
@@ -276,7 +295,7 @@ void RunBrpcPushSparse() {
   /*-----------------------Test Server Init----------------------------------*/
   auto pull_status =
       worker_ptr_->load(0, std::string(file_name), std::string("edge"));
-
+  srand(time(0));
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
   // for(int i = 0;i < 100000000;i++){
@@ -289,27 +308,28 @@ void RunBrpcPushSparse() {
   // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
+  testSampleNodes(worker_ptr_);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
-  pull_status = worker_ptr_->batch_sample_neighboors(
-      0, std::vector<uint64_t>(1, 10240001024), 4, vs);
-  pull_status.wait();
-  ASSERT_EQ(0, vs[0].size());
+  // pull_status = worker_ptr_->batch_sample_neighboors(
+  //     0, std::vector<uint64_t>(1, 10240001024), 4, vs);
+  // pull_status.wait();
+  // ASSERT_EQ(0, vs[0].size());
 
   std::vector<distributed::GraphNode> nodes;
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
-  pull_status.wait();
-  ASSERT_EQ(nodes.size(), 1);
-  ASSERT_EQ(nodes[0].get_id(), 37);
-  nodes.clear();
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
-  pull_status.wait();
-  ASSERT_EQ(nodes.size(), 1);
-  ASSERT_EQ(nodes[0].get_id(), 59);
-  for (auto g : nodes) {
-    std::cout << g.get_id() << std::endl;
-  }
-
+  // pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
+  // pull_status.wait();
+  // ASSERT_EQ(nodes.size(), 1);
+  // ASSERT_EQ(nodes[0].get_id(), 37);
+  // nodes.clear();
+  // pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
+  // pull_status.wait();
+  // ASSERT_EQ(nodes.size(), 1);
+  // ASSERT_EQ(nodes[0].get_id(), 59);
+  // for (auto g : nodes) {
+  //   std::cout << g.get_id() << std::endl;
+  // }
+  sleep(5);
   // distributed::GraphPyService gps1, gps2;
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
