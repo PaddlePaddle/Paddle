@@ -54,7 +54,7 @@ __all__ = [
     'npair_loss',
     'sigmoid_focal_loss',
     'smooth_l1_loss',
-    'test_softmax_with_cross_entropy',
+    'softmax_with_cross_entropy',
     'square_error_cost',
     'ctc_loss',
 ]
@@ -1114,7 +1114,7 @@ def ctc_loss(log_probs,
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
-def test_softmax_with_cross_entropy(logits,
+def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
                                ignore_index=-100,
