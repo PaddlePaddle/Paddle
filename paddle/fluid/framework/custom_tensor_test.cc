@@ -109,6 +109,10 @@ void GroupTestCopy() {
   TestCopyTensor<int8_t>();
   VLOG(2) << "uint8 cpu-cpu-gpu-gpu-cpu";
   TestCopyTensor<uint8_t>();
+  VLOG(2) << "complex64 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::complex64>();
+  VLOG(2) << "complex128 cpu-cpu-gpu-gpu-cpu";
+  TestCopyTensor<paddle::complex128>();
 }
 
 void GroupTestCast() {
@@ -126,6 +130,10 @@ void GroupTestCast() {
   TestCast<uint8_t>(paddle::DataType::FLOAT32);
   VLOG(2) << "float cast";
   TestCast<float>(paddle::DataType::FLOAT32);
+  VLOG(2) << "complex64 cast";
+  TestCast<paddle::complex64>(paddle::DataType::FLOAT32);
+  VLOG(2) << "complex128 cast";
+  TestCast<paddle::complex128>(paddle::DataType::FLOAT32);
 }
 
 void GroupTestDtype() {
@@ -136,6 +144,8 @@ void GroupTestDtype() {
   CHECK(TestDtype<int16_t>() == paddle::DataType::INT16);
   CHECK(TestDtype<int8_t>() == paddle::DataType::INT8);
   CHECK(TestDtype<uint8_t>() == paddle::DataType::UINT8);
+  CHECK(TestDtype<paddle::complex64>() == paddle::DataType::COMPLEX64);
+  CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
 }
 
 void GroupTestDtypeConvert() {
@@ -162,6 +172,12 @@ void GroupTestDtypeConvert() {
         paddle::framework::proto::VarType::INT16);
   CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
             paddle::DataType::BOOL) == paddle::framework::proto::VarType::BOOL);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::COMPLEX64) ==
+        paddle::framework::proto::VarType::COMPLEX64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertEnumDTypeToInnerDType(
+            paddle::DataType::COMPLEX128) ==
+        paddle::framework::proto::VarType::COMPLEX128);
   // proto -> enum
   CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
             paddle::framework::proto::VarType::FP64) ==
@@ -185,6 +201,12 @@ void GroupTestDtypeConvert() {
         paddle::DataType::INT16);
   CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
             paddle::framework::proto::VarType::BOOL) == paddle::DataType::BOOL);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::COMPLEX64) ==
+        paddle::DataType::COMPLEX64);
+  CHECK(paddle::framework::CustomTensorUtils::ConvertInnerDTypeToEnumDType(
+            paddle::framework::proto::VarType::COMPLEX128) ==
+        paddle::DataType::COMPLEX128);
 }
 
 TEST(CustomTensor, copyTest) {

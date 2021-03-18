@@ -442,7 +442,8 @@ def find_cuda_home():
                     [which_cmd, 'nvcc'], stderr=devnull)
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
-                nvcc_path = nvcc_path.rstrip('\r\n')
+                # Multi CUDA, select the first
+                nvcc_path = nvcc_path.split('\r\n')[0]
 
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))

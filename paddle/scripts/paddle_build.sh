@@ -205,6 +205,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
+                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
+                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -230,7 +237,8 @@ function cmake_base() {
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
+        -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -267,7 +275,8 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
+        -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -637,6 +646,13 @@ EOF
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -1021,6 +1037,8 @@ function card_test() {
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ROCM}" == "ON" ];then
+        CUDA_DEVICE_COUNT=4
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
@@ -1250,6 +1268,13 @@ set +x
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -1409,7 +1434,7 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$WITH_GPU" == "ON" ];then
+    if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
         if [ "$WITH_XPU" == "ON" ];then
@@ -1964,6 +1989,11 @@ function main() {
         parallel_test
         ;;
       check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_rocm_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
