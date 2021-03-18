@@ -32,7 +32,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_ta
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "@CLIP"
+CLIP_OP_NAME_SCOPE = "gradient_clip"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
