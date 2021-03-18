@@ -26,6 +26,8 @@ from paddle.fluid import core
 paddle.enable_static()
 
 
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 class TestModelCastBF16(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
