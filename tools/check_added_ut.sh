@@ -68,7 +68,9 @@ if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
 fi
-git checkout $CURBRANCH
+cat $PADDLE_ROOT/check_added_ut.sh
+git checkout -f $CURBRANCH
+cat $PADDLE_ROOT/check_added_ut.sh
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
