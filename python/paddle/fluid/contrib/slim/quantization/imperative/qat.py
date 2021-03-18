@@ -525,6 +525,8 @@ class ImperativeCalcOutputScale(object):
                                 self._out_scale_dict[ops_list[op_count]])
                             op_count += 1
 
+            self._set_skip_quant_attr(inference_program)
+
         # Save the processed program.
         save_inference_model(
             dirname=dirname,
@@ -597,6 +599,14 @@ class ImperativeCalcOutputScale(object):
         if 'relu' in op_type:
             op_type = op_type.replace('relu', 're_lu')
         return op_type in layer_name
+
+    def _set_skip_quant_attr(slef, program):
+        block = program.global_block()
+        ops = block.ops
+        for i, op in enumerate(ops):
+            if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
+                if ops[i - 1].type not in utils._fake_quantize_dequantize_types:
+                    op._set_attr("skip_quant", True)
 
     def _forward_post_hook(self, layer, input, output):
         assert isinstance(
