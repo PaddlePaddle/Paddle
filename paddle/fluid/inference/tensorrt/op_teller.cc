@@ -110,6 +110,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transpose",
       "flatten2",
       "flatten",
+
       "nearest_interp",
   };
 };
@@ -184,6 +185,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (axis != 1) return false;
       }
     }
+
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
@@ -200,6 +202,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
     }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
