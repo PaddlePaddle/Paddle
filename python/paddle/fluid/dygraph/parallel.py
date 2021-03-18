@@ -348,7 +348,13 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
                                          calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
-        find_unused_parameters(bool, optional):
+        find_unused_parameters(bool, optional): According to the forward return value, 
+                                                whether to traverse the entire reverse graph.
+                                                In the forward calculation, if a parameter does not 
+                                                participate in the backward gradient derivation, 
+                                                then it does not need to perform allreduce synchronization, 
+                                                so you need to set the find_unused_parameters to True, 
+                                                however, it will affect computing performance. Default: True.
             
     Returns:
         Layer: The data paralleled module.
