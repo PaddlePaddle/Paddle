@@ -1441,7 +1441,10 @@ void BindImperative(py::module *m_ptr) {
       m, "NCCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
-      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
+      .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::NCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -1450,7 +1453,10 @@ void BindImperative(py::module *m_ptr) {
       m, "BKCLParallelContext")
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::XPUPlace &>())
-      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
+      .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::BKCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
 #endif
 }
 
