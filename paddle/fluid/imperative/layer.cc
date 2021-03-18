@@ -26,8 +26,11 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include <mutex>  // NOLINT
+#include "paddle/fluid/operators/tensor_formatter.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(save_tensor_value);
 
 namespace paddle {
 namespace imperative {
@@ -77,8 +80,37 @@ static framework::RuntimeContext PrepareRuntimeContext(
   return framework::RuntimeContext(std::move(inputs), std::move(outputs));
 }
 
+// This function only work when setting these two environment variables
+// export FLAGS_save_tensor_value=1
+// export GLOG_vmodule=layer=4
+// Note: GLOG_vmodule=layer should be set to 4, or error will thrown
+static void SaveTensorValue(const framework::LoDTensor& tensor,
+                            const std::string folder_path,
+                            const std::string filename) {
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
+
+  std::string mkdir_cmd = "mkdir -p " + folder_path;
+  PADDLE_ENFORCE_EQ(
+      system(mkdir_cmd.c_str()), 0,
+      platform::errors::NotFound("Cannot create folder %s", folder_path));
+
+  std::string file_path = folder_path + filename + ".txt";
+  std::ofstream fout(file_path);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout), true,
+      platform::errors::NotFound("Cannot open %s to write", filename));
+
+  operators::TensorFormatter formatter;
+  fout << formatter.Format(tensor, filename, "");
+
+  fout.close();
+  VLOG(4) << "Save tensor to text file " << file_path;
+}
+
 template <typename VarType>
 static std::string DebugString(
+    const std::string& value_type, const std::string& op_type,
     const std::string& name,
     const std::vector<std::shared_ptr<VarType>>& vars) {
   std::stringstream ss;
@@ -102,6 +134,12 @@ static std::string DebugString(
         ss << framework::DataTypeToString(tensor.type()) << ", ";
         ss << tensor.place() << ", ";
         ss << "(" << tensor.dims() << ")";
+        // Debug: save tensor value to file
+        if (FLAGS_save_tensor_value) {
+          std::string folder_path =
+              "tensor_data/" + op_type + "/" + value_type + "/" + name + "/";
+          SaveTensorValue(tensor, folder_path, vars[i]->Name());
+        }
       } else {
         ss << "NOT_INITED";
       }
@@ -144,7 +182,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   size_t i = 0;
   for (auto& pair : ins) {
     if (i > 0) ss << ", ";
-    ss << DebugString<VarType>(pair.first, pair.second);
+    ss << DebugString<VarType>("Inputs", op_type, pair.first, pair.second);
     ++i;
   }
 
@@ -152,7 +190,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   i = 0;
   for (auto& pair : outs) {
     if (i > 0) ss << ", ";
-    ss << DebugString<VarType>(pair.first, pair.second);
+    ss << DebugString<VarType>("Outputs", op_type, pair.first, pair.second);
     ++i;
   }
   return ss.str();

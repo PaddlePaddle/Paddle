@@ -35,6 +35,7 @@ DECLARE_string(tracer_mkldnn_ops_on);
 DECLARE_string(tracer_mkldnn_ops_off);
 // debug
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(save_tensor_value);
 DECLARE_bool(cpu_deterministic);
 DECLARE_bool(enable_rpc_profiler);
 DECLARE_int32(multiple_of_cupti_buffer_size);
@@ -347,16 +348,17 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
       FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
-      FLAGS_call_stack_level, FLAGS_sort_sum_gradient, FLAGS_cpu_deterministic,
-      FLAGS_enable_rpc_profiler, FLAGS_multiple_of_cupti_buffer_size,
-      FLAGS_reader_queue_speed_test_mode, FLAGS_pe_profile_fname,
-      FLAGS_print_sub_graph_dir, FLAGS_fraction_of_cpu_memory_to_use,
-      FLAGS_fuse_parameter_groups_size, FLAGS_fuse_parameter_memory_size,
-      FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
-      FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
-      FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
-      FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
-      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
+      FLAGS_save_tensor_value, FLAGS_call_stack_level, FLAGS_sort_sum_gradient,
+      FLAGS_cpu_deterministic, FLAGS_enable_rpc_profiler,
+      FLAGS_multiple_of_cupti_buffer_size, FLAGS_reader_queue_speed_test_mode,
+      FLAGS_pe_profile_fname, FLAGS_print_sub_graph_dir,
+      FLAGS_fraction_of_cpu_memory_to_use, FLAGS_fuse_parameter_groups_size,
+      FLAGS_fuse_parameter_memory_size, FLAGS_init_allocated_mem,
+      FLAGS_initial_cpu_memory_in_mb, FLAGS_memory_fraction_of_eager_deletion,
+      FLAGS_use_pinned_memory, FLAGS_benchmark, FLAGS_inner_op_parallelism,
+      FLAGS_tracer_profile_fname, FLAGS_paddle_num_threads, FLAGS_use_mkldnn,
+      FLAGS_max_inplace_grad_add, FLAGS_tracer_mkldnn_ops_on,
+      FLAGS_tracer_mkldnn_ops_off);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(

@@ -31,7 +31,8 @@ namespace framework {
 static uint64_t GetRandomSeed() {
   std::random_device rd;
   // double has 53 bit significant, so limit uint64 to 53 bits
-  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+  // return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+  return ((((uint64_t)12345) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
 }
 
 struct GeneratorState {
