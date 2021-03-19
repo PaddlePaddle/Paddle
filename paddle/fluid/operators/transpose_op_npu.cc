@@ -50,7 +50,7 @@ class TransposeGradNPUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < axis.size(); i++) {
       reversed_axis[axis[i]] = i;
     }
-
+    x_grad->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"perm", reversed_axis}};
     auto runner = NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
     auto stream =

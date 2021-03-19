@@ -32,16 +32,18 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(transpose);
-USE_OP_DEVICE_KERNEL(transpose, NPU);
+USE_OP(transpose2);
+USE_OP_DEVICE_KERNEL(transpose2, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
   auto out = scope->Var("Out");
+  auto xshape = scope->Var("XShape");
   auto* x_t = x->GetMutable<f::LoDTensor>();
   auto* out_t = out->GetMutable<f::LoDTensor>();
+  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
   auto place = ctx.GetPlace();
 
   int dim0 = 2;
@@ -53,10 +55,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
   out_t->mutable_data<T>(place);
   ctx.Wait();
+  xshape_t->Resize({dim0, dim1});
+  xshape_t->mutable_data<T>(place);
   f::AttributeMap attrs = {{"axis", std::vector<int>({1, 0})},
                            {"data_format", std::string("AnyLayout")}};
   auto op = f::OpRegistry::CreateOp("transpose2", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+                                    {{"Out", {"Out"}}, {"XShape", {"XShape"}}},
+                                    attrs);
   ctx.Wait();
   op->Run(*scope, place);
   ctx.Wait();
@@ -76,36 +81,34 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 template <typename T>
 void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
-  auto x = scope->Var("X");
+  auto xshape = scope->Var("XShape");
   auto x_grad = scope->Var("X@GRAD");
-  auto out = scope->Var("Out");
   auto out_grad = scope->Var("Out@GRAD");
 
   auto* x_grad_t = x_grad->GetMutable<f::LoDTensor>();
-  auto* x_t = x->GetMutable<f::LoDTensor>();
+  auto* xshape_t = xshape->GetMutable<f::LoDTensor>();
   auto* out_grad_t = out_grad->GetMutable<f::LoDTensor>();
-  auto* out_t = out->GetMutable<f::LoDTensor>();
+
   int dim0 = 2;
   int dim1 = 3;
   auto place = ctx.GetPlace();
 
   TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, out_grad_t);
-  TensorFromVector(std::vector<T>({0, 1, 2, 3, 4, 5}), ctx, x_t);
   ctx.Wait();
-  x_grad_t->Resize({dim0, dim1});
-  x_t->Resize({dim0, dim1});
-  out_grad_t->Resize({dim0, dim1});
-  out_t->Resize({dim0, dim1});
 
-  x_grad_t->mutable_data<T>(place);
-  out_t->mutable_data<T>(place);
-  ctx.Wait();
+  x_grad_t->Resize({dim0, dim1});
+  xshape_t->Resize(
+      {0, dim0,
+       dim1});  // NOTE(zhiqiu): 0 is needed, see its infershape function
+  out_grad_t->Resize({dim0, dim1});
+
   f::AttributeMap attrs = {{"axis", std::vector<int>({1, 0})},
                            {"data_format", std::string("AnyLayout")}};
+
   auto op = f::OpRegistry::CreateOp(
-      "transpose2_grad",
-      {{"Out@GRAD", {"Out@GRAD"}}, {"X", {"X"}}, {"Out", {"Out"}}},
+      "transpose2_grad", {{"Out@GRAD", {"Out@GRAD"}}, {"XShape", {"XShape"}}},
       {{"X@GRAD", {"X@GRAD"}}}, attrs);
+
   op->Run(*scope, place);
   ctx.Wait();
   std::vector<T> out_v;
