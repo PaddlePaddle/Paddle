@@ -28,7 +28,11 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
-__all__ = ["init_parallel_env"]
+__all__ = [     #noqa
+           'wait_server_ready', 
+           'Process', 
+           'ParallelStrategy'
+]
 
 ParallelStrategy = core.ParallelStrategy
 

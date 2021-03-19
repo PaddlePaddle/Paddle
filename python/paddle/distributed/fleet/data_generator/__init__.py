@@ -12,3 +12,7 @@
 # See the License for the specific language governing permissions and
 
 from .data_generator import *
+
+__all__ = [     #noqa
+           'DataGenerator'
+]

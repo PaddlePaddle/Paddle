@@ -19,7 +19,9 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
 
-__all__ = ["DistributedStrategy"]
+__all__ = [     #noqa
+           'set_flags'
+]
 
 non_auto_func_called = True
 

@@ -27,7 +27,6 @@ from paddle.fluid import core
 import subprocess
 import os
 import numpy as np
-__all__ = ['UtilBase']
 
 
 class UtilFactory(object):

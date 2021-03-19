@@ -26,6 +26,25 @@ from contextlib import closing
 import socket
 from paddle.fluid import core
 
+__all__ = [     #noqa
+           'get_host_name_ip', 
+           'Trainer', 
+           'get_cluster', 
+           'start_local_trainers', 
+           'closing', 
+           'watch_local_trainers', 
+           'find_free_ports', 
+           'JobServer', 
+           'Cluster', 
+           'Pod', 
+           'Hdfs', 
+           'add_arguments', 
+           'terminate_local_procs', 
+           'TrainerProc', 
+           'get_logger', 
+           'pull_worker_log'
+]
+
 logger = logging.getLogger("root")
 logger.propagate = False
 

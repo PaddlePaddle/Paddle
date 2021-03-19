@@ -25,16 +25,6 @@ from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-__all__ = [
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'ReduceOp',
-]
 
 
 class ReduceOp:

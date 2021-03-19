@@ -14,3 +14,8 @@
 
 from .fs import LocalFS, HDFSClient
 from .ps_util import DistributedInfer
+
+__all__ = [     #noqa
+           'HDFSClient', 
+           'LocalFS'
+]
