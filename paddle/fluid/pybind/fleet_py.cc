@@ -159,7 +159,7 @@ using paddle::framework::IndexWrapper;
 using paddle::framework::Node;
 
 void BindIndexNode(py::module* m) {
-  py::class_<Node>(*m, "Node")
+  py::class_<Node>(*m, "IndexNode")
       .def(py::init<>())
       .def("id", [](Node& self){ return self.id(); })
       .def("is_leaf", [](Node& self){ return self.is_leaf(); })
@@ -172,11 +172,14 @@ void BindTreeIndex(py::module* m) {
       .def("height", [](TreeIndex& self){ return self.height(); })
       .def("branch", [](TreeIndex& self){ return self.branch(); })
       .def("total_node_nums", [](TreeIndex& self) { return self.total_node_nums(); })
-      .def("get_nodes_given_level", [](TreeIndex& self, int level) {
-           return self.get_nodes_given_level(level);
+      .def("get_nodes_given_level", [](TreeIndex& self, int level, bool ret_code) {
+           return self.get_nodes_given_level(level, ret_code);
       })
-      .def("get_travel_path", [](TreeIndex& self, int id, bool ret_code, int start_level) {
-           return self.get_travel_path(id, start_level);
+      .def("get_parent_path", [](TreeIndex& self, std::vector<uint64_t>& ids, int start_level, bool ret_code) {
+           return self.get_parent_path(ids, start_level, ret_code);
+      })
+      .def("get_ancestor_given_level", [](TreeIndex& self, std::vector<uint64_t>& ids, int level, bool ret_code){
+           return self.get_ancestor_given_level(ids, level, ret_code);
       });
 }
 
@@ -191,22 +194,22 @@ void BindIndexWrapper(py::module* m) {
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
 
-using paddle::framework::Sampler;
+using paddle::framework::IndexSampler;
 using paddle::framework::LayerWiseSampler;
 using paddle::framework::BeamSearchSampler;
 
 void BindIndexSampler(py::module* m) {
-   py::class_<Sampler, std::shared_ptr<Sampler>>(*m, "IndexSampler")
+   py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")
       .def(py::init([](const std::string& mode, const std::string& name){
            if (mode == "by_layerwise") {
-                return Sampler::Init<LayerWiseSampler>(name);
+                return IndexSampler::Init<LayerWiseSampler>(name);
            } else if (mode == "by_beamsearch") {
-                return Sampler::Init<BeamSearchSampler>(name);
+                return IndexSampler::Init<BeamSearchSampler>(name);
            }
       }))
-      .def("init_layerwise_conf", &Sampler::init_layerwise_conf)
-      .def("init_beamsearch_conf", &Sampler::init_beamsearch_conf)
-      .def("sample", &Sampler::sample);
+      .def("init_layerwise_conf", &IndexSampler::init_layerwise_conf)
+      .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
+      .def("sample", &IndexSampler::sample);
 }
 
 }  // end namespace pybind

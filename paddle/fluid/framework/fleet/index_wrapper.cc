@@ -69,45 +69,61 @@ int TreeIndex::load(std::string filename) {
   return 0;
 }
 
-std::vector<Node*> TreeIndex::get_nodes_given_level(int level) {
+std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level, bool ret_code) {
   uint64_t level_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   uint64_t level_offset = level_num - 1;
 
-  std::vector<Node*> res;
+  std::vector<uint64_t> res;
   res.reserve(level_num);
   for (uint64_t i = 0; i < level_num; i++) {
     auto code = level_offset + i;
     if (data_.find(code) != data_.end()) {
-      res.push_back(&(data_[code]));
+      if (ret_code) {
+        res.push_back(code);
+      } else {
+        res.push_back(data_[code].id());
+      }
     }
   }
   
   return res;
 }
 
-std::vector<Node*> TreeIndex::get_travel_path(uint64_t id, int start_level) {
-  std::vector<Node*> res;
-  if (id_codes_map_.find(id) == id_codes_map_.end()) {
-    return res;
-  }
-  res.reserve(meta_.height());
-  auto code = id_codes_map_[id];
-  int level = meta_.height() - 1;
+std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(std::vector<uint64_t>& ids, int start_level, bool ret_code) {
+  std::vector<std::vector<uint64_t>> res(ids.size(), std::vector<uint64_t>());
+  for (size_t i = 0; i < ids.size(); i++) {
+    auto code = id_codes_map_[ids[i]];
+    int level = meta_.height() - 1;
 
-  while (level >= start_level) {
-    res.push_back(&(data_[code]));
-    code = (code - 1) / meta_.branch();
-    level --;
+    while (level >= start_level) {
+      if (ret_code) {
+        res[i].push_back(code);
+      } else {
+        res[i].push_back(data_[code].id());
+      }
+      code = (code - 1) / meta_.branch();
+      level --;
+    }
   }
- 
   return res;
 }
 
-std::vector<std::vector<Node*>> TreeIndex::batch_get_travel_path(std::vector<uint64_t>& ids, int start_level) {
-  std::vector<std::vector<Node*>> res;
+std::vector<uint64_t> TreeIndex::get_ancestor_given_level(std::vector<uint64_t>& ids, int level, bool ret_code) {
+  std::vector<uint64_t> res;
   res.reserve(ids.size());
+  int cur_level;
   for (size_t i = 0; i < ids.size(); i++) {
-    res.push_back(get_travel_path(ids[i], start_level));
+    auto code = id_codes_map_[ids[i]];
+    cur_level = meta_.height() - 1;
+    while (cur_level > level) {
+      code = (code - 1) / meta_.branch();
+      cur_level --;
+    }
+    if (ret_code) {
+      res.push_back(code);
+    } else {
+      res.push_back(data_[code].id());
+    }
   }
   return res;
 }
