@@ -32,7 +32,7 @@ class TestElementwiseDiv(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
-        self.place = paddle.NPUPlace(5)
+        self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
         np.random.seed(SEED)
@@ -82,7 +82,7 @@ class TestElementwiseDivFp16(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_div"
-        self.place = paddle.NPUPlace(5)
+        self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
         np.random.seed(SEED)
@@ -146,7 +146,7 @@ class TestElementwiseDivNet(unittest.TestCase):
             sgd.minimize(loss)
 
         if run_npu:
-            place = paddle.NPUPlace(5)
+            place = paddle.NPUPlace(0)
         else:
             place = paddle.CPUPlace()
 
