@@ -514,13 +514,18 @@ def save_persistables(exe, dirname, main_program, filename=None):
             if var.name.endswith(check):
                 return True
         return False
+    
+    def is_gradient_merge_vars(var):
+        # NOTE(liangjianzhong): to revise save/load logic in framework instead of write this naive rule
+
+        return var.name.endswith("@GradiantMerge")
 
     def is_trainable(var):
         return isinstance(var,
                           paddle.fluid.framework.Parameter) and var.trainable
 
     def sharding_predicate(var):
-        return is_trainable(var) or is_opt_vars(var)
+        return is_trainable(var) or is_opt_vars(var) or is_gradient_merge_vars(var)
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
         paddle.fluid.io.save_persistables(
