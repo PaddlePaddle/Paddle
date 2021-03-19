@@ -109,6 +109,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transpose",
       "flatten2",
       "flatten",
+      "gather",
   };
 };
 
@@ -159,7 +160,11 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       } else {
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis <= 0) return false;
+        if (with_dynamic_shape) {
+          if (axis < 0) return false;
+        } else {
+          if (axis <= 0) return false;
+        }
       }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
@@ -181,6 +186,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
+    }
+    if (op_type == "gather") {
+      // current not support axis from input, use default 0
+      if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
