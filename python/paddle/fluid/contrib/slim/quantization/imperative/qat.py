@@ -539,9 +539,12 @@ class ImperativeCalcOutputScale(object):
         Init the scale params for calculating output scales and save them in the
         target layer.
         After the users define the dygraph model, the hooks for calculating output
-        scales will not execute immediately. If the users load the checkpoint now,
-        the scale params have not been created, so them cann't be loaded.
-        Therefore, define the scale params in the beginning.
+        scales will not execute immediately. If the users load parameters form
+        checkpoint and save the quantized inference model immediately, the inference
+        model would not be saved successfully. Beacuse the dygraph_to_static requires
+        that the parameters created in __init__, but the uniqueness of hook make it
+        impossible to create parameters in __init__. To avoid this mistake, we define
+        the scale parameters in the beginning instead of hook.
         """
 
         def _create_param(in_layer, first_name, last_name, dtype):
@@ -598,8 +601,8 @@ class ImperativeCalcOutputScale(object):
     def _is_skip_quant_op(self, block, in_op):
         """
         The input op should be skipped quantization.
-        1. the input op should be conv2d, depthwise_conv2d or matmul
-        2. the previous ops of the input op are not fake_quantize_dequantize op 
+        1. the type of input op should be conv2d, depthwise_conv2d or matmul
+        2. the previous ops of the input op are not fake_quantize_dequantize ops
         """
 
         def _find_previous_op(block, var_name):
@@ -613,7 +616,7 @@ class ImperativeCalcOutputScale(object):
 
         previous_ops = [_find_previous_op(block, arg_name) \
             for arg_name in in_op.input_arg_names]
-        return any(op is not None and op.type not in utils._fake_quantize_dequantize_types \
+        return any(op is not None and op.type not in utils.fake_quantize_dequantize_types \
             for op in previous_ops )
 
     def _calc_output_scale_hook(self, layer, input, output):

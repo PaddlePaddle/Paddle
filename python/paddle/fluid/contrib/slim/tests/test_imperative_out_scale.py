@@ -401,7 +401,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
 
-        self.assertTrue(op_count == 14)
+        self.assertTrue(op_count == 13)
 
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
@@ -470,7 +470,7 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
-        self.assertTrue(op_count == 14)
+        self.assertTrue(op_count == 13)
 
 
 class TestSaveQuantizedModel_Warning(unittest.TestCase):
