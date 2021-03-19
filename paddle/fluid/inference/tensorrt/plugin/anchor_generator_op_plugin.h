@@ -34,7 +34,6 @@ class AnchorGeneratorPlugin : public nvinfer1::IPluginV2Ext {
       const int width, const int num_anchors, const int box_num);
   AnchorGeneratorPlugin(const void* data, size_t length);
   ~AnchorGeneratorPlugin() override;
-
   const char* getPluginType() const override;
   const char* getPluginVersion() const override;
   int getNbOutputs() const override;
@@ -52,7 +51,6 @@ class AnchorGeneratorPlugin : public nvinfer1::IPluginV2Ext {
   void destroy() override;
   void setPluginNamespace(const char* lib_namespace) override;
   const char* getPluginNamespace() const override;
-
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* input_type,
                                        int nb_inputs) const override;
@@ -95,13 +93,11 @@ class AnchorGeneratorPluginCreator : public nvinfer1::IPluginCreator {
  public:
   AnchorGeneratorPluginCreator();
   ~AnchorGeneratorPluginCreator() override = default;
-
   void setPluginNamespace(const char* lib_namespace) override;
   const char* getPluginNamespace() const override;
   const char* getPluginName() const override;
   const char* getPluginVersion() const override;
   const nvinfer1::PluginFieldCollection* getFieldNames() override;
-
   nvinfer1::IPluginV2Ext* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override;
   nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,
@@ -147,11 +143,9 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream) override;
-
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const override;
-
   const char* getPluginType() const override;
   int getNbOutputs() const override;
   int initialize() override;
@@ -166,7 +160,6 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
                    const nvinfer1::PluginTensorDesc* outputDesc,
                    const void* const* inputs, void* const* outputs,
                    void* workspace, cudaStream_t stream);
-
   nvinfer1::DataType data_type_;
   std::vector<float> anchor_sizes_;
   std::vector<float> aspect_ratios_;
@@ -188,13 +181,11 @@ class AnchorGeneratorPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
   AnchorGeneratorPluginDynamicCreator();
   ~AnchorGeneratorPluginDynamicCreator() override = default;
-
   void setPluginNamespace(const char* lib_namespace) override;
   const char* getPluginNamespace() const override;
   const char* getPluginName() const override;
   const char* getPluginVersion() const override;
   const nvinfer1::PluginFieldCollection* getFieldNames() override;
-
   nvinfer1::IPluginV2Ext* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override;
   nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,

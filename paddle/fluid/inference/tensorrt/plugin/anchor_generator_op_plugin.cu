@@ -41,33 +41,24 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
     T stride_height = stride[1];
     T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
     T y_ctr = (h_idx * stride_height) + offset * (stride_height - 1);
-    T area, area_ratios;
-    T base_w, base_h;
-    T scale_w, scale_h;
-    T anchor_width, anchor_height;
     int anch_idx = i % num_anchors;
     int ar_idx = anch_idx / as_num;
     int as_idx = anch_idx % as_num;
     T aspect_ratio = aspect_ratios[ar_idx];
     T anchor_size = anchor_sizes[as_idx];
-    area = stride_width * stride_height;
-    area_ratios = area / aspect_ratio;
-    base_w = round(sqrt(area_ratios));
-    base_h = round(base_w * aspect_ratio);
-    scale_w = anchor_size / stride_width;
-    scale_h = anchor_size / stride_height;
-    anchor_width = scale_w * base_w;
-    anchor_height = scale_h * base_h;
-
+    T area = stride_width * stride_height;
+    T area_ratios = area / aspect_ratio;
+    T base_w = round(sqrt(area_ratios));
+    T base_h = round(base_w * aspect_ratio);
+    T scale_w = anchor_size / stride_width;
+    T scale_h = anchor_size / stride_height;
+    T anchor_width = scale_w * base_w;
+    T anchor_height = scale_h * base_h;
     const T xmin = (x_ctr - .5f * (anchor_width - 1));
     const T ymin = (y_ctr - .5f * (anchor_height - 1));
     const T xmax = (x_ctr + .5f * (anchor_width - 1));
     const T ymax = (y_ctr + .5f * (anchor_height - 1));
     reinterpret_cast<float4*>(out)[i] = make_float4(xmin, ymin, xmax, ymax);
-    // out[i * 4] = xmin;
-    // out[i * 4 + 1] = ymin;
-    // out[i * 4 + 2] = xmax;
-    // out[i * 4 + 3] = ymax;
   }
 }
 
@@ -94,18 +85,15 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
       box_num_(box_num) {
   // anchors must be float32, which is the generator proposals' input
   assert(data_type_ == nvinfer1::DataType::kFLOAT);
-  assert(height_ >= 0);
-  assert(width_ >= 0);
+  assert(height_ >= 0 && width >= 0);
   assert(num_anchors_ >= 0);
   assert(box_num_ >= 0);
 
   constexpr int data_size = 4;
-
   cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
   cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size);
   cudaMalloc(&stride_device_, stride_.size() * data_size);
   cudaMalloc(&variances_device_, variances_.size() * data_size);
-
   cudaMemcpy(anchor_sizes_device_, anchor_sizes_.data(),
              anchor_sizes_.size() * data_size, cudaMemcpyHostToDevice);
   cudaMemcpy(aspect_ratios_device_, aspect_ratios_.data(),
@@ -179,24 +167,19 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
                                         cudaStream_t stream) {
   const int block = 512;
   const int gen_anchor_grid = (box_num_ + block - 1) / block;
-
   T* anchors = static_cast<T*>(outputs[0]);
   T* vars = static_cast<T*>(outputs[1]);
-
   const T* anchor_sizes_device = static_cast<const T*>(anchor_sizes_device_);
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
       anchors, aspect_ratios_device, aspect_ratios_.size(), anchor_sizes_device,
       anchor_sizes_.size(), stride_device, stride_.size(), height_, width_,
       offset_);
-
   const int var_grid = (box_num_ * 4 + block - 1) / block;
   SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
-
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -313,29 +296,25 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::createPlugin(
   std::vector<float> stride;
   std::vector<float> variances;
   float offset = .5;
-  int height = -1;
-  int width = -1;
+  int height = -1, width = -1;
   int num_anchors = -1;
   int box_num = -1;
 
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string field_name(fc->fields[i].name);
+    const auto length = fc->fields[i].length;
     if (field_name.compare("type_id") == 0) {
       type_id = *static_cast<const int*>(fc->fields[i].data);
     } else if (field_name.compare("anchor_sizes")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       anchor_sizes.insert(anchor_sizes.end(), data, data + length);
     } else if (field_name.compare("aspect_ratios")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       aspect_ratios.insert(aspect_ratios.end(), data, data + length);
     } else if (field_name.compare("stride")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       stride.insert(stride.end(), data, data + length);
     } else if (field_name.compare("variances")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       variances.insert(variances.end(), data, data + length);
     } else if (field_name.compare("offset")) {
@@ -383,18 +362,14 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
   // data_type_ is used to determine the output data type
   // data_type_ can only be float32
   assert(data_type_ == nvinfer1::DataType::kFLOAT);
-  assert(height_ >= 0);
-  assert(width_ >= 0);
+  assert(height_ >= 0 && width_ >= 0);
   assert(num_anchors_ >= 0);
   assert(box_num_ >= 0);
-
   const size_t data_size = 4;
-
   cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
   cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size);
   cudaMalloc(&stride_device_, stride_.size() * data_size);
   cudaMalloc(&variances_device_, variances_.size() * data_size);
-
   cudaMemcpy(anchor_sizes_device_, anchor_sizes_.data(),
              anchor_sizes_.size() * data_size, cudaMemcpyHostToDevice);
   cudaMemcpy(aspect_ratios_device_, aspect_ratios_.data(),
@@ -481,24 +456,19 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
     void* const* outputs, void* workspace, cudaStream_t stream) {
   const int block = 512;
   const int gen_anchor_grid = (box_num_ + block - 1) / block;
-
   T* anchors = static_cast<T*>(outputs[0]);
   T* vars = static_cast<T*>(outputs[1]);
-
   const T* anchor_sizes_device = static_cast<const T*>(anchor_sizes_device_);
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
       anchors, aspect_ratios_device, aspect_ratios_.size(), anchor_sizes_device,
       anchor_sizes_.size(), stride_device, stride_.size(), height_, width_,
       offset_);
-
   const int var_grid = (box_num_ * 4 + block - 1) / block;
   SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
-
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -584,36 +554,30 @@ AnchorGeneratorPluginDynamicCreator::getFieldNames() {
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
-
   int type_id = -1;
   std::vector<float> anchor_sizes;
   std::vector<float> aspect_ratios;
   std::vector<float> stride;
   std::vector<float> variances;
   float offset = .5;
-  int height = -1;
-  int width = -1;
+  int height = -1, width = -1;
   int num_anchors = -1;
   int box_num = -1;
-
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string field_name(fc->fields[i].name);
+    const auto length = fc->fields[i].length;
     if (field_name.compare("type_id") == 0) {
       type_id = *static_cast<const int*>(fc->fields[i].data);
     } else if (field_name.compare("anchor_sizes")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       anchor_sizes.insert(anchor_sizes.end(), data, data + length);
     } else if (field_name.compare("aspect_ratios")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       aspect_ratios.insert(aspect_ratios.end(), data, data + length);
     } else if (field_name.compare("stride")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       stride.insert(stride.end(), data, data + length);
     } else if (field_name.compare("variances")) {
-      const auto length = fc->fields[i].length;
       const auto* data = static_cast<const float*>(fc->fields[i].data);
       variances.insert(variances.end(), data, data + length);
     } else if (field_name.compare("offset")) {
