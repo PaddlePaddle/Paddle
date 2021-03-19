@@ -26,7 +26,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
-    t = paddle.to_tensor(np_x)
+    t = paddle.to_tensor(np_x, dtype=dtype)
     t.stop_gradient = False
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
