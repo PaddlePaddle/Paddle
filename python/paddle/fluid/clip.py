@@ -495,8 +495,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                 'Y': scale_var},
                         outputs={'Out': g})
 
-                param_new_grad_name_dict[p.name] = p.name
-                params_and_grads.append((p, p))
+                param_new_grad_name_dict[p.name] = g.name
+                params_and_grads.append((p, g))
 
         _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
