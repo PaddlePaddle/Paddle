@@ -44,7 +44,8 @@ public:
 
 class WeightedSampler: public Sampler {
  public:
-  virtual ~WeightedSampler() {}
+  WeightedSampler();
+  virtual ~WeightedSampler();
   WeightedSampler *left, *right;
   WeightedObject *object;
   int count;

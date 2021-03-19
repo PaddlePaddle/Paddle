@@ -34,25 +34,50 @@ std::vector<WeightedObject *> RandomSampler::sample_k(int k) {
   std::unordered_map<int, int> replace_map;
   while(k--){
     int rand_int = rand() % n;
-    auto tmp = replace_map.find(rand_int);
-    if(tmp == replace_map.end()){
+    auto iter = replace_map.find(rand_int);
+    if(iter == replace_map.end()){
       sample_result.push_back(edges->at(rand_int));
     }else{
-      sample_result.push_back(edges->at(tmp->second));
+      sample_result.push_back(edges->at(iter->second));
     }
 
-    tmp = replace_map.find(n - 1);
-    if(tmp == replace_map.end()){
+    iter = replace_map.find(n - 1);
+    if(iter == replace_map.end()){
       replace_map[rand_int] = n - 1;
     }else{
-      replace_map[rand_int] = tmp->second;
+      replace_map[rand_int] = iter->second;
     }
     --n;
   }
   return sample_result;
 }
 
+WeightedSampler::WeightedSampler(){
+  left = nullptr;
+  right = nullptr;
+  object = nullptr;
+}
+
+WeightedSampler::~WeightedSampler() {
+  if(left != nullptr){
+    delete left;
+    left = nullptr;
+  }
+  if(right != nullptr){
+    delete right;
+    right = nullptr;
+  }
+}
+
 void WeightedSampler::build(std::vector<WeightedObject*>* edges) {
+  if(left != nullptr){
+    delete left;
+    left = nullptr;
+  }
+  if(right != nullptr){
+    delete right;
+    right = nullptr;
+  }
   WeightedObject** v = edges->data();
   return build_one(v, 0, edges->size());
 }
@@ -60,7 +85,7 @@ void WeightedSampler::build(std::vector<WeightedObject*>* edges) {
 void WeightedSampler::build_one(WeightedObject **v, int start, int end) {
   count = 0;
   if (start + 1 == end) {
-    left = right = NULL;
+    left = right = nullptr;
     weight = v[start]->get_weight();
     object = v[start];
     count = 1;
@@ -98,7 +123,7 @@ WeightedObject *WeightedSampler::sample(
     std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
     std::unordered_map<WeightedSampler *, int> &subtract_count_map,
     float &subtract) {
-  if (left == NULL) {
+  if (left == nullptr) {
     subtract_weight_map[this] = weight;
     subtract = weight;
     subtract_count_map[this] = 1;
