@@ -52,14 +52,16 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
-  auto cmd = paddle::string::split_string<std::string>(param, "|");
-  std::set<std::string> cmd_set(cmd.begin(), cmd.end());
-  bool reverse_edge = cmd_set.count(std::string("reverse"));
-  bool load_edge = cmd_set.count(std::string("edge"));
+
+  bool load_edge = (param[0] == 'e');
+  bool load_node = (param[0] == 'n');
   if (load_edge) {
+    bool reverse_edge = (param[1] == '<');
     return this->load_edges(path, reverse_edge);
-  } else {
-    return this->load_nodes(path);
+  }
+  if (load_node){
+    std::string node_type = param.substr(1); 
+    return this->load_nodes(path, node_type);
   }
 }
 
@@ -104,7 +106,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
   }
   return 0;
 }
-int32_t GraphTable::load_nodes(const std::string &path) {
+int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
   for (auto path : paths) {
     std::ifstream file(path);
@@ -116,20 +118,26 @@ int32_t GraphTable::load_nodes(const std::string &path) {
 
       size_t shard_id = id % shard_num;
       if (shard_id >= shard_end || shard_id < shard_start) {
-        VLOG(0) << "will not load " << id << " from " << path
+        VLOG(4) << "will not load " << id << " from " << path
                 << ", please check id distribution";
         continue;
       }
 
-      std::string node_type = values[0];
+      std::string nt = values[0];
+      if (nt != node_type) {
+          continue;
+      }
       std::vector<std::string> feature;
-      feature.push_back(node_type);
       for (size_t slice = 2; slice < values.size(); slice++) {
         feature.push_back(values[slice]);
       }
-      auto feat = paddle::string::join_strings(feature, '\t');
       size_t index = shard_id - shard_start;
-      shards[index].add_node(id, feat);
+      if(feature.size() > 0) {
+          shards[index].add_node(id, paddle::string::join_strings(feature, '\t'));
+      }
+      else {
+          shards[index].add_node(id, std::string(""));
+      }
     }
   }
   return 0;
@@ -159,7 +167,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       size_t src_shard_id = src_id % shard_num;
 
       if (src_shard_id >= shard_end || src_shard_id < shard_start) {
-        VLOG(0) << "will not load " << src_id << " from " << path
+        VLOG(4) << "will not load " << src_id << " from " << path
                 << ", please check id distribution";
         continue;
       }

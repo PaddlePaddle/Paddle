@@ -82,14 +82,16 @@ class GraphPyService {
   int get_server_size(int server_size) { return server_size; }
   std::vector<std::string> split(std::string& str, const char pattern);
   void set_up(std::string ips_str, int shard_num,
+              std::vector<std::string> node_types,
               std::vector<std::string> edge_types);
 };
 class GraphPyServer : public GraphPyService {
  public:
   void set_up(std::string ips_str, int shard_num,
+              std::vector<std::string> node_types,
               std::vector<std::string> edge_types, int rank) {
     set_rank(rank);
-    GraphPyService::set_up(ips_str, shard_num, edge_types);
+    GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
   int get_rank() { return rank; }
   void set_rank(int rank) { this->rank = rank; }
@@ -107,9 +109,9 @@ class GraphPyServer : public GraphPyService {
 class GraphPyClient : public GraphPyService {
  public:
   void set_up(std::string ips_str, int shard_num,
-              std::vector<std::string> edge_types, int client_id) {
+              std::vector<std::string> node_types, std::vector<std::string> edge_types, int client_id) {
     set_client_id(client_id);
-    GraphPyService::set_up(ips_str, shard_num, edge_types);
+    GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
   std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
     return worker_ptr;

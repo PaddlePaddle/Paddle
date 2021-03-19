@@ -96,7 +96,7 @@ class GraphTable : public SparseTable {
 
   int32_t load_edges(const std::string &path, bool reverse);
 
-  int32_t load_nodes(const std::string &path);
+  int32_t load_nodes(const std::string &path, std::string node_type);
 
   GraphNode *find_node(uint64_t id);
 
