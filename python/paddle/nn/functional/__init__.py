@@ -14,21 +14,89 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-__all__ = []
+__all__ = [     #noqa
+           'conv1d', 
+           'conv1d_transpose', 
+           'conv2d', 
+           'conv2d_transpose', 
+           'conv3d', 
+           'conv3d_transpose', 
+           'elu', 
+           'gelu', 
+           'hardshrink', 
+           'hardtanh', 
+           'hardsigmoid', 
+           'hardswish', 
+           'leaky_relu', 
+           'log_sigmoid', 
+           'maxout', 
+           'prelu', 
+           'relu', 
+           'relu6', 
+           'selu', 
+           'softmax', 
+           'softplus', 
+           'softshrink', 
+           'softsign', 
+           'sigmoid', 
+           'swish', 
+           'tanhshrink', 
+           'thresholded_relu', 
+           'log_softmax', 
+           'diag_embed', 
+           'dropout', 
+           'dropout2d', 
+           'dropout3d', 
+           'alpha_dropout', 
+           'label_smooth', 
+           'linear', 
+           'pad', 
+           'unfold', 
+           'interpolate', 
+           'upsample', 
+           'bilinear', 
+           'cosine_similarity', 
+           'avg_pool1d', 
+           'avg_pool2d', 
+           'avg_pool3d', 
+           'max_pool1d', 
+           'max_pool2d', 
+           'max_pool3d', 
+           'adaptive_avg_pool1d', 
+           'adaptive_avg_pool2d', 
+           'adaptive_avg_pool3d', 
+           'adaptive_max_pool1d', 
+           'adaptive_max_pool2d', 
+           'adaptive_max_pool3d', 
+           'binary_cross_entropy', 
+           'binary_cross_entropy_with_logits', 
+           'cross_entropy', 
+           'dice_loss', 
+           'hsigmoid_loss', 
+           'kl_div', 
+           'l1_loss', 
+           'log_loss', 
+           'mse_loss', 
+           'margin_ranking_loss', 
+           'nll_loss', 
+           'npair_loss', 
+           'sigmoid_focal_loss', 
+           'smooth_l1_loss', 
+           'softmax_with_cross_entropy', 
+           'square_error_cost', 
+           'ctc_loss', 
+           'affine_grid', 
+           'grid_sample', 
+           'local_response_norm', 
+           'pixel_shuffle', 
+           'embedding', 
+           'gather_tree', 
+           'one_hot', 
+           'normalize'
+]
 
 # TODO: define alias in functional directory
 from . import conv
-__all__ += conv.__all__
-from . import activation
-__all__ += activation.__all__
-from . import extension
-__all__ += extension.__all__
-from . import common
-__all__ += common.__all__
-from . import pooling
-__all__ += pooling.__all__
-from . import loss
-__all__ += loss.__all__
 from .activation import elu  #DEFINE_ALIAS
 from .activation import elu_  #DEFINE_ALIAS
 # from .activation import erf  #DEFINE_ALIAS

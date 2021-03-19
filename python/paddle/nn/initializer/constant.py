@@ -15,7 +15,6 @@
 # TODO: define the initializers of Constant in neural network
 from ...fluid.initializer import ConstantInitializer
 
-__all__ = ['Constant']
 
 
 class Constant(ConstantInitializer):

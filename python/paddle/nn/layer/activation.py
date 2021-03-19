@@ -14,31 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-__all__ = [
-    'ELU',
-    'GELU',
-    'Hardshrink',
-    'Hardswish',
-    'Tanh',
-    'Hardtanh',
-    'PReLU',
-    'ReLU',
-    'ReLU6',
-    'SELU',
-    'LeakyReLU',
-    'Sigmoid',
-    'Hardsigmoid',
-    'Softmax',
-    'Softplus',
-    'Softshrink',
-    'Softsign',
-    'Swish',
-    'Tanhshrink',
-    'ThresholdedReLU',
-    'LogSigmoid',
-    'LogSoftmax',
-    'Maxout',
-]
 
 from ...fluid.dygraph import layers
 from ...fluid import core

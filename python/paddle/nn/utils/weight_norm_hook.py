@@ -19,7 +19,6 @@ from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 
-__all__ = ['weight_norm', 'remove_weight_norm']
 
 
 def l2_norm(x, axis, epsilon=1e-12, name=None):

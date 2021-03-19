@@ -23,11 +23,6 @@ from . import kaiming
 from .kaiming import KaimingNormal  #DEFINE_ALIAS
 from .kaiming import KaimingUniform  #DEFINE_ALIAS
 
-__all__ = ['Bilinear', 'set_global_initializer']
-
-__all__ += constant.__all__
-__all__ += kaiming.__all__
-
 from . import xavier
 from .xavier import XavierNormal  #DEFINE_ALIAS
 from .xavier import XavierUniform  #DEFINE_ALIAS
@@ -42,7 +37,15 @@ from .normal import TruncatedNormal  #DEFINE_ALIAS
 from . import uniform
 from .uniform import Uniform  #DEFINE_ALIAS
 
-__all__ += xavier.__all__
-__all__ += assign.__all__
-__all__ += normal.__all__
-__all__ += uniform.__all__
+__all__ = [     #noqa
+           'Bilinear', 
+           'Constant', 
+           'KaimingUniform', 
+           'KaimingNormal', 
+           'XavierNormal', 
+           'XavierUniform', 
+           'Assign', 
+           'Normal', 
+           'TruncatedNormal', 
+           'Uniform'
+]

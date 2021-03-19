@@ -20,19 +20,6 @@ import paddle
 from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
-__all__ = [
-    'BCEWithLogitsLoss',
-    'CrossEntropyLoss',
-    'HSigmoidLoss',
-    'MSELoss',
-    'L1Loss',
-    'NLLLoss',
-    'BCELoss',
-    'KLDivLoss',
-    'MarginRankingLoss',
-    'CTCLoss',
-    'SmoothL1Loss',
-]
 
 
 class BCEWithLogitsLoss(fluid.dygraph.Layer):

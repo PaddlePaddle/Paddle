@@ -13,14 +13,7 @@
 # limitations under the License.
 
 # TODO: define the classes of Transformer neural network
-__all__ = [
-    'MultiHeadAttention',
-    'TransformerEncoderLayer',
-    'TransformerEncoder',
-    'TransformerDecoderLayer',
-    'TransformerDecoder',
-    'Transformer',
-]
+
 
 import copy
 import collections

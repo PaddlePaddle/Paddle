@@ -40,23 +40,6 @@ from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
 
-__all__ = [
-    'dropout',
-    'dropout2d',
-    'dropout3d',
-    'alpha_dropout',
-    #       'embedding',
-    #       'fc',
-    'label_smooth',
-    'linear',
-    'pad',
-    'unfold',
-    #       'bilinear_tensor_product',
-    'interpolate',
-    'upsample',
-    'bilinear',
-    'cosine_similarity',
-]
 
 
 def interpolate(x,

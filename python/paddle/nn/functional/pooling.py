@@ -18,20 +18,6 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
-__all__ = [
-    'avg_pool1d',
-    'avg_pool2d',
-    'avg_pool3d',
-    'max_pool1d',
-    'max_pool2d',
-    'max_pool3d',
-    'adaptive_avg_pool1d',
-    'adaptive_avg_pool2d',
-    'adaptive_avg_pool3d',
-    'adaptive_max_pool1d',
-    'adaptive_max_pool2d',
-    'adaptive_max_pool3d',
-]
 
 
 def _is_list_or_tuple(input):

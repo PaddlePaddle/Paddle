@@ -14,14 +14,6 @@
 
 # TODO: define classes of convolutional neural network
 
-__all__ = [
-    'Conv1D',
-    'Conv2D',
-    'Conv3D',
-    'Conv1DTranspose',
-    'Conv2DTranspose',
-    'Conv3DTranspose',
-]
 
 import numpy as np
 

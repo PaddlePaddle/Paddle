@@ -37,26 +37,6 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 
-__all__ = [
-    'binary_cross_entropy',
-    'binary_cross_entropy_with_logits',
-    'cross_entropy',
-    'dice_loss',
-    'hsigmoid_loss',
-    'kl_div',
-    'l1_loss',
-    'log_loss',
-    'mse_loss',
-    'margin_ranking_loss',
-    #       'nce',
-    'nll_loss',
-    'npair_loss',
-    'sigmoid_focal_loss',
-    'smooth_l1_loss',
-    'softmax_with_cross_entropy',
-    'square_error_cost',
-    'ctc_loss',
-]
 
 
 def binary_cross_entropy(input, label, weight=None, reduction='mean',

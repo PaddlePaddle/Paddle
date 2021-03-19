@@ -23,15 +23,6 @@ from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
 from ...fluid import core, dygraph_utils
 
-__all__ = [
-    'batch_norm',
-    #       'data_norm',
-    'instance_norm',
-    'layer_norm',
-    'local_response_norm',
-    'normalize',
-    #       'spectral_norm'
-]
 
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):

@@ -15,7 +15,3 @@
 from ..fluid.layers import BeamSearchDecoder  #DEFINE_ALIAS
 from ..fluid.layers import dynamic_decode  #DEFINE_ALIAS
 
-__all__ = [
-    'BeamSearchDecoder',
-    'dynamic_decode',
-]

@@ -20,22 +20,6 @@ from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
-__all__ = [
-    'Embedding',
-    'Linear',
-    'Upsample',
-    'Pad1D',
-    'Pad2D',
-    'Pad3D',
-    'UpsamplingNearest2D',
-    'UpsamplingBilinear2D',
-    'CosineSimilarity',
-    'Dropout',
-    'Dropout2D',
-    'Dropout3D',
-    'Bilinear',
-    'AlphaDropout',
-]
 
 
 def _npairs(x, n):

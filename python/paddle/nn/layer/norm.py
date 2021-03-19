@@ -53,11 +53,6 @@ import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
 
-__all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1D',
-    'BatchNorm2D', 'BatchNorm3D', 'InstanceNorm1D', 'InstanceNorm2D',
-    'InstanceNorm3D', 'SyncBatchNorm', 'LocalResponseNorm'
-]
 
 
 class _InstanceNormBase(layers.Layer):

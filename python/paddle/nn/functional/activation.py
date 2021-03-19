@@ -24,37 +24,6 @@ from ...tensor.math import tanh_  #DEFINE_ALIAS
 
 from ...tensor.manipulation import _print_warning_in_static_mode
 
-__all__ = [
-    'brelu',
-    'elu',
-    'elu_',
-    'gelu',
-    'hardshrink',
-    'hardtanh',
-    'hardsigmoid',
-    'hardswish',
-    'leaky_relu',
-    'log_sigmoid',
-    'maxout',
-    'prelu',
-    'relu',
-    'relu_',
-    'relu6',
-    'selu',
-    'softmax',
-    'softmax_',
-    'softplus',
-    'softshrink',
-    'softsign',
-    'sigmoid',
-    'swish',
-    'tanh',
-    'tanh_',
-    'tanhshrink',
-    'thresholded_relu',
-    'log_softmax',
-]
-
 import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_

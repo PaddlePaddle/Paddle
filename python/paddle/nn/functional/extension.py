@@ -14,7 +14,6 @@
 
 # TODO: define the extention functions
 
-__all__ = ['diag_embed']
 
 import numpy as np
 from ...fluid.data_feeder import check_dtype
