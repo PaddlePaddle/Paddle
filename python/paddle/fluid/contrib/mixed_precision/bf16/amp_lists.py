@@ -21,10 +21,9 @@ __all__ = ["AutoMixedPrecisionListsBF16"]
 
 class AutoMixedPrecisionListsBF16(object):
     """
-    AutoMixedPrecisionListsBF16 is a class for fp32/bf16 list. It can update
-    pre-defined fp32 list and bf16 list according to users' custom fp32
-    bf16 lists. The lists are used for an algorithm which determines op's
-    execution mode (fp32 or bf16).
+    AutoMixedPrecisionListsBF16 is a class for fp32/bf16 op types list. The lists are used for an
+    algorithm which determines op's execution mode (fp32 or bf16).It can update pre-defined
+    fp32 list and bf16 list according to users' custom fp32 bf16 lists.
 
     Args:
         custom_bf16_list (set): Users' custom bf16 list.
