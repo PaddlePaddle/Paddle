@@ -851,7 +851,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             shape=[1],
             value=bool(0),
             dtype='bool',
-            persistable=True,
+            persistable=False,
             force_cpu=True)
 
         with device_guard("cpu"):
@@ -899,6 +899,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         cur_block_idx = self._main_program.current_block_idx
         cur_block = self._main_program.current_block()
+        self.cond_block = self._main_program.current_block()
     
         # cur_block's forward_block & backward_block is itself
         cur_block._set_forward_block_idx(cur_block_idx)
@@ -915,6 +916,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     attrs={'ring_id': self.dp_ring_id,
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Optimize})
+        print("after allreduce grad@gradientmerge ")
         
         # grad@gradientmerge / acc_step
         for grad, merged_grad in self._grad2merged_grad.items():
@@ -930,11 +932,17 @@ class ShardingOptimizer(MetaOptimizerBase):
                     'bias_after_scale': False,
                     OP_ROLE_KEY: OpRole.Optimize
                 })
+        print("after allreduce grad@gradientmerge / acc_step")
 
         # re-create optimize ops
+        already_moved_var_names = []
         for op_desc in self.original_optimize_ops_desc:
             new_op_desc = cur_block.desc.append_op()
             new_op_desc.copy_from(op_desc)
+
+            if op_desc.type in ["check_finite_and_unscale", "update_loss_scaling"]:
+                print("check @@@@@: ", op_desc.type)
+                print("input @@@@@: ", op_desc.output_arg_names)
 
             for input_name in new_op_desc.input_arg_names():
                 if input_name in self._grad2merged_grad:
@@ -942,9 +950,28 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             for output_name in new_op_desc.output_arg_names():
                 if output_name in self._grad2merged_grad:
-                    new_op_desc._rename_input(output_name, self._grad2merged_grad[output_name])
+                    new_op_desc._rename_output(output_name, self._grad2merged_grad[output_name])
             
+                # move non temp optimize vars from block0 to cond block
+                if output_name not in already_moved_var_names and output_name not in self._grad2merged_grad.keys():
+                    var_ = self._main_program.global_block().var(output_name)
+                    if not var_.persistable:
+                        print("remove: ", output_name)
+                        # move
+                        name_ = var_.name
+                        shape_ = var_.shape
+                        type_ = var_.dtype
+                        self._main_program.global_block()._remove_var(var_.name, sync=False)
+                        self.cond_block.create_var(
+                            name=name_, 
+                            shape=shape_,
+                            dtype=type_,
+                            persistable=False)
+                        already_moved_var_names.append(name_)
+                        
+        self._main_program.global_block()._sync_with_cpp()
         cur_block._sync_with_cpp()
+
         # fill zero to grad@gradientmerge
         for grad, merged_grad in self._grad2merged_grad.items():
             merged_grad_var = main_block.var(merged_grad)
@@ -991,10 +1018,45 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # back to block 0
         self._main_program._rollback()
+        print("after first rollback")
 
         # create cond vars and ops at the end of block 0
         cond = self._create_gm_cond(main_block)
+        print("after _create_gm_cond")
+
 
         # create cond block
-        layers.cond(cond, true_fn=self._true_apply_gradient, false_fn=None)
+        cond_block = self._main_program._create_block()
+        self._true_apply_gradient()
+        print("after _true_apply_gradient")
+        
+        # back to block 0
+        self._main_program._rollback()
+
+        # cond op
+        step_scope = self._main_program.global_block().create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+        conditional_block_op = self._main_program.global_block().append_op(
+            type='conditional_block',
+            inputs={
+                'Cond': cond,
+                'Input': [],
+            },
+            outputs={'Out': [],
+                     'Scope': [step_scope]},
+            attrs={
+                'sub_block': cond_block,
+                'is_scalar_condition': True,
+            })
+
+
+
+
+
+
+
+
+
+
+
         
