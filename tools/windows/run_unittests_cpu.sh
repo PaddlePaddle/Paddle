@@ -32,7 +32,7 @@ if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); th
     echo ${disable_ut_quickly}
     echo "========================================="
 else
-    disable_ut_quickly=''
+    disable_ut_quickly='disable_ut'
 fi
 
-ctest -E "(%disable_ut_quickly%)" -LE %nightly_label% --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
+ctest -E "${disable_ut_quickly}" -LE "${nightly_label}" --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
