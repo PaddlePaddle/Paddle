@@ -52,7 +52,7 @@ class SplitPlugin : public PluginTensorRTV2Ext {
     return input_types[0];
   }
 
-  const char* getPluginType() const override { return "split_plugin"; }
+  const char* getPluginType() const override { return "split_plugin_v2ext"; }
   int getNbOutputs() const override { return output_length_.size(); }
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims* input_dims,
@@ -94,7 +94,7 @@ class SplitPlugin : public PluginTensorRTV2Ext {
 class SplitPluginCreator : public nvinfer1::IPluginCreator {
  public:
   SplitPluginCreator() {}
-  const char* getPluginName() const override { return "split_plugin"; }
+  const char* getPluginName() const override { return "split_plugin_v2ext"; }
 
   const char* getPluginVersion() const override { return "1"; }
 
