@@ -14,7 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-
 from ...fluid.dygraph import layers
 from ...fluid import core
 from ...fluid.framework import in_dygraph_mode

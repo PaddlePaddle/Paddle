@@ -30,11 +30,11 @@
 import six
 #from ...fluid.dygraph.nn import InstanceNorm
 
-from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import BatchNorm  # noqa: F401
+#from ...fluid.dygraph import GroupNorm  # noqa: F401
 
-#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
+#from ...fluid.dygraph import LayerNorm  # noqa: F401
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...fluid.dygraph import layers
 from ...framework import get_default_dtype, set_default_dtype
@@ -52,7 +52,6 @@ import numbers
 import warnings
 from ...fluid.dygraph.base import no_grad
 from .. import functional as F
-
 
 
 class _InstanceNormBase(layers.Layer):

@@ -15,7 +15,6 @@
 from ...fluid.initializer import XavierInitializer
 
 
-
 class XavierNormal(XavierInitializer):
     r"""
     This class implements the Xavier weight initializer from the paper

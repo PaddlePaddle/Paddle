@@ -20,26 +20,25 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-# from ...fluid import one_hot  #DEFINE_ALIAS
-# from ...fluid.layers import pad2d  #DEFINE_ALIAS
-from ...fluid.layers import unfold  #DEFINE_ALIAS
-from ...fluid.layers import squeeze  #DEFINE_ALIAS
-from ...fluid.layers import unsqueeze  #DEFINE_ALIAS
+# from ...fluid import one_hot  # noqa: F401
+# from ...fluid.layers import pad2d  # noqa: F401
+from ...fluid.layers import unfold  # noqa: F401
+from ...fluid.layers import squeeze  # noqa: F401
+from ...fluid.layers import unsqueeze  # noqa: F401
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
-from ...tensor import sum  #DEFINE_ALIAS
-from ...tensor import sqrt  #DEFINE_ALIAS
+from ...tensor import sum  # noqa: F401
+from ...tensor import sqrt  # noqa: F401
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
-#from ...fluid.layers import fc  #DEFINE_ALIAS
-# from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+#from ...fluid.layers import fc  # noqa: F401
+# from ...fluid.layers import pad_constant_like  # noqa: F401
 from ...fluid.framework import in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
-
 
 
 def interpolate(x,

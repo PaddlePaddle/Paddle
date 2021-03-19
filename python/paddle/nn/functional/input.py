@@ -20,7 +20,6 @@ from ...fluid.layers import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 
-
 def one_hot(x, num_classes, name=None):
     """
 

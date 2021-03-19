@@ -16,7 +16,6 @@
 from ...fluid.initializer import ConstantInitializer
 
 
-
 class Constant(ConstantInitializer):
     """Implement the constant initializer.
 

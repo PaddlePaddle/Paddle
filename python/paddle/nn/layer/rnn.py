@@ -34,7 +34,6 @@ from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 
 
-
 def split_states(states, bidirectional=False, state_components=1):
     r"""
     Split states of RNN network into possibly nested list or tuple of

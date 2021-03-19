@@ -21,7 +21,6 @@ from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
 
-
 class BCEWithLogitsLoss(fluid.dygraph.Layer):
     r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.

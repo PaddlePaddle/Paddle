@@ -14,7 +14,6 @@
 
 # TODO: define the extention functions
 
-
 import numpy as np
 from ...fluid.data_feeder import check_dtype
 from ...fluid.layer_helper import LayerHelper

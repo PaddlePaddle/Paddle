@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [     #noqa
-           'weight_norm', 
-           'remove_weight_norm'
-]
-
 from . import weight_norm_hook
 from .weight_norm_hook import weight_norm, remove_weight_norm
+
+__all__ = [  #noqa
+    'weight_norm', 
+    'remove_weight_norm'
+]

@@ -16,7 +16,6 @@
 from ...fluid.initializer import MSRAInitializer
 
 
-
 class KaimingNormal(MSRAInitializer):
     r"""Implements the Kaiming Normal initializer
 

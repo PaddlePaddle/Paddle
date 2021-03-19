@@ -14,7 +14,6 @@
 
 # TODO: define classes of convolutional neural network
 
-
 import numpy as np
 
 from ...fluid import core

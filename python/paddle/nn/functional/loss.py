@@ -23,20 +23,19 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...fluid.layers import dice_loss  #DEFINE_ALIAS
-from ...fluid.layers import log_loss  #DEFINE_ALIAS
-from ...fluid.layers import npair_loss  #DEFINE_ALIAS
+from ...fluid.layers import dice_loss  # noqa: F401
+from ...fluid.layers import log_loss  # noqa: F401
+from ...fluid.layers import npair_loss  # noqa: F401
 from ...fluid.layers import reshape
-from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
-from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
+from ...fluid.layers import softmax_with_cross_entropy  # noqa: F401
+from ...fluid.layers import square_error_cost  # noqa: F401
 
-from ...fluid.layers import edit_distance  #DEFINE_ALIAS
+from ...fluid.layers import edit_distance  # noqa: F401
 from ...fluid.layers import huber_loss
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
-
 
 
 def binary_cross_entropy(input, label, weight=None, reduction='mean',

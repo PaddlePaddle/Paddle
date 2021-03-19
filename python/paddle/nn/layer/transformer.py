@@ -14,7 +14,6 @@
 
 # TODO: define the classes of Transformer neural network
 
-
 import copy
 import collections
 import numpy as np

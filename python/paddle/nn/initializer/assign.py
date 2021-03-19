@@ -20,7 +20,6 @@ from ...fluid.data_feeder import check_type
 from ...fluid.initializer import NumpyArrayInitializer
 
 
-
 class Assign(NumpyArrayInitializer):
     """Init an parameter with a numpy array, list, or tensor.
 

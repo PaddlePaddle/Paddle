@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-
 import numpy as np
 from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode

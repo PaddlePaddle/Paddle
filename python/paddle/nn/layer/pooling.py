@@ -17,7 +17,6 @@ from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
 
 
-
 class AvgPool1D(layers.Layer):
     """
     This operation applies a 1D average pooling over an input signal composed
