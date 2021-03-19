@@ -198,8 +198,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
 
     // get length-based lod by batch ids
-    GetLengthLoD<<<blocks, threads>>>(real_post_num, out_id_data,
-                                      length_lod_data);
+    GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
+        real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
     memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
                  length_lod_data, sizeof(int) * lod_size, dev_ctx.stream());
