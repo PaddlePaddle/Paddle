@@ -48,11 +48,15 @@ class AffineChannelOpConverter : public OpConverter {
     auto idim = input_tensor->getDimensions();
 
     auto* scale_v = scope.FindVar(scale_name);
+    std::cerr << "find scale_v" << std::endl;
     auto* scale_t = scale_v->GetMutable<framework::Tensor>();
+    std::cerr << "find scale_t" << std::endl;
     float* scale_ptr = engine_->GetWeightCPUData(scale_name, scale_t, false);
 
     auto* bias_v = scope.FindVar(bias_name);
+    std::cerr << "find bias_v" << std::endl;
     auto* bias_t = bias_v->GetMutable<framework::Tensor>();
+    std::cerr << "find bias_t" << std::endl;
     float* bias_ptr = engine_->GetWeightCPUData(bias_name, bias_t, false);
 
     auto data_layout = framework::StringToDataLayout(
