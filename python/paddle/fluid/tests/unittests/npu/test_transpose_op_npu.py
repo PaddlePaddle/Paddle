@@ -30,7 +30,7 @@ paddle.enable_static()
 class TestTransposeOp(OpTest):
     def setUp(self):
         self.set_npu()
-        self.op_type = "transpose"
+        self.op_type = "transpose2"
         self.place = paddle.NPUPlace(0)
         self.init_dtype()
         self.init_input_output()
