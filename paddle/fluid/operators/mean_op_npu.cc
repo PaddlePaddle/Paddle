@@ -30,8 +30,6 @@ class MeanNPUKernel : public framework::OpKernel<T> {
                   {"keep_dims", false},
                   {"axes", axes}};
 
-    std::vector<int64_t> out_dims;
-    out_dims.push_back(1);
     out->mutable_data<T>(ctx.GetPlace());
 
     auto runner = NpuOpRunner("ReduceMeanD",
@@ -104,3 +102,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
+
