@@ -40,7 +40,7 @@ class GraphNode {
   void set_feature(std::string feature) { this->feature = feature; }
   std::string get_feature() { return feature; }
   virtual int get_size(bool need_feature);
-  virtual void build_sampler();
+  virtual void build_sampler(std::string sample_type);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual void add_edge(GraphEdge *edge) { edges.push_back(edge); }
@@ -58,7 +58,7 @@ class GraphNode {
  protected:
   uint64_t id;
   std::string feature;
-  WeightedSampler *sampler;
+  Sampler *sampler;
   std::vector<GraphEdge *> edges;
 };
 }

@@ -18,6 +18,7 @@
 #include <vector>
 namespace paddle {
 namespace distributed {
+
 class WeightedObject {
  public:
   WeightedObject() {}
@@ -26,14 +27,31 @@ class WeightedObject {
   virtual float get_weight() = 0;
 };
 
-class WeightedSampler {
+class Sampler {
+public:
+  virtual ~Sampler() {}
+  virtual void build(std::vector<WeightedObject*>* edges) = 0;
+  virtual std::vector<WeightedObject *> sample_k(int k) = 0;
+};
+
+class RandomSampler: public Sampler {
+public:
+  virtual ~RandomSampler() {}
+  virtual void build(std::vector<WeightedObject*>* edges);
+  virtual std::vector<WeightedObject *> sample_k(int k);
+  std::vector<WeightedObject*>* edges;
+};
+
+class WeightedSampler: public Sampler {
  public:
+  virtual ~WeightedSampler() {}
   WeightedSampler *left, *right;
   WeightedObject *object;
   int count;
   float weight;
-  void build(WeightedObject **v, int start, int end);
-  std::vector<WeightedObject *> sample_k(int k);
+  virtual void build(std::vector<WeightedObject*>* edges);
+  virtual void build_one(WeightedObject **v, int start, int end);
+  virtual std::vector<WeightedObject *> sample_k(int k);
 
  private:
   WeightedObject *sample(

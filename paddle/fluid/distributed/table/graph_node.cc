@@ -22,10 +22,15 @@ int GraphNode::int_size = sizeof(int);
 int GraphNode::get_size(bool need_feature) {
   return id_size + int_size + (need_feature ? feature.size() : 0);
 }
-void GraphNode::build_sampler() {
-  sampler = new WeightedSampler();
-  GraphEdge** arr = edges.data();
-  sampler->build((WeightedObject**)arr, 0, edges.size());
+void GraphNode::build_sampler(std::string sample_type) {
+  if (sample_type == "random"){
+    sampler = new RandomSampler();
+  } else if (sample_type == "weighted"){
+    sampler = new WeightedSampler();
+  } 
+  //GraphEdge** arr = edges.data();
+  //sampler->build((WeightedObject**)arr, 0, edges.size());
+  sampler->build((std::vector<WeightedObject*>*)&edges);
 }
 void GraphNode::to_buffer(char* buffer, bool need_feature) {
   int size = get_size(need_feature);
