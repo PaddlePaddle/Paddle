@@ -1162,76 +1162,75 @@ def cross_entropy(input,
 
         1. Hard label (each sample can only be assigned into one category)
 
-        .. math::
-          \\loss_j=-\text{logits}_{label_j}+\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right) , j = 1,...,N
+            .. math::
+              \\loss_j=-\text{logits}_{label_j}+\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right) , j = 1,...,N
 
-        where, N is the number of samples and C is the number of categories.
+            where, N is the number of samples and C is the number of categories.
 
-        2. Soft label (each sample is assigned to multiple categories with a certain probability, 
-        and the probability sum is 1).
+        2. Soft label (each sample is assigned to multiple categories with a certain probability, and the probability sum is 1).
 
-        .. math::
-          \\loss_j=-\sum_{i=0}^{C}\text{label}_i\left(\text{logits}_i-\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right)\right) , j = 1,...,N
+            .. math::
+              \\loss_j=-\sum_{i=0}^{C}\text{label}_i\left(\text{logits}_i-\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right)\right) , j = 1,...,N
 
-        where, N is the number of samples and C is the number of categories.
+            where, N is the number of samples and C is the number of categories.
 
 
     - **II. Weight and reduction processing**
 
         1. Weight
 
-        If the ``weight`` parameter is ``none`` , go to the next step directly.
+            If the ``weight`` parameter is ``none`` , go to the next step directly.
 
-        If the ``weight`` parameter is not ``none`` , the cross entropy of each sample is weighted by weight
-        according to soft_label = False or True as follows.
+            If the ``weight`` parameter is not ``none`` , the cross entropy of each sample is weighted by weight
+            according to soft_label = False or True as follows.
 
-        1.1. Hard labels (soft_label = False)
+            1.1. Hard labels (soft_label = False)
 
-        .. math::
-            \\loss_j=loss_j*weight[label_j] 
+            .. math::
+                \\loss_j=loss_j*weight[label_j] 
 
 
-        1.2. Soft labels (soft_label = True)
+            1.2. Soft labels (soft_label = True)
 
-         .. math::
-            \\loss_j=loss_j*\sum_{i}\left(weight[label_i]*logits_i\right)
+             .. math::
+                \\loss_j=loss_j*\sum_{i}\left(weight[label_i]*logits_i\right)
 
         2. reduction
 
-        2.1 if the ``reduction`` parameter is ``none`` 
+            2.1 if the ``reduction`` parameter is ``none`` 
 
-            Return the previous result directly
+                Return the previous result directly
 
-        2.2 if the ``reduction`` parameter is ``sum`` 
+            2.2 if the ``reduction`` parameter is ``sum`` 
 
-            Return the sum of the previous results
+                Return the sum of the previous results
 
-        .. math::
-           \\loss=\sum_{j}loss_j
+            .. math::
+               \\loss=\sum_{j}loss_j
 
-        2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
-        the ``weight`` parameter as follows. 
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
+            the ``weight`` parameter as follows. 
 
-        2.3.1. If the  ``weight``  parameter is ``none`` 
+            2.3.1. If the  ``weight``  parameter is ``none`` 
 
-               Return the average value of the previous results
+                   Return the average value of the previous results
 
-         .. math::
-            \\loss=\sum_{j}loss_j/N
+             .. math::
+                \\loss=\sum_{j}loss_j/N
 
-              where, N is the number of samples and C is the number of categories.
+                  where, N is the number of samples and C is the number of categories.
 
-        2.3.2. If the 'weight' parameter is not 'none', the weighted average value of the previous result will be returned
+            2.3.2. If the 'weight' parameter is not 'none', the weighted average value of the previous result will be returned
 
-        (1) Hard labels (soft_label = False)
+            (1) Hard labels (soft_label = False)
 
-         .. math::
-            \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
+             .. math::
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
 
-        (2) Soft labels (soft_label = True)
+            (2) Soft labels (soft_label = True)
 
-         .. math::
-            \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
+             .. math::
+                \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
  
  
     Parameters:
