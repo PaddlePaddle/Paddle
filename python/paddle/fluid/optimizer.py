@@ -5590,7 +5590,7 @@ class GradientMergeOptimizer(object):
             shape=[1],
             value=bool(0),
             dtype='bool',
-            persistable=True,
+            persistable=False,
             force_cpu=True)
 
         with device_guard("cpu"):
