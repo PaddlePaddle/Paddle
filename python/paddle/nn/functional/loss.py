@@ -1235,52 +1235,78 @@ def cross_entropy(input,
  
  
     Parameters:
-    :::::::::
-        - **input** (Tensor): Input tensor, the data type is float32, float64. Shape is
+
+        - **input** (Tensor)
+
+            Input tensor, the data type is float32, float64. Shape is
 	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
             Note: it expects unscaled logits. This operator should not be used with the 
             output of softmax operator, which will produce incorrect results.
-        - **label** (Tensor): Label tensor. 
+
+        - **label** (Tensor)
+
             1) If soft_label=False，the shape is 
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64. 
+
             2) If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
-        - **weight** (Tensor, optional): a manual rescaling weight given to each class. 
+
+        - **weight** (Tensor, optional)
+
+            a manual rescaling weight given to each class. 
             If given, has to be a Tensor of size C and the data type is float32, float64. 
             Default is ``'None'`` .
-        - **ignore_index** (int64, optional): Specifies a target value that is ignored
+
+        - **ignore_index** (int64, optional)
+
+            Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label 
             value needs to be ignored. Only valid when soft_label = False.  
             Default is ``-100`` .
-        - **reduction** (str, optional): Indicate how to average the loss by batch_size,
+
+        - **reduction** (str, optional)
+
+            Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        - **soft_label** (bool, optional): Indicate whether label is soft. 
+
+        - **soft_label** (bool, optional)
+
+            Indicate whether label is soft. 
             If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
-        - **axis** (int, optional): The index of dimension to perform softmax calculations. 
+
+        - **axis** (int, optional)
+
+            The index of dimension to perform softmax calculations. 
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the rank of 
             input :attr:`input`. 
             Default is ``-1`` .
-        - **name** (str，optional: The name of the operator. Default is ``None`` .
+
+        - **name** (str，optional)
+
+            The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-    :::::::::
+
         Tensor. Return the softmax cross_entropy loss of ``input`` and ``label``.
         The data type is the same as input.
+
         If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the dimension of return value is ``1``.
+
         If :attr:`reduction` is ``'none'``:
+
         1) If soft_label = False, the dimension of return value is the same with ``label`` . 
+
         2) if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
     Examples:
-    :::::::::
 
         .. code-block:: python
 
