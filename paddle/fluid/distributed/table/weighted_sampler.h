@@ -16,30 +16,23 @@
 #include <ctime>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/distributed/table/graph_edge.h"
 namespace paddle {
 namespace distributed {
-
-class WeightedObject {
- public:
-  WeightedObject() {}
-  virtual ~WeightedObject() {}
-  virtual uint64_t get_id() = 0;
-  virtual float get_weight() = 0;
-};
 
 class Sampler {
 public:
   virtual ~Sampler() {}
-  virtual void build(std::vector<WeightedObject*>* edges) = 0;
-  virtual std::vector<WeightedObject *> sample_k(int k) = 0;
+  virtual void build(GraphEdgeBlob* edges) = 0;
+  virtual std::vector<int> sample_k(int k) = 0;
 };
 
 class RandomSampler: public Sampler {
 public:
   virtual ~RandomSampler() {}
-  virtual void build(std::vector<WeightedObject*>* edges);
-  virtual std::vector<WeightedObject *> sample_k(int k);
-  std::vector<WeightedObject*>* edges;
+  virtual void build(GraphEdgeBlob* edges);
+  virtual std::vector<int> sample_k(int k);
+  GraphEdgeBlob* edges;
 };
 
 class WeightedSampler: public Sampler {
@@ -47,15 +40,16 @@ class WeightedSampler: public Sampler {
   WeightedSampler();
   virtual ~WeightedSampler();
   WeightedSampler *left, *right;
-  WeightedObject *object;
-  int count;
   float weight;
-  virtual void build(std::vector<WeightedObject*>* edges);
-  virtual void build_one(WeightedObject **v, int start, int end);
-  virtual std::vector<WeightedObject *> sample_k(int k);
+  int count;
+  int idx;
+  WeightedGraphEdgeBlob * edges;
+  virtual void build(GraphEdgeBlob* edges);
+  virtual void build_one(WeightedGraphEdgeBlob *edges, int start, int end);
+  virtual std::vector<int> sample_k(int k);
 
  private:
-  WeightedObject *sample(
+  int sample(
       float query_weight,
       std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
       std::unordered_map<WeightedSampler *, int> &subtract_count_map,
