@@ -66,6 +66,12 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
+    // ones
+    Tensor ones(grad->type());
+    ones.mutable_data<T>(IG->dims(), context.GetPlace());
+    auto runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
+    runner_ones.Run(stream);
+
     // means
     Tensor mean_tensor(grad->type());
     mean_tensor.Resize({1});
@@ -76,9 +82,16 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
                                 context.device_context(),
                                 &mean_tensor);
 
+    // means mul ones
+    Tensor mean_ma(grad->type());
+    mean_ma.Resize(IG->dims());
+    mean_ma.mutable_data<T>(context.GetPlace());
+    auto runner_mul_1 = NpuOpRunner("Mul", {mean_tensor, ones}, {mean_ma}, {});
+    runner_mul_1.Run(stream);
+
     // and mul grad
-    auto runner = NpuOpRunner("Mul", {mean_tensor, *grad}, {*IG}, {});
-    runner.Run(stream);
+    auto runner_mul_2 = NpuOpRunner("Mul", {mean_ma, *grad}, {*IG}, {});
+    runner_mul_2.Run(stream);
   }
 };
 
@@ -102,4 +115,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
-

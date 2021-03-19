@@ -36,7 +36,7 @@ class TestMean(OpTest):
         self.op_type = "mean"
         self.init_dtype()
 
-        x = np.random.random([3, 3]).astype(self.dtype)
+        x = np.random.random([1, 100]).astype(self.dtype)
         self.inputs = {'X': x}
 
         self.attrs = {}
@@ -51,6 +51,9 @@ class TestMean(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
