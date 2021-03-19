@@ -15,29 +15,20 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
-from .layer import norm
-from .functional import extension
-from .layer import common
-from .layer import rnn
-from .utils import weight_norm_hook
+from .layer import norm  # noqa: F401
+from .functional import extension  # noqa: F401
+from .layer import common  # noqa: F401
+from .layer import rnn  # noqa: F401
+from .utils import weight_norm_hook  # noqa: F401
 
-from . import initializer
+from . import initializer  # noqa: F401
 
 # TODO: define alias in nn directory
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
 from .clip import ClipGradByValue  # noqa: F401
-# from .control_flow import cond  # noqa: F401
-# from .control_flow import DynamicRNN        # noqa: F401
-# from .control_flow import StaticRNN        # noqa: F401
-# from .control_flow import while_loop  # noqa: F401
-# from .control_flow import rnn        # noqa: F401
 from .decode import BeamSearchDecoder  # noqa: F401
 from .decode import dynamic_decode  # noqa: F401
-# from .decode import Decoder        # noqa: F401
-# from .decode import crf_decoding        # noqa: F401
-# from .decode import ctc_greedy_decoder        # noqa: F401
-# from .input import Input        # noqa: F401
 from .layer.activation import ELU  # noqa: F401
 from .layer.activation import GELU  # noqa: F401
 from .layer.activation import Tanh  # noqa: F401
@@ -96,10 +87,7 @@ from .layer.conv import Conv3D  # noqa: F401
 from .layer.conv import Conv1DTranspose  # noqa: F401
 from .layer.conv import Conv2DTranspose  # noqa: F401
 from .layer.conv import Conv3DTranspose  # noqa: F401
-# from .layer.conv import TreeConv        # noqa: F401
-# from .layer.conv import Conv1D        # noqa: F401
-from .layer.common import Linear
-# from .layer.loss import NCELoss        # noqa: F401
+from .layer.common import Linear  # noqa: F401
 from .layer.loss import BCEWithLogitsLoss  # noqa: F401
 from .layer.loss import CrossEntropyLoss  # noqa: F401
 from .layer.loss import HSigmoidLoss  # noqa: F401
@@ -134,15 +122,15 @@ from .layer.rnn import SimpleRNN  # noqa: F401
 from .layer.rnn import LSTM  # noqa: F401
 from .layer.rnn import GRU  # noqa: F401
 
-from .layer.transformer import MultiHeadAttention
-from .layer.transformer import TransformerEncoderLayer
-from .layer.transformer import TransformerEncoder
-from .layer.transformer import TransformerDecoderLayer
-from .layer.transformer import TransformerDecoder
-from .layer.transformer import Transformer
+from .layer.transformer import MultiHeadAttention  # noqa: F401
+from .layer.transformer import TransformerEncoderLayer  # noqa: F401
+from .layer.transformer import TransformerEncoder  # noqa: F401
+from .layer.transformer import TransformerDecoderLayer  # noqa: F401
+from .layer.transformer import TransformerDecoder  # noqa: F401
+from .layer.transformer import Transformer  # noqa: F401
 from .layer.distance import PairwiseDistance  # noqa: F401
 
-from .layer.vision import PixelShuffle
+from .layer.vision import PixelShuffle  # noqa: F401
 
 from .layer import loss  # noqa: F401
 from .layer import conv  # noqa: F401

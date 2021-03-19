@@ -16,25 +16,25 @@
 from ...fluid.initializer import Bilinear  # noqa: F401
 from ...fluid.initializer import set_global_initializer  # noqa: F401
 
-from . import constant
+from . import constant  # noqa: F401
 from .constant import Constant  # noqa: F401
 
-from . import kaiming
+from . import kaiming  # noqa: F401
 from .kaiming import KaimingNormal  # noqa: F401
 from .kaiming import KaimingUniform  # noqa: F401
 
-from . import xavier
+from . import xavier  # noqa: F401
 from .xavier import XavierNormal  # noqa: F401
 from .xavier import XavierUniform  # noqa: F401
 
-from . import assign
+from . import assign  # noqa: F401
 from .assign import Assign  # noqa: F401
 
-from . import normal
+from . import normal  # noqa: F401
 from .normal import Normal  # noqa: F401
 from .normal import TruncatedNormal  # noqa: F401
 
-from . import uniform
+from . import uniform  # noqa: F401
 from .uniform import Uniform  # noqa: F401
 
 __all__ = [     #noqa

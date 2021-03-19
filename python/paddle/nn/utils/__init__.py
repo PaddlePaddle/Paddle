@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import weight_norm_hook
-from .weight_norm_hook import weight_norm, remove_weight_norm
+from . import weight_norm_hook  # noqa: F401
+from .weight_norm_hook import weight_norm, remove_weight_norm  # noqa: F401
 
 __all__ = [  #noqa
     'weight_norm', 

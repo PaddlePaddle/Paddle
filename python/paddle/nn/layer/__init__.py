@@ -14,25 +14,16 @@
 
 # TODO: define activation functions of neural network
 
-from . import activation
-from . import loss
-from . import conv
-from . import activation
-from . import norm
-from . import rnn
-from . import vision
-from . import distance
-from . import transformer
+from . import activation  # noqa: F401
+from . import loss  # noqa: F401
+from . import conv  # noqa: F401
+from . import activation  # noqa: F401
+from . import norm  # noqa: F401
+from . import rnn  # noqa: F401
+from . import vision  # noqa: F401
+from . import distance  # noqa: F401
+from . import transformer  # noqa: F401
 
-from .activation import *
-from .loss import *
-from .conv import *
-from .activation import *
-from .norm import *
-from .rnn import *
-from .vision import *
-
-from .transformer import *
 from .activation import PReLU  # noqa: F401
 from .activation import ReLU  # noqa: F401
 from .activation import LeakyReLU  # noqa: F401
@@ -73,9 +64,6 @@ from .conv import Conv3D  # noqa: F401
 from .conv import Conv1DTranspose  # noqa: F401
 from .conv import Conv2DTranspose  # noqa: F401
 from .conv import Conv3DTranspose  # noqa: F401
-# from .conv import TreeConv        # noqa: F401
-# from .conv import Conv1D        # noqa: F401
-# from .loss import NCELoss        # noqa: F401
 from .loss import BCEWithLogitsLoss  # noqa: F401
 from .loss import CrossEntropyLoss  # noqa: F401
 from .loss import MSELoss  # noqa: F401
@@ -91,11 +79,7 @@ from .norm import SyncBatchNorm  # noqa: F401
 from .norm import GroupNorm  # noqa: F401
 from .norm import LayerNorm  # noqa: F401
 from .norm import SpectralNorm  # noqa: F401
-#from .norm import InstanceNorm  # noqa: F401
 from .norm import LocalResponseNorm  # noqa: F401
-# from .rnn import RNNCell        # noqa: F401
-# from .rnn import GRUCell        # noqa: F401
-# from .rnn import LSTMCell        # noqa: F401
 
 from .vision import PixelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
