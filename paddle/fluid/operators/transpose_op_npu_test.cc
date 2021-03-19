@@ -13,12 +13,12 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
-#include <string>
 #include <cmath>
+#include <iostream>
+#include <numeric>
+#include <string>
 #include <thread>  // NOLINT
 #include <vector>
-#include <numeric>
-#include <iostream>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -35,10 +35,9 @@ namespace m = paddle::operators::math;
 USE_OP(transpose);
 USE_OP_DEVICE_KERNEL(transpose, NPU);
 
-
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
-    // init
+  // init
   auto x = scope->Var("X");
   auto out = scope->Var("Out");
   auto* x_t = x->GetMutable<f::LoDTensor>();
@@ -54,12 +53,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
   out_t->mutable_data<T>(place);
   ctx.Wait();
-  f::AttributeMap attrs = {
-     {"axis", std::vector<int>({1, 0})},
-     {"data_format", std::string("AnyLayout")}
-  };
-  auto op = f::OpRegistry::CreateOp("transpose", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  f::AttributeMap attrs = {{"axis", std::vector<int>({1, 0})},
+                           {"data_format", std::string("AnyLayout")}};
+  auto op = f::OpRegistry::CreateOp("transpose2", {{"X", {"X"}}},
+                                    {{"Out", {"Out"}}}, attrs);
   ctx.Wait();
   op->Run(*scope, place);
   ctx.Wait();
@@ -76,10 +73,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ(out_v[5], 5);
 }
 
-
 template <typename T>
 void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
-    // init
+  // init
   auto x = scope->Var("X");
   auto x_grad = scope->Var("X@GRAD");
   auto out = scope->Var("Out");
@@ -104,19 +100,17 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   x_grad_t->mutable_data<T>(place);
   out_t->mutable_data<T>(place);
   ctx.Wait();
-  f::AttributeMap attrs = {
-     {"axis", std::vector<int>({1, 0})},
-     {"data_format", std::string("AnyLayout")}
-  };
+  f::AttributeMap attrs = {{"axis", std::vector<int>({1, 0})},
+                           {"data_format", std::string("AnyLayout")}};
   auto op = f::OpRegistry::CreateOp(
-      "transpose_grad", 
+      "transpose2_grad",
       {{"Out@GRAD", {"Out@GRAD"}}, {"X", {"X"}}, {"Out", {"Out"}}},
       {{"X@GRAD", {"X@GRAD"}}}, attrs);
   op->Run(*scope, place);
-  ctx.Wait();  
+  ctx.Wait();
   std::vector<T> out_v;
   TensorToVector(*x_grad_t, ctx, &out_v);
-  ctx.Wait();  
+  ctx.Wait();
 
   EXPECT_EQ(x_grad_t->numel(), dim0 * dim1);
   EXPECT_EQ(out_v[0], 0);
@@ -125,19 +119,16 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ(out_v[3], 4);
   EXPECT_EQ(out_v[4], 2);
   EXPECT_EQ(out_v[5], 5);
-
 }
 
-
-TEST(transpose, NPU_fp32) {
+TEST(transpose2, NPU_fp32) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   Compare<float>(&scope, ctx);
 }
 
-TEST(transpose_grad, NPU_fp32) {
+TEST(transpose2_grad, NPU_fp32) {
   f::Scope scope;
   p::NPUDeviceContext ctx(p::NPUPlace(0));
   CompareGrad<float>(&scope, ctx);
 }
-
