@@ -8,8 +8,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See
+the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -28,8 +28,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    // Shouble be a 5 dims tensor.
+    // Shouble be a 3 dims tensor.
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
+    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims, 3,
+                      platform::errors::InvalidArgument(
+                          "The Input dim of the MultiheadMatMul should be 3, "
+                          "but it's (%d) now.",
+                          input->getDimensions().nbDims));
 
     // fc weights and fc bias
     auto weight_name = op_desc.Input("W").front();
@@ -69,6 +74,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
     int head_number = BOOST_GET_CONST(int, op_desc.GetAttr("head_number"));
 
     nvinfer1::ILayer* layer = nullptr;
+    auto output_name = op_desc.Output("Out")[0];
 
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
@@ -184,15 +190,37 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     static_cast<void*>(bias_data),
                                     static_cast<size_t>(bias_t->numel())};
 
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input,
-                                              n, weight.get(), bias.get());
-        auto* fc_out = fc_layer->getOutput(0);
+        // add shuffle before fc
+        nvinfer1::Dims before_reshape_dim;
+        before_reshape_dim.nbDims = 5;
+        before_reshape_dim.d[0] = 0;
+        before_reshape_dim.d[1] = 0;
+        before_reshape_dim.d[2] = 0;
+        before_reshape_dim.d[3] = 1;
+        before_reshape_dim.d[4] = 1;
+        auto* before_reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+        before_reshape_layer->setReshapeDimensions(before_reshape_dim);
+        before_reshape_layer->setName(
+            ("multihead_mamul_before_shuffle(Output: " + output_name + ")")
+                .c_str());
+
+        // add layer fc
+        auto* fc_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, FullyConnected, *before_reshape_layer->getOutput(0), n,
+            weight.get(), bias.get());
+        fc_layer->setName(
+            ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+
+        // no need to add shuffle after fc, just change it in
+        // QkvToContextPluginDynamic
+
         // add qkv to context
         int head_size = hidden_out / head_number;
         float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
 
         std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.push_back(fc_out);
+        plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
@@ -208,7 +236,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "multihead_matmul", {output_name},
                              test_mode);
 #else

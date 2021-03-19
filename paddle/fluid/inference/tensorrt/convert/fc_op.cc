@@ -142,9 +142,76 @@ class FcOpConverter : public OpConverter {
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
+    PADDLE_ENFORCE_EQ(
+        x_num_col_dims == 1 || x_num_col_dims == 2, true,
+        platform::errors::InvalidArgument(
+            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
+            "expects x_num_col_dims is either 1 or 2, but got %d",
+            x_num_col_dims));
 
     if (engine_->with_dynamic_shape()) {
-      regist_fc(X, n_output, weight, bias);
+      // not NCHW layout, but NLP layout with added 'x 1 x 1'
+      auto x_dim = X->getDimensions();
+      if (x_dim.nbDims == 3 || x_dim.nbDims == 2) {
+        auto output_name = op_desc.Output("Out").front();
+        // add shuffle before fc
+        nvinfer1::Dims before_reshape_dim;
+        before_reshape_dim.nbDims = x_dim.nbDims + 2;
+        for (int i = 0; i < x_dim.nbDims; i++) {
+          before_reshape_dim.d[i] = 0;
+        }
+        before_reshape_dim.d[x_dim.nbDims] = 1;
+        before_reshape_dim.d[x_dim.nbDims + 1] = 1;
+        auto* before_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+        before_reshape_layer->setReshapeDimensions(before_reshape_dim);
+        before_reshape_layer->setName(
+            ("fc_before_shuffle(Output: " + output_name + ")").c_str());
+
+        // add fc layer
+        auto* fc_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, FullyConnected, *before_reshape_layer->getOutput(0),
+            n_output, weight.get(), bias.get());
+        fc_layer->setName(("fc_layer(Output: " + output_name + ")").c_str());
+
+        // add shuffle after fc
+        nvinfer1::Dims after_reshape_dim;
+        if (x_dim.nbDims == 3) {
+          if (x_num_col_dims == 2) {
+            after_reshape_dim.nbDims = 3;
+            after_reshape_dim.d[0] = 0;
+            after_reshape_dim.d[1] = 0;
+            after_reshape_dim.d[2] = 0;
+          } else {
+            after_reshape_dim.nbDims = 2;
+            after_reshape_dim.d[0] = 0;
+            auto dim = fc_layer->getOutput(0)->getDimensions();
+            after_reshape_dim.d[1] = dim.d[1] * dim.d[2];
+          }
+          // x_dim.nbDims == 2
+        } else {
+          after_reshape_dim.nbDims = 2;
+          after_reshape_dim.d[0] = 0;
+          after_reshape_dim.d[1] = 0;
+        }
+        auto* after_reshape_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
+        after_reshape_layer->setReshapeDimensions(after_reshape_dim);
+        after_reshape_layer->setName(
+            ("fc_after_shuffle(Output: " + output_name + ")").c_str());
+
+        if (activation_type == "relu") {
+          nvinfer1::IActivationLayer* relu_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(after_reshape_layer->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer, "fc_after_relu", {output_name},
+                                   test_mode);
+        } else {
+          RreplenishLayerAndOutput(after_reshape_layer, "fc_after_shuffle",
+                                   {output_name}, test_mode);
+        }
+      } else {
+        regist_fc(X, n_output, weight, bias);
+      }
       return;
     }
     // in order to handle situations in NLP models(input dims < 3,
@@ -154,12 +221,6 @@ class FcOpConverter : public OpConverter {
     auto input_d = X->getDimensions().d;
     int reshape_dim3[3] = {0};
     int reshape_dim4[4] = {0};
-    PADDLE_ENFORCE_EQ(
-        x_num_col_dims == 1 || x_num_col_dims == 2, true,
-        platform::errors::InvalidArgument(
-            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
-            "expects x_num_col_dims is either 1 or 2, but got %d",
-            x_num_col_dims));
     PADDLE_ENFORCE_LE(x_num_col_dims, input_dims,
                       platform::errors::InvalidArgument(
                           "Params and input dims mismatch. Paddle-TRT FC "
