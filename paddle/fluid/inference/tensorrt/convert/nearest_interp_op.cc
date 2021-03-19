@@ -60,7 +60,7 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     std::vector<float> scales;
 
-    if (scale > 0.f) {
+    if (scale > 0.f && (out_h <= 0 && out_w <= 0)) {
       scale_h = scale;
       scale_w = scale;
     } else {
