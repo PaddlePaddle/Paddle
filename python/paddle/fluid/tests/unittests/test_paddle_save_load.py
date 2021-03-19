@@ -18,10 +18,15 @@ import unittest
 import numpy as np
 import os
 import sys
+import six
 
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
+import paddle.fluid as fluid
+from paddle.fluid.optimizer import Adam
+import paddle.fluid.framework as framework
+from test_imperative_base import new_program_scope
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -31,7 +36,10 @@ SEED = 10
 IMAGE_SIZE = 784
 CLASS_NUM = 10
 
-LARGE_PARAM = 2**26
+if six.PY2:
+    LARGE_PARAM = 2**2
+else:
+    LARGE_PARAM = 2**2
 
 
 def random_batch_reader():
@@ -95,7 +103,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        paddle.save(layer.state_dict(), path)
+        paddle.save(layer.state_dict(), path, protocol=4)
         dict_load = paddle.load(path)
         # compare results before and after saving
         for key, value in save_dict.items():
@@ -104,6 +112,8 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
 class TestSaveLoadPickle(unittest.TestCase):
     def test_pickle_protocol(self):
+        # enable dygraph mode
+        paddle.disable_static()
         # create network
         layer = LinearNet()
         save_dict = layer.state_dict()
@@ -129,6 +139,202 @@ class TestSaveLoadPickle(unittest.TestCase):
             # compare results before and after saving
             for key, value in save_dict.items():
                 self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+
+
+class TestSaveLoadAny(unittest.TestCase):
+    def set_zero(self, prog, place):
+        for var in prog.list_vars():
+            if isinstance(var, framework.Parameter) or var.persistable:
+                ten = fluid.global_scope().find_var(var.name).get_tensor()
+                ten.set(np.zeros_like(np.array(ten)), place)
+
+                new_t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+    def replace_static_save(self, program, model_path, pickle_protocol=2):
+        with self.assertRaises(TypeError):
+            program.state_dict(1)
+
+        with self.assertRaises(ValueError):
+            program.state_dict('x')
+
+        state_dict_param = program.state_dict('param')
+        paddle.save(state_dict_param, model_path + '.pdparams')
+
+        state_dict_opt = program.state_dict('opt')
+        paddle.save(state_dict_opt, model_path + '.pdopt')
+
+        # paddle.save(program, model_path + ".pdmodel")
+
+    def replace_static_load(self, program, model_path):
+        with self.assertRaises(TypeError):
+            program.set_state_dict(1)
+
+        state_dict_param = paddle.load(model_path + '.pdparams')
+
+        # UserWarning: Skip loading for fake_var_name.@@. Can not find Variable 'fake_var_name.@@' in the program.
+        state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
+
+        program.set_state_dict(state_dict_param)
+
+        state_dict_opt = paddle.load(model_path + '.pdopt')
+        program.set_state_dict(state_dict_opt)
+
+    def test_replace_static_save_load(self):
+        # enable static mode
+        paddle.enable_static()
+
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            z = paddle.static.nn.fc(x, 10)
+            z = paddle.static.nn.fc(z, 10, bias_attr=False)
+            loss = fluid.layers.reduce_mean(z)
+            opt = Adam(learning_rate=1e-3)
+            opt.minimize(loss)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+            fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
+            exe.run(prog, feed={'x': fake_inputs}, fetch_list=[loss])
+
+            base_map = {}
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                    base_map[var.name] = t
+
+            path = os.path.join("test_replace_static_save_load", "model")
+
+            # paddle.save, legacy paddle.fluid.load
+            self.replace_static_save(prog, path)
+            # set var to zero
+            self.set_zero(prog, place)
+
+            paddle.fluid.io.load(prog, path)
+
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            # legacy paddle.fluid.save, paddle.load 
+            paddle.fluid.io.save(prog, path)
+            # set var to zero
+            self.set_zero(prog, place)
+            self.replace_static_load(prog, path)
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            # test for return tensor
+            path_vars = 'test_replace_save_load_return_tensor_static/model'
+            for var in prog.list_vars():
+                if var.persistable:
+                    tensor = prog.get_tensor(var.name)
+                    paddle.save(tensor, os.path.join(path_vars, var.name))
+            # set var to zero
+            self.set_zero(prog, place)
+            for var in prog.list_vars():
+                if var.persistable:
+                    tensor = paddle.load(
+                        os.path.join(path_vars, var.name), return_numpy=False)
+                    prog.set_tensor(var.name, tensor)
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_paddle_save_load_v2(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        layer = LinearNet()
+        state_dict = layer.state_dict()
+        path = 'paddle_save_load_v2/model.pdparams'
+
+        # paddle.save
+        with self.assertRaises(TypeError):
+            paddle.save(state_dict, path, use_binary_format='False')
+
+        # legacy paddle.save, paddle.load
+        paddle.framework.io._legacy_save(state_dict, path)
+        load_dict_tensor = paddle.load(path, return_numpy=False)
+
+        # legacy paddle.load, paddle.save
+        paddle.save(state_dict, path)
+        load_dict_np = paddle.framework.io._legacy_load(path)
+
+        for k, v in state_dict.items():
+            self.assertTrue(
+                np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
+            self.assertTrue(np.array_equal(v.numpy(), load_dict_np[k]))
+
+    def test_single_pickle_var_dygraph(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        layer = LinearNet()
+        path = 'paddle_save_load_v2/var_dygraph'
+        tensor = layer._linear.weight
+
+        paddle.save(tensor, path)
+
+        np_dygraph = paddle.load(path)
+        t_dygraph = paddle.load(path, return_numpy=False)
+        self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
+        self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
+        # enable static mode
+        paddle.enable_static()
+        np_static = paddle.load(path)
+        lod_static = paddle.load(path, return_numpy=False)
+        self.assertTrue(np.array_equal(tensor.numpy(), np_static))
+        self.assertTrue(np.array_equal(tensor.numpy(), np.array(lod_static)))
+
+    def test_single_pickle_var_static(self):
+        # enable static mode
+        paddle.enable_static()
+
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+            z = paddle.static.nn.fc(x, 128)
+            loss = fluid.layers.reduce_mean(z)
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+            for var in prog.list_vars():
+                if list(var.shape) == [IMAGE_SIZE, 128]:
+                    tensor = prog.get_tensor(var.name)
+
+                    break
+        path = 'test_single_pickle_var_static/var'
+        paddle.save(tensor, path)
+        # static load
+        np_static = paddle.load(path)
+        lod_static = paddle.load(path, return_numpy=False)
+        self.assertTrue(np.array_equal(np.array(tensor), np_static))
+        self.assertTrue(np.array_equal(np.array(tensor), np.array(lod_static)))
+
+        # enable dygraph mode
+        paddle.disable_static()
+        np_dygraph = paddle.load(path)
+        var_dygraph = paddle.load(path, return_numpy=False)
+        self.assertTrue(np.array_equal(np.array(tensor), np_dygraph))
+        self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
+
+
+# paddle.load
 
 
 class TestSaveLoad(unittest.TestCase):

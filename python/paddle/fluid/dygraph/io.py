@@ -16,8 +16,10 @@ from __future__ import print_function
 
 import os
 import six
-import pickle
+import pickle, copyreg
 import numpy as np
+import math
+import sys
 
 import paddle
 from paddle import compat as cpt
@@ -28,7 +30,8 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, Variable, Program
+from paddle.fluid.executor import global_scope
 
 __all__ = ['TranslatedLayer']
 
@@ -39,6 +42,90 @@ INFER_PARAMS_INFO_SUFFIX = ".pdiparams.info"
 LOADED_VAR_SUFFIX = "load"
 PARAMETER_NAME_PREFIX = "param"
 BUFFER_NAME_PREFIX = "buffer"
+
+
+def _wherher_parse_as_tensor(obj):
+    # In paddle2.1 version, VarBase is saved as tuple(var.name, var.numpy()).
+    # When executing paddle.load, use this function to determine whether to restore to VarBase.
+    if isinstance(obj, tuple) and len(obj) == 2:
+        if isinstance(obj[0], str) and isinstance(obj[1], np.ndarray):
+            return True
+    return False
+
+
+def _pickle_save(obj, f, protocol):
+    # TODO:BytesIO
+    if not isinstance(protocol, int):
+        raise ValueError("The 'protocol' MUST be `int`, but received {}.".
+                         format(type(protocol)))
+
+    if protocol < 2 or protocol > 4:
+        raise ValueError("Expected 1<'protocol'<5, but received protocol={}.".
+                         format(protocol))
+
+    if not isinstance(obj, (Variable, core.LoDTensor, core.VarBase)):
+        raise NotImplementedError(
+            "Support 'VarBase' or 'LoDTensor', but received {}.".format(
+                type(obj)))
+
+    def reudce_varbase(self):
+        data = self.numpy()
+        name = self.name
+
+        return (tuple, ((name, data), ))
+
+    def reduce_LoDTensor(self):
+        data = np.array(self)
+
+        return (eval, ('data', {'data': data}))
+
+    def reduce_Variable(self):
+        raise NotImplementedError(
+            "Please use `program.get_tensor` to convert Variable {} to LoDTensor, and use `paddle.save` to save {}.".
+            format(self.name, self.name))
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+        # This is not a good method, because the pickle module has been modified.
+        pickle.dispatch_table[core.VarBase] = reudce_varbase
+        pickle.dispatch_table[framework.ParamBase] = reudce_varbase
+        pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+        pickle.dispatch_table[Variable] = reduce_Variable
+
+        pickle_bytes = pickle.dumps(obj)
+
+        pickle.dispatch_table.pop(core.VarBase)
+        pickle.dispatch_table.pop(core.LoDTensor)
+        pickle.dispatch_table.pop(Variable)
+        pickle.dispatch_table.pop(framework.ParamBase)
+
+        max_bytes = 2**30
+        for i in range(0, len(pickle_bytes), max_bytes):
+            f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        if six.PY2:
+            pickle.dispatch_table[core.VarBase] = reudce_varbase
+            pickler.dispatch_table[framework.ParamBase] = reudce_varbase
+            pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+            pickle.dispatch_table[Variable] = reduce_Variable
+
+            pickle_bytes = pickle.dump(obj, f, protocol)
+
+            pickle.dispatch_table.pop(core.VarBase)
+            pickle.dispatch_table.pop(framework.ParamBase)
+            pickle.dispatch_table.pop(core.LoDTensor)
+            pickle.dispatch_table.pop(Variable)
+        else:
+            pickler = pickle.Pickler(f, protocol)
+            pickler.dispatch_table = copyreg.dispatch_table.copy()
+
+            pickler.dispatch_table[core.VarBase] = reudce_varbase
+            pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+            pickler.dispatch_table[framework.ParamBase] = reudce_varbase
+            pickler.dispatch_table[Variable] = reduce_Variable
+
+            pickler.dump(obj)
 
 
 def _load_program_desc(model_file_path):

@@ -45,7 +45,7 @@ from .dataloader import *
 from . import core
 from .. import compat as cpt
 from paddle.utils import deprecated
-from paddle.fluid.framework import static_only
+from paddle.fluid.framework import static_only, _current_expected_place
 
 batch = paddle.batch
 
@@ -1762,6 +1762,43 @@ def _pack_loaded_dict(load_obj):
             load_obj.pop(unpack_info)
 
     return load_obj
+
+
+@static_only
+def _to_LodTensor(ndarray):
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError(
+            'Type of `ndarray` should be numpy.ndarray, but received {}.'.
+            format(type(ndarray)))
+    t = core.LoDTensor()
+    place = _current_expected_place()
+    t.set(ndarray, place)
+    return t
+
+
+@static_only
+def _legacy_save(param_dict, model_path, protocol=2):
+    def get_tensor(var):
+        if isinstance(var, core.VarBase):
+            return var.numpy()
+        elif isinstance(var, Variable):
+            t = global_scope().find_var(var.name).get_tensor()
+            return np.array(t)
+        return var
+
+    param_dict = {name: get_tensor(param_dict[name]) for name in param_dict}
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
+            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
+        with open(model_path, 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        with open(model_path, 'wb') as f:
+            pickle.dump(param_dict, f, protocol=protocol)
 
 
 @static_only

@@ -25,12 +25,17 @@ import six
 import pickle
 import os
 
+# Python2.x no longer supports saving and loading large parameters.
+if six.PY2:
+    LARGE_PARAM = 2
+else:
+    LARGE_PARAM = 2**26
+
 
 class TestStaticSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_static_save(self):
         # enable static mode
         paddle.enable_static()
-        LARGE_PARAM = 2**26
         with new_program_scope():
             # create network
             x = paddle.static.data(
@@ -54,7 +59,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
 
             path = os.path.join("test_static_save_load_large_param",
                                 "static_save")
-            paddle.fluid.save(prog, path)
+            paddle.fluid.save(prog, path, pickle_protocol=4)
             # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -92,3 +97,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+
+
+if __name__ == '__main__':
+    unittest.main()
