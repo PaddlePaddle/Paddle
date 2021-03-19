@@ -131,11 +131,10 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int dist_blocks = NumBlocks(roi_num);
     int threads = kNumCUDAThreads;
     // get target levels and sub_lod list
-    GPUDistFpnProposalsHelper<T><<<dist_blocks, threads>>>(
+    GPUDistFpnProposalsHelper<T><<<dist_blocks, threads, 0, dev_ctx.stream()>>>(
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data, pixel_offset);
-    dev_ctx.Wait();
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
     Tensor index_in_t;
@@ -172,17 +171,18 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int start = 0;
     auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
 
+    std::vector<int> sub_lod_list_cpu(lod_size * num_level);
+    memory::Copy(platform::CPUPlace(), sub_lod_list_cpu.data(), place,
+                 sub_lod_list_data, sizeof(int) * lod_size * num_level,
+                 dev_ctx.stream());
+    dev_ctx.Wait();
+
     for (int i = 0; i < num_level; ++i) {
       Tensor sub_lod = sub_lod_list.Slice(i, i + 1);
-      int* sub_lod_data = sub_lod.data<int>();
       // transfer length-based lod to offset-based lod
       std::vector<size_t> offset(1, 0);
-      std::vector<int> sub_lod_cpu(lod_size);
-      memory::Copy(platform::CPUPlace(), sub_lod_cpu.data(), place,
-                   sub_lod_data, sizeof(int) * lod_size, dev_ctx.stream());
-      dev_ctx.Wait();
       for (int j = 0; j < lod_size; ++j) {
-        offset.emplace_back(offset.back() + sub_lod_cpu[j]);
+        offset.emplace_back(offset.back() + sub_lod_list_cpu[i * lod_size + j]);
       }
 
       int sub_rois_num = offset.back();
