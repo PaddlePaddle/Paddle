@@ -213,13 +213,20 @@ class LayerList(Layer):
             for idx, layer in enumerate(sublayers):
                 self.add_sublayer(str(idx), layer)
 
+    def _get_abs_idx(self, idx):
+        if isinstance(idx, int) and idx < 0:
+            idx += len(self)
+        return idx
+
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             return self.__class__(list(self._sub_layers.values())[idx])
         else:
+            idx = self._get_abs_idx(idx)
             return self._sub_layers[str(idx)]
 
     def __setitem__(self, idx, sublayer):
+        idx = self._get_abs_idx(idx)
         return setattr(self, str(idx), sublayer)
 
     def __delitem__(self, idx):
@@ -227,6 +234,7 @@ class LayerList(Layer):
             for k in range(len(self._sub_layers))[idx]:
                 delattr(self, str(k))
         else:
+            idx = self._get_abs_idx(idx)
             delattr(self, str(idx))
         str_indices = [str(i) for i in range(len(self._sub_layers))]
         self._sub_layers = OrderedDict(
