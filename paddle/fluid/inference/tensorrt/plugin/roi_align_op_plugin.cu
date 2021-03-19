@@ -29,9 +29,7 @@ template <class T>
 __inline__ __device__ T BilinearInterpolate(const T* input_data,
                                             const int height, const int width,
                                             T y, T x) {
-  if (y < -1.f || y > height || x < -1.f || x > width) {
-    return 0;
-  }
+  if (y < -1.f || y > height || x < -1.f || x > width) return 0;
   y = y <= 0.f ? 0.f : y;
   x = x <= 0.f ? 0.f : x;
   int y_low = static_cast<int>(y);
@@ -52,13 +50,11 @@ __inline__ __device__ T BilinearInterpolate(const T* input_data,
   }
   T ly = y - y_low, lx = x - x_low;
   T hy = 1.f - ly, hx = 1.f - lx;
-
   T v1 = input_data[y_low * width + x_low];
   T v2 = input_data[y_low * width + x_high];
   T v3 = input_data[y_high * width + x_low];
   T v4 = input_data[y_high * width + x_high];
   T w1 = hy * hx, w2 = hy * lx, w3 = ly * hx, w4 = ly * lx;
-
   T val = (w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4);
   return val;
 }
@@ -76,24 +72,18 @@ __global__ void GPUROIAlignForward(
     int ph = (i / pooled_width) % pooled_height;
     int c = (i / pooled_width / pooled_height) % channels;
     int n = i / pooled_width / pooled_height / channels;
-
     int roi_batch_ind = n / num_rois;
-
     const float4 rois_offset = reinterpret_cast<const float4*>(input_rois)[n];
-
     T roi_xmin = rois_offset.x * spatial_scale;
     T roi_ymin = rois_offset.y * spatial_scale;
     T roi_xmax = rois_offset.z * spatial_scale;
     T roi_ymax = rois_offset.w * spatial_scale;
-
     T roi_width = max(roi_xmax - roi_xmin, static_cast<T>(1.f));
     T roi_height = max(roi_ymax - roi_ymin, static_cast<T>(1.f));
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
-
     const T* offset_input_data =
         input_data + (roi_batch_ind * channels + c) * height * width;
-
     int roi_bin_grid_h = (sampling_ratio > 0)
                              ? sampling_ratio
                              : ceil(roi_height / pooled_height);
@@ -101,10 +91,8 @@ __global__ void GPUROIAlignForward(
         (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
     const T count = roi_bin_grid_h * roi_bin_grid_w;
     T output_val = 0;
-
     T ph_bin_size_h = static_cast<T>(ph * bin_size_h);
     T pw_bin_size_w = static_cast<T>(pw * bin_size_w);
-
     for (int iy = 0; iy < roi_bin_grid_h; iy++) {
       const T y = roi_ymin + ph_bin_size_h +
                   static_cast<T>(iy + .5f) * bin_size_h /
@@ -133,7 +121,6 @@ __global__ void GPUROIAlignOpt(const int nthreads,
                                OutT* __restrict__ output_data) {
   const int batch = blockIdx.x;
   const int channel = blockIdx.y;
-
   const T* offset_input_data =
       input_data + (batch * channels + channel) * height * width;
   extern __shared__ T s_input_data[];
@@ -143,13 +130,11 @@ __global__ void GPUROIAlignOpt(const int nthreads,
     }
     __syncthreads();
   }
-
   for (int idx = threadIdx.x; idx < num_rois * pooled_height * pooled_width;
        idx += blockDim.x) {
     const int pw = idx % pooled_width;
     const int ph = (idx / pooled_width) % pooled_height;
     const int roi_idx = (idx / pooled_width / pooled_height) % num_rois;
-
     const int n = batch * num_rois + roi_idx;
     const float4 rois_offset = reinterpret_cast<const float4*>(input_rois)[n];
     const T roi_xmin = rois_offset.x * spatial_scale;
@@ -160,7 +145,6 @@ __global__ void GPUROIAlignOpt(const int nthreads,
     const T roi_height = max(roi_ymax - roi_ymin, static_cast<T>(1.f));
     const T bin_size_h = roi_height / static_cast<T>(pooled_height);
     const T bin_size_w = roi_width / static_cast<T>(pooled_width);
-
     const int roi_bin_grid_h = (sampling_ratio > 0)
                                    ? sampling_ratio
                                    : ceil(roi_height / pooled_height);
@@ -173,8 +157,6 @@ __global__ void GPUROIAlignOpt(const int nthreads,
       const T y = roi_ymin + ph * bin_size_h +
                   static_cast<T>(iy + .5f) * bin_size_h /
                       static_cast<T>(roi_bin_grid_h);
-
-#pragma unroll
       for (int ix = 0; ix < roi_bin_grid_w; ++ix) {
         const T x = roi_xmin + pw * bin_size_w +
                     static_cast<T>(ix + .5f) * bin_size_w /
@@ -209,14 +191,23 @@ RoiAlignPlugin::RoiAlignPlugin(const nvinfer1::DataType data_type,
       sampling_ratio_(sampling_ratio),
       in_dims_(dims[0]),
       rois_dims_(dims[1]) {
+  // data_type_ is used to determine the output data type
   assert(data_type_ == nvinfer1::DataType::kFLOAT ||
          data_type_ == nvinfer1::DataType::kHALF);
-  assert(pooled_height > 0);
-  assert(pooled_width > 0);
-  assert(spatial_scale > 0.f);
+  assert(pooled_height_ > 0);
+  assert(pooled_width_ > 0);
+  assert(spatial_scale_ > 0.f);
 }
 
-RoiAlignPlugin::RoiAlignPlugin(const void* data, size_t length) {}
+RoiAlignPlugin::RoiAlignPlugin(const void* data, size_t length) {
+  DeserializeValue(&data, &length, &data_type_);
+  DeserializeValue(&data, &length, &pooled_height_);
+  DeserializeValue(&data, &length, &pooled_width_);
+  DeserializeValue(&data, &length, &spatial_scale_);
+  DeserializeValue(&data, &length, &sampling_ratio_);
+  DeserializeValue(&data, &length, &in_dims_);
+  DeserializeValue(&data, &length, &rois_dims_);
+}
 
 const char* RoiAlignPlugin::getPluginType() const { return "roi_align_plugin"; }
 
@@ -302,9 +293,27 @@ int RoiAlignPlugin::initialize() { return 0; }
 
 void RoiAlignPlugin::terminate() {}
 
-size_t RoiAlignPlugin::getSerializationSize() const { return 0; }
+size_t RoiAlignPlugin::getSerializationSize() const {
+  size_t serialize_size = 0;
+  serialize_size += SerializedSize(data_type_);
+  serialize_size += SerializedSize(pooled_height_);
+  serialize_size += SerializedSize(pooled_width_);
+  serialize_size += SerializedSize(spatial_scale_);
+  serialize_size += SerializedSize(sampling_ratio_);
+  serialize_size += SerializedSize(in_dims_);
+  serialize_size += SerializedSize(rois_dims_);
+  return serialize_size;
+}
 
-void RoiAlignPlugin::serialize(void* buffer) const {}
+void RoiAlignPlugin::serialize(void* buffer) const {
+  SerializeValue(&buffer, data_type_);
+  SerializeValue(&buffer, pooled_height_);
+  SerializeValue(&buffer, pooled_width_);
+  SerializeValue(&buffer, spatial_scale_);
+  SerializeValue(&buffer, sampling_ratio_);
+  SerializeValue(&buffer, in_dims_);
+  SerializeValue(&buffer, rois_dims_);
+}
 
 void RoiAlignPlugin::destroy() {}
 
