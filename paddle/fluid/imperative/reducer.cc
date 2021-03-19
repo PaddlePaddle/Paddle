@@ -773,7 +773,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
     comm_pool_->enqueue([&] {
       auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place_).device;
       platform::SetXPUDeviceId(dev_id);
-      FusedAllReduceSchedule(run_order, group);
+      FusedAllReduceSchedule(run_order, group, next_group_);
       {
         std::lock_guard<std::mutex> lock(mutex_);
         comm_op_count_ -= 1;  // lock
@@ -883,7 +883,7 @@ void Reducer::ProcessUnusedDenseVars() {
           dest_var_base->MutableVar()->GetMutable<framework::LoDTensor>();
       const auto &dest_dims = dest_tensor->dims();
 
-      // 3. create grad var base
+      // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
 
       // 4. set grad tensor
