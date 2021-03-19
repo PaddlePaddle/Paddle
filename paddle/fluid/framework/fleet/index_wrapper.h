@@ -36,16 +36,11 @@ class TreeIndex : public Index {
   int height() {return meta_.height();}
   int branch() {return meta_.branch();}
   uint64_t total_node_nums() {return total_nodes_num_;}
-  // std::vector<uint64_t> get_parent_path(uint64_t node, uint64_t ancestor, bool ret_code);
-  // std::vector<uint64_t> get_itemset_given_ancestor(relation, ancestor);
-  // std::vector<uint64_t> get_children_given_ancestor_and_level();
   
-  std::vector<Node*> get_nodes_given_level(int level);
-  std::vector<Node*> get_travel_path(uint64_t id, int start_level=-1);
+  std::vector<uint64_t> get_nodes_given_level(int level, bool ret_code=false);
+  std::vector<std::vector<uint64_t>> get_parent_path(std::vector<uint64_t>& ids, int start_level=0, bool ret_code=false);
+  std::vector<uint64_t> get_ancestor_given_level(std::vector<uint64_t>& ids, int level, bool ret_code=false);
 
-  // batch operation
-  std::vector<std::vector<Node*>> batch_get_travel_path(std::vector<uint64_t>& ids, int start_level=-1);
-  
   int load(std::string path);
   std::unordered_map<uint64_t, Node> data_;
   std::unordered_map<uint64_t, uint64_t> id_codes_map_;
@@ -63,9 +58,9 @@ class IndexWrapper {
 
   void clear_tree() { tree_map.clear(); }
 
-  TreePtr GetTreeIndex(const std::string name) { 
+  TreeIndex* GetTreeIndex(const std::string name) { 
     PADDLE_ENFORCE_NE(tree_map.find(name), tree_map.end(), "");
-    return tree_map[name];
+    return tree_map[name].get();
   }
 
   void insert_tree_index(std::string name, std::string tree_path) {
@@ -73,7 +68,8 @@ class IndexWrapper {
       return;
     }
     TreePtr tree = std::make_shared<TreeIndex>();
-    tree->load(tree_path);
+    int ret = tree->load(tree_path);
+    if (ret != 0) return;
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 

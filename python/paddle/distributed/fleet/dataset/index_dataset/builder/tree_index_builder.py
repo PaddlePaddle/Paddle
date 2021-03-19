@@ -5,7 +5,7 @@ import struct
 class TreeIndexBuilder:
     def __init__(self, name=None, branch=2):
         self.name = name
-	    self.branch = branch
+        self.branch = branch
 
     def tree_init_by_category(self, input_filename, output_filename):
         class Item:
