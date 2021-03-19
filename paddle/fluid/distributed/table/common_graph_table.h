@@ -85,12 +85,11 @@ class GraphTable : public SparseTable {
       std::vector<std::unique_ptr<char[]>> &buffers,
       std::vector<int> &actual_sizes);
 
-  virtual int32_t random_sample_nodes(int sample_size,
-                                      std::unique_ptr<char[]> &buffers,
-                                      int &actual_sizes, bool need_feature);
+  int32_t random_sample_nodes(int sample_size, std::unique_ptr<char[]> &buffers,
+                              int &actual_sizes);
 
   virtual int32_t get_nodes_ids_by_ranges(
-      std::vector<std::pair<int, int>> ranges, std::vector<uint64_t> res);
+      std::vector<std::pair<int, int>> ranges, std::vector<uint64_t> &res);
   virtual int32_t initialize();
 
   int32_t load(const std::string &path, const std::string &param);

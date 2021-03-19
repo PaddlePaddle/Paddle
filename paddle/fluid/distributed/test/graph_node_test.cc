@@ -49,6 +49,19 @@ namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
+void testSampleNodes(
+    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+  std::vector<uint64_t> ids;
+  auto pull_status = worker_ptr_->random_sample_nodes(0, 0, 6, ids);
+  std::unordered_set<uint64_t> s;
+  std::unordered_set<uint64_t> s1 = {37, 59};
+  pull_status.wait();
+  for (auto id : ids) s.insert(id);
+  ASSERT_EQ(true, s.size() == s1.size());
+  for (auto id : s) {
+    ASSERT_EQ(true, s1.find(id) != s1.end());
+  }
+}
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -155,6 +168,11 @@ void prepare_file(char file_name[], bool load_edge) {
       ofile << x << std::endl;
     }
   }
+  // for(int i = 0;i < 10;i++){
+  //   for(int j = 0;j < 10;j++){
+  //    ofile<<i * 127 + j<<"\t"<<i <<"\t"<< 0.5<<std::endl;
+  //   }
+  //}
   ofile.close();
 }
 void GetDownpourSparseTableProto(
@@ -304,7 +322,7 @@ void RunBrpcPushSparse() {
   /*-----------------------Test Server Init----------------------------------*/
   auto pull_status =
       worker_ptr_->load(0, std::string(edge_file_name), std::string("e>"));
-
+  srand(time(0));
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
   // for(int i = 0;i < 100000000;i++){
@@ -317,6 +335,7 @@ void RunBrpcPushSparse() {
   // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
+  testSampleNodes(worker_ptr_);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
   pull_status = worker_ptr_->batch_sample_neighboors(
@@ -337,8 +356,6 @@ void RunBrpcPushSparse() {
   for (auto g : nodes) {
     std::cout << g.get_id() << std::endl;
   }
-
-  // distributed::GraphPyService gps1, gps2;
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";

@@ -66,10 +66,14 @@ int32_t GraphTable::load(const std::string &path, const std::string &param) {
 }
 
 int32_t GraphTable::get_nodes_ids_by_ranges(
-    std::vector<std::pair<int, int>> ranges, std::vector<uint64_t> res) {
+    std::vector<std::pair<int, int>> ranges, std::vector<uint64_t> &res) {
   int start = 0, end, index = 0, total_size = 0;
   res.clear();
   std::vector<std::future<std::vector<uint64_t>>> tasks;
+  // std::string temp = "";
+  // for(int i = 0;i < shards.size();i++)
+  //   temp+= std::to_string((int)shards[i].get_size()) + " ";
+  // VLOG(0)<<"range distribution "<<temp;
   for (int i = 0; i < shards.size() && index < ranges.size(); i++) {
     end = total_size + shards[i].get_size();
     start = total_size;
@@ -84,13 +88,14 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
         start = second;
         first -= total_size;
         second -= total_size;
-        index++;
+        // VLOG(0)<<" FIND RANGE "<<i<<" "<<first<<" "<<second;
         tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
             [this, first, second, i]() -> std::vector<uint64_t> {
               return shards[i].get_ids_by_range(first, second);
             }));
       }
     }
+    total_size += shards[i].get_size();
   }
   for (int i = 0; i < tasks.size(); i++) {
     auto vec = tasks[i].get();
@@ -199,7 +204,8 @@ uint32_t GraphTable::get_thread_pool_index(uint64_t node_id) {
 }
 int32_t GraphTable::random_sample_nodes(int sample_size,
                                         std::unique_ptr<char[]> &buffer,
-                                        int &actual_size, bool need_feature) {
+                                        int &actual_size) {
+  bool need_feature = false;
   int total_size = 0;
   for (int i = 0; i < shards.size(); i++) {
     total_size += shards[i].get_size();
@@ -207,6 +213,7 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   if (sample_size > total_size) sample_size = total_size;
   int range_num = random_sample_nodes_ranges;
   if (range_num > sample_size) range_num = sample_size;
+  if (sample_size == 0 || range_num == 0) return 0;
   std::vector<int> ranges_len, ranges_pos;
   int remain = sample_size, last_pos = -1, num;
   std::set<int> separator_set;
@@ -236,13 +243,26 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
     ranges_pos.push_back(used);
     used += ranges_len[index++];
   }
-  std::vector<std::pair<int, int>> vec;
+  std::vector<std::pair<int, int>> first_half, second_half;
+  int start_index = rand() % total_size;
   for (int i = 0; i < ranges_len.size() && i < ranges_pos.size(); i++) {
-    vec.push_back({ranges_pos[i], ranges_len[i]});
+    if (ranges_pos[i] + ranges_len[i] - 1 + start_index < total_size)
+      first_half.push_back({ranges_pos[i] + start_index,
+                            ranges_pos[i] + ranges_len[i] + start_index});
+    else if (ranges_pos[i] + start_index >= total_size) {
+      second_half.push_back(
+          {ranges_pos[i] + start_index - total_size,
+           ranges_pos[i] + ranges_len[i] + start_index - total_size});
+    } else {
+      first_half.push_back({ranges_pos[i] + start_index, total_size});
+      second_half.push_back(
+          {0, ranges_pos[i] + ranges_len[i] + start_index - total_size});
+    }
   }
+  for (auto &pair : first_half) second_half.push_back(pair);
   std::vector<uint64_t> res;
-  get_nodes_ids_by_ranges(vec, res);
-  actual_size = res.size() * (GraphNode::id_size);
+  get_nodes_ids_by_ranges(second_half, res);
+  actual_size = res.size() * sizeof(uint64_t);
   buffer.reset(new char[actual_size]);
   char *pointer = buffer.get();
   memcpy(pointer, res.data(), actual_size);
