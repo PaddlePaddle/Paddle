@@ -280,6 +280,7 @@ __inline__ __device__ T blockReduceMin(T val, unsigned mask) {
   int block_span = (blockDim.x + warpSize - 1) >> 5;
   val = (lane < block_span) ? shared[lane] : 1e10f;
   val = warpReduceMin(val, mask);
+  __syncthreads();
 
   return val;
 }
