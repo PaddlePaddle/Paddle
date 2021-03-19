@@ -36,19 +36,22 @@ class TestLookupTableV2(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        bsz=2
-        seqlen=2
-        vocab=3
-        dim=2
+        bsz = 2
+        seqlen = 2
+        vocab = 3
+        dim = 2
         w = np.ones([vocab, dim]).astype(self.dtype)
         x = np.random.randint(0, vocab, size=(bsz, seqlen)).astype(np.int64)
         out = np.ones([bsz, seqlen, dim]).astype(self.dtype)
 
-        self.inputs = {'W': OpTest.np_dtype_to_fluid_dtype(w), 'Ids': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {
+            'W': OpTest.np_dtype_to_fluid_dtype(w),
+            'Ids': OpTest.np_dtype_to_fluid_dtype(x)
+        }
         self.attrs = {
             'is_sparse': False,
             'is_distributed': False,
-            'remote_prefetch':False,
+            'remote_prefetch': False,
             'padding_idx': -1
         }
         self.outputs = {'Out': out}
@@ -62,19 +65,23 @@ class TestLookupTableV2(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_dygraph=False)
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestLookupTableV2FP16(TestLookupTableV2):
     no_need_check_grad = True
+
     def init_dtype(self):
         self.dtype = np.float16
-    
+
+
 #@unittest.skipIf(not paddle.is_compiled_with_npu(),
 #                 "core is not compiled with NPU")
 #class TestLookupTableV2Int8(TestLookupTableV2):
@@ -98,16 +105,17 @@ class TestLookupTableV2Net(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        bsz=3
-        seqlen=2
-        vocab=3
-        dim=2
+        bsz = 3
+        seqlen = 2
+        vocab = 3
+        dim = 2
 
         ids_np = np.random.randint(0, vocab, size=(bsz, seqlen)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
             emb = paddle.nn.Embedding(vocab, dim)
-            ids = paddle.static.data(name="ids", shape=[bsz, seqlen], dtype='int64')
+            ids = paddle.static.data(
+                name="ids", shape=[bsz, seqlen], dtype='int64')
             res = emb(ids)
             loss = res.sum()
 
@@ -120,10 +128,9 @@ class TestLookupTableV2Net(unittest.TestCase):
         exe.run(startup_prog)
 
         for epoch in range(1):
-            loss_res, w = exe.run(
-                main_prog,
-                feed={"ids": ids_np},
-                fetch_list=[loss, emb.weight])
+            loss_res, w = exe.run(main_prog,
+                                  feed={"ids": ids_np},
+                                  fetch_list=[loss, emb.weight])
             if epoch % 10 == 0:
                 print(w)
                 print("Epoch {} | Loss: {}".format(epoch, loss))
@@ -136,7 +143,5 @@ class TestLookupTableV2Net(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-
 if __name__ == '__main__':
     unittest.main()
-

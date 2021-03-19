@@ -36,11 +36,11 @@ class TestExpand(OpTest):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.randn(3,1,7).astype(self.dtype)
-        out = np.tile(x, [1,10,1])
+        x = np.random.randn(3, 1, 7).astype(self.dtype)
+        out = np.tile(x, [1, 10, 1])
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'expand_times': [1,10,1]}
+        self.attrs = {'expand_times': [1, 10, 1]}
         self.outputs = {'Out': out}
 
     def set_npu(self):
@@ -52,12 +52,10 @@ class TestExpand(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_dygraph=False)
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -69,11 +67,14 @@ class TestExpandV2(TestExpand):
 
         self.init_dtype()
         np.random.seed(SEED)
-        x = np.random.randn(3,1,7).astype(self.dtype)
-        out = np.tile(x, [1,10,1])
-        expand_times = np.array([1,10,1]).astype(np.int32)
+        x = np.random.randn(3, 1, 7).astype(self.dtype)
+        out = np.tile(x, [1, 10, 1])
+        expand_times = np.array([1, 10, 1]).astype(np.int32)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x), 'ExpandTimes':  OpTest.np_dtype_to_fluid_dtype(expand_times)}
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'ExpandTimes': OpTest.np_dtype_to_fluid_dtype(expand_times)
+        }
         self.attrs = {}
         self.outputs = {'Out': out}
 
@@ -81,9 +82,10 @@ class TestExpandV2(TestExpand):
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestExpandFp16(TestExpand):
-     no_need_check_grad = True
-     def init_dtype(self):
-         self.dtype = np.float16
+    no_need_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -104,7 +106,7 @@ class TestExpandNet(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64')
 
-            res = paddle.fluid.layers.expand(a, [1,32])
+            res = paddle.fluid.layers.expand(a, [1, 32])
             loss = res.sum()
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -119,11 +121,10 @@ class TestExpandNet(unittest.TestCase):
 
         for epoch in range(100):
 
-            loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "label": label_np},
-                fetch_list=[loss])
+            loss_res = exe.run(main_prog,
+                               feed={"a": a_np,
+                                     "label": label_np},
+                               fetch_list=[loss])
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss))
 
@@ -138,4 +139,3 @@ class TestExpandNet(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

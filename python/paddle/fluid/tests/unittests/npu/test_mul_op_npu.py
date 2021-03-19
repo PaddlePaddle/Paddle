@@ -46,7 +46,6 @@ class TestMul(OpTest):
 
     def set_npu(self):
         self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -54,8 +53,30 @@ class TestMul(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'],
+            'Out',
+            max_relative_error=0.006,
+            check_dygraph=False)
 
-    #
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            max_relative_error=0.006,
+            check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            max_relative_error=0.006,
+            check_dygraph=False)
+
+
 class TestMulFP16(TestMul):
     """
     case 2
@@ -63,6 +84,10 @@ class TestMulFP16(TestMul):
 
     def init_dtype(self):
         self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
 
 class TestMul3(TestMul):
