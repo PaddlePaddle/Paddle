@@ -14,12 +14,78 @@
 
 #include "paddle/fluid/distributed/table/weighted_sampler.h"
 #include <iostream>
+#include<unordered_map>
 namespace paddle {
 namespace distributed {
-void WeightedSampler::build(WeightedObject **v, int start, int end) {
+
+void RandomSampler::build(std::vector<WeightedObject*>* edges) {
+  this->edges = edges;
+}
+
+std::vector<WeightedObject *> RandomSampler::sample_k(int k) {
+  int n = edges->size();
+  if (k > n){
+    k = n;
+  }
+  struct timespec tn;
+  clock_gettime(CLOCK_REALTIME, &tn);
+  srand(tn.tv_nsec);
+  std::vector<WeightedObject *> sample_result;
+  std::unordered_map<int, int> replace_map;
+  while(k--){
+    int rand_int = rand() % n;
+    auto iter = replace_map.find(rand_int);
+    if(iter == replace_map.end()){
+      sample_result.push_back(edges->at(rand_int));
+    }else{
+      sample_result.push_back(edges->at(iter->second));
+    }
+
+    iter = replace_map.find(n - 1);
+    if(iter == replace_map.end()){
+      replace_map[rand_int] = n - 1;
+    }else{
+      replace_map[rand_int] = iter->second;
+    }
+    --n;
+  }
+  return sample_result;
+}
+
+WeightedSampler::WeightedSampler(){
+  left = nullptr;
+  right = nullptr;
+  object = nullptr;
+}
+
+WeightedSampler::~WeightedSampler() {
+  if(left != nullptr){
+    delete left;
+    left = nullptr;
+  }
+  if(right != nullptr){
+    delete right;
+    right = nullptr;
+  }
+}
+
+void WeightedSampler::build(std::vector<WeightedObject*>* edges) {
+  if(left != nullptr){
+    delete left;
+    left = nullptr;
+  }
+  if(right != nullptr){
+    delete right;
+    right = nullptr;
+  }
+  WeightedObject** v = edges->data();
+  return build_one(v, 0, edges->size());
+}
+
+void WeightedSampler::build_one(WeightedObject **v, int start, int end) {
   count = 0;
   if (start + 1 == end) {
-    left = right = NULL;
+    left = right = nullptr;
     weight = v[start]->get_weight();
     object = v[start];
     count = 1;
@@ -27,8 +93,8 @@ void WeightedSampler::build(WeightedObject **v, int start, int end) {
   } else {
     left = new WeightedSampler();
     right = new WeightedSampler();
-    left->build(v, start, start + (end - start) / 2);
-    right->build(v, start + (end - start) / 2, end);
+    left->build_one(v, start, start + (end - start) / 2);
+    right->build_one(v, start + (end - start) / 2, end);
     weight = left->weight + right->weight;
     count = left->count + right->count;
   }
@@ -41,6 +107,9 @@ std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
   float subtract;
   std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
+  struct timespec tn;
+  clock_gettime(CLOCK_REALTIME, &tn);
+  srand(tn.tv_nsec);
   while (k--) {
     float query_weight = rand() % 100000 / 100000.0;
     query_weight *= weight - subtract_weight_map[this];
@@ -54,7 +123,7 @@ WeightedObject *WeightedSampler::sample(
     std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
     std::unordered_map<WeightedSampler *, int> &subtract_count_map,
     float &subtract) {
-  if (left == NULL) {
+  if (left == nullptr) {
     subtract_weight_map[this] = weight;
     subtract = weight;
     subtract_count_map[this] = 1;

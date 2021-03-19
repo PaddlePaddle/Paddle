@@ -146,6 +146,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
   int count = 0;
+  std::string sample_type = "random";
 
   for (auto path : paths) {
     std::ifstream file(path);
@@ -159,9 +160,10 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       if (reverse_edge) {
         std::swap(src_id, dst_id);
       }
-      float weight = 0;
+      float weight = 1;
       if (values.size() == 3) {
         weight = std::stof(values[2]);
+        sample_type = "weighted";
       }
 
       size_t src_shard_id = src_id % shard_num;
@@ -184,8 +186,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   for (auto &shard : shards) {
     auto bucket = shard.get_bucket();
     for (int i = 0; i < bucket.size(); i++) {
-      bucket[i]->build_sampler();
-    }
+      bucket[i]->build_sampler(sample_type); }
   }
   return 0;
 }
