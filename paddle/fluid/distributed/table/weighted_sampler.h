@@ -43,7 +43,7 @@ class WeightedSampler: public Sampler {
   float weight;
   int count;
   int idx;
-  WeightedGraphEdgeBlob * edges;
+  GraphEdgeBlob * edges;
   virtual void build(GraphEdgeBlob* edges);
   virtual void build_one(WeightedGraphEdgeBlob *edges, int start, int end);
   virtual std::vector<int> sample_k(int k);
