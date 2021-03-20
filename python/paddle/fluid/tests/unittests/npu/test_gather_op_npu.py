@@ -1,10 +1,10 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,16 +14,21 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-import sys
-sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
+import numpy as np
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.framework import core
 
 paddle.enable_static()
 SEED = 2021
+
+def gather_numpy(x, index, axis):
+    x_transpose = np.swapaxes(x, 0, axis)
+    tmp_gather = x_transpose[index, ...]
+    gather = np.swapaxes(tmp_gather, 0, axis)
+    return gather
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -31,84 +36,93 @@ SEED = 2021
 class TestGatherOp(OpTest):
     def setUp(self):
         self.set_npu()
-        self.op_type = "gather"
         self.place = paddle.NPUPlace(0)
-        self.init_dtype()
-        self.init_input_output()
-
+        self.op_type = "gather"
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Index': OpTest.np_dtype_to_fluid_dtype(self.index)
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type)
         }
-        self.attrs = {'validate_indices': True}
-        self.outputs = {'Out': self.out}
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def set_npu(self):
         self.__class__.use_npu = True
 
-    def init_input_output(self):
-        self.x = np.array([[1, 2], [3, 4], [5, 6]]).astype(self.dtype)
-        self.index = np.array([1, 2]).astype(np.int)
-        self.out = np.array([[3, 4], [5, 6]]).astype(self.dtype)
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X'],
+            'Out',
+            max_relative_error=0.006,
+            check_dygraph=False)
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (10, 20)
+        self.x_type = "float32"
+        self.index = [1, 3, 5]
+        self.index_type = "int32"
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestGatherAPI(unittest.TestCase):
-    def test_name(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name="x", shape=[3, 2], dtype="float32")
-            index = paddle.static.data(name='index', shape=[1], dtype='int32')
+class TestCase1(TestGatherOp):
+    def config(self):
+        """
+        For one dimension input
+        """
+        self.x_shape = (100)
+        self.x_type = "float32"
+        self.index = [1, 3, 5]
+        self.index_type = "int32"
 
-            out = paddle.gather(x, index, name='gather')
-            self.assertEqual(('gather' in out.name), True)
 
-    def test_static(self):
-        with paddle.static.program_guard(paddle.static.Program()):
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class API_TestGather(unittest.TestCase):
+    def test_out1(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float32')
+            index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
+            out = paddle.fluid.layers.gather(data1, index)
+            place = paddle.NPUPlace(0)
+            exe = fluid.Executor(place)
+            input = np.array([[1, 2], [3, 4], [5, 6]])
+            index_1 = np.array([1, 2])
+            result, = exe.run(feed={"data1": input,
+                                    "index": index_1},
+                              fetch_list=[out])
+            expected_output = np.array([[3, 4], [5, 6]])
+        self.assertTrue(np.allclose(result, expected_output))
 
-            x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
-            index_np = np.array([1, 2]).astype('int32')
-
-            x = paddle.static.data(name="x", shape=[3, 2], dtype='float32')
-            index = paddle.static.data(name="index", shape=[2], dtype='int32')
-
-            z = paddle.gather(x, index)
-
+    def test_out2(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float32')
+            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
+            #axis = paddle.fluid.data('axis', shape=[1], dtype='int32')
+            out = paddle.gather(x, index)
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
-            x_value, index_value, z_value = exe.run(
+            x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
+            index_np = np.array([1, 1]).astype('int32')
+            #axis_np = np.array([1]).astype('int32')
+            result, = exe.run(
                 feed={"x": x_np,
-                      "index": index_np}, fetch_list=[x, index, z])
-
-            z_expected = np.array([[3, 4], [5, 6]])
-            self.assertEqual(
-                (x_value == x_np).all(),
-                True,
-                msg="x_value = {}, but expected {}".format(x_value, x_np))
-            self.assertEqual(
-                (index_value == index_np).all(),
-                True,
-                msg="index_value = {}, but expected {}".format(index_value,
-                                                               index_np))
-            self.assertEqual(
-                (z_value == z_expected).all(),
-                True,
-                msg="z_value = {}, but expected {}".format(z_value, z_expected))
-
-    def test_backward(self):
-        # TODO(ascendrc): Test backward after add grad npu op implemented.
-        pass
+                      "index": index_np},
+                fetch_list=[out])
+            expected_output = gather_numpy(x_np, index_np, axis=0)
+        self.assertTrue(np.allclose(result, expected_output))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestPowNet(unittest.TestCase):
+class TestGatherGrad(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -159,5 +173,5 @@ class TestPowNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
