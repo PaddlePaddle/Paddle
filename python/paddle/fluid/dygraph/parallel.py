@@ -24,7 +24,6 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
-import paddle.distributed as dist
 from ..layers import collective
 import warnings
 import paddle
@@ -427,6 +426,8 @@ class DataParallel(layers.Layer):
             "constructing the DataParallel."
 
             # sync buffer and params
+            self._sync_params_buffers()
+
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
             # the size of the group, Default: 1MB. The role of this small group is: 
@@ -504,7 +505,10 @@ class DataParallel(layers.Layer):
     def _sync_params_buffers(self):
         model_vars = []
         for _, param in self._layers.state_dict().items():
-            model_vars.append(param)
+            if not isinstance(param, core.VarBase):
+                raise TypeError("The data type of '%s' must be Varbase" %
+                                param.name)
+            model_vars.append(param.detach())
         if len(model_vars) == 0:
             return
 
@@ -527,7 +531,15 @@ class DataParallel(layers.Layer):
 
         for coalesced_var, _, _ in coalesced_vars:
             collective._broadcast(coalesced_var, root=0, sync_mode=True)
-        _split_tensors(coalesced_vars)
+
+        for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_var},
+                outputs={'Out': origin_vars},
+                attrs={'sections': var_len,
+                       'axis': 0})
 
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
