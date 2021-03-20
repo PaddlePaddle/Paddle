@@ -37,25 +37,15 @@ class SimpleNet(fluid.Layer):
             dtype='float32',
             is_sparse=is_sparse)
 
-        # self.lin_a = paddle.nn.Linear(self.hidden_size, self.vocab_size)
-        # self.lin_b = paddle.nn.Linear(self.vocab_size, 1)
-        self.softmax_weight = self.create_parameter(
-            shape=[self.hidden_size, self.vocab_size], dtype="float32")
-
-        self.softmax_bias = self.create_parameter(
-            shape=[self.vocab_size], dtype="float32")
-
-        self.fc_weight = self.create_parameter(
-            shape=[self.vocab_size, 1], dtype="float32")
+        self.lin_a = paddle.nn.Linear(self.hidden_size, self.vocab_size)
+        self.lin_b = paddle.nn.Linear(self.vocab_size, 1)
 
         self.unused_net = paddle.nn.Linear(5, 3)
         self.phony = self.create_parameter(shape=[1], dtype="float32")
 
     def forward(self, input, label, conf):
         x_emb = self.embedding(input)
-        # fc = self.lin_a(x_emb)
-        fc = paddle.matmul(x_emb, self.softmax_weight)
-        fc = fc + self.softmax_bias
+        fc = self.lin_a(x_emb)
         mask = conf > 0
         mask = paddle.cast(mask, dtype="int64")
         mask.stop_gradient = True
@@ -66,8 +56,7 @@ class SimpleNet(fluid.Layer):
         if emb_mask_inds.numel() == 0:
             loss_box = self.phony * 0
         else:
-            # projection = self.lin_b(fc)
-            projection = paddle.matmul(fc, self.fc_weight)
+            projection = self.lin_b(fc)
             projection = paddle.reshape(projection, shape=[-1, 1])
             output = paddle.gather(projection, emb_mask_inds)
             target = paddle.gather(label, emb_mask_inds)
