@@ -42,6 +42,12 @@ class SimpleNet(fluid.Layer):
 
         self.unused_param = self.create_parameter(
             shape=[out_dim, in_dim], dtype="float64")
+
+        # just for test sync_params_buffers
+        self.register_buffer("queue", paddle.randn([10, 5]))
+        self.queue = paddle.nn.functional.normalize(self.queue, axis=0)
+        self.register_buffer("queue_ptr", paddle.zeros([1], 'int64'))
+
         self.trainer_id = train_id
 
     def forward(self, x):

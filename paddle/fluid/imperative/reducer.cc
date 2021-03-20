@@ -331,7 +331,7 @@ void Reducer::InitializeDenseGroups(
   for (size_t index = 0; index < variable_indices_.size(); ++index) {
     const auto variable_index = variable_indices_[index];
     const auto &var = vars_[variable_index];
-    const auto var_name = var->Name();
+    const auto &var_name = var->Name();
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index], false,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s's GRAD must be LoDTensor, but received "
@@ -425,8 +425,7 @@ void Reducer::InitializeGroups(
     group.variable_indices_ = std::move(variable_indices_);
     groups_.emplace_back(std::move(group));
     // Debug Message For Reducer
-    VLOG(3) << "The Group[" << group_index << "]:";
-    VLOG(3) << groups_.back();
+    VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();
   }
 }
 
@@ -469,7 +468,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
 // and allreudce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
-  VLOG(3) << "start reseting count..";
+  VLOG(3) << "start forward and reset count.";
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
@@ -718,7 +717,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
               << string::join_strings(local_used_vars_, ',');
 // TODO(liuyuhui): support bckl in using TensorToVector/TensorFromVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       // H2D is to allreduce the local_used_vars_, here we use cal stream
       auto *global_used_tensor =
           global_used_vars_.GetMutable<framework::LoDTensor>();
@@ -754,7 +753,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     auto &group = groups_[next_group_];
-    int run_order = next_group_ % nrings_;
+    const int run_order = next_group_ % nrings_;
 
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
@@ -793,7 +792,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order, Group &group,
                                      const int curr_group_index) {
   // The overall timeline: concat > div_nranks > allreduce > split
   // dev_context is used to select different stream
-  auto &dev_context = *parallel_ctx_->GetDeviceContext(run_order);
+  const auto &dev_context = *parallel_ctx_->GetDeviceContext(run_order);
   if (group.is_sparse_) {
     VLOG(3) << "sparse group [" << curr_group_index
             << "] start allreduce in ring[" << run_order << "]";
@@ -858,7 +857,7 @@ void Reducer::ProcessUnusedDenseVars() {
           << string::join_strings(local_used_vars_, ',');
 
   for (const auto &var_index : unused_vars_) {
-    bool global_unused = (local_used_vars_[var_index] == 0);
+    const bool global_unused = (local_used_vars_[var_index] == 0);
 
     // global used but local unused, set grad
     VLOG(3) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
@@ -869,10 +868,10 @@ void Reducer::ProcessUnusedDenseVars() {
       VLOG(3) << "Start process unused Var";
       // 1. source var base
       const auto &var_locator = variable_locators_[var_index];
-      auto group_index = var_locator.group_index;
-      auto &group = groups_[group_index];
-      auto inside_group_index = var_locator.inside_group_index;
-      auto &src_tensor = group.dense_tensors_[inside_group_index];
+      const auto group_index = var_locator.group_index;
+      const auto &group = groups_[group_index];
+      const auto inside_group_index = var_locator.inside_group_index;
+      const auto &src_tensor = group.dense_tensors_[inside_group_index];
       // sparse no need to check
       if (group.is_sparse_) {
         continue;
@@ -889,7 +888,7 @@ void Reducer::ProcessUnusedDenseVars() {
       // 4. set grad tensor
       auto *dest_grad_tensor =
           grad_var_base_tmp->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+      const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       TensorCopy(src_tensor, place_, *dev_ctx, dest_grad_tensor);
       dest_grad_tensor->Resize(dest_dims);
     }
