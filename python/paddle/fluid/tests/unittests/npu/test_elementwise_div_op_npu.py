@@ -56,12 +56,24 @@ class TestElementwiseDiv(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
-    # TODO(ascendrc): Div grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'],
+            'Out',
+            max_relative_error=0.007,
+            check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'],
+            'Out',
+            max_relative_error=0.007,
+            no_grad_set=set("X"),
+            check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set("Y"), check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -123,7 +135,7 @@ class TestElementwiseDivNet(unittest.TestCase):
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
             f.stop_gradient = True
-            g = paddle.divide(e, f)
+            g = fluid.layers.elementwise_div(e, f)
 
             fc_1 = fluid.layers.fc(input=g, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')

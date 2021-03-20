@@ -110,9 +110,15 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     if (dy) {
       dy->mutable_data<T>(place);
 
-      Tensor y_grad_w(x->type());
+      Tensor neg_out(y->type());
+      neg_out.mutable_data<T>(y->dims(), place);
+      auto neg_out_runner = NpuOpRunner("Neg", {*out},
+              {neg_out}, {});
+      neg_out_runner.Run(stream);
+
+      Tensor y_grad_w(y->type());
       y_grad_w.mutable_data<T>(y->dims(), place);
-      auto y_grad_w_runner = NpuOpRunner("Mul", {*out, y_power},
+      auto y_grad_w_runner = NpuOpRunner("Div", {neg_out, *y},
               {y_grad_w}, {});
       y_grad_w_runner.Run(stream);
 
