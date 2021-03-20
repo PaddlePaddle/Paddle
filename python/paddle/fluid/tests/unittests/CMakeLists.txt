@@ -19,6 +19,7 @@ list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_unused_variables)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_control_flow)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
