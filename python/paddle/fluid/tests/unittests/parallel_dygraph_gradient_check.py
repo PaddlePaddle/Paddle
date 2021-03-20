@@ -52,7 +52,9 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, x):
         is_use = (paddle.equal_all(
-            x, paddle.ones(shape=(batch, in_dim))) and self.trainer_id == 1)
+            x, paddle.ones(shape=(batch, in_dim))).numpy()[0] and
+                  self.trainer_id == 1)
+
         if is_use:
             tmp = paddle.matmul(x, self.w1)
         else:
