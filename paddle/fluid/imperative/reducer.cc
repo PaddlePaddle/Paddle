@@ -720,13 +720,13 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
       // H2D is to allreduce the local_used_vars_, here we use cal stream
-      auto *bitmap_tensor =
+      auto *global_used_tensor =
           global_used_vars_.GetMutable<framework::LoDTensor>();
       framework::TensorFromVector<int>(local_used_vars_, *dev_ctx,
-                                       bitmap_tensor);
+                                       global_used_tensor);
       parallel_ctx_->AllReduceByStream(global_used_vars_, &global_used_vars_, 0,
                                        true);
-      framework::TensorToVector<int>(*bitmap_tensor, *dev_ctx,
+      framework::TensorToVector<int>(*global_used_tensor, *dev_ctx,
                                      &local_used_vars_);
 #endif
     }

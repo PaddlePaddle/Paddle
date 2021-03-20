@@ -529,7 +529,8 @@ class DataParallel(layers.Layer):
             if memory_counter < mega_bytes and dtype == var.dtype:
                 memory_counter += bytes
             else:
-                memory_counter = bytes
+                memory_counter = 0
+                dtype = var.dtype
                 group_idx += 1
             var_groups.setdefault(group_idx, []).append(var)
 
