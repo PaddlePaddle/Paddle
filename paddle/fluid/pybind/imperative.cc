@@ -1144,6 +1144,7 @@ void BindImperative(py::module *m_ptr) {
        )DOC")
       .def("_share_memory",
            [](const std::shared_ptr<imperative::VarBase> &self) {
+#ifndef _WIN32
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
@@ -1160,6 +1161,10 @@ void BindImperative(py::module *m_ptr) {
                           platform::CPUPlace(), data_ptr, data_size);
              t->ResetHolder(shared_writer_holder);
              return *t;
+#else
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Sharing memory in Windows OS is not supported currently"));
+#endif
            },
            py::return_value_policy::reference)
       .def("copy_", &imperative::VarBase::CopyFrom)
