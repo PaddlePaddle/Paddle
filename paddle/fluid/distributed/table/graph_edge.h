@@ -24,7 +24,6 @@ public:
   GraphEdgeBlob() {}
   virtual ~GraphEdgeBlob() {}
   const size_t size() {return id_arr.size();}
-  //virtual void add_edge(GraphEdge e);
   virtual void add_edge(uint64_t id, float weight);
   const uint64_t get_id(int idx) { return id_arr[idx]; }
   virtual const float get_weight(int idx) { return 1; }
@@ -36,7 +35,6 @@ class WeightedGraphEdgeBlob: public GraphEdgeBlob{
 public:
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
-  //virtual void add_edge(WeightedGraphEdge e);
   virtual void add_edge(uint64_t id, float weight);
   virtual const float get_weight(int idx) { return weight_arr[idx]; }
 protected:
