@@ -342,7 +342,7 @@ void Reducer::InitializeDenseGroups(
     PADDLE_ENFORCE_EQ(lod_tensor->IsInitialized(), true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", var_name));
-    auto size = lod_tensor->numel();
+    const auto size = lod_tensor->numel();
     PADDLE_ENFORCE_GT(
         size, 0, platform::errors::PreconditionNotMet(
                      "The number of tensor %s's elements is 0.", var_name));
@@ -354,8 +354,8 @@ void Reducer::InitializeDenseGroups(
     p_group->dense_tensors_.push_back(framework::Tensor());
 
     // check the dtype and place, it must be same.
-    auto dtype = var->DataType();
-    auto place = var->Place();
+    const auto dtype = var->DataType();
+    const auto place = var->Place();
     if (index > 0) {
       PADDLE_ENFORCE_EQ(
           dtype, p_group->dtype_,
@@ -490,7 +490,7 @@ void Reducer::PrepareForBackward(
           "waiting for autograd to generate gradients for these parameters. "
           "you can use detach or stop_gradient to make the unused parameters "
           "detached from the autograd graph. "
-          "2) Used multiple forwards and one reverse. You may be able to wrap "
+          "2) Used multiple forwards and one backward. You may be able to wrap "
           "multiple forwards in a model."));
 
   // The first var to trigger the unused parameter
@@ -661,8 +661,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
 
   if (!group.is_sparse_) {
     // process dense group
-    auto inside_group_index = var_locator.inside_group_index;
-    auto length = group.length_[inside_group_index];
+    const auto inside_group_index = var_locator.inside_group_index;
+    const auto length = group.length_[inside_group_index];
     auto &group_tensor = group.dense_tensors_[inside_group_index];
 
     if (is_used_var) {
@@ -863,10 +863,10 @@ void Reducer::ProcessUnusedDenseVars() {
     // global used but local unused, set grad
     VLOG(3) << "Var [" << var_index << "] [" << vars_[var_index]->Name()
             << "] global_unused:" << global_unused
-            << "  has_grad: " << HasGrad(var_index);
+            << "  has grad: " << HasGrad(var_index);
 
     if (!global_unused) {
-      VLOG(3) << "start process unusedvar";
+      VLOG(3) << "Start process unused Var";
       // 1. source var base
       const auto &var_locator = variable_locators_[var_index];
       auto group_index = var_locator.group_index;
