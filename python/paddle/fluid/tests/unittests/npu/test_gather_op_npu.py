@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import sys
+sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
@@ -23,6 +25,7 @@ from paddle.framework import core
 
 paddle.enable_static()
 SEED = 2021
+
 
 def gather_numpy(x, index, axis):
     x_transpose = np.swapaxes(x, 0, axis)
@@ -112,10 +115,9 @@ class API_TestGather(unittest.TestCase):
             x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
             index_np = np.array([1, 1]).astype('int32')
             #axis_np = np.array([1]).astype('int32')
-            result, = exe.run(
-                feed={"x": x_np,
-                      "index": index_np},
-                fetch_list=[out])
+            result, = exe.run(feed={"x": x_np,
+                                    "index": index_np},
+                              fetch_list=[out])
             expected_output = gather_numpy(x_np, index_np, axis=0)
         self.assertTrue(np.allclose(result, expected_output))
 
