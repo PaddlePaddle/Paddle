@@ -536,9 +536,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
              h_out += dilate_height, h_f++) {
           for (int w_out = w_out_start, w_f = 0; w_f < c_filter;
                w_out += dilate_width, w_f++) {
-            int s_h_out = h_out / filter_height;
-            int s_w_out = w_out / filter_width;
-            if (h_out % filter_height == 0 && w_out % filter_width == 0 &&
+            int s_h_out = h_out / stride_height;
+            int s_w_out = w_out / stride_width;
+            if (h_out % stride_height == 0 && w_out % stride_width == 0 &&
                 s_h_out >= 0 && s_h_out < output_height && s_w_out >= 0 &&
                 s_w_out < output_width) {
               int output_grad_offset =
