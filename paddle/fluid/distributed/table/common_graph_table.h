@@ -61,7 +61,7 @@ class GraphShard {
   }
   GraphNode *add_node(uint64_t id, std::string feature);
   GraphNode *find_node(uint64_t id);
-  void add_neighboor(uint64_t id, GraphEdge *edge);
+  void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
   // std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
   std::unordered_map<uint64_t, int> get_node_location() {
     return node_location;
