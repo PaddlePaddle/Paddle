@@ -108,13 +108,11 @@ class API_TestGather(unittest.TestCase):
                                          paddle.static.Program()):
             x = paddle.fluid.data('x', shape=[-1, 2], dtype='float32')
             index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
-            #axis = paddle.fluid.data('axis', shape=[1], dtype='int32')
             out = paddle.gather(x, index)
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
             x_np = np.array([[1, 2], [3, 4], [5, 6]]).astype('float32')
             index_np = np.array([1, 1]).astype('int32')
-            #axis_np = np.array([1]).astype('int32')
             result, = exe.run(feed={"x": x_np,
                                     "index": index_np},
                               fetch_list=[out])
