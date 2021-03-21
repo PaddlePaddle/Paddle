@@ -790,9 +790,15 @@ void SyncCommunicator::BarrierRecv() {
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
   platform::RecordEvent record_event("GeoCommunicator->Send");
+  cur_merge_num_ += 1;
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
+
+  if (table_name == "LOCAL_STEP") {
+    return;
+  }
+  VLOG(4) << "GeoCommunicator::Send Begin";
 
   size_t splited_var_nums =
       send_varname_to_ctx_[table_name].splited_varnames.size();
@@ -865,16 +871,20 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   }
 
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
   xpu_temp_scope_.reset(new Scope());
+  cur_merge_num_ = 0;
 }
 
 void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
   std::vector<std::future<void>> tasks;
   tasks.reserve(recv_varname_to_ctx_.size());
+
+  if (trainer_id_ != 0) {
+    BarrierWithTable(1);
+  }
 
   for (auto &iter : recv_varname_to_ctx_) {
     auto &table_id = iter.first;
@@ -890,6 +900,14 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
     task.wait();
   }
 
+  if (trainer_id_ == 0) {
+    BarrierWithTable(1);
+  }
+
+  if (trainer_id_ != 0) {
+    BarrierWithTable(1);
+  }
+
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
     if (!ctx.is_sparse) continue;
@@ -898,6 +916,11 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
     auto param = varname.substr(0, varname.size() - 5);
     InitSparse(param, table_id);
   }
+
+  if (trainer_id_ == 0) {
+    BarrierWithTable(1);
+  }
+
   return;
 }
 
@@ -905,11 +928,11 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
                                 int table_id) {
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
-    BarrierWithTable(1);
+    // BarrierWithTable(1);
     VLOG(1) << "push dense param to table " << table_id
             << " from 0' trainer done";
   } else {
-    BarrierWithTable(1);
+    // BarrierWithTable(1);
     RpcRecvDense(varnames, table_id, recv_scope_);
     VLOG(1) << "pull dense param to table " << table_id
             << " from 0' trainer done";
@@ -930,8 +953,11 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
   platform::RecordEvent record_event("GeoCommunicator->SendDense");
   auto &var_names = send_ctx.origin_varnames;
   auto &table_id = send_ctx.table_id;
+
   for (auto &varname : var_names) {
     auto param_name = GradToParam(varname);
+    VLOG(1) << "In GeoCommunicator::SendDense " << param_name << " table_id "
+            << table_id;
     auto *var_latest = recv_scope_->FindVar(param_name);
     auto *var_timestamp = old_scope_->FindVar(param_name);
 
@@ -1041,11 +1067,11 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
   VLOG(1) << "Init Sparse " << var_name << " : table " << table_id << " begin.";
   if (trainer_id_ == 0) {
     RpcSendSparseParam(var_name, table_id, *recv_scope_);
-    BarrierWithTable(1);
+    // BarrierWithTable(1);
     VLOG(1) << "push sparse param to table " << table_id
             << " from 0' trainer done";
   } else {
-    BarrierWithTable(1);
+    // BarrierWithTable(1);
     RpcRecvSparse(var_name, table_id, recv_scope_);
     VLOG(1) << "pull sparse param to table " << table_id
             << " from 0' trainer done";
@@ -1250,40 +1276,45 @@ void GeoCommunicator::MainThread() {
   while (running_) {
     std::vector<std::future<void>> tasks;
     tasks.reserve(parallel_task_nums_);
+    if (cur_merge_num_ < static_cast<size_t>(max_merge_var_num_)) {
+      VLOG(4) << "Wait for max_merge_var_num_";
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    } else {
+      cur_merge_num_ = 0;
+      for (auto &iter : send_varname_to_ctx_) {
+        auto &ctx = iter.second;
+        auto &varnames = ctx.origin_varnames;
+        auto &table_id = ctx.table_id;
 
-    for (auto &iter : send_varname_to_ctx_) {
-      auto &ctx = iter.second;
-      auto &varnames = ctx.origin_varnames;
-      auto &table_id = ctx.table_id;
-
-      if (ctx.is_sparse) {
-        PADDLE_ENFORCE_EQ(
-            varnames.size(), 1,
-            platform::errors::InvalidArgument(
-                "sparse variables can only be merged by one variables"));
-        int pserver_num = static_cast<int>(ctx.epmap.size());
-        for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
-          // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
-          auto send_recv_task = [this, table_id, ep_idx, &ctx] {
-            auto splited_varname = ctx.splited_varnames[ep_idx];
-            auto sparse_ids = MergeSparseIds(splited_varname);
-            SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
-            RecvSparse(splited_varname, table_id, ep_idx);
+        if (ctx.is_sparse) {
+          PADDLE_ENFORCE_EQ(
+              varnames.size(), 1,
+              platform::errors::InvalidArgument(
+                  "sparse variables can only be merged by one variables"));
+          int pserver_num = static_cast<int>(ctx.epmap.size());
+          for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+            // varname: emb@GRAD, param_name: emb, splited_varname: emb.delta0
+            auto send_recv_task = [this, table_id, ep_idx, &ctx] {
+              auto splited_varname = ctx.splited_varnames[ep_idx];
+              auto sparse_ids = MergeSparseIds(splited_varname);
+              SendSparse(splited_varname, sparse_ids, table_id, ep_idx);
+              RecvSparse(splited_varname, table_id, ep_idx);
+            };
+            tasks.emplace_back(
+                send_threadpool_->enqueue(std::move(send_recv_task)));
+          }
+        } else {
+          auto send_recv_task = [this, &ctx] {
+            SendDense(ctx);
+            RecvDense(ctx);
           };
           tasks.emplace_back(
               send_threadpool_->enqueue(std::move(send_recv_task)));
         }
-      } else {
-        auto send_recv_task = [this, &ctx] {
-          SendDense(ctx);
-          RecvDense(ctx);
-        };
-        tasks.emplace_back(
-            send_threadpool_->enqueue(std::move(send_recv_task)));
       }
-    }
-    for (auto &task : tasks) {
-      task.wait();
+      for (auto &task : tasks) {
+        task.wait();
+      }
     }
   }
 }

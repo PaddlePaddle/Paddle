@@ -474,11 +474,36 @@ class TheOnePSRuntime(RuntimeBase):
             pshost = fluid.core.PSHost(host, int(port), idx)
             string_hosts.append(pshost.serialize_to_string())
 
+        # hard_code for heter geo ctr
+        use_origin_program = self.role_maker._is_heter_parameter_server_mode and self.compiled_strategy.is_geo_mode(
+        ) and self.role_maker._is_heter_worker()
+
         dense_map = self.compiled_strategy.get_the_one_recv_context(
+            use_origin_program=use_origin_program,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
+            use_origin_program=use_origin_program,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
             ep_list=endpoints)
+
+        # hard code for heter geo ctr
+        sprase_var_name = ""
+        for element in send_ctx:
+            if send_ctx[element].is_sparse():
+                sprase_var_name = element
+                break
+
+        if self.role_maker._is_heter_parameter_server_mode and self.compiled_strategy.is_geo_mode(
+        ):
+            if self.role_maker._is_heter_worker():
+                del send_ctx[sprase_var_name]
+            else:
+                new_send_ctx = {}
+                new_send_ctx[sprase_var_name] = send_ctx[sprase_var_name]
+                send_ctx = new_send_ctx
+
+                dense_map.clear()
+
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))

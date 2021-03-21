@@ -48,6 +48,7 @@ class SendOp : public framework::OperatorBase {
 
     auto* communicator = paddle::distributed::Communicator::GetInstance();
     if (communicator->Check(send_varnames)) {
+      VLOG(4) << "After communicator check";
       communicator->Send(ins, scope);
     }
 

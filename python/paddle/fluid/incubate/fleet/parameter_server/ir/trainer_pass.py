@@ -523,6 +523,20 @@ def create_heter_program(program, config, heter_program, heter_ops,
         send_grad_var_list = send_grad_var_list + add_heter_send_op(
             program, heter_program, heter_block, block_var_detail[index])
 
+        if config.is_geo_mode():
+            dummy_input = heter_block.create_var(name="LOCAL_STEP")
+            dummy_output = heter_block.create_var(
+                name=framework.generate_control_dev_var_name())
+            heter_block.append_op(
+                type="send",
+                inputs={"X": dummy_input},
+                outputs={"Out": dummy_output},
+                attrs={
+                    "send_varnames": ["LOCAL_STEP"],
+                    "table_id": 0,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
     # add step conter
     send_input_vars = []
     dummy_output = []

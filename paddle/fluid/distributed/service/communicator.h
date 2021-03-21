@@ -535,6 +535,10 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void RecvByCommunicator() override { return; }
 
+  bool Check(const std::vector<std::string> &var_tables) override {
+    return true;
+  }
+
   inline std::string GradToParam(const std::string var_name) {
     std::string param_name = var_name.substr(0, var_name.size() - 5);
     return param_name;
@@ -548,6 +552,9 @@ class GeoCommunicator : public AsyncCommunicator {
   }
 
  private:
+  // geo push num
+  int cur_merge_num_;
+
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
   // parameter for storage the pserver param after last recv
