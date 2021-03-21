@@ -18,11 +18,11 @@
 namespace paddle {
 namespace distributed {
 
-void RandomSampler::build(std::vector<WeightedObject*>* edges) {
+void RandomSampler::build(GraphEdgeBlob* edges) {
   this->edges = edges;
 }
 
-std::vector<WeightedObject *> RandomSampler::sample_k(int k) {
+std::vector<int> RandomSampler::sample_k(int k) {
   int n = edges->size();
   if (k > n){
     k = n;
@@ -30,15 +30,15 @@ std::vector<WeightedObject *> RandomSampler::sample_k(int k) {
   struct timespec tn;
   clock_gettime(CLOCK_REALTIME, &tn);
   srand(tn.tv_nsec);
-  std::vector<WeightedObject *> sample_result;
+  std::vector<int> sample_result;
   std::unordered_map<int, int> replace_map;
   while(k--){
     int rand_int = rand() % n;
     auto iter = replace_map.find(rand_int);
     if(iter == replace_map.end()){
-      sample_result.push_back(edges->at(rand_int));
+      sample_result.push_back(rand_int);
     }else{
-      sample_result.push_back(edges->at(iter->second));
+      sample_result.push_back(iter->second);
     }
 
     iter = replace_map.find(n - 1);
@@ -55,7 +55,7 @@ std::vector<WeightedObject *> RandomSampler::sample_k(int k) {
 WeightedSampler::WeightedSampler(){
   left = nullptr;
   right = nullptr;
-  object = nullptr;
+  edges = nullptr;
 }
 
 WeightedSampler::~WeightedSampler() {
@@ -69,7 +69,7 @@ WeightedSampler::~WeightedSampler() {
   }
 }
 
-void WeightedSampler::build(std::vector<WeightedObject*>* edges) {
+void WeightedSampler::build(GraphEdgeBlob* edges) {
   if(left != nullptr){
     delete left;
     left = nullptr;
@@ -78,32 +78,32 @@ void WeightedSampler::build(std::vector<WeightedObject*>* edges) {
     delete right;
     right = nullptr;
   }
-  WeightedObject** v = edges->data();
-  return build_one(v, 0, edges->size());
+  return build_one((WeightedGraphEdgeBlob*)edges, 0, edges->size());
 }
 
-void WeightedSampler::build_one(WeightedObject **v, int start, int end) {
+void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start, int end) {
   count = 0;
+  this->edges = edges;
   if (start + 1 == end) {
     left = right = nullptr;
-    weight = v[start]->get_weight();
-    object = v[start];
+    idx = start;
     count = 1;
+    weight = edges->get_weight(idx);
 
   } else {
     left = new WeightedSampler();
     right = new WeightedSampler();
-    left->build_one(v, start, start + (end - start) / 2);
-    right->build_one(v, start + (end - start) / 2, end);
+    left->build_one(edges, start, start + (end - start) / 2);
+    right->build_one(edges, start + (end - start) / 2, end);
     weight = left->weight + right->weight;
     count = left->count + right->count;
   }
 }
-std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
+std::vector<int> WeightedSampler::sample_k(int k) {
   if (k > count) {
     k = count;
   }
-  std::vector<WeightedObject *> sample_result;
+  std::vector<int> sample_result;
   float subtract;
   std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
@@ -118,7 +118,8 @@ std::vector<WeightedObject *> WeightedSampler::sample_k(int k) {
   }
   return sample_result;
 }
-WeightedObject *WeightedSampler::sample(
+
+int WeightedSampler::sample(
     float query_weight,
     std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
     std::unordered_map<WeightedSampler *, int> &subtract_count_map,
@@ -127,24 +128,24 @@ WeightedObject *WeightedSampler::sample(
     subtract_weight_map[this] = weight;
     subtract = weight;
     subtract_count_map[this] = 1;
-    return object;
+    return idx;
   }
   int left_count = left->count - subtract_count_map[left];
   int right_count = right->count - subtract_count_map[right];
   float left_subtract = subtract_weight_map[left];
-  WeightedObject *return_id;
+  int return_idx;
   if (right_count == 0 ||
       left_count > 0 && left->weight - left_subtract >= query_weight) {
-    return_id = left->sample(query_weight, subtract_weight_map,
+    return_idx = left->sample(query_weight, subtract_weight_map,
                              subtract_count_map, subtract);
   } else {
-    return_id =
+    return_idx =
         right->sample(query_weight - (left->weight - left_subtract),
                       subtract_weight_map, subtract_count_map, subtract);
   }
   subtract_weight_map[this] += subtract;
   subtract_count_map[this]++;
-  return return_id;
+  return return_idx;
 }
 }
 }
