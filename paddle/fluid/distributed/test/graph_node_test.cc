@@ -137,29 +137,20 @@ std::string edges[] = {
 char edge_file_name[] = "edges.txt";
 
 std::string nodes[] = {
-    std::string("user\t37\t0.34"),  
-    std::string("user\t96\t0.31"),
-    std::string("user\t59\t0.11"),
-    std::string("user\t97\t0.11"),
-    std::string("item\t45\t0.21"),
-    std::string("item\t145\t0.21"),
-    std::string("item\t112\t0.21"),
-    std::string("item\t48\t0.21"),
-    std::string("item\t247\t0.21"),
-    std::string("item\t111\t0.21"),
-    std::string("item\t45\t0.21"),
-    std::string("item\t145\t0.21"),
-    std::string("item\t122\t0.21"),
-    std::string("item\t48\t0.21"),
-    std::string("item\t247\t0.21"),
-    std::string("item\t111\t0.21")};
+    std::string("user\t37\t0.34"),  std::string("user\t96\t0.31"),
+    std::string("user\t59\t0.11"),  std::string("user\t97\t0.11"),
+    std::string("item\t45\t0.21"),  std::string("item\t145\t0.21"),
+    std::string("item\t112\t0.21"), std::string("item\t48\t0.21"),
+    std::string("item\t247\t0.21"), std::string("item\t111\t0.21"),
+    std::string("item\t45\t0.21"),  std::string("item\t145\t0.21"),
+    std::string("item\t122\t0.21"), std::string("item\t48\t0.21"),
+    std::string("item\t247\t0.21"), std::string("item\t111\t0.21")};
 char node_file_name[] = "nodes.txt";
-
 
 void prepare_file(char file_name[], bool load_edge) {
   std::ofstream ofile;
   ofile.open(file_name);
-  if(load_edge) {
+  if (load_edge) {
     for (auto x : edges) {
       ofile << x << std::endl;
     }
@@ -360,7 +351,8 @@ void RunBrpcPushSparse() {
   distributed::GraphPyClient client1, client2;
   std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
   std::vector<std::string> edge_types = {std::string("user2item")};
-  std::vector<std::string> node_types = {std::string("user"), std::string("item")};
+  std::vector<std::string> node_types = {std::string("user"),
+                                         std::string("item")};
   server1.set_up(ips_str, 127, node_types, edge_types, 0);
   server2.set_up(ips_str, 127, node_types, edge_types, 1);
   client1.set_up(ips_str, 127, node_types, edge_types, 0);
@@ -376,7 +368,8 @@ void RunBrpcPushSparse() {
   std::cout << "started" << std::endl;
   client1.load_node_file(std::string("user"), std::string(node_file_name));
   client1.load_node_file(std::string("item"), std::string(node_file_name));
-  client1.load_edge_file(std::string("user2item"), std::string(edge_file_name), 0);
+  client1.load_edge_file(std::string("user2item"), std::string(edge_file_name),
+                         0);
   // client2.load_edge_file(std::string("user2item"), std::string(file_name),
   // 0);
   nodes.clear();
@@ -385,11 +378,11 @@ void RunBrpcPushSparse() {
   for (auto g : nodes) {
     std::cout << "node_ids: " << g.get_id() << std::endl;
   }
-  std::cout << "node_ids: " <<  nodes[0].get_id() << std::endl;
+  std::cout << "node_ids: " << nodes[0].get_id() << std::endl;
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
-  vs = client1.batch_sample_k(std::string("user2item"),
-                              std::vector<uint64_t>(1, 96), 4);
+  vs = client1.batch_sample_neighboors(std::string("user2item"),
+                                       std::vector<uint64_t>(1, 96), 4);
   ASSERT_EQ(vs[0].size(), 3);
   std::cout << "batch sample result" << std::endl;
   for (auto p : vs[0]) {
@@ -398,8 +391,13 @@ void RunBrpcPushSparse() {
   std::vector<uint64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
-  vs = client1.batch_sample_k(std::string("user2item"), node_ids, 4);
+  vs = client1.batch_sample_neighboors(std::string("user2item"), node_ids, 4);
+
   ASSERT_EQ(vs.size(), 2);
+  std::vector<uint64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
+  ASSERT_EQ(nodes_ids.size(), 2);
+  ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
+                      (nodes_ids[0] == 37 && nodes_ids[1] == 59));
   // to test in python,try this:
   //   from paddle.fluid.core import GraphPyService
   // ips_str = "127.0.0.1:4211;127.0.0.1:4212"
