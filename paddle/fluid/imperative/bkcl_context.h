@@ -45,6 +45,8 @@ class BKCLParallelContext : public ParallelContext {
   void WaitCompute(int ring_id) override;
 
   void WaitComm(int ring_id) override;
+
+  void SynchronizeCompute() override;
 };
 
 }  //  namespace imperative

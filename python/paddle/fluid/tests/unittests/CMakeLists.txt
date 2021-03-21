@@ -829,6 +829,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU AND WITH_NCCL)
         set_tests_properties(test_parallel_dygraph_transformer PROPERTIES TIMEOUT 120)
         set_tests_properties(test_parallel_dygraph_unused_variables PROPERTIES TIMEOUT 120)
         set_tests_properties(test_parallel_dygraph_control_flow PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_parallel_dygraph_dataparallel PROPERTIES TIMEOUT 120)
+
     endif()
 endif()
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
