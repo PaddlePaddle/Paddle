@@ -22,6 +22,7 @@ import copy
 import weakref
 import warnings
 from copy import deepcopy
+import paddle
 
 from . import parallel_helper
 from .. import unique_name
