@@ -351,6 +351,7 @@ __global__ void KeBilinearInterpBw(T* in, const int in_img_h,
 
   if (data_layout == DataLayout::kNCHW) {
     __shared__ T s_data[2][1024];
+
     for (; tid < nthreads; tid += stride) {
       int out_id_h = tid / output_w;
       int out_id_w = tid % output_w;
@@ -364,8 +365,8 @@ __global__ void KeBilinearInterpBw(T* in, const int in_img_h,
 
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-      src_w = (src_w > 0) ? src_w : 0;
-      src_h = (src_h > 0) ? src_h : 0;
+      src_w = (src_w > 0) ? src_w : 0.f;
+      src_h = (src_h > 0) ? src_h : 0.f;
       int in_img_idx = static_cast<int>(src_w);
       int in_img_idy = static_cast<int>(src_h);
       int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
@@ -384,8 +385,8 @@ __global__ void KeBilinearInterpBw(T* in, const int in_img_h,
       int in_top_min_index, in_bot_min_index;
 
       if (in_img_w < out_img_w) {
-        s_data[0][threadIdx.x] = 0;
-        s_data[1][threadIdx.x] = 0;
+        s_data[0][threadIdx.x] = 0.f;
+        s_data[1][threadIdx.x] = 0.f;
         int remain = nthreads - (tid & (-blockDim.x));
         int in_top_max_index =
             math::blockReduceMax(top_right_index, FINAL_MASK);
@@ -405,14 +406,26 @@ __global__ void KeBilinearInterpBw(T* in, const int in_img_h,
                     (in_bot_max_index - in_bot_min_index)
                 ? (in_top_max_index - in_top_min_index)
                 : (in_bot_max_index - in_bot_min_index);
-        platform::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
-                                h2lambda * w2lambda * out_pos);
-        platform::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                                h2lambda * w1lambda * out_pos);
-        platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                                h1lambda * w2lambda * out_pos);
-        platform::CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
-                                h1lambda * w1lambda * out_pos);
+
+        if (h_id != 0) {
+          platform::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
+                                  h2lambda * w2lambda * out_pos);
+          platform::CudaAtomicAdd(
+              &s_data[0][top_right_index - in_top_min_index],
+              h2lambda * w1lambda * out_pos);
+          platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                                  h1lambda * w2lambda * out_pos);
+          platform::CudaAtomicAdd(
+              &s_data[1][bot_right_index - in_bot_min_index],
+              h1lambda * w1lambda * out_pos);
+
+        } else {
+          platform::CudaAtomicAdd(
+              &s_data[0][top_right_index - in_top_min_index],
+              (h2lambda + h1lambda) * w1lambda * out_pos);
+          platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                                  (h1lambda + h2lambda) * w2lambda * out_pos);
+        }
         __syncthreads();
 
         if (threadIdx.x <= upper_limit_share_idx) {
