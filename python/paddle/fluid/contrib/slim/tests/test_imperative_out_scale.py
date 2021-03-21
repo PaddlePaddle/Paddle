@@ -393,11 +393,15 @@ class TestImperativeOutSclae(unittest.TestCase):
             if 'fake' in op.type:
                 static_ops.remove(op)
 
+        op_count = 0
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+
+        self.assertTrue(op_count == 13)
 
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
@@ -459,11 +463,14 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             if 'fake' in op.type:
                 static_ops.remove(op)
 
+        op_count = 0
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+        self.assertTrue(op_count == 13)
 
 
 class TestSaveQuantizedModel_Warning(unittest.TestCase):

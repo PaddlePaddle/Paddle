@@ -515,6 +515,8 @@ class ImperativeCalcOutputScale(object):
                                 self._out_scale_dict[ops_list[op_count]])
                             op_count += 1
 
+            self._set_skip_quant_attr(inference_program)
+
         # save the final quantized model that has output scales
         save_inference_model(
             dirname=dirname,
@@ -537,9 +539,12 @@ class ImperativeCalcOutputScale(object):
         Init the scale params for calculating output scales and save them in the
         target layer.
         After the users define the dygraph model, the hooks for calculating output
-        scales will not execute immediately. If the users load the checkpoint now,
-        the scale params have not been created, so them cann't be loaded.
-        Therefore, define the scale params in the beginning.
+        scales will not execute immediately. If the users load parameters form
+        checkpoint and save the quantized inference model immediately, the inference
+        model would not be saved successfully. Beacuse the dygraph_to_static requires
+        that the parameters created in __init__, but the uniqueness of hook make it
+        impossible to create parameters in __init__. To avoid this mistake, we define
+        the scale parameters in the beginning instead of hook.
         """
 
         def _create_param(in_layer, first_name, last_name, dtype):
@@ -586,6 +591,33 @@ class ImperativeCalcOutputScale(object):
         if 'relu' in op_type:
             op_type = op_type.replace('relu', 're_lu')
         return op_type in layer_name
+
+    def _set_skip_quant_attr(self, program):
+        block = program.global_block()
+        for op in block.ops:
+            if self._is_skip_quant_op(block, op):
+                op._set_attr("skip_quant", True)
+
+    def _is_skip_quant_op(self, block, in_op):
+        """
+        The input op should be skipped quantization.
+        1. the type of input op should be conv2d, depthwise_conv2d or matmul
+        2. the previous ops of the input op are not fake_quantize_dequantize ops
+        """
+
+        def _find_previous_op(block, var_name):
+            for op in block.ops:
+                if var_name in op.output_arg_names:
+                    return op
+
+        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
+        if in_op.type not in target_op_types:
+            return False
+
+        previous_ops = [_find_previous_op(block, arg_name) \
+            for arg_name in in_op.input_arg_names]
+        return any(op is not None and op.type not in utils.fake_quantize_dequantize_types \
+            for op in previous_ops )
 
     def _calc_output_scale_hook(self, layer, input, output):
         """
