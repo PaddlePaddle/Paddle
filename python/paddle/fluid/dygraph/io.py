@@ -107,7 +107,7 @@ def _pickle_save(obj, f, protocol):
     else:
         if six.PY2:
             pickle.dispatch_table[core.VarBase] = reudce_varbase
-            pickler.dispatch_table[framework.ParamBase] = reudce_varbase
+            pickle.dispatch_table[framework.ParamBase] = reudce_varbase
             pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
             pickle.dispatch_table[Variable] = reduce_Variable
 
