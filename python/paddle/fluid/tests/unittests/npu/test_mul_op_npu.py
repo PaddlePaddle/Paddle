@@ -77,17 +77,33 @@ class TestMul(OpTest):
             check_dygraph=False)
 
 
-class TestMulFP16(TestMul):
-    """
-    case 2
-    """
+class TestMulFP16(OpTest):
+    def config(self):
+        self.x_shape = (32, 5)
+        self.y_shape = (5, 100)
 
-    def init_dtype(self):
-        self.dtype = np.float16
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "mul"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+        self.config()
+        np.random.seed(SEED)
+        self.inputs = {
+            'X': np.random.random(self.x_shape).astype(self.dtype),
+            'Y': np.random.random(self.y_shape).astype(self.dtype)
+        }
+        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
 
 
 class TestMul3(TestMul):
