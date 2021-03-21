@@ -63,8 +63,6 @@ class SimpleNet(fluid.Layer):
         return self.share_net(tmp)
 
 
-@unittest.skipIf(not fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         dist.init_parallel_env()
