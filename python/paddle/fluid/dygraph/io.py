@@ -16,7 +16,9 @@ from __future__ import print_function
 
 import os
 import six
-import pickle, copyreg
+import pickle
+if not six.PY2:
+    import copyreg
 import numpy as np
 import math
 import sys
