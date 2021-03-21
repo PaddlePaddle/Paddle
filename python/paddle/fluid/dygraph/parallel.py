@@ -435,7 +435,10 @@ class DataParallel(layers.Layer):
             "constructing the DataParallel."
 
             # sync buffer and params
-            self._sync_params_buffers()
+            # TODO(liuyuhui) Currently not support xpu. xpu is 
+            # still broadcasting parameters when calling layer
+            if not paddle.is_compiled_with_xpu():
+                self._sync_params_buffers()
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 

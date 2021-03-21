@@ -894,6 +894,15 @@ class Layer(core.Layer):
             if not self._built:
                 with program_desc_tracing_guard(False):
                     self._build_once(*inputs, **kwargs)
+
+                    # TODO(liuyuhui) Only xpu broadcast parameters here. 
+                    # The other device is to call _sync_params_buffers in DataParallel 
+                    # to realize the parameter synchronization among multiply cards.
+                    if parallel_helper._is_data_parallel_mode(
+                    ) and paddle.is_compiled_with_xpu():
+                        parallel_helper._broadcast_parameters(
+                            self._parameters.values())
+
                 self._built = True
 
             outputs = self.forward(*inputs, **kwargs)
