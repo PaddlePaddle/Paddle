@@ -39,7 +39,7 @@ CLASS_NUM = 10
 if six.PY2:
     LARGE_PARAM = 2**2
 else:
-    LARGE_PARAM = 2**2
+    LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -103,7 +103,11 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         path = os.path.join("test_paddle_save_load_large_param_save",
                             "layer.pdparams")
-        paddle.save(layer.state_dict(), path, protocol=4)
+        if six.PY2:
+            protocol = 2
+        else:
+            protocol = 4
+        paddle.save(layer.state_dict(), path, protocol=protocol)
         dict_load = paddle.load(path)
         # compare results before and after saving
         for key, value in save_dict.items():
@@ -142,14 +146,18 @@ class TestSaveLoadPickle(unittest.TestCase):
 
 
 class TestSaveLoadAny(unittest.TestCase):
-    def set_zero(self, prog, place):
+    def set_zero(self, prog, place, scope=None):
+        if scope is None:
+            scope = fluid.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
-                ten = fluid.global_scope().find_var(var.name).get_tensor()
+                ten = scope.find_var(var.name).get_tensor()
+                if ten is None:
+                    import pdb
+                    pdb.set_trace()
                 ten.set(np.zeros_like(np.array(ten)), place)
 
-                new_t = np.array(fluid.global_scope().find_var(var.name)
-                                 .get_tensor())
+                new_t = np.array(scope.find_var(var.name).get_tensor())
                 self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
     def replace_static_save(self, program, model_path, pickle_protocol=2):
@@ -240,7 +248,7 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    tensor = prog.get_tensor(var.name)
+                    tensor = var.get_tensor()
                     paddle.save(tensor, os.path.join(path_vars, var.name))
             # set var to zero
             self.set_zero(prog, place)
@@ -248,7 +256,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 if var.persistable:
                     tensor = paddle.load(
                         os.path.join(path_vars, var.name), return_numpy=False)
-                    prog.set_tensor(var.name, tensor)
+                    var.set_tensor(tensor)
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
                     base_t = base_map[var.name]
@@ -289,12 +297,16 @@ class TestSaveLoadAny(unittest.TestCase):
 
         np_dygraph = paddle.load(path)
         t_dygraph = paddle.load(path, return_numpy=False)
+
+        self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
         # enable static mode
         paddle.enable_static()
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
+
+        self.assertTrue(isinstance(lod_static, paddle.fluid.core.LoDTensor))
         self.assertTrue(np.array_equal(tensor.numpy(), np_static))
         self.assertTrue(np.array_equal(tensor.numpy(), np.array(lod_static)))
 
@@ -315,16 +327,27 @@ class TestSaveLoadAny(unittest.TestCase):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [IMAGE_SIZE, 128]:
-                    tensor = prog.get_tensor(var.name)
-
+                    tensor = var.get_tensor()
                     break
+            scope = fluid.global_scope()
+        origin_tensor = np.array(tensor)
         path = 'test_single_pickle_var_static/var'
         paddle.save(tensor, path)
+
+        self.set_zero(prog, place, scope)
+
         # static load
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
-        self.assertTrue(np.array_equal(np.array(tensor), np_static))
-        self.assertTrue(np.array_equal(np.array(tensor), np.array(lod_static)))
+
+        # set_tensor(np.ndarray)
+        var.set_tensor(np_static, scope)
+        self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
+
+        # set_tensor(LoDTensor)
+        self.set_zero(prog, place, scope)
+        var.set_tensor(lod_static, scope)
+        self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
 
         # enable dygraph mode
         paddle.disable_static()
@@ -332,9 +355,6 @@ class TestSaveLoadAny(unittest.TestCase):
         var_dygraph = paddle.load(path, return_numpy=False)
         self.assertTrue(np.array_equal(np.array(tensor), np_dygraph))
         self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
-
-
-# paddle.load
 
 
 class TestSaveLoad(unittest.TestCase):

@@ -1781,16 +1781,14 @@ def _legacy_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
         if isinstance(var, core.VarBase):
             return var.numpy()
-        elif isinstance(var, Variable):
-            t = global_scope().find_var(var.name).get_tensor()
-            return np.array(t)
+        elif isinstance(var, core.LoDTensor):
+            return np.array(var)
         return var
 
     param_dict = {name: get_tensor(param_dict[name]) for name in param_dict}
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
-    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
-            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path, 'wb') as f:
             max_bytes = 2**30
@@ -1867,8 +1865,7 @@ def save(program, model_path, pickle_protocol=2):
     param_dict = _unpack_saved_dict(param_dict, pickle_protocol)
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
-    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
-            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=pickle_protocol)
         with open(model_path + ".pdparams", 'wb') as f:
             max_bytes = 2**30

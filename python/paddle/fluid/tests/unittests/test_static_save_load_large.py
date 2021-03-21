@@ -59,7 +59,11 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
 
             path = os.path.join("test_static_save_load_large_param",
                                 "static_save")
-            paddle.fluid.save(prog, path, pickle_protocol=4)
+            if six.PY2:
+                protocol = 2
+            else:
+                protocol = 4
+            paddle.fluid.save(prog, path, protocol=protocol)
             # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:

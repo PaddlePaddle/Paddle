@@ -2003,6 +2003,146 @@ class Variable(object):
 
         return self
 
+    def get_tensor(self, scope=None):
+        """
+        Get the tensor mapped in the scope. 
+
+        Parameters:
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+                obtained through 'global_scope()'. Otherwise, use `scope`.
+                Default: None
+
+        Retruns:
+            LoDTensor: the tensor mapped in the scope.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+
+            x = fluid.data(name="x", shape=[10, 10], dtype='float32')
+
+            y = fluid.layers.fc(x, 10,name='fc')
+            prog = fluid.default_main_program()
+            place = paddle.CPUPlace()
+            exe = fluid.Executor(place)                                    
+            exe.run(fluid.default_startup_program())
+
+            var=prog.get_var('fc.w_0')
+
+            tensor=var.get_tensor()
+            path='temp/tensor.pdtensor'
+            paddle.save(tensor,path)
+        """
+        # The 'framework' is a low-level module, and 'executor' or 'core' 
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `core._Scope` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+        var_temp = scope.find_var(self.name)
+        if var_temp is None:
+            raise ValueError(
+                "Can not find Variable '{}' in the program.".format(self.name))
+        t = var_temp.get_tensor()
+        return t
+
+    def set_tensor(self, value, scope=None):
+        '''
+        Set the value to the tensor mapped in the scope. 
+
+        Parameters:
+            value(LoDTensor/ndarray) : The value to be set.
+            scope(Scope, optional) : If `scope` is None, it will be set to global scope 
+                obtained through 'global_scope()'. Otherwise, use `scope`.
+                Default: None
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+
+            x = fluid.data(name="x", shape=[10, 10], dtype='float32')
+
+            y = fluid.layers.fc(x, 10,name='fc')
+            prog = fluid.default_main_program()
+            place = paddle.CPUPlace()
+            exe = fluid.Executor(place)                                    
+            exe.run(fluid.default_startup_program())
+
+            var=prog.get_var('fc.w_0')
+
+            tensor=var.get_tensor()
+            path='temp/tensor.pdtensor'
+            paddle.save(tensor,path)
+            t_load=paddle.load(path)
+            var.set_tensor(t_load)
+        '''
+
+        # The 'framework' is a low-level module, and 'executor' or 'core' 
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+
+        if not (isinstance(value, np.ndarray) or hasattr(value, '__array__')):
+            raise TypeError(
+                "`value` should be `numpy.ndarray` or `LoDTensor`, but received {}.".
+                format(type(value)))
+
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `core._Scope` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+
+        var_temp = scope.find_var(self.name)
+        if var_temp is None:
+            raise ValueError(
+                "Can not find Variable '{}' in the program.".format(var_name))
+
+        t = var_temp.get_tensor()
+
+        if hasattr(value, 'shape'):
+            if isinstance(value.shape, (MethodType, FunctionType)):
+                value_shape = value.shape()
+            else:
+                value_shape = value.shape
+            if list(t.shape()) != list(value_shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(self.name, list(t.shape()), list(value_shape)))
+
+        p = t._place()
+        if p.is_cpu_place():
+            place = core.CPUPlace()
+        elif p.is_cuda_pinned_place():
+            place = core.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.XPUPlace(p.xpu_device_id())
+        else:
+            p = core.Place()
+            p.set_place(t._place())
+            place = core.CUDAPlace(p.gpu_device_id())
+
+        t.set(value, place)
+
 
 def get_all_op_protos():
     """
@@ -5306,7 +5446,7 @@ class Program(object):
             parameters.extend(each_block.all_parameters())
         return parameters
 
-    def state_dict(self, mode='all'):
+    def state_dict(self, mode='all', scope=None):
         """
         Get parameters and persistable buffers of program. And set them into a dict
 
@@ -5316,6 +5456,9 @@ class Program(object):
                     'param' : The return value only contains the variable in the network, not the variable in the optimizer.  
                     'all' : The return value contains the variable in the network and optimizer.
                 Default: 'all'
+            scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
+                obtained through 'global_scope()'. Otherwise, value will be set to scope.
+                Default: None
 
         Retruns:
             dict: a dict contains the parameters and persistable buffers.
@@ -5339,6 +5482,18 @@ class Program(object):
 
             paddle.save(prog.state_dict(), "./temp/model.pdparams")
         """
+        # The 'framework' is a low-level module, and 'executor' or 'core' 
+        # can not be imported at the begainning of this file. 
+        # Therefore, the above two modules are dynamically imported.
+        from .executor import global_scope
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                "`scope` should be None or `core._Scope` type, but received {}.".
+                format(type(scope)))
+
+        if scope is None:
+            scope = global_scope()
+
         if not isinstance(mode, str):
             raise TypeError("Type of `mode` should be string, but received {}.".
                             format(type(mode)))
@@ -5372,7 +5527,16 @@ class Program(object):
                     format(mode))
 
         var_list = filter(condition, self.list_vars())
-        state_dict = {var.name: var for var in var_list}
+
+        state_dict = dict()
+        for var in var_list:
+            var_temp = scope.find_var(var.name)
+            if var_temp is None:
+                raise ValueError(
+                    "Can not find Variable '{}' in the scope. Make sure it is initialized".
+                    format(var_name))
+            state_dict[var.name] = var_temp.get_tensor()
+
         return state_dict
 
     def set_state_dict(self, state_dict, scope=None):
@@ -5412,16 +5576,24 @@ class Program(object):
             state_dict_load = paddle.load("./temp-")
             prog.set_state_dict(state_dict_load)
         """
+
         if not isinstance(state_dict, dict):
             raise TypeError(
                 "Type of `state_dict` should be dict, but received {}.".format(
                     type(state_dict)))
 
+        vars_dict = {var.name: var for var in self.list_vars()}
         for name, value in state_dict.items():
-            try:
-                self.set_tensor(name, value, scope)
-            except ValueError as err:
-                warnings.warn(("Skip loading for {}. ".format(name) + str(err)))
+            if name in vars_dict:
+                try:
+                    vars_dict[name].set_tensor(value, scope)
+                except ValueError as err:
+                    warnings.warn(
+                        ("Skip loading for '{}'. ".format(name) + str(err)))
+            else:
+                warnings.warn((
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".
+                    format(name)))
 
     def get_var(self, var_name):
         """
@@ -5449,8 +5621,7 @@ class Program(object):
             exe = fluid.Executor(place)                                    
             exe.run(fluid.default_startup_program())
 
-            var=prog.get_var('fc.b_0')
-            paddle.save(var, "./temp/var.pdparams")
+            var=prog.get_var('fc.w_0')
         """
 
         str_instance = str
@@ -5466,126 +5637,6 @@ class Program(object):
             if var.name == var_name:
                 return var
         return None
-
-    def get_tensor(self, var_name, scope=None):
-        # The 'framework' is a low-level module, and 'executor' or 'core' 
-        # can not be imported at the begainning of this file. 
-        # Therefore, the above two modules are dynamically imported.
-        from .executor import global_scope
-        if scope is not None and not isinstance(scope, core._Scope):
-            raise TypeError(
-                "`scope` should be None or `core._Scope` type, but received {}.".
-                format(type(scope)))
-
-        if scope is None:
-            scope = global_scope()
-        var_temp = scope.find_var(var_name)
-        if var_temp is None:
-            raise ValueError(
-                "Can not find Variable '{}' in the program.".format(var_name))
-        t = var_temp.get_tensor()
-        return t
-
-    def set_tensor(self, var, value, scope=None):
-        '''
-        Set value to parameter or persistable buffer according to its name. 
-
-        Parameters:
-            var(str/Variable) : name of the variable or variable
-            value(LoDTensor/ndarray) : The parameter or persistable buffer in the program.
-            scope(Scope, optional) : If scope is None, value will be set to global scope 
-                obtained through 'global_scope()'. Otherwise, value will be set to scope.
-                Default: None
-        Returns:
-            None
-        
-        Examples:
-            .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-
-            paddle.enable_static()
-
-            x = fluid.data(name="x", shape=[10, 10], dtype='float32')
-            y = fluid.layers.fc(x, 10)
-            z = fluid.layers.fc(y, 10)
-
-            place = paddle.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            prog = fluid.default_main_program()
-
-            for name,var in prog.state_dict().items():
-                paddle.save(var, "./temp-"+name)
-
-            for name,var in prog.state_dict().items():
-                var_load = paddle.load("./temp-"+name)
-                prog.set_tensor(name,var_load)
-        '''
-
-        # The 'framework' is a low-level module, and 'executor' or 'core' 
-        # can not be imported at the begainning of this file. 
-        # Therefore, the above two modules are dynamically imported.
-        from .executor import global_scope
-        types = (str, Variable)
-        # Python2 has no unicode
-        if six.PY2:
-            str_instance = (str, unicode, Variable)
-        if not isinstance(var, types):
-
-            raise TypeError(
-                "The first argument should be variable or Name of variable, but received {}.".
-                format(type(var)))
-
-        if not (isinstance(value, np.ndarray) or hasattr(value, '__array__')):
-            raise TypeError(
-                "`value` should be `numpy.ndarray` or `LoDTensor`, but received {}.".
-                format(type(value)))
-
-        if scope is not None and not isinstance(scope, core._Scope):
-            raise TypeError(
-                "`scope` should be None or `core._Scope` type, but received {}.".
-                format(type(scope)))
-
-        if scope is None:
-            scope = global_scope()
-        if isinstance(var, Variable):
-            var_name = var.name
-        else:
-            var_name = var
-        var_temp = scope.find_var(var_name)
-        if var_temp is None:
-            raise ValueError(
-                "Can not find Variable '{}' in the program.".format(var_name))
-
-        t = var_temp.get_tensor()
-
-        if hasattr(value, 'shape'):
-            if isinstance(value.shape, (MethodType, FunctionType)):
-                value_shape = value.shape()
-            else:
-                value_shape = value.shape
-            if list(t.shape()) != list(value_shape):
-                raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".
-                    format(var_name, list(t.shape()), list(value_shape)))
-
-        p = t._place()
-        if p.is_cpu_place():
-            place = core.CPUPlace()
-        elif p.is_cuda_pinned_place():
-            place = core.CUDAPinnedPlace()
-        elif p.is_xpu_place():
-            p = core.Place()
-            p.set_place(t._place())
-            place = core.XPUPlace(p.xpu_device_id())
-        else:
-            p = core.Place()
-            p.set_place(t._place())
-            place = core.CUDAPlace(p.gpu_device_id())
-
-        t.set(value, place)
 
 
 @six.add_metaclass(ParameterMetaClass)

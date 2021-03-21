@@ -63,7 +63,7 @@ def _pickle_save(obj, f, protocol):
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}.".
                          format(protocol))
 
-    if not isinstance(obj, (Variable, core.LoDTensor, core.VarBase)):
+    if not isinstance(obj, (Variable, core.LoDTensor, core.VarBase, dict)):
         raise NotImplementedError(
             "Support 'VarBase' or 'LoDTensor', but received {}.".format(
                 type(obj)))
@@ -85,8 +85,7 @@ def _pickle_save(obj, f, protocol):
             format(self.name, self.name))
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
-    if sys.platform == 'darwin' and sys.version_info.major == 3 and (
-            sys.version_info.minor == 5 or sys.version_info.minor == 6):
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.VarBase] = reudce_varbase
         pickle.dispatch_table[framework.ParamBase] = reudce_varbase
