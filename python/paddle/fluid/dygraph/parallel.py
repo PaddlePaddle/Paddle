@@ -349,13 +349,18 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
                                          calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
-        find_unused_parameters(bool, optional): According to the forward return value, 
-                                                whether to traverse the entire reverse graph.
-                                                In the forward calculation, if a parameter does not 
-                                                participate in the backward gradient derivation, 
-                                                then it does not need to perform allreduce synchronization, 
-                                                so you need to set the find_unused_parameters to True, 
-                                                however, it will affect computing performance. Default: True.
+        find_unused_parameters(bool, optional): Whether to traverse the entire backward graph from the
+                                                all tensors in the return value of the wrapped model's 
+                                                forward function. For parameters not involved in loss 
+                                                calculation, their gradients will be marked as ready in 
+                                                advance to prepare reduce. Please note that all forward 
+                                                outputs derived from the wrapped model parameters must 
+                                                participate in the calculation of loss and subsequent 
+                                                gradient calculations. If not, serious error will occur.
+                                                Note that setting the find_unused_parameters to True 
+                                                will affect computing performance. Therefore, if all parameters
+                                                are sure to participate in the loss calculation and the 
+                                                autograd graph construction, please set it False. Default: True.
             
     Returns:
         Layer: The data paralleled module.
