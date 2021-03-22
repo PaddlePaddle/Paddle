@@ -91,8 +91,8 @@ struct MultiHeadMatmulPattern : public PatternBase {
 };
 
 struct MultiHeadMatmulV3Pattern : public PatternBase {
-  MultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "multihead_matmul") {}
+  MultiHeadMatmulV3Pattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multihead_matmul_v3") {}
 
   PDNode* operator()();
 

@@ -1072,7 +1072,7 @@ static int BuildFusionV3(Graph* graph, const std::string& name_scope,
     }
     fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
                  mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
-                 reshape2_0, reshape2_qkv_out);
+                 reshape2_0, reshape2_qkv_out, matmul_qk);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
