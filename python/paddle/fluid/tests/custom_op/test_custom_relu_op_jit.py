@@ -95,11 +95,11 @@ class TestJITLoad(unittest.TestCase):
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:48"
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:47"
                     in str(e))
             else:
                 self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:48"
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:47"
                     in str(e))
         self.assertTrue(caught_exception)
 
