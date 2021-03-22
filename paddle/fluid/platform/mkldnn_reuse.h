@@ -630,7 +630,7 @@ class ReductionMKLDNNHandler
                          const float eps, const MKLDNNDeviceContext& dev_ctx,
                          const mkldnn::engine engine, platform::Place cpu_place,
                          const Tensor* x, const Tensor* y,
-                         const std::string& uniq_name)
+                         const std::string& uniq_name, std::vector<int> dims = {})
       : platform::MKLDNNHandlerT<T, dnnl::reduction>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
@@ -647,12 +647,31 @@ class ReductionMKLDNNHandler
       const auto src_tz = framework::vectorize(x->dims());
       const auto dst_tz = framework::vectorize(y->dims());
 
-      // For oneDNN dimensionality should match so we need to
-      // extend Y tensor dims with values of 1 (before and after pattern)
-      int j = 0;
-      std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
-      for (size_t i = 0; i < src_tz.size(); ++i) {
-        dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+      std::vector<int64_t> dst_tz_ex;
+
+      if(dims.empty()) {
+        // For oneDNN dimensionality should match so we need to
+        // extend Y tensor dims with values of 1 (before and after pattern)
+        int j = 0;
+        
+        for (size_t i = 0; i < src_tz.size(); ++i) {
+          dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+        }
+      } else {
+        if (dst_tz.size() == 1) {  // reduce_all
+          for(size_t j = 0 ; j < src_tz.size() ; ++j) {
+            dst_tz_ex.push_back(1);
+          }
+        } else {
+          for(auto &elem : src_tz) {
+            dst_tz_ex.push_back(elem);
+          }
+
+          for(size_t i = 0; i < dims.size(); ++i) {
+            dims[i] = (dims[i] >= 0) ? dims[i] : src_tz.size() + dims[i]; // because dims can be counted backwards, "-1" = last dimension
+            dst_tz_ex[dims[i]] = 1;
+          }
+        }
       }
 
       const auto src_md = dnnl::memory::desc(
@@ -663,7 +682,6 @@ class ReductionMKLDNNHandler
       this->AcquireForwardPrimitiveDescriptor(algo, src_md, dst_md, p, eps);
     }
   }
-};
 
 template <typename T>
 class ActivationMKLDNNHandler
