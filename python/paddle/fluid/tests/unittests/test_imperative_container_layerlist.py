@@ -84,7 +84,7 @@ class TestImperativeContainer(unittest.TestCase):
             self.assertListEqual(res8.shape, [5, 3**3])
             res8.backward()
 
-            model4 = MyLayer(layerlist)
+            model4 = MyLayer(layerlist[:2])
             model4.layerlist[-1] = fluid.dygraph.Linear(3, 5)
             res9 = model4(x)
             self.assertListEqual(res9.shape, [5, 5])
