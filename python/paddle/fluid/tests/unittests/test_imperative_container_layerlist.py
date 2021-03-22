@@ -90,7 +90,7 @@ class TestImperativeContainer(unittest.TestCase):
             self.assertListEqual(res9.shape, [5, 5])
             del model4.layerlist[-1]
             res10 = model4(x)
-            self.assertListEqual(res3.shape, [5, 2**(size - 1)])
+            self.assertListEqual(res10.shape, [5, 2**(size - 1)])
             res10.backward()
 
     def test_layer_list(self):
