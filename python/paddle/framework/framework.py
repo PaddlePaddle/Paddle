@@ -15,7 +15,9 @@
 # TODO: define framework api 
 from paddle.fluid.layer_helper_base import LayerHelperBase
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import _dygraph_tracer
 import numpy as np
+from contextlib import contextmanager
 
 __all__ = ['set_default_dtype', 'get_default_dtype']
 
@@ -80,3 +82,37 @@ def get_default_dtype():
             paddle.get_default_dtype()
     """
     return LayerHelperBase.get_default_dtype()
+
+
+@contextmanager
+def set_grad_enabled(mode):
+    """
+    :api_attr: imperative
+
+    Create a context which enables or disables dygraph gradient calculation.
+
+    Args:
+        mode(bool): whether to enable (`True`), or disable (`False`) grad.
+
+    Examples:
+        .. code-block:: python
+            x = paddle.ones([3, 2])
+            x.stop_gradient = False
+            with torch.set_grad_enabled(False):
+                y = x * 2
+                with torch.set_grad_enabled(True):
+                    z = x * 2
+            print(y.stop_gradient)   # True
+            print(z.stop_gradient)   # False
+    """
+
+    tracer = _dygraph_tracer()
+    if tracer:
+        prev_mode = tracer._has_grad
+        tracer._has_grad = mode
+        try:
+            yield
+        finally:
+            tracer._has_grad = prev_mode
+    else:
+        yield
