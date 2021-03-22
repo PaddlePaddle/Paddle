@@ -422,9 +422,9 @@ class ImperativeCalcOutputScale(object):
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
 
         if len(self._out_scale_dict) == 0:
-            warnings.warn("Warning: No Layer of the model while to be "
-                          "saved contains the out_threshold attribute, so the "
-                          "generated inference model would not contain the "
+            warnings.warn("Warning: No Layer of the model while to be " \
+                          "saved contains the out_threshold attribute, so the " \
+                          "generated inference model would not contain the " \
                           "out_threshold.")
             return
 
@@ -521,9 +521,6 @@ class ImperativeCalcOutputScale(object):
                 if not self._is_scale_op_matched(scale_name, op, global_block):
                     op_idx += 1
                 else:
-                    # Conv2d and linear in dygraph model maybe corresponds to 
-                    # conv2d/matmul + elementwise_add. If the next op is
-                    # elementwise_add, save the output scale to elementwise_add.
                     weight_ops = ["conv2d", "depthwise_conv2d", "matmul"]
                     if op.type in weight_ops and op_idx + 1 < len(target_ops) \
                         and target_ops[op_idx+1].type == "elementwise_add":
@@ -538,9 +535,9 @@ class ImperativeCalcOutputScale(object):
                     break
 
         if scale_idx != len(self._out_scale_dict):
-            warnings.warn("Warning: the model have {} output scales, "\
-                "but it only saves {} output scales." \
-                % (len(self._out_scale_dict)), scale_idx)
+            _logger.warning("Warning: the model have %s output scales, "\
+                "but it only saves %s output scales." \
+                % (len(self._out_scale_dict), scale_idx))
 
     def _is_target_layer(self, layer):
         return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
