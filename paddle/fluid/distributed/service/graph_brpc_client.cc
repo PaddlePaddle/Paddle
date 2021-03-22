@@ -173,7 +173,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
   return fut;
 }
 std::future<int32_t> GraphBrpcClient::pull_graph_list(
-    uint32_t table_id, int server_index, int start, int size,
+    uint32_t table_id, int server_index, int start, int size, int step,
     std::vector<GraphNode> &res) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
@@ -207,6 +207,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   closure->request(0)->set_client_id(_client_id);
   closure->request(0)->add_params((char *)&start, sizeof(int));
   closure->request(0)->add_params((char *)&size, sizeof(int));
+  closure->request(0)->add_params((char *)&step, sizeof(int));
   PsService_Stub rpc_stub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
   rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),

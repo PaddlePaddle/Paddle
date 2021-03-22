@@ -166,7 +166,7 @@ class PSClient {
   }
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
-                                               int size,
+                                               int size, int step,
                                                std::vector<GraphNode> &res) {
     LOG(FATAL) << "Did not implement";
     std::promise<int32_t> promise;

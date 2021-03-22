@@ -23,10 +23,10 @@
 namespace paddle {
 namespace distributed {
 
-std::vector<GraphNode *> GraphShard::get_batch(int start, int total_size) {
+std::vector<GraphNode *> GraphShard::get_batch(int start, int end, int step) {
   if (start < 0) start = 0;
   std::vector<GraphNode *> res;
-  for (int pos = start; pos < start + total_size; pos++) {
+  for (int pos = start; pos < std::min(end, (int)bucket.size()); pos += step) {
     res.push_back(bucket[pos]);
   }
   return res;
@@ -52,15 +52,14 @@ GraphNode *GraphShard::find_node(uint64_t id) {
 }
 
 int32_t GraphTable::load(const std::string &path, const std::string &param) {
-
   bool load_edge = (param[0] == 'e');
   bool load_node = (param[0] == 'n');
   if (load_edge) {
     bool reverse_edge = (param[1] == '<');
     return this->load_edges(path, reverse_edge);
   }
-  if (load_node){
-    std::string node_type = param.substr(1); 
+  if (load_node) {
+    std::string node_type = param.substr(1);
     return this->load_nodes(path, node_type);
   }
 }
@@ -125,18 +124,17 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       std::string nt = values[0];
       if (nt != node_type) {
-          continue;
+        continue;
       }
       std::vector<std::string> feature;
       for (size_t slice = 2; slice < values.size(); slice++) {
         feature.push_back(values[slice]);
       }
       size_t index = shard_id - shard_start;
-      if(feature.size() > 0) {
-          shards[index].add_node(id, paddle::string::join_strings(feature, '\t'));
-      }
-      else {
-          shards[index].add_node(id, std::string(""));
+      if (feature.size() > 0) {
+        shards[index].add_node(id, paddle::string::join_strings(feature, '\t'));
+      } else {
+        shards[index].add_node(id, std::string(""));
       }
     }
   }
@@ -188,7 +186,8 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   for (auto &shard : shards) {
     auto bucket = shard.get_bucket();
     for (int i = 0; i < bucket.size(); i++) {
-      bucket[i]->build_sampler(sample_type); }
+      bucket[i]->build_sampler(sample_type);
+    }
   }
   return 0;
 }
@@ -315,37 +314,27 @@ int GraphTable::random_sample_neighboors(
 }
 int32_t GraphTable::pull_graph_list(int start, int total_size,
                                     std::unique_ptr<char[]> &buffer,
-                                    int &actual_size, bool need_feature) {
+                                    int &actual_size, bool need_feature,
+                                    int step) {
   if (start < 0) start = 0;
   int size = 0, cur_size;
-  if (total_size <= 0) {
-    actual_size = 0;
-    return 0;
-  }
   std::vector<std::future<std::vector<GraphNode *>>> tasks;
-  for (size_t i = 0; i < shards.size(); i++) {
+  for (size_t i = 0; i < shards.size() && total_size > 0; i++) {
     cur_size = shards[i].get_size();
     if (size + cur_size <= start) {
       size += cur_size;
       continue;
     }
-    if (size + cur_size - start >= total_size) {
-      tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-          [this, i, start, size, total_size]() -> std::vector<GraphNode *> {
-            return this->shards[i].get_batch(start - size, total_size);
-          }));
-      break;
-    } else {
-      tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-          [this, i, start, size, total_size,
-           cur_size]() -> std::vector<GraphNode *> {
-            return this->shards[i].get_batch(start - size,
-                                             size + cur_size - start);
-          }));
-      total_size -= size + cur_size - start;
-      size += cur_size;
-      start = size;
-    }
+    int count = std::min(1 + (size + cur_size - start - 1) / step, total_size);
+    int end = start + (count - 1) * step + 1;
+    tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
+        [this, i, start, end, step, size]() -> std::vector<GraphNode *> {
+
+          return this->shards[i].get_batch(start - size, end - size, step);
+        }));
+    start += count * step;
+    total_size -= count;
+    size += cur_size;
   }
   for (size_t i = 0; i < tasks.size(); ++i) {
     tasks[i].wait();

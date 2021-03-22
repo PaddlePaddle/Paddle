@@ -260,16 +260,17 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
                                           PsResponseMessage &response,
                                           brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
-  if (request.params_size() < 2) {
+  if (request.params_size() < 3) {
     set_response_code(response, -1,
-                      "pull_graph_list request requires at least 2 arguments");
+                      "pull_graph_list request requires at least 3 arguments");
     return 0;
   }
   int start = *(int *)(request.params(0).c_str());
   int size = *(int *)(request.params(1).c_str());
+  int step = *(int *)(request.params(2).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  table->pull_graph_list(start, size, buffer, actual_size, true);
+  table->pull_graph_list(start, size, buffer, actual_size, step, true);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }

@@ -13,33 +13,34 @@
 // limitations under the License.
 
 #pragma once
-#include <vector>
+#include <cstddef>
 #include <cstdint>
+#include <vector>
 namespace paddle {
 namespace distributed {
 
-
 class GraphEdgeBlob {
-public:
+ public:
   GraphEdgeBlob() {}
   virtual ~GraphEdgeBlob() {}
-  const size_t size() {return id_arr.size();}
+  size_t size() { return id_arr.size(); }
   virtual void add_edge(uint64_t id, float weight);
-  const uint64_t get_id(int idx) { return id_arr[idx]; }
-  virtual const float get_weight(int idx) { return 1; }
-protected:
+  uint64_t get_id(int idx) { return id_arr[idx]; }
+  virtual float get_weight(int idx) { return 1; }
+
+ protected:
   std::vector<uint64_t> id_arr;
 };
 
-class WeightedGraphEdgeBlob: public GraphEdgeBlob{
-public:
+class WeightedGraphEdgeBlob : public GraphEdgeBlob {
+ public:
   WeightedGraphEdgeBlob() {}
   virtual ~WeightedGraphEdgeBlob() {}
   virtual void add_edge(uint64_t id, float weight);
-  virtual const float get_weight(int idx) { return weight_arr[idx]; }
-protected:
+  virtual float get_weight(int idx) { return weight_arr[idx]; }
+
+ protected:
   std::vector<float> weight_arr;
 };
-
 }
 }

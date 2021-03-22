@@ -335,12 +335,12 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(0, vs[0].size());
 
   std::vector<distributed::GraphNode> nodes;
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, 1, nodes);
   pull_status.wait();
   ASSERT_EQ(nodes.size(), 1);
   ASSERT_EQ(nodes[0].get_id(), 37);
   nodes.clear();
-  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, nodes);
+  pull_status = worker_ptr_->pull_graph_list(0, 0, 1, 4, 1, nodes);
   pull_status.wait();
   ASSERT_EQ(nodes.size(), 1);
   ASSERT_EQ(nodes[0].get_id(), 59);
@@ -373,7 +373,7 @@ void RunBrpcPushSparse() {
   // client2.load_edge_file(std::string("user2item"), std::string(file_name),
   // 0);
   nodes.clear();
-  nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4);
+  nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
 
   for (auto g : nodes) {
     std::cout << "node_ids: " << g.get_id() << std::endl;
