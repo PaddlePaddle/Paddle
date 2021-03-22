@@ -134,6 +134,7 @@ function show_ut_retry_result() {
 }
 
 set +e
+tmpfile=$tmp_dir/$RANDOM
 (ctest -E "${disable_ut_quickly}" -LE "${nightly_label}" --output-on-failure -C Release -j 8 | tee $tmpfile) &
 wait 
 collect_failed_tests
