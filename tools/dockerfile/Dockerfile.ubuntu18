@@ -46,7 +46,8 @@ RUN apt-get update && \
   python3.5 python3.5-dev \
   python3.6 python3.6-dev \
   python3.7 python3.7-dev \
-  python3.8 python3.8-dev python3.8-distutils && \
+  python3.8 python3.8-dev python3.8-distutils \
+  python3.9 python3.9-dev && \
   rm /usr/bin/python && ln -s /usr/bin/python2.7 /usr/bin/python && \
   rm /usr/bin/python3 && ln -s /usr/bin/python3.5 /usr/bin/python3
 
@@ -54,7 +55,8 @@ RUN apt-get update && \
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
-RUN python3.8 setup.py build && python3.8 setup.py install && \
+RUN python3.9 setup.py build && python3.9 setup.py install && \
+  python3.8 setup.py build && python3.8 setup.py install && \
   python3.7 setup.py build && python3.7 setup.py install && \
   python3.6 setup.py build && python3.6 setup.py install && \
   python3 setup.py build && python3 setup.py install
@@ -66,6 +68,7 @@ WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
 WORKDIR pip-20.0.1
 RUN python setup.py install && \
+  python3.9 setup.py install && \
   python3.8 setup.py install && \
   python3.7 setup.py install && \
   python3.6 setup.py install && \
@@ -111,6 +114,8 @@ RUN pip3 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
     pip3.7 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.8 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
     pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip3.9 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
     pip --no-cache-dir install ipykernel==4.6.0 wheel 
 
@@ -119,6 +124,7 @@ RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
     pip3.6 --no-cache-dir install pylint pytest astroid isort && \
     pip3.7 --no-cache-dir install pylint pytest astroid isort && \
     pip3.8 --no-cache-dir install pylint pytest astroid isort && \
+    pip3.9 --no-cache-dir install pylint pytest astroid isort && \
     pip --no-cache-dir install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
@@ -126,6 +132,7 @@ RUN pip3 --no-cache-dir install -r /root/requirements.txt && \
     pip3.6 --no-cache-dir install -r /root/requirements.txt && \
     pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /root/requirements.txt && \
     pip --no-cache-dir install -r /root/requirements.txt
 
 
