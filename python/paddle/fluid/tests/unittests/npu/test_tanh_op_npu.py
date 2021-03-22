@@ -53,6 +53,9 @@ class TestTanh(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
+        # TODO: The error exceeds the default allowable accuracy range.
+        # `max_relative_error` is used to adjust the accuracy in temporary,
+        # which needs to be dealt with later.
         self.check_grad_with_place(
             self.place, ['X'],
             'Out',
