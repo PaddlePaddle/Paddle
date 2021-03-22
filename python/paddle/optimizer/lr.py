@@ -17,10 +17,19 @@ import numpy
 import warnings
 from paddle import Tensor
 
-__all__ = [
-    'LRScheduler', 'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'LinearWarmup', 'ExponentialDecay',
-    'MultiStepDecay', 'StepDecay', 'LambdaDecay', 'ReduceOnPlateau',
+__all__ = [ #noqa
+    'LRScheduler', 
+    'NoamDecay', 
+    'PiecewiseDecay', 
+    'NaturalExpDecay',
+    'InverseTimeDecay', 
+    'PolynomialDecay', 
+    'LinearWarmup', 
+    'ExponentialDecay',
+    'MultiStepDecay', 
+    'StepDecay', 
+    'LambdaDecay', 
+    'ReduceOnPlateau',
     'CosineAnnealingDecay'
 ]
 

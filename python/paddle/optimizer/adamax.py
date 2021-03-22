@@ -17,7 +17,6 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
 
-__all__ = ["Adamax"]
 
 
 class Adamax(Optimizer):

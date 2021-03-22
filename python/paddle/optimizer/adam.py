@@ -24,7 +24,6 @@ from ..fluid.dygraph import base as imperative_base
 
 import paddle
 
-__all__ = ["Adam"]
 
 
 class Adam(Optimizer):

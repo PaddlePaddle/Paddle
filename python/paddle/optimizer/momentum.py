@@ -21,7 +21,6 @@ from ..fluid import unique_name
 from ..fluid import layers
 import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
-__all__ = ["Momentum"]
 
 
 class Momentum(Optimizer):

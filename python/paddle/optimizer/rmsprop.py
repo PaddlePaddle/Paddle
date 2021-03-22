@@ -17,7 +17,6 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
-__all__ = ["RMSProp"]
 
 
 class RMSProp(Optimizer):
