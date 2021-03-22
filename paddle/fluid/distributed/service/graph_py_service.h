@@ -109,7 +109,8 @@ class GraphPyServer : public GraphPyService {
 class GraphPyClient : public GraphPyService {
  public:
   void set_up(std::string ips_str, int shard_num,
-              std::vector<std::string> node_types, std::vector<std::string> edge_types, int client_id) {
+              std::vector<std::string> node_types,
+              std::vector<std::string> edge_types, int client_id) {
     set_client_id(client_id);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
@@ -121,8 +122,10 @@ class GraphPyClient : public GraphPyService {
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
-  std::vector<std::vector<std::pair<uint64_t, float> > > batch_sample_k(
-    std::string name, std::vector<uint64_t> node_ids, int sample_size);
+  std::vector<std::vector<std::pair<uint64_t, float>>> batch_sample_neighboors(
+      std::string name, std::vector<uint64_t> node_ids, int sample_size);
+  std::vector<uint64_t> random_sample_nodes(std::string name, int server_index,
+                                            int sample_size);
   std::vector<GraphNode> pull_graph_list(std::string name, int server_index,
                                          int start, int size);
   ::paddle::distributed::PSParameter GetWorkerProto();

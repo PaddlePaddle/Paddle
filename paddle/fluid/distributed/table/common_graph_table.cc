@@ -42,8 +42,8 @@ GraphNode *GraphShard::add_node(uint64_t id, std::string feature) {
   return bucket.back();
 }
 
-void GraphShard::add_neighboor(uint64_t id, GraphEdge *edge) {
-  add_node(id, std::string(""))->add_edge(edge);
+void GraphShard::add_neighboor(uint64_t id, uint64_t dst_id, float weight) {
+  add_node(id, std::string(""))->add_edge(dst_id, weight);
 }
 
 GraphNode *GraphShard::find_node(uint64_t id) {
@@ -146,6 +146,8 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
   int count = 0;
+  std::string sample_type = "random";
+  bool is_weighted = false;
 
   for (auto path : paths) {
     std::ifstream file(path);
@@ -159,9 +161,11 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       if (reverse_edge) {
         std::swap(src_id, dst_id);
       }
-      float weight = 0;
+      float weight = 1;
       if (values.size() == 3) {
         weight = std::stof(values[2]);
+        sample_type = "weighted";
+        is_weighted = true;
       }
 
       size_t src_shard_id = src_id % shard_num;
@@ -173,8 +177,8 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       }
 
       size_t index = src_shard_id - shard_start;
-      GraphEdge *edge = new GraphEdge(dst_id, weight);
-      shards[index].add_neighboor(src_id, edge);
+      shards[index].add_node(src_id, std::string(""))->build_edges(is_weighted);
+      shards[index].add_neighboor(src_id, dst_id, weight);
     }
   }
   VLOG(0) << "Load Finished Total Edge Count " << count;
@@ -184,8 +188,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   for (auto &shard : shards) {
     auto bucket = shard.get_bucket();
     for (int i = 0; i < bucket.size(); i++) {
-      bucket[i]->build_sampler();
-    }
+      bucket[i]->build_sampler(sample_type); }
   }
   return 0;
 }
@@ -286,7 +289,7 @@ int GraphTable::random_sample_neighboors(
             actual_size = 0;
             return 0;
           }
-          std::vector<GraphEdge *> res = node->sample_k(sample_size);
+          std::vector<int> res = node->sample_k(sample_size);
           actual_size =
               res.size() * (GraphNode::id_size + GraphNode::weight_size);
           int offset = 0;
@@ -294,9 +297,9 @@ int GraphTable::random_sample_neighboors(
           float weight;
           char *buffer_addr = new char[actual_size];
           buffer.reset(buffer_addr);
-          for (auto &x : res) {
-            id = x->get_id();
-            weight = x->get_weight();
+          for (int &x : res) {
+            id = node->get_neighbor_id(x);
+            weight = node->get_neighbor_weight(x);
             memcpy(buffer_addr + offset, &id, GraphNode::id_size);
             offset += GraphNode::id_size;
             memcpy(buffer_addr + offset, &weight, GraphNode::weight_size);

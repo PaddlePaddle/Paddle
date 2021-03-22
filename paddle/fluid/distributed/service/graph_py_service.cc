@@ -169,8 +169,7 @@ void GraphPyClient::load_edge_file(std::string name, std::string filepath,
   if (reverse) {
     // 'e<' means load edges from $2 to $1
     params += "<";
-  }
-  else {
+  } else {
     // 'e>' means load edges from $1 to $2
     params += ">";
   }
@@ -193,13 +192,27 @@ void GraphPyClient::load_node_file(std::string name, std::string filepath) {
   }
 }
 std::vector<std::vector<std::pair<uint64_t, float>>>
-GraphPyClient::batch_sample_k(std::string name, std::vector<uint64_t> node_ids,
-                              int sample_size) {
+GraphPyClient::batch_sample_neighboors(std::string name,
+                                       std::vector<uint64_t> node_ids,
+                                       int sample_size) {
   std::vector<std::vector<std::pair<uint64_t, float>>> v;
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
     auto status =
         worker_ptr->batch_sample_neighboors(table_id, node_ids, sample_size, v);
+    status.wait();
+  }
+  return v;
+}
+
+std::vector<uint64_t> GraphPyClient::random_sample_nodes(std::string name,
+                                                         int server_index,
+                                                         int sample_size) {
+  std::vector<uint64_t> v;
+  if (this->table_id_map.count(name)) {
+    uint32_t table_id = this->table_id_map[name];
+    auto status =
+        worker_ptr->random_sample_nodes(table_id, server_index, sample_size, v);
     status.wait();
   }
   return v;

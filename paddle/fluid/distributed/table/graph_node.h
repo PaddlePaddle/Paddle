@@ -17,49 +17,33 @@
 #include "paddle/fluid/distributed/table/weighted_sampler.h"
 namespace paddle {
 namespace distributed {
-// enum GraphNodeType { user = 0, item = 1, query = 2, unknown = 3 };
-class GraphEdge : public WeightedObject {
- public:
-  GraphEdge() {}
-  GraphEdge(uint64_t id, float weight) : id(id), weight(weight) {}
-  uint64_t get_id() { return id; }
-  float get_weight() { return weight; }
-  uint64_t id;
-  float weight;
-};
+
 class GraphNode {
  public:
-  GraphNode() { sampler = NULL; }
+  GraphNode(): sampler(nullptr), edges(nullptr) { }
   GraphNode(uint64_t id, std::string feature)
-      : id(id), feature(feature), sampler(NULL) {}
-  virtual ~GraphNode() {}
-  std::vector<GraphEdge *> get_graph_edge() { return edges; }
+      : id(id), feature(feature), sampler(nullptr), edges(nullptr) {}
+  virtual ~GraphNode();
   static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
   void set_id(uint64_t id) { this->id = id; }
   void set_feature(std::string feature) { this->feature = feature; }
   std::string get_feature() { return feature; }
   virtual int get_size(bool need_feature);
-  virtual void build_sampler();
+  virtual void build_edges(bool is_weighted);
+  virtual void build_sampler(std::string sample_type);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
-  virtual void add_edge(GraphEdge *edge) { edges.push_back(edge); }
-  std::vector<GraphEdge *> sample_k(int k) {
-    std::vector<GraphEdge *> v;
-    if (sampler != NULL) {
-      auto res = sampler->sample_k(k);
-      for (auto x : res) {
-        v.push_back((GraphEdge *)x);
-      }
-    }
-    return v;
-  }
+  virtual void add_edge(uint64_t id, float weight) { edges->add_edge(id, weight); }
+  std::vector<int> sample_k(int k) { return sampler->sample_k(k); }
+  uint64_t get_neighbor_id(int idx){return edges->get_id(idx);}
+  float get_neighbor_weight(int idx){return edges->get_weight(idx);}
 
  protected:
   uint64_t id;
   std::string feature;
-  WeightedSampler *sampler;
-  std::vector<GraphEdge *> edges;
+  Sampler *sampler;
+  GraphEdgeBlob * edges;
 };
 }
 }

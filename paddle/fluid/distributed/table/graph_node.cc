@@ -16,16 +16,41 @@
 #include <cstring>
 namespace paddle {
 namespace distributed {
+
+
+GraphNode::~GraphNode() {
+  if (sampler != nullptr){
+    delete sampler;
+    sampler = nullptr;
+  }
+  if (edges != nullptr){
+    delete edges;
+    edges = nullptr;
+  }
+}
+
 int GraphNode::weight_size = sizeof(float);
 int GraphNode::id_size = sizeof(uint64_t);
 int GraphNode::int_size = sizeof(int);
 int GraphNode::get_size(bool need_feature) {
   return id_size + int_size + (need_feature ? feature.size() : 0);
 }
-void GraphNode::build_sampler() {
-  sampler = new WeightedSampler();
-  GraphEdge** arr = edges.data();
-  sampler->build((WeightedObject**)arr, 0, edges.size());
+void GraphNode::build_edges(bool is_weighted) {
+  if (edges == nullptr){
+    if (is_weighted == true){
+      edges = new WeightedGraphEdgeBlob();
+    } else {
+      edges = new GraphEdgeBlob();
+    }
+  }
+}
+void GraphNode::build_sampler(std::string sample_type) {
+  if (sample_type == "random"){
+    sampler = new RandomSampler();
+  } else if (sample_type == "weighted"){
+    sampler = new WeightedSampler();
+  } 
+  sampler->build(edges);
 }
 void GraphNode::to_buffer(char* buffer, bool need_feature) {
   int size = get_size(need_feature);
