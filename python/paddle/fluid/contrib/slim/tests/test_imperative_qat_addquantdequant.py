@@ -191,8 +191,8 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max',
             quantizable_layer_type=[
-                'Conv2D', 'Linear', 'ReLU', 'Pool2D', 'LeakyReLU', 'ReLU6',
-                'Tanh', 'Swish'
+                'Conv2D', 'Linear', 'ReLU', 'LeakyReLU', 'ReLU6', 'Tanh',
+                'Swish'
             ])
 
         with fluid.dygraph.guard():
