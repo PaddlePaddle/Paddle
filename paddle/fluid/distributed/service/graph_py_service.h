@@ -23,6 +23,7 @@
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <vector>
+#include <tuple>
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
@@ -47,7 +48,13 @@ class GraphPyService {
  protected:
   std::vector<std::string> server_list, port_list, host_sign_list;
   int server_size, shard_num;
+  int num_node_types;
   std::unordered_map<std::string, uint32_t> table_id_map;
+  std::vector<std::string>  table_feat_conf_table_name;
+  std::vector<std::string>  table_feat_conf_feat_name;
+  std::vector<std::string>  table_feat_conf_feat_dtype;
+  std::vector<int32_t>  table_feat_conf_feat_shape;
+
   // std::thread *server_thread, *client_thread;
 
   // std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
@@ -65,25 +72,43 @@ class GraphPyService {
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
       ::paddle::distributed::TableParameter* sparse_table_proto,
-      uint32_t table_id) {
+      uint32_t table_id,
+      std::string table_name,
+      std::string table_type,
+      std::vector<std::string> feat_name,
+      std::vector<std::string> feat_dtype,
+      std::vector<int32_t> feat_shape) {
     sparse_table_proto->set_table_id(table_id);
     sparse_table_proto->set_table_class("GraphTable");
     sparse_table_proto->set_shard_num(shard_num);
     sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
     ::paddle::distributed::TableAccessorParameter* accessor_proto =
         sparse_table_proto->mutable_accessor();
+
     ::paddle::distributed::CommonAccessorParameter* common_proto =
         sparse_table_proto->mutable_common();
+
+    // Set GraphTable Parameter 
+    common_proto->set_table_name(table_name);
+    common_proto->set_name(table_type);
+    for(size_t i = 0;i < feat_name.size();i ++) {
+      common_proto->add_params(feat_dtype[i]);
+      common_proto->add_dims(feat_shape[i]);
+      common_proto->add_attributes(feat_name[i]);
+    }
 
     accessor_proto->set_accessor_class("CommMergeAccessor");
   }
 
   void set_server_size(int server_size) { this->server_size = server_size; }
+  void set_num_node_types(int num_node_types) { this->num_node_types = num_node_types; }
   int get_server_size(int server_size) { return server_size; }
   std::vector<std::string> split(std::string& str, const char pattern);
   void set_up(std::string ips_str, int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types);
+
+  void add_table_feat_conf(std::string node_type, std::string feat_name, std::string feat_dtype, int32_t feat_shape);
 };
 class GraphPyServer : public GraphPyService {
  public:
