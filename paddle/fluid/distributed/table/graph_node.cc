@@ -34,14 +34,10 @@ int Node::id_size = sizeof(uint64_t);
 int Node::int_size = sizeof(int);
 
 int Node::get_size(bool need_feature) {
-  return int_size + id_size + int_size; 
+  return id_size + int_size; 
 }
 
 void Node::to_buffer(char* buffer, bool need_feature) {
-  int size = get_size(need_feature);
-  memcpy(buffer, &size, sizeof(int));
-  buffer += sizeof(int);
-
   memcpy(buffer, &id, id_size);
   buffer += id_size;
 
@@ -50,12 +46,11 @@ void Node::to_buffer(char* buffer, bool need_feature) {
 }
 
 void Node::recover_from_buffer(char* buffer) {
-  buffer += sizeof(int);
   memcpy(&id, buffer, id_size);
 }
 
 int FeatureNode::get_size(bool need_feature) {
-  int size = int_size + id_size + int_size; // buffer_size, id, feat_num
+  int size = id_size + int_size; // id, feat_num
   if (need_feature){
     size += feature.size() * int_size;
     for (const std::string& fea: feature){
@@ -83,10 +78,6 @@ void GraphNode::build_sampler(std::string sample_type) {
   sampler->build(edges);
 }
 void FeatureNode::to_buffer(char* buffer, bool need_feature) {
-  int size = get_size(need_feature);
-  memcpy(buffer, &size, sizeof(int));
-  buffer += sizeof(int);
-
   memcpy(buffer, &id, id_size);
   buffer += id_size;
 
@@ -103,18 +94,13 @@ void FeatureNode::to_buffer(char* buffer, bool need_feature) {
       memcpy(buffer, feature[i].c_str(), feature[i].size());
       buffer += feature[i].size();
     }
-    //memcpy(buffer + int_size, feature.c_str(), feature.size());
-    //memcpy(buffer + int_size + feature.size(), &id, id_size);
   } else {
     memcpy(buffer, &feat_num, sizeof(int));
   }
 }
 void FeatureNode::recover_from_buffer(char* buffer) {
 
-  int size, feat_num, feat_len;
-  memcpy(&size, buffer, sizeof(int));
-
-  buffer += sizeof(int);
+  int feat_num, feat_len;
   memcpy(&id, buffer, id_size);
   buffer += id_size;
   
@@ -122,7 +108,6 @@ void FeatureNode::recover_from_buffer(char* buffer) {
   buffer += sizeof(int);
   
   feature.clear();
-
   for (int i = 0; i < feat_num; ++i) {
     memcpy(&feat_len, buffer, sizeof(int));
     buffer += sizeof(int);
