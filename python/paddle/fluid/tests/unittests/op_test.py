@@ -33,10 +33,19 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid.tests.unittests.testsuite import (
+    create_op,
+    set_input,
+    append_input_output,
+    append_loss_ops, )
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list, no_grad_set_white_list
+from paddle.fluid.tests.unittests.white_list import (
+    op_accuracy_white_list,
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    op_threshold_white_list,
+    no_grad_set_white_list, )
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -233,6 +242,19 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     if data_format == "NHWC":
         new_output = np.transpose(new_output, [0, 2, 3, 1])
     return new_output
+
+
+def copy_bits_from_uint16_to_float(i):
+    i = np.uint32(i) << 16
+    return struct.unpack('<f', struct.pack('<I', i))[0]
+
+
+def convert_uint16_to_float(uint16_list):
+    new_output = []
+    for x in np.nditer(uint16_list):
+        new_output.append(np.float32(copy_bits_from_uint16_to_float(x)))
+
+    return np.reshape(new_output, uint16_list.shape).view(np.float32)
 
 
 class OpTest(unittest.TestCase):
@@ -1143,8 +1165,14 @@ class OpTest(unittest.TestCase):
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
+
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+
+                if actual_t.dtype == np.uint16 and expect_t.dtype == np.float32:
+                    actual_t = convert_uint16_to_float(actual_t)
+                    atol = 0.03
+
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
@@ -1433,6 +1461,17 @@ class OpTest(unittest.TestCase):
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set,
                                             user_defined_grad_outputs)
+
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+        fp32_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = 0.03
+            fp32_grads.append(grad)
+        analytic_grads = fp32_grads
+
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))

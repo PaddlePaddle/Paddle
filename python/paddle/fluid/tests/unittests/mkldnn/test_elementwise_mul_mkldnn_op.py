@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_mul_op import ElementwiseMulOp
+from paddle import enable_static
 
 
 class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
@@ -51,11 +52,15 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
-        pass
-
     def test_check_grad_ingore_y(self):
         pass
+
+
+class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
 
 
 ''' INT8 Tests '''
@@ -140,4 +145,5 @@ class TestUint8Scales(TestInt8Scales):
 
 
 if __name__ == '__main__':
+    enable_static()
     unittest.main()

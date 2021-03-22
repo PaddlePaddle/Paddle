@@ -13,18 +13,15 @@ endif()
 
 py_test(test_sysconfig SRCS test_sysconfig.py)
 
-# 'test_dispatch' compile .cc file
+# CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
-set_tests_properties(test_dispatch_jit PROPERTIES TIMEOUT 120)
-
 py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
-set_tests_properties(test_multi_out_jit PROPERTIES TIMEOUT 120)
-
 py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
-set_tests_properties(test_custom_attrs_jit PROPERTIES TIMEOUT 120)
+py_test(test_custom_concat SRCS test_custom_concat.py)
+py_test(test_custom_conj SRCS test_custom_conj.py)
 
+# other tests
 py_test(test_check_abi SRCS test_check_abi.py)
-
 cc_test(test_check_error SRCS test_check_error.cc DEPS gtest)
 
 if(NOT LINUX)
@@ -38,7 +35,7 @@ py_test(test_setup_install SRCS test_setup_install.py)
 py_test(test_setup_build SRCS test_setup_build.py)
 
 set_tests_properties(test_jit_load PROPERTIES TIMEOUT 180)
-set_tests_properties(test_setup_install PROPERTIES TIMEOUT 180)
+set_tests_properties(test_setup_install PROPERTIES TIMEOUT 250)
 set_tests_properties(test_setup_build PROPERTIES TIMEOUT 180)
 
 
