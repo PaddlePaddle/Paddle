@@ -171,7 +171,8 @@ void BindGraphPyServer(py::module* m) {
   py::class_<GraphPyServer>(*m, "GraphPyServer")
       .def(py::init<>())
       .def("start_server", &GraphPyServer::start_server)
-      .def("set_up", &GraphPyServer::set_up);
+      .def("set_up", &GraphPyServer::set_up)
+      .def("add_table_feat_conf", &GraphPyServer::add_table_feat_conf);
 }
 void BindGraphPyClient(py::module* m) {
   py::class_<GraphPyClient>(*m, "GraphPyClient")
@@ -179,6 +180,7 @@ void BindGraphPyClient(py::module* m) {
       .def("load_edge_file", &GraphPyClient::load_edge_file)
       .def("load_node_file", &GraphPyClient::load_node_file)
       .def("set_up", &GraphPyClient::set_up)
+      .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)

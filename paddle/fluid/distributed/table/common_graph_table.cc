@@ -372,6 +372,22 @@ int32_t GraphTable::initialize() {
   and _shard_idx to server
   rank
   */
+  auto common = _config.common();
+
+  this->table_name = common.table_name();
+  this->table_type = common.name();
+  VLOG(0) << " init graph table type " << this->table_type << " table name " << this->table_name;
+  int feat_conf_size = static_cast<int>(common.attributes().size());
+  for(int i=0; i<feat_conf_size;i ++) {
+    auto & f_name=  common.attributes()[i];
+    auto & f_shape =  common.dims()[i];
+    auto & f_dtype =  common.params()[i];
+    this->feat_name.push_back(f_name);
+    this->feat_shape.push_back(f_shape);
+    this->feat_dtype.push_back(f_dtype);
+    VLOG(0) << "init graph table feat conf name:"<< f_name << " shape:" << f_shape << " dtype:" << f_dtype;
+  }
+
   shard_num = _config.shard_num();
   VLOG(0) << "in init graph table shard num = " << shard_num << " shard_idx"
           << _shard_idx;
