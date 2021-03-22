@@ -107,7 +107,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
             protocol = 2
         else:
             protocol = 4
-        paddle.save(layer.state_dict(), path, protocol=protocol)
+        paddle.save(save_dict, path, protocol=protocol)
         dict_load = paddle.load(path)
         # compare results before and after saving
         for key, value in save_dict.items():

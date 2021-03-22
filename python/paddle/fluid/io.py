@@ -1787,7 +1787,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 
     param_dict = {name: get_tensor(param_dict[name]) for name in param_dict}
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path, 'wb') as f:
@@ -1800,7 +1800,7 @@ def _legacy_save(param_dict, model_path, protocol=2):
 
 
 @static_only
-def save(program, model_path, pickle_protocol=2):
+def save(program, model_path, protocol=2, **configs):
     """
     :api_attr: Static Graph
 
@@ -1813,8 +1813,9 @@ def save(program, model_path, pickle_protocol=2):
     Args:
         program(Program) : The program to saved.
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
-        pickle_protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 2
+        configs(dict, optional) : optional keyword arguments.                        
 
     Returns:
         None
@@ -1842,14 +1843,19 @@ def save(program, model_path, pickle_protocol=2):
     base_name = os.path.basename(model_path)
     assert base_name != "", \
         "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    if 'pickle_protocol' in configs:
+        protocol = configs['pickle_protocol']
+        warnings.warn(
+            "If you use the default argument 'pickle_protocol' to specify the version of pickle, the default argument 'protocol' will be ignored."
+        )
 
-    if not isinstance(pickle_protocol, int):
+    if not isinstance(protocol, int):
         raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
-            type(pickle_protocol)))
+            type(protocol)))
 
-    if pickle_protocol < 2 or pickle_protocol > 4:
+    if protocol < 2 or protocol > 4:
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(pickle_protocol))
+                         format(protocol))
 
     dir_name = os.path.dirname(model_path)
     if dir_name and not os.path.exists(dir_name):
@@ -1862,25 +1868,25 @@ def save(program, model_path, pickle_protocol=2):
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
 
-    param_dict = _unpack_saved_dict(param_dict, pickle_protocol)
+    param_dict = _unpack_saved_dict(param_dict, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
     if sys.platform == 'darwin' and sys.version_info.major == 3:
-        pickle_bytes = pickle.dumps(param_dict, protocol=pickle_protocol)
+        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
         with open(model_path + ".pdparams", 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
                 f.write(pickle_bytes[i:i + max_bytes])
     else:
         with open(model_path + ".pdparams", 'wb') as f:
-            pickle.dump(param_dict, f, protocol=pickle_protocol)
+            pickle.dump(param_dict, f, protocol=protocol)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
 
     opt_dict = {p.name: get_tensor(p) for p in optimizer_var_list}
     with open(model_path + ".pdopt", 'wb') as f:
-        pickle.dump(opt_dict, f, protocol=pickle_protocol)
+        pickle.dump(opt_dict, f, protocol=protocol)
 
     main_program = program.clone()
     program.desc.flush()

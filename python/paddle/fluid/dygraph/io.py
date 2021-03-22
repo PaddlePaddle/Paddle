@@ -86,7 +86,7 @@ def _pickle_save(obj, f, protocol):
             "Please use `program.get_tensor` to convert Variable {} to LoDTensor, and use `paddle.save` to save {}.".
             format(self.name, self.name))
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
     if sys.platform == 'darwin' and sys.version_info.major == 3:
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.VarBase] = reudce_varbase

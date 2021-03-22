@@ -215,7 +215,11 @@ def _transformed_from_varbase(obj):
     # In paddle2.1 version, VarBase is saved as tuple(tensor.name, tensor.numpy()).
     # When executing paddle.load, use this function to determine whether to restore to VarBase/LoDTensor.
     if isinstance(obj, tuple) and len(obj) == 2:
-        if isinstance(obj[0], str) and isinstance(obj[1], np.ndarray):
+        if six.PY2:
+            name_types = (str, unicode)
+        else:
+            name_types = str
+        if isinstance(obj[0], name_types) and isinstance(obj[1], np.ndarray):
             return True
     return False
 
@@ -334,7 +338,7 @@ def save(obj, path, protocol=2, **configs):
             _pickle_save(obj, f, protocol)
 
 
-def _legacy_save(obj, path, pickle_protocol=2):
+def _legacy_save(obj, path, protocol=2):
     # 1. input check
     if not isinstance(obj, dict):
         raise NotImplementedError(
@@ -350,13 +354,13 @@ def _legacy_save(obj, path, pickle_protocol=2):
                          "[dirname\\filename in Windows system], but received "
                          "filename is empty string.")
 
-    if not isinstance(pickle_protocol, int):
+    if not isinstance(protocol, int):
         raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
-            type(pickle_protocol)))
+            type(protocol)))
 
-    if pickle_protocol < 2 or pickle_protocol > 4:
+    if protocol < 2 or protocol > 4:
         raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
-                         format(pickle_protocol))
+                         format(protocol))
 
     # 2. save object
     dirname = os.path.dirname(path)
@@ -367,18 +371,18 @@ def _legacy_save(obj, path, pickle_protocol=2):
     if isinstance(obj, dict):
         saved_obj = _build_saved_state_dict(obj)
 
-    saved_obj = _unpack_saved_dict(saved_obj, pickle_protocol)
+    saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3.5/6'
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
     if sys.platform == 'darwin' and sys.version_info.major == 3:
-        pickle_bytes = pickle.dumps(saved_obj, protocol=pickle_protocol)
+        pickle_bytes = pickle.dumps(saved_obj, protocol=protocol)
         with open(path, 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
                 f.write(pickle_bytes[i:i + max_bytes])
     else:
         with open(path, 'wb') as f:
-            pickle.dump(saved_obj, f, protocol=pickle_protocol)
+            pickle.dump(saved_obj, f, protocol=protocol)
 
 
 def load(path, **configs):
