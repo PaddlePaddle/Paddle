@@ -218,15 +218,10 @@ class ActivationGPUKernel
     T* output_data = out->mutable_data<T>(dev_ctx.GetPlace(),
                                           static_cast<size_t>(num * sizeof(T)));
 
-    int block = 512;
-    int grid = (num + block - 1) / block;
-    constexpr int vecsize = CudaVecType<T>::vecsize;
-    if (num > vecsize) {
-      // update grid for float16 and float32
-      grid = (num / vecsize + block - 1) / block;
-    }
-
     Functor functor;
+    int block = 512;
+    constexpr int vecsize = CudaVecType<T>::vecsize;
+    int grid = std::max((num / vecsize + block - 1) / block, 1);
     ActivationkernelVec<T, Functor><<<grid, block>>>(input_data, output_data,
                                                      num, functor);
   }
@@ -251,23 +246,19 @@ class ActivationGradGPUKernel
 
     auto* forward_data = dout_data;
     if (static_cast<int>(Functor::FwdDeps()) == static_cast<int>(kDepOut)) {
-      forward_data = out->data<T>();
       // Only need forward output Out
+      forward_data = out->data<T>();
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(kDepX)) {
       // Only need forward input X
       forward_data = x->data<T>();
     }
 
-    int block = 512;
-    int grid = (numel + block - 1) / block;
-    constexpr int vecsize = CudaVecType<T>::vecsize;
-    if (numel >= vecsize) {
-      // update grid for float16 and float32
-      grid = (numel / vecsize + block - 1) / block;
-    }
-
     Functor functor;
+    int block = 512;
+    int grid = std::max((num / vecsize + block - 1) / block, 1);
+    constexpr int vecsize = CudaVecType<T>::vecsize;
+
     ActivationGradKernelVec<T, Functor><<<grid, block>>>(
         forward_data, dout_data, dx_data, numel, functor);
   }
