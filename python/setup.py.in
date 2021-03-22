@@ -341,10 +341,10 @@ if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
     xpu_rt_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/runtime/shlib/', 'libxpurt.so')
     if os.path.exists(xpu_api_lib):
         shutil.copy(xpu_api_lib, libs_path)
-        package_data['paddle.libs']+=[xpu_api_lib]
+        package_data['paddle.libs']+=['libxpuapi.so']
     if os.path.exists(xpu_rt_lib):
         shutil.copy(xpu_rt_lib, libs_path)
-        package_data['paddle.libs']+=[xpu_rt_lib]
+        package_data['paddle.libs']+=['libxpurt.so']
 
 ### Old custom op extension mechanism related, will be removed in 2.1.0 ###
 # copy libpaddle_framework.so to libs on linux
