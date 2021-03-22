@@ -12,22 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .profiler import ProfilerOptions
-from .profiler import Profiler
-from .profiler import get_profiler
-from .deprecated import deprecated
-from .lazy_import import try_import
-from .op_version import OpLastCheckpointChecker
-from .install_check import run_check
-from ..fluid.framework import unique_name
-from ..fluid.framework import load_op_library
-from ..fluid.framework import require_version
+from .profiler import ProfilerOptions  # noqa: F401
+from .profiler import Profiler  # noqa: F401
+from .profiler import get_profiler  # noqa: F401
+from .deprecated import deprecated  # noqa: F401
+from .lazy_import import try_import  # noqa: F401
+from .op_version import OpLastCheckpointChecker  # noqa: F401
+from .install_check import run_check  # noqa: F401
+from ..fluid.framework import unique_name  # noqa: F401
+from ..fluid.framework import load_op_library  # noqa: F401
+from ..fluid.framework import require_version  # noqa: F401
 
-from . import download
+from . import download  # noqa: F401
 
-from . import cpp_extension
+from . import cpp_extension  # noqa: F401
 
-__all__ = ['dump_config', 'deprecated', 'download', 'run_check']
-
-#TODO: define new api under this directory
-__all__ += ['unique_name', 'load_op_library', 'require_version']
+__all__ = [     #noqa
+           'deprecated', 
+           'download', 
+           'run_check', 
+           'unique_name', 
+           'load_op_library', 
+           'require_version', 
+           'Profiler', 
+           'get_profiler', 
+           'ProfilerOptions', 
+           'try_import'
+]

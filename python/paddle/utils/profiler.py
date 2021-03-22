@@ -20,8 +20,13 @@ import warnings
 from ..fluid import core
 from ..fluid.profiler import *
 
-__all__ = ['ProfilerOptions', 'Profiler', 'get_profiler']
-
+__all__ = [     #noqa
+           'cuda_profiler', 
+           'start_profiler', 
+           'profiler', 
+           'stop_profiler', 
+           'reset_profiler'
+]
 
 class ProfilerOptions(object):
     def __init__(self, options=None):
