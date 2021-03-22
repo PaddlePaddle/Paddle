@@ -354,8 +354,8 @@ void Reducer::InitializeDenseGroups(
     p_group->dense_tensors_.push_back(framework::Tensor());
 
     // check the dtype and place, it must be same.
-    const auto dtype = var->DataType();
-    const auto place = var->Place();
+    const auto &dtype = var->DataType();
+    const auto &place = var->Place();
     if (index > 0) {
       PADDLE_ENFORCE_EQ(
           dtype, p_group->dtype_,
@@ -468,7 +468,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
 // and allreudce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
-  VLOG(3) << "start forward and reset count.";
+  VLOG(3) << "after forward, then reset count for backward.";
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();

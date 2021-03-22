@@ -80,7 +80,6 @@ class TestDistTraning(unittest.TestCase):
         ones_input = paddle.ones(shape=(batch, in_dim))
         ones_input.stop_gradient = True
 
-        acc_grad = []
         w1_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
         w2_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
 
