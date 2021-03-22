@@ -221,7 +221,7 @@ class ActivationGPUKernel
     Functor functor;
     int block = 512;
     constexpr int vecsize = CudaVecType<T>::vecsize;
-    int grid = std::max((num / vecsize + block - 1) / block, 1);
+    int grid = max((num / vecsize + block - 1) / block, 1);
     ActivationkernelVec<T, Functor><<<grid, block>>>(input_data, output_data,
                                                      num, functor);
   }
@@ -256,8 +256,8 @@ class ActivationGradGPUKernel
 
     Functor functor;
     int block = 512;
-    int grid = std::max((num / vecsize + block - 1) / block, 1);
     constexpr int vecsize = CudaVecType<T>::vecsize;
+    int grid = max((numel / vecsize + block - 1) / block, 1);
 
     ActivationGradKernelVec<T, Functor><<<grid, block>>>(
         forward_data, dout_data, dx_data, numel, functor);
