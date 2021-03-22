@@ -37,17 +37,6 @@ from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.log_helper import get_logger
 
-__all__ = [
-    'save_inference_model',
-    'load_inference_model',
-    'serialize_program',
-    'serialize_persistables',
-    'save_to_file',
-    'deserialize_program',
-    'deserialize_persistables',
-    'load_from_file',
-    'normalize_program',
-]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')

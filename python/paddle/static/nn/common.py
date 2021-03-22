@@ -15,7 +15,6 @@
 import paddle
 from paddle.fluid.framework import static_only
 
-__all__ = ['fc', 'deform_conv2d']
 
 
 @static_only

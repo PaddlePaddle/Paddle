@@ -15,4 +15,4 @@
 from ...fluid.contrib import mixed_precision
 from ...fluid.contrib.mixed_precision import *
 
-__all__ = mixed_precision.__all__
+
