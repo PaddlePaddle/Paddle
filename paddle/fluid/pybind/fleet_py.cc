@@ -171,7 +171,7 @@ void BindGraphPyServer(py::module* m) {
   py::class_<GraphPyServer>(*m, "GraphPyServer")
       .def(py::init<>())
       .def("start_server", &GraphPyServer::start_server)
-      .def("set_up", &GraphPyServer::set_up);
+      .def("set_up", &GraphPyServer::set_up)
       .def("add_table_feat_conf", &GraphPyServer::add_table_feat_conf);
 }
 void BindGraphPyClient(py::module* m) {
