@@ -75,7 +75,8 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
     } else {
       std::string endpoint = Attr<std::string>("endpoint");
-      platform::RecvBroadCastCommID(endpoint, &nccl_ids);
+      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);

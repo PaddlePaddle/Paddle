@@ -86,7 +86,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
                               const std::string &predictor_id,
                               const std::string &max_batch_size,
                               const std::string &precision,
-                              const std::string &use_calib_mode) {
+                              const bool for_calibration) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
     engine_hash_key += name;
@@ -97,12 +97,13 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
     engine_hash_key += "#";
   }
   engine_hash_key += predictor_id;
-  engine_hash_key += "#";
-  engine_hash_key += max_batch_size;
+  if (!for_calibration) {
+    engine_hash_key += "#";
+    engine_hash_key += max_batch_size;
+  }
   engine_hash_key += "#";
   engine_hash_key += precision;
-  engine_hash_key += "#";
-  engine_hash_key += use_calib_mode;
+
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
   VLOG(2) << "TRT engine key: " << engine_key;
@@ -258,24 +259,31 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
+  // serialization is affected by max_batch_size, but calibration is not.
+  // So we use seperate engine keys in serialization and calibration.
   auto engine_key = GenerateEngineKey(
       input_names_with_id, output_names_with_id, std::to_string(0),
       std::to_string(Get<int>("max_batch_size")),
-      std::to_string(static_cast<int>(precision_mode)),
-      std::to_string(static_cast<int>(use_calib_mode)));
+      std::to_string(static_cast<int>(precision_mode)), false);
+  auto calibration_engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0),
+      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(static_cast<int>(precision_mode)), true);
   auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = "";
   if (enable_int8 && use_calib_mode) {
-    calibration_data = GetTrtCalibTableData(
-        Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+    calibration_data =
+        GetTrtCalibTableData(Get<std::string>("model_opt_cache_dir"),
+                             calibration_engine_key, enable_int8);
   }
   op_desc->SetAttr("calibration_data", calibration_data);
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
   op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
+  op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
 
   std::string trt_engine_serialized_data = "";

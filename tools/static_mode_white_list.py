@@ -21,6 +21,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_linear_chain_crf_op',
     'test_lod_reset_op',
     'test_lookup_table_op',
+    'test_lookup_table_bf16_op',
     'test_pad2d_op',
     'test_scatter_op',
     'test_sequence_concat',
@@ -700,4 +701,5 @@ STATIC_MODE_TESTING_LIST = [
     'test_slice_op_xpu',
     'test_generate_proposals_v2_op',
     'test_lamb_op_xpu',
+    'test_model_cast_to_bf16',
 ]

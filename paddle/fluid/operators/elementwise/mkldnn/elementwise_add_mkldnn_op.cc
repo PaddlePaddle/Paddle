@@ -61,6 +61,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                            platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
+
+      dx->set_layout(DataLayout::kMKLDNN);
+      dx->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
     }
 
     if (dy) {
@@ -75,6 +78,9 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
+
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
       } else {
         // Broadcasting
         platform::ReductionMKLDNNHandler<T> handler_sum(
@@ -86,6 +92,11 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         reduction_p->execute(astream, {{DNNL_ARG_SRC, *reorder_src_memory_p},
                                        {DNNL_ARG_DST, *dy_memory_p}});
         astream.wait();
+
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(
+            platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
+                paddle::framework::vectorize<int64_t>(dy->dims()))));
       }
     }
   }

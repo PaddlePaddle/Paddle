@@ -205,6 +205,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
+                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
+                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -230,7 +237,8 @@ function cmake_base() {
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
+        -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -267,7 +275,8 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
+        -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -607,7 +616,16 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        get_precision_ut_mac
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        fi
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -628,6 +646,13 @@ EOF
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -669,6 +694,42 @@ EOF
             show_ut_retry_result
         fi
         set -x
+    fi
+}
+
+function get_precision_ut_mac() {
+    on_precision=0
+    set -x
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    precison_cases=""
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+        if [[ -f "ut_list" ]]; then
+            set +x
+            echo "PREC length: "`wc -l ut_list`
+            precision_cases=`cat ut_list`
+            set -x
+        fi
+    fi
+    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+        UT_list_re=''
+        on_precision=1
+        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+        UT_list_prec_1='ut_list_prec2'
+        for case in $UT_list; do
+            flag=$(echo $case|grep -oE $re)
+            if [ -n "$flag" ];then
+                if [ -z "$UT_list_prec" ];then
+                    UT_list_prec="^$case$"
+                elif [[ "${#UT_list_prec}" -gt 10000 ]];then
+                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                else
+                    UT_list_prec="$UT_list_prec|^$case$"
+                fi
+            else
+                echo ${case} "won't run in PRECISION_TEST mode."
+            fi
+        done
     fi
 }
 
@@ -976,6 +1037,8 @@ function card_test() {
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ROCM}" == "ON" ];then
+        CUDA_DEVICE_COUNT=4
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
@@ -1193,6 +1256,9 @@ set +x
         exec_retry_threshold=10
         is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
@@ -1202,11 +1268,18 @@ set +x
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${failed_test_lists_ult}"
+                        echo "${retry_unittests}"
                             
                         for line in ${retry_unittests[@]} ;
                             do
@@ -1295,7 +1368,7 @@ function show_ut_retry_result() {
             echo "Summary Failed Tests... "
             echo "========================================"
             echo "The following tests FAILED: "
-            echo "${retry_unittests_record}" | grep -E "$failed_ut_re"
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
             exit 8;
         fi
     fi
@@ -1361,7 +1434,7 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$WITH_GPU" == "ON" ];then
+    if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
         if [ "$WITH_XPU" == "ON" ];then
@@ -1916,6 +1989,11 @@ function main() {
         parallel_test
         ;;
       check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_rocm_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
