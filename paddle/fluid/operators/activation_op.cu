@@ -27,12 +27,6 @@ struct CudaVecType {
 };
 
 template <>
-struct CudaVecType<double> {
-  using type = double;
-  static constexpr int vecsize = 1;
-};
-
-template <>
 struct CudaVecType<platform::float16> {
   using type = __half2;
   static constexpr int vecsize = 2;
@@ -66,7 +60,7 @@ class ReluGPUFuctor : public BaseGPUFunctor<T> {
       const typename CudaVecType<T>::type* a);
 
   // when num % vecsize != 0 this func will be used
-  __device__ __forceinline__ T ComputeReminder(const T a) {
+  __device__ __forceinline__ T ComputeRemainder(const T a) {
     return a > zero_ ? a : zero_;
   }
 };
@@ -119,7 +113,7 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<T> {
       const typename CudaVecType<T>::type* b);
 
   // when num % vecsize != 0 this func will be used
-  __device__ __forceinline__ T ComputeReminder(const T a, const T b) {
+  __device__ __forceinline__ T ComputeRemainder(const T a, const T b) {
     return a > zero_ ? b : zero_;
   }
 
@@ -181,7 +175,7 @@ __global__ void ActivationGradKernelVec(const T* forward_data, const T* dout,
 
   while (idx == loop && tail) {
     dx[num - tail] =
-        functor.ComputeReminder(forward_data[num - tail], dout[num - tail]);
+        functor.ComputeRemainder(forward_data[num - tail], dout[num - tail]);
     --tail;
   }
 }
@@ -203,7 +197,7 @@ __global__ void ActivationkernelVec(const T* src, T* dst, int num,
   }
 
   while (idx == loop && tail) {
-    dst[num - tail] = functor.ComputeReminder(src[num - tail]);
+    dst[num - tail] = functor.ComputeRemainder(src[num - tail]);
     --tail;
   }
 }
