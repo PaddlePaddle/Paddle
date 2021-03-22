@@ -28,13 +28,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    // Shouble be a 3 dims tensor.
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
-    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims, 3,
-                      platform::errors::InvalidArgument(
-                          "The Input dim of the MultiheadMatMul should be 3, "
-                          "but it's (%d) now.",
-                          input->getDimensions().nbDims));
 
     // fc weights and fc bias
     auto weight_name = op_desc.Input("W").front();
@@ -177,6 +171,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
             plugin_inputs.data(), plugin_inputs.size(), *plugin);
         layer = plugin_layer;
       } else {
+        PADDLE_ENFORCE_EQ(
+            input->getDimensions().nbDims, 3,
+            platform::errors::InvalidArgument(
+                "The Input dim of the MultiheadMatMul should be 3, "
+                "but it's (%d) now.",
+                input->getDimensions().nbDims));
         // transpose weight_data from m * n to  n * m
         auto* input_bias_qk =
             engine_->GetITensor(op_desc.Input("BiasQK").front());
