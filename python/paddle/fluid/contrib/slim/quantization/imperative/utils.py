@@ -30,7 +30,7 @@ op_real_in_out_name = {
     "swish": [["X"], ["Out"]],
 }
 
-supported_quant_layers_map = {
+quant_input_layers_map = {
     'Conv2D': paddle.nn.Conv2D,
     'Linear': paddle.nn.Linear,
     'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
@@ -58,8 +58,51 @@ fake_quantize_dequantize_types = [
     "fake_quantize_dequantize_moving_average_abs_max"
 ]
 
-out_scale_layers_list = (
-    paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.MaxPool2D,
-    paddle.nn.BatchNorm, paddle.nn.BatchNorm2D, paddle.nn.SyncBatchNorm,
-    paddle.nn.LeakyReLU, paddle.nn.PReLU, paddle.nn.ReLU, paddle.nn.ReLU6,
-    paddle.nn.Sigmoid, paddle.nn.Softmax, paddle.nn.Tanh, paddle.nn.Swish)
+quant_output_layers_map = {
+    'Conv2D': paddle.nn.Conv2D,
+    'Conv2DTranspose': paddle.nn.Conv2DTranspose,
+    'Linear': paddle.nn.Linear,
+    'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
+    'AdaptiveMaxPool2D': paddle.nn.AdaptiveMaxPool2D,
+    'AvgPool2D': paddle.nn.AvgPool2D,
+    'MaxPool2D': paddle.nn.MaxPool2D,
+    'BatchNorm': paddle.nn.BatchNorm,
+    'BatchNorm2D': paddle.nn.BatchNorm2D,
+    'GroupNorm': paddle.nn.GroupNorm,
+    'InstanceNorm2D': paddle.nn.InstanceNorm2D,
+    'LayerNorm': paddle.nn.LayerNorm,
+    'SyncBatchNorm': paddle.nn.SyncBatchNorm,
+    'ELU': paddle.nn.ELU,
+    'GELU': paddle.nn.GELU,
+    'LeakyReLU': paddle.nn.LeakyReLU,
+    'PReLU': paddle.nn.PReLU,
+    'ReLU': paddle.nn.ReLU,
+    'ReLU6': paddle.nn.ReLU6,
+    'Sigmoid': paddle.nn.Sigmoid,
+    'Softmax': paddle.nn.Softmax,
+    'Tanh': paddle.nn.Tanh,
+    'Swish': paddle.nn.Swish,
+}
+
+quant_output_layers_in_static = [
+    "conv2d",
+    "depthwise_conv2d",
+    "conv2d_transpose",
+    "matmul",
+    "adaptive_pool2d",
+    "pool2d",
+    "batch_norm",
+    "group_norm",
+    "instance_norm",
+    "layer_norm",
+    "elu",
+    "gelu",
+    "leaky_relu",
+    "prelu",
+    "relu",
+    "relu6",
+    "sigmoid",
+    "softmax",
+    "tanh",
+    "swish",
+]

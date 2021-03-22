@@ -251,8 +251,8 @@ class ImperativeQuantizeInputs(object):
         super(ImperativeQuantizeInputs, self).__init__()
 
         self._quantizable_layer_type = tuple(
-            utils.supported_quant_layers_map[layer]
-            if layer in utils.supported_quant_layers_map else layer
+            utils.quant_input_layers_map[layer]
+            if layer in utils.quant_input_layers_map else layer
             for layer in quantizable_layer_type)
         for layer in self._quantizable_layer_type:
             assert not isinstance(layer, str), \
@@ -324,12 +324,11 @@ class ImperativeQuantizeInputs(object):
             target = name[last_idx:idx]
 
             quant_layer = self._get_quantized_layer(layer)
-            setattr(quant_layer, "layer_name", layer.full_name())
             setattr(obj, target, quant_layer)
 
     def _get_quantized_layer(self, layer):
         quant_layer_name = None
-        for key, value in utils.supported_quant_layers_map.items():
+        for key, value in utils.quant_input_layers_map.items():
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
@@ -411,23 +410,20 @@ class ImperativeCalcOutputScale(object):
         assert isinstance(layer, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
-        # remove handles and collect output scales
+        self._gather_output_scale(layer)
+
         with dygraph.guard():
             layer.eval()
             for handle in self._register_hook_handle_list:
                 handle.remove()
-            for _, sub_layer in layer.named_sublayers():
-                if self._is_target_layer(sub_layer):
-                    if hasattr(sub_layer, "layer_name"):
-                        layer_name = sub_layer.layer_name
-                    else:
-                        layer_name = sub_layer.full_name()
-                    if hasattr(sub_layer, "_quant_out_scale"):
-                        self._out_scale_dict[layer_name] = float(
-                            sub_layer._quant_out_scale)
-
-        # save the quantized model that doesn't have output scales
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+
+        if len(self._out_scale_dict) == 0:
+            warnings.warn("Warning: No Layer of the model while to be "
+                          "saved contains the out_threshold attribute, so the "
+                          "generated inference model would not contain the "
+                          "out_threshold.")
+            return
 
         # load static model
         is_dynamic_mode = False
@@ -443,79 +439,23 @@ class ImperativeCalcOutputScale(object):
         basename = os.path.basename(path)
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
-        [inference_program, feed_target_names, fetch_targets] = (
+
+        [infer_program, feed_target_names, fetch_targets] = (
             load_inference_model(
                 dirname=dirname,
                 executor=exe,
                 model_filename=model_filename,
                 params_filename=params_filename))
+        assert infer_program.num_blocks == 1, \
+            "Quantization aware training (QAT) requires the program " \
+            "only has a block for now. When the model has if-else or " \
+            "while, the program will have several blocks."
 
         # set output scales to the static model
-        check_behind_op = False
-        op_count = 0
-        ops_list = [key for key, _ in self._out_scale_dict.items()]
-        if len(ops_list) == 0:
-            warnings.warn(
-                "Warning: No Layer of the model while to be saved contains "
-                "the out_threshold attribute, so the generated inference "
-                "model would not contain the out_threshold.")
-        else:
-            # Because the Layer in dygraph may correspond to multiple ops
-            # in static program after being saved. To ensure correctness,
-            # the outscale collected for output of dygraph Layer can only
-            # be set to the last op in the corresponding ops in static program.
-            #
-            # We can judge the execution order of the ops which corresponding
-            # to dygraph Layer by check_behind_op
-            forward_op = None
-            for block in inference_program.blocks:
-                for op in block.ops:
-                    if op.type in utils.op_real_in_out_name:
-                        if op_count > len(ops_list):
-                            warnings.warn(
-                                "The number of Layer which has "
-                                "out_threshold attribute should be bigger than "
-                                "the op in inference model")
-                            break
-                        if check_behind_op:
-                            check_behind_op = False
-                            if op.type == "elementwise_add":
-                                if self._is_op_matched(ops_list[op_count], op,
-                                                       block):
-                                    op._set_attr("out_threshold",
-                                                 self._out_scale_dict[ops_list[
-                                                     op_count]])
-                                    op_count += 1
-                                    forward_op = None
-                                continue
-                            else:
-                                if forward_op is None:
-                                    raise ValueError(
-                                        "forward_op should not be None")
-                                if self._is_op_matched(ops_list[op_count],
-                                                       forward_op, block):
-                                    forward_op._set_attr(
-                                        "out_threshold", self._out_scale_dict[
-                                            ops_list[op_count]])
-                                    op_count += 1
-                                    forward_op = None
+        self._save_output_scale(infer_program)
 
-                        if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
-                            check_behind_op = True
-                            forward_op = op
-                            continue
-                        if op_count >= len(ops_list):
-                            warnings.warn(
-                                "The number of Layer which has out_threshold attribute should be bigger than the op in inference model"
-                            )
-                            break
-                        if self._is_op_matched(ops_list[op_count], op, block):
-                            op._set_attr(
-                                "out_threshold",
-                                self._out_scale_dict[ops_list[op_count]])
-                            op_count += 1
-
-            self._set_skip_quant_attr(inference_program)
+        # process skip quant
+        self._set_skip_quant_attr(inference_program)
 
         # save the final quantized model that has output scales
         save_inference_model(
@@ -523,15 +463,79 @@ class ImperativeCalcOutputScale(object):
             feeded_var_names=feed_target_names,
             target_vars=fetch_targets,
             executor=exe,
-            main_program=inference_program.clone(),
+            main_program=infer_program.clone(),
             model_filename=model_filename,
             params_filename=params_filename)
 
         if is_dynamic_mode:
             paddle.disable_static()
 
+    def _gather_output_scale(self, layer):
+        """
+        Gather all output scales to self._out_scale_dict
+        """
+        with dygraph.guard():
+            layer.eval()
+            for _, sub_layer in layer.named_sublayers():
+                if self._is_target_layer(sub_layer):
+                    layer_name = sub_layer.full_name()
+                    if hasattr(sub_layer, "_quant_out_scale"):
+                        self._out_scale_dict[layer_name] = float(
+                            sub_layer._quant_out_scale)
+
+    def _save_output_scale(self, infer_program):
+        """
+        Save all output scales to the corresponding ops in static
+        inference program.
+
+        Because the Layer in dygraph may correspond to multiple ops
+        in static program after being saved. To ensure correctness,
+        the outscale collected for output of dygraph Layer can only
+        be set to the last op in the corresponding ops in static program.
+        """
+        assert infer_program.num_blocks == 1, \
+            "The inference program should only have a block."
+
+        target_ops = []
+        global_block = infer_program.global_block()
+        for op in global_block.ops:
+            if op.type in utils.quant_output_layers_in_static:
+                target_ops.append(op)
+
+        scale_idx = 0
+        op_idx = 0
+        attr_name = "out_threshold"
+        for scale_name, scale_value in self._out_scale_dict.items():
+            while True:
+                if op_idx >= len(target_ops):
+                    break
+                op = target_ops[op_idx]
+
+                if not self._is_scale_op_matched(scale_name, op, global_block):
+                    op_idx += 1
+                else:
+                    # Conv2d and linear in dygraph model maybe corresponds to 
+                    # conv2d/matmul + elementwise_add. If the next op is
+                    # elementwise_add, save the output scale to elementwise_add.
+                    if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
+                        if op_idx + 1 < len(target_ops) \
+                            and target_ops[op_idx+1].type == "elementwise_add":
+                            target_ops[op_idx + 1]._set_attr(attr_name,
+                                                             scale_value)
+                            op_idx += 2
+
+                    op._set_attr(attr_name, scale_value)
+                    op_idx += 1
+                    scale_idx += 1
+                    break
+
+        if scale_idx != len(self._out_scale_dict):
+            warnings.warn("Warning: the model have {} output scales, "\
+                "but it only saves {} output scales." \
+                % (scale_idx, scale_idx, len(self._out_scale_dict)))
+
     def _is_target_layer(self, layer):
-        return isinstance(layer, utils.out_scale_layers_list) \
+        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
             or 'quantized_' in layer.full_name()
 
     def _init_scale_params(self, layer, name=None):
@@ -570,14 +574,15 @@ class ImperativeCalcOutputScale(object):
         layer._quant_out_accum = _create_param(layer, name, "accum", dtype)
         layer._quant_out_accum.stop_gradient = True
 
-    # Judge whether the op in program matches the Layer in dynamic model
-    def _is_op_matched(self, layer_name, op, block):
+    def _is_scale_op_matched(self, scale_name, op, block):
+        """
+        Judge whether the op in program matches the scale name
+        """
+        fp_type = [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]
         output_var_names = quantization_pass._get_op_output_var_names(op)
         for output_var_name in output_var_names:
             output_var_tensor = block.var(output_var_name)
-            if output_var_tensor.dtype not in [
-                    core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32
-            ]:
+            if output_var_tensor.dtype not in fp_type:
                 return False
 
         # Because the naming styles of static and dynamic graph are different,
@@ -590,7 +595,7 @@ class ImperativeCalcOutputScale(object):
             op_type = op_type.replace('prelu', 'p_re_lu')
         if 'relu' in op_type:
             op_type = op_type.replace('relu', 're_lu')
-        return op_type in layer_name
+        return op_type in scale_name
 
     def _set_skip_quant_attr(self, program):
         block = program.global_block()
