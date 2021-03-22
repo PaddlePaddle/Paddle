@@ -30,7 +30,7 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(std::vector<std::vec
         for (size_t j = 0; j < ancestors[i].size(); j++) {
             // user
             if (j > 0 && with_hierarchy) {
-                auto hierarchical_user = tree_->get_ancestor_given_level(user_inputs[i], max_layer - j);
+                auto hierarchical_user = tree_->get_ancestor_given_level(user_inputs[i], max_layer - j - 1);
                 for (int idx_offset = 0; idx_offset <= layer_counts_[j]; idx_offset++) {
                     for (size_t k = 0; k < user_feature_num; k++) {
                         outputs[idx+idx_offset][k] = hierarchical_user[k];
@@ -43,14 +43,17 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(std::vector<std::vec
                     }
                 }
             }
+            
             // sampler ++
             outputs[idx][user_feature_num] = ancestors[i][j];
             outputs[idx][user_feature_num + 1] = 1.0;
-            for (int idx_offset = 1; idx_offset <= layer_counts_[j]; idx_offset++) {
+            idx += 1;
+            for (int idx_offset = 0; idx_offset < layer_counts_[j]; idx_offset++) {
                 int sample_res = 0;
                 do {
                     sample_res = sampler_vec[j]->Sample();
-                } while (layer_ids[j][sample_res] != ancestors[i][j]);
+                } while (layer_ids[j][sample_res] == ancestors[i][j]);
+                VLOG(1) << sample_res << " " << layer_ids[j][sample_res] << " " << ancestors[i][j];
                 outputs[idx + idx_offset][user_feature_num] = layer_ids[j][sample_res];
                 outputs[idx + idx_offset][user_feature_num + 1] = 0;
             }

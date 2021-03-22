@@ -36,12 +36,17 @@ class LayerWiseSampler : public IndexSampler {
       PADDLE_ENFORCE_LT(start_sample_layer_, tree_->height(), "start sampler layer should less than max_layer");
     
       size_t i = 0;
+      layer_counts_sum_ = 0;
+      layer_counts_.clear();
       int cur_layer = start_sample_layer_;
       while (cur_layer < tree_->height()) {
           layer_counts_sum_ += layer_sample_counts[i] + 1;
           layer_counts_.push_back(layer_sample_counts[i]);
           VLOG(0) << "[INFO] level " << cur_layer << " sample_layer_counts.push_back: " << layer_sample_counts[i];
+          cur_layer += 1;
+          i += 1;
       }
+      reverse(layer_counts_.begin(), layer_counts_.end());
       VLOG(0) << "sample counts sum: " << layer_counts_sum_;
   }
   std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
