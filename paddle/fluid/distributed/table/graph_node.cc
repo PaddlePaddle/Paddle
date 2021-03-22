@@ -29,12 +29,42 @@ GraphNode::~GraphNode() {
   }
 }
 
-int GraphNode::weight_size = sizeof(float);
-int GraphNode::id_size = sizeof(uint64_t);
-int GraphNode::int_size = sizeof(int);
-int GraphNode::get_size(bool need_feature) {
-  return id_size + int_size + (need_feature ? feature.size() : 0);
+int Node::weight_size = sizeof(float);
+int Node::id_size = sizeof(uint64_t);
+int Node::int_size = sizeof(int);
+
+int Node::get_size(bool need_feature) {
+  return int_size + id_size + int_size; 
 }
+
+void Node::to_buffer(char* buffer, bool need_feature) {
+  int size = get_size(need_feature);
+  memcpy(buffer, &size, sizeof(int));
+  buffer += sizeof(int);
+
+  memcpy(buffer, &id, id_size);
+  buffer += id_size;
+
+  int feat_num = 0;
+  memcpy(buffer, &feat_num, sizeof(int));
+}
+
+void Node::recover_from_buffer(char* buffer) {
+  buffer += sizeof(int);
+  memcpy(&id, buffer, id_size);
+}
+
+int FeatureNode::get_size(bool need_feature) {
+  int size = int_size + id_size + int_size; // buffer_size, id, feat_num
+  if (need_feature){
+    size += feature.size() * int_size;
+    for (const std::string& fea: feature){
+      size += fea.size();
+    }
+  }
+  return size;
+}
+
 void GraphNode::build_edges(bool is_weighted) {
   if (edges == nullptr){
     if (is_weighted == true){
@@ -52,28 +82,58 @@ void GraphNode::build_sampler(std::string sample_type) {
   } 
   sampler->build(edges);
 }
-void GraphNode::to_buffer(char* buffer, bool need_feature) {
+void FeatureNode::to_buffer(char* buffer, bool need_feature) {
   int size = get_size(need_feature);
-  memcpy(buffer, &size, int_size);
+  memcpy(buffer, &size, sizeof(int));
+  buffer += sizeof(int);
+
+  memcpy(buffer, &id, id_size);
+  buffer += id_size;
+
+  int feat_num = 0;
+  int feat_len;
   if (need_feature) {
-    memcpy(buffer + int_size, feature.c_str(), feature.size());
-    memcpy(buffer + int_size + feature.size(), &id, id_size);
+    feat_num += feature.size();
+    memcpy(buffer, &feat_num, sizeof(int));
+    buffer += sizeof(int);
+    for (int i = 0; i < feat_num; ++i){
+      feat_len = feature[i].size();
+      memcpy(buffer, &feat_len, sizeof(int));
+      buffer += sizeof(int);
+      memcpy(buffer, feature[i].c_str(), feature[i].size());
+      buffer += feature[i].size();
+    }
+    //memcpy(buffer + int_size, feature.c_str(), feature.size());
+    //memcpy(buffer + int_size + feature.size(), &id, id_size);
   } else {
-    memcpy(buffer + int_size, &id, id_size);
+    memcpy(buffer, &feat_num, sizeof(int));
   }
 }
-void GraphNode::recover_from_buffer(char* buffer) {
-  int size;
-  memcpy(&size, buffer, int_size);
-  int feature_size = size - id_size - int_size;
-  char str[feature_size + 1];
-  memcpy(str, buffer + int_size, feature_size);
-  str[feature_size] = '\0';
-  feature = str;
-  memcpy(&id, buffer + int_size + feature_size, id_size);
-  // int int_state;
-  // memcpy(&int_state, buffer + int_size + feature_size + id_size, enum_size);
-  // type = GraphNodeType(int_state);
+void FeatureNode::recover_from_buffer(char* buffer) {
+
+  int size, feat_num, feat_len;
+  memcpy(&size, buffer, sizeof(int));
+
+  buffer += sizeof(int);
+  memcpy(&id, buffer, id_size);
+  buffer += id_size;
+  
+  memcpy(&feat_num, buffer, sizeof(int));
+  buffer += sizeof(int);
+  
+  feature.clear();
+
+  for (int i = 0; i < feat_num; ++i) {
+    memcpy(&feat_len, buffer, sizeof(int));
+    buffer += sizeof(int);
+
+    char str[feat_len + 1];
+    memcpy(str, buffer, feat_len);
+    buffer += feat_len;
+    str[feat_len] = '\0';
+    feature.push_back(std::string(str));
+  }
+
 }
 }
 }
