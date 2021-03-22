@@ -202,7 +202,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     int iwo_groups = groups;
     int c_groups = 1;
-#if CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
     iwo_groups = 1;
     c_groups = groups;
     groups = 1;
@@ -452,7 +452,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
     int iwo_groups = groups;
     int c_groups = 1;
-#if CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
     iwo_groups = 1;
     c_groups = groups;
     groups = 1;
