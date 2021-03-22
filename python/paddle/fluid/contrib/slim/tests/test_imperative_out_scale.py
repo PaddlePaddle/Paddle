@@ -494,8 +494,10 @@ class TestSaveQuantizedModel_Warning(unittest.TestCase):
                         shape=[None, 1, 28, 28], dtype='float32')
                 ])
 
-        warning_message = "Warning: No Layer of the model while to be saved contains the out_threshold attribute, " \
-                "so the generated inference model would not contain the out_threshold."
+        warning_message = "Warning: No Layer of the model while to be " \
+                          "saved contains the out_threshold attribute, so the " \
+                          "generated inference model would not contain the " \
+                          "out_threshold."
         num = get_vaild_warning_num(warning_message, w)
         assert num == 1
 
