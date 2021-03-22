@@ -48,22 +48,26 @@ class AffineChannelOpConverter : public OpConverter {
     auto idim = input_tensor->getDimensions();
 
     auto* scale_v = scope.FindVar(scale_name);
-    std::cerr << "find scale_v" << std::endl;
-    auto* scale_t = scale_v->GetMutable<framework::Tensor>();
-    std::cerr << "find scale_t" << std::endl;
+    auto* scale_t = scale_v->GetMutable<framework::LoDTensor>();
     float* scale_ptr = engine_->GetWeightCPUData(scale_name, scale_t, false);
 
     auto* bias_v = scope.FindVar(bias_name);
-    std::cerr << "find bias_v" << std::endl;
-    auto* bias_t = bias_v->GetMutable<framework::Tensor>();
-    std::cerr << "find bias_t" << std::endl;
+    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
     float* bias_ptr = engine_->GetWeightCPUData(bias_name, bias_t, false);
 
     auto data_layout = framework::StringToDataLayout(
         BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
 
-    const int channel_axis = engine_->with_dynamic_shape() +
-                             (data_layout == framework::DataLayout::kNHWC) * 2;
+    PADDLE_ENFORCE_EQ(
+        data_layout, framework::DataLayout::kNCHW,
+        platform::errors::InvalidArgument(
+            "TensorRT affine channel converter can only convert NCHW format. "
+            "Other format should be run in fluid mode. Report a bug on github "
+            "issue if you see this line."));
+
+    // tensorrt scalend layer only support spatial dims >= 2,
+    // so nhwc is not availabe (spatial dims == 0)
+    const int channel_axis = engine_->with_dynamic_shape();
 
     TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
                                          static_cast<void*>(scale_ptr),

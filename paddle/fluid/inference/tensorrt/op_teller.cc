@@ -198,9 +198,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
-        return false;
+      if (data_layout != framework::DataLayout::kNCHW) return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
