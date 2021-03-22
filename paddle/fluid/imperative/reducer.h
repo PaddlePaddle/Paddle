@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -189,6 +190,8 @@ class Reducer {
   bool has_marked_unused_vars_{false};
   bool find_unused_vars_{false};
   bool all_group_ready_{false};
+  std::atomic<int> error_state;
+  framework::details::ExceptionHolder exception_;
 #ifdef PADDLE_WITH_XPU_BKCL
   // comm_pool_ is used for scheduling allreduce in multi Kunlun cards training.
   std::unique_ptr<::ThreadPool> comm_pool_{nullptr};
