@@ -33,19 +33,20 @@ class TRTAffineChannelTest(InferencePassTest):
                 shape = [-1, self.hw[0], self.hw[1], self.channel]
 
             data = fluid.data(name='data', shape=shape, dtype='float32')
-            scale = fluid.data(
-                name='scale', shape=[self.channel], dtype='float32')
-            bias = fluid.data(
-                name='bias', shape=[self.channel], dtype='float32')
+            # scale, bias by constant
+            scale = fluid.layers.create_parameter(
+                shape=[self.channel],
+                dtype='float32',
+                default_initializer=fluid.initializer.Constant(2.))
+            bias = fluid.layers.create_parameter(
+                shape=[self.channel],
+                dtype='float32',
+                default_initializer=fluid.initializer.Constant(.5))
             affine_channel_out = self.append_affine_channel(data, scale, bias)
             out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
-        self.feeds = {
-            'data': np.random.random(shape).astype('float32'),
-            'scale': np.random.random([self.channel]).astype('float32'),
-            'bias': np.random.random([self.channel]).astype('float32'),
-        }
+        self.feeds = {'data': np.random.random(shape).astype('float32'), }
         self.enable_trt = True
         self.trt_parameters = TRTAffineChannelTest.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
