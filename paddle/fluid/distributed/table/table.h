@@ -90,7 +90,8 @@ class Table {
   // only for graph table
   virtual int32_t pull_graph_list(int start, int total_size,
                                   std::unique_ptr<char[]> &buffer,
-                                  int &actual_size, bool need_feature) {
+                                  int &actual_size, bool need_feature,
+                                  int step = 1) {
     return 0;
   }
   // only for graph table

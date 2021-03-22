@@ -45,7 +45,7 @@ class GraphShard {
     // bucket.resize(bucket_size);
   }
   std::vector<GraphNode *> &get_bucket() { return bucket; }
-  std::vector<GraphNode *> get_batch(int start, int total_size);
+  std::vector<GraphNode *> get_batch(int start, int end, int step);
   // int init_bucket_size(int shard_num) {
   //   for (int i = bucket_low_bound;; i++) {
   //     if (gcd(i, shard_num) == 1) return i;
@@ -78,7 +78,8 @@ class GraphTable : public SparseTable {
   virtual ~GraphTable() {}
   virtual int32_t pull_graph_list(int start, int size,
                                   std::unique_ptr<char[]> &buffer,
-                                  int &actual_size, bool need_feature);
+                                  int &actual_size, bool need_feature,
+                                  int step);
 
   virtual int32_t random_sample_neighboors(
       uint64_t *node_ids, int sample_size,
