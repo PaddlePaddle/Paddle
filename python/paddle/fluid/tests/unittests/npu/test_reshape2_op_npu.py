@@ -56,10 +56,7 @@ class TestReshape2(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X'],
-            'Out',
-            max_relative_error=0.007,
-            check_dygraph=False)
+            self.place, ['X'], 'Out', check_dygraph=False)
 
 
 class TestReshape2_case2(TestReshape2):
