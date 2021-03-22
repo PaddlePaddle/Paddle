@@ -191,23 +191,23 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                     static_cast<size_t>(bias_t->numel())};
 
         // add shuffle before fc
-        nvinfer1::Dims before_reshape_dim;
-        before_reshape_dim.nbDims = 5;
-        before_reshape_dim.d[0] = 0;
-        before_reshape_dim.d[1] = 0;
-        before_reshape_dim.d[2] = 0;
-        before_reshape_dim.d[3] = 1;
-        before_reshape_dim.d[4] = 1;
-        auto* before_reshape_layer =
+        nvinfer1::Dims reshape_before_fc_dim;
+        reshape_before_fc_dim.nbDims = 5;
+        reshape_before_fc_dim.d[0] = 0;
+        reshape_before_fc_dim.d[1] = 0;
+        reshape_before_fc_dim.d[2] = 0;
+        reshape_before_fc_dim.d[3] = 1;
+        reshape_before_fc_dim.d[4] = 1;
+        auto* reshape_before_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-        before_reshape_layer->setReshapeDimensions(before_reshape_dim);
-        before_reshape_layer->setName(
-            ("multihead_mamul_before_shuffle(Output: " + output_name + ")")
+        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+        reshape_before_fc_layer->setName(
+            ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
                 .c_str());
 
         // add layer fc
         auto* fc_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *before_reshape_layer->getOutput(0), n,
+            engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0), n,
             weight.get(), bias.get());
         fc_layer->setName(
             ("multihead_mamul_fc(Output: " + output_name + ")").c_str());

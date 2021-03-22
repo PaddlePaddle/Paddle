@@ -155,58 +155,59 @@ class FcOpConverter : public OpConverter {
       if (x_dim.nbDims == 3 || x_dim.nbDims == 2) {
         auto output_name = op_desc.Output("Out").front();
         // add shuffle before fc
-        nvinfer1::Dims before_reshape_dim;
-        before_reshape_dim.nbDims = x_dim.nbDims + 2;
+        nvinfer1::Dims reshape_before_fc_dim;
+        reshape_before_fc_dim.nbDims = x_dim.nbDims + 2;
         for (int i = 0; i < x_dim.nbDims; i++) {
-          before_reshape_dim.d[i] = 0;
+          reshape_before_fc_dim.d[i] = 0;
         }
-        before_reshape_dim.d[x_dim.nbDims] = 1;
-        before_reshape_dim.d[x_dim.nbDims + 1] = 1;
-        auto* before_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
-        before_reshape_layer->setReshapeDimensions(before_reshape_dim);
-        before_reshape_layer->setName(
-            ("fc_before_shuffle(Output: " + output_name + ")").c_str());
+        reshape_before_fc_dim.d[x_dim.nbDims] = 1;
+        reshape_before_fc_dim.d[x_dim.nbDims + 1] = 1;
+        auto* reshape_before_fc_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+        reshape_before_fc_layer->setName(
+            ("shuffle_before_fc(Output: " + output_name + ")").c_str());
 
         // add fc layer
         auto* fc_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *before_reshape_layer->getOutput(0),
+            engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
             n_output, weight.get(), bias.get());
         fc_layer->setName(("fc_layer(Output: " + output_name + ")").c_str());
 
         // add shuffle after fc
-        nvinfer1::Dims after_reshape_dim;
+        nvinfer1::Dims reshape_after_fc_dim;
         if (x_dim.nbDims == 3) {
           if (x_num_col_dims == 2) {
-            after_reshape_dim.nbDims = 3;
-            after_reshape_dim.d[0] = 0;
-            after_reshape_dim.d[1] = 0;
-            after_reshape_dim.d[2] = 0;
+            reshape_after_fc_dim.nbDims = 3;
+            reshape_after_fc_dim.d[0] = 0;
+            reshape_after_fc_dim.d[1] = 0;
+            reshape_after_fc_dim.d[2] = 0;
           } else {
-            after_reshape_dim.nbDims = 2;
-            after_reshape_dim.d[0] = 0;
+            reshape_after_fc_dim.nbDims = 2;
+            reshape_after_fc_dim.d[0] = 0;
             auto dim = fc_layer->getOutput(0)->getDimensions();
-            after_reshape_dim.d[1] = dim.d[1] * dim.d[2];
+            reshape_after_fc_dim.d[1] = dim.d[1] * dim.d[2];
           }
           // x_dim.nbDims == 2
         } else {
-          after_reshape_dim.nbDims = 2;
-          after_reshape_dim.d[0] = 0;
-          after_reshape_dim.d[1] = 0;
+          reshape_after_fc_dim.nbDims = 2;
+          reshape_after_fc_dim.d[0] = 0;
+          reshape_after_fc_dim.d[1] = 0;
         }
-        auto* after_reshape_layer =
+        auto* reshape_after_fc_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
-        after_reshape_layer->setReshapeDimensions(after_reshape_dim);
-        after_reshape_layer->setName(
-            ("fc_after_shuffle(Output: " + output_name + ")").c_str());
+        reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
 
         if (activation_type == "relu") {
+          reshape_after_fc_layer->setName(
+              ("shuffle_after_fc(Output: " + output_name + ")").c_str());
           nvinfer1::IActivationLayer* relu_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(after_reshape_layer->getOutput(0)),
+              engine_, Activation, *(reshape_after_fc_layer->getOutput(0)),
               nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer, "fc_after_relu", {output_name},
-                                   test_mode);
+          RreplenishLayerAndOutput(relu_layer, "relu_after_fc_shuffle",
+                                   {output_name}, test_mode);
         } else {
-          RreplenishLayerAndOutput(after_reshape_layer, "fc_after_shuffle",
+          RreplenishLayerAndOutput(reshape_after_fc_layer, "shuffle_after_fc",
                                    {output_name}, test_mode);
         }
       } else {
