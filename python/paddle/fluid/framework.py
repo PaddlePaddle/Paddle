@@ -877,7 +877,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
+                temp_out = var.block.create_var(dtype='int64')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
@@ -2121,7 +2121,8 @@ class Operator(object):
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
-        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
+        'c_wait_comm', 'c_wait_compute'
     }
 
     def __init__(self,
