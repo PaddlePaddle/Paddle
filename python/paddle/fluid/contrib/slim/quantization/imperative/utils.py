@@ -83,26 +83,3 @@ quant_output_layers_map = {
     'Tanh': paddle.nn.Tanh,
     'Swish': paddle.nn.Swish,
 }
-
-quant_output_layers_in_static = [
-    "conv2d",
-    "depthwise_conv2d",
-    "conv2d_transpose",
-    "matmul",
-    "adaptive_pool2d",
-    "pool2d",
-    "batch_norm",
-    "group_norm",
-    "instance_norm",
-    "layer_norm",
-    "elu",
-    "gelu",
-    "leaky_relu",
-    "prelu",
-    "relu",
-    "relu6",
-    "sigmoid",
-    "softmax",
-    "tanh",
-    "swish",
-]

@@ -371,6 +371,9 @@ class ImperativeCalcOutputScale(object):
         """
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
+
+        # Calculate the target ops's output scale, and don't consider
+        # the skip_quant attr
         for _, layer in model.named_sublayers():
             if self._is_target_layer(layer):
                 self._init_scale_params(layer)
@@ -446,6 +449,9 @@ class ImperativeCalcOutputScale(object):
                 executor=exe,
                 model_filename=model_filename,
                 params_filename=params_filename))
+
+        # TODO(jc): analyse whether the dygraph model has
+        # several blocks before applying qat
         assert infer_program.num_blocks == 1, \
             "Quantization aware training (QAT) requires the program " \
             "only has a block for now. When the model has if-else or " \
@@ -496,20 +502,21 @@ class ImperativeCalcOutputScale(object):
         assert infer_program.num_blocks == 1, \
             "The inference program should only have a block."
 
-        target_ops = []
         global_block = infer_program.global_block()
-        for op in global_block.ops:
-            if op.type in utils.quant_output_layers_in_static:
-                target_ops.append(op)
+        target_ops = global_block.ops
 
         scale_idx = 0
         op_idx = 0
         attr_name = "out_threshold"
+
         for scale_name, scale_value in self._out_scale_dict.items():
+            print('---scale_name', scale_name, 'scale_value', str(scale_value))
             while True:
                 if op_idx >= len(target_ops):
                     break
+
                 op = target_ops[op_idx]
+                print('op_type', op.type)
 
                 if not self._is_scale_op_matched(scale_name, op, global_block):
                     op_idx += 1
@@ -517,22 +524,23 @@ class ImperativeCalcOutputScale(object):
                     # Conv2d and linear in dygraph model maybe corresponds to 
                     # conv2d/matmul + elementwise_add. If the next op is
                     # elementwise_add, save the output scale to elementwise_add.
-                    if op.type in ["conv2d", "depthwise_conv2d", "matmul"]:
-                        if op_idx + 1 < len(target_ops) \
-                            and target_ops[op_idx+1].type == "elementwise_add":
-                            target_ops[op_idx + 1]._set_attr(attr_name,
-                                                             scale_value)
-                            op_idx += 2
-
-                    op._set_attr(attr_name, scale_value)
-                    op_idx += 1
+                    weight_ops = ["conv2d", "depthwise_conv2d", "matmul"]
+                    if op.type in weight_ops and op_idx + 1 < len(target_ops) \
+                        and target_ops[op_idx+1].type == "elementwise_add":
+                        target_ops[op_idx + 1]._set_attr(attr_name, scale_value)
+                        op_idx += 2
+                        print('set elementwise_add')
+                    else:
+                        op._set_attr(attr_name, scale_value)
+                        op_idx += 1
+                        print('set', op.type)
                     scale_idx += 1
                     break
 
         if scale_idx != len(self._out_scale_dict):
             warnings.warn("Warning: the model have {} output scales, "\
                 "but it only saves {} output scales." \
-                % (scale_idx, scale_idx, len(self._out_scale_dict)))
+                % (len(self._out_scale_dict)), scale_idx)
 
     def _is_target_layer(self, layer):
         return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
@@ -576,26 +584,35 @@ class ImperativeCalcOutputScale(object):
 
     def _is_scale_op_matched(self, scale_name, op, block):
         """
-        Judge whether the op in program matches the scale name
+        Based on the op name and attrs to judge whether the op in
+        program matches the scale_name. We must know the corresponding
+        name between dgraph and static model.
         """
         fp_type = [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]
-        output_var_names = quantization_pass._get_op_output_var_names(op)
-        for output_var_name in output_var_names:
-            output_var_tensor = block.var(output_var_name)
-            if output_var_tensor.dtype not in fp_type:
-                return False
+        if op.type in quantization_pass._op_real_in_out_name.keys():
+            output_var_names = quantization_pass._get_op_output_var_names(op)
+            for output_var_name in output_var_names:
+                output_var_tensor = block.var(output_var_name)
+                if output_var_tensor.dtype not in fp_type:
+                    return False
 
-        # Because the naming styles of static and dynamic graph are different,
-        # in order to avoid mistakes, we unify the name here.
-        op_type = output_var_names[0].split(".")[0]
-        op_type = op_type.rsplit("_", 1)[0]
-        if op_type == 'depthwise_conv2d':
-            op_type = 'conv2d'
-        if 'prelu' in op_type:
-            op_type = op_type.replace('prelu', 'p_re_lu')
-        if 'relu' in op_type:
-            op_type = op_type.replace('relu', 're_lu')
-        return op_type in scale_name
+        # Note that, the items have priority in corresponding_dict
+        corresponding_dict = {
+            'conv2d_tranpose': [['conv2d_tranpose'], None],
+            'conv2d': [['conv2d', 'depthwise_conv2d'], None],
+            'linear': [['matmul'], None],
+            're_lu6': [['relu6'], None],
+            'p_re_lu': [['prelu'], None],
+            'leaky_re_lu': [['leaky_relu'], None],
+            're_lu': [['relu'], None],
+        }
+
+        for key, value in corresponding_dict.items():
+            if key in scale_name:
+                return (op.type in value[0]) and \
+                    (len(value) == 1 or value[1] is None or value[1](op))
+
+        return op.type in scale_name
 
     def _set_skip_quant_attr(self, program):
         block = program.global_block()
