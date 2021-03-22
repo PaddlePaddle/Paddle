@@ -179,6 +179,7 @@ packages=['paddle',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
+          'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
@@ -453,15 +454,12 @@ class InstallHeaders(Command):
 
     def copy_data_type_headers(self, header):
         if os.name == 'nt':
-            data_type_headers = ['platform\\complex64.h', 'platform\\complex128.h']
+            data_type_headers = ['platform\\complex64.h', 'platform\\complex128.h', 'platform\\float16.h']
         else:
-            data_type_headers = ['platform/complex64.h', 'platform/complex128.h']
+            data_type_headers = ['platform/complex64.h', 'platform/complex128.h', 'platform/float16.h']
         for dtype_header in data_type_headers:
             if dtype_header in header:
-                if os.name == 'nt':
-                    install_dir = os.path.join(self.install_dir, "paddle\\fluid\\extension\\include")
-                else:
-                    install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
+                install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
                 if not os.path.exists(install_dir):
                     self.mkpath(install_dir)
                 return self.copy_file(header, install_dir)

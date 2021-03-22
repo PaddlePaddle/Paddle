@@ -60,6 +60,8 @@ class CustomTensorUtils {
         return framework::proto::VarType::COMPLEX64;
       case paddle::DataType::COMPLEX128:
         return framework::proto::VarType::COMPLEX128;
+      case paddle::DataType::FLOAT16:
+        return framework::proto::VarType::FP16;
       case paddle::DataType::BOOL:
         return framework::proto::VarType::BOOL;
       default:
@@ -91,6 +93,8 @@ class CustomTensorUtils {
         return paddle::DataType::COMPLEX64;
       case framework::proto::VarType::COMPLEX128:
         return paddle::DataType::COMPLEX128;
+      case framework::proto::VarType::FP16:
+        return paddle::DataType::FLOAT16;
       case framework::proto::VarType::BOOL:
         return paddle::DataType::BOOL;
       default:
