@@ -357,7 +357,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                     "diff({}) at {}, dynamic loss = {}, static loss = {}".
                     format(diff, i, loss_d, loss_s))
                 break
-        '''
         self.assertTrue(
             np.allclose(
                 np.array(dynamic_loss_rec),
@@ -366,7 +365,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                 atol=atol,
                 equal_nan=True),
             msg='Failed to do the imperative qat.')
-        '''
 
         # load dynamic model
         [dynamic_inference_program, feed_target_names, fetch_targets] = (

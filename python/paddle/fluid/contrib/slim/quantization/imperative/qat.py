@@ -455,7 +455,7 @@ class ImperativeCalcOutputScale(object):
         self._save_output_scale(infer_program)
 
         # process skip quant
-        self._set_skip_quant_attr(inference_program)
+        self._set_skip_quant_attr(infer_program)
 
         # save the final quantized model that has output scales
         save_inference_model(
