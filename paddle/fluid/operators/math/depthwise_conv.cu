@@ -675,37 +675,38 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
     const int padding_height, const int padding_width, const int dilate_height,
     const int dilate_width, T* filter_grad_data,
     const DataLayout data_layout = DataLayout::kNCHW) {
+  int bid = blockIdx.z;
   int image_h = blockIdx.y;
+  int kernel_iw = blockIdx.x % filter_width;
+  int kernel_ih = blockIdx.x / filter_width;
   for (int kernel_id = threadIdx.x; kernel_id < output_channels;
        kernel_id += blockDim.x) {
     T s = 0;
     int gbid =
-        ((kernel_id * filter_height) + blockIdx.z) * filter_width + blockIdx.x;
-    for (int bid = 0; bid < num; bid++) {
-      for (int image_w = threadIdx.y; image_w < output_width;
-           image_w += blockDim.y) {
-        int kernel_h = blockIdx.z * dilate_height - padding_height;
-        int kernel_w = blockIdx.x * dilate_width - padding_width;
+        ((kernel_id * filter_height) + kernel_ih) * filter_width + kernel_iw;
+    for (int image_w = threadIdx.y; image_w < output_width;
+         image_w += blockDim.y) {
+      int kernel_h = kernel_ih * dilate_height - padding_height;
+      int kernel_w = kernel_iw * dilate_width - padding_width;
 
-        int image_hk = image_h * stride_height + kernel_h;
-        int image_wk = image_w * stride_width + kernel_w;
-        if (image_hk < 0 || image_hk >= input_height) continue;
-        if (image_wk < 0 || image_wk >= input_width) continue;
+      int image_hk = image_h * stride_height + kernel_h;
+      int image_wk = image_w * stride_width + kernel_w;
+      if (image_hk < 0 || image_hk >= input_height) continue;
+      if (image_wk < 0 || image_wk >= input_width) continue;
 #define gaid(N, H, W, C) \
   ((((N)*output_height + (H)) * output_width + (W)) * output_channels + (C))
-        int input_id =
-            ((bid * input_height + image_hk) * input_width + image_wk) *
-                input_channels +
-            kernel_id / filter_multiplier;
-        if (fuse_relu_before_conv) {
-          s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-               max(0.0f, input_data[input_id]);
-        } else {
-          s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-               input_data[input_id];
-        }
-#undef gaid
+      int input_id =
+          ((bid * input_height + image_hk) * input_width + image_wk) *
+              input_channels +
+          kernel_id / filter_multiplier;
+      if (fuse_relu_before_conv) {
+        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
+             max(0.0f, input_data[input_id]);
+      } else {
+        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
+             input_data[input_id];
       }
+#undef gaid
     }
     platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
   }
@@ -829,13 +830,25 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
       threads = dim3(std::min(output_width, thread), blocks, 1);
       grid = dim3(output_channels, batch_size, 1);
     } else {
-      if (output_channels > 1024 && output_channels <= 2048) {
-        thread = (output_channels - 1) / 2 + 1;
-      } else if (output_channels > 512 && output_channels <= 1024) {
-        thread = output_channels;
+      if (dilate_width > 1 && dilate_width <= thread) {
+        thread = 1024;
+        blocks = dilate_width;
+        thread = thread / blocks;
+        if (thread >= output_channels) {
+          thread = output_channels;
+        } else if (thread > 32) {
+          thread = (thread / 32) * 32;
+        }
+      } else {
+        if (output_channels > 1024 && output_channels <= 2048) {
+          thread = (output_channels - 1) / 2 + 1;
+        } else if (output_channels > 512 && output_channels <= 1024) {
+          thread = output_channels;
+        }
+        blocks = std::min(std::max(thread / output_channels, 1), output_width);
+        thread = std::min(output_channels, thread);
       }
-      blocks = std::min(std::max(thread / output_channels, 1), output_width);
-      threads = dim3(std::min(output_channels, thread), blocks, 1);
+      threads = dim3(thread, blocks, 1);
       grid = dim3((output_height + dilate_height - 1) / dilate_height,
                   dilate_height, batch_size);
     }
@@ -959,13 +972,25 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T,
       threads = dim3(std::min(input_width, thread), blocks, 1);
       grid = dim3(input_channels, batch_size, 1);
     } else {
-      if (input_channels > 1024 && input_channels <= 2048) {
-        thread = (input_channels - 1) / 2 + 1;
-      } else if (input_channels > 512 && input_channels <= 1024) {
-        thread = input_channels;
+      if (dilate_width > 1 && dilate_width <= thread) {
+        thread = 1024;
+        blocks = dilate_width;
+        thread = thread / blocks;
+        if (thread >= input_channels) {
+          thread = input_channels;
+        } else if (thread > 32) {
+          thread = (thread / 32) * 32;
+        }
+      } else {
+        if (input_channels > 1024 && input_channels <= 2048) {
+          thread = (input_channels - 1) / 2 + 1;
+        } else if (input_channels > 512 && input_channels <= 1024) {
+          thread = input_channels;
+        }
+        blocks = std::min(std::max(thread / input_channels, 1), input_width);
+        thread = std::min(input_channels, thread);
       }
-      blocks = std::min(std::max(thread / input_channels, 1), input_width);
-      threads = dim3(std::min(input_channels, thread), blocks, 1);
+      threads = dim3(thread, blocks, 1);
       grid = dim3((input_height + dilate_height - 1) / dilate_height,
                   dilate_height, batch_size);
     }
@@ -1069,7 +1094,7 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
       }
       blocks =
           std::min(std::max(block_size / output_channels, 1), output_width);
-      grid = dim3(ksize_width, output_height, ksize_height);
+      grid = dim3(ksize_width * ksize_height, output_height, batch_size);
       threads = dim3(std::min(output_channels, block_size), blocks, 1);
     }
     int filter_multiplier = output_channels / input_channels;
