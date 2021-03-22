@@ -38,6 +38,7 @@ from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 from paddle.utils import deprecated
 
+
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
@@ -1112,7 +1113,6 @@ def ctc_loss(log_probs,
         loss_out = paddle.sum(loss_out)
     return loss_out
 
-
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
 def softmax_with_cross_entropy(logits,
                                label,
@@ -1121,19 +1121,14 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
-    r"""
-    
-    ..warning:
-        This operator is deprecated since paddlepaddle 2.0.0, and it's updated to 
-        paddle.nn.functional.cross_entropy. We will remove softmax_with_cross_entropy 
-        in the future.
-        
-
-    """
-    return fluid_softmax_with_cross_entropy(logits, label, soft_label,
-                                            ignore_index, numeric_stable_mode,
-                                            return_softmax, axis)
-
+    return fluid_softmax_with_cross_entropy(logits,
+                                            label,
+                                            soft_label,
+                                            ignore_index,
+                                            numeric_stable_mode,
+                                            return_softmax,
+                                            axis)
+ 
 
 def cross_entropy(input,
                   label,
@@ -1142,6 +1137,7 @@ def cross_entropy(input,
                   reduction='mean',
                   soft_label=False,
                   axis=-1,
+                  softmax_switch=True,
                   name=None):
     r"""
     This operator implements the cross entropy loss function with softmax. This function 
@@ -1332,6 +1328,12 @@ def cross_entropy(input,
             "The value of 'reduction' in softmax_cross_entropy"
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
+    if ignore_index > 0 and soft_label == True:
+        raise ValueError(
+            "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
+            "should be '-100', but received %s, which is not allowed."
+            % ignore_index)
+ 
     input_dims = len(list(input.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
@@ -1346,13 +1348,32 @@ def cross_entropy(input,
             label,
             soft_label=soft_label,
             ignore_index=ignore_index,
+            softmax_switch=softmax_switch,
             axis=axis)
         if weight is not None:
-            weight_gather = core.ops.gather_nd(
-                weight, label)  #trans weight from class to sample, shape:N
-            input_shape = list(label.shape)
-            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
-            out = core.ops.elementwise_mul(out, weight_gather_reshape)
+
+            #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            if soft_label == True:
+                # chajchaj:
+                # weight's shape is C, where C is class num.
+                # for 1d case: label's shape is [N,C], weight_gather's shape is N.
+                # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
+                weight_gather = paddle.matmul(x=paddle.cast(label, weight.dtype),
+                                              y=weight, 
+                                              transpose_x=False, 
+                                              transpose_y=True)
+                out_shape = list(out.shape)
+                weight_gather_reshape = reshape(weight_gather, shape=out_shape)
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+                out = core.ops.elementwise_mul(out, weight_gather_reshape)
+
+            else:
+                weight_gather = core.ops.gather_nd(
+                    weight, label)  
+                input_shape = list(label.shape)
+                weight_gather_reshape = reshape(weight_gather, shape=input_shape)
+                out = paddle.cast(out, weight_gather_reshape.dtype)
+                out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
         if reduction == "sum":
             #   because of fluid_softmax_with_cross_entropy op's inner logic, 
@@ -1372,7 +1393,7 @@ def cross_entropy(input,
                 #mask[i]=0, if label[i]==ignore_index
                 #mask[i]=1, otherwise 
                 mask = (label != ignore_index)
-                if (weight is None):
+                if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = core.ops.reduce_sum(mask, 'reduce_all', True)
                     ret = out_sum / count
@@ -1407,16 +1428,33 @@ def cross_entropy(input,
         label,
         soft_label=soft_label,
         ignore_index=ignore_index,
+        softmax_switch=softmax_switch,
         axis=axis)
     if weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
         weight_name = name if reduction == 'none' else None
-        weight_gather = paddle.gather_nd(
-            weight, label)  #trans weight from class to sample, shape:N
-        input_shape = list(label.shape)
-        weight_gather_reshape = reshape(weight_gather, shape=input_shape)
+        if soft_label == True:
+            # chajchaj:
+            #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
+            # weight's shape is C, where C is class num.
+            # for 1d case: label's shape is [N,C], weight_gather's shape is N.
+            # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
+            weight_gather = paddle.matmul(x=paddle.cast(label, weight.dtype),
+                                          y=weight, 
+                                          transpose_x=False, 
+                                          transpose_y=True)
+
+            out_shape = list(out.shape)
+            weight_gather_reshape = reshape(weight_gather, shape=out_shape)
+            out = paddle.cast(out, weight_gather_reshape.dtype)
+        else:
+            weight_gather = paddle.gather_nd(
+                weight, label)  #trans weight from class to sample, shape:N
+            input_shape = list(label.shape)
+            weight_gather_reshape = reshape(weight_gather, shape=input_shape)
         out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
+
 
     if reduction == "sum":
         return paddle.sum(out, name=name)
