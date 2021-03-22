@@ -141,17 +141,6 @@ void BasicEngine::PrepareGradAccumulators(
                 << var.get()
                 << ") that don't have grad node  with reference count "
                 << accumulator->RefCnt();
-
-        if (var->HasLeafHooks()) {
-          VLOG(3) << "Grad variable wrapper (" << var->Name()
-                  << ") has leaf grad hooks.";
-          PADDLE_ENFORCE_NE(
-              var->HasGradNode(), true,
-              platform::errors::PermissionDenied(
-                  "Only leaf Tensor's gradient can append hook to "
-                  "Gradientaccumulator."));
-          accumulator->SetPostHooks(var->GetLeafHooks());
-        }
       } else {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
@@ -434,9 +423,7 @@ void BasicEngine::Execute() {
         accumulator->AccumulateGrad();
 
         // 3. Call backward Hooks for **var_**
-        if (accumulator->HasPostHooks()) {
-          accumulator->CallBackwardPostHooks();
-        }
+        accumulator->CallReduceHooks();
       }
 
       need_accu_var_list_.clear();

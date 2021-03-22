@@ -74,16 +74,15 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   mul_attr_map["use_mkldnn"] = false;
 
   // add GradAccumulatorPostHook
-  auto x_var_wrapper = x->SharedVar();
-  x_var_wrapper->AddGradVarLeafBackwardHook(
-      std::unique_ptr<LambdaGradAccumulatorPostHook>(
-          new LambdaGradAccumulatorPostHook([=](VariableWrapper* grad) {
+  x->GradVarBase()->AddReduceHook(
+      std::make_shared<LambdaInplaceVariableWrapperHook>(
+          [=](VariableWrapper* grad) {
             auto* grad_tensor =
                 grad->MutableVar()->GetMutable<framework::LoDTensor>();
             for (int i = 0; i < grad_tensor->numel(); ++i) {
               grad_tensor->mutable_data<float>(place)[i] *= 2.0;
             }
-          })));
+          }));
 
   // 2. forward
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
@@ -151,17 +150,16 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   memory::Copy(place, mutable_z, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  // add GradAccumulatorPostHook
-  auto x_var_wrapper = x->SharedVar();
-  x_var_wrapper->AddGradVarLeafBackwardHook(
-      std::unique_ptr<LambdaGradAccumulatorPostHook>(
-          new LambdaGradAccumulatorPostHook([=](VariableWrapper* grad) {
+  // add ReduceBackwardHook
+  x->GradVarBase()->AddReduceHook(
+      std::make_shared<LambdaInplaceVariableWrapperHook>(
+          [=](VariableWrapper* grad) {
             auto* grad_tensor =
                 grad->MutableVar()->GetMutable<framework::LoDTensor>();
             for (int i = 0; i < grad_tensor->numel(); ++i) {
               grad_tensor->mutable_data<float>(place)[i] *= 2.0;
             }
-          })));
+          }));
 
   // 2. forward
   var_pair x_pair = var_pair("X", vb_vector(1, x));

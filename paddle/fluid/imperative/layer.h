@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
@@ -219,6 +220,16 @@ class VarBase {
   void CopyFrom(const imperative::VarBase& src, bool blocking);
 
   void BumpInplaceVersion();
+
+  /* Hook related method: only can be call by GradVarBase */
+  void AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    var_->AddHook(std::forward<std::shared_ptr<VariableWrapperHook>>(hook));
+  }
+
+  void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
+    var_->AddReduceHook(
+        std::forward<std::shared_ptr<InplaceVariableWrapperHook>>(hook));
+  }
 
  private:
   /**

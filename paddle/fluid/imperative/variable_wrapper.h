@@ -27,8 +27,8 @@
 namespace paddle {
 namespace imperative {
 
-class InteriorVarHookPipeline;
-class LeafVarHookPipeline;
+class VariableWrapperHook;
+class InplaceVariableWrapperHook;
 class VarBase;
 class GradOpNode;
 
@@ -193,42 +193,6 @@ class VariableWrapper {
     }
   }
 
-  /* Hook related method: only can be call by GradVarBase */
-
-  bool HasInteriorHooks() const { return interior_hooks_ != nullptr; }
-
-  bool HasLeafHooks() const { return leaf_hooks_ != nullptr; }
-
-  void AddGradVarInteriorHook(std::unique_ptr<OpBasePreHook>&& hook) {
-    auto interior_hooks = GetGradVarInteriorHooksSafely();
-    interior_hooks->add_hook(std::move(hook));
-  }
-
-  void AddGradVarLeafHook(std::unique_ptr<GradAccumulatorPostHook>&& hook) {
-    auto leaf_hooks = GetGradVarLeafHooksSafely();
-    leaf_hooks->add_hook(std::move(hook));
-  }
-
-  void AddGradVarLeafBackwardHook(
-      std::unique_ptr<GradAccumulatorPostHook>&& hook) {
-    auto leaf_hooks = GetGradVarLeafHooksSafely();
-    leaf_hooks->add_backward_hook(std::move(hook));
-  }
-
-  const std::shared_ptr<InteriorVarHookPipeline>& GetInteriorHooks() const {
-    return interior_hooks_;
-  }
-
-  std::shared_ptr<InteriorVarHookPipeline>& GetInteriorHooks() {
-    return interior_hooks_;
-  }
-
-  const std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() const {
-    return leaf_hooks_;
-  }
-
-  std::shared_ptr<LeafVarHookPipeline>& GetLeafHooks() { return leaf_hooks_; }
-
   uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
 
   void ResetInplaceVersion() {
@@ -253,6 +217,34 @@ class VariableWrapper {
                      std::shared_ptr<VariableWrapper> val) {
     var_cache[key] = val;
     return;
+  }
+
+  /* Hook related methods */
+  bool HasHook() const { return !hooks_.empty(); }
+
+  bool HasReduceHook() const { return !reduce_hooks_.empty(); }
+
+  void AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    // PADDLE_ENFORCE_NOT_NULL(hook,
+    //   platform::errors::InvalidArgument(
+    //     "The added backward hook for Tensor is nullptr."));
+    hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<VariableWrapperHook>>& GetHooks() const {
+    return hooks_;
+  }
+
+  void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
+    // PADDLE_ENFORCE_NOT_NULL(hook,
+    //   platform::errors::InvalidArgument(
+    //     "The added backward hook for Tensor is nullptr."));
+    reduce_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<InplaceVariableWrapperHook>>&
+  GetReduceHooks() const {
+    return reduce_hooks_;
   }
 
  private:
@@ -289,41 +281,6 @@ class VariableWrapper {
     }
   }
 
-  /* Hook related private methods */
-  std::shared_ptr<VariableWrapper> GetGradVarSafely() const {
-    auto shared_grad_var = grad_var_.lock();
-    PADDLE_ENFORCE_NOT_NULL(
-        shared_grad_var,
-        platform::errors::PermissionDenied(
-            "Cannot add gradient hook on Tensor without gradient."));
-    return shared_grad_var;
-  }
-
-  std::shared_ptr<InteriorVarHookPipeline>& GetGradVarInteriorHooksSafely() {
-    auto shared_grad_var = GetGradVarSafely();
-    PADDLE_ENFORCE_EQ(HasGradNode(), true,
-                      platform::errors::PermissionDenied(
-                          "Only interior Tensor in backward can register "
-                          "interior gradient hook."));
-    if (shared_grad_var->interior_hooks_ == nullptr) {
-      shared_grad_var->interior_hooks_ =
-          std::make_shared<InteriorVarHookPipeline>();
-    }
-    return shared_grad_var->interior_hooks_;
-  }
-
-  std::shared_ptr<LeafVarHookPipeline>& GetGradVarLeafHooksSafely() {
-    auto shared_grad_var = GetGradVarSafely();
-    PADDLE_ENFORCE_EQ(
-        HasGradNode(), false,
-        platform::errors::PermissionDenied(
-            "Only leaf Tensor in backward can register leaf gradient hook."));
-    if (shared_grad_var->leaf_hooks_ == nullptr) {
-      shared_grad_var->leaf_hooks_ = std::make_shared<LeafVarHookPipeline>();
-    }
-    return shared_grad_var->leaf_hooks_;
-  }
-
  private:
   framework::Variable var_;
   std::string name_;
@@ -358,11 +315,9 @@ class VariableWrapper {
   // isn't need
   bool is_empty_{false};
 
-  // NOTE: only grad var can hold hooks now
-  // only interior var can hold interior hooks
-  std::shared_ptr<InteriorVarHookPipeline> interior_hooks_;
-  // only leaf var can hold leaf hooks
-  std::shared_ptr<LeafVarHookPipeline> leaf_hooks_;
+  // NOTE(chenweihang): only grad var can hold hooks now
+  std::vector<std::shared_ptr<VariableWrapperHook>> hooks_;
+  std::vector<std::shared_ptr<InplaceVariableWrapperHook>> reduce_hooks_;
 };
 
 }  // namespace imperative
