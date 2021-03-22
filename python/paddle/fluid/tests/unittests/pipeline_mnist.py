@@ -110,22 +110,31 @@ class TestDistMnist2x2(TestDistRunnerBase):
         lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
         opt = fluid.optimizer.Momentum(learning_rate=lr_val, momentum=0.9)
 
-        # Reader
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-
+        acc_steps = 2  # accumulated steps for pipeline
         if dist_strategy:
+            # Reader
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=batch_size)
+            test_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=batch_size)
             fleet.init(is_collective=True)
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
-            strategy.pipeline_configs = {'micro_batch_size': batch_size, }
+            strategy.pipeline_configs = {
+                'micro_batch_size': batch_size,
+                'schedule_mode': '1F1B',
+                'accumulate_steps': acc_steps
+            }
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
+            # Reader
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=batch_size * acc_steps)
+            test_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=batch_size * acc_steps)
 
         if dist_strategy:
             return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict, data_loader
