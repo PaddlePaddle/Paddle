@@ -46,6 +46,7 @@ from . import core
 from .. import compat as cpt
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only, _current_expected_place
+from paddle.fluid.dygraph.io import _pickle_loads_mac
 
 batch = paddle.batch
 
@@ -2056,8 +2057,13 @@ def load(program, model_path, executor=None, var_list=None):
                                                    global_scope(),
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
-        load_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='latin1')
+
+        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        if sys.platform == 'darwin' and sys.version_info.major == 3:
+            load_dict = _pickle_loads_mac(parameter_file_name, f)
+        else:
+            load_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert v.name in load_dict, \

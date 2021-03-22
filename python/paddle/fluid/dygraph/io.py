@@ -46,6 +46,18 @@ PARAMETER_NAME_PREFIX = "param"
 BUFFER_NAME_PREFIX = "buffer"
 
 
+def _pickle_loads_mac(path, f):
+    pickle_bytes = bytearray(0)
+    file_size = os.path.getsize(path)
+    # with open(path, 'rb') as f:
+    max_bytes = 2**30
+    for _ in range(0, file_size, max_bytes):
+        pickle_bytes += f.read(max_bytes)
+    load_result = pickle.loads(pickle_bytes) if six.PY2 else pickle.loads(
+        pickle_bytes, encoding='latin1')
+    return load_result
+
+
 def _wherher_parse_as_tensor(obj):
     # In paddle2.1 version, VarBase is saved as tuple(var.name, var.numpy()).
     # When executing paddle.load, use this function to determine whether to restore to VarBase.

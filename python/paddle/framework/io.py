@@ -32,7 +32,7 @@ from paddle.fluid.io import _legacy_save as _legacy_static_save
 
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, _pickle_save, _wherher_parse_as_tensor
+from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, _pickle_save, _wherher_parse_as_tensor, _pickle_loads_mac
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
 __all__ = [
@@ -456,8 +456,12 @@ def load(path, **configs):
     if os.path.isfile(path):
         config = _parse_load_config(configs)
         with open(path, 'rb') as f:
-            load_result = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='latin1')
+            # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+            if sys.platform == 'darwin' and sys.version_info.major == 3:
+                load_result = _pickle_loads_mac(path, f)
+            else:
+                load_result = pickle.load(f) if six.PY2 else pickle.load(
+                    f, encoding='latin1')
 
             # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
             if isinstance(load_result, dict):
