@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fs import LocalFS, HDFSClient
-from .ps_util import DistributedInfer
+from .fs import LocalFS, HDFSClient  # noqa: F401
+from .ps_util import DistributedInfer  # noqa: F401
 
 __all__ = [     #noqa
            'HDFSClient', 

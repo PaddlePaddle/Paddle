@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import spawn
-from .spawn import spawn
+from . import spawn  # noqa: F401
+from .spawn import spawn  # noqa: F401
 
-from . import parallel
-from .parallel import init_parallel_env
-from .parallel import get_rank
-from .parallel import get_world_size
-from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from . import parallel  # noqa: F401
+from .parallel import init_parallel_env  # noqa: F401
+from .parallel import get_rank  # noqa: F401
+from .parallel import get_world_size  # noqa: F401
+from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 from paddle.distributed.fleet.dataset import *
 
-from . import collective
+from . import collective  # noqa: F401
 from .collective import *
 
-from .entry_attr import ProbabilityEntry
-from .entry_attr import CountFilterEntry
+from .entry_attr import ProbabilityEntry  # noqa: F401
+from .entry_attr import CountFilterEntry  # noqa: F401
 
 __all__ = [     #noqa
            'spawn', 
