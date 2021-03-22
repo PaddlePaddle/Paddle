@@ -23,7 +23,6 @@
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <vector>
-#include <tuple>
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
