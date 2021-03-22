@@ -238,7 +238,7 @@ class ActivationGradGPUKernel
     x = out = d_out = nullptr;
     ExtractActivationGradTensor<Functor::FwdDeps()>(context, &x, &out, &d_out,
                                                     &d_x);
-    auto numel = d_out->numel();
+    int numel = d_out->numel();
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto* dx_data = d_x->mutable_data<T>(
         dev_ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
