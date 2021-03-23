@@ -20,148 +20,125 @@
 namespace paddle {
 namespace operators {
 
-#define WARP_SIZE 32
-
-#define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                   \
-  case L2E:                                                                \
-    WarpLogSoftmaxForward<T, double, L2E><<<blocks, threads, 0>>>(         \
-        dst, src, batch_count, softmax_elements_stride, softmax_elements); \
+#define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)                \
+  case near_greater_power_of_two:                                            \
+    ComputeForwardInWarp<T, double,                                          \
+                         near_greater_power_of_two><<<blocks, threads, 0>>>( \
+        dst, src, outer_size, dim_size, dim_size);                           \
     break;
 
-int LogTwoCeil(int value) {
+template <typename T, int KernelWarpSize>
+__device__ __forceinline__ void ReduceSumForWarpBatch(T &sum) {
+#pragma unroll
+  for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
+    T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum, offset);
+    sum = sum + sum_val;
+  }
+}
+
+template <typename T, int KernelWarpSize>
+__device__ __forceinline__ void ReduceMaxForWarpBatch(T &sum) {
+#pragma unroll
+  for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
+    T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum, offset);
+    sum = max(sum, max_val);
+  }
+}
+
+int GetNearGreaterPowerOfTwo(int value) {
   int log2_value = 0;
-  while ((1 << log2_value) < value) ++log2_value;
-  return log2_value;
-}
-
-template <typename T, int NumBatch, int KernelWarpSize>
-__device__ __forceinline__ void ReduceSumForWarpBatch(T* sum) {
-#pragma unroll
-  for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
-#pragma unroll
-    for (int i = 0; i < NumBatch; ++i) {
-      T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
-      sum[i] = sum[i] + sum_val;
-    }
+  while ((1 << log2_value) < value) {
+    ++log2_value;
   }
+  return 1 << log2_value;
 }
 
-template <typename T, int NumBatch, int KernelWarpSize>
-__device__ __forceinline__ void ReduceMaxForWarpBatch(T* sum) {
-#pragma unroll
-  for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
-#pragma unroll
-    for (int i = 0; i < NumBatch; ++i) {
-      T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
-      sum[i] = max(sum[i], max_val);
-    }
-  }
-}
-
-template <typename T, typename AccT, int log2_elements>
-__global__ void WarpLogSoftmaxForward(T* dst, const T* src, int batch_size,
-                                      int stride, int element_count) {
-  constexpr int next_power_of_two = 1 << log2_elements;
+template <typename T, typename AccT, int NearGreaterPowerOfTwo>
+__global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
+                                     int stride, int element_count) {
+  constexpr int near_greater_power_of_two = NearGreaterPowerOfTwo;
   constexpr int kernel_warp_size =
-      (next_power_of_two < WARP_SIZE) ? next_power_of_two : WARP_SIZE;
-  constexpr int warp_iterations = next_power_of_two / kernel_warp_size;
-  constexpr int num_batch = (next_power_of_two <= 128) ? 2 : 1;
+      (near_greater_power_of_two < 32) ? near_greater_power_of_two : 32;
+  constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
+  int warp_id = blockDim.y * blockIdx.x + threadIdx.y;
 
-  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * num_batch;
-  int local_batches = batch_size - first_batch;
-  if (local_batches > num_batch) local_batches = num_batch;
+  // effective_warp_id are binary values
+  int effective_warp_id = batch_size - warp_id;
+  if (effective_warp_id > 1) effective_warp_id = 1;
 
-  int local_idx = threadIdx.x;
-  src += first_batch * stride + local_idx;
-  dst += first_batch * stride + local_idx;
+  int thread_in_warp_idx = threadIdx.x;
 
-  // 1.load data from global memory
-  AccT elements[num_batch][warp_iterations];
-  int idx = threadIdx.x + blockDim.x * threadIdx.y;
-
-  for (int i = 0; i < num_batch; ++i) {
-    int batch_element_count = (i >= local_batches) ? 0 : element_count;
-    for (int it = 0; it < warp_iterations; ++it) {
-      int element_index = local_idx + it * kernel_warp_size;
-      if (element_index < batch_element_count) {
-        elements[i][it] =
-            static_cast<double>(src[i * element_count + it * kernel_warp_size]);
-      } else {
-        elements[i][it] = -std::numeric_limits<AccT>::infinity();
-      }
+  // 1.read data from global memory to registers
+  AccT elements[warp_iter];
+  // set effective_element_count as the num of elements when warps do effectove
+  // work
+  // set effective_element_count as 0, when warps do ineffective work
+  int effective_element_count = (effective_warp_id <= 0) ? 0 : element_count;
+  for (int it = 0; it < warp_iter; ++it) {
+    int element_index = thread_in_warp_idx + it * kernel_warp_size;
+    if (element_index < effective_element_count) {
+      elements[it] = static_cast<double>(
+          src[warp_id * stride + thread_in_warp_idx + it * kernel_warp_size]);
+    } else {
+      elements[it] = -std::numeric_limits<AccT>::infinity();
     }
   }
 
-  // 2.compute max_value
-  AccT max_value[num_batch];
+  // 2.compute max_value. For each thread, loop all registers to find max
+  AccT max_value;
+  max_value = elements[0];
 #pragma unroll
-  for (int i = 0; i < num_batch; ++i) {
-    max_value[i] = elements[i][0];
-#pragma unroll
-    for (int it = 1; it < warp_iterations; ++it) {
-      max_value[i] =
-          (max_value[i] > elements[i][it]) ? max_value[i] : elements[i][it];
-    }
+  for (int it = 1; it < warp_iter; ++it) {
+    max_value = (max_value > elements[it]) ? max_value : elements[it];
   }
-  ReduceMaxForWarpBatch<AccT, num_batch, kernel_warp_size>(max_value);
+  ReduceMaxForWarpBatch<AccT, kernel_warp_size>(max_value);
 
-  AccT sum[num_batch]{0.0f};
+  // 3.For each warp, accumulate all thread registers
+  AccT sum = 0.0f;
 #pragma unroll
-  for (int i = 0; i < num_batch; ++i) {
-#pragma unroll
-    for (int it = 0; it < warp_iterations; ++it) {
-      sum[i] += std::exp(elements[i][it] - max_value[i]);
-    }
+  for (int it = 0; it < warp_iter; ++it) {
+    sum += std::exp(elements[it] - max_value);
   }
-  ReduceSumForWarpBatch<AccT, num_batch, kernel_warp_size>(sum);
+  ReduceSumForWarpBatch<AccT, kernel_warp_size>(sum);
 
-// 3.store result
+  // 4.store result.
+  sum = std::log(sum);
 #pragma unroll
-  for (int i = 0; i < num_batch; ++i) {
-    if (i >= local_batches) break;
-    sum[i] = std::log(sum[i]);
-#pragma unroll
-    for (int it = 0; it < warp_iterations; ++it) {
-      int element_index = local_idx + it * kernel_warp_size;
-      if (element_index < element_count) {
-        dst[i * element_count + it * kernel_warp_size] =
-            elements[i][it] - max_value[i] - sum[i];
-      } else {
-        break;
-      }
+  for (int it = 0; it < warp_iter; ++it) {
+    int element_index = thread_in_warp_idx + it * kernel_warp_size;
+    if (element_index < element_count) {
+      dst[warp_id * stride + thread_in_warp_idx + it * kernel_warp_size] =
+          elements[it] - max_value - sum;
+    } else {
+      break;
     }
   }
 }
 
 template <typename T>
-void LaunchSoftmaxForwardForLastAxis(T* dst, const T* src, int softmax_elements,
-                                     int softmax_elements_stride,
-                                     int batch_count) {
-  int log2_elements = LogTwoCeil(softmax_elements);
-  const int next_power_of_two = 1 << log2_elements;
-  int warp_size =
-      (next_power_of_two < WARP_SIZE) ? next_power_of_two : WARP_SIZE;
-  int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
+void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
+                                     int outer_size) {
+  int threads_per_block = 128;
+  int near_greater_power_of_two = GetNearGreaterPowerOfTwo(dim_size);
+  int kernel_warp_size =
+      (near_greater_power_of_two < 32) ? near_greater_power_of_two : 32;
+  int warps_per_block = (threads_per_block / kernel_warp_size);
+  int blocks = (outer_size + warps_per_block - 1) / warps_per_block;
+  dim3 threads(kernel_warp_size, warps_per_block, 1);
 
-  // use 128 threads per block to maximimize gpu utilization
-  constexpr int threads_per_block = 128;
-  int warps_per_block = (threads_per_block / warp_size);
-  int batches_per_block = warps_per_block * batches_per_warp;
-  int blocks = (batch_count + batches_per_block - 1) / batches_per_block;
-  dim3 threads(warp_size, warps_per_block, 1);
+  switch (near_greater_power_of_two) {
+    LAUNCH_WARP_FORWAR_COMPUTE(1);
+    LAUNCH_WARP_FORWAR_COMPUTE(2);
+    LAUNCH_WARP_FORWAR_COMPUTE(4);     // dim_size: 3~4
+    LAUNCH_WARP_FORWAR_COMPUTE(8);     // dim_size: 5~8
+    LAUNCH_WARP_FORWAR_COMPUTE(16);    // dim_size: 9~16
+    LAUNCH_WARP_FORWAR_COMPUTE(32);    // dim_size: 17~32
+    LAUNCH_WARP_FORWAR_COMPUTE(64);    // dim_size: 33~64
+    LAUNCH_WARP_FORWAR_COMPUTE(128);   // dim_size 65~128
+    LAUNCH_WARP_FORWAR_COMPUTE(256);   // dim_size 129~256
+    LAUNCH_WARP_FORWAR_COMPUTE(512);   // dim_size 257~512
+    LAUNCH_WARP_FORWAR_COMPUTE(1024);  // dim_size 513~1024
 
-  switch (log2_elements) {
-    LAUNCH_SOFTMAX_WARP_FORWARD(0);   // 1
-    LAUNCH_SOFTMAX_WARP_FORWARD(1);   // 2
-    LAUNCH_SOFTMAX_WARP_FORWARD(2);   // 4
-    LAUNCH_SOFTMAX_WARP_FORWARD(3);   // 8
-    LAUNCH_SOFTMAX_WARP_FORWARD(4);   // 16
-    LAUNCH_SOFTMAX_WARP_FORWARD(5);   // 32
-    LAUNCH_SOFTMAX_WARP_FORWARD(6);   // 64
-    LAUNCH_SOFTMAX_WARP_FORWARD(7);   // 128
-    LAUNCH_SOFTMAX_WARP_FORWARD(8);   // 256
-    LAUNCH_SOFTMAX_WARP_FORWARD(9);   // 512
-    LAUNCH_SOFTMAX_WARP_FORWARD(10);  // 1024
     default:
       break;
   }
@@ -171,35 +148,35 @@ template <typename T>
 class LogSoftmaxKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* X = context.Input<framework::Tensor>("X");
-    auto* Out = context.Output<framework::Tensor>("Out");
-    const auto* input_data = X->data<T>();
-    auto* output_data = Out->mutable_data<T>(context.GetPlace());
+  void Compute(const framework::ExecutionContext &context) const override {
+    const auto *x = context.Input<framework::Tensor>("X");
+    auto *out = context.Output<framework::Tensor>("Out");
+    const auto *input_data = x->data<T>();
+    auto *output_data = out->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_GT(X->numel(), 0, platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_GT(x->numel(), 0, platform::errors::InvalidArgument(
                                          "Expected number of elements > 0. But "
                                          "received number of elements is %d.",
-                                         X->numel()));
-    const int rank = X->dims().size();
+                                         x->numel()));
+    const int rank = x->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
 
-    int dim_size = X->dims()[axis];
+    int dim_size = x->dims()[axis];
     int inner_size = 1;
-    for (int i = axis + 1; i < X->dims().size(); i++)
-      inner_size *= X->dims()[i];
-    int outer_size = 1;
-    outer_size = SizeToAxis(axis, X->dims());
+    for (int i = axis + 1; i < x->dims().size(); i++) {
+      inner_size *= x->dims()[i];
+    }
+    int outer_size = SizeToAxis(axis, x->dims());
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
       // execute CUDA kernel
       LaunchSoftmaxForwardForLastAxis<T>(output_data, input_data, dim_size,
-                                         dim_size, outer_size);
+                                         outer_size);
     } else {
       // execute Eigen kernel
       LogSoftmaxFunctor<platform::CUDADeviceContext, T>()(
-          context.template device_context<platform::CUDADeviceContext>(), X,
-          Out, axis);
+          context.template device_context<platform::CUDADeviceContext>(), x,
+          out, axis);
     }
   }
 };
