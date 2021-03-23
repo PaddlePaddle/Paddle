@@ -18,7 +18,7 @@ SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY  ${GIT_URL}/windstamp/warp-ctc.git)
-set(WARPCTC_TAG         19742e9613633037646e527af63c6169de0f7f44)
+set(WARPCTC_TAG         8285443b5bf2bb5e383f9451d1a441e6f0611734)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -57,7 +57,7 @@ ExternalProject_Add(
                     -DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                     -DWITH_GPU=${WITH_GPU}
-                    -DWITH_ROCM_PLATFORM=${WITH_ROCM_PLATFORM}
+                    -DWITH_ROCM=${WITH_ROCM}
                     -DWITH_OMP=${USE_OMP}
                     -DWITH_TORCH=OFF
                     -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
