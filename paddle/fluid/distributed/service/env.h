@@ -175,14 +175,12 @@ class PSEnvironment {
     host.ip = ip;
     host.port = port;
     host.rank = rank;
-    if (sign_set.count(rank) > 0) {
-      LOG(WARNING) << "ps-host :" << host.ip << ":" << host.port
-                   << ", rank:" << host.rank
-                   << " already register, ignore register";
-    } else {
+
+    if (sign_set.count(rank) == 0) {
       host_list.push_back(host);
       sign_set.insert(rank);
     }
+
     return 0;
   }
 

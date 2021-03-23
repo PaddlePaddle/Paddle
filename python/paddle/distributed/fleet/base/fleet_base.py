@@ -626,6 +626,8 @@ class Fleet(object):
 
         """
         self.user_defined_optimizer = optimizer
+        self._user_defined_strategy = copy.deepcopy(strategy)
+        self._context = {}
 
         if self._is_collective and strategy is not None:
             warnings.warn(
@@ -634,9 +636,6 @@ class Fleet(object):
                 "If the strategy in fleet.distributed_optimizer() is "
                 "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
                 "which will take effect in distributed training.")
-            self._user_defined_strategy = copy.deepcopy(strategy)
-
-        self._context = {}
 
         # TODO(shenliang03): This is a temporary solution to support amp. In the case of a dynamic graph, 
         # the optimizer is returned directly. This problem will be fixed in the future.
