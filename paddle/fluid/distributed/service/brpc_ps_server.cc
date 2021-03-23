@@ -538,7 +538,7 @@ int32_t BrpcPsService::stop_server(Table *table,
   auto *p_server = _server;
   std::thread t_stop([p_server]() {
     p_server->stop();
-    LOG(INFO) << "Server Stoped";
+    VLOG(3) << "Server Stoped";
   });
   t_stop.detach();
   return 0;
