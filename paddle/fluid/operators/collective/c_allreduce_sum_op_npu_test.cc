@@ -53,7 +53,7 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
   }
-  VLOG(2) << preStr << ":" << std::endl << debugstring;
+  VLOG(3) << preStr << ":" << std::endl << debugstring;
 }
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
@@ -78,7 +78,8 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 }
 
-void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
+void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx,
+                         int iter) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
@@ -107,7 +108,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"] = std::string("tagx");
+  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
   attrs["ring_id"] = 0;
 
   auto op = f::OpRegistry::CreateOp("c_allreduce_sum", {{"X", {"X"}}},
@@ -137,5 +138,8 @@ TEST(c_allreduce_sum, NPU) {
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   Prepare(&scope, ctx);
-  TestHCCLAllReduceOp(&scope, ctx);
+  for (int i = 0; i < 1; i++) {
+    VLOG(2) << "iter num: " << i;
+    TestHCCLAllReduceOp(&scope, ctx, i);
+  }
 }

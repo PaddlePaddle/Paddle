@@ -30,10 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
 
-#include "paddle/fluid/operators/collective/c_allgather_op.h"
-#include "paddle/fluid/operators/collective/c_allreduce_op.h"
-#include "paddle/fluid/operators/collective/c_broadcast_op.h"
-#include "paddle/fluid/operators/collective/c_reducescatter_op.h"
+#include "paddle/fluid/operators/collective/c_reduce_op.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -44,9 +41,9 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
-USE_OP(c_reducescatter);
+USE_OP(c_reduce_sum);
 USE_NO_KERNEL_OP(c_comm_init_hcom);
-USE_OP_DEVICE_KERNEL(c_reducescatter, NPU);
+USE_OP_DEVICE_KERNEL(c_reduce_sum, NPU);
 
 DECLARE_string(selected_npus);
 
@@ -56,7 +53,7 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
   }
-  VLOG(2) << preStr << ":" << std::endl << debugstring;
+  VLOG(3) << preStr << ":" << std::endl << debugstring;
 }
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
@@ -65,7 +62,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
 
   VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
           << "; rank_id = " << rank_id
-          << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+          << "; RANK_TABLE_FILE = " << atoi(getenv("RANK_TABLE_FILE"));
 
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
@@ -81,46 +78,44 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 }
 
-void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
+void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   // init
   auto x = scope->Var("X");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
 
-  std::vector<float> init;
-  int num1 = 4;
-  int num2 = 1;
+  int rank_id = atoi(getenv("RANK_ID"));
+  int num1 = 3;
+  int num2 = 128;
 
+  std::vector<float> init;
   for (int64_t i = 0; i < num1 * num2; ++i) {
-    init.push_back(1.0);
+    init.push_back(1.0 + rank_id);
   }
   PrintDebugInfo("input data", init);
 
+  auto place = ctx.GetPlace();
+
   TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({num1, num2});
-
   ctx.Wait();
 
-  auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<float>(place);  // allocate
-
   ctx.Wait();
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"] = std::string("tagx");
+  attrs["tag"] = std::string("tagx_" + std::to_string(iter));
   attrs["ring_id"] = 0;
-  attrs["nranks"] = 2;
+  int root_id = 0;
+  attrs["root_id"] = root_id;
 
-  auto op = f::OpRegistry::CreateOp("c_reducescatter", {{"X", {"X"}}},
+  auto op = f::OpRegistry::CreateOp("c_reduce_sum", {{"X", {"X"}}},
                                     {{"Out", {"Out"}}}, attrs);
 
-  int iter_num = 10;
-  for (int i = 0; i < iter_num; i++) {
-    op->Run(*scope, place);
-  }
+  op->Run(*scope, place);
   ctx.Wait();
 
   std::vector<float> out_vec;
@@ -128,18 +123,26 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   PrintDebugInfo("output data", out_vec);
-  EXPECT_EQ(out_vec.size(), init.size() / 2);
+
+  EXPECT_EQ(out_vec.size(), init.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], iter_num + 1);
+    if (rank_id == root_id) {
+      EXPECT_EQ(out_vec[i], 3.0);
+    } else {
+      EXPECT_EQ(out_vec[i], init[i]);
+    }
   }
 }
 
-TEST(c_reducescatter, NPU) {
+TEST(c_reduce_sum, NPU) {
   f::Scope scope;
 
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   Prepare(&scope, ctx);
-  TestHCCLReduceScatterOp(&scope, ctx);
+  for (int i = 0; i < 2; i++) {
+    VLOG(2) << "iter num: " << i;
+    TestHCCLReduceOp(&scope, ctx, i);
+  }
 }
