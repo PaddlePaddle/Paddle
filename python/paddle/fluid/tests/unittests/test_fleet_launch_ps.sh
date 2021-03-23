@@ -16,18 +16,24 @@
 
 set -e
 
-server_port_0=${PADDLE_DIST_UT_PORT}
-server_port_1=$(( PADDLE_DIST_UT_PORT + 1 ))
-worker_port_0=$(( PADDLE_DIST_UT_PORT + 2 ))
-worker_port_1=$(( PADDLE_DIST_UT_PORT + 3 ))
-heter_worker_port_0=$(( PADDLE_DIST_UT_PORT + 4 ))
-heter_worker_port_1=$(( PADDLE_DIST_UT_PORT + 5 ))
+server_port_00=${PADDLE_DIST_UT_PORT}
+server_port_10=$(( PADDLE_DIST_UT_PORT + 1 ))
+worker_port_00=$(( PADDLE_DIST_UT_PORT + 2 ))
+worker_port_10=$(( PADDLE_DIST_UT_PORT + 3 ))
+
+server_port_01=$(( PADDLE_DIST_UT_PORT + 4 ))
+server_port_11=$(( PADDLE_DIST_UT_PORT + 5 ))
+worker_port_01=$(( PADDLE_DIST_UT_PORT + 6 ))
+worker_port_11=$(( PADDLE_DIST_UT_PORT + 7 ))
+
+heter_worker_port_0=$(( PADDLE_DIST_UT_PORT + 8 ))
+heter_worker_port_1=$(( PADDLE_DIST_UT_PORT + 9 ))
 
 function test_launch_ps(){
 
     python -m paddle.distributed.fleet.launch \
-        --servers="127.0.0.1:${server_port_0},127.0.0.1:${server_port_1}" \
-        --workers="127.0.0.1:${worker_port_0},127.0.0.1:${worker_port_1}" \
+        --servers="127.0.0.1:${server_port_00},127.0.0.1:${server_port_10}" \
+        --workers="127.0.0.1:${worker_port_00},127.0.0.1:${worker_port_10}" \
         fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
         echo "test pserver launch succeed"
@@ -39,8 +45,8 @@ function test_launch_ps(){
 
 function test_launch_ps_heter(){
     python -m paddle.distributed.fleet.launch \
-        --servers="127.0.0.1:${server_port_0},127.0.0.1:${server_port_1}" \
-        --workers="127.0.0.1:${worker_port_0},127.0.0.1:${worker_port_1}" \
+        --servers="127.0.0.1:${server_port_01},127.0.0.1:${server_port_11}" \
+        --workers="127.0.0.1:${worker_port_01},127.0.0.1:${worker_port_11}" \
         --heter_workers="127.0.0.1:${heter_worker_port_0},127.0.0.1:${heter_worker_port_1}" \
         fleet_ps_training.py 2> ut.elog
     if grep -q "server are killed" ut.elog; then
