@@ -256,6 +256,9 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclSetTensorStorageShape(desc, dims.size(), dims.data()));
   return desc;
 }
 
