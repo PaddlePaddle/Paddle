@@ -455,6 +455,7 @@ function(cc_test TARGET_NAME)
             "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"     OR
             "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"         OR
             "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"             OR
+            "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"        OR
             "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
       cc_test_run(${TARGET_NAME}
         COMMAND ${TARGET_NAME}
