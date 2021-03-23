@@ -59,83 +59,57 @@ class TestConcat(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def init_test_data(self):
-        self.x0 = np.random.random((1, 4, 5)).astype(self.dtype)
-        self.x1 = np.random.random((2, 4, 5)).astype(self.dtype)
-        self.x2 = np.random.random((3, 4, 5)).astype(self.dtype)
+        self.x0 = np.random.random((1, 4, 50)).astype(self.dtype)
+        self.x1 = np.random.random((2, 4, 50)).astype(self.dtype)
+        self.x2 = np.random.random((3, 4, 50)).astype(self.dtype)
         self.axis = 0
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['x0'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(
+            self.place, ['x1'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(
+            self.place, ['x2'], 'Out', check_dygraph=False)
 
 
-'''
+class TestConcatFP16(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "concat"
+        self.place = paddle.NPUPlace(4)
+        self.init_dtype()
+        self.init_test_data()
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestNet(unittest.TestCase):
-    def _test(self, run_npu=True):
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        np.random.seed(SEED)
-
-        a_np = np.random.random(size=(32, 32)).astype('float32')
-        b_np = np.random.random(size=(32, 32)).astype('float32')
-        label_np = np.random.randint(2, size=(64, 1)).astype('int64')
-
-        with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
-            b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[64, 1], dtype='int64')
-
-            sum = paddle.add(a, b)
-            z = paddle.pow(sum, 2.0)
-
-            fc_1 = fluid.layers.fc(input=z, size=128)
-            fc_2 = fluid.layers.concat([fc_1, fc_1], axis=0)
-            prediction = fluid.layers.fc(input=fc_2, size=2, act='softmax')
-
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
-            sgd.minimize(loss)
-
-        if run_npu:
-            place = paddle.NPUPlace(0)
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
         else:
-            place = paddle.CPUPlace()
+            self.actual_axis = self.axis
 
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis)
+        }
 
-        print("Start run on {}".format(place))
-        for epoch in range(100):
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
 
-            pred_res, loss_res = exe.run(
-                main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
-            if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+    def init_dtype(self):
+        self.dtype = np.float16
 
-        return pred_res, loss_res
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
 
-    def test_npu(self):
-        cpu_pred, cpu_loss = self._test(False)
-        npu_pred, npu_loss = self._test(True)
+    def init_test_data(self):
+        self.x0 = np.random.random((1, 4, 50)).astype(self.dtype)
+        self.x1 = np.random.random((2, 4, 50)).astype(self.dtype)
+        self.x2 = np.random.random((3, 4, 50)).astype(self.dtype)
+        self.axis = 0
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
-'''
 
 if __name__ == '__main__':
     unittest.main()

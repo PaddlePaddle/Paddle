@@ -90,16 +90,20 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
                        static_cast<int64_t>(ins[0]->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor> outputs;
+    std::vector<int> sizes;
     for (size_t j = 0; j < outs.size(); ++j) {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
         outputs.push_back(*outs[j]);
+        sizes.push_back(outs[j]->dims()[axis]);
       }
     }
-    auto runner = NpuOpRunner(
-        "SplitD", {*out_grad}, outputs,
-        {{"split_dim", axis}, {"num_split", static_cast<int>(outputs.size())}});
+    auto runner =
+        NpuOpRunner("SplitVD", {*out_grad}, outputs,
+                    {{"split_dim", axis},
+                     {"size_splits", sizes},
+                     {"num_split", static_cast<int>(outputs.size())}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
