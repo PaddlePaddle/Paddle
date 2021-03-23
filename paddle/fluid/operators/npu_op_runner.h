@@ -53,6 +53,8 @@ class NpuOpRunner {
 
   NpuOpRunner &AddInputs(const std::vector<Tensor> &tensors);
 
+  NpuOpRunner &AddInputNames(const std::vector<std::string> &names);
+
   NpuOpRunner &AddOutputs(const std::vector<Tensor> &tensors);
 
   aclTensorDesc *GetInputDesc(size_t index);
