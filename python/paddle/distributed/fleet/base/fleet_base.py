@@ -627,7 +627,7 @@ class Fleet(object):
         """
         self.user_defined_optimizer = optimizer
 
-        if strategy is not None:
+        if self._is_collective and strategy is not None:
             warnings.warn(
                 "It is recommended to use DistributedStrategy "
                 "in fleet.init(). The strategy here is only for compatibility. "
