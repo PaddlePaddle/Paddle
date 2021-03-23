@@ -56,7 +56,7 @@ void PrintDebugInfo(const std::string preStr, const  std::vector<T> &data){
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
   }
-  VLOG(2) << preStr << ":" << std::endl <<debugstring; 
+  VLOG(2) << preStr << ":" << std::endl <<debugstring;
 }
 
 void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
@@ -65,10 +65,10 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   int device_id = atoi(getenv("DEVICE_ID"));
 
   VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id  
-  << "; rank_id = " << rank_id  
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));  
-  
+  << "; device_id = " << device_id
+  << "; rank_id = " << rank_id
+  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
@@ -119,11 +119,12 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   auto op = f::OpRegistry::CreateOp("c_reducescatter", {{"X", {"X"}}},
                               {{"Out", {"Out"}}}, attrs);
 
-  for (int i = 0; i < 10; i ++) {
+  int iter_num = 10;
+  for (int i = 0; i < iter_num; i ++) {
     op->Run(*scope, place);
   }
   ctx.Wait();
-  
+
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
@@ -131,14 +132,14 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   PrintDebugInfo("output data", out_vec);
   EXPECT_EQ(out_vec.size(), init.size() / 2);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], 2.0);
+    EXPECT_EQ(out_vec[i], iter_num + 1);
   }
 }
 
 TEST(c_reducescatter, NPU) {
   f::Scope scope;
 
-  // only support one device, if more than one device, use first default  
+  // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   Prepare(&scope, ctx);

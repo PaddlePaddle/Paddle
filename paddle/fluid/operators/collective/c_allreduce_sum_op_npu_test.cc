@@ -141,7 +141,7 @@ TEST(c_allreduce_sum, NPU) {
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
   Prepare(&scope, ctx);
-  for(int i = 0; i < 2000; i ++){
+  for(int i = 0; i < 1; i ++){
     VLOG(2) << "iter num: " << i;
     TestHCCLAllReduceOp(&scope, ctx, i);
   }
