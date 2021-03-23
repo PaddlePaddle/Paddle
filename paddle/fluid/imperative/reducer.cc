@@ -712,24 +712,6 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
   }
 
   if (next_group_ == groups_.size()) {
-    if (find_unused_vars_) {
-      VLOG(3) << "Local used vars : "
-              << string::join_strings(local_used_vars_, ',');
-// TODO(liuyuhui): support bckl in using TensorToVector/TensorFromVector
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
-      // H2D is to allreduce the local_used_vars_, here we use cal stream
-      auto *global_used_tensor =
-          global_used_vars_.GetMutable<framework::LoDTensor>();
-      framework::TensorFromVector<int>(local_used_vars_, *dev_ctx,
-                                       global_used_tensor);
-      parallel_ctx_->AllReduceByStream(global_used_vars_, &global_used_vars_, 0,
-                                       true);
-      framework::TensorToVector<int>(*global_used_tensor, *dev_ctx,
-                                     &local_used_vars_);
-#endif
-    }
-
     FinalizeBackward();
   }
 }
@@ -851,12 +833,28 @@ std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
 }
 
 void Reducer::ProcessUnusedDenseVars() {
-  // sync compute stream to get global used var message
+  // The calculation stream must be used here to
+  // avoid conflicts with communication.
+  VLOG(3) << "Local used vars : "
+          << string::join_strings(local_used_vars_, ',');
+  const auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  // H2D is to allreduce the local_used_vars_
+  auto *global_used_tensor =
+      global_used_vars_.GetMutable<framework::LoDTensor>();
+  framework::TensorFromVector<int>(local_used_vars_, *dev_ctx,
+                                   global_used_tensor);
+  parallel_ctx_->AllReduceByStream(global_used_vars_, &global_used_vars_, 0,
+                                   true);
+  framework::TensorToVector<int>(*global_used_tensor, *dev_ctx,
+                                 &local_used_vars_);
+
+  // sync compute stream to get global used var message,
+  // but maybe affect speed performance
   parallel_ctx_->SynchronizeCompute();
   VLOG(3) << "Global used vars : "
           << string::join_strings(local_used_vars_, ',');
 
-  for (const auto &var_index : unused_vars_) {
+  for (const auto var_index : unused_vars_) {
     const bool global_unused = (local_used_vars_[var_index] == 0);
 
     // global used but local unused, set grad
@@ -872,7 +870,7 @@ void Reducer::ProcessUnusedDenseVars() {
       const auto &group = groups_[group_index];
       const auto inside_group_index = var_locator.inside_group_index;
       const auto &src_tensor = group.dense_tensors_[inside_group_index];
-      // sparse no need to check
+      // sparse no need to check and no support find_unused_parameters
       if (group.is_sparse_) {
         continue;
       }
@@ -939,17 +937,17 @@ void Reducer::FinalizeBackward() {
   }
 
   if (find_unused_vars_) {
-// TODO(liuyuhui) support xpu about Tensorcopy
+// TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars
-    VLOG(3) << "ProcessUnusedDenseVars is finished.";
     local_used_vars_.clear();
     local_used_vars_.resize(vars_.size(), 0);
+    VLOG(3) << "ProcessUnusedDenseVars is finished.";
   }
 
-  VLOG(3) << "In the batch, Reducer is finished...";
+  VLOG(3) << "In the batch, Reducer is finished.";
 }
 
 // According to the size of each parameter, it is allocated to different groups.
