@@ -138,7 +138,10 @@ class PipelineOptimizer(MetaOptimizerBase):
         super(PipelineOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+        ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
@@ -149,6 +152,8 @@ class PipelineOptimizer(MetaOptimizerBase):
             'micro_batch_size']
         self.num_microbatches = user_defined_strategy.pipeline_configs[
             'accumulate_steps']
+        self.schedule_mode = user_defined_strategy.pipeline_configs[
+            'schedule_mode']
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -167,6 +172,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline_configs = {
             "micro_batch_size": 1,
             "accumulate_steps": 1,
+            "schedule_mode": "1F1B",
         }
 
     def minimize_impl(self,
@@ -192,6 +198,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         loss.block.program._pipeline_opt['local_rank'] = self.rank
         loss.block.program._pipeline_opt[
             'micro_batch_size'] = self.micro_batch_size
+        loss.block.program._pipeline_opt['schedule_mode'] = self.schedule_mode
         optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         assert prog_list

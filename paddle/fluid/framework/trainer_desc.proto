@@ -93,6 +93,9 @@ message SectionWorkerParameter {
   optional int32 start_cpu_core_id = 4 [ default = 1 ];
   repeated string param_need_sync = 5;
   optional int32 num_microbatches = 6;
+  optional int32 num_pipeline_stages = 7 [ default = 1 ];
+  optional int32 pipeline_stage = 8 [ default = 1 ];
+  optional int32 schedule_mode = 9 [ default = 0 ];
 }
 
 message SectionConfig {

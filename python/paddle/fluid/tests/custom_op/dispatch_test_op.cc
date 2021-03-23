@@ -62,3 +62,77 @@ PD_BUILD_OP(dispatch_test_float_and_integer)
     .Inputs({"X"})
     .Outputs({"Out"})
     .SetKernelFn(PD_KERNEL(DispatchTestFloatAndInteger));
+
+std::vector<paddle::Tensor> DispatchTestComplex(const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_COMPLEX_TYPES(
+      x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP(dispatch_test_complex)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestComplex));
+
+std::vector<paddle::Tensor> DispatchTestFloatAndComplex(
+    const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_COMPLEX_TYPES(
+      x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP(dispatch_test_float_and_complex)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndComplex));
+
+std::vector<paddle::Tensor> DispatchTestFloatAndIntegerAndComplex(
+    const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+      x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP(dispatch_test_float_and_integer_and_complex)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndIntegerAndComplex));
+
+std::vector<paddle::Tensor> DispatchTestFloatAndHalf(const paddle::Tensor& x) {
+  auto out = paddle::Tensor(paddle::PlaceType::kCPU);
+  out.reshape(x.shape());
+
+  PD_DISPATCH_FLOATING_AND_HALF_TYPES(
+      x.type(), "assign_cpu_kernel", ([&] {
+        assign_cpu_kernel<data_t>(
+            x.data<data_t>(), out.mutable_data<data_t>(), x.size());
+      }));
+
+  return {out};
+}
+
+PD_BUILD_OP(dispatch_test_float_and_half)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(DispatchTestFloatAndHalf));
