@@ -122,6 +122,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
         if dist_strategy:
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
+            strategy.pipeline_configs = {
+                'schedule_mode': 'F-then-B',
+                'micro_batch_size': batch_size
+            }
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=strategy)
             dist_opt.minimize(avg_cost)
