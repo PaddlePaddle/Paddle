@@ -187,16 +187,17 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
 
 // NOTE(zhiqiu): For operators whose input is a list (such as concat, stack),
 // It is needed to set the name of each input tensor.
-NpuOpRunner &AddInputNames(const std::vector<std::string> &names) {
+NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
   PADDLE_ENFORCE_EQ(names.size(), input_descs_.size(),
-  platform::errors::InvalidArgument("The size of input names should be "
-                      "equal to the size of input descs, but got the size "
-                      "of input names is %d, the size of input descs is %d.",
-                      names.size(), input_descs_.size());
-  for (auto i = 0; i < names.size(); ++i) {
-    PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorDescName(input_descs_[i], names[i].c_str());
+                    platform::errors::InvalidArgument(
+                        "The size of input names should be "
+                        "equal to the size of input descs, but got the size "
+                        "of input names is %d, the size of input descs is %d.",
+                        names.size(), input_descs_.size()));
+  for (size_t i = 0; i < names.size(); ++i) {
+    aclSetTensorDescName(input_descs_[i], names[i].c_str());
   }
+  return *this;
 }
 
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
