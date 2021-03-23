@@ -3807,9 +3807,59 @@ class PipelineOptimizer(object):
         self._pp_ring_map = dict()
 
     def _create_vars(self, block, ori_block):
+        # insert allreduce op to sync global information
+        def _insert_allreduce_op(op, op_idx):
+            out_name = op.desc.output_arg_names()[0]
+            out_var = block.var(out_name)
+            offset = 0
+            if op.type == "reduce_any":
+                # cast the bool var to int32 to use allreduce op
+                temp_var_name = unique_name.generate(out_name + "_cast_int32")
+                temp_var = block.create_var(
+                    name=temp_var_name, shape=[1], dtype="int32")
+                block._insert_op(
+                    op_idx + 1 + offset,
+                    type='cast',
+                    inputs={'X': out_var},
+                    outputs={'Out': temp_var},
+                    attrs={
+                        'in_dtype': out_var.dtype,
+                        'out_dtype': temp_var.dtype,
+                        self._op_role_key:
+                        core.op_proto_and_checker_maker.OpRole.Optimize
+                    })
+                offset += 1
+            block._insert_op(
+                op_idx + 1 + offset,
+                type='c_allreduce_max'
+                if op.type == "reduce_any" else 'c_allreduce_sum',
+                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+                outputs={
+                    'Out': temp_var if op.type == "reduce_any" else out_var
+                },
+                attrs={
+                    'ring_id': self.global_ring_id,
+                    self._op_role_key:
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
+                    'use_calc_stream': True
+                })
+            offset += 1
+            if op.type == "reduce_any":
+                block._insert_op(
+                    op_idx + 1 + offset,
+                    type='cast',
+                    inputs={'X': temp_var},
+                    outputs={'Out': out_var},
+                    attrs={
+                        'in_dtype': temp_var.dtype,
+                        'out_dtype': out_var.dtype,
+                        self._op_role_key:
+                        core.op_proto_and_checker_maker.OpRole.Optimize
+                    })
+
         # Create vars for block, copied from ori_block
         used_var_set = set()
-        for op_idx in range(block.desc.op_size()):
+        for op_idx in range(block.desc.op_size() - 1, -1, -1):
             # Whether to insert allreduce_sum or allreduce_max op.
             # For amp and global gradient clip strategies, we should
             # get the global information, so allreduce op is needed.
@@ -3859,53 +3909,7 @@ class PipelineOptimizer(object):
             # used for global gradient clip and amp will be added by sharding.
             if self.use_sharding: continue
             if not should_insert: continue
-            out_name = op.desc.output_arg_names()[0]
-            out_var = block.var(out_name)
-            offset = 0
-            if op.type == "reduce_any":
-                # cast the bool var to int32 to use allreduce op
-                temp_var_name = unique_name.generate(out_name + "_cast_int32")
-                temp_var = block.create_var(
-                    name=temp_var_name, shape=[1], dtype="int32")
-                block._insert_op(
-                    op_idx + 1 + offset,
-                    type='cast',
-                    inputs={'X': out_var},
-                    outputs={'Out': temp_var},
-                    attrs={
-                        'in_dtype': out_var.dtype,
-                        'out_dtype': temp_var.dtype,
-                        self._op_role_key:
-                        core.op_proto_and_checker_maker.OpRole.Optimize
-                    })
-                offset += 1
-            block._insert_op(
-                op_idx + 1 + offset,
-                type='c_allreduce_max'
-                if op.type == "reduce_any" else 'c_allreduce_sum',
-                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
-                outputs={
-                    'Out': temp_var if op.type == "reduce_any" else out_var
-                },
-                attrs={
-                    'ring_id': self.ring_id,
-                    self._op_role_key:
-                    core.op_proto_and_checker_maker.OpRole.Optimize,
-                    'use_calc_stream': True
-                })
-            offset += 1
-            if op.type == "reduce_any":
-                block._insert_op(
-                    op_idx + 1 + offset,
-                    type='cast',
-                    inputs={'X': temp_var},
-                    outputs={'Out': out_var},
-                    attrs={
-                        'in_dtype': temp_var.dtype,
-                        'out_dtype': out_var.dtype,
-                        self._op_role_key:
-                        core.op_proto_and_checker_maker.OpRole.Optimize
-                    })
+            self._insert_allreduce_op(op, op_idx)
 
     def _is_loss_grad_op(self, op):
         assert self._op_role_key in op.attr_names
