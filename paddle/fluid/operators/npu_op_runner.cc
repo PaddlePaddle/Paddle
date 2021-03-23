@@ -195,7 +195,7 @@ NpuOpRunner &AddInputNames(const std::vector<std::string> &names) {
                       names.size(), input_descs_.size());
   for (auto i = 0; i < names.size(); ++i) {
     PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorDescName(input_descs_[i], name.c_str());
+      aclSetTensorDescName(input_descs_[i], names[i].c_str());
   }
 }
 
