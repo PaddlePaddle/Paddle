@@ -185,6 +185,18 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
   return *this;
 }
 
+NpuOpRunner &AddInputNames(const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(names.size(), input_descs_.size(),
+  platform::errors::InvalidArgument("The size of input names should be "
+                      "equal to the size of input descs, but got the size "
+                      "of input names is %d, the size of input descs is %d.",
+                      names.size(), input_descs_.size());
+  for (auto i = 0; i < names.size(); ++i) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+      aclSetTensorDescName(input_descs_[i], name.c_str());
+  }
+}
+
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
   for (auto tensor : tensors) {
     // create aclTensorDesc
