@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-import operator
 from ..framework import Parameter
 from .layers import Layer
 
@@ -215,11 +214,11 @@ class LayerList(Layer):
                 self.add_sublayer(str(idx), layer)
 
     def _get_abs_idx(self, idx):
-        idx = operator.index(idx)
-        if not (-len(self) <= idx < len(self)):
-            raise IndexError('index {} is out of range'.format(idx))
-        if idx < 0:
-            idx += len(self)
+        if isinstance(idx, int):
+            if not (-len(self) <= idx < len(self)):
+                raise IndexError('index {} is out of range'.format(idx))
+            if idx < 0:
+                idx += len(self)
         return idx
 
     def __getitem__(self, idx):
