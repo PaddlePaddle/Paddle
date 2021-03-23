@@ -40,9 +40,11 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(place);
 
     std::vector<framework::Tensor> inputs;
-    for (size_t j = 0; j < ins.size(); ++j) {
-      if (ins[j] && ins[j]->numel() > 0) {
-        inputs.push_back(*ins[j]);
+    std::vector<std::string> names;
+    for (size_t i = 0; i < ins.size(); ++i) {
+      if (ins[i] && ins[i]->numel() > 0) {
+        inputs.push_back(*ins[i]);
+        names.push_back("x" + std::to_string(i));
       } else {
         continue;
       }
@@ -53,6 +55,7 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto runner = NpuOpRunner(
         "ConcatD", {inputs}, {*out},
         {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}});
+    runner.AddInputNames(names);
     runner.Run(stream);
   }
 };
