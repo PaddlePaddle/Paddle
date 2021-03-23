@@ -17,8 +17,6 @@ from __future__ import print_function
 import os
 import six
 import pickle
-if not six.PY2:
-    import copyreg
 import numpy as np
 import math
 import sys
@@ -44,72 +42,6 @@ INFER_PARAMS_INFO_SUFFIX = ".pdiparams.info"
 LOADED_VAR_SUFFIX = "load"
 PARAMETER_NAME_PREFIX = "param"
 BUFFER_NAME_PREFIX = "buffer"
-
-
-def _pickle_loads_mac(path, f):
-    pickle_bytes = bytearray(0)
-    file_size = os.path.getsize(path)
-    max_bytes = 2**30
-    for _ in range(0, file_size, max_bytes):
-        pickle_bytes += f.read(max_bytes)
-    load_result = pickle.loads(pickle_bytes) if six.PY2 else pickle.loads(
-        pickle_bytes, encoding='latin1')
-    return load_result
-
-
-def _pickle_save(obj, f, protocol):
-    # TODO:BytesIO
-
-    if not isinstance(obj, (Variable, core.LoDTensor, core.VarBase, dict)):
-        raise NotImplementedError(
-            "Support 'VarBase' or 'LoDTensor', but received {}.".format(
-                type(obj)))
-
-    def reudce_varbase(self):
-        data = self.numpy()
-        name = self.name
-
-        return (tuple, ((name, data), ))
-
-    def reduce_LoDTensor(self):
-        data = np.array(self)
-
-        return (eval, ('data', {'data': data}))
-
-    def add_dispatch_table():
-        # This is not a good method, because the pickle module has been modified.
-        pickle.dispatch_table[core.VarBase] = reudce_varbase
-        pickle.dispatch_table[framework.ParamBase] = reudce_varbase
-        pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-
-    def pop_dispatch_table():
-        pickle.dispatch_table.pop(core.VarBase)
-        pickle.dispatch_table.pop(core.LoDTensor)
-        pickle.dispatch_table.pop(framework.ParamBase)
-
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if sys.platform == 'darwin' and sys.version_info.major == 3:
-        add_dispatch_table()
-        pickle_bytes = pickle.dumps(obj)
-        pop_dispatch_table()
-
-        max_bytes = 2**30
-        for i in range(0, len(pickle_bytes), max_bytes):
-            f.write(pickle_bytes[i:i + max_bytes])
-    else:
-        if six.PY2:
-            add_dispatch_table()
-            pickle_bytes = pickle.dump(obj, f, protocol)
-            pop_dispatch_table()
-        else:
-            pickler = pickle.Pickler(f, protocol)
-            pickler.dispatch_table = copyreg.dispatch_table.copy()
-
-            pickler.dispatch_table[core.VarBase] = reudce_varbase
-            pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-            pickler.dispatch_table[framework.ParamBase] = reudce_varbase
-
-            pickler.dump(obj)
 
 
 def _load_program_desc(model_file_path):

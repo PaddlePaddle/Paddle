@@ -22,17 +22,20 @@ import warnings
 import sys
 import numpy as np
 
+if not six.PY2:
+    import copyreg
+
 import paddle
 
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _to_LodTensor
+from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads_mac
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, _pickle_save, _pickle_loads_mac
+from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
 __all__ = [
@@ -204,6 +207,86 @@ def _parse_load_config(configs):
     return inner_config
 
 
+def _parse_save_config(configs):
+    supported_configs = ['use_binary_format', 'pickle_protocol']
+
+    # input check
+    for key in configs:
+        if key not in supported_configs:
+            raise ValueError(
+                "The additional config (%s) of `paddle.save` is not supported."
+                % key)
+
+    # construct inner config
+    inner_config = _SaveLoadConfig()
+    inner_config.use_binary_format = configs.get('use_binary_format', False)
+    inner_config.pickle_protocol = configs.get('pickle_protocol', None)
+
+    return inner_config
+
+
+def _pickle_save(obj, f, protocol):
+    # TODO(weixin):add support for BytesIO.
+    if not isinstance(protocol, int):
+        raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
+            type(protocol)))
+
+    if protocol < 2 or protocol > 4:
+        raise ValueError("Expected 1<'protocol'<5, but received protocol={}".
+                         format(protocol))
+
+    if not isinstance(obj, (core.LoDTensor, core.VarBase)):
+        raise NotImplementedError(
+            "Support 'paddle.Tensor' or 'paddle.core.LoDTensor', but received {}.".
+            format(type(obj)))
+
+    def reudce_varbase(self):
+        data = self.numpy()
+        name = self.name
+
+        return (tuple, ((name, data), ))
+
+    def reduce_LoDTensor(self):
+        data = np.array(self)
+
+        return (eval, ('data', {'data': data}))
+
+    def add_dispatch_table():
+        # This is not a good method, because the pickle module has been modified.
+        pickle.dispatch_table[core.VarBase] = reudce_varbase
+        pickle.dispatch_table[ParamBase] = reudce_varbase
+        pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+
+    def pop_dispatch_table():
+        pickle.dispatch_table.pop(core.VarBase)
+        pickle.dispatch_table.pop(core.LoDTensor)
+        pickle.dispatch_table.pop(ParamBase)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
+        add_dispatch_table()
+        pickle_bytes = pickle.dumps(obj)
+        pop_dispatch_table()
+
+        max_bytes = 2**30
+        for i in range(0, len(pickle_bytes), max_bytes):
+            f.write(pickle_bytes[i:i + max_bytes])
+    else:
+        if six.PY2:
+            add_dispatch_table()
+            pickle_bytes = pickle.dump(obj, f, protocol)
+            pop_dispatch_table()
+        else:
+            pickler = pickle.Pickler(f, protocol)
+            pickler.dispatch_table = copyreg.dispatch_table.copy()
+
+            pickler.dispatch_table[core.VarBase] = reudce_varbase
+            pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+            pickler.dispatch_table[ParamBase] = reudce_varbase
+
+            pickler.dump(obj)
+
+
 def _use_legacy(obj):
     # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
     if not isinstance(obj, dict):
@@ -230,6 +313,17 @@ def _transformed_from_lodtensor(obj):
     if isinstance(obj, np.ndarray):
         return True
     return False
+
+
+def _to_LodTensor(ndarray):
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError(
+            'Type of `ndarray` should be numpy.ndarray, but received {}.'.
+            format(type(ndarray)))
+    t = core.LoDTensor()
+    place = _current_expected_place()
+    t.set(ndarray, place)
+    return t
 
 
 def _tuple_to_tensor(obj, return_numpy):
@@ -259,7 +353,7 @@ def save(obj, path, protocol=2, **configs):
     Save an object to the specified path.
     
     .. note::
-        Now supports saving ``state_dict`` of Layer or Optimizer, Tensor, List[Tensor].
+        Now supports saving ``state_dict`` of Layer or Optimizer, Tensor.
 
     .. note::
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file, 
@@ -277,11 +371,9 @@ def save(obj, path, protocol=2, **configs):
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 2
         configs(dict, optional) : optional keyword arguments. When the saved object is static graph variable, 
-        you can specify ``use_binary_for_var`` and ``executor`` .
+        you can specify ``use_binary_for_var``.
             (1) use_binary_format(bool): If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
                                 Default: False
-            (2) executor(Executor): Specify the executor for saving the static graph variable. If it is None, a default executor will be generated.
-                                Default: None
 
     Returns:
         None
@@ -289,18 +381,54 @@ def save(obj, path, protocol=2, **configs):
     Examples:
         .. code-block:: python
 
+            # example 1: dygraph
             import paddle
-
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
+
+            # save state_dict of emb
             paddle.save(layer_state_dict, "emb.pdparams")
-            scheduler = paddle.optimizer.lr.NoamDecay(	
+
+            scheduler = paddle.optimizer.lr.NoamDecay(
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
+
+            # save state_dict of optimizer
             paddle.save(opt_state_dict, "adam.pdopt")
+            # save weight of emb
+            paddle.save(emb.weight, "emb.weight.pdtensor")
+
+
+            # example 2: static graph
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            # create network
+            x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
+            z = paddle.static.nn.fc(x, 10)
+
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+            for var in prog.list_vars():
+                if list(var.shape) == [224, 10]:
+                    tensor = var.get_tensor()
+                    break
+
+            # save/load tensor
+            path_tensor = 'temp/tensor.pdtensor'
+            paddle.save(tensor, path_tensor)
+
+            # save/load state_dict
+            path_state_dict = 'temp/model.pdparams'
+            paddle.save(prog.state_dict("param"), path_tensor)
     '''
     # 1. input check
     filename = os.path.basename(path)
@@ -314,17 +442,18 @@ def save(obj, path, protocol=2, **configs):
     if dirname and not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    use_binary_format = configs.get('use_binary_format', False)
-    if not isinstance(use_binary_format, bool):
+    config = _parse_save_config(configs)
+
+    if not isinstance(config.use_binary_format, bool):
         raise TypeError(
             "Type of `use_binary_format` should be bool, but received {}.".
-            format(type(use_binary_format)))
+            format(type(config.use_binary_format)))
 
-    # If the user uses both 'pickle_protocol' and 'protocol', 'pickle_protocol' will be used.
-    if 'pickle_protocol' in configs:
-        protocol = configs['pickle_protocol']
+    # `protocol` need to be used, `pickle_protocol` is a deprecated arg.
+    if config.pickle_protocol is not None:
+        protocol = config.pickle_protocol
         warnings.warn(
-            "If you use the default argument 'pickle_protocol' to specify the version of pickle, the default argument 'protocol' will be ignored."
+            "The default argument 'pickle_protocol' has be deprecated. Please use 'protocol' instead."
         )
 
     if _use_legacy(obj):
@@ -428,7 +557,7 @@ def load(path, **configs):
             (2) params_filename (str): The persistable variables file name of the paddle 1.x 
             ``save_inference_model`` save format. No default file name, save variables separately 
             by default.            
-            (3) return_numpy(bool): If specified as True, return tensor as tensor,otherwise return tensor as numpy.ndarray.
+            (3) return_numpy(bool): If specified as True, return tensor as tensor, otherwise return tensor as numpy.ndarray.
 
     Returns:
         Object(Object): a target object can be used in paddle
@@ -438,19 +567,64 @@ def load(path, **configs):
 
             import paddle
 
+            # example 1: dygraph
+            import paddle
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
+
+            # save state_dict of emb
             paddle.save(layer_state_dict, "emb.pdparams")
-            scheduler = paddle.optimizer.lr.NoamDecay(	
+
+            scheduler = paddle.optimizer.lr.NoamDecay(
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
-            paddle.save(opt_state_dict, "adam.pdopt")
 
+            # save state_dict of optimizer
+            paddle.save(opt_state_dict, "adam.pdopt")
+            # save weight of emb
+            paddle.save(emb.weight, "emb.weight.pdtensor")
+
+            # load state_dict of emb
             load_layer_state_dict = paddle.load("emb.pdparams")
+            # load state_dict of optimizer
             load_opt_state_dict = paddle.load("adam.pdopt")
+            # load weight of emb
+            load_weight = paddle.load("emb.weight.pdtensor")
+
+
+            # example 2: static graph
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            # create network
+            x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
+            z = paddle.static.nn.fc(x, 10)
+
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+            for var in prog.list_vars():
+                if list(var.shape) == [224, 10]:
+                    tensor = var.get_tensor()
+                    break
+
+            # save/load tensor
+            path_tensor = 'temp/tensor.pdtensor'
+            paddle.save(tensor, path_tensor)
+            load_tensor = paddle.load(path_tensor)
+
+            # save/load state_dict
+            path_state_dict = 'temp/model.pdparams'
+            paddle.save(prog.state_dict("param"), path_tensor)
+            load_state_dict = paddle.load(path_tensor)
+
     '''
 
     if os.path.isfile(path):
@@ -477,13 +651,13 @@ def load(path, **configs):
                     if not config.keep_name_table:
                         del load_result["StructuredToParameterName@@"]
                 else:
-                    # paddle2.0 static.save/load
+                    # paddle2.1 static.save/load
                     for key in load_result:
                         load_result[key] = _ndarray_to_tensor(
                             load_result[key], config.return_numpy)
 
             else:
-                # TODO(weixin):Now, only support single tensor. 
+                # TODO(weixin): support complex objects such as layer.
                 # If `obj` is any object, the judgment condition should be more precise.
                 if _transformed_from_lodtensor(load_result):
                     load_result = _ndarray_to_tensor(load_result,

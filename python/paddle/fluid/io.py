@@ -45,8 +45,7 @@ from .dataloader import *
 from . import core
 from .. import compat as cpt
 from paddle.utils import deprecated
-from paddle.fluid.framework import static_only, _current_expected_place
-from paddle.fluid.dygraph.io import _pickle_loads_mac
+from paddle.fluid.framework import static_only
 
 batch = paddle.batch
 
@@ -1766,18 +1765,6 @@ def _pack_loaded_dict(load_obj):
 
 
 @static_only
-def _to_LodTensor(ndarray):
-    if not isinstance(ndarray, np.ndarray):
-        raise TypeError(
-            'Type of `ndarray` should be numpy.ndarray, but received {}.'.
-            format(type(ndarray)))
-    t = core.LoDTensor()
-    place = _current_expected_place()
-    t.set(ndarray, place)
-    return t
-
-
-@static_only
 def _legacy_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
         if isinstance(var, core.VarBase):
@@ -1896,6 +1883,17 @@ def save(program, model_path, protocol=2, **configs):
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())
+
+
+def _pickle_loads_mac(path, f):
+    pickle_bytes = bytearray(0)
+    file_size = os.path.getsize(path)
+    max_bytes = 2**30
+    for _ in range(0, file_size, max_bytes):
+        pickle_bytes += f.read(max_bytes)
+    load_result = pickle.loads(pickle_bytes) if six.PY2 else pickle.loads(
+        pickle_bytes, encoding='latin1')
+    return load_result
 
 
 @static_only

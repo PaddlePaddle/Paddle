@@ -164,6 +164,9 @@ class TestSaveLoadAny(unittest.TestCase):
         with self.assertRaises(TypeError):
             program.state_dict(1)
 
+        with self.assertRaises(TypeError):
+            program.state_dict(scope=1)
+
         with self.assertRaises(ValueError):
             program.state_dict('x')
 
@@ -173,6 +176,10 @@ class TestSaveLoadAny(unittest.TestCase):
         state_dict_opt = program.state_dict('opt')
         paddle.save(state_dict_opt, model_path + '.pdopt')
 
+        state_dict_all = program.state_dict()
+        paddle.save(state_dict_opt, model_path + '.pdall')
+
+        # TODO(weixin): add support for program
         # paddle.save(program, model_path + ".pdmodel")
 
     def replace_static_load(self, program, model_path):
@@ -183,6 +190,10 @@ class TestSaveLoadAny(unittest.TestCase):
 
         # UserWarning: Skip loading for fake_var_name.@@. Can not find Variable 'fake_var_name.@@' in the program.
         state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
+        state_dict_param['static_x'] = 'UserWarning'
+        program.set_state_dict(state_dict_param)
+        state_dict_param['static_x'] = np.random.randn(1, 2)
+        program.set_state_dict(state_dict_param)
 
         program.set_state_dict(state_dict_param)
 
@@ -196,7 +207,7 @@ class TestSaveLoadAny(unittest.TestCase):
         with new_program_scope():
             # create network
             x = paddle.static.data(
-                name="x", shape=[None, IMAGE_SIZE], dtype='float32')
+                name="static_x", shape=[None, IMAGE_SIZE], dtype='float32')
             z = paddle.static.nn.fc(x, 10)
             z = paddle.static.nn.fc(z, 10, bias_attr=False)
             loss = fluid.layers.reduce_mean(z)
@@ -207,7 +218,7 @@ class TestSaveLoadAny(unittest.TestCase):
             exe.run(paddle.static.default_startup_program())
             prog = paddle.static.default_main_program()
             fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
-            exe.run(prog, feed={'x': fake_inputs}, fetch_list=[loss])
+            exe.run(prog, feed={'static_x': fake_inputs}, fetch_list=[loss])
 
             base_map = {}
             for var in prog.list_vars():
@@ -308,6 +319,12 @@ class TestSaveLoadAny(unittest.TestCase):
         layer = LinearNet()
         path = 'paddle_save_load_v2/var_dygraph'
         tensor = layer._linear.weight
+
+        with self.assertRaises(ValueError):
+            paddle.save(tensor, path, pickle_protocol='3')
+
+        with self.assertRaises(ValueError):
+            paddle.save(tensor, path, pickle_protocol=5)
 
         paddle.save(tensor, path)
 
