@@ -22,6 +22,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 SEED = 2021
@@ -74,7 +75,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             type='memcpy',
             inputs={'X': npu_var},
             outputs={'Out': cpu_var},
-            attrs={'dst_place_type': 3})
+            attrs={'dst_place_type': 0})
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
         npu_, cpu_ = exe.run(main_program,
@@ -89,7 +90,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             type='memcpy',
             inputs={'X': cpu_var},
             outputs={'Out': npu_var},
-            attrs={'dst_place_type': 2})
+            attrs={'dst_place_type': 4})
         place = fluid.NPUPlace(0)
         exe = fluid.Executor(place)
         npu_, cpu_ = exe.run(main_program,
