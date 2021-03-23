@@ -76,12 +76,9 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
     for (size_t i = 0; i < reduce_dims.size(); ++i) {
-      reduce_dims[i] =
-          (reduce_dims[i] >= 0)
-              ? reduce_dims[i]
-              : input->dims().size() + reduce_dims[i];  // dims can be counted
-                                                        // backwards, "-1" =
-                                                        // last dimension
+      reduce_dims[i] = (reduce_dims[i] >= 0)
+                           ? reduce_dims[i]
+                           : input->dims().size() + reduce_dims[i];
       output_dims[reduce_dims[i]] = 1;
     }
 

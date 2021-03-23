@@ -16,12 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-import paddle
-import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+import paddle
 
 
 @skip_check_grad_ci(reason="not implemented")
@@ -179,6 +176,5 @@ class TestReduceMean3DBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
 
 
 if __name__ == '__main__':
-    import paddle
     paddle.enable_static()
     unittest.main()
