@@ -919,15 +919,17 @@ void BindImperative(py::module *m_ptr) {
               print(x.grad)          # None
        )DOC")
       .def("_run_backward",
-           [](imperative::VarBase &self, const imperative::Tracer &tracer,
+           [](std::vector<std::shared_ptr<imperative::VarBase>> &self, const imperative::Tracer &tracer,
               bool retain_graph,
-              std::shared_ptr<imperative::VarBase> &grad_tensor) {
+              std::vector<std::shared_ptr<imperative::VarBase>> &grad_tensor) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
-             // auto *engine = tracer.GetEngine();
-             // engine->Init(&self, retain_graph, grad_tensor.get());
+             std::vector<std::shared_ptr<imperative::VarBase>> inputs;
+            
+             auto *engine = tracer.GetEngine();
+             engine->Init(self, grad_tensor, retain_graph, false, inputs);
              VLOG(3) << "Start backward";
-             // engine->Execute();
+             engine->Execute();
              VLOG(3) << "Finish backward";
            },
            py::call_guard<py::gil_scoped_release>())
@@ -1425,7 +1427,8 @@ void BindImperative(py::module *m_ptr) {
         VLOG(3) << "Start backward";
         engine->Execute();
         VLOG(3) << "Finish backward";
-      });
+      },
+      py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

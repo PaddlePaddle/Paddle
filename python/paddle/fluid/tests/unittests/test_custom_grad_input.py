@@ -22,14 +22,14 @@ import paddle.fluid.dygraph as dg
 from op_test import OpTest
 
 
-class TestBackward(unittest.TestCase):
+class TestTensorBackward(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
-    def test_all_positive(self):
+    def test_tensor_backward(self):
         for dtype in self._dtypes:
             x = np.random.random([2, 100]).astype(dtype)
             y = np.random.random([100, 2]).astype(dtype)
@@ -47,6 +47,32 @@ class TestBackward(unittest.TestCase):
                     x_grad = np.matmul(grad, y.T)
 
                     self.assertTrue(np.allclose(x_grad, x_tensor.grad))
+
+class TestBackwardAPI(unittest.TestCase):
+    def setUp(self):
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
+
+    def test_backward_api(self):
+        for dtype in self._dtypes:
+            x = np.random.random([2, 2]).astype(dtype)
+            y = np.random.random([2, 2]).astype(dtype)
+            z = np.matmul(x, y)
+            grad = np.random.random(z.shape).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    x_tensor = paddle.to_tensor(x, stop_gradient=False)
+                    y_tensor = paddle.to_tensor(y)
+                    z_tensor = paddle.matmul(x_tensor, y_tensor)
+
+                    grad_tensor = paddle.to_tensor(grad)
+                    paddle.autograd.backward([z_tensor, z_tensor], [grad_tensor, grad_tensor], True)
+
+                    x_grad = np.matmul(grad, y.T)
+
+                    self.assertTrue(np.allclose(x_grad*2, x_tensor.grad))
 
 
 if __name__ == '__main__':

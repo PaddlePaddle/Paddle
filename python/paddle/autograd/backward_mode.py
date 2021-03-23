@@ -69,6 +69,8 @@ def backward(tensors,
 
     if inputs is not None:
         assert len(inputs) > 0, "inputs cannot be empty list"
+    else:
+        inputs = []
 
     core.dygraph_run_backward(tensors, grad_tensors, retain_graph, create_graph,
                               inputs, framework._dygraph_tracer())
