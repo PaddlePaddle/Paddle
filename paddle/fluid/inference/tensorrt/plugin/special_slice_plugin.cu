@@ -62,6 +62,8 @@ nvinfer1::DimsExprs SpecialSlicePluginDynamic::getOutputDimensions(
   output.d[1] = one;
   output.d[0] = expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
                                        *inputs[1].d[0], *one);
+  // remove padding 1
+  output.nbDims -= 2;
 
   return output;
 }
