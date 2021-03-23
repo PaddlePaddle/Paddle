@@ -68,9 +68,6 @@ quant_output_layers_map = {
     'MaxPool2D': paddle.nn.MaxPool2D,
     'BatchNorm': paddle.nn.BatchNorm,
     'BatchNorm2D': paddle.nn.BatchNorm2D,
-    'GroupNorm': paddle.nn.GroupNorm,
-    'InstanceNorm2D': paddle.nn.InstanceNorm2D,
-    'LayerNorm': paddle.nn.LayerNorm,
     'SyncBatchNorm': paddle.nn.SyncBatchNorm,
     'ELU': paddle.nn.ELU,
     'GELU': paddle.nn.GELU,
@@ -83,3 +80,8 @@ quant_output_layers_map = {
     'Tanh': paddle.nn.Tanh,
     'Swish': paddle.nn.Swish,
 }
+
+weight_op_types = [
+    "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
+    "depthwise_conv2d_transpose"
+]

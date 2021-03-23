@@ -519,8 +519,8 @@ class ImperativeCalcOutputScale(object):
                 if not self._is_scale_op_matched(scale_name, op, global_block):
                     op_idx += 1
                 else:
-                    weight_ops = ["conv2d", "depthwise_conv2d", "matmul"]
-                    if op.type in weight_ops and op_idx + 1 < len(target_ops) \
+                    if op.type in utils.weight_op_types \
+                        and op_idx + 1 < len(target_ops) \
                         and target_ops[op_idx+1].type == "elementwise_add":
                         target_ops[op_idx + 1]._set_attr(attr_name, scale_value)
                         op_idx += 2
@@ -592,7 +592,8 @@ class ImperativeCalcOutputScale(object):
 
         # Note that, the items have priority in corresponding_dict
         corresponding_dict = {
-            'conv2d_tranpose': [['conv2d_tranpose'], None],
+            'conv2d_tranpose': [['conv2d_transpose', \
+                                'depthwise_conv2d_transpose'], None],
             'conv2d': [['conv2d', 'depthwise_conv2d'], None],
             'linear': [['matmul'], None],
             're_lu6': [['relu6'], None],
