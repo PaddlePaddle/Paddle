@@ -403,6 +403,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
+      hogwild_worker.cc
     } else if (pass->Type() == "fusion_group_pass") {
       pass->Set<bool>("use_gpu", new bool((use_device == p::kCUDA)));
       if (use_device != p::kCUDA) {

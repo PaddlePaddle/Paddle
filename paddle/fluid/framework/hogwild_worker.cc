@@ -229,10 +229,17 @@ void HogwildWorker::PrintFetchVars() {
   if (thread_id_ == 0) {
     if (batch_num_ % batch_per_print == 0) {
       int fetch_var_num = fetch_config_.fetch_var_names_size();
+
+      std::cout << "batch: " << batch_num_ << ", ";
+
       for (int i = 0; i < fetch_var_num; ++i) {
         platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
                            fetch_config_.fetch_var_str_format(i));
+        if (i < fetch_var_num - 1) {
+          std::cout << ", ";
+        }
       }
+      std::cout << std::endl;
     }
   }
 }
