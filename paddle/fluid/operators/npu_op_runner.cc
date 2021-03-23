@@ -185,6 +185,8 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
   return *this;
 }
 
+// NOTE(zhiqiu): For operators whose input is a list (such as concat, stack),
+// It is needed to set the name of each input tensor.
 NpuOpRunner &AddInputNames(const std::vector<std::string> &names) {
   PADDLE_ENFORCE_EQ(names.size(), input_descs_.size(),
   platform::errors::InvalidArgument("The size of input names should be "
