@@ -537,7 +537,8 @@ class ImperativeCalcOutputScale(object):
 
     def _is_target_layer(self, layer):
         return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
-            or 'quantized_' in layer.full_name()
+            or ('quantized_' in layer.full_name() and \
+                'quantized_noweight' not in layer.full_name())
 
     def _init_scale_params(self, layer, name=None):
         """

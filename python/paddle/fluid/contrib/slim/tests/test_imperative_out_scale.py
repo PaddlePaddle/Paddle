@@ -33,7 +33,6 @@ from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
-from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph import nn
 
@@ -131,8 +130,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 bias_attr=False),
             BatchNorm2D(6),
             ReLU(),
-            Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2),
+            MaxPool2D(
+                kernel_size=2, stride=2),
             Conv2D(
                 in_channels=6,
                 out_channels=16,
@@ -405,7 +404,8 @@ class TestImperativeOutSclae(unittest.TestCase):
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
 
-        self.assertTrue(op_count == 13)
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
 
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
@@ -474,7 +474,9 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
-        self.assertTrue(op_count == 13)
+
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
 
 
 class TestSaveQuantizedModel_Warning(unittest.TestCase):
