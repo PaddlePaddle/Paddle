@@ -310,11 +310,11 @@ std::vector<uint64_t> GraphPyClient::random_sample_nodes(std::string name,
   }
   return v;
 }
-std::vector<GraphNode> GraphPyClient::pull_graph_list(std::string name,
+std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
                                                       int server_index,
                                                       int start, int size,
                                                       int step) {
-  std::vector<GraphNode> res;
+  std::vector<FeatureNode> res;
   if (this->table_id_map.count(name)) {
     uint32_t table_id = this->table_id_map[name];
     auto status = worker_ptr->pull_graph_list(table_id, server_index, start,

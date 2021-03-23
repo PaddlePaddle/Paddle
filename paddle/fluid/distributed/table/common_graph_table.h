@@ -44,8 +44,8 @@ class GraphShard {
     // bucket_size = init_bucket_size(shard_num);
     // bucket.resize(bucket_size);
   }
-  std::vector<GraphNode *> &get_bucket() { return bucket; }
-  std::vector<GraphNode *> get_batch(int start, int end, int step);
+  std::vector<Node *> &get_bucket() { return bucket; }
+  std::vector<Node *> get_batch(int start, int end, int step);
   // int init_bucket_size(int shard_num) {
   //   for (int i = bucket_low_bound;; i++) {
   //     if (gcd(i, shard_num) == 1) return i;
@@ -59,8 +59,9 @@ class GraphShard {
     }
     return res;
   }
-  GraphNode *add_node(uint64_t id, std::string feature);
-  GraphNode *find_node(uint64_t id);
+  GraphNode *add_graph_node(uint64_t id);
+  FeatureNode *add_feature_node(uint64_t id);
+  Node *find_node(uint64_t id);
   void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
   // std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
   std::unordered_map<uint64_t, int> get_node_location() {
@@ -70,7 +71,7 @@ class GraphShard {
  private:
   std::unordered_map<uint64_t, int> node_location;
   int shard_num;
-  std::vector<GraphNode *> bucket;
+  std::vector<Node *> bucket;
 };
 class GraphTable : public SparseTable {
  public:
@@ -98,8 +99,8 @@ class GraphTable : public SparseTable {
   int32_t load_edges(const std::string &path, bool reverse);
 
   int32_t load_nodes(const std::string &path, std::string node_type);
-
-  GraphNode *find_node(uint64_t id);
+    
+  Node *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
     return 0;

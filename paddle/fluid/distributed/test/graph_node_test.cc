@@ -334,7 +334,7 @@ void RunBrpcPushSparse() {
   pull_status.wait();
   ASSERT_EQ(0, vs[0].size());
 
-  std::vector<distributed::GraphNode> nodes;
+  std::vector<distributed::FeatureNode> nodes;
   pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, 1, nodes);
   pull_status.wait();
   ASSERT_EQ(nodes.size(), 1);
@@ -450,15 +450,15 @@ void RunBrpcPushSparse() {
 
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
-  s.set_feature("hhhh");
+  s.add_feature("hhhh");
   s.set_id(65);
   int size = s.get_size(true);
   char str[size];
   s.to_buffer(str, true);
   s1.recover_from_buffer(str);
   ASSERT_EQ(s.get_id(), s1.get_id());
-  VLOG(0) << s.get_feature();
-  VLOG(0) << s1.get_feature();
+  VLOG(0) << s.get_feature(0);
+  VLOG(0) << s1.get_feature(0);
 }
 
 TEST(RunBrpcPushSparse, Run) { RunBrpcPushSparse(); }
