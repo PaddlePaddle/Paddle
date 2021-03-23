@@ -21,7 +21,7 @@ template <typename T>
 class ReduceSumMKLDNNKernel : public ReduceMKLDNNKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-      this->RunKernel(ctx, dnnl::algorithm::reduction_sum);
+    this->RunKernel(ctx, dnnl::algorithm::reduction_sum);
   }
 };
 

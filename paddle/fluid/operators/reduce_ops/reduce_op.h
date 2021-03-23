@@ -499,9 +499,9 @@ class ReduceOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-            return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                      framework::DataLayout::kMKLDNN,
-                                      framework::LibraryType::kMKLDNN);
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
 
@@ -603,7 +603,7 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         "The dtype of output, default value is -1, the dtype is same as intput")
         .SetDefault(-1);
     AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
+                  "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 %s Operator.

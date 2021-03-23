@@ -21,11 +21,11 @@ using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using platform::to_void_cast;
 
-
 template <typename T>
 class ReduceMKLDNNKernel : public framework::OpKernel<T> {
  public:
-  void RunKernel(const framework::ExecutionContext& ctx, dnnl::algorithm reduction_type) const {
+  void RunKernel(const framework::ExecutionContext& ctx,
+                 dnnl::algorithm reduction_type) const {
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
@@ -37,19 +37,18 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
 
-    std::vector<int64_t> output_dims = CalculateOutputDims(input, output, reduce_dims, reduce_all, keep_dim);
+    std::vector<int64_t> output_dims =
+        CalculateOutputDims(input, output, reduce_dims, reduce_all, keep_dim);
 
     platform::ReductionMKLDNNHandler<T> handler(
-        reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine,
-        ctx.GetPlace(), input, output,
-        ctx.InputName("X"), output_dims);
+        reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine, ctx.GetPlace(),
+        input, output, ctx.InputName("X"), output_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(input);
     auto dst_memory_p = handler.AcquireDstMemory(output);
 
     std::unordered_map<int, dnnl::memory> reduction_args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
 
     auto reduction_p = handler.AcquireForwardPrimitive();
 
@@ -57,25 +56,33 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
-
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(
         platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
             paddle::framework::vectorize<int64_t>(output->dims()))));
   }
 
-private:
-  std::vector<int64_t> CalculateOutputDims(const Tensor* input, const Tensor* output, std::vector<int>& reduce_dims, bool reduce_all, bool keep_dim) const{
-    if(keep_dim)
-      return framework::vectorize(output->dims());
+ private:
+  std::vector<int64_t> CalculateOutputDims(const Tensor* input,
+                                           const Tensor* output,
+                                           std::vector<int>& reduce_dims,
+                                           bool reduce_all,
+                                           bool keep_dim) const {
+    if (keep_dim) return framework::vectorize(output->dims());
 
-    if(reduce_all)
-      return std::vector<int64_t> (framework::vectorize(input->dims()).size(), 1);
-    
+    if (reduce_all)
+      return std::vector<int64_t>(framework::vectorize(input->dims()).size(),
+                                  1);
+
     std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
-    for(size_t i = 0; i < reduce_dims.size() ; ++i){
-        reduce_dims[i] = (reduce_dims[i] >= 0) ? reduce_dims[i] : input->dims().size() + reduce_dims[i]; // dims can be counted backwards, "-1" = last dimension
-        output_dims[reduce_dims[i]] = 1;
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      reduce_dims[i] =
+          (reduce_dims[i] >= 0)
+              ? reduce_dims[i]
+              : input->dims().size() + reduce_dims[i];  // dims can be counted
+                                                        // backwards, "-1" =
+                                                        // last dimension
+      output_dims[reduce_dims[i]] = 1;
     }
 
     return output_dims;
@@ -84,5 +91,3 @@ private:
 
 }  // namespace operators
 }  // namespace paddle
-
-

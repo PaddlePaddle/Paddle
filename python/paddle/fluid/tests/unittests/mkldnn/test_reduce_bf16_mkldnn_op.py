@@ -24,8 +24,7 @@ from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
+@skip_check_grad_ci(reason="not implemented")
 class TestReduceSumBF16DefaultONEDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -34,190 +33,150 @@ class TestReduceSumBF16DefaultONEDNNOp(OpTest):
         x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
         self.outputs = {'Out': x_fp32.sum(axis=0)}
-        self.attrs = {
-            'use_mkldnn': self.use_mkldnn
-        }
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum4DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum4DBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.random((5, 10, 5, 5)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
-            'dim': [2]
-        }
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [2]}
         self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeBF16ONEDNNOp(
+        TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.normal(size=(2, 3, 5, 6)).astype('float32')
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
-            'dim': [0, 1, 2, 3]
-        }
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1, 2, 3]}
         self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16ONEDNNOp(
+        TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.normal(size=(2, 7, 3, 5)).astype('float32')
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
-            'dim': [-1, -2, -3, -4]
-        }
+        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [-1, -2, -3, -4]}
         self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumBF16DefaultBF16ONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.random((2, 5, 3, 2, 2)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'dim': (2, 3, 4),
-            'keep_dim': True,
-            'use_mkldnn': True
-            }
+        self.attrs = {'dim': (2, 3, 4), 'keep_dim': True, 'use_mkldnn': True}
         self.outputs = {
             'Out': x_fp32.sum(axis=tuple(self.attrs['dim']),
-                                        keepdims=self.attrs['keep_dim'])
+                              keepdims=self.attrs['keep_dim'])
         }
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum5DReduceAllKeepDimsBF16ONEDNNOp(
+        TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.normal(size=(2, 5, 3, 2, 4)).astype('float32')
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'reduce_all': True,
-            'keep_dim': True,
-            'use_mkldnn': True
-            }
-        self.outputs = {
-            'Out': x_fp32.sum(keepdims=self.attrs['keep_dim'])
-        }
+        self.attrs = {'reduce_all': True, 'keep_dim': True, 'use_mkldnn': True}
+        self.outputs = {'Out': x_fp32.sum(keepdims=self.attrs['keep_dim'])}
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceSum4DReduceAllONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceSum4DReduceAllBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
         x_fp32 = np.random.normal(size=(4, 3, 2, 3)).astype('float32')
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'reduce_all': True,
-            'use_mkldnn': self.use_mkldnn
-        }
+        self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': x_fp32.sum()}
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+class TestReduceMax3DBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_max"
         self.use_mkldnn = True
         x_fp32 = np.random.random((5, 6, 10)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'dim': [-1],
-            'use_mkldnn' : self.use_mkldnn
-        }
-        self.outputs = {
-            'Out': x_fp32.max(axis=tuple(self.attrs['dim']))
-        }
+        self.attrs = {'dim': [-1], 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': x_fp32.max(axis=tuple(self.attrs['dim']))}
 
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+class TestReduceMax4DNegativeAndPositiveDimsBF16ONEDNNOp(
+        TestReduceSumBF16DefaultONEDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_max"
         self.use_mkldnn = True
         x_fp32 = np.random.random((5, 6, 10, 9)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'dim': [-1, 0, 1],
-            'use_mkldnn' : self.use_mkldnn
-        }
-        self.outputs = {
-            'Out': x_fp32.max(axis=tuple(self.attrs['dim']))
-        }
+        self.attrs = {'dim': [-1, 0, 1], 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': x_fp32.max(axis=tuple(self.attrs['dim']))}
+
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
-class TestReduceMin3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+class TestReduceMin3DBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
         self.op_type = "reduce_min"
         self.use_mkldnn = True
         x_fp32 = np.random.random((5, 6, 10)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = {
-            'dim': [2],
-            'use_mkldnn': self.use_mkldnn
-        }
-        self.outputs = {
-            'Out': x_fp32.min(axis=tuple(self.attrs['dim']))
-        }
+        self.attrs = {'dim': [2], 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': x_fp32.min(axis=tuple(self.attrs['dim']))}
 
 
-@skip_check_grad_ci(
-    reason="not implemented")
-class TestReduceMean3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceMean3DBF16ONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
         x_fp32 = np.random.random((5, 6, 10)).astype("float32")
-        x_bf16 = convert_float_to_uint16(x_fp32) 
+        x_bf16 = convert_float_to_uint16(x_fp32)
         self.inputs = {'X': x_bf16}
-        self.attrs = { 'use_mkldnn' : self.use_mkldnn }
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': x_fp32.sum(axis=0) / x_fp32.shape[0]}
+
 
 if __name__ == '__main__':
     import paddle

@@ -638,7 +638,8 @@ class ReductionMKLDNNHandler
                          const float eps, const MKLDNNDeviceContext& dev_ctx,
                          const mkldnn::engine engine, platform::Place cpu_place,
                          const Tensor* x, const Tensor* y,
-                         const std::string& uniq_name, std::vector<int64_t> output_dims)
+                         const std::string& uniq_name,
+                         std::vector<int64_t> output_dims)
       : platform::MKLDNNHandlerT<T, dnnl::reduction>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
