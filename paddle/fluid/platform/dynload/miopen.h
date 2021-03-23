@@ -125,6 +125,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenCreateRNNDescriptor);                     \
   __macro(miopenDestroyRNNDescriptor);                    \
   __macro(miopenSetRNNDescriptor);                        \
+  __macro(miopenSetRNNDescriptor_V2);                     \
   __macro(miopenGetRNNParamsSize);                        \
   __macro(miopenGetRNNWorkspaceSize);                     \
   __macro(miopenGetRNNTrainingReserveSize);               \
