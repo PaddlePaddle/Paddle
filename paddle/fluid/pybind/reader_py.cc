@@ -223,6 +223,10 @@ class MultiDeviceFeedReader {
     ReadAsync();
   }
 
+  void Shutdown() {
+    for (auto &r : readers_) r->Shutdown();
+  }
+
   ~MultiDeviceFeedReader() {
     queue_->Close();
     pool_.reset();
@@ -264,10 +268,6 @@ class MultiDeviceFeedReader {
     } else {
       return success_num > 0 ? Status::kSuccess : Status::kEOF;
     }
-  }
-
-  void Shutdown() {
-    for (auto &r : readers_) r->Shutdown();
   }
 
   void Start() {
@@ -362,6 +362,8 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
            },
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &ReaderType::Reset,
+           py::call_guard<py::gil_scoped_release>())
+      .def("shutdown", &ReaderType::Shutdown,
            py::call_guard<py::gil_scoped_release>());
 }
 

@@ -413,6 +413,18 @@ class Section(DeviceWorker):
         section_param = trainer_desc.section_param
         section_param.num_microbatches = pipeline_opt["num_microbatches"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
+        section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
+        section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
+        schedule_mode_str = pipeline_opt["schedule_mode"]
+        # F-then-B scheduler which runs Forward phase for all microbatches,
+        # then runs Backward phase for all microbatches.
+        # 1F1B scheduler, which runs forward phase and backward phase altertively
+        # after startup phase.
+        assert schedule_mode_str in ["F-then-B", "1F1B"], (
+            "The schedule mode "
+            "for pipeline must be one of F-then-B or 1F1B")
+        schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
+        section_param.schedule_mode = schedule_mode
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(program["program"]._get_desc()

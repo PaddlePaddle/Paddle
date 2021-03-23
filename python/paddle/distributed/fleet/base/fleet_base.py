@@ -637,6 +637,11 @@ class Fleet(object):
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
+
+        # TODO(shenliang03): This is a temporary solution to support amp. In the case of a dynamic graph, 
+        # the optimizer is returned directly. This problem will be fixed in the future.
+        if paddle.fluid.framework.in_dygraph_mode():
+            return optimizer
         return self
 
     @dygraph_only

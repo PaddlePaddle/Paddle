@@ -43,7 +43,11 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int block_dim) {
+#ifdef __HIPCC__
+  const int kMaxBlockDim = 256;
+#else
   const int kMaxBlockDim = 512;
+#endif
   return block_dim >= kMaxBlockDim
              ? kMaxBlockDim
              : (1 << (static_cast<int>(std::log2f(block_dim))));
@@ -698,8 +702,11 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
                               const framework::ExecutionContext &ctx) {
   auto &dev_ctx = ctx.cuda_device_context();
   auto stream = dev_ctx.stream();
-
+#ifdef __HIPCC__
+  const int kMaxBlockDim = 256;
+#else
   const int kMaxBlockDim = 512;
+#endif
   const int kMaxBlockNum = 128;
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |
