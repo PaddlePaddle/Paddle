@@ -174,7 +174,7 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
 }
 std::future<int32_t> GraphBrpcClient::pull_graph_list(
     uint32_t table_id, int server_index, int start, int size, int step,
-    std::vector<GraphNode> &res) {
+    std::vector<FeatureNode> &res) {
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(1, [&](void *done) {
     int ret = 0;
     auto *closure = (DownpourBrpcClosure *)done;
@@ -190,9 +190,9 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
       io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
       int index = 0;
       while (index < bytes_size) {
-        GraphNode node;
+        FeatureNode node;
         node.recover_from_buffer(buffer + index);
-        index += node.get_size(true);
+        index += node.get_size(false);
         res.push_back(node);
       }
     }
