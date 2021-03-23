@@ -53,7 +53,8 @@ class VariableWrapper;
 class VariableWrapperHook {
  public:
   virtual ~VariableWrapperHook() = default;
-  virtual VariableWrapper operator()(const VariableWrapper& var) = 0;
+  virtual std::shared_ptr<VariableWrapper> operator()(
+      const std::shared_ptr<VariableWrapper>& var) = 0;
 };
 
 /** [ Inplace VariableWrapper Hook: Post hook functor of GradAccumulator ]

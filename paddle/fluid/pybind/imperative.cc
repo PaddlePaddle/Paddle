@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
@@ -61,6 +62,53 @@ class Layer : public imperative::Layer {
     PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
                       Forward, inputs);  // NOLINT
   }
+};
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s", typeid(T).name()));
+  }
+}
+
+class PyVariableWrapperHook : public imperative::VariableWrapperHook {
+ public:
+  explicit PyVariableWrapperHook(PyObject *func) : py_func_(func) {
+    VLOG(0) << "Construct PyVariableWrapperHook based func " << func;
+    Py_INCREF(func);
+  }
+
+  ~PyVariableWrapperHook() {
+    VLOG(0) << "Destruct PyVariableWrapperHook based func " << py_func_;
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  std::shared_ptr<imperative::VariableWrapper> operator()(
+      const std::shared_ptr<imperative::VariableWrapper> &var) override {
+    py::gil_scoped_acquire gil;
+
+    // 1. unpack temp VarBase from VariableWrapper
+    std::shared_ptr<imperative::VarBase> tmp_varbase =
+        std::make_shared<imperative::VarBase>(var);
+
+    // 2. call hook and return
+    PyObject *res = PyObject_CallFunctionObjArgs(
+        py_func_, py::cast(tmp_varbase).ptr(), nullptr);
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            platform::errors::Unavailable(
+                                "The gradient Tensor hook return nullptr."));
+    if (res == Py_None) {
+      return var;
+    }
+    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+  }
+
+ private:
+  PyObject *py_func_;
 };
 
 static const platform::Place PyObjectToPlace(const py::object &place_obj) {
@@ -212,16 +260,6 @@ static std::string GetTypeName(const imperative::VarBase &var) {
 }
 
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s", typeid(T).name()));
-  }
-}
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
 // Unlike py::object, py::handle does not change reference count of PyObject *.
@@ -988,6 +1026,25 @@ void BindImperative(py::module *m_ptr) {
              }
            },
            py::call_guard<py::gil_scoped_release>())
+      .def("_register_grad_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register hook on a tensor without gradient."));
+             return self.GradVarBase()->AddHook(
+                 std::make_shared<PyVariableWrapperHook>(hook.ptr()));
+           })
+      .def("_remove_grad_hook",
+           [](imperative::VarBase &self, int64_t hook_id) {
+             PADDLE_ENFORCE_EQ(
+                 self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot remove hook on a tensor without gradient."));
+             return self.GradVarBase()->RemoveHook(hook_id);
+           })
+      .def("_register_grad_reduce_hook",
+           [](imperative::VarBase &self, const py::handle &hook) { return; })
       .def("cpu",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              if (platform::is_cpu_place(self->Place())) {

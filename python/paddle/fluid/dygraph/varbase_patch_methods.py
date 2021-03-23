@@ -14,6 +14,7 @@
 
 import inspect
 import numpy as np
+import weakref
 
 import paddle
 from .. import framework
@@ -24,6 +25,21 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+
+
+class TensorHookRemoveHelper(object):
+    """
+    A helper class that for removing Tensor gradient's hook. 
+    """
+
+    def __init__(self, tensor, hook_id):
+        self._tensor_ref = weakref.ref(tensor)
+        self._hook_id = hook_id
+
+    def remove(self):
+        tensor = self._tensor_ref()
+        if tensor is not None:
+            tensor._remove_grad_hook(self.hook_id)
 
 
 def monkey_patch_varbase():
@@ -211,6 +227,50 @@ def monkey_patch_varbase():
         else:
             return np.array(new_ivar.value().get_tensor())
 
+    @framework.dygraph_only
+    def register_hook(self, hook):
+        """
+        Registers a backward hook for current Tensor.
+
+        The hook will be called every time the gradient Tensor of Current Tensor is computed.
+
+        The hook should not modify the input gradient Tensor, but it can optionally return
+        a new gradient Tensor which will be used in place of current Tensor's gradient.
+
+        The hook should have the following signature:
+
+            hook(grad) -> Variable or None
+
+        Args:
+            hook(function): A backward hook to be registered for Tensor.grad
+
+        Returns:
+            TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
+
+        Examples:
+             .. code-block:: python
+
+                import paddle
+                import numpy as np
+
+                def hook_fn(g):
+                    g = 2 * g
+                    print g
+
+                t = paddle.randn([2, 3])
+                t.stop_gradient = False
+                h = t.register_hook(hook_fn)
+                t.backward()
+                h.remove()
+        """
+        if self.stop_gradient is True:
+            raise RuntimeError(
+                "Cannot register hook on a tensor that stop gradient.")
+
+        hook_id = self._register_grad_hook(hook)
+        helper = TensorHookRemoveHelper(self, hook_id)
+        return helper
+
     @property
     def grad(self):
         """
@@ -316,7 +376,8 @@ def monkey_patch_varbase():
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("clear_grad", clear_grad),
         ("inplace_version", inplace_version), ("grad", grad),
-        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("gradient", gradient), ("register_hook", register_hook),
+        ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)

@@ -224,21 +224,25 @@ class VariableWrapper {
 
   bool HasReduceHook() const { return !reduce_hooks_.empty(); }
 
-  void AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
-    // PADDLE_ENFORCE_NOT_NULL(hook,
-    //   platform::errors::InvalidArgument(
-    //     "The added backward hook for Tensor is nullptr."));
-    hooks_.emplace_back(std::move(hook));
+  int64_t AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    hooks_.emplace(next_hook_id_, std::move(hook));
+    return next_hook_id_++;
   }
 
-  const std::vector<std::shared_ptr<VariableWrapperHook>>& GetHooks() const {
+  bool RemoveHook(const int64_t& hook_id) {
+    auto remove_cnt = hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>& GetHooks()
+      const {
     return hooks_;
   }
 
   void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
-    // PADDLE_ENFORCE_NOT_NULL(hook,
-    //   platform::errors::InvalidArgument(
-    //     "The added backward hook for Tensor is nullptr."));
     reduce_hooks_.emplace_back(std::move(hook));
   }
 
@@ -316,7 +320,12 @@ class VariableWrapper {
   bool is_empty_{false};
 
   // NOTE(chenweihang): only grad var can hold hooks now
-  std::vector<std::shared_ptr<VariableWrapperHook>> hooks_;
+  int64_t next_hook_id_{0};
+  // Hooks used to register hook for grad var, support adding and removing,
+  // key is the accumulated int64_t value
+  std::map<int64_t, std::shared_ptr<VariableWrapperHook>> hooks_;
+  // Hooks executed after the execution of the entire backward process is over,
+  // currently only supported for reducing in distributed training
   std::vector<std::shared_ptr<InplaceVariableWrapperHook>> reduce_hooks_;
 };
 
