@@ -113,7 +113,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   auto op = f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
                               {{"Out", {"Out"}}}, attrs);
 
-  for (int i = 0; i < 10; i ++) {
+  for (int i = 0; i < 2048; i ++) {
     op->Run(*scope, place);
   }
   ctx.Wait();

@@ -37,6 +37,7 @@ set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COLLECTIVE_DEPS} PARENT_SCOPE)
 set(GLOB_COLLECTIVE_DEPS ${COLLECTIVE_DEPS} CACHE INTERNAL "collective dependency")
 
 if(WITH_ASCEND_CL)
+    #set(COMMON_TEST_DEPS_FOR_HCOM op_registry ascend_hccl flags
     set(COMMON_TEST_DEPS_FOR_HCOM c_comm_init_hcom_op op_registry ascend_hccl flags
         dynamic_loader dynload_warpctc scope device_context enforce executor)
     cc_test(c_broadcast_op_npu_test SRCS c_broadcast_op_npu_test.cc

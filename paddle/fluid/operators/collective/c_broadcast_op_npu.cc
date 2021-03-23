@@ -17,6 +17,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 #endif
 
 namespace paddle {
@@ -27,17 +28,14 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
-    int numel = x->numel();
-    hcclDataType_t dtype = platform::ToHCCLDataType(x->type());
+    auto *x = ctx.Input<framework::LoDTensor>("X");
+    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-
+    int root = ctx.Attr<int>("root");
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
-
     aclrtStream stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -46,32 +44,10 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    int root = ctx.Attr<int>("root");
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
-
-    VLOG(3) << "begin hccl broadcast, parameter is: "<< "root " << root
-      << ", group is " << group
-      << ", tag is " << tag;
-
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_broadcast(tag.c_str(), ptr, numel,
-                                  dtype, (uint32_t)root, group.c_str(), (void*)stream));
-
-    VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-            << framework::product(out->dims());
-
-    dev_ctx->Wait();
-
-    if (out != x) {
-      framework::TensorCopy(
-          *static_cast<const framework::Tensor*>(x), place,
-          *platform::DeviceContextPool::Instance().Get(place),
-          static_cast<framework::Tensor*>(out));
-    }
-    dev_ctx->Wait();
-
-    out->Resize(x->dims());
-    out->set_lod(x->lod());
+    auto runner =
+            NpuOpRunner("HcomBroadcast", {*x}, {*out},
+                          {{"root_rank", root}, {"group", std::string("hccl_world_group")}});
+    runner.Run(stream);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));

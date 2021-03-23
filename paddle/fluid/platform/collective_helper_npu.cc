@@ -74,14 +74,14 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(const std::vector<int>& world_rank_ids
 
   // HACK(sunpeng17): hcom API requires bind stream to a model
   // but we don't need model in Paddle, so we feed stream pointer as model pointer
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      platform::dynload::hcom_bind_model(comm_wrapper->stream(),
-                                         comm_wrapper->stream()));
+  //PADDLE_ENFORCE_NPU_SUCCESS(
+  //    platform::dynload::hcom_bind_model(comm_wrapper->stream(),
+  //                                       comm_wrapper->stream()));
 
   // Get world_rank_ids registered in gen_nccl_id op
   std::string group_name = HCOM_GROUP_PREFIX + std::to_string(ring_id);
-  PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_create_group(
-      group_name.c_str(), world_rank_ids.size(), (unsigned int*)world_rank_ids.data()));
+  //PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_create_group(
+  //    group_name.c_str(), world_rank_ids.size(), (unsigned int*)world_rank_ids.data()));
 
   VLOG(1) << "hccl communicator of rank " << rank << " in ring " << ring_id
           << " has been created on device " << dev_id << ", group name: " << group_name;
