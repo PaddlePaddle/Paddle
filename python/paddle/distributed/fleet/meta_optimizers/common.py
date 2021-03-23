@@ -101,14 +101,11 @@ class CollectiveHelper(object):
                 type='c_allreduce_sum',
                 inputs={'X': [sync_var]},
                 outputs={'Out': [sync_var]},
-                attrs={'ring_id': global_ring_id,
-                       OP_ROLE_KEY: OpRole.Forward})
-            block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': sync_var},
-                outputs={'Out': temp_var},
-                attrs={'ring_id': global_ring_id,
-                       OP_ROLE_KEY: OpRole.Forward})
+                attrs={
+                    'ring_id': global_ring_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
 
         block = program.global_block()
         if core.is_compiled_with_cuda():

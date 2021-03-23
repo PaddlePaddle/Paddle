@@ -4347,6 +4347,7 @@ class PipelineOptimizer(object):
                 int(self._op_role.Backward),
                 int(self._op_role.Loss),
                 int(self._op_role.Optimize),
+                int(self._op_role.Backward) | int(self._op_role.Loss),
             ]
             assert int(op.attr(self._op_role_key)) in valid_op_role_value, \
                 "op_role {} for op {} must be one of {}".format(
@@ -4366,7 +4367,7 @@ class PipelineOptimizer(object):
                                        "for pipeline parallelism.")
             if not device in device_list:
                 device_list.append(device)
-        return device_specs
+        return device_list
 
     def _insert_sendrecv_ops_for_boundaries(self, block):
         """
@@ -4392,7 +4393,7 @@ class PipelineOptimizer(object):
                 if var_name in self._param_device_map:
                     prev_device = self._param_device_map[var_name]
                 prev_op = self._find_real_prev_op(block.ops, op, var_name)
-                if not pre_device:
+                if not prev_device:
                     prev_device = prev_op.attr(self._op_device_key) \
                         if prev_op else None
                 if not prev_device or prev_device == 'gpu:all': continue
@@ -4444,7 +4445,6 @@ class PipelineOptimizer(object):
                             })
                         extra_index += 1
                         continue
-                    assert self.schedule_mode == 1
                     if pair not in self._pipeline_pair:
                         self._pipeline_pair.append(pair)
                         self._pp_ring_map[pair_key] = self.ring_id
@@ -4488,7 +4488,7 @@ class PipelineOptimizer(object):
                         attrs={
                             'out_shape': var_shape,
                             'dtype': var.dtype,
-                            self._op_device_key: cur_device_spec,
+                            self._op_device_key: cur_device,
                             self._op_role_key: op_role,
                             'use_calc_stream': True,
                             'peer': prev_device_index,
@@ -4510,8 +4510,6 @@ class PipelineOptimizer(object):
                     outputs={'Out': loss_grad_var},
                     attrs={
                         'scale': 1.0 / self._num_microbatches,
-                        self._op_device_key: device,
-                        #self._op_device_key: device,
                         self._op_role_key: self._op_role.Backward
                     })
                 break
@@ -4556,6 +4554,7 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
                 if len(op_role_var) == 0: continue
                 assert len(op_role_var) % 2 == 0
                 for i in range(0, len(op_role_var), 2):
@@ -4787,7 +4786,8 @@ class PipelineOptimizer(object):
             schedule_mode = main_block.program._pipeline_opt['schedule_mode']
         self.schedule_mode = schedule_mode
         # micro batch size
-        self.pp_bz = main_block.program._pipeline_opt['pp_bz']
+        self.micro_batch_size = main_block.program._pipeline_opt[
+            'micro_batch_size']
 
         self.use_sharding = False
         if 'use_sharding' in main_block.program._pipeline_opt:
@@ -4834,6 +4834,7 @@ class PipelineOptimizer(object):
         self._add_sub_blocks(main_block, program_list)
 
         local_rank = main_program._pipeline_opt['local_rank'] % len(device_list)
+        place_list = []
         for dev in device_list:
             dev_index = int(dev.split(":")[1])
             place_list.append(core.CUDAPlace(dev_index % 8))

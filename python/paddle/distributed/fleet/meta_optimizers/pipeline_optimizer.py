@@ -199,7 +199,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         loss.block.program._pipeline_opt[
             'micro_batch_size'] = self.micro_batch_size
         loss.block.program._pipeline_opt['schedule_mode'] = self.schedule_mode
-        optimize_ops, params_grads, prog_list = self.wrapped_opt.minimize(
+        optimize_ops, params_grads, prog_list, _, _ = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         assert prog_list
 
