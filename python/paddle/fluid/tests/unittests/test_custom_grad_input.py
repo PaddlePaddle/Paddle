@@ -48,6 +48,7 @@ class TestTensorBackward(unittest.TestCase):
 
                     self.assertTrue(np.allclose(x_grad, x_tensor.grad))
 
+
 class TestBackwardAPI(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
@@ -68,11 +69,12 @@ class TestBackwardAPI(unittest.TestCase):
                     z_tensor = paddle.matmul(x_tensor, y_tensor)
 
                     grad_tensor = paddle.to_tensor(grad)
-                    paddle.autograd.backward([z_tensor, z_tensor], [grad_tensor, grad_tensor], True)
+                    paddle.autograd.backward([z_tensor, z_tensor],
+                                             [grad_tensor, grad_tensor], True)
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad*2, x_tensor.grad))
+                    self.assertTrue(np.allclose(x_grad * 2, x_tensor.grad))
 
 
 if __name__ == '__main__':
