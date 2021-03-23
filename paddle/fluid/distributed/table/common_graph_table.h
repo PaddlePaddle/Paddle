@@ -26,6 +26,7 @@
 #include <vector>
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
@@ -118,6 +119,7 @@ class GraphTable : public SparseTable {
   }
   virtual int32_t initialize_shard() { return 0; }
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
+  virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
 
  protected:
   std::vector<GraphShard> shards;
@@ -128,6 +130,7 @@ class GraphTable : public SparseTable {
   std::vector<std::string > feat_name;
   std::vector<std::string > feat_dtype;
   std::vector<int32_t > feat_shape;
+  std::unordered_map<std::string, int32_t > feat_id_map;
   std::string table_name;
   std::string table_type;
 

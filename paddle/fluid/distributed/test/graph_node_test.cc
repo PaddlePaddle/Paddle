@@ -62,6 +62,48 @@ void testSampleNodes(
     ASSERT_EQ(true, s1.find(id) != s1.end());
   }
 }
+
+void testFeatureNodeSerializeInt() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<int32_t>({"123", "345"});
+  std::vector<int32_t > out2 = distributed::FeatureNode::parse_bytes_to_array<int32_t>(out);
+  ASSERT_EQ(out2[0] , 123);
+  ASSERT_EQ(out2[1] , 345);
+}
+
+void testFeatureNodeSerializeInt64() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<int64_t>({"123", "345"});
+  std::vector<int64_t > out2 = distributed::FeatureNode::parse_bytes_to_array<int64_t>(out);
+  ASSERT_EQ(out2[0] , 123);
+  ASSERT_EQ(out2[1] , 345);
+}
+
+
+void testFeatureNodeSerializeFloat32() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<float>({"123.123", "345.123"});
+  std::vector<float> out2 = distributed::FeatureNode::parse_bytes_to_array<float>(out);
+  float eps; 
+  std::cout << "Float " << out2[0] << " " << 123.123 << std::endl;
+  eps = out2[0] - 123.123;
+  ASSERT_LE(eps * eps , 1e-5);
+  eps = out2[1] - 345.123;
+  ASSERT_LE(eps * eps , 1e-5);
+}
+
+
+void testFeatureNodeSerializeFloat64() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<double>({"123.123", "345.123"});
+  std::vector<double> out2 = distributed::FeatureNode::parse_bytes_to_array<double>(out);
+  float eps; 
+  eps = out2[0] - 123.123;
+  std::cout << "Float64 " << out2[0] << " " << 123.123 << std::endl;
+  ASSERT_LE(eps * eps , 1e-5);
+  eps = out2[1] - 345.123;
+  ASSERT_LE(eps * eps , 1e-5);
+}
+
+
+
+
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -137,14 +179,14 @@ std::string edges[] = {
 char edge_file_name[] = "edges.txt";
 
 std::string nodes[] = {
-    std::string("user\t37\t0.34"),  std::string("user\t96\t0.31"),
-    std::string("user\t59\t0.11"),  std::string("user\t97\t0.11"),
-    std::string("item\t45\t0.21"),  std::string("item\t145\t0.21"),
-    std::string("item\t112\t0.21"), std::string("item\t48\t0.21"),
-    std::string("item\t247\t0.21"), std::string("item\t111\t0.21"),
-    std::string("item\t46\t0.21"),  std::string("item\t146\t0.21"),
-    std::string("item\t122\t0.21"), std::string("item\t49\t0.21"),
-    std::string("item\t248\t0.21"), std::string("item\t113\t0.21")};
+    std::string("user\t37\ta 0.34\tb 13 14\tc hello"),  std::string("user\t96\ta 0.31\tb 15 10"),
+    std::string("user\t59\ta 0.11\tb 11 14"),  std::string("user\t97\ta 0.11\tb 12 11"),
+    std::string("item\t45\ta 0.21"),  std::string("item\t145\ta 0.21"),
+    std::string("item\t112\ta 0.21"), std::string("item\t48\ta 0.21"),
+    std::string("item\t247\ta 0.21"), std::string("item\t111\ta 0.21"),
+    std::string("item\t46\ta 0.21"),  std::string("item\t146\ta 0.21"),
+    std::string("item\t122\ta 0.21"), std::string("item\t49\ta 0.21"),
+    std::string("item\t248\ta 0.21"), std::string("item\t113\ta 0.21")};
 char node_file_name[] = "nodes.txt";
 
 void prepare_file(char file_name[], bool load_edge) {
@@ -355,8 +397,31 @@ void RunBrpcPushSparse() {
                                          std::string("item")};
   server1.set_up(ips_str, 127, node_types, edge_types, 0);
   server2.set_up(ips_str, 127, node_types, edge_types, 1);
+
+  server1.add_table_feat_conf("user", "a", "float32", 1);
+  server1.add_table_feat_conf("user", "b", "int32", 2);
+  server1.add_table_feat_conf("user", "c", "string", 1);
+  server1.add_table_feat_conf("item", "a", "float32", 1);
+
+  server2.add_table_feat_conf("user", "a", "float32", 1);
+  server2.add_table_feat_conf("user", "b", "int32", 2);
+  server2.add_table_feat_conf("user", "c", "string", 1);
+  server2.add_table_feat_conf("item", "a", "float32", 1);
+
   client1.set_up(ips_str, 127, node_types, edge_types, 0);
+
+  client1.add_table_feat_conf("user", "a", "float32", 1);
+  client1.add_table_feat_conf("user", "b", "int32", 2);
+  client1.add_table_feat_conf("user", "c", "string", 1);
+  client1.add_table_feat_conf("item", "a", "float32", 1);
+
   client2.set_up(ips_str, 127, node_types, edge_types, 1);
+
+  client2.add_table_feat_conf("user", "a", "float32", 1);
+  client2.add_table_feat_conf("user", "b", "int32", 2);
+  client2.add_table_feat_conf("user", "c", "string", 1);
+  client2.add_table_feat_conf("item", "a", "float32", 1);
+
   server1.start_server();
   std::cout << "first server done" << std::endl;
   server2.start_server();
@@ -445,6 +510,10 @@ void RunBrpcPushSparse() {
   worker_ptr_->finalize_worker();
   server_thread.join();
   server_thread2.join();
+  testFeatureNodeSerializeInt();
+  testFeatureNodeSerializeInt64();
+  testFeatureNodeSerializeFloat32();
+  testFeatureNodeSerializeFloat64();
   testGraphToBuffer();
 }
 

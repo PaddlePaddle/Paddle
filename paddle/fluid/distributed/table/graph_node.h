@@ -14,6 +14,9 @@
 
 #pragma once
 #include <vector>
+#include <cstring>
+#include <sstream>
+#include <iostream>
 #include "paddle/fluid/distributed/table/weighted_sampler.h"
 namespace paddle {
 namespace distributed {
@@ -58,6 +61,7 @@ class GraphNode: public Node {
   virtual std::vector<int> sample_k(int k) { return sampler->sample_k(k); }
   virtual uint64_t get_neighbor_id(int idx){return edges->get_id(idx);}
   virtual float get_neighbor_weight(int idx){return edges->get_weight(idx);}
+  
 
  protected:
   Sampler *sampler;
@@ -73,8 +77,35 @@ class FeatureNode: public Node{
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
-  virtual void add_feature(std::string feature) { this->feature.push_back(feature); }
-  virtual std::string get_feature(int idx) { return feature[idx]; }
+  virtual std::string get_feature(int idx) { return this->feature[idx]; }
+  virtual std::vector<std::string> & get_mutable_feature() { return this->feature; }
+
+  template <typename T>
+  static std::string parse_value_to_bytes(std::vector<std::string> feat_str) {
+    T v;
+    size_t Tsize = sizeof(T) * feat_str.size();
+    char buffer[Tsize];
+    for(size_t i = 0;i < feat_str.size();i ++) {
+      std::stringstream ss(feat_str[i]);
+      ss >> v;
+      std::memcpy(buffer + sizeof(T) * i, (char *)&v, sizeof(T));
+    }
+    return std::string(buffer, Tsize);
+  }
+
+  template <typename T>
+  static std::vector<T> parse_bytes_to_array(std::string feat_str) {
+    T v;
+    std::vector<T> out;
+    size_t start = 0;
+    const char * buffer = feat_str.data();
+    while(start < feat_str.size()) {
+      std::memcpy((char *)&v, buffer + start, sizeof(T));
+      start += sizeof(T);
+      out.push_back(v);
+    }
+    return out;
+  }
 
  protected:
   std::vector<std::string> feature;
