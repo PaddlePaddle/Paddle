@@ -42,104 +42,182 @@ class TestReduceSumBF16DefaultONEDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
-#@skip_check_grad_ci(
-#    reason="not implemented")
-#class TestReduceSumONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    def setUp(self):
-#        self.op_type = "reduce_sum"
-#        self.use_mkldnn = True
-#        self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
-#        self.attrs = {
-#            'use_mkldnn': self.use_mkldnn,
-#            'dim': [2]
-#        }
-#        self.outputs = {'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))}
-#
-#
-#@skip_check_grad_ci(
-#    reason="reduce_max is discontinuous non-derivable function,"
-#    " its gradient check is not supported by unittest framework.")
-#class TestReduceMaxONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    """Remove Max with subgradient from gradient check to confirm the success of CI."""
-#
-#    def setUp(self):
-#        self.op_type = "reduce_max"
-#        self.use_mkldnn = True
-#        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-#        self.attrs = {
-#            'dim': [-1],
-#            'use_mkldnn' : self.use_mkldnn
-#        }
-#        self.outputs = {
-#            'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
-#        }
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#@skip_check_grad_ci(
-#    reason="not implemented")
-#class TestReduceSumToScalarONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    def setUp(self):
-#        self.op_type = "reduce_sum"
-#        self.use_mkldnn = True
-#        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-#        self.attrs = {
-#            'reduce_all': True,
-#            'use_mkldnn': self.use_mkldnn
-#        }
-#        self.outputs = {'Out': self.inputs['X'].sum()}
-#
-#
-#@skip_check_grad_ci(
-#    reason="reduce_min is discontinuous non-derivable function,"
-#    " its gradient check is not supported by unittest framework.")
-#class TestReduceMinONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    """Remove Min with subgradient from gradient check to confirm the success of CI."""
-#
-#    def setUp(self):
-#        self.op_type = "reduce_min"
-#        self.use_mkldnn = True
-#        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-#        self.attrs = {
-#            'dim': [2],
-#            'use_mkldnn': self.use_mkldnn
-#        }
-#        self.outputs = {
-#            'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
-#        }
-#
-#
-#@skip_check_grad_ci(
-#    reason="reduce_min is discontinuous non-derivable function,"
-#    " its gradient check is not supported by unittest framework.")
-#class TestReduceMeanONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    def setUp(self):
-#        self.op_type = "reduce_mean"
-#        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-#        self.outputs = {'Out': self.inputs['X'].sum(axis=0) / self.inputs['X'].shape[0]}
-#
-#
-#@skip_check_grad_ci(
-#    reason="reduce_min is discontinuous non-derivable function,"
-#    " its gradient check is not supported by unittest framework.")
-#class TestReduceSumKeepDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
-#    def setUp(self):
-#        self.op_type = "reduce_sum"
-#        self.use_mkldnn = True
-#        self.inputs = {
-#            'X': np.random.random((2, 5, 3, 2, 2)).astype("float32")
-#        }
-#        self.attrs = {
-#            'dim': (2, 3, 4),
-#            'keep_dim': True,
-#            'use_mkldnn': True
-#            }
-#        self.outputs = {
-#            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
-#                                        keepdims=self.attrs['keep_dim'])
-#        }
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum4DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((5, 10, 5, 5)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'use_mkldnn': self.use_mkldnn,
+            'dim': [2]
+        }
+        self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.normal(size=(2, 3, 5, 6)).astype('float32')
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'use_mkldnn': self.use_mkldnn,
+            'dim': [0, 1, 2, 3]
+        }
+        self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
+
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.normal(size=(2, 7, 3, 5)).astype('float32')
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'use_mkldnn': self.use_mkldnn,
+            'dim': [-1, -2, -3, -4]
+        }
+        self.outputs = {'Out': x_fp32.sum(axis=tuple(self.attrs['dim']))}
+
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum5DKeepDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((2, 5, 3, 2, 2)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'dim': (2, 3, 4),
+            'keep_dim': True,
+            'use_mkldnn': True
+            }
+        self.outputs = {
+            'Out': x_fp32.sum(axis=tuple(self.attrs['dim']),
+                                        keepdims=self.attrs['keep_dim'])
+        }
+
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum5DReduceAllKeepDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.normal(size=(2, 5, 3, 2, 4)).astype('float32')
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'reduce_all': True,
+            'keep_dim': True,
+            'use_mkldnn': True
+            }
+        self.outputs = {
+            'Out': x_fp32.sum(keepdims=self.attrs['keep_dim'])
+        }
+
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceSum4DReduceAllONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.use_mkldnn = True
+        x_fp32 = np.random.normal(size=(4, 3, 2, 3)).astype('float32')
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'reduce_all': True,
+            'use_mkldnn': self.use_mkldnn
+        }
+        self.outputs = {'Out': x_fp32.sum()}
+
+
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
+class TestReduceMax3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((5, 6, 10)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'dim': [-1],
+            'use_mkldnn' : self.use_mkldnn
+        }
+        self.outputs = {
+            'Out': x_fp32.max(axis=tuple(self.attrs['dim']))
+        }
+
+
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
+class TestReduceMax4DNegativeAndPositiveDimsONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((5, 6, 10, 9)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'dim': [-1, 0, 1],
+            'use_mkldnn' : self.use_mkldnn
+        }
+        self.outputs = {
+            'Out': x_fp32.max(axis=tuple(self.attrs['dim']))
+        }
+
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
+class TestReduceMin3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((5, 6, 10)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = {
+            'dim': [2],
+            'use_mkldnn': self.use_mkldnn
+        }
+        self.outputs = {
+            'Out': x_fp32.min(axis=tuple(self.attrs['dim']))
+        }
+
+
+@skip_check_grad_ci(
+    reason="not implemented")
+class TestReduceMean3DONEDNNOp(TestReduceSumBF16DefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_mean"
+        self.use_mkldnn = True
+        x_fp32 = np.random.random((5, 6, 10)).astype("float32")
+        x_bf16 = convert_float_to_uint16(x_fp32) 
+        self.inputs = {'X': x_bf16}
+        self.attrs = { 'use_mkldnn' : self.use_mkldnn }
+        self.outputs = {'Out': x_fp32.sum(axis=0) / x_fp32.shape[0]}
 
 if __name__ == '__main__':
     import paddle

@@ -12,20 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/operators/reduce_ops/mkldnn/reduce_mkldnn_op.h"
 
 namespace paddle {
 namespace operators {
-
-using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
-using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
-using platform::to_void_cast;
-
 
 template <typename T>
 class ReduceMinMKLDNNKernel : public ReduceMKLDNNKernel<T> {
@@ -40,4 +30,5 @@ class ReduceMinMKLDNNKernel : public ReduceMKLDNNKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(reduce_min, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReduceMinMKLDNNKernel<float>);
+                   ops::ReduceMinMKLDNNKernel<float>,
+                   ops::ReduceMinMKLDNNKernel<paddle::platform::bfloat16>);

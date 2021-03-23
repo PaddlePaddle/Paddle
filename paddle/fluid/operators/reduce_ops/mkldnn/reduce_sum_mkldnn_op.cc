@@ -12,32 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/operators/reduce_ops/mkldnn/reduce_mkldnn_op.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
-using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
-using platform::to_void_cast;
-
-
 template <typename T>
 class ReduceSumMKLDNNKernel : public ReduceMKLDNNKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-      this->RunKernel(ctx, dnnl::algorithm::reduction_sum);
-  }
-};
-
-
-template <typename T>
-class ReduceSumGradMKLDNNKernel : public ReduceMKLDNNKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
       this->RunKernel(ctx, dnnl::algorithm::reduction_sum);
@@ -51,6 +32,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(reduce_sum, MKLDNN, paddle::platform::CPUPlace,
                    ops::ReduceSumMKLDNNKernel<float>,
                    ops::ReduceSumMKLDNNKernel<paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL(reduce_sum_grad, MKLDNN, paddle::platform::CPUPlace,
-                   ops::ReduceSumGradMKLDNNKernel<float>);

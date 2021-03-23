@@ -14,16 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-
 namespace paddle {
 namespace operators {
 
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
-using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
 
 
@@ -38,23 +33,16 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     const auto* input = ctx.Input<LoDTensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
 
-    int out_dtype = ctx.Attr<int>("out_dtype");
-    int in_dtype = ctx.Attr<int>("in_dtype");
-
-    auto x_dims = input->dims();
-    auto x_rank = x_dims.size();
-
-    auto dims = ctx.Attr<std::vector<int>>("dim"); // dims to reduce
+    auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
-    //bool keep_dim = ctx.Attr<bool>("keep_dim");
-    // Change data formats
+    bool keep_dim = ctx.Attr<bool>("keep_dim");
 
-
+    std::vector<int64_t> output_dims = CalculateOutputDims(input, output, reduce_dims, reduce_all, keep_dim);
 
     platform::ReductionMKLDNNHandler<T> handler(
         reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine,
         ctx.GetPlace(), input, output,
-        ctx.InputName("X"), dims);
+        ctx.InputName("X"), output_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(input);
     auto dst_memory_p = handler.AcquireDstMemory(output);
@@ -69,13 +57,29 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
+
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_format(
         platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
             paddle::framework::vectorize<int64_t>(output->dims()))));
   }
 
+private:
+  std::vector<int64_t> CalculateOutputDims(const Tensor* input, const Tensor* output, std::vector<int>& reduce_dims, bool reduce_all, bool keep_dim) const{
+    if(keep_dim)
+      return framework::vectorize(output->dims());
 
+    if(reduce_all)
+      return std::vector<int64_t> (framework::vectorize(input->dims()).size(), 1);
+    
+    std::vector<int64_t> output_dims(framework::vectorize(input->dims()));
+    for(size_t i = 0; i < reduce_dims.size() ; ++i){
+        reduce_dims[i] = (reduce_dims[i] >= 0) ? reduce_dims[i] : input->dims().size() + reduce_dims[i]; // dims can be counted backwards, "-1" = last dimension
+        output_dims[reduce_dims[i]] = 1;
+    }
+
+    return output_dims;
+  }
 };
 
 }  // namespace operators
