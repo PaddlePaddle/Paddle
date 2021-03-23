@@ -15,6 +15,11 @@
 #ifdef PADDLE_WITH_MKLML
 #include <mkl.h>
 #endif
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -43,6 +48,23 @@ struct CBlas<int8_t> {
 
 template <>
 struct CBlas<platform::bfloat16> {
+
+#ifdef PADDLE_WITH_MKLDNN
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas AXPY do not supported on CPU with bfloat16,"
+        " please check your code"));
+  }
+#else
+  template <typename... ARGS>
+  static void AXPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas AXPY do not supported on CPU with bfloat16,"
+        " please check your code"));
+  }
+#endif
+
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(

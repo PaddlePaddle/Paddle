@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
 class TestSumOp(OpTest):
@@ -139,6 +140,21 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         for place in places:
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
+
+
+class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
+    def setUp(self):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 3, 4, 5, 6]
+        self.dtype = np.uint16
+        self.init_kernel_type()
+
+    def _get_array(self, rows, row_numel):
+        array = np.ones((len(rows), row_numel)).astype('float32')
+        for i in range(len(rows)):
+            array[i] *= rows[i]
+        return convert_float_to_uint16(array)
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
