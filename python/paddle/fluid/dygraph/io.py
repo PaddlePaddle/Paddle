@@ -49,7 +49,6 @@ BUFFER_NAME_PREFIX = "buffer"
 def _pickle_loads_mac(path, f):
     pickle_bytes = bytearray(0)
     file_size = os.path.getsize(path)
-    # with open(path, 'rb') as f:
     max_bytes = 2**30
     for _ in range(0, file_size, max_bytes):
         pickle_bytes += f.read(max_bytes)
@@ -58,24 +57,8 @@ def _pickle_loads_mac(path, f):
     return load_result
 
 
-def _wherher_parse_as_tensor(obj):
-    # In paddle2.1 version, VarBase is saved as tuple(var.name, var.numpy()).
-    # When executing paddle.load, use this function to determine whether to restore to VarBase.
-    if isinstance(obj, tuple) and len(obj) == 2:
-        if isinstance(obj[0], str) and isinstance(obj[1], np.ndarray):
-            return True
-    return False
-
-
 def _pickle_save(obj, f, protocol):
     # TODO:BytesIO
-    if not isinstance(protocol, int):
-        raise ValueError("The 'protocol' MUST be `int`, but received {}.".
-                         format(type(protocol)))
-
-    if protocol < 2 or protocol > 4:
-        raise ValueError("Expected 1<'protocol'<5, but received protocol={}.".
-                         format(protocol))
 
     if not isinstance(obj, (Variable, core.LoDTensor, core.VarBase, dict)):
         raise NotImplementedError(
@@ -93,42 +76,31 @@ def _pickle_save(obj, f, protocol):
 
         return (eval, ('data', {'data': data}))
 
-    def reduce_Variable(self):
-        raise NotImplementedError(
-            "Please use `program.get_tensor` to convert Variable {} to LoDTensor, and use `paddle.save` to save {}.".
-            format(self.name, self.name))
-
-    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if sys.platform == 'darwin' and sys.version_info.major == 3:
+    def add_dispatch_table():
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.VarBase] = reudce_varbase
         pickle.dispatch_table[framework.ParamBase] = reudce_varbase
         pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-        pickle.dispatch_table[Variable] = reduce_Variable
 
-        pickle_bytes = pickle.dumps(obj)
-
+    def pop_dispatch_table():
         pickle.dispatch_table.pop(core.VarBase)
         pickle.dispatch_table.pop(core.LoDTensor)
-        pickle.dispatch_table.pop(Variable)
         pickle.dispatch_table.pop(framework.ParamBase)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
+        add_dispatch_table()
+        pickle_bytes = pickle.dumps(obj)
+        pop_dispatch_table()
 
         max_bytes = 2**30
         for i in range(0, len(pickle_bytes), max_bytes):
             f.write(pickle_bytes[i:i + max_bytes])
     else:
         if six.PY2:
-            pickle.dispatch_table[core.VarBase] = reudce_varbase
-            pickle.dispatch_table[framework.ParamBase] = reudce_varbase
-            pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-            pickle.dispatch_table[Variable] = reduce_Variable
-
+            add_dispatch_table()
             pickle_bytes = pickle.dump(obj, f, protocol)
-
-            pickle.dispatch_table.pop(core.VarBase)
-            pickle.dispatch_table.pop(framework.ParamBase)
-            pickle.dispatch_table.pop(core.LoDTensor)
-            pickle.dispatch_table.pop(Variable)
+            pop_dispatch_table()
         else:
             pickler = pickle.Pickler(f, protocol)
             pickler.dispatch_table = copyreg.dispatch_table.copy()
@@ -136,7 +108,6 @@ def _pickle_save(obj, f, protocol):
             pickler.dispatch_table[core.VarBase] = reudce_varbase
             pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
             pickler.dispatch_table[framework.ParamBase] = reudce_varbase
-            pickler.dispatch_table[Variable] = reduce_Variable
 
             pickler.dump(obj)
 

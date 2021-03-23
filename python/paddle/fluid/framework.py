@@ -2020,6 +2020,7 @@ class Variable(object):
 
             import paddle
             import paddle.fluid as fluid
+            import numpy as np
 
             paddle.enable_static()
 
@@ -2028,14 +2029,21 @@ class Variable(object):
             y = fluid.layers.fc(x, 10,name='fc')
             prog = fluid.default_main_program()
             place = paddle.CPUPlace()
-            exe = fluid.Executor(place)                                    
+            exe = fluid.Executor(place)     
+            prog = paddle.static.default_main_program()                               
             exe.run(fluid.default_startup_program())
+            inputs=np.ones((10,10),dtype='float32')
+            exe.run(prog,feed={'x':inputs},fetch_list=[y,])
+            path='temp/tensor_'
+            for var in prog.list_vars():
+                if var.persistable:
+                    t=var.get_tensor()
+                    paddle.save(t,path+var.name+'.pdtensor')
 
-            var=prog.get_var('fc.w_0')
-
-            tensor=var.get_tensor()
-            path='temp/tensor.pdtensor'
-            paddle.save(tensor,path)
+            for var in prog.list_vars():
+                if var.persistable:
+                    t_load=paddle.load(path+var.name+'.pdtensor')
+                    var.set_tensor(t_load)
         """
         # The 'framework' is a low-level module, and 'executor' or 'core' 
         # can not be imported at the begainning of this file. 
@@ -2050,8 +2058,8 @@ class Variable(object):
             scope = global_scope()
         var_temp = scope.find_var(self.name)
         if var_temp is None:
-            raise ValueError(
-                "Can not find Variable '{}' in the program.".format(self.name))
+            raise ValueError("Can not find Variable '{}' in the Scope.".format(
+                self.name))
         t = var_temp.get_tensor()
         return t
 
@@ -2072,6 +2080,7 @@ class Variable(object):
 
             import paddle
             import paddle.fluid as fluid
+            import numpy as np
 
             paddle.enable_static()
 
@@ -2080,16 +2089,21 @@ class Variable(object):
             y = fluid.layers.fc(x, 10,name='fc')
             prog = fluid.default_main_program()
             place = paddle.CPUPlace()
-            exe = fluid.Executor(place)                                    
+            exe = fluid.Executor(place)     
+            prog = paddle.static.default_main_program()                               
             exe.run(fluid.default_startup_program())
+            inputs=np.ones((10,10),dtype='float32')
+            exe.run(prog,feed={'x':inputs},fetch_list=[y,])
+            path='temp/tensor_'
+            for var in prog.list_vars():
+                if var.persistable:
+                    t=var.get_tensor()
+                    paddle.save(t,path+var.name+'.pdtensor')
 
-            var=prog.get_var('fc.w_0')
-
-            tensor=var.get_tensor()
-            path='temp/tensor.pdtensor'
-            paddle.save(tensor,path)
-            t_load=paddle.load(path)
-            var.set_tensor(t_load)
+            for var in prog.list_vars():
+                if var.persistable:
+                    t_load=paddle.load(path+var.name+'.pdtensor')
+                    var.set_tensor(t_load)
         '''
 
         # The 'framework' is a low-level module, and 'executor' or 'core' 
@@ -2112,8 +2126,8 @@ class Variable(object):
 
         var_temp = scope.find_var(self.name)
         if var_temp is None:
-            raise ValueError(
-                "Can not find Variable '{}' in the program.".format(var_name))
+            raise ValueError("Can not find Variable '{}' in the Scope.".format(
+                self.name))
 
         t = var_temp.get_tensor()
 
@@ -2124,7 +2138,7 @@ class Variable(object):
                 value_shape = value.shape
             if list(t.shape()) != list(value_shape):
                 raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".
+                    "{} expected a shape {}, but the received shape is {}.".
                     format(self.name, list(t.shape()), list(value_shape)))
 
         p = t._place()
@@ -5594,49 +5608,6 @@ class Program(object):
                 warnings.warn((
                     "Skip loading for '{0}'. Because '{0}' not in the program.".
                     format(name)))
-
-    def get_var(self, var_name):
-        """
-        Get parameter or persistable buffer of program through its name. 
-
-        Parameters:
-            var_name(str) : name of the parameter or persistable buffer.
-
-        Retruns:
-            Variable: parameter or persistable buffer named var_name.
-
-        Examples:
-            .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-
-            paddle.enable_static()
-
-            x = fluid.data(name="x", shape=[10, 10], dtype='float32')
-
-            y = fluid.layers.fc(x, 10,name='fc')
-            prog = fluid.default_main_program()
-            place = paddle.CPUPlace()
-            exe = fluid.Executor(place)                                    
-            exe.run(fluid.default_startup_program())
-
-            var=prog.get_var('fc.w_0')
-        """
-
-        str_instance = str
-        # Python2 has no unicode
-        if six.PY2:
-            str_instance = (str, unicode)
-        if not isinstance(var_name, str_instance):
-            raise TypeError(
-                "Name of variable should be string, but received {}.".format(
-                    type(var_name)))
-
-        for var in self.list_vars():
-            if var.name == var_name:
-                return var
-        return None
 
 
 @six.add_metaclass(ParameterMetaClass)

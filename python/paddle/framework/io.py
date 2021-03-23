@@ -32,7 +32,7 @@ from paddle.fluid.io import _legacy_save as _legacy_static_save
 
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, _pickle_save, _wherher_parse_as_tensor, _pickle_loads_mac
+from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, _pickle_save, _pickle_loads_mac
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
 
 __all__ = [

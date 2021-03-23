@@ -138,7 +138,7 @@ class TestSaveLoadPickle(unittest.TestCase):
         if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
             protocols += [3, 4]
         for protocol in protocols:
-            paddle.save(save_dict, path, protocol)
+            paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)
             # compare results before and after saving
             for key, value in save_dict.items():
@@ -248,8 +248,24 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    tensor = var.get_tensor()
+                    tensor = var.get_tensor(fluid.global_scope())
                     paddle.save(tensor, os.path.join(path_vars, var.name))
+
+            with self.assertRaises(TypeError):
+                var.get_tensor('fluid.global_scope()')
+            with self.assertRaises(ValueError):
+                x.get_tensor()
+
+            with self.assertRaises(TypeError):
+                x.set_tensor('1')
+            fake_data = np.zeros([3, 2, 1, 2, 3])
+            with self.assertRaises(TypeError):
+                x.set_tensor(fake_data, '1')
+            with self.assertRaises(ValueError):
+                x.set_tensor(fake_data)
+            with self.assertRaises(ValueError):
+                var.set_tensor(fake_data)
+
             # set var to zero
             self.set_zero(prog, place)
             for var in prog.list_vars():
@@ -321,7 +337,9 @@ class TestSaveLoadAny(unittest.TestCase):
             z = paddle.static.nn.fc(x, 128)
             loss = fluid.layers.reduce_mean(z)
 
-            place = paddle.CPUPlace()
+            place = fluid.CPUPlace(
+            ) if not paddle.fluid.core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             prog = paddle.static.default_main_program()
