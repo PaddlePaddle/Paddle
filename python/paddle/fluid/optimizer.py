@@ -3909,7 +3909,7 @@ class PipelineOptimizer(object):
             # used for global gradient clip and amp will be added by sharding.
             if self.use_sharding: continue
             if not should_insert: continue
-            self._insert_allreduce_op(op, op_idx)
+            _insert_allreduce_op(op, op_idx)
 
     def _is_loss_grad_op(self, op):
         assert self._op_role_key in op.attr_names
