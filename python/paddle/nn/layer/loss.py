@@ -337,7 +337,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 
 
-    Example1(soft labels):
+    Example2(soft labels):
 
         .. code-block:: python
             

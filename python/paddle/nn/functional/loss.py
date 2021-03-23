@@ -1329,7 +1329,7 @@ def cross_entropy(input,
 
 
 
-    Example1(soft labels):
+    Example2(soft labels):
 
         .. code-block:: python
             
