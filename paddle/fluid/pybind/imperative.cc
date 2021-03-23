@@ -928,10 +928,9 @@ void BindImperative(py::module *m_ptr) {
              std::vector<std::shared_ptr<imperative::VarBase>> tensors{self};
              std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{
                  grad_tensor};
-             std::vector<std::shared_ptr<imperative::VarBase>> inputs;
 
              auto *engine = tracer.GetEngine();
-             engine->Init(tensors, grad_tensors, retain_graph, false, inputs);
+             engine->Init(tensors, grad_tensors, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
@@ -1423,11 +1422,9 @@ void BindImperative(py::module *m_ptr) {
       "dygraph_run_backward",
       [](const std::vector<std::shared_ptr<imperative::VarBase>> &tensors,
          const std::vector<std::shared_ptr<imperative::VarBase>> &grad_tensors,
-         bool retain_graph, bool create_graph,
-         const std::vector<std::shared_ptr<imperative::VarBase>> &inputs,
-         const imperative::Tracer &tracer) {
+         bool retain_graph, const imperative::Tracer &tracer) {
         auto *engine = tracer.GetEngine();
-        engine->Init(tensors, grad_tensors, retain_graph, create_graph, inputs);
+        engine->Init(tensors, grad_tensors, retain_graph);
         VLOG(3) << "Start backward";
         engine->Execute();
         VLOG(3) << "Finish backward";

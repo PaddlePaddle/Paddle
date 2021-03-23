@@ -39,8 +39,7 @@ namespace imperative {
 void BasicEngine::Init(
     const std::vector<std::shared_ptr<VarBase>>& tensors,
     const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
-    bool retain_graph, bool create_graph,
-    const std::vector<std::shared_ptr<VarBase>>& inputs) {
+    bool retain_graph) {
   retain_graph_ = retain_graph;
 
   PADDLE_ENFORCE_EQ(

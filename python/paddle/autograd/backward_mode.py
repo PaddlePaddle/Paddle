@@ -19,11 +19,7 @@ __all__ = ['backward']
 
 
 @framework.dygraph_only
-def backward(tensors,
-             grad_tensors,
-             retain_graph=None,
-             create_graph=False,
-             inputs=None):
+def backward(tensors, grad_tensors, retain_graph=False):
     def check_tensors(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)
 
@@ -59,18 +55,7 @@ def backward(tensors,
         assert len(tensors) == len(
             grad_tensors), "The length of grad_tensors must be equal to tensors"
 
-    assert isinstance(create_graph, bool), "create_graph must be True or False"
+    assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    if retain_graph is None:
-        retain_graph = create_graph
-
-    assert isinstance(retain_graph,
-                      bool), "retain_graph must be None, True or False"
-
-    if inputs is not None:
-        assert len(inputs) > 0, "inputs cannot be empty list"
-    else:
-        inputs = []
-
-    core.dygraph_run_backward(tensors, grad_tensors, retain_graph, create_graph,
-                              inputs, framework._dygraph_tracer())
+    core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
+                              framework._dygraph_tracer())
