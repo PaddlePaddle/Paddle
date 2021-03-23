@@ -134,9 +134,9 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
     if (op_type == "fc" || op_type == "mul") {
       const int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              ? boost::get<int>(desc.GetAttr("x_num_col_dims"))
               : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     ? boost::get<int>(desc.GetAttr("in_num_col_dims"))
                      : 1);
       if (x_num_col_dims != 1 && x_num_col_dims != 2) {
         return false;
