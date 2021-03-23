@@ -62,6 +62,48 @@ void testSampleNodes(
     ASSERT_EQ(true, s1.find(id) != s1.end());
   }
 }
+
+void testFeatureNodeSerializeInt() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<int32_t>({"123", "345"});
+  std::vector<int32_t > out2 = distributed::FeatureNode::parse_bytes_to_array<int32_t>(out);
+  ASSERT_EQ(out2[0] , 123);
+  ASSERT_EQ(out2[1] , 345);
+}
+
+void testFeatureNodeSerializeInt64() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<int64_t>({"123", "345"});
+  std::vector<int64_t > out2 = distributed::FeatureNode::parse_bytes_to_array<int64_t>(out);
+  ASSERT_EQ(out2[0] , 123);
+  ASSERT_EQ(out2[1] , 345);
+}
+
+
+void testFeatureNodeSerializeFloat32() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<float>({"123.123", "345.123"});
+  std::vector<float> out2 = distributed::FeatureNode::parse_bytes_to_array<float>(out);
+  float eps; 
+  std::cout << "Float " << out2[0] << " " << 123.123 << std::endl;
+  eps = out2[0] - 123.123;
+  ASSERT_LE(eps * eps , 1e-5);
+  eps = out2[1] - 345.123;
+  ASSERT_LE(eps * eps , 1e-5);
+}
+
+
+void testFeatureNodeSerializeFloat64() {
+  std::string out = distributed::FeatureNode::parse_value_to_bytes<double>({"123.123", "345.123"});
+  std::vector<double> out2 = distributed::FeatureNode::parse_bytes_to_array<double>(out);
+  float eps; 
+  eps = out2[0] - 123.123;
+  std::cout << "Float64 " << out2[0] << " " << 123.123 << std::endl;
+  ASSERT_LE(eps * eps , 1e-5);
+  eps = out2[1] - 345.123;
+  ASSERT_LE(eps * eps , 1e-5);
+}
+
+
+
+
 void testSingleSampleNeighboor(
     std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
@@ -445,6 +487,10 @@ void RunBrpcPushSparse() {
   worker_ptr_->finalize_worker();
   server_thread.join();
   server_thread2.join();
+  testFeatureNodeSerializeInt();
+  testFeatureNodeSerializeInt64();
+  testFeatureNodeSerializeFloat32();
+  testFeatureNodeSerializeFloat64();
   testGraphToBuffer();
 }
 
