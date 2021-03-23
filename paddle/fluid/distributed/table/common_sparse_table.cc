@@ -27,6 +27,8 @@ class ValueBlock;
 
 #define PSERVER_SAVE_SUFFIX "_txt"
 
+DEFINE_bool(enable_record_stat, true, "enable record statistics of each sign");
+
 namespace paddle {
 namespace distributed {
 
@@ -262,8 +264,15 @@ int64_t saveStatToBin(std::string path, std::vector<std::shared_ptr<ValueBlock>>
     fout.write(reinterpret_cast<const char*>(&ids[0]), sizeof(uint64_t) * block_size);
 
     for (auto value : blocks[x]->values_) {
-      fout.write(reinterpret_cast<const char*>(&value.second->count_), sizeof(value.second->count_));
-      fout.write(reinterpret_cast<const char*>(&value.second->unseen_days_), sizeof(value.second->unseen_days_));
+      if(FLAGS_enable_record_stat) {
+        fout.write(reinterpret_cast<const char*>(&value.second->count_), sizeof(value.second->count_));
+        fout.write(reinterpret_cast<const char*>(&value.second->unseen_days_), sizeof(value.second->unseen_days_)); 
+      } else {
+        int default_count = 0;
+        int default_unseen_days = 0;
+        fout.write(reinterpret_cast<const char*>(&default_count), sizeof(default_count));
+        fout.write(reinterpret_cast<const char*>(&default_unseen_days), sizeof(default_unseen_days));
+      }
       fout.write(reinterpret_cast<const char*>(&value.second->is_entry_), sizeof(value.second->is_entry_));
     }
 

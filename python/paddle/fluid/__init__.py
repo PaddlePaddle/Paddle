@@ -192,6 +192,7 @@ def __bootstrap__():
         'pe_profile_fname',
         'inner_op_parallelism',
         'enable_parallel_graph',
+        'enable_record_stat',
         'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size',
         'fuse_parameter_memory_size',

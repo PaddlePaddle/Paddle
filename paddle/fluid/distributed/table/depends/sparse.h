@@ -394,11 +394,11 @@ class SAdam : public SparseOptimizer {
             const std::string prefix,
             const std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
     // save beta1_pow & beta2_pow;
-    std::ofstream beta1_out(prefix + "." + "beta1_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    std::ofstream beta1_out(prefix + "." + "beta1_pow", std::ios::binary);
     beta1_out.write(reinterpret_cast<const char *>(&beta1_pow), sizeof(float)); 
     beta1_out.close();
     
-    std::ofstream beta2_out(prefix + "." + "beta2_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    std::ofstream beta2_out(prefix + "." + "beta2_pow", std::ios::binary);
     beta2_out.write(reinterpret_cast<const char *>(&beta2_pow), sizeof(float));    
     beta2_out.close();
 
@@ -413,10 +413,10 @@ class SAdam : public SparseOptimizer {
             const std::string prefix,
             std::vector<std::shared_ptr<ValueBlock>>& shard_values) {
     // load beta1_pow && beta2_pow;
-    std::ifstream beta1_fin(prefix + "." + "beta1_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    std::ifstream beta1_fin(prefix + "." + "beta1_pow", std::ios::binary);
     beta1_fin.read(reinterpret_cast<char *>(&beta1_pow), sizeof(float));
 
-    std::ifstream beta2_fin(prefix + "." + "beta2_pow.block" + std::to_string(shard_idx), std::ios::binary);
+    std::ifstream beta2_fin(prefix + "." + "beta2_pow", std::ios::binary);
     beta2_fin.read(reinterpret_cast<char *>(&beta2_pow), sizeof(float));
 
     std::vector<std::string> var_names{prefix + "." + "param.block" + std::to_string(shard_idx),
