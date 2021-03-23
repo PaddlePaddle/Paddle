@@ -167,9 +167,9 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
 
     ConcatPrimitiveFactory<T> prim_creator;
-    std::string key = platform::CreateKey(
-        dev_ctx, GetDimsForKey(multi_input), multi_input.size(),
-        ctx.OutputName("Out"), dt, platform::ThreadIDasStr());
+    std::string key =
+        platform::CreateKey(dev_ctx, GetDimsForKey(multi_input),
+                            multi_input.size(), ctx.OutputName("Out"), dt);
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
     const std::string key_prim = key + "@concat_p";
