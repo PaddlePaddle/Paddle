@@ -142,12 +142,6 @@ class FcOpConverter : public OpConverter {
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
-    PADDLE_ENFORCE_EQ(
-        x_num_col_dims == 1 || x_num_col_dims == 2, true,
-        platform::errors::InvalidArgument(
-            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
-            "expects x_num_col_dims is either 1 or 2, but got %d",
-            x_num_col_dims));
 
     if (engine_->with_dynamic_shape()) {
       // not NCHW layout, but NLP layout with added 'x 1 x 1'
