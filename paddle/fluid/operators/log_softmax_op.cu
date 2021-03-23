@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda_runtime.h>
 #include <limits>
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
