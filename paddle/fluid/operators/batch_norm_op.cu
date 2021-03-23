@@ -130,11 +130,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc));
 #endif
 
-    PADDLE_ENFORCE_LE(
-        epsilon, CUDNN_BN_MIN_EPSILON - FLT_EPSILON,
-        platform::errors::InvalidArgument("Provided epsilon is smaller than "
-                                          "CUDNN_BN_MIN_EPSILON. Setting it to "
-                                          "CUDNN_BN_MIN_EPSILON instead."));
+    PADDLE_ENFORCE_GT(epsilon, CUDNN_BN_MIN_EPSILON - FLT_EPSILON,
+                      platform::errors::InvalidArgument(
+                          "Provided epsilon is expected to be greater than "
+                          "CUDNN_BN_MIN_EPSILON. But recieved epsilon is %E, "
+                          "CUDNN_BN_MIN_EPSILON is %E.",
+                          epsilon, CUDNN_BN_MIN_EPSILON));
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
 #ifdef PADDLE_WITH_HIP
@@ -762,11 +763,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc));
 #endif
 
-      PADDLE_ENFORCE_LE(epsilon, CUDNN_BN_MIN_EPSILON - FLT_EPSILON,
+      PADDLE_ENFORCE_GT(epsilon, CUDNN_BN_MIN_EPSILON - FLT_EPSILON,
                         platform::errors::InvalidArgument(
-                            "Provided epsilon is smaller than "
-                            "CUDNN_BN_MIN_EPSILON. Setting it to "
-                            "CUDNN_BN_MIN_EPSILON instead."));
+                            "Provided epsilon is expected to be greater than "
+                            "CUDNN_BN_MIN_EPSILON. But recieved epsilon is %E, "
+                            "CUDNN_BN_MIN_EPSILON is %E.",
+                            epsilon, CUDNN_BN_MIN_EPSILON));
       epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
 #ifdef PADDLE_WITH_HIP
