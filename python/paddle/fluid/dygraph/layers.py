@@ -692,11 +692,11 @@ class Layer(core.Layer):
             layers_set = set()
         if include_self and self not in layers_set:
             layers_set.add(self)
-            yield prefix, self
-        if include_sublayers:
-            for key, layer in self._sub_layers.items():
-                if layer is None:
-                    continue
+            yield self._full_name, self
+        for key, layer in self._sub_layers.items():
+            if layer is None:
+                continue
+            if include_sublayers:
                 layer_prefix = prefix + ('.' if prefix else '') + key
                 for p, l in layer.named_sublayers(
                         prefix=layer_prefix,
@@ -704,6 +704,8 @@ class Layer(core.Layer):
                         include_self=True,
                         layers_set=layers_set):
                     yield p, l
+            else:
+                yield key, layer
 
     def register_buffer(self, name, tensor, persistable=True):
         """
