@@ -2023,8 +2023,8 @@ def all(x, axis=None, keepdim=False, name=None):
     """
     Computes the the ``logical and`` of tensor elements over the given dimension.
 
-
     Args:
+
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
         axis (int|list|tuple, optional): The dimensions along which the ``logical and`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
