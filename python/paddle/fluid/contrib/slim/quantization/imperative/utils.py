@@ -52,6 +52,12 @@ supported_quant_layers_map = {
     'LayerNorm': paddle.nn.LayerNorm,
 }
 
+fake_quantize_dequantize_types = [
+    "fake_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_channel_wise_abs_max",
+    "fake_quantize_dequantize_moving_average_abs_max"
+]
+
 out_scale_layers_list = (
     paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.MaxPool2D,
     paddle.nn.BatchNorm, paddle.nn.BatchNorm2D, paddle.nn.SyncBatchNorm,
