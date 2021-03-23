@@ -395,10 +395,10 @@ class TestImperativeOutSclae(unittest.TestCase):
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
                 op_count += 1
+                _logger.info(dynamic_ops[i].type)
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 if dynamic_ops[i].attr("out_threshold") != static_ops[i].attr(
                         "out_threshold"):
-                    _logger.info(dynamic_ops[i].type)
                     _logger.info(dynamic_ops[i].attr("out_threshold"))
                     _logger.info(static_ops[i].attr("out_threshold"))
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==

@@ -510,12 +510,13 @@ class ImperativeCalcOutputScale(object):
         attr_name = "out_threshold"
 
         for scale_name, scale_value in self._out_scale_dict.items():
+            _logger.info('---scale_name:' + scale_name)
             while True:
                 if op_idx >= len(target_ops):
                     break
 
                 op = target_ops[op_idx]
-
+                _logger.info('op_type:' + op.type)
                 if not self._is_scale_op_matched(scale_name, op, global_block):
                     op_idx += 1
                 else:
@@ -524,9 +525,11 @@ class ImperativeCalcOutputScale(object):
                         and target_ops[op_idx+1].type == "elementwise_add":
                         target_ops[op_idx + 1]._set_attr(attr_name, scale_value)
                         op_idx += 2
+                        _logger.info('save scale to elementwise_add')
                     else:
                         op._set_attr(attr_name, scale_value)
                         op_idx += 1
+                        _logger.info('save scale to ' + op.type)
                     scale_idx += 1
                     break
 
