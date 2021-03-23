@@ -140,3 +140,15 @@ def list(github, force_reload=False):
     ]
 
     return entrypoints
+
+
+def help(github, name):
+    '''
+    '''
+    pass
+
+
+def load(github, name, *args, pretrained=True, force_reload=True, **kwargs):
+    '''
+    '''
+    pass
