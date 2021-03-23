@@ -201,7 +201,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.N = 4
         self.C = 3
         self.shape = [self.N, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction = 'none'
         self.weight = None
         self.logits = getattr(
@@ -275,7 +275,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.N = 4
         self.C = 3
         self.shape = [self.N, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction = 'none'
         self.weight = np.random.uniform( 0.1, 1.0, self.C ).astype(self.dtype)
         self.logits = getattr(
@@ -359,7 +359,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.N = 4
         self.C = 3
         self.shape = [self.N, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction='mean'
         self.weight = None
         self.logits = getattr(
@@ -433,7 +433,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.N = 4
         self.C = 3
         self.shape = [self.N, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction = 'mean'
         self.weight = np.random.uniform( 0.1, 1.0, self.C ).astype(self.dtype)
         self.logits = getattr(
@@ -511,7 +511,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.W = 2
         self.C = 5
         self.shape = [self.N, self.H, self.W, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction = 'none'
         self.weight = None 
         self.logits = getattr(
@@ -591,7 +591,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.W = 2
         self.C = 5
         self.shape = [self.N, self.H, self.W, self.C]
-        self.softmax_switch = True
+        self.use_softmax = True
         self.reduction = 'mean'
         self.weight = np.random.uniform( 0.1, 1.0, self.C ).astype(self.dtype)
         self.logits = getattr(

@@ -1162,8 +1162,7 @@ def softmax_with_cross_entropy(logits,
                                ignore_index=kIgnoreIndex,
                                numeric_stable_mode=True,
                                return_softmax=False,
-                               axis=-1,
-                               softmax_switch=True):
+                               axis=-1):
     r"""
 
     This operator implements the cross entropy loss function with softmax. This function 
@@ -1262,7 +1261,7 @@ def softmax_with_cross_entropy(logits,
         softmax, loss = core.ops.softmax_with_cross_entropy(
             logits, label, 'soft_label', soft_label, 'ignore_index',
             ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
-            axis, 'softmax_switch', softmax_switch)
+            axis)
         if not return_softmax:
             return loss
         else:
@@ -1272,8 +1271,7 @@ def softmax_with_cross_entropy(logits,
         'soft_label': soft_label,
         'ignore_index': ignore_index,
         'numeric_stable_mode': numeric_stable_mode,
-        'axis': axis,
-        'softmax_switch': softmax_switch
+        'axis': axis
     }
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)

@@ -270,6 +270,11 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             input :attr:`input`. 
             Default is ``-1`` .
 
+        - **use_softmax** (bool, optional)
+
+            Indicate whether compute softmax before cross_entropy.
+            Default is ``True``.
+
         - **name** (str，optional)
 
             The name of the operator. Default is ``None`` .
@@ -309,23 +314,61 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             2) if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
-    Example:
+    Example1(hard labels):
 
         .. code-block:: python
             
             import paddle
             import numpy as np
+            np.random.seed(99999)
+            N=100
+            C=200
+            reduction='mean'
+            input_np = np.random.random([N, C]).astype(np.float64)  
+            label_np = np.random.randint(0, C, size=(N)).astype(np.int64)  
+            weight_np = np.random.random([C]).astype(np.float64)  
+            
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=paddle.to_tensor(weight_np), reduction=reduction)
+            dy_ret = cross_entropy_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np))
+            print(dy_ret.numpy()) #[5.37996124]
 
-            input_data = paddle.uniform([5, 100], dtype="float64")
-            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
-            weight_data = np.random.random([100]).astype("float64")
-            input =  paddle.to_tensor(input_data)
-            label =  paddle.to_tensor(label_data)
-            weight = paddle.to_tensor(weight_data)
-            ce_loss = paddle.nn.CrossEntropyLoss(weight=weight, reduction='mean')
-            output = ce_loss(input, label)
-            print(output)
-            # [4.84496039]
+
+
+    Example1(soft labels):
+
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            np.random.seed(99999)
+            soft_label = True
+            dtype = np.float64
+            axis = -1
+            ignore_index = -100 #should not be changed
+            N = 4
+            C = 3
+            shape = [N, C]
+            use_softmax = True
+            reduction='mean'
+            weight = None
+            logits = np.random.uniform(0.1, 1.0, shape).astype(dtype)
+            labels = np.random.uniform(0.1, 1.0, shape).astype(dtype)
+            labels /= np.sum(labels, axis=axis, keepdims=True)
+            paddle.set_device("cpu")
+            paddle.disable_static()
+            paddle_loss_mean = paddle.nn.functional.cross_entropy(
+                                                                 paddle.to_tensor(logits),  
+                                                                 paddle.to_tensor(labels), 
+                                                                 soft_label=True, 
+                                                                 axis=axis,
+                                                                 weight=weight,
+                                                                 reduction=reduction)
+            print("paddle_loss_mean:",paddle_loss_mean.numpy()) #[1.11473992]
+
+
     """
 
     def __init__(self,
@@ -334,7 +377,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                  reduction='mean',
                  soft_label=False,
                  axis=-1,
-                 softmax_switch=True,
+                 use_softmax=True,
                  name=None):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
@@ -342,7 +385,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         self.ignore_index = ignore_index
         self.soft_label = soft_label
         self.axis = axis
-        self.softmax_switch = softmax_switch
+        self.use_softmax = use_softmax
         self.name = name
 
     def forward(self, input, label):
@@ -354,7 +397,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             reduction=self.reduction,
             soft_label=self.soft_label,
             axis=self.axis,
-            softmax_switch=self.softmax_switch,
+            use_softmax=self.use_softmax,
             name=self.name)
 
         return ret

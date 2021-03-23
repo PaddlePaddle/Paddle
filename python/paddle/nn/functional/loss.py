@@ -1137,7 +1137,7 @@ def cross_entropy(input,
                   reduction='mean',
                   soft_label=False,
                   axis=-1,
-                  softmax_switch=True,
+                  use_softmax=True,
                   name=None):
     r"""
     This operator implements the cross entropy loss function with softmax. This function 
@@ -1282,6 +1282,11 @@ def cross_entropy(input,
             input :attr:`input`. 
             Default is ``-1`` .
 
+        - **use_softmax** (bool, optional)
+
+            Indicate whether compute softmax before cross_entropy.
+            Default is ``True``.
+
         - **name** (str，optional)
 
             The name of the operator. Default is ``None`` .
@@ -1301,25 +1306,56 @@ def cross_entropy(input,
         2) if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
-    Examples:
+     Example1(hard labels):
 
         .. code-block:: python
-
+            
             import paddle
             import numpy as np
- 
-            input_data = np.random.random([5, 100]).astype("float64")
-            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
-            weight_data = np.random.random([100]).astype("float64")
- 
-            input =  paddle.to_tensor(input_data)
-            label =  paddle.to_tensor(label_data)
-            weight = paddle.to_tensor(weight_data)
- 
-            loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
-            print(loss)
-            # [4.28546723]
- 
+            np.random.seed(99999)
+            N=100
+            C=200
+            reduction='mean'
+            input_np = np.random.random([N, C]).astype(np.float64)  
+            label_np = np.random.randint(0, C, size=(N)).astype(np.int64)  
+            weight_np = np.random.random([C]).astype(np.float64)  
+            
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=paddle.to_tensor(weight_np), reduction=reduction)
+            dy_ret = cross_entropy_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np))
+            print(dy_ret.numpy()) #[5.37996124]
+
+
+
+    Example1(soft labels):
+
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            np.random.seed(99999)
+            soft_label = True
+            dtype = np.float64
+            axis = -1
+            ignore_index = -100 #should not be changed
+            N = 4
+            C = 3
+            shape = [N, C]
+            use_softmax = True
+            reduction='mean'
+            weight = None
+            logits = np.random.uniform(0.1, 1.0, shape).astype(dtype)
+            labels = np.random.uniform(0.1, 1.0, shape).astype(dtype)
+            labels /= np.sum(labels, axis=axis, keepdims=True)
+            paddle.set_device("cpu")
+            paddle.disable_static()
+            paddle_loss_mean = paddle.nn.functional.cross_entropy(
+                                                                 paddle.to_tensor(logits),  
+                                                                 paddle.to_tensor(labels), 
+                                                                 soft_label=True, 
+                                                                 axis=axis,
 
     """
 
@@ -1343,13 +1379,11 @@ def cross_entropy(input,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
-        out = fluid_softmax_with_cross_entropy(
-            input,
-            label,
-            soft_label=soft_label,
-            ignore_index=ignore_index,
-            softmax_switch=softmax_switch,
-            axis=axis)
+        _, out = core.ops.softmax_with_cross_entropy(
+            input, label, 'soft_label', soft_label, 'ignore_index',
+            ignore_index, 'numeric_stable_mode', True, 'axis',
+            axis, 'use_softmax', use_softmax)
+     
         if weight is not None:
 
             #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
@@ -1423,13 +1457,24 @@ def cross_entropy(input,
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['int32', 'int64', 'float32', 'float64'],
         'softmax_cross_entropy')
-    out = fluid_softmax_with_cross_entropy(
-        input,
-        label,
-        soft_label=soft_label,
-        ignore_index=ignore_index,
-        softmax_switch=softmax_switch,
-        axis=axis)
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': True,
+        'axis': axis,
+        'use_softmax': use_softmax
+    }
+    helper = LayerHelper('softmax_with_cross_entropy', **locals())
+    softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': input,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': out},
+        attrs=attrs)
+ 
     if weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
