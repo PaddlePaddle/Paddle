@@ -55,7 +55,8 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       SendBroadCastNCCLID(endpoint_list, 1, func, local_scope);
     } else {
       std::string endpoint = Attr<std::string>("endpoint");
-      RecvBroadCastNCCLID(endpoint, 1, func, local_scope);
+      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
     }
     scope.DeleteScope(&local_scope);
   }
@@ -71,8 +72,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-  }
+               const platform::Place& dev_place) const override {}
 };
 
 #endif

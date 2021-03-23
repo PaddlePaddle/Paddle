@@ -50,15 +50,17 @@ class AMPOptimizer(MetaOptimizerBase):
             self.inner_opt, amp_lists, config['init_loss_scaling'],
             config['incr_every_n_steps'], config['decr_every_n_nan_or_inf'],
             config['incr_ratio'], config['decr_ratio'],
-            config['use_dynamic_loss_scaling'])
+            config['use_dynamic_loss_scaling'], config['use_pure_fp16'],
+            config['use_fp16_guard'])
 
         # if worker_num > 1, all cards will communication with each other,
         # add is_distributed to optimize amp, overlap communication and
         # computation by split the check_finite_and_unscale op.
         is_distributed = self.role_maker._worker_num() > 1
-        if self.user_defined_strategy.sharding:
-            # FIXME(wangxi). sharding failed when split check_finite_and_unscale
-            is_distributed = False
+        #if self.user_defined_strategy.sharding or self.user_defined_strategy.model_parallel:
+        #    # FIXME(wangxi). sharding failed when split check_finite_and_unscale
+        #    # FIXME(JZ-LIANG). To support Sharding-Megatron-AMP, Megatron should follow Sharding's behavior
+        #    is_distributed = False
         self.wrapped_opt._set_distributed(is_distributed)
 
     def _can_apply(self):
@@ -112,3 +114,11 @@ class AMPOptimizer(MetaOptimizerBase):
             self.wrapped_opt.minimize(loss, startup_program,
                                   parameter_list, no_grad_set)
         return optimize_ops, params_grads
+
+    def amp_init(self,
+                 place,
+                 scope=None,
+                 test_program=None,
+                 use_fp16_test=False):
+        return self.wrapped_opt.amp_init(place, scope, test_program,
+                                         use_fp16_test)

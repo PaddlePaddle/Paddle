@@ -25,6 +25,24 @@ OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OP_ROLE_VAR_KEY = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 
 
+class Topology:
+    """A 4-D structure to describe the process group."""
+
+    def __init__(self, axes, dims):
+        pass
+
+
+class ParallelGrid:
+    """Initialize each process group."""
+
+    def __init__(self, topology):
+        self.build_global_group()
+        self.build_mp_group()
+        self.build_sharding_group()
+        self.build_pp_group()
+        self.build_dp_group()
+
+
 def is_update_op(op):
     return 'Param' in op.input_names and 'Grad' in op.input_names and \
             "LearningRate" in op.input_names
@@ -66,16 +84,49 @@ class CollectiveHelper(object):
                 self.role_maker._worker_index(), ring_id, self.wait_port)
         self._broadcast_params()
 
-    def _init_communicator(self, program, current_endpoint, endpoints, rank,
-                           ring_id, wait_port):
+    def _init_communicator(self,
+                           program,
+                           current_endpoint,
+                           endpoints,
+                           rank,
+                           ring_id,
+                           wait_port,
+                           sync=True):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
         block = program.global_block()
         if core.is_compiled_with_cuda():
-            if rank == 0 and wait_port:
-                wait_server_ready(other_endpoints)
-            nccl_id_var = block.create_var(
+            if not wait_port and sync:
+                temp_var = block.create_var(
+                    name=unique_name.generate('temp_var'),
+                    dtype=core.VarDesc.VarType.INT32,
+                    persistable=False,
+                    stop_gradient=True)
+                block.append_op(
+                    type='fill_constant',
+                    inputs={},
+                    outputs={'Out': [temp_var]},
+                    attrs={
+                        'shape': [1],
+                        'dtype': temp_var.dtype,
+                        'value': 1,
+                        'force_cpu': False,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
+                block.append_op(
+                    type='c_allreduce_sum',
+                    inputs={'X': [temp_var]},
+                    outputs={'Out': [temp_var]},
+                    attrs={'ring_id': 3,
+                           OP_ROLE_KEY: OpRole.Forward})
+                block.append_op(
+                    type='c_sync_comm_stream',
+                    inputs={'X': temp_var},
+                    outputs={'Out': temp_var},
+                    attrs={'ring_id': 3,
+                           OP_ROLE_KEY: OpRole.Forward})
+            comm_id_var = block.create_var(
                 name=unique_name.generate('nccl_id'),
                 persistable=True,
                 type=core.VarDesc.VarType.RAW)
@@ -100,9 +151,7 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
         elif core.is_compiled_with_npu():
-            endpoint_to_index_map = {
-                e: idx for idx, e in enumerate(endpoints)
-            }
+            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
             block.append_op(
                 type='c_comm_init_hcom',
                 inputs={},

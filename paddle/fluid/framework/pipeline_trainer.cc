@@ -25,6 +25,9 @@ namespace framework {
 void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   const auto& section_params = trainer_desc.section_param();
+  const auto num_pipeline_stages_ = section_params.num_pipeline_stages();
+  const auto pipeline_stage_ = section_params.pipeline_stage();
+  const auto schedule_mode_ = section_params.schedule_mode();
   num_microbatches_ = section_params.num_microbatches();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   trainer_desc_ = trainer_desc;
@@ -40,6 +43,9 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   this_worker->SetPlace(place_);
   this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
+  this_worker->SetPipelineStageNum(num_pipeline_stages_);
+  this_worker->SetPipelineStage(pipeline_stage_);
+  this_worker->SetScheduleMode(schedule_mode_);
 }
 
 void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -76,7 +82,10 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
   for (auto& var : global_block.AllVars()) {
     bool is_param_grad = false;
     size_t pos = 0;
-    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos) {
+    // A magic suffix to indicated the merged gradient.
+    std::string magicSuffix = "MERGED";
+    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos &&
+        var->Name().find(magicSuffix) != std::string::npos) {
       auto prefix_name = var->Name().substr(0, pos);
       if (param_map.find(prefix_name) != param_map.end()) {
         is_param_grad = true;

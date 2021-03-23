@@ -28,6 +28,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -451,7 +452,7 @@ class HeterBoxWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
@@ -550,7 +551,7 @@ class PSGPUWorker : public HogwildWorker {
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual void ProduceTasks() override;
+  void ProduceTasks() override;
   virtual void SetStream(const cudaStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const cudaEvent_t event) { event_ = event; }
   virtual void TrainFilesWithProfiler() {}
@@ -654,6 +655,9 @@ class SectionWorker : public DeviceWorker {
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  void SetScheduleMode(int mode) { schedule_mode_ = mode; }
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
@@ -661,11 +665,23 @@ class SectionWorker : public DeviceWorker {
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
     skip_vars_ = skip_vars;
   }
+  void RunBackward(
+      int micro_id, std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
+  void RunForward(
+      int micro_id, std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
+  void RunUpdate(
+      std::unique_ptr<GarbageCollector>&,
+      std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
 
  protected:
   int section_id_;
   int thread_id_;
   int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  int schedule_mode_;  // 0 for GPipe and 1 for deepspeed
   std::vector<Scope*> microbatch_scopes_;
   std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
