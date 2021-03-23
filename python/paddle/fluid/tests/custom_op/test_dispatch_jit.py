@@ -55,12 +55,38 @@ class TestJitDispatch(unittest.TestCase):
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_integer, dtype)
 
+    def test_dispatch_complex(self):
+        dtypes = ["complex64", "complex128"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_complex, dtype)
+
     def test_dispatch_float_and_integer(self):
         dtypes = [
             "float32", "float64", "int32", "int64", "int8", "uint8", "int16"
         ]
         for dtype in dtypes:
             self.run_dispatch_test(dispatch_op.dispatch_test_float_and_integer,
+                                   dtype)
+
+    def test_dispatch_float_and_complex(self):
+        dtypes = ["float32", "float64", "complex64", "complex128"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_complex,
+                                   dtype)
+
+    def test_dispatch_float_and_integer_and_complex(self):
+        dtypes = [
+            "float32", "float64", "int32", "int64", "int8", "uint8", "int16",
+            "complex64", "complex128"
+        ]
+        for dtype in dtypes:
+            self.run_dispatch_test(
+                dispatch_op.dispatch_test_float_and_integer_and_complex, dtype)
+
+    def test_dispatch_float_and_half(self):
+        dtypes = ["float32", "float64", "float16"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_half,
                                    dtype)
 
 

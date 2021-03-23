@@ -142,7 +142,12 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.cuda_device_context();
 
+#ifdef __HIPCC__
+    const int block = 256;
+#else
     const int block = 512;
+#endif
+
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     int grid = std::min(max_blocks, pre * post);
@@ -244,7 +249,12 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.cuda_device_context();
 
+#ifdef __HIPCC__
+    const int block = 256;
+#else
     const int block = 512;
+#endif
+
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     int grid = std::min(max_blocks, pre * post);

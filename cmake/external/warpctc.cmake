@@ -18,7 +18,7 @@ SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         95a461eddeabd51099ef059dcfada1117eb1bfb8)
+set(WARPCTC_TAG         cd828e5b6c3b953b82af73f7f44cddc393a20efa)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -49,12 +49,12 @@ ExternalProject_Add(
     BUILD_ALWAYS    1
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                    -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                    -DCMAKE_C_FLAGS=$<FILTER:${CMAKE_C_FLAGS},EXCLUDE,/Zc:inline>
+                    -DCMAKE_C_FLAGS_DEBUG=$<FILTER:${CMAKE_C_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
+                    -DCMAKE_C_FLAGS_RELEASE=$<FILTER:${CMAKE_C_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS=$<FILTER:${CMAKE_CXX_FLAGS},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS_RELEASE=$<FILTER:${CMAKE_CXX_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                     -DWITH_GPU=${WITH_GPU}
                     -DWITH_OMP=${USE_OMP}

@@ -88,6 +88,11 @@ class MKLDNNHandlerT {
   }
 
   template <typename T_out = T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(void) {
+    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), "@dstt_mem_p");
+  }
+
+  template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const framework::Tensor* output) {
     const T_out* output_data = output->data<T_out>();
@@ -561,7 +566,10 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto src_y_tz = framework::vectorize(y->dims());
-      const auto dst_tz = framework::vectorize(z->dims());
+      // if output tensor(z) is nullptr then we are computing into oneDNN
+      // managed buffer
+      const auto dst_tz =
+          (z == nullptr) ? src_x_tz : framework::vectorize(z->dims());
 
       const auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
