@@ -51,6 +51,7 @@ enum PsCmdID {
   PS_PULL_GRAPH_LIST = 30;
   PS_GRAPH_SAMPLE_NEIGHBOORS = 31;
   PS_GRAPH_SAMPLE_NODES = 32;
+  PS_GRAPH_GET_NODE_FEAT = 33;
 }
 
 message PsRequestMessage {

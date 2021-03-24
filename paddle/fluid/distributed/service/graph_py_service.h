@@ -163,6 +163,9 @@ class GraphPyClient : public GraphPyService {
       std::string name, std::vector<uint64_t> node_ids, int sample_size);
   std::vector<uint64_t> random_sample_nodes(std::string name, int server_index,
                                             int sample_size);
+  std::vector<std::vector<std::string> >
+      get_node_feat(std::string node_type, std::vector<uint64_t> node_ids,
+                             std::vector<std::string> feature_names);
   std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,
                                            int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();

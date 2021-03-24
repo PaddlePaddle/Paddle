@@ -289,6 +289,24 @@ std::vector<uint64_t> GraphPyClient::random_sample_nodes(std::string name,
   }
   return v;
 }
+
+// (name, dtype, ndarray)
+std::vector<std::vector<std::string > > 
+  GraphPyClient::get_node_feat(std::string node_type,
+                             std::vector<uint64_t> node_ids,
+                             std::vector<std::string> feature_names){
+
+  std::vector<std::vector<std::string> > v(feature_names.size(), 
+          std::vector<std::string>(node_ids.size()));
+  if (this->table_id_map.count(node_type)) {
+    uint32_t table_id = this->table_id_map[node_type];
+    auto status =
+        worker_ptr->get_node_feat(table_id, node_ids, feature_names, v);
+    status.wait();
+  }
+  return v;
+}
+
 std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
                                                         int server_index,
                                                         int start, int size,

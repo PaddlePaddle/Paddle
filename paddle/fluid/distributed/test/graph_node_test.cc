@@ -183,8 +183,9 @@ std::string edges[] = {
     std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
 char edge_file_name[] = "edges.txt";
 
-std::string nodes[] = {std::string("user\t37\ta 0.34\tb 13 14\tc hello"),
-                       std::string("user\t96\ta 0.31\tb 15 10"),
+std::string nodes[] = {
+                       std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
+                       std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
                        std::string("user\t59\ta 0.11\tb 11 14"),
                        std::string("user\t97\ta 0.11\tb 12 11"),
                        std::string("item\t45\ta 0.21"),
@@ -423,11 +424,13 @@ void RunBrpcPushSparse() {
   server1.add_table_feat_conf("user", "a", "float32", 1);
   server1.add_table_feat_conf("user", "b", "int32", 2);
   server1.add_table_feat_conf("user", "c", "string", 1);
+  server1.add_table_feat_conf("user", "d", "string", 1);
   server1.add_table_feat_conf("item", "a", "float32", 1);
 
   server2.add_table_feat_conf("user", "a", "float32", 1);
   server2.add_table_feat_conf("user", "b", "int32", 2);
   server2.add_table_feat_conf("user", "c", "string", 1);
+  server2.add_table_feat_conf("user", "d", "string", 1);
   server2.add_table_feat_conf("item", "a", "float32", 1);
 
   client1.set_up(ips_str, 127, node_types, edge_types, 0);
@@ -435,6 +438,7 @@ void RunBrpcPushSparse() {
   client1.add_table_feat_conf("user", "a", "float32", 1);
   client1.add_table_feat_conf("user", "b", "int32", 2);
   client1.add_table_feat_conf("user", "c", "string", 1);
+  client1.add_table_feat_conf("user", "d", "string", 1);
   client1.add_table_feat_conf("item", "a", "float32", 1);
 
   client2.set_up(ips_str, 127, node_types, edge_types, 1);
@@ -442,6 +446,7 @@ void RunBrpcPushSparse() {
   client2.add_table_feat_conf("user", "a", "float32", 1);
   client2.add_table_feat_conf("user", "b", "int32", 2);
   client2.add_table_feat_conf("user", "c", "string", 1);
+  client2.add_table_feat_conf("user", "d", "string", 1);
   client2.add_table_feat_conf("item", "a", "float32", 1);
 
   server1.start_server();
@@ -470,6 +475,7 @@ void RunBrpcPushSparse() {
 
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
+
 
   // Test Pull by step
 
@@ -504,22 +510,21 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(nodes_ids.size(), 2);
   ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
                       (nodes_ids[0] == 37 && nodes_ids[1] == 59));
-  // to test in python,try this:
-  //   from paddle.fluid.core import GraphPyService
-  // ips_str = "127.0.0.1:4211;127.0.0.1:4212"
-  // gps1 = GraphPyService();
-  // gps2 = GraphPyService();
-  // gps1.set_up(ips_str, 127, 0, 0, 0);
-  // gps2.set_up(ips_str, 127, 1, 1, 0);
-  // gps1.load_file("input.txt");
 
-  // list = gps2.pull_graph_list(0,1,4)
-  // for x in list:
-  //     print(x.get_id())
-
-  // list = gps2.sample_k(96, "user", 4);
-  // for x in list:
-  //     print(x.get_id())
+  // Test get node feat
+  node_ids.clear();
+  node_ids.push_back(37);
+  node_ids.push_back(96);
+  std::vector<std::string> feature_names;
+  feature_names.push_back(std::string("c"));
+  feature_names.push_back(std::string("d"));
+  auto node_feat = client1.get_node_feat(std::string("user"), node_ids, feature_names);
+  ASSERT_EQ(node_feat.size(), 2);
+  ASSERT_EQ(node_feat[0].size(), 2);
+  std::cout << "get_node_feat: " << node_feat[0][0] << std::endl;
+  std::cout << "get_node_feat: " << node_feat[0][1] << std::endl;
+  std::cout << "get_node_feat: " << node_feat[1][0] << std::endl;
+  std::cout << "get_node_feat: " << node_feat[1][1] << std::endl;
 
   std::remove(edge_file_name);
   std::remove(node_file_name);
@@ -538,7 +543,9 @@ void RunBrpcPushSparse() {
 
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
-  s.add_feature("hhhh");
+  //s.add_feature("hhhh");
+  s.set_feature_size(1);
+  s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
   int size = s.get_size(true);
   char str[size];

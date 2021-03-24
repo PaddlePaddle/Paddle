@@ -107,6 +107,12 @@ class Table {
                                       int &actual_sizes) {
     return 0;
   }
+  virtual int32_t get_node_feat(
+      const std::vector<uint64_t>& node_ids, 
+      const std::vector<std::string>& feature_names,
+      std::vector<std::vector<std::string> > &res) {
+    return 0;
+  }
   virtual int32_t pour() { return 0; }
 
   virtual void clear() = 0;
