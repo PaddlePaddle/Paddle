@@ -14,11 +14,11 @@
 
 include(ExternalProject)
 
-# update eigen to the commit id 4da2c6b1 on 03/19/2020
+# update eigen to the commit id f612df27 on 03/16/2021
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
-set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
+set(EIGEN_TAG        f612df273689a19d25b45ca4f8269463207c4fee)
 
 cache_third_party(extern_eigen3
     REPOSITORY    ${EIGEN_REPOSITORY}
