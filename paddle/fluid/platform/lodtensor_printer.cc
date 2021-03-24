@@ -27,7 +27,7 @@ namespace paddle {
 namespace platform {
 
 void PrintVar(framework::Scope* scope, const std::string& var_name,
-              const std::string& print_info) {
+              const std::string& print_info, std::stringstream* sstream) {
   framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";
@@ -40,27 +40,25 @@ void PrintVar(framework::Scope* scope, const std::string& var_name,
     return;
   }
 
-  std::ostringstream sstream;
-  sstream << print_info << ": ";
+  *sstream << print_info << ": ";
 
 #define PrintTensorCallback(cpp_type, proto_type) \
   do {                                            \
     if (tensor->type() == proto_type) {           \
-      sstream << "[";                             \
+      *sstream << "[";                            \
       auto* data = tensor->data<cpp_type>();      \
       auto element_num = tensor->numel();         \
       if (element_num > 0) {                      \
-        sstream << data[0];                       \
+        *sstream << data[0];                      \
         for (int j = 1; j < element_num; ++j) {   \
-          sstream << " " << data[j];              \
+          *sstream << " " << data[j];             \
         }                                         \
       }                                           \
-      sstream << "]";                             \
+      *sstream << "]";                            \
     }                                             \
   } while (0)
 
   _ForEachDataType_(PrintTensorCallback);
-  std::cout << sstream.str();
 }
 
 }  // end namespace platform

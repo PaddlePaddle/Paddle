@@ -226,22 +226,28 @@ void HogwildWorker::PrintFetchVars() {
   // call count
   batch_num_++;
   int batch_per_print = fetch_config_.print_period();
+  int fetch_var_num = fetch_config_.fetch_var_names_size();
+
+  if (fetch_var_num == 0) {
+    return;
+  }
+
+  std::stringstream ss;
+
   if (thread_id_ == 0) {
     if (batch_num_ % batch_per_print == 0) {
-      int fetch_var_num = fetch_config_.fetch_var_names_size();
-
-      std::cout << "batch: " << batch_num_ << ", ";
-
       for (int i = 0; i < fetch_var_num; ++i) {
         platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
-                           fetch_config_.fetch_var_str_format(i));
+                           fetch_config_.fetch_var_str_format(i), &ss);
         if (i < fetch_var_num - 1) {
-          std::cout << ", ";
+          ss << ", ";
         }
       }
-      std::cout << std::endl;
+      ss << "\n";
     }
   }
+
+  VLOG(0) << ss.str();
 }
 
 }  // end namespace framework
