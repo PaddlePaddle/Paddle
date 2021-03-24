@@ -364,7 +364,7 @@ if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
 
-# 2.0 New custom op extension mechanism related
+##### 2.0 New custom op extension mechanism related #####
 
 # if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
 set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)

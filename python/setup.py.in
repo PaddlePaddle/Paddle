@@ -399,6 +399,7 @@ def find_files(pattern, root):
           yield os.path.join(dirpath, filename)
 
 headers = (
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension')) +  # extension
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')))  # boost
 
@@ -440,18 +441,18 @@ class InstallHeaders(Command):
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
 
-    def copy_data_type_headers(self, header):
+    def copy_data_type_headers(self):
         # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
         # to `extension/incude`,
         data_type_headers = (['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex64.h'] + 
-                                ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] + 
-                                ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
+                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex128.h'] + 
+                             ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
 
         install_dir = os.path.join(self.install_dir, "paddle/fluid/extension/include")
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
         for header in data_type_headers:
-            return self.copy_file(header, install_dir)
+            self.copy_file(header, install_dir)
 
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
@@ -484,8 +485,7 @@ class InstallHeaders(Command):
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
             self.outfiles.append(out)
-        (out, _) = self.copy_data_type_headers(header)
-        self.outfiles.append(out)
+        self.copy_data_type_headers()
 
     def get_inputs(self):
         return self.distribution.headers or []
