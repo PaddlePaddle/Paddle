@@ -19,7 +19,48 @@ __all__ = ['backward']
 
 
 @framework.dygraph_only
-def backward(tensors, grad_tensors, retain_graph=False):
+def backward(tensors, grad_tensors=None, retain_graph=False):
+    """
+    Compute the backward gradients of given tensors.
+    
+    Args:
+        tensors(list of Tensors): the tensors which the gradient to be computed.
+
+        grad_tensors(list of Tensors of None, optional): the init gradients of the `tensors`` .If not None, it must have the same length with ``tensors`` ,
+            and if any of the elements is None, then the init gradient is the default value which is filled with 1.0. 
+            If None, all the gradients of the ``tensors`` is the default value which is filled with 1.0.
+
+        retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+            like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+            :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            Defaults to False.
+    
+    Returns:
+        NoneType: Non
+
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
+        y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
+
+        grad_tensor = paddle.to_tensor([[1,2], [1, 1]], dtype='float32')
+
+        z = paddle.matmul(x, y)
+        #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+        #       [[9. , 10.],
+        #       [21., 22.]])
+
+        paddle.autograd.backward([z, z], [grad_tensor, grad_tensor], True)
+
+        print(x.grad)
+        #[[14. 22.]
+        # [10. 14.]]]
+
+    """
+
     def check_tensors(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)
 
@@ -49,7 +90,7 @@ def backward(tensors, grad_tensors, retain_graph=False):
                     each_tensor, paddle.Tensor
                 ), "grad_tensors must be None, Tensor or list containing None or Tensor"
     else:
-        grad_tensors = []
+        grad_tensors = [None] * len(tensors)
 
     if len(grad_tensors) > 0:
         assert len(tensors) == len(
