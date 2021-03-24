@@ -13,35 +13,38 @@
 // limitations under the License.
 
 #include <limits>
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 
 namespace paddle {
 namespace operators {
 
-#define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)                \
-  case near_greater_power_of_two:                                            \
-    ComputeForwardInWarp<T, double,                                          \
-                         near_greater_power_of_two><<<blocks, threads, 0>>>( \
-        dst, src, outer_size, dim_size, dim_size);                           \
+#define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)        \
+  case near_greater_power_of_two:                                    \
+    ComputeLogSoftmaxForwardInWarp<                                  \
+        T, AccT, near_greater_power_of_two><<<blocks, threads, 0>>>( \
+        dst, src, outer_size, dim_size);                             \
     break;
 
 template <typename T, int KernelWarpSize>
-__device__ __forceinline__ void ReduceSumForWarpBatch(T &sum) {
+__device__ __forceinline__ T WarpReduceSum(T value) {
 #pragma unroll
   for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
-    T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum, offset);
-    sum = sum + sum_val;
+    T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, value, offset);
+    value = value + sum_val;
   }
+  return value;
 }
 
 template <typename T, int KernelWarpSize>
-__device__ __forceinline__ void ReduceMaxForWarpBatch(T &sum) {
+__device__ __forceinline__ T WarpReduceMax(T value) {
 #pragma unroll
   for (int offset = KernelWarpSize / 2; offset > 0; offset /= 2) {
-    T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum, offset);
-    sum = max(sum, max_val);
+    T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, value, offset);
+    value = max(value, max_val);
   }
+  return value;
 }
 
 int GetNearGreaterPowerOfTwo(int value) {
@@ -53,31 +56,33 @@ int GetNearGreaterPowerOfTwo(int value) {
 }
 
 template <typename T, typename AccT, int NearGreaterPowerOfTwo>
-__global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
-                                     int stride, int element_count) {
+__global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
+                                               int batch_size,
+                                               int element_count) {
   constexpr int near_greater_power_of_two = NearGreaterPowerOfTwo;
   constexpr int kernel_warp_size =
       (near_greater_power_of_two < 32) ? near_greater_power_of_two : 32;
   constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
-  int warp_id = blockDim.y * blockIdx.x + threadIdx.y;
+  int global_warp_id = blockDim.y * blockIdx.x + threadIdx.y;
 
-  // effective_warp_id are binary values
-  int effective_warp_id = batch_size - warp_id;
+  // set effective_warp_id as 1 when warps do effective work,
+  // when warps do ineffective work, effective_warp_id remains unchanged.
+  int effective_warp_id = batch_size - global_warp_id;
   if (effective_warp_id > 1) effective_warp_id = 1;
 
   int thread_in_warp_idx = threadIdx.x;
 
   // 1.read data from global memory to registers
   AccT elements[warp_iter];
-  // set effective_element_count as the num of elements when warps do effectove
+  // set effective_element_count as the num of elements when warps do effective
   // work
   // set effective_element_count as 0, when warps do ineffective work
   int effective_element_count = (effective_warp_id <= 0) ? 0 : element_count;
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < effective_element_count) {
-      elements[it] = static_cast<double>(
-          src[warp_id * stride + thread_in_warp_idx + it * kernel_warp_size]);
+      elements[it] = static_cast<AccT>(
+          src[global_warp_id * element_count + element_index]);
     } else {
       elements[it] = -std::numeric_limits<AccT>::infinity();
     }
@@ -90,7 +95,7 @@ __global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
   for (int it = 1; it < warp_iter; ++it) {
     max_value = (max_value > elements[it]) ? max_value : elements[it];
   }
-  ReduceMaxForWarpBatch<AccT, kernel_warp_size>(max_value);
+  max_value = WarpReduceMax<AccT, kernel_warp_size>(max_value);
 
   // 3.For each warp, accumulate all thread registers
   AccT sum = 0.0f;
@@ -98,7 +103,7 @@ __global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
   for (int it = 0; it < warp_iter; ++it) {
     sum += std::exp(elements[it] - max_value);
   }
-  ReduceSumForWarpBatch<AccT, kernel_warp_size>(sum);
+  sum = WarpReduceSum<AccT, kernel_warp_size>(sum);
 
   // 4.store result.
   sum = std::log(sum);
@@ -106,7 +111,7 @@ __global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < element_count) {
-      dst[warp_id * stride + thread_in_warp_idx + it * kernel_warp_size] =
+      dst[global_warp_id * element_count + element_index] =
           elements[it] - max_value - sum;
     } else {
       break;
@@ -114,7 +119,7 @@ __global__ void ComputeForwardInWarp(T *dst, const T *src, int batch_size,
   }
 }
 
-template <typename T>
+template <typename T, typename AccT>
 void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
                                      int outer_size) {
   int threads_per_block = 128;
@@ -146,6 +151,8 @@ void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
 template <typename T>
 class LogSoftmaxKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const auto *x = context.Input<framework::Tensor>("X");
@@ -153,10 +160,6 @@ class LogSoftmaxKernel<platform::CUDADeviceContext, T>
     const auto *input_data = x->data<T>();
     auto *output_data = out->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_GT(x->numel(), 0, platform::errors::InvalidArgument(
-                                         "Expected number of elements > 0. But "
-                                         "received number of elements is %d.",
-                                         x->numel()));
     const int rank = x->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
 
@@ -169,8 +172,8 @@ class LogSoftmaxKernel<platform::CUDADeviceContext, T>
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
       // execute CUDA kernel
-      LaunchSoftmaxForwardForLastAxis<T>(output_data, input_data, dim_size,
-                                         outer_size);
+      LaunchSoftmaxForwardForLastAxis<T, MPDType>(output_data, input_data,
+                                                  dim_size, outer_size);
     } else {
       // execute Eigen kernel
       LogSoftmaxFunctor<platform::CUDADeviceContext, T>()(
