@@ -66,10 +66,11 @@ class TestBackwardAPI(unittest.TestCase):
                 with dg.guard(place):
                     x_tensor = paddle.to_tensor(x, stop_gradient=False)
                     y_tensor = paddle.to_tensor(y)
-                    z_tensor = paddle.matmul(x_tensor, y_tensor)
+                    z_tensor1 = paddle.matmul(x_tensor, y_tensor)
+                    z_tensor2 = paddle.matmul(x_tensor, y_tensor)
 
                     grad_tensor = paddle.to_tensor(grad)
-                    paddle.autograd.backward([z_tensor, z_tensor],
+                    paddle.autograd.backward([z_tensor1, z_tensor2],
                                              [grad_tensor, grad_tensor], True)
 
                     x_grad = np.matmul(grad, y.T)

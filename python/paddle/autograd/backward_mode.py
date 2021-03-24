@@ -24,7 +24,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
     Compute the backward gradients of given tensors.
     
     Args:
-        tensors(list of Tensors): the tensors which the gradient to be computed.
+        tensors(list of Tensors): the tensors which the gradient to be computed. The tensors can not contain the same tensor.
 
         grad_tensors(list of Tensors of None, optional): the init gradients of the `tensors`` .If not None, it must have the same length with ``tensors`` ,
             and if any of the elements is None, then the init gradient is the default value which is filled with 1.0. 
@@ -42,22 +42,34 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
     Examples:
         .. code-block:: python
 
-        import paddle
-        x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
-        y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
+            import paddle
+            x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
 
-        grad_tensor = paddle.to_tensor([[1,2], [1, 1]], dtype='float32')
+            grad_tensor1 = paddle.to_tensor([[1,2], [2, 3]], dtype='float32')
+            grad_tensor2 = paddle.to_tensor([[1,1], [1, 1]], dtype='float32')
 
-        z = paddle.matmul(x, y)
-        #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-        #       [[9. , 10.],
-        #       [21., 22.]])
+            z1 = paddle.matmul(x, y)
+            z2 = paddle.matmul(x, y)
 
-        paddle.autograd.backward([z, z], [grad_tensor, grad_tensor], True)
+            paddle.autograd.backward([z1, z2], [grad_tensor1, grad_tensor2], True)
+            print(x.grad)
+            #[[12. 18.]
+            # [17. 25.]]
 
-        print(x.grad)
-        #[[14. 22.]
-        # [10. 14.]]]
+            x.clear_grad()
+
+            paddle.autograd.backward([z1, z2], [grad_tensor1, None], True)
+            print(x.grad)
+            #[[12. 18.]
+            # [17. 25.]]
+
+            x.clear_grad()
+
+            paddle.autograd.backward([z1, z2])
+            print(x.grad)
+            #[[10. 14.]
+            # [10. 14.]]
 
     """
 
@@ -79,6 +91,9 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
+
+    assert len(tensors) == len(set(
+        tensors)), "the arg tensors should not contains same element"
 
     if grad_tensors is not None:
         if not isinstance(grad_tensors, (list, tuple)):
