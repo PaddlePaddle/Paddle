@@ -39,7 +39,7 @@ struct PSHost {
 
   // |---ip---|---port---|--rank--|
   // |-32bit--|--20bit---|--12bit-|
-  // for pslib
+
   uint64_t serialize_to_uint64() {
     uint64_t host_label = 0;
     host_label = inet_addr(ip.c_str());
