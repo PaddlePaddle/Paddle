@@ -106,14 +106,6 @@ def _get_cache_or_reload(github, force_reload, verbose=True):
     return repo_dir
 
 
-def _load_attr_from_module(m, name):
-    '''
-    '''
-    if name not in dir(m):
-        return None
-    return getattr(m, name)
-
-
 def _load_entry_from_hubconf(m, name):
     '''load entry from hubconf
     '''
@@ -151,7 +143,7 @@ def list(repo_dir, source='github', force_reload=False):
     List all entrypoints available in `github` hubconf.
 
     Args:
-        repo_dir:
+        repo_dir(str): github or local path
             github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
                 tag/branch. The default branch is `master` if not specified.
             local (str): local repo path
@@ -164,7 +156,7 @@ def list(repo_dir, source='github', force_reload=False):
         ```python
         import paddle
 
-        paddle.hub.help('lyuwenyu/PaddleClas:hub_L')
+        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', source='github', force_reload=True)
 
         ```
     """
@@ -190,10 +182,10 @@ def list(repo_dir, source='github', force_reload=False):
 
 def help(repo_dir, model, source='github', force_reload=False):
     """
-    show help information of model
+    Show help information of model
 
     Args:
-        repo_dir (str): 
+        repo_dir(str): github or local path
             github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
                 tag/branch. The default branch is `master` if not specified.
             local (str): local repo path
@@ -209,7 +201,7 @@ def help(repo_dir, model, source='github', force_reload=False):
         ```python
         import paddle
 
-        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', 'ResNet18Test')
+        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
         ```
     """
     if source not in ('github', 'local'):
@@ -231,10 +223,10 @@ def help(repo_dir, model, source='github', force_reload=False):
 
 def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     """
-    load model
+    Load model
 
     Args:
-        repo_dir(str): 
+        repo_dir(str): github or local path
             github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
                 tag/branch. The default branch is `master` if not specified.
             local (str): local repo path
@@ -247,7 +239,7 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     Example:
         ```python
         import paddle
-        paddle.hub.load('lyuwenyu/PaddleClas:hub_L', 'ResNet18Test')
+        paddle.hub.load('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
         ```
     """
 
