@@ -65,9 +65,10 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
 }
 
 aclrtStream GetCurrentNPUStream() {
-  int device_id = GetCurrentNPUDeviceId();
+  int device_id = platform::GetCurrentNPUDeviceId();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(platform::NPUPlace(device_id));
+  auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
+      pool.Get(platform::NPUPlace(device_id)));
   return dev_ctx->stream();
 }
 
