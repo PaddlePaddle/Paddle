@@ -179,24 +179,18 @@ class TestSaveLoadAny(unittest.TestCase):
         state_dict_all = program.state_dict()
         paddle.save(state_dict_opt, model_path + '.pdall')
 
-        # TODO(weixin): add support for program
-        # paddle.save(program, model_path + ".pdmodel")
-
     def replace_static_load(self, program, model_path):
         with self.assertRaises(TypeError):
             program.set_state_dict(1)
 
         state_dict_param = paddle.load(model_path + '.pdparams')
 
-        # UserWarning: Skip loading for fake_var_name.@@. Can not find Variable 'fake_var_name.@@' in the program.
         state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
         state_dict_param['static_x'] = 'UserWarning'
         program.set_state_dict(state_dict_param)
         state_dict_param['static_x'] = np.random.randn(1, 2)
         program.set_state_dict(state_dict_param)
-
         program.set_state_dict(state_dict_param)
-
         state_dict_opt = paddle.load(model_path + '.pdopt')
         program.set_state_dict(state_dict_opt)
 
@@ -327,14 +321,13 @@ class TestSaveLoadAny(unittest.TestCase):
             paddle.save(tensor, path, pickle_protocol=5)
 
         paddle.save(tensor, path)
-
         np_dygraph = paddle.load(path)
         t_dygraph = paddle.load(path, return_numpy=False)
 
         self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
-        # enable static mode
+
         paddle.enable_static()
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
@@ -353,7 +346,6 @@ class TestSaveLoadAny(unittest.TestCase):
                 name="x", shape=[None, IMAGE_SIZE], dtype='float32')
             z = paddle.static.nn.fc(x, 128)
             loss = fluid.layers.reduce_mean(z)
-
             place = fluid.CPUPlace(
             ) if not paddle.fluid.core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
@@ -374,16 +366,13 @@ class TestSaveLoadAny(unittest.TestCase):
         # static load
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
-
         # set_tensor(np.ndarray)
         var.set_tensor(np_static, scope)
         self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
-
         # set_tensor(LoDTensor)
         self.set_zero(prog, place, scope)
         var.set_tensor(lod_static, scope)
         self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
-
         # enable dygraph mode
         paddle.disable_static()
         np_dygraph = paddle.load(path)

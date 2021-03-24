@@ -30,8 +30,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import in_dygraph_mode, Variable, Program
-from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = ['TranslatedLayer']
 
