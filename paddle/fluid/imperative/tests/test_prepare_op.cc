@@ -146,8 +146,8 @@ TEST(test_prepare_op, test_prepare_data) {
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
       attr_map);
   PrepareData<imperative::VarBase>(
-      dynamic_cast<framework::OperatorWithKernel&>(*op),
-      prepared_op.kernel_type(), &ins);
+      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -195,8 +195,8 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
       attr_map);
   PrepareData<imperative::VarBase>(
-      dynamic_cast<framework::OperatorWithKernel&>(*op),
-      prepared_op.kernel_type(), &ins);
+      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(

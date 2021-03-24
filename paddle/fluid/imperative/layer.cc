@@ -350,14 +350,10 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
 
   VLOG(5) << LayerDebugString(op.Type(), ins, outs);
 
-  // Prepare Op only construct Op
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
-
   /**
    * [ Why need temporary inputs here? ]
    *
-   * 1. PrepareData should not change original input tensor inplace.
-   *
+   * PrepareData should not change original input tensor inplace.
    * Suppose the user defines a tensor(int), enters an op to execute,
    * and then this op rewrites GetExpectedKernelForVar, and converts
    * this tensor to float type during execution. After the dynamic
@@ -371,22 +367,15 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * transform is stored in the temporary scope, and then discarded
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
-   *
-   * 2. Hook execution should not change original input tensor.
-   *
-   * User can register hook for Tensor's gradient, It is expected
-   * that the hook only affects the gradient of the backward
-   * propagation, and does not affect the gradient value input
-   * as the hook.
    */
-  NameVarMap<VarType> tmp_ins(ins);
-
-  // 1. prepare data
-  PrepareData<VarType>(*op_kernel, prepared_op.kernel_type(), &tmp_ins);
-
-  // 2. call hooks
-
-  prepared_op.Run(tmp_ins, outs, attrs);
+  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
+  auto tmp_ins_ptr =
+      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  if (tmp_ins_ptr == nullptr) {
+    prepared_op.Run(ins, outs, attrs);
+  } else {
+    prepared_op.Run(*tmp_ins_ptr, outs, attrs);
+  }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 

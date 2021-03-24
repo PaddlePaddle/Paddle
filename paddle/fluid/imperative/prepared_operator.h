@@ -70,10 +70,11 @@ extern const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
     const std::shared_ptr<VariableWrapper>& var);
 
 template <typename VarType>
-void PrepareData(const framework::OperatorWithKernel& op,
-                 const framework::OpKernelType& expected_kernel_key,
-                 NameVarMap<VarType>* ins) {
-  for (auto& name_pair : *ins) {
+std::shared_ptr<NameVarMap<VarType>> PrepareData(
+    const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
+    const framework::OpKernelType& expected_kernel_key) {
+  std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
+  for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
       auto& var_base = name_pair.second[i];
       SetForwardDataTypeOfGradVar(var_base);
@@ -93,13 +94,16 @@ void PrepareData(const framework::OperatorWithKernel& op,
             std::shared_ptr<VariableWrapper> cache_var =
                 GetVariableWrapper(var_base)->getCacheValue(
                     expected_kernel_key);
+            if (tmp_ins_ptr == nullptr) {
+              tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
+            }
 
             const auto* tensor = GetTensorFromVar(cache_var->Var());
             auto tmp_var = std::make_shared<VarType>(var_base->Name());
             tmp_var->SetType(var_base->Type());
             SetTensorToVariable(cache_var->Var(), *tensor,
                                 tmp_var->MutableVar());
-            (*ins)[name_pair.first][i] = tmp_var;
+            (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
             framework::Tensor out;
             TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
@@ -109,10 +113,13 @@ void PrepareData(const framework::OperatorWithKernel& op,
               // To avoid NameVarMap copy construction overhead in general
               // scenarios, if inplace transformed, return original input
               // directly
+              if (tmp_ins_ptr == nullptr) {
+                tmp_ins_ptr = std::make_shared<NameVarMap<VarType>>(ins);
+              }
               auto tmp_var = std::make_shared<VarType>(var_base->Name());
               tmp_var->SetType(var_base->Type());
               SetTensorToVariable(var_base->Var(), out, tmp_var->MutableVar());
-              (*ins)[name_pair.first][i] = tmp_var;
+              (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
 
               GetVariableWrapper(var_base)->setCacheValue(
                   expected_kernel_key, GetVariableWrapper(tmp_var));
@@ -120,7 +127,8 @@ void PrepareData(const framework::OperatorWithKernel& op,
                       << expected_kernel_key;
             } else {
               // if dtype is same, transform inplace will not change the
-              // original value, transform inplace to avoid multiple copy
+              // original
+              // value, transform inplace to avoid multiple copy
               SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
             }
           }
@@ -128,6 +136,7 @@ void PrepareData(const framework::OperatorWithKernel& op,
       }
     }
   }
+  return tmp_ins_ptr;
 }
 
 class PreparedOp {
