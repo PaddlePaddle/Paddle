@@ -1473,6 +1473,14 @@ class Executor(object):
                 fetch_list=real_fetch_list,
                 feed_var_name='feed',
                 fetch_var_name='fetch')
+            main_block = program._pipeline_opt["section_program"].block(0)
+            for op in main_block.ops:
+                # set the op_role of fetch op to Optimize to avoid
+                # erase the fetched vars by gc for pipeline
+                if op.type == 'fetch':
+                    op._set_attr(
+                        'op_role',
+                        core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
 
         scope, trainer = self._prepare_trainer(

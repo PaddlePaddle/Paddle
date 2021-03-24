@@ -3809,7 +3809,7 @@ class PipelineOptimizer(object):
 
     # insert allreduce op to sync global information for global
     # gradient clip and amp
-    def _insert_allreduce_op(op_idx, block):
+    def _insert_allreduce_op(self, op_idx, block):
         """
         Insert allreduce op to sync global information for global
         gradient clip and amp.
@@ -3857,11 +3857,15 @@ class PipelineOptimizer(object):
                     'out_dtype': out_var.dtype,
                     self._op_role_key: self._op_role.Optimize
                 })
+        return offset
 
     def _create_vars(self, block, ori_block):
         # Create vars for block, copied from ori_block
         used_var_set = set()
-        for op_idx in range(block.desc.op_size() - 1, -1, -1):
+        added_op_num = 0
+        op_idx = 0
+        op_size = block.desc.op_size()
+        while op_idx < op_size + added_op_num:
             # Whether to insert allreduce_sum or allreduce_max op.
             # For amp and global gradient clip strategies, we should
             # get the global information, so allreduce op is needed.
@@ -3909,8 +3913,11 @@ class PipelineOptimizer(object):
                 dest_var.stop_gradient = source_var.stop_gradient
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
+            op_idx += 1
             if self.use_sharding or not should_insert: continue
-            self._insert_allreduce_op(op_idx, block)
+            inserted_ops = self._insert_allreduce_op(op_idx - 1, block)
+            added_op_num += inserted_ops
+            op_idx += inserted_ops
         block._sync_with_cpp()
 
     def _is_loss_grad_op(self, op):
@@ -3922,6 +3929,10 @@ class PipelineOptimizer(object):
     def _is_backward_op(self, op):
         return self._op_role_key in op.attr_names and (
             int(op.attr(self._op_role_key)) & int(self._op_role.Backward))
+
+    def _is_loss_op(self, op):
+        assert self._op_role_key in op.attr_names
+        return int(op.attr(self._op_role_key)) == int(self._op_role.Loss)
 
     def _is_optimize_op(self, op):
         return self._op_role_key in op.attr_names and (
