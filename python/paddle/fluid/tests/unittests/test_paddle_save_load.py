@@ -352,9 +352,8 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.disable_static()
         with paddle.utils.unique_name.guard():
             layer = LinearNet()
-            state_dict = paddle.save(layer.state_dict(), path)
+            paddle.save(layer.state_dict(), path)
             y_dy = layer(paddle.to_tensor(inps))
-
         paddle.enable_static()
         with new_program_scope():
             with paddle.utils.unique_name.guard():
@@ -365,14 +364,17 @@ class TestSaveLoadAny(unittest.TestCase):
                     dtype='float32')
                 y_static = layer(data)
                 program = paddle.static.default_main_program()
+                place = fluid.CPUPlace(
+                ) if not paddle.fluid.core.is_compiled_with_cuda(
+                ) else fluid.CUDAPlace(0)
                 exe = paddle.static.Executor(paddle.CPUPlace())
                 exe.run(paddle.static.default_startup_program())
                 state_dict = paddle.load(path, keep_name_table=True)
                 program.set_state_dict(state_dict)
                 result_static = exe.run(program,
                                         feed={'x_static_save': inps},
-                                        fetch_list=[y_static])
-            self.assertTrue(np.array_equal(result_static[0], y_dy.numpy()))
+                                        fetch_list=[y_static, ])
+                self.assertTrue(np.array_equal(result_static[0], y_dy.numpy()))
 
 
 class TestSaveLoad(unittest.TestCase):
