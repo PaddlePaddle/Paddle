@@ -147,17 +147,14 @@ class LazyZerosNPU {
                   const std::vector<framework::Tensor*>& outs) const {
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
-      int num = out->numel();
       if (found_inf_vec[0]) {
         VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
-        auto out_dims = out->dims();
-        std::vector<T> init;
-        for (int64_t i = 0; i < num; ++i) {
-          init.push_back(static_cast<T>(0));
-        }
 
-        TensorFromVector(init, dev_ctx, out);
-        out->Resize(out_dims);
+        auto place = dev_ctx.GetPlace();
+        auto stream = dev_ctx.stream();
+        auto g = out->mutable_data<int>(place);
+        platform::NPUMemsetAsync(static_cast<void*>(g), 0,
+                                 out->numel() * sizeof(int), stream);
       }
     }
   }
