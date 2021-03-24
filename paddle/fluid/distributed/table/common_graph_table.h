@@ -26,6 +26,7 @@
 #include <vector>
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
@@ -44,8 +45,8 @@ class GraphShard {
     // bucket_size = init_bucket_size(shard_num);
     // bucket.resize(bucket_size);
   }
-  std::vector<GraphNode *> &get_bucket() { return bucket; }
-  std::vector<GraphNode *> get_batch(int start, int end, int step);
+  std::vector<Node *> &get_bucket() { return bucket; }
+  std::vector<Node *> get_batch(int start, int end, int step);
   // int init_bucket_size(int shard_num) {
   //   for (int i = bucket_low_bound;; i++) {
   //     if (gcd(i, shard_num) == 1) return i;
@@ -59,8 +60,9 @@ class GraphShard {
     }
     return res;
   }
-  GraphNode *add_node(uint64_t id, std::string feature);
-  GraphNode *find_node(uint64_t id);
+  GraphNode *add_graph_node(uint64_t id);
+  FeatureNode *add_feature_node(uint64_t id);
+  Node *find_node(uint64_t id);
   void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
   // std::unordered_map<uint64_t, std::list<GraphNode *>::iterator>
   std::unordered_map<uint64_t, int> get_node_location() {
@@ -70,7 +72,7 @@ class GraphShard {
  private:
   std::unordered_map<uint64_t, int> node_location;
   int shard_num;
-  std::vector<GraphNode *> bucket;
+  std::vector<Node *> bucket;
 };
 class GraphTable : public SparseTable {
  public:
@@ -98,8 +100,8 @@ class GraphTable : public SparseTable {
   int32_t load_edges(const std::string &path, bool reverse);
 
   int32_t load_nodes(const std::string &path, std::string node_type);
-
-  GraphNode *find_node(uint64_t id);
+    
+  Node *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
     return 0;
@@ -117,12 +119,21 @@ class GraphTable : public SparseTable {
   }
   virtual int32_t initialize_shard() { return 0; }
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
+  virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
 
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
   const int task_pool_size_ = 11;
   const int random_sample_nodes_ranges = 3;
+
+  std::vector<std::string > feat_name;
+  std::vector<std::string > feat_dtype;
+  std::vector<int32_t > feat_shape;
+  std::unordered_map<std::string, int32_t > feat_id_map;
+  std::string table_name;
+  std::string table_type;
+
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
 };
 }

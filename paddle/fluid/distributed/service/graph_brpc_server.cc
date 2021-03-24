@@ -271,7 +271,7 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   int step = *(int *)(request.params(2).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  table->pull_graph_list(start, size, buffer, actual_size, true, step);
+  table->pull_graph_list(start, size, buffer, actual_size, false, step);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }

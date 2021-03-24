@@ -45,6 +45,7 @@ using paddle::distributed::GraphPyService;
 using paddle::distributed::GraphNode;
 using paddle::distributed::GraphPyServer;
 using paddle::distributed::GraphPyClient;
+using paddle::distributed::FeatureNode;
 
 namespace paddle {
 namespace pybind {
@@ -164,14 +165,20 @@ void BindGraphNode(py::module* m) {
       .def("get_id", &GraphNode::get_id)
       .def("get_feature", &GraphNode::get_feature);
 }
+void BindGraphPyFeatureNode(py::module* m) {
+  py::class_<FeatureNode>(*m, "FeatureNode").def(py::init<>());
+}
+
 void BindGraphPyService(py::module* m) {
   py::class_<GraphPyService>(*m, "GraphPyService").def(py::init<>());
 }
+
 void BindGraphPyServer(py::module* m) {
   py::class_<GraphPyServer>(*m, "GraphPyServer")
       .def(py::init<>())
       .def("start_server", &GraphPyServer::start_server)
-      .def("set_up", &GraphPyServer::set_up);
+      .def("set_up", &GraphPyServer::set_up)
+      .def("add_table_feat_conf", &GraphPyServer::add_table_feat_conf);
 }
 void BindGraphPyClient(py::module* m) {
   py::class_<GraphPyClient>(*m, "GraphPyClient")
@@ -179,6 +186,7 @@ void BindGraphPyClient(py::module* m) {
       .def("load_edge_file", &GraphPyClient::load_edge_file)
       .def("load_node_file", &GraphPyClient::load_node_file)
       .def("set_up", &GraphPyClient::set_up)
+      .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)

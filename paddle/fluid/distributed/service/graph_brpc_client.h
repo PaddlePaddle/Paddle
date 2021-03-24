@@ -66,7 +66,7 @@ class GraphBrpcClient : public BrpcPsClient {
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
                                                int size, int step,
-                                               std::vector<GraphNode>& res);
+                                               std::vector<FeatureNode>& res);
   virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
                                                    int server_index,
                                                    int sample_size,
