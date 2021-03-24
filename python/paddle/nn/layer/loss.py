@@ -108,7 +108,6 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
         .. code-block:: python
             import paddle
-            paddle.disable_static()
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
@@ -141,7 +140,6 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
-
     r"""
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
@@ -358,7 +356,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             labels = np.random.uniform(0.1, 1.0, shape).astype(dtype)
             labels /= np.sum(labels, axis=axis, keepdims=True)
             paddle.set_device("cpu")
-            paddle.disable_static()
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
                                                                  paddle.to_tensor(logits),  
                                                                  paddle.to_tensor(labels), 

@@ -38,7 +38,6 @@ from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 from paddle.utils import deprecated
 
-
 __all__ = [
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
@@ -684,7 +683,6 @@ def l1_loss(input, label, reduction='mean', name=None):
 
             import paddle
 
-            paddle.disable_static()
             input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
@@ -1113,6 +1111,7 @@ def ctc_loss(log_probs,
         loss_out = paddle.sum(loss_out)
     return loss_out
 
+
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.cross_entropy")
 def softmax_with_cross_entropy(logits,
                                label,
@@ -1121,14 +1120,10 @@ def softmax_with_cross_entropy(logits,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
-    return fluid_softmax_with_cross_entropy(logits,
-                                            label,
-                                            soft_label,
-                                            ignore_index,
-                                            numeric_stable_mode,
-                                            return_softmax,
-                                            axis)
- 
+    return fluid_softmax_with_cross_entropy(logits, label, soft_label,
+                                            ignore_index, numeric_stable_mode,
+                                            return_softmax, axis)
+
 
 def cross_entropy(input,
                   label,
@@ -1367,9 +1362,9 @@ def cross_entropy(input,
     if ignore_index > 0 and soft_label == True:
         raise ValueError(
             "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
-            "should be '-100', but received %s, which is not allowed."
-            % ignore_index)
- 
+            "should be '-100', but received %s, which is not allowed." %
+            ignore_index)
+
     input_dims = len(list(input.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
@@ -1381,9 +1376,9 @@ def cross_entropy(input,
     if in_dygraph_mode():
         _, out = core.ops.softmax_with_cross_entropy(
             input, label, 'soft_label', soft_label, 'ignore_index',
-            ignore_index, 'numeric_stable_mode', True, 'axis',
-            axis, 'use_softmax', use_softmax)
-     
+            ignore_index, 'numeric_stable_mode', True, 'axis', axis,
+            'use_softmax', use_softmax)
+
         if weight is not None:
 
             #trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
@@ -1392,20 +1387,22 @@ def cross_entropy(input,
                 # weight's shape is C, where C is class num.
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
                 # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
-                weight_gather = paddle.matmul(x=paddle.cast(label, weight.dtype),
-                                              y=weight, 
-                                              transpose_x=False, 
-                                              transpose_y=True)
+                weight_gather = paddle.matmul(
+                    x=paddle.cast(label, weight.dtype),
+                    y=weight,
+                    transpose_x=False,
+                    transpose_y=True)
                 out_shape = list(out.shape)
                 weight_gather_reshape = reshape(weight_gather, shape=out_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
+
                 out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                weight_gather = core.ops.gather_nd(
-                    weight, label)  
+                weight_gather = core.ops.gather_nd(weight, label)
                 input_shape = list(label.shape)
-                weight_gather_reshape = reshape(weight_gather, shape=input_shape)
+                weight_gather_reshape = reshape(
+                    weight_gather, shape=input_shape)
                 out = paddle.cast(out, weight_gather_reshape.dtype)
                 out = core.ops.elementwise_mul(out, weight_gather_reshape)
 
@@ -1474,7 +1471,7 @@ def cross_entropy(input,
         outputs={'Softmax': softmax,
                  'Loss': out},
         attrs=attrs)
- 
+
     if weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy')
@@ -1485,10 +1482,11 @@ def cross_entropy(input,
             # weight's shape is C, where C is class num.
             # for 1d case: label's shape is [N,C], weight_gather's shape is N.
             # for 2d case: label's shape is [N,H,W,C], weight_gather's shape is [N,H,W].
-            weight_gather = paddle.matmul(x=paddle.cast(label, weight.dtype),
-                                          y=weight, 
-                                          transpose_x=False, 
-                                          transpose_y=True)
+            weight_gather = paddle.matmul(
+                x=paddle.cast(label, weight.dtype),
+                y=weight,
+                transpose_x=False,
+                transpose_y=True)
 
             out_shape = list(out.shape)
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
@@ -1499,7 +1497,6 @@ def cross_entropy(input,
             input_shape = list(label.shape)
             weight_gather_reshape = reshape(weight_gather, shape=input_shape)
         out = paddle.multiply(out, weight_gather_reshape, name=weight_name)
-
 
     if reduction == "sum":
         return paddle.sum(out, name=name)
