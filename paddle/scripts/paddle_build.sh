@@ -1034,29 +1034,14 @@ function card_test() {
     set -m
     case_count $1 $2
     ut_startTime_s=`date +%s` 
-    # get the CUDA device count, XPU device count is one
-    if [ "${WITH_XPU}" == "ON" ];then
-        CUDA_DEVICE_COUNT=1
-    elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
-    else
-        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    fi
 
     testcases=$1
+    cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
-    if (( $# > 1 )); then
-        cardnumber=$2
-        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
-            cardnumber=$CUDA_DEVICE_COUNT
-        fi
-        if (( $# > 2 )); then
-            parallel_job=`expr $3 \* $parallel_level_base`
-        else
-            parallel_job=$parallel_level_base
-        fi
+
+    if (( $# > 2 )); then
+        parallel_job=`expr $3 \* $parallel_level_base`
     else
-        cardnumber=$CUDA_DEVICE_COUNT
         parallel_job=$parallel_level_base
     fi
 
@@ -1153,14 +1138,18 @@ set -x
 set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
+        # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
         single_card_tests_high_parallel='^job$'     # cases list which would run the most job each time with single GPU
-        single_card_tests_tetrad_parallel='^job$'   # cases list which would run 4 job each time with single GPU
         single_card_tests_two_parallel='^job$'      # cases list which would run 2 job each time with single GPU
-        single_card_tests_non_parallel_1='^job$'    # cases list which would run 1 job each time with single GPU
-        single_card_tests_non_parallel_2='^job$'    # cases list which would run 1 job each time with single GPU
-        single_card_tests='^job$' # all cases list which would take one graph card
-        exclusive_tests=''        # cases list which would be run exclusively
-        multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+        single_card_tests_non_parallel='^job$'      # cases list which would run 1 job each time with single GPU
+        single_card_tests='^job$'                   # all cases list which would take single GPU
+        
+        multiple_card_tests_two_parallel='^job$'    # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'    # cases list which would run 1 job each time with multiple GPUs, most cases would be two GPUs
+        
+        exclusive_tests_two_parallel='^job$'        # cases list which would run 2 job exclusively(with all GPUs)
+        exclusive_tests_non_parallel='^job$'        # cases list which would run 1 job exclusively(with all GPUs)
+        
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
@@ -1213,28 +1202,24 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ "$exclusive_tests" == "" ]]; then
-                        exclusive_tests="^$testcase$"
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
+                        exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
                     else
-                        exclusive_tests="$exclusive_tests|^$testcase$"
+                        exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ "$multiple_card_tests" == "" ]]; then
-                        multiple_card_tests="^$testcase$"
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
+                        multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
                     else
-                        multiple_card_tests="$multiple_card_tests|^$testcase$"
+                        multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
                     if [[ $(echo $cpu_parallel_job | grep $testcase) != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job | grep $testcase) != "" ]]; then
-                        single_card_tests_tetrad_parallel="$single_card_tests_tetrad_parallel|^$testcase$"
-                    elif [[ $(echo $two_parallel_job | grep $testcase) != "" ]]; then
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
                         single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
-                    elif [[ "${#single_card_tests_non_parallel_1}" -gt 10000 ]];then
-                        single_card_tests_non_parallel_2="$single_card_tests_non_parallel_2|^$testcase$"
                     else
-                        single_card_tests_non_parallel_1="$single_card_tests_non_parallel_1|^$testcase$"
+                        single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
                     fi
                     single_card_tests="$single_card_tests|^$testcase$"
                 fi
@@ -1245,13 +1230,22 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests_high_parallel" 1 8     # run cases the most each time with single GPU
-        card_test "$single_card_tests_tetrad_parallel" 1 4    # run cases 4 job each time with single GPU
-        card_test "$single_card_tests_two_parallel" 1 2       # run cases 4 job each time with single GPU
-        card_test "$single_card_tests_non_parallel_1" 1       # run cases 1 job each time with single GPU
-        card_test "$single_card_tests_non_parallel_2" 1       # run cases 1 job each time with single GPU
-        card_test "$multiple_card_tests" 2    # run cases with two GPUs
-        card_test "$exclusive_tests"          # run cases exclusively, in this cases would be run with 4/8 GPUs
+        # get the CUDA device count, XPU device count is one
+        if [ "${WITH_XPU}" == "ON" ];then
+            CUDA_DEVICE_COUNT=1
+        elif [ "${WITH_ROCM}" == "ON" ];then
+            CUDA_DEVICE_COUNT=4
+        else
+            CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+        fi
+
+        card_test "$single_card_tests_high_parallel" 1 8                # run cases the most each time with single GPU
+        card_test "$single_card_tests_two_parallel" 1 2                 # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1                   # run cases 1 job each time with single GPU
+        card_test "$multiple_card_tests_two_parallel" 2 2               # run cases 2 job each time with two GPUs
+        card_test "$multiple_card_tests_non_parallel" 2                 # run cases 1 job each time with two GPUs
+        card_test "$exclusive_tests_two_parallel" $CUDA_DEVICE_COUNT 2  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_two_parallel" $CUDA_DEVICE_COUNT    # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0

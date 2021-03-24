@@ -363,7 +363,7 @@ function show_ut_retry_result() {
 }
 
 set +e
-run_unittest $cpu_parallel_job 16
+run_unittest $cpu_parallel_job 12
 run_unittest $tetrad_parallel_job 4
 run_unittest $two_parallel_job 2
 run_unittest $non_parallel_job
