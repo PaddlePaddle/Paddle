@@ -14,6 +14,10 @@
 
 INCLUDE(ExternalProject)
 
+IF(WITH_ROCM)
+    add_definitions(-DWARPCTC_WITH_HIP)
+ENDIF()
+
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
