@@ -237,7 +237,8 @@ class LeakyReluGradGPUFunctor : public BaseGPUFunctor<T> {
       const typename CudaVecType<T>::type* dout) {
 // leakyrelu backward : out = out > 0 ? dout : alpha * dout
 #ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    return __ldg(out) > zero_ ? __ldg(dout) : static_cast<T>(alpha_) * __ldg(dout);
+    return __ldg(out) > zero_ ? __ldg(dout)
+                              : static_cast<T>(alpha_) * __ldg(dout);
 #else
     return (*out) > zero_ ? (*dout) : static_cast<T>(alpha_) * (*dout);
 #endif
@@ -245,7 +246,7 @@ class LeakyReluGradGPUFunctor : public BaseGPUFunctor<T> {
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
-// leakyrelu backward : out = out > 0 ? dout : alpha * dout
+    // leakyrelu backward : out = out > 0 ? dout : alpha * dout
     return out > zero_ ? dout : static_cast<T>(alpha_) * dout;
   }
 
@@ -256,7 +257,7 @@ template <>
 __device__ __forceinline__ CudaVecType<float>::type
 LeakyReluGradGPUFunctor<float>::Compute(const CudaVecType<float>::type* out,
                                         const CudaVecType<float>::type* dout) {
-// leakyrelu backward : out = out > 0 ? dout : alpha * dout
+  // leakyrelu backward : out = out > 0 ? dout : alpha * dout
   return make_float4((out->x > zero_) ? (dout->x) : alpha_ * (dout->x),
                      (out->y > zero_) ? (dout->y) : alpha_ * (dout->y),
                      (out->z > zero_) ? (dout->z) : alpha_ * (dout->z),
