@@ -115,3 +115,7 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+if __name__ == "__main__":
+    unittest.main()
