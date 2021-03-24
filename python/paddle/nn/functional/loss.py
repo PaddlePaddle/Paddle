@@ -1170,9 +1170,9 @@ def cross_entropy(input,
 
         1. Weight
 
-            If the ``weight`` parameter is ``none`` , go to the next step directly.
+            If the ``weight`` parameter is ``None`` , go to the next step directly.
 
-            If the ``weight`` parameter is not ``none`` , the cross entropy of each sample is weighted by weight
+            If the ``weight`` parameter is not ``None`` , the cross entropy of each sample is weighted by weight
             according to soft_label = False or True as follows.
 
             1.1. Hard labels (soft_label = False)
@@ -1202,7 +1202,7 @@ def cross_entropy(input,
             2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
             the ``weight`` parameter as follows. 
 
-            2.3.1. If the  ``weight``  parameter is ``none`` 
+            2.3.1. If the  ``weight``  parameter is ``None`` 
 
                    Return the average value of the previous results
 
@@ -1211,14 +1211,14 @@ def cross_entropy(input,
 
                   where, N is the number of samples and C is the number of categories.
 
-            2.3.2. If the 'weight' parameter is not 'none', the weighted average value of the previous result will be returned
+            2.3.2. If the 'weight' parameter is not 'None', the weighted average value of the previous result will be returned
 
-            (1) Hard labels (soft_label = False)
+            1. Hard labels (soft_label = False)
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
 
-            (2) Soft labels (soft_label = True)
+            2. Soft labels (soft_label = True)
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
@@ -1235,11 +1235,11 @@ def cross_entropy(input,
 
         - **label** (Tensor)
 
-            1) If soft_label=False，the shape is 
+            1. If soft_label=False，the shape is 
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64. 
 
-            2) If soft_label=True, the shape and data type should be same with ``input`` , 
+            2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
 
         - **weight** (Tensor, optional)
@@ -1296,9 +1296,9 @@ def cross_entropy(input,
 
         If :attr:`reduction` is ``'none'``:
 
-        1) If soft_label = False, the dimension of return value is the same with ``label`` . 
+        1. If soft_label = False, the dimension of return value is the same with ``label`` . 
 
-        2) if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
+        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
 
      Example1(hard labels):
@@ -1345,7 +1345,6 @@ def cross_entropy(input,
             labels = np.random.uniform(0.1, 1.0, shape).astype(dtype)
             labels /= np.sum(labels, axis=axis, keepdims=True)
             paddle.set_device("cpu")
-            paddle.disable_static()
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
                                                                  paddle.to_tensor(logits),  
                                                                  paddle.to_tensor(labels), 
