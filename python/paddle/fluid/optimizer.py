@@ -3805,58 +3805,60 @@ class PipelineOptimizer(object):
         self._param_device_map = None
         self._pipeline_pair = []
         self._pp_ring_map = dict()
+        self._global_ring_id = None
 
-    def _create_vars(self, block, ori_block):
-        # insert allreduce op to sync global information
-        def _insert_allreduce_op(op, op_idx):
-            out_name = op.desc.output_arg_names()[0]
-            out_var = block.var(out_name)
-            offset = 0
-            if op.type == "reduce_any":
-                # cast the bool var to int32 to use allreduce op
-                temp_var_name = unique_name.generate(out_name + "_cast_int32")
-                temp_var = block.create_var(
-                    name=temp_var_name, shape=[1], dtype="int32")
-                block._insert_op(
-                    op_idx + 1 + offset,
-                    type='cast',
-                    inputs={'X': out_var},
-                    outputs={'Out': temp_var},
-                    attrs={
-                        'in_dtype': out_var.dtype,
-                        'out_dtype': temp_var.dtype,
-                        self._op_role_key:
-                        core.op_proto_and_checker_maker.OpRole.Optimize
-                    })
-                offset += 1
+    # insert allreduce op to sync global information for global
+    # gradient clip and amp
+    def _insert_allreduce_op(op_idx, block):
+        """
+        Insert allreduce op to sync global information for global
+        gradient clip and amp.
+        """
+        op = block.ops[op_idx]
+        out_name = op.desc.output_arg_names()[0]
+        out_var = block.var(out_name)
+        offset = 0
+        if op.type == "reduce_any":
+            # cast the bool var to int32 to use allreduce_max op
+            temp_var_name = unique_name.generate(out_name + "_cast_int32")
+            temp_var = block.create_var(
+                name=temp_var_name, shape=[1], dtype="int32")
             block._insert_op(
                 op_idx + 1 + offset,
-                type='c_allreduce_max'
-                if op.type == "reduce_any" else 'c_allreduce_sum',
-                inputs={'X': temp_var if op.type == "reduce_any" else out_var},
-                outputs={
-                    'Out': temp_var if op.type == "reduce_any" else out_var
-                },
+                type='cast',
+                inputs={'X': out_var},
+                outputs={'Out': temp_var},
                 attrs={
-                    'ring_id': self.global_ring_id,
-                    self._op_role_key:
-                    core.op_proto_and_checker_maker.OpRole.Optimize,
-                    'use_calc_stream': True
+                    'in_dtype': out_var.dtype,
+                    'out_dtype': temp_var.dtype,
+                    self._op_role_key: self._op_role.Optimize
                 })
             offset += 1
-            if op.type == "reduce_any":
-                block._insert_op(
-                    op_idx + 1 + offset,
-                    type='cast',
-                    inputs={'X': temp_var},
-                    outputs={'Out': out_var},
-                    attrs={
-                        'in_dtype': temp_var.dtype,
-                        'out_dtype': out_var.dtype,
-                        self._op_role_key:
-                        core.op_proto_and_checker_maker.OpRole.Optimize
-                    })
+        block._insert_op(
+            op_idx + 1 + offset,
+            type='c_allreduce_max'
+            if op.type == "reduce_any" else 'c_allreduce_sum',
+            inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+            outputs={'Out': temp_var if op.type == "reduce_any" else out_var},
+            attrs={
+                'ring_id': self._global_ring_id,
+                self._op_role_key: self._op_role.Optimize,
+                'use_calc_stream': True
+            })
+        offset += 1
+        if op.type == "reduce_any":
+            block._insert_op(
+                op_idx + 1 + offset,
+                type='cast',
+                inputs={'X': temp_var},
+                outputs={'Out': out_var},
+                attrs={
+                    'in_dtype': temp_var.dtype,
+                    'out_dtype': out_var.dtype,
+                    self._op_role_key: self._op_role.Optimize
+                })
 
+    def _create_vars(self, block, ori_block):
         # Create vars for block, copied from ori_block
         used_var_set = set()
         for op_idx in range(block.desc.op_size() - 1, -1, -1):
@@ -3907,9 +3909,9 @@ class PipelineOptimizer(object):
                 dest_var.stop_gradient = source_var.stop_gradient
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
-            if self.use_sharding: continue
-            if not should_insert: continue
-            _insert_allreduce_op(op, op_idx)
+            if self.use_sharding or not should_insert: continue
+            self._insert_allreduce_op(op_idx, block)
+        block._sync_with_cpp()
 
     def _is_loss_grad_op(self, op):
         assert self._op_role_key in op.attr_names
@@ -3918,12 +3920,12 @@ class PipelineOptimizer(object):
             self._op_role.Loss)
 
     def _is_backward_op(self, op):
-        return self._op_role_key in op.attr_names and int(op.all_attrs()[
-            self._op_role_key]) & int(self._op_role.Backward)
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) & int(self._op_role.Backward))
 
     def _is_optimize_op(self, op):
-        return self._op_role_key in op.attr_names and int(op.all_attrs()[
-            self._op_role_key]) & int(self._op_role.Optimize)
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) & int(self._op_role.Optimize))
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and (
@@ -3938,37 +3940,34 @@ class PipelineOptimizer(object):
             main_program (Program): the main program
             devices: all used devices
         """
-        programs = []
         # Map from device to its corresponding section program info
-        device_program_map = dict()
-        for device in devices:
-            p = {'program': Program()}
-            device_program_map[device] = p
+        device_program_map = defaultdict(Program)
 
         block = main_program.block(0)
         for op in block.ops:
             device = op.attr(self._op_device_key)
             # Copy ops whose op_device set to "gpu:all" to all sections.
             if device == "gpu:all":
-                for device in device_program_map.keys():
+                for device in devices:
                     program = device_program_map[device]
                     op_desc = op.desc
-                    ap_op = program["program"].block(0).desc.append_op()
+                    ap_op = program.global_block().desc.append_op()
                     ap_op.copy_from(op_desc)
                     ap_op._set_attr(self._op_device_key, "")
             else:
                 program = device_program_map[device]
                 op_desc = op.desc
-                ap_op = program["program"].block(0).desc.append_op()
+                ap_op = program.global_block().desc.append_op()
                 ap_op.copy_from(op_desc)
                 ap_op._set_attr(self._op_device_key, "")
 
+        program_list = []
         for key in devices:
             program = device_program_map[key]
-            program['program']._sync_with_cpp()
-            programs.append(program)
+            program._sync_with_cpp()
+            program_list.append(program)
 
-        return programs
+        return program_list
 
     def _get_op_device_for_startup_program(self, var_name):
         """
@@ -3977,21 +3976,22 @@ class PipelineOptimizer(object):
         get the real op_device attribute of the fill_constant as the device
         where the corresponding parameters on.
         """
-        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name, \
+            'For accumulators for Adam, the name must contain beta1_pow_acc ' \
+            'or beta2_pow_acc.'
         param_name = var_name[0:var_name.index('_beta')]
         device = self._param_device_map[param_name]
         return device
 
-    def _split_startup_program(self, startup_program, local_rank):
-        block = startup_program.block(0)
+    def _split_startup_program(self, startup_program, device_id):
+        block = startup_program.global_block()
         new_startup_program = Program()
         for op in block.ops:
             device = op.attr(self._op_device_key)
             if device == "cpu":
                 assert op.type == "fill_constant", (
-                    "For ops in startup "
-                    "program that with the op_device attribute of cpu, "
-                    "they must be fill_constant.")
+                    "For ops in startup program with the op_device attribute "
+                    "of cpu, they must be of type fill_constant.")
                 output_var = op.output_arg_names[0]
                 device = self._get_op_device_for_startup_program(output_var)
 
@@ -4000,14 +4000,13 @@ class PipelineOptimizer(object):
             else:
                 # LR related ops
                 device = None
-            if device and device_index != local_rank: continue
+            if device and device_index != device_id: continue
             op_desc = op.desc
-            ap_op = new_startup_program.block(0).desc.append_op()
+            ap_op = new_startup_program.global_block().desc.append_op()
             ap_op.copy_from(op_desc)
             ap_op._set_attr(self._op_device_key, "")
         new_startup_program._sync_with_cpp()
-        self._create_vars(
-            new_startup_program.block(0), startup_program.global_block())
+        self._create_vars(new_startup_program.global_block(), block)
         return new_startup_program
 
     def _find_post_op(self, ops, cur_op, var_name):
@@ -4134,9 +4133,9 @@ class PipelineOptimizer(object):
             assert len(op.desc.output_arg_names()) == 1
             out_name = op.desc.output_arg_names()[0]
             post_op = self._find_post_op(block.ops, op, out_name)
-            assert post_op.has_attr(
-                'op_device'), "{} has no op_device attr for var {}".format(
-                    post_op.type, out_name)
+            assert post_op.has_attr(self._op_device_key), \
+                "{} has no op_device attr for var {}".format(
+                 post_op.type, out_name)
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
@@ -4144,7 +4143,7 @@ class PipelineOptimizer(object):
               op.type == "scale") and self._is_backward_op(op):
             prev_op = self._find_real_prev_op(block.ops, op,
                                               op.desc.input("X")[0])
-            op._set_attr('op_device', prev_op.attr('op_device'))
+            op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif op.type == "memcpy" and not self._is_optimize_op(op):
             assert len(op.input_arg_names) == 1 and len(
                 op.output_arg_names) == 1
@@ -4152,11 +4151,13 @@ class PipelineOptimizer(object):
             output_name = op.output_arg_names[0]
             if '@Fetch' in output_name:
                 post_op = self._find_post_op(block.ops, op, output_name)
-                op._set_attr('op_device', post_op.attr('op_device'))
+                op._set_attr(self._op_device_key,
+                             post_op.attr(self._op_device_key))
             else:
                 prev_op = self._find_real_prev_op(block.ops, op,
                                                   op.desc.input("X")[0])
-                op._set_attr('op_device', prev_op.attr('op_device'))
+                op._set_attr(self._op_device_key,
+                             prev_op.attr(self._op_device_key))
         elif self._is_loss_op(op):
             # For loss * loss_scaling op added by AMP
             offset = 1
@@ -4233,6 +4234,15 @@ class PipelineOptimizer(object):
         Then, return all devices in order.
         """
         device_list = []
+        # Section worker only supports the following op_role
+        valid_op_role_value = [
+            int(self._op_role.LRSched),
+            int(self._op_role.Forward),
+            int(self._op_role.Backward),
+            int(self._op_role.Loss),
+            int(self._op_role.Optimize),
+            int(self._op_role.Backward) | int(self._op_role.Loss),
+        ]
         for op in block.ops:
             if not op._has_kernel(op.type):
                 assert op.type == "conditional_block" and (
@@ -4242,14 +4252,6 @@ class PipelineOptimizer(object):
             assert op.has_attr(self._op_role_key), (
                 "op ({}) has no {} attribute.".format(op.type,
                                                       self._op_role_key))
-            valid_op_role_value = [
-                int(self._op_role.LRSched),
-                int(self._op_role.Forward),
-                int(self._op_role.Backward),
-                int(self._op_role.Loss),
-                int(self._op_role.Optimize),
-                int(self._op_role.Backward) | int(self._op_role.Loss),
-            ]
             assert int(op.attr(self._op_role_key)) in valid_op_role_value, \
                 "op_role {} for op {} must be one of {}".format(
                     op.attr(self._op_role_key),
@@ -4310,11 +4312,14 @@ class PipelineOptimizer(object):
                     cur_device_index = int(cur_device.split(':')[1])
                     pair = (prev_device_index, cur_device_index)
                     pair_key = prev_device_index * 1000 + cur_device_index
-                    if cur_device_index > prev_device_index:
-                        ring_id = self.ring_id + cur_device_index - prev_device_index - 1
+                    if pair not in self._pipeline_pair:
+                        self._pipeline_pair.append(pair)
+                        self._pp_ring_map[pair_key] = self.ring_id
+                        ring_id = self.ring_id
+                        self.ring_id += 1
                     else:
-                        ring_id = self.ring_id + 2 + prev_device_index - cur_device_index - 1
-                    if self.schedule_mode == 0:  # F-then-B
+                        ring_id = self._pp_ring_map[pair_key]
+                    if self.schedule_mode == 'F-then-B':  # F-then-B
                         block._insert_op(
                             index=index + extra_index,
                             type='send_v2',
@@ -4323,10 +4328,8 @@ class PipelineOptimizer(object):
                                 self._op_device_key: prev_device,
                                 self._op_role_key: op_role,
                                 'use_calc_stream': True,
-                                'peer': cur_device_index,
-                                'ring_id': self.ring_id
-                                if cur_device_index > prev_device_index else
-                                self.ring_id + 2,
+                                'peer': 1,
+                                'ring_id': ring_id
                             })
                         extra_index += 1
                         block._insert_op(
@@ -4339,62 +4342,65 @@ class PipelineOptimizer(object):
                                 self._op_device_key: cur_device,
                                 self._op_role_key: op_role,
                                 'use_calc_stream': True,
-                                'peer': prev_device_index,
-                                'ring_id': self.ring_id
-                                if cur_device_index > prev_device_index else
-                                self.ring_id + 2,
+                                'peer': 0,
+                                'ring_id': ring_id
                             })
                         extra_index += 1
-                        continue
-                    if pair not in self._pipeline_pair:
-                        self._pipeline_pair.append(pair)
-                        self._pp_ring_map[pair_key] = self.ring_id
-                        ring_id = self.ring_id
-                        self.ring_id += 1
+                    elif self.schedule_mode == '1F1B':  # 1F1B
+                        block._insert_op(
+                            index=index + extra_index,
+                            type='c_sync_calc_stream',
+                            inputs={'X': [var]},
+                            outputs={'Out': [var]},
+                            attrs={
+                                self._op_device_key: prev_device,
+                                self._op_role_key: op_role,
+                            })
+                        extra_index += 1
+                        block._insert_op(
+                            index=index + extra_index,
+                            type='send_v2',
+                            inputs={'X': var},
+                            attrs={
+                                self._op_device_key: prev_device,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': False,
+                                'ring_id': ring_id,
+                                'peer': 1,
+                            })
+                        extra_index += 1
+                        block._insert_op(
+                            index=index + extra_index,
+                            type='c_sync_comm_stream',
+                            inputs={'X': [var]},
+                            outputs={'Out': [var]},
+                            attrs={
+                                self._op_device_key: cur_device,
+                                self._op_role_key: self._op_role.Backward,
+                                'ring_id': ring_id,
+                            })
+                        extra_index += 1
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
+                        block._insert_op(
+                            index=index + extra_index,
+                            type='recv_v2',
+                            outputs={'Out': [var]},
+                            attrs={
+                                'out_shape': var_shape,
+                                'dtype': var.dtype,
+                                self._op_device_key: cur_device,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': True,
+                                'peer': 0,
+                                'ring_id': ring_id
+                            })
+                        extra_index += 1
                     else:
-                        ring_id = self._pp_ring_map[pair_key]
-                    block._insert_op(
-                        index=index + extra_index,
-                        type='send_v2',
-                        inputs={'X': var},
-                        attrs={
-                            self._op_device_key: prev_device,
-                            self._op_role_key: op_role,
-                            'use_calc_stream': True,
-                            'ring_id': self.ring_id
-                            if cur_device_index > prev_device_index else
-                            self.ring_id + 2,
-                            'peer': cur_device_index,
-                        })
-                    extra_index += 1
-                    block._insert_op(
-                        index=index + extra_index,
-                        type='c_sync_comm_stream',
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
-                        attrs={
-                            self._op_device_key: cur_device,
-                            self._op_role_key:
-                            core.op_proto_and_checker_maker.OpRole.Backward,
-                            'ring_id': ring_id,
-                        })
-                    extra_index += 1
-                    var_shape = list(var.shape)
-                    var_shape[0] = self.micro_batch_size if var_shape[
-                        0] < 0 else var_shape[0]
-                    block._insert_op(
-                        index=index + extra_index,
-                        type='recv_v2',
-                        outputs={'Out': [var]},
-                        attrs={
-                            'out_shape': var_shape,
-                            'dtype': var.dtype,
-                            self._op_device_key: cur_device,
-                            self._op_role_key: op_role,
-                            'use_calc_stream': True,
-                            'peer': prev_device_index,
-                        })
-                    extra_index += 1
+                        raise ValueError(
+                            "Now only 'F-then-B' and '1F1B' are supported."
+                            "The given value is {}.".format(self.schedule_mode))
 
     def _insert_loss_scale(self, block):
         """
@@ -4450,6 +4456,8 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and not first_opt_op_idx:
                 first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(block.ops): return
                 if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
                     first_opt_op_idx += 1
 
@@ -4531,8 +4539,7 @@ class PipelineOptimizer(object):
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
-        for prog_info in program_list:
-            prog = prog_info['program']
+        for prog in program_list:
             for op in prog.block(0).ops:
                 if not op.has_attr('sub_block'):
                     continue
@@ -4562,8 +4569,7 @@ class PipelineOptimizer(object):
         # var_info = {var_name: [program1, program2...]},
         # persistable var only
         var_info = dict()
-        for prog_info in program_list:
-            prog = prog_info['program']
+        for prog in program_list:
             block = prog.block(0)
             for var_name in block.vars:
                 if var_name == "double_buffer_0": continue
@@ -4613,6 +4619,15 @@ class PipelineOptimizer(object):
                 read_block = prog.block(0)
                 read_device = self._get_device_info(read_block)
                 read_dev_index = int(read_device.split(':')[1])
+                pair = (write_dev_index, read_dev_index)
+                pair_key = write_dev_index * 1000 + read_dev_index
+                if pair not in self._pipeline_pair:
+                    self._pipeline_pair.append(pair)
+                    self._pp_ring_map[pair_key] = self.ring_id
+                    ring_id = self.ring_id
+                    self.ring_id += 1
+                else:
+                    ring_id = self._pp_ring_map[pair_key]
 
                 write_block._insert_op(
                     index=0,
@@ -4625,8 +4640,7 @@ class PipelineOptimizer(object):
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
                         'peer': read_dev_index,
-                        'ring_id': self.ring_id if
-                        read_dev_index > write_dev_index else self.ring_id + 2,
+                        'ring_id': ring_id
                     })
                 read_block._insert_op(
                     index=0,
@@ -4641,8 +4655,7 @@ class PipelineOptimizer(object):
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
                         'peer': write_dev_index,
-                        'ring_id': self.ring_id if
-                        write_dev_index < read_dev_index else self.ring_id + 2,
+                        'ring_id': ring_id
                     })
                 read_block._insert_op(
                     index=1,
@@ -4654,8 +4667,7 @@ class PipelineOptimizer(object):
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
-                        'ring_id': self.ring_id if
-                        write_dev_index > read_dev_index else self.ring_id + 2,
+                        'ring_id': ring_id
                     })
 
     def _is_gradient_clip_op(self, op):
@@ -4682,6 +4694,8 @@ class PipelineOptimizer(object):
             and 'local_rank' in main_block.program._pipeline_opt, \
             'Please use pipeline with fleet.'
         local_rank = main_block.program._pipeline_opt['local_rank']
+        self._global_ring_id = main_block.program._pipeline_opt[
+            'global_ring_id']
         schedule_mode = 0
         if 'schedule_mode' in main_block.program._pipeline_opt:
             schedule_mode = main_block.program._pipeline_opt['schedule_mode']
@@ -4693,10 +4707,7 @@ class PipelineOptimizer(object):
         self.use_sharding = False
         if 'use_sharding' in main_block.program._pipeline_opt:
             self.use_sharding = main_block.program._pipeline_opt['use_sharding']
-
-        self.ring_id = 0
-        if 'ring_id' in main_block.program._pipeline_opt:
-            self.ring_id = main_block.program._pipeline_opt['ring_id']
+        self.ring_id = main_block.program._pipeline_opt['ring_id']
 
         # Step1: add default op_device attribute for ops.
         self._add_op_device_attr(main_block)
@@ -4724,7 +4735,7 @@ class PipelineOptimizer(object):
         main_program = main_block.program
         program_list = self._split_program(main_program, device_list)
         for p in program_list:
-            self._create_vars(p["program"].block(0), main_block)
+            self._create_vars(p.global_block(), main_block)
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
@@ -4747,14 +4758,11 @@ class PipelineOptimizer(object):
         startup_program._pipeline_opt = {
             "startup_program": new_startup_program,
         }
-        real_block = program_list[local_rank]['program'].global_block()
+        real_block = program_list[local_rank].global_block()
         self._insert_loss_scale(real_block)
         if not self.use_sharding:
             # Step7: clear gradients before each mini-batch and 
             # accumulate gradients during backward
-            param_list = []
-            for param, grad in params_grads:
-                if real_block.has_var(param): param_list.append(param)
             self._rename_gradient_var_name(real_block)
             real_block._sync_with_cpp()
             self._accumulate_gradients(real_block)

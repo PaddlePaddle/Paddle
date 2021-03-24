@@ -1458,7 +1458,7 @@ class Executor(object):
         dataset._prepare_to_run()
         real_fetch_list = []
         if program._pipeline_opt:
-            real_program = program._pipeline_opt["section_program"]['program']
+            real_program = program._pipeline_opt["section_program"]
             for fetch_var in fetch_list:
                 if isinstance(fetch_var, Variable):
                     fetch_var_name = fetch_var.name
@@ -1467,13 +1467,12 @@ class Executor(object):
                 if fetch_var_name in real_program.global_block().vars:
                     real_fetch_list.append(fetch_var)
 
-            program._pipeline_opt["section_program"][
-                'program'] = self._add_feed_fetch_ops(
-                    program=program._pipeline_opt["section_program"]['program'],
-                    feed=[],
-                    fetch_list=real_fetch_list,
-                    feed_var_name='feed',
-                    fetch_var_name='fetch')
+            program._pipeline_opt["section_program"] = self._add_feed_fetch_ops(
+                program=program._pipeline_opt["section_program"],
+                feed=[],
+                fetch_list=real_fetch_list,
+                feed_var_name='feed',
+                fetch_var_name='fetch')
             fetch_list = None
 
         scope, trainer = self._prepare_trainer(
