@@ -164,7 +164,7 @@ class ValueBlock {
     return values_[id];
   }
 
-  void PullUpdate(const uint64_t &id, int cnt) {
+  void PullUpdate(const uint64_t &id, const int cnt) {
     // update state
     value->unseen_days_ = 0;
     value->count_ += cnt;

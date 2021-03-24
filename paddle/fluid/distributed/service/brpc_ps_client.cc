@@ -770,9 +770,8 @@ std::future<int32_t> BrpcPsClient::push_global_step(int table_id,
 
 std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                                                size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num,
-                                               std::unordered_map<uint64_t, int>& sign_to_cnts) {
+                                               const uint64_t *keys, size_t num,
+                                               bool is_training) {
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
@@ -839,17 +838,26 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
     uint32_t kv_request_count = 0;
     size_t sorted_kv_size = sorted_kvs.size();
     auto &request_buffer = closure->cntl(i)->request_attachment();
+
+    request_buffer.append((void *)&is_training, sizeof(bool));
+    std::vector<uint32_t> keys_counter;
+    keys_counter.reserve(sorted_kv_size);
+
     for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
       ++kv_request_count;
+      uint32_t keys = 1;
       last_key = sorted_kvs[kv_idx].first;
       request_buffer.append((void *)&last_key, sizeof(uint64_t));
-      auto cnt = sign_to_cnts[last_key];
-      closure->request(i)->add_batch_cnts(cnt);
       while (kv_idx < sorted_kv_size - 1 &&
              last_key == sorted_kvs[kv_idx + 1].first) {
         ++kv_idx;
+        ++keys;
       }
+      keys_counter.push_back(keys);
     }
+
+    request_buffer.append((void *)keys_counter.data(),
+                          sizeof(uint32_t) * keys_counter.size());
 
     if (kv_request_count == 0) {
       closure->Run();
@@ -962,7 +970,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   }
 
   auto status = pull_sparse((float **)save_vec.data(), table_id,
-                            save_key.data(), save_key.size(), sign_cnts);
+                            save_key.data(), save_key.size(), true);
   status.wait();
 
   // create lod tensor

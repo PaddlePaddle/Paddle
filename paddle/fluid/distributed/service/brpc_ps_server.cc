@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include <thread>  // NOLINT
+#include "Eigen/Dense"
+#include "butil/endpoint.h"
+#include "iomanip"
+#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -339,41 +343,38 @@ int32_t BrpcPsService::pull_sparse(Table *table,
                                    brpc::Controller *cntl) {
   platform::RecordEvent record_event("PsService->pull_sparse");
   CHECK_TABLE_EXIST(table, request, response)
-  thread_local std::string push_sparse_request_buffer;
+
   auto &req_io_buffer = cntl->request_attachment();
   auto req_buffer_size = req_io_buffer.size();
+
   if (req_buffer_size < 1) {
     set_response_code(response, -1, "req attachment is empty");
     return 0;
   }
+
   if (request.params_size() < 1) {
     set_response_code(response, -1,
                       "PsRequestMessage.params is requeired at "
                       "least 1 for num of sparse_key");
     return 0;
   }
+
   uint32_t num = *(uint32_t *)(request.params(0).c_str());
-  push_sparse_request_buffer.resize(0);
-  push_sparse_request_buffer.reserve(req_buffer_size);
-  const char *data = (const char *)cntl->request_attachment().fetch(
-      const_cast<char *>(push_sparse_request_buffer.data()), req_buffer_size);
+  auto dim = table->value_accesor()->select_dim();
 
-  std::vector<int> batch_cnts;
-  std::copy(request.batch_cnts().begin(), request.batch_cnts().end(), std::back_inserter(batch_cnts));
+  thread_local std::string req_buffer;
+  req_buffer.reserve(req_buffer_size);
 
-  PADDLE_ENFORCE_EQ(batch_cnts.size(), num,
-                    platform::errors::InvalidArgument(
-                    "batch_cnts' size %d  must be equal to %d", batch_cnts.size(), num));
-  
-  /*
-  Attachment Content:
-  |---keysData---|
-  |---8*{num}B---|
-  */
-  const uint64_t *keys = (const uint64_t *)data;
+  const void *data = cntl->request_attachment().fetch(
+      const_cast<char *>(req_buffer.data()), req_buffer_size);
+
+  auto value = PullSparseValue(num, dim);
+
+  value.DeserializeFromBytes(const_cast<void *>(data));
+
   std::vector<float> res_data;
-  res_data.resize(num * table->value_accesor()->select_size() / sizeof(float));
-  table->pull_sparse(res_data.data(), keys, num, batch_cnts);
+  res_data.resize(num * dim);
+  table->pull_sparse(res_data.data(), value);
   cntl->response_attachment().append((char *)res_data.data(),
                                      res_data.size() * sizeof(float));
   return 0;
@@ -486,7 +487,6 @@ int32_t BrpcPsService::save_all_table(Table *table,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
   auto &table_map = *(_server->table());
-  int32_t all_feasign_size = 0;
   int32_t feasign_size = 0;
 
   for (auto &itr : table_map) {

@@ -477,7 +477,6 @@ int32_t CommonSparseTable::initialize_value() {
   }
 
   auto accessor = _config.accessor();
-
   std::vector<uint64_t> feasigns;
 
   for (size_t x = 0; x < accessor.fea_dim(); ++x) {
@@ -494,10 +493,13 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<uint64_t> ids(bucket_feasigns);
     std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
               ids.begin());
-    std::vector<int> batch_cnts(bucket_feasigns, 0);
+    std::vector<uint32_t> fres;
+    fres.resize(ids.size(), 1);
+
+    auto pull_value = PullSparseValue(ids, fres, param_dim_);
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), ids.data(), bucket_feasigns, batch_cnts);
+    pull_sparse(pulls.data(), pull_value);
   }
 
   return 0;
@@ -653,37 +655,47 @@ int32_t CommonSparseTable::pour() {
   return 0;
 }
 
-int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
-                                       size_t num, std::vector<int>& batch_cnts) {
+int32_t CommonSparseTable::pull_sparse(float* pull_values,
+                                       const PullSparseValue& pull_value) {
   rwlock_->RDLock();
 
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(task_pool_size_);
 
-  for (int x = 0; x < num; ++x) {
-    auto y = keys[x] % task_pool_size_;
+  for (int x = 0; x < pull_value.numel_; ++x) {
+    auto y = pull_value.feasigns_[x] % task_pool_size_;
     offset_bucket[y].push_back(x);
   }
 
-  std::vector<std::future<int>> tasks(task_pool_size_);
+  auto shard_num = task_pool_size_;
+  std::vector<std::future<int>> tasks(shard_num);
 
-  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &keys, &batch_cnts, &offset_bucket, &pull_values]() -> int {
+        [this, shard_id, &pull_value, &offset_bucket, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
           auto& offsets = offset_bucket[shard_id];
 
-          for (int i = 0; i < offsets.size(); ++i) {
-            auto offset = offsets[i];
-            auto id = keys[offset];
-            block->Init(id);
-            block->PullUpdate(id, batch_cnts[offset]);
-            auto val = block->GetValue(id);
-            if(val->is_entry_) {
+          if (pull_value.is_training_) {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto frequencie = pull_value.frequencies_[offset];
+              block->Init(feasign);
+              block->PullUpdate(feasign, frequencie);
+              auto val = block->GetValue(feasign);
+              if(val->is_entry_) {
+                std::copy_n(val->data_.data() + param_offset_, param_dim_,
+                            pull_values + param_dim_ * offset);
+              } else {
+                memset(pull_values + param_dim_ * offset, 0.0, param_dim_ * sizeof(float));
+              }
+            }
+          } else {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto val = block->GetValue(feasign);
               std::copy_n(val->data_.data() + param_offset_, param_dim_,
                           pull_values + param_dim_ * offset);
-            } else {
-              memset(pull_values + param_dim_ * offset, 0.0, param_dim_ * sizeof(float));
             }
           }
 

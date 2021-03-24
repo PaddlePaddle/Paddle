@@ -11,20 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """
 Contrib layers just related to the neural network.
 """
@@ -50,14 +36,30 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
+from paddle.utils import deprecated
 
 __all__ = [
-    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
-    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
-    'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
-    'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
-    'correlation', 'fused_bn_add_act'
+    'fused_elemwise_activation',
+    'sequence_topk_avg_pooling',
+    'var_conv_2d',
+    'match_matrix_tensor',
+    'tree_conv',
+    'fused_embedding_seq_pool',
+    'multiclass_nms2',
+    'search_pyramid_hash',
+    'shuffle_batch',
+    'partial_concat',
+    'sparse_embedding',
+    'partial_sum',
+    'tdm_child',
+    'rank_attention',
+    'tdm_sampler',
+    'batch_fc',
+    '_pull_box_extended_sparse',
+    'bilateral_slice',
+    'correlation',
+    'fused_bn_add_act',
+    'distributed_embedding',
 ]
 
 
@@ -962,20 +964,20 @@ def partial_sum(input, start_index=0, length=-1):
     return out
 
 
-def sparse_embedding(input,
-                     size,
-                     padding_idx=None,
-                     is_test=False,
-                     entry=None,
-                     param_attr=None,
-                     dtype='float32'):
-    helper = LayerHelper('sparse_embedding', **locals())
+def distributed_embedding(input,
+                          size,
+                          padding_idx=None,
+                          is_test=False,
+                          entry=None,
+                          param_attr=None,
+                          dtype='float32'):
+    helper = LayerHelper('distributed_embedding', **locals())
 
     check_variable_and_dtype(input, 'input', ['int64'],
-                             'fluid.contrib.layers.sparse_embedding')
+                             'fluid.contrib.layers.distributed_embedding')
 
     check_dtype(dtype, 'dtype', ['float32'],
-                'paddle.static.nn.sparse_embedding')
+                'paddle.static.nn.distributed_embedding')
 
     w = helper.create_parameter(
         attr=helper.param_attr,
@@ -1014,6 +1016,19 @@ def sparse_embedding(input,
             'entry': entry_str
         })
 
+    return tmp
+
+
+@deprecated(since="2.1.0", update_to="paddle.static.nn.distributed_embedding")
+def sparse_embedding(input,
+                     size,
+                     padding_idx=None,
+                     is_test=False,
+                     entry=None,
+                     param_attr=None,
+                     dtype='float32'):
+    tmp = distributed_embedding(input, size, padding_idx, is_test, entry,
+                                param_attr, dtype)
     return tmp
 
 
