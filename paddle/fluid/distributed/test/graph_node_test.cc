@@ -448,6 +448,7 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
 
+
   // Test Pull by step
   
 
@@ -485,22 +486,12 @@ void RunBrpcPushSparse() {
   ASSERT_EQ(nodes_ids.size(), 2);
   ASSERT_EQ(true, (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
                       (nodes_ids[0] == 37 && nodes_ids[1] == 59));
-  // to test in python,try this:
-  //   from paddle.fluid.core import GraphPyService
-  // ips_str = "127.0.0.1:4211;127.0.0.1:4212"
-  // gps1 = GraphPyService();
-  // gps2 = GraphPyService();
-  // gps1.set_up(ips_str, 127, 0, 0, 0);
-  // gps2.set_up(ips_str, 127, 1, 1, 0);
-  // gps1.load_file("input.txt");
 
-  // list = gps2.pull_graph_list(0,1,4)
-  // for x in list:
-  //     print(x.get_id())
-
-  // list = gps2.sample_k(96, "user", 4);
-  // for x in list:
-  //     print(x.get_id())
+  // Test get node feat
+  auto node_feat = client1.get_node_feat(std::string("user"), std::vector<uint64_t>(1, 37), std::vector<std::string>(1, std::string("c")));
+  ASSERT_EQ(node_feat.size(), 1);
+  ASSERT_EQ(node_feat[0].size(), 1);
+  std::cout << "get_node_feat: " << node_feat[0][0] << std::endl;
 
   std::remove(edge_file_name);
   std::remove(node_file_name);

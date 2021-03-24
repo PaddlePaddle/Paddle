@@ -212,7 +212,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
 Node *GraphTable::find_node(uint64_t id) {
   size_t shard_id = id % shard_num;
   if (shard_id >= shard_end || shard_id < shard_start) {
-    return NULL;
+    return nullptr;
   }
   size_t index = shard_id - shard_start;
   Node *node = shards[index].find_node(id);
@@ -287,7 +287,7 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   memcpy(pointer, res.data(), actual_size);
   return 0;
 }
-int GraphTable::random_sample_neighboors(
+int32_t GraphTable::random_sample_neighboors(
     uint64_t *node_ids, int sample_size,
     std::vector<std::unique_ptr<char[]>> &buffers,
     std::vector<int> &actual_sizes) {
@@ -301,7 +301,7 @@ int GraphTable::random_sample_neighboors(
         [&]() -> int {
           Node *node = find_node(node_id);
 
-          if (node == NULL) {
+          if (node == nullptr) {
             actual_size = 0;
             return 0;
           }
@@ -330,6 +330,35 @@ int GraphTable::random_sample_neighboors(
   return 0;
 }
 
+int32_t GraphTable::get_node_feat(
+    const std::vector<uint64_t>& node_ids, 
+    const std::vector<std::string>& feature_names,
+    std::vector<std::vector<std::string> > &res){
+  size_t node_num = node_ids.size();
+  std::vector<std::future<int>> tasks;
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    uint64_t node_id = node_ids[idx];
+    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
+        [&, idx, node_id]() -> int {
+          Node *node = find_node(node_id);
+
+          if (node == nullptr) {
+            return 0;
+          }
+          for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx){
+            const std::string &feature_name = feature_names[feat_idx];
+            if (feat_id_map.find(feature_name) != feat_id_map.end()){
+              res[feat_idx][idx] = node->get_feature(feat_id_map[feature_name]);
+            }
+          }
+          return 0;
+        }));
+  }
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    tasks[idx].get();
+  }
+  return 0;
+}
 
 std::pair<int32_t, std::string> GraphTable::parse_feature(std::string feat_str) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1, "")

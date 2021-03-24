@@ -99,6 +99,8 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::graph_random_sample_neighboors;
   _service_handler_map[PS_GRAPH_SAMPLE_NODES] =
       &GraphBrpcService::graph_random_sample_nodes;
+  _service_handler_map[PS_GRAPH_GET_NODE_FEAT] =
+      &GraphBrpcService::graph_get_node_feat;
 
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
@@ -310,6 +312,40 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
     cntl->response_attachment().append(buffer.get(), actual_size);
   } else
     cntl->response_attachment().append(NULL, 0);
+
+  return 0;
+}
+
+
+int32_t GraphBrpcService::graph_get_node_feat(
+    Table *table, const PsRequestMessage &request, PsResponseMessage &response,
+    brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 2) {
+    set_response_code(
+        response, -1,
+        "graph_get_node_feat request requires at least 2 arguments");
+    return 0;
+  }
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data+node_num);
+    
+  std::vector<std::string> feature_names = 
+      paddle::string::split_string<std::string>(request.params(1), "\t");
+
+  std::vector<std::vector<std::string>> feature
+      (feature_names.size(), std::vector<std::string>(node_num));
+  
+  table->get_node_feat(node_ids, feature_names, feature);
+
+  for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+    for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
+      size_t feat_len = feature[feat_idx][node_idx].size();
+      cntl->response_attachment().append(&feat_len, sizeof(size_t));
+      cntl->response_attachment().append(&feature[feat_idx][node_idx], feat_len);
+    }
+  }
 
   return 0;
 }

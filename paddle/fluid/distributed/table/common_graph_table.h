@@ -121,6 +121,11 @@ class GraphTable : public SparseTable {
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
   virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
 
+  virtual int32_t get_node_feat(
+      const std::vector<uint64_t>& node_ids, 
+      const std::vector<std::string>& feature_names,
+      std::vector<std::vector<std::string> > &res);
+
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
