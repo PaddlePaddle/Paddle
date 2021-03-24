@@ -235,18 +235,18 @@ class LeakyReluGradGPUFunctor : public BaseGPUFunctor<T> {
   __device__ __forceinline__ typename CudaVecType<T>::type Compute(
       const typename CudaVecType<T>::type* out,
       const typename CudaVecType<T>::type* dout) {
-// leakyrelu backward : out = out > 0 ? dout : alpha
+// leakyrelu backward : out = out > 0 ? dout : alpha * dout
 #ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    return __ldg(out) > zero_ ? __ldg(dout) : static_cast<T>(alpha_);
+    return __ldg(out) > zero_ ? __ldg(dout) : static_cast<T>(alpha_) * __ldg(dout);
 #else
-    return (*out) > zero_ ? (*dout) : static_cast<T>(alpha_);
+    return (*out) > zero_ ? (*dout) : static_cast<T>(alpha_) * (*dout);
 #endif
   }
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
-    // relu backward : dx = out > 0 ? dout : 0;
-    return out > zero_ ? dout : static_cast<T>(alpha_);
+// leakyrelu backward : out = out > 0 ? dout : alpha * dout
+    return out > zero_ ? dout : static_cast<T>(alpha_) * dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -256,11 +256,11 @@ template <>
 __device__ __forceinline__ CudaVecType<float>::type
 LeakyReluGradGPUFunctor<float>::Compute(const CudaVecType<float>::type* out,
                                         const CudaVecType<float>::type* dout) {
-  // relu backward : dx = out > 0 ? dout : 0;
-  return make_float4((out->x > zero_) ? (dout->x) : alpha_,
-                     (out->y > zero_) ? (dout->y) : alpha_,
-                     (out->z > zero_) ? (dout->z) : alpha_,
-                     (out->w > zero_) ? (dout->w) : alpha_);
+// leakyrelu backward : out = out > 0 ? dout : alpha * dout
+  return make_float4((out->x > zero_) ? (dout->x) : alpha_ * (dout->x),
+                     (out->y > zero_) ? (dout->y) : alpha_ * (dout->y),
+                     (out->z > zero_) ? (dout->z) : alpha_ * (dout->z),
+                     (out->w > zero_) ? (dout->w) : alpha_ * (dout->w));
 }
 
 template <>
@@ -269,8 +269,9 @@ __device__ __forceinline__ CudaVecType<float16>::type LeakyReluGradGPUFunctor<
                       const CudaVecType<float16>::type* dout) {
   const float2 xx = __half22float2(*out);
   const float2 yy = __half22float2(*dout);
-  return __floats2half2_rn((xx.x > 0.0f) ? yy.x : alpha_,
-                           (xx.y > 0.0f) ? yy.y : alpha_);
+  // relu backward : dx = out > 0 ? dout : 0;
+  return __floats2half2_rn((xx.x > 0.0f) ? yy.x : alpha_ * yy.x,
+                           (xx.y > 0.0f) ? yy.y : alpha_ * yy.y);
 }
 
 /* ========================================================================== */
