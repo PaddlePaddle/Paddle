@@ -41,8 +41,10 @@ class Node {
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
-  virtual void add_feature(std::string feature) { }
   virtual std::string get_feature(int idx) { return std::string(""); }
+  virtual void set_feature(int idx, std::string str) {}
+  virtual void set_feature_size(int size) {}
+  virtual int get_feature_size() {return 0;}
 
  protected:
   uint64_t id;
@@ -78,7 +80,14 @@ class FeatureNode: public Node{
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual std::string get_feature(int idx) { return this->feature[idx]; }
-  virtual std::vector<std::string> & get_mutable_feature() { return this->feature; }
+  virtual void set_feature(int idx, std::string str) {
+    //if (idx >= this->feature.size()){
+      //this->feature.resize(idx+1);
+    //}
+    this->feature[idx] = str;
+  }
+  virtual void set_feature_size(int size) {this->feature.resize(size);}
+  virtual int get_feature_size() {return this->feature.size();}
 
   template <typename T>
   static std::string parse_value_to_bytes(std::vector<std::string> feat_str) {

@@ -334,6 +334,7 @@ int32_t GraphBrpcService::graph_get_node_feat(
   std::vector<std::string> feature_names = 
       paddle::string::split_string<std::string>(request.params(1), "\t");
 
+
   std::vector<std::vector<std::string>> feature
       (feature_names.size(), std::vector<std::string>(node_num));
   
@@ -343,7 +344,7 @@ int32_t GraphBrpcService::graph_get_node_feat(
     for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
       size_t feat_len = feature[feat_idx][node_idx].size();
       cntl->response_attachment().append(&feat_len, sizeof(size_t));
-      cntl->response_attachment().append(&feature[feat_idx][node_idx], feat_len);
+      cntl->response_attachment().append(feature[feat_idx][node_idx].data(), feat_len);
     }
   }
 

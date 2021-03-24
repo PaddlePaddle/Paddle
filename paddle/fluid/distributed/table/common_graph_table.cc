@@ -142,15 +142,17 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       auto node = shards[index].add_feature_node(id);
 
-      auto mutable_feature = node->get_mutable_feature();
+      //auto mutable_feature = node->get_mutable_feature();
 
-      mutable_feature.clear();
-      mutable_feature.resize(this->feat_name.size());
+      //mutable_feature.clear();
+      //mutable_feature.resize(this->feat_name.size());
+      node->set_feature_size(feat_name.size());
 
       for (size_t slice = 2; slice < values.size(); slice++) {
         auto feat = this->parse_feature(values[slice]);
         if(feat.first > 0) {
-          mutable_feature[feat.first] = feat.second;
+          //mutable_feature[feat.first] = feat.second;
+          node->set_feature(feat.first, feat.second);
         }
       }
     }
@@ -348,7 +350,9 @@ int32_t GraphTable::get_node_feat(
           for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx){
             const std::string &feature_name = feature_names[feat_idx];
             if (feat_id_map.find(feature_name) != feat_id_map.end()){
-              res[feat_idx][idx] = node->get_feature(feat_id_map[feature_name]);
+              //res[feat_idx][idx] = node->get_feature(feat_id_map[feature_name]);
+              auto feat = node->get_feature(feat_id_map[feature_name]);
+              res[feat_idx][idx] = feat;
             }
           }
           return 0;

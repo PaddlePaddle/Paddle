@@ -83,7 +83,8 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
                 int query_idx = query_idx_buckets.at(request_idx).at(node_idx);
                 size_t feat_len = *(size_t *)(buffer);
                 buffer += sizeof(size_t);
-                res[feat_idx][query_idx] = std::string(buffer, feat_len);
+                auto feature = std::string(buffer, feat_len);
+                res[feat_idx][query_idx] = feature;
                 buffer += feat_len;
               }
             }
@@ -111,7 +112,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
                      sizeof(uint64_t) * node_num);
     std::string joint_feature_name = paddle::string::join_strings(feature_names, '\t');
     closure->request(request_idx)
-        ->add_params(joint_feature_name.c_str(), sizeof(joint_feature_name));
+        ->add_params(joint_feature_name.c_str(), joint_feature_name.size());
 
     PsService_Stub rpc_stub(get_cmd_channel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
