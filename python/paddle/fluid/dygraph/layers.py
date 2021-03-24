@@ -512,9 +512,6 @@ class Layer(core.Layer):
     def parameters(self, include_sublayers=True):
         """Returns a list of all Parameters from current layer and its sub-layers.
 
-        Parameters:
-            include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
-
         Returns:
             list of Tensor : a list of Parameters.
 
@@ -584,11 +581,11 @@ class Layer(core.Layer):
                 memo.add(layer)
                 yield name, layer
 
-    def sublayers(self, include_sublayers=True):
+    def sublayers(self, include_self=False):
         """Returns a list of sub layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers. Default: True
+            include_self(bool, optional): Whether return self as sublayers. Default: False
 
         Returns:
             list of Layer : a list of sub layers.
@@ -615,8 +612,7 @@ class Layer(core.Layer):
         """
         ret = [
             layer
-            for _, layer in self.named_sublayers(
-                include_sublayers=include_sublayers)
+            for _, layer in self.named_sublayers(include_self=include_self)
         ]
         return ret
 
@@ -647,8 +643,7 @@ class Layer(core.Layer):
         params_set = set()
         named_sublayers = self.named_sublayers(
             prefix=prefix,
-            include_sublayers=include_sublayers,
-            include_self=True)
+            include_self=True) if include_sublayers else zip([prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             params = sublayer._parameters.items()
             for key, param in params:
@@ -692,20 +687,15 @@ class Layer(core.Layer):
             layers_set = set()
         if include_self and self not in layers_set:
             layers_set.add(self)
-            yield self._full_name, self
+            yield prefix, self
         for key, layer in self._sub_layers.items():
             if layer is None:
                 continue
-            if include_sublayers:
-                layer_prefix = prefix + ('.' if prefix else '') + key
-                for p, l in layer.named_sublayers(
-                        prefix=layer_prefix,
-                        include_sublayers=include_sublayers,
-                        include_self=True,
-                        layers_set=layers_set):
-                    yield p, l
-            else:
-                yield key, layer
+            layer_prefix = prefix + ('.' if prefix else '') + key
+            for p, l in layer.named_sublayers(
+                    prefix=layer_prefix, include_self=True,
+                    layers_set=layers_set):
+                yield p, l
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -842,8 +832,7 @@ class Layer(core.Layer):
         buffers_set = set()
         named_sublayers = self.named_sublayers(
             prefix=prefix,
-            include_sublayers=include_sublayers,
-            include_self=True)
+            include_self=True) if include_sublayers else zip([prefix], [self])
         for layer_prefix, sublayer in named_sublayers:
             buffers = sublayer._buffers.items()
             for key, buffer in buffers:
@@ -1255,16 +1244,12 @@ class Layer(core.Layer):
         return destination
 
     @framework.deprecate_stat_dict
-    def set_state_dict(self,
-                       state_dict,
-                       include_sublayers=True,
-                       use_structured_name=True):
+    def set_state_dict(self, state_dict, use_structured_name=True):
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
