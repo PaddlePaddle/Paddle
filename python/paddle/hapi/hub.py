@@ -56,6 +56,7 @@ def _git_archive_link(repo_owner, repo_name, branch):
 
 def _parse_repo_info(github):
     branch = MASTER_BRANCH
+    github = github.split('https://github.com/')[-1]
     if ':' in github:
         repo_info, branch = github.split(':')
     else:
@@ -111,6 +112,29 @@ def _get_cache_or_reload(github, force_reload, verbose=True):
     return repo_dir
 
 
+def _load_attr_from_module(m, name):
+    '''
+    '''
+    if name not in dir(m):
+        return None
+    return getattr(m, name)
+
+
+def _load_entry_from_hubconf(m, name):
+    '''
+    '''
+    if not isinstance(name, str):
+        raise ValueError(
+            'Invalid input: model should be a string of function name')
+
+    func = _load_attr_from_module(m, name)
+
+    if func is None or not callable(func):
+        raise RuntimeError('Canot find callable {} in hubconf'.format(name))
+
+    return func
+
+
 def list(github, force_reload=False):
     r"""
     List all entrypoints available in `github` hubconf.
@@ -142,13 +166,58 @@ def list(github, force_reload=False):
     return entrypoints
 
 
-def help(github, name):
-    '''
-    '''
-    pass
+def help(github, model, force_reload=False):
+    """
+    show help information of model
+
+    Args:
+        github (string):
+        model (string):
+        force_reload (bool, optional):
+    Return:
+        docs
+
+    Example:
+        >>> paddle.hub.help('', '', True)
+    """
+    repo_dir = _get_cache_or_reload(github, force_reload, True)
+
+    sys.path.insert(0, repo_dir)
+
+    hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
+
+    sys.path.remove(repo_dir)
+
+    entry = _load_entry_from_hubconf(hub_module, model)
+
+    return entry.__doc__
 
 
-def load(github, name, *args, pretrained=True, force_reload=True, **kwargs):
-    '''
-    '''
-    pass
+def load(repo_dir, model, *args, source=None, force_reload=False, **kwargs):
+    """
+    load model
+
+    Args:
+
+    Return:
+
+    Example:
+    """
+    if source is None and ':' in source:
+        source = 'github'
+
+    if source not in ('github', 'local'):
+        raise ValueError(
+            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
+                source))
+
+    if source == 'github':
+        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
+
+    sys.path.insert(0, repo_dir)
+    hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
+    sys.path.remove(repo_dir)
+
+    entry = _load_entry_from_hubconf(hub_module, model)
+
+    return entry(*args, **kwargs)
