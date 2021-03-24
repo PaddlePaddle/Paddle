@@ -6137,9 +6137,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64',
-                 'bool'], 'reshape')
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
+    ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
@@ -11354,9 +11354,11 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        y, 'y', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -11428,8 +11430,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
-        'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64',
-        'uint8'
+        'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
     ], "scale")
     inputs = {'X': [x]}
     attrs = {

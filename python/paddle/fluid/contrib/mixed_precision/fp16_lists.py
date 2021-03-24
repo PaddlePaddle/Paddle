@@ -69,7 +69,7 @@ class AutoMixedPrecisionLists(object):
                 self.unsupported_list.add(op_name)
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all  
+# The three sets listed below are changed dynamiclly. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-
