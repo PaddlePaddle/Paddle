@@ -19,7 +19,6 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -44,8 +43,6 @@ class TRTScaleTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 if __name__ == "__main__":
