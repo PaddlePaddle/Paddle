@@ -29,6 +29,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         grad_tensors(list of Tensors of None, optional): the init gradients of the `tensors`` .If not None, it must have the same length with ``tensors`` ,
             and if any of the elements is None, then the init gradient is the default value which is filled with 1.0. 
             If None, all the gradients of the ``tensors`` is the default value which is filled with 1.0.
+            Defaults to None.
 
         retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
@@ -36,7 +37,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             Defaults to False.
     
     Returns:
-        NoneType: Non
+        NoneType: None
 
 
     Examples:
