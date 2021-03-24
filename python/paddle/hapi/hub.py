@@ -20,12 +20,10 @@ import zipfile
 import warnings
 from paddle.utils.download import get_path_from_url
 
-MASTER_BRANCH = 'master'
+MASTER_BRANCH = 'main'
 DEFAULT_CACHE_DIR = '~/.cache'
 VAR_DEPENDENCY = 'dependencies'
 MODULE_HUBCONF = 'hubconf.py'
-READ_DATA_CHUNK = 8192
-_hub_dir = None
 HUB_DIR = os.path.expanduser(os.path.join('~', '.cache', 'paddle', 'hub'))
 
 
@@ -54,7 +52,6 @@ def _git_archive_link(repo_owner, repo_name, branch):
 
 def _parse_repo_info(github):
     branch = MASTER_BRANCH
-    github = github.split('https://github.com/')[-1]
     if ':' in github:
         repo_info, branch = github.split(':')
     else:
@@ -125,16 +122,33 @@ def _load_entry_from_hubconf(m, name):
         raise ValueError(
             'Invalid input: model should be a string of function name')
 
-    if name not in dir(m) or not callable(m.__dict__[name]):
+    # if name not in dir(m) or not callable(m.__dict__[name]):
+    #     raise RuntimeError('Canot find callable {} in hubconf'.format(name))
+    # func = getattr(m, name)
+
+    func = _load_attr_from_module(m, name)
+
+    if func is None or not callable(func):
         raise RuntimeError('Canot find callable {} in hubconf'.format(name))
 
-    func = getattr(m, name)
-
-    # func = _load_attr_from_module(m, name)
-    # if func is None or not callable(func):
-    #     raise RuntimeError('Canot find callable {} in hubconf'.format(name))
-
     return func
+
+
+def _check_module_exists(name):
+    import importlib.util
+    return importlib.util.find_spec(name) is not None
+
+
+def _check_dependencies(m):
+    dependencies = _load_attr_from_module(m, VAR_DEPENDENCY)
+
+    if dependencies is not None:
+        missing_deps = [
+            pkg for pkg in dependencies if not _check_module_exists(pkg)
+        ]
+        if len(missing_deps):
+            raise RuntimeError('Missing dependencies: {}'.format(', '.join(
+                missing_deps)))
 
 
 def list(repo_dir, source='github', force_reload=False):
@@ -150,7 +164,12 @@ def list(repo_dir, source='github', force_reload=False):
         entrypoints: a list of available entrypoint names
 
     Example:
-        
+        ```python
+        import paddle
+
+        paddle.hub.help('lyuwenyu/PaddleClas:hub_L')
+
+        ```
     """
     if source not in ('github', 'local'):
         raise ValueError(
@@ -186,7 +205,12 @@ def help(repo_dir, model, source='github', force_reload=False):
         docs
 
     Example:
-        >>> paddle.hub.help('', '', True)
+        ```python
+        import paddle
+
+        paddle.hub.help('lyuwenyu/PaddleClas:hub_L', 'ResNet18Test')
+        ```
+
     """
     if source not in ('github', 'local'):
         raise ValueError(
@@ -210,11 +234,19 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     load model
 
     Args:
-
+        repo_dir(string)
+        mdoel (string): model name
+        source (string): github | local
+        *args, **kwargs: model parameters
     Return:
-
+        paddle model
     Example:
+        ```python
+        import paddle
+        paddle.hub.load('lyuwenyu/PaddleClas:hub_L', 'ResNet18Test')
+        ```
     """
+
     if source not in ('github', 'local'):
         raise ValueError(
             'Unknown source: "{}". Allowed values: "github" | "local".'.format(
@@ -226,6 +258,8 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     sys.path.insert(0, repo_dir)
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
     sys.path.remove(repo_dir)
+
+    _check_dependencies(hub_module)
 
     entry = _load_entry_from_hubconf(hub_module, model)
 
