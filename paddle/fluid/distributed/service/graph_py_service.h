@@ -87,6 +87,7 @@ class GraphPyService {
 };
 class GraphPyServer : public GraphPyService {
  public:
+  GraphPyServer() { VLOG(0) << "construct a graphPyServer"; }
   void set_up(std::string ips_str, int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types, int rank) {
@@ -95,15 +96,18 @@ class GraphPyServer : public GraphPyService {
   }
   int get_rank() { return rank; }
   void set_rank(int rank) { this->rank = rank; }
+  // paddle::distributed::GraphBrpcService * get_service(){
+  //   return pserver_ptr->get_service();
+  // }
   void start_server();
   ::paddle::distributed::PSParameter GetServerProto();
-  std::shared_ptr<paddle::distributed::PSServer> get_ps_server() {
+  std::shared_ptr<paddle::distributed::GraphBrpcServer> get_ps_server() {
     return pserver_ptr;
   }
 
  protected:
   int rank;
-  std::shared_ptr<paddle::distributed::PSServer> pserver_ptr;
+  std::shared_ptr<paddle::distributed::GraphBrpcServer> pserver_ptr;
   std::thread* server_thread;
 };
 class GraphPyClient : public GraphPyService {
@@ -114,9 +118,18 @@ class GraphPyClient : public GraphPyService {
     set_client_id(client_id);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
-  std::shared_ptr<paddle::distributed::PSClient> get_ps_client() {
+  std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
+  void bind_local_server(int local_channel_index, GraphPyServer& server) {
+    worker_ptr->set_local_channel(local_channel_index);
+    worker_ptr->set_local_graph_service(
+        (paddle::distributed::GraphBrpcService*)server.get_ps_server()
+            ->get_service());
+  }
+  // void set_local_graph_service(GraphBrpcService *service){
+  //   worker_ptr->set_local_graph_service(service);
+  // }
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   int get_client_id() { return client_id; }
@@ -132,7 +145,7 @@ class GraphPyClient : public GraphPyService {
 
  protected:
   int client_id;
-  std::shared_ptr<paddle::distributed::PSClient> worker_ptr;
+  std::shared_ptr<paddle::distributed::GraphBrpcClient> worker_ptr;
   std::thread* client_thread;
 };
 }

@@ -73,8 +73,9 @@ void GraphPyClient::start_client() {
   auto servers_ = host_sign_list.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(&host_sign_list, servers_);
-  worker_ptr = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
+  worker_ptr = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
+      (paddle::distributed::GraphBrpcClient*)
+          paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr->configure(worker_proto, dense_regions, _ps_env, client_id);
 }
 void GraphPyServer::start_server() {
@@ -87,8 +88,9 @@ void GraphPyServer::start_server() {
       auto _ps_env = paddle::distributed::PaddlePSEnvironment();
       _ps_env.set_ps_servers(&this->host_sign_list,
                              this->host_sign_list.size());  // test
-      pserver_ptr = std::shared_ptr<paddle::distributed::PSServer>(
-          paddle::distributed::PSServerFactory::create(server_proto));
+      pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
+          (paddle::distributed::GraphBrpcServer*)
+              paddle::distributed::PSServerFactory::create(server_proto));
       VLOG(0) << "pserver-ptr created ";
       std::vector<framework::ProgramDesc> empty_vec;
       framework::ProgramDesc empty_prog;

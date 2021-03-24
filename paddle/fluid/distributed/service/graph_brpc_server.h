@@ -29,6 +29,7 @@ class GraphBrpcServer : public PSServer {
  public:
   GraphBrpcServer() {}
   virtual ~GraphBrpcServer() {}
+  PsBaseService *get_service() { return _service.get(); }
   virtual uint64_t start(const std::string &ip, uint32_t port);
   virtual int32_t stop() {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -43,7 +44,6 @@ class GraphBrpcServer : public PSServer {
 
  private:
   virtual int32_t initialize();
-
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool stoped_ = false;

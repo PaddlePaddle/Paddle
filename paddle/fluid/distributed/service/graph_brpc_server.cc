@@ -18,6 +18,7 @@
 #include <thread>  // NOLINT
 #include "butil/endpoint.h"
 #include "iomanip"
+#include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -270,7 +271,7 @@ int32_t GraphBrpcService::pull_graph_list(Table *table,
   int step = *(int *)(request.params(2).c_str());
   std::unique_ptr<char[]> buffer;
   int actual_size;
-  table->pull_graph_list(start, size, buffer, actual_size, step, true);
+  table->pull_graph_list(start, size, buffer, actual_size, true, step);
   cntl->response_attachment().append(buffer.get(), actual_size);
   return 0;
 }

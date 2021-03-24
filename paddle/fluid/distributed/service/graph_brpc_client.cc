@@ -26,6 +26,24 @@
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
+int GraphPsService_Stub::thread_num = 3;
+
+void GraphPsService_Stub::service(
+    ::google::protobuf::RpcController *controller,
+    const ::paddle::distributed::PsRequestMessage *request,
+    ::paddle::distributed::PsResponseMessage *response,
+    ::google::protobuf::Closure *done) {
+  if (graph_service != NULL && local_channel == channel()) {
+    // VLOG(0)<<"use local";
+    task_pool->enqueue([this, controller, request, response, done]() -> int {
+      this->graph_service->service(controller, request, response, done);
+      return 0;
+    });
+  } else {
+    // VLOG(0)<<"use server";
+    PsService_Stub::service(controller, request, response, done);
+  }
+}
 
 int GraphBrpcClient::get_server_index_by_id(uint64_t id) {
   int shard_num = get_shard_num();
@@ -47,7 +65,6 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighboors(
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
     }
-    // res.push_back(std::vector<GraphNode>());
     res.push_back(std::vector<std::pair<uint64_t, float>>());
   }
   size_t request_call_num = request2server.size();
@@ -76,7 +93,6 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighboors(
                 closure->cntl(request_idx)->response_attachment();
             butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
             size_t bytes_size = io_buffer_itr.bytes_left();
-            // char buffer[bytes_size];
             std::unique_ptr<char[]> buffer_wrapper(new char[bytes_size]);
             char *buffer = buffer_wrapper.get();
             io_buffer_itr.copy_and_forward((void *)(buffer), bytes_size);
@@ -117,7 +133,6 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighboors(
     closure->request(request_idx)->set_cmd_id(PS_GRAPH_SAMPLE_NEIGHBOORS);
     closure->request(request_idx)->set_table_id(table_id);
     closure->request(request_idx)->set_client_id(_client_id);
-    // std::string type_str = GraphNode::node_type_to_string(type);
     size_t node_num = node_id_buckets[request_idx].size();
 
     closure->request(request_idx)
@@ -125,7 +140,9 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighboors(
                      sizeof(uint64_t) * node_num);
     closure->request(request_idx)
         ->add_params((char *)&sample_size, sizeof(int));
-    PsService_Stub rpc_stub(get_cmd_channel(server_index));
+    // PsService_Stub rpc_stub(get_cmd_channel(server_index));
+    GraphPsService_Stub rpc_stub =
+        getServiceStub(get_cmd_channel(server_index));
     closure->cntl(request_idx)->set_log_id(butil::gettimeofday_ms());
     rpc_stub.service(closure->cntl(request_idx), closure->request(request_idx),
                      closure->response(request_idx), closure);
@@ -142,8 +159,6 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
     if (closure->check_response(0, PS_GRAPH_SAMPLE_NODES) != 0) {
       ret = -1;
     } else {
-      // VLOG(0) << "check sample response: "
-      //         << " " << closure->check_response(0, PS_PULL_GRAPH_LIST);
       auto &res_io_buffer = closure->cntl(0)->response_attachment();
       butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
       size_t bytes_size = io_buffer_itr.bytes_left();
@@ -166,7 +181,8 @@ std::future<int32_t> GraphBrpcClient::random_sample_nodes(
   closure->request(0)->set_client_id(_client_id);
   closure->request(0)->add_params((char *)&sample_size, sizeof(int));
   ;
-  PsService_Stub rpc_stub(get_cmd_channel(server_index));
+  // PsService_Stub rpc_stub(get_cmd_channel(server_index));
+  GraphPsService_Stub rpc_stub = getServiceStub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
   rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
                    closure);
@@ -208,7 +224,8 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   closure->request(0)->add_params((char *)&start, sizeof(int));
   closure->request(0)->add_params((char *)&size, sizeof(int));
   closure->request(0)->add_params((char *)&step, sizeof(int));
-  PsService_Stub rpc_stub(get_cmd_channel(server_index));
+  // PsService_Stub rpc_stub(get_cmd_channel(server_index));
+  GraphPsService_Stub rpc_stub = getServiceStub(get_cmd_channel(server_index));
   closure->cntl(0)->set_log_id(butil::gettimeofday_ms());
   rpc_stub.service(closure->cntl(0), closure->request(0), closure->response(0),
                    closure);
@@ -218,6 +235,8 @@ int32_t GraphBrpcClient::initialize() {
   set_shard_num(_config.shard_num());
   BrpcPsClient::initialize();
   server_size = get_server_nums();
+  graph_service = NULL;
+  local_channel = NULL;
   return 0;
 }
 }

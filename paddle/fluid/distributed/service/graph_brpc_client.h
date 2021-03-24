@@ -23,6 +23,7 @@
 #include "brpc/controller.h"
 #include "brpc/server.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -32,29 +33,63 @@
 namespace paddle {
 namespace distributed {
 
+class GraphPsService_Stub : public PsService_Stub {
+ public:
+  static int thread_num;
+  GraphPsService_Stub(::google::protobuf::RpcChannel* channel,
+                      ::google::protobuf::RpcChannel* local_channel = NULL,
+                      GraphBrpcService* service = NULL)
+      : PsService_Stub(channel) {
+    this->local_channel = local_channel;
+    this->graph_service = service;
+    task_pool.reset(new ::ThreadPool(thread_num));
+  }
+  virtual ~GraphPsService_Stub() {}
+
+  // implements PsService ------------------------------------------
+  GraphBrpcService* graph_service;
+  std::shared_ptr<::ThreadPool> task_pool;
+  ::google::protobuf::RpcChannel* local_channel;
+  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(GraphPsService_Stub);
+  void service(::google::protobuf::RpcController* controller,
+               const ::paddle::distributed::PsRequestMessage* request,
+               ::paddle::distributed::PsResponseMessage* response,
+               ::google::protobuf::Closure* done);
+};
 class GraphBrpcClient : public BrpcPsClient {
  public:
   GraphBrpcClient() {}
   virtual ~GraphBrpcClient() {}
   virtual std::future<int32_t> batch_sample_neighboors(
       uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
-      std::vector<std::vector<std::pair<uint64_t, float>>> &res);
+      std::vector<std::vector<std::pair<uint64_t, float>>>& res);
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
                                                int size, int step,
-                                               std::vector<GraphNode> &res);
+                                               std::vector<GraphNode>& res);
   virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
                                                    int server_index,
                                                    int sample_size,
-                                                   std::vector<uint64_t> &ids);
+                                                   std::vector<uint64_t>& ids);
   virtual int32_t initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   int get_server_index_by_id(uint64_t id);
+  void set_local_channel(int index) {
+    this->local_channel = get_cmd_channel(index);
+  }
+  void set_local_graph_service(GraphBrpcService* graph_service) {
+    this->graph_service = graph_service;
+  }
+  GraphPsService_Stub getServiceStub(::google::protobuf::RpcChannel* channel) {
+    return GraphPsService_Stub(channel, local_channel, graph_service);
+  }
 
  private:
   int shard_num;
   size_t server_size;
+  ::google::protobuf::RpcChannel* local_channel;
+  GraphBrpcService* graph_service;
 };
 
 }  // namespace distributed

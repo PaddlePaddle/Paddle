@@ -23,21 +23,22 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/variable.h"
-
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/service/graph_brpc_server.h"
 #include "paddle/fluid/distributed/service/graph_py_service.h"
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/service.h"
 #include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
@@ -50,7 +51,7 @@ namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 void testSampleNodes(
-    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<uint64_t> ids;
   auto pull_status = worker_ptr_->random_sample_nodes(0, 0, 6, ids);
   std::unordered_set<uint64_t> s;
@@ -63,7 +64,7 @@ void testSampleNodes(
   }
 }
 void testSingleSampleNeighboor(
-    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
   auto pull_status = worker_ptr_->batch_sample_neighboors(
       0, std::vector<uint64_t>(1, 37), 4, vs);
@@ -78,6 +79,7 @@ void testSingleSampleNeighboor(
   for (auto g : s) {
     ASSERT_EQ(true, s1.find(g) != s1.end());
   }
+  VLOG(0) << "test single done";
   s.clear();
   s1.clear();
   vs.clear();
@@ -95,7 +97,7 @@ void testSingleSampleNeighboor(
 }
 
 void testBatchSampleNeighboor(
-    std::shared_ptr<paddle::distributed::PSClient>& worker_ptr_) {
+    std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
   std::vector<std::uint64_t> v = {37, 96};
   auto pull_status = worker_ptr_->batch_sample_neighboors(0, v, 4, vs);
@@ -238,9 +240,10 @@ uint32_t port_ = 4209, port2 = 4210;
 
 std::vector<std::string> host_sign_list_;
 
-std::shared_ptr<paddle::distributed::PSServer> pserver_ptr_, pserver_ptr2;
+std::shared_ptr<paddle::distributed::GraphBrpcServer> pserver_ptr_,
+    pserver_ptr2;
 
-std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
+std::shared_ptr<paddle::distributed::GraphBrpcClient> worker_ptr_;
 
 void RunServer() {
   LOG(INFO) << "init first server";
@@ -248,8 +251,9 @@ void RunServer() {
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(&host_sign_list_, 2);  // test
-  pserver_ptr_ = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto));
+  pserver_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
+      (paddle::distributed::GraphBrpcServer*)
+          paddle::distributed::PSServerFactory::create(server_proto));
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;
   empty_vec.push_back(empty_prog);
@@ -265,8 +269,9 @@ void RunServer2() {
 
   auto _ps_env2 = paddle::distributed::PaddlePSEnvironment();
   _ps_env2.set_ps_servers(&host_sign_list_, 2);  // test
-  pserver_ptr2 = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::create(server_proto2));
+  pserver_ptr2 = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
+      (paddle::distributed::GraphBrpcServer*)
+          paddle::distributed::PSServerFactory::create(server_proto2));
   std::vector<framework::ProgramDesc> empty_vec2;
   framework::ProgramDesc empty_prog2;
   empty_vec2.push_back(empty_prog2);
@@ -274,16 +279,21 @@ void RunServer2() {
   pserver_ptr2->start(ip2, port2);
 }
 
-void RunClient(std::map<uint64_t, std::vector<paddle::distributed::Region>>&
-                   dense_regions) {
+void RunClient(
+    std::map<uint64_t, std::vector<paddle::distributed::Region>>& dense_regions,
+    int index, paddle::distributed::PsBaseService* service) {
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list_.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(&host_sign_list_, servers_);
-  worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
-      paddle::distributed::PSClientFactory::create(worker_proto));
+  worker_ptr_ = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
+      (paddle::distributed::GraphBrpcClient*)
+          paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+  worker_ptr_->set_local_channel(index);
+  worker_ptr_->set_local_graph_service(
+      (paddle::distributed::GraphBrpcService*)service);
 }
 
 void RunBrpcPushSparse() {
@@ -308,7 +318,7 @@ void RunBrpcPushSparse() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
 
-  RunClient(dense_regions);
+  RunClient(dense_regions, 0, pserver_ptr_->get_service());
 
   /*-----------------------Test Server Init----------------------------------*/
   auto pull_status =
@@ -326,7 +336,9 @@ void RunBrpcPushSparse() {
   // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
+  std::cerr << "start to test sample nodes" << std::endl;
   testSampleNodes(worker_ptr_);
+  sleep(5);
   testSingleSampleNeighboor(worker_ptr_);
   testBatchSampleNeighboor(worker_ptr_);
   pull_status = worker_ptr_->batch_sample_neighboors(
@@ -353,6 +365,7 @@ void RunBrpcPushSparse() {
   std::vector<std::string> edge_types = {std::string("user2item")};
   std::vector<std::string> node_types = {std::string("user"),
                                          std::string("item")};
+  VLOG(0) << "make 2 servers";
   server1.set_up(ips_str, 127, node_types, edge_types, 0);
   server2.set_up(ips_str, 127, node_types, edge_types, 1);
   client1.set_up(ips_str, 127, node_types, edge_types, 0);
@@ -366,6 +379,11 @@ void RunBrpcPushSparse() {
   client2.start_client();
   std::cout << "first client done" << std::endl;
   std::cout << "started" << std::endl;
+  VLOG(0) << "come to set local server";
+  client1.bind_local_server(0, server1);
+  VLOG(0) << "first bound";
+  client2.bind_local_server(1, server2);
+  VLOG(0) << "second bound";
   client1.load_node_file(std::string("user"), std::string(node_file_name));
   client1.load_node_file(std::string("item"), std::string(node_file_name));
   client1.load_edge_file(std::string("user2item"), std::string(edge_file_name),
@@ -375,19 +393,11 @@ void RunBrpcPushSparse() {
   nodes.clear();
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
 
-  for (auto g : nodes) {
-    std::cout << "node_ids: " << g.get_id() << std::endl;
-  }
-  std::cout << "node_ids: " << nodes[0].get_id() << std::endl;
   ASSERT_EQ(nodes[0].get_id(), 59);
   nodes.clear();
   vs = client1.batch_sample_neighboors(std::string("user2item"),
                                        std::vector<uint64_t>(1, 96), 4);
   ASSERT_EQ(vs[0].size(), 3);
-  std::cout << "batch sample result" << std::endl;
-  for (auto p : vs[0]) {
-    std::cout << p.first << " " << p.second << std::endl;
-  }
   std::vector<uint64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
