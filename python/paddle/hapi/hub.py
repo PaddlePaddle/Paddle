@@ -121,21 +121,25 @@ def _load_attr_from_module(m, name):
 
 
 def _load_entry_from_hubconf(m, name):
-    '''
+    '''load entry from hubconf
     '''
     if not isinstance(name, str):
         raise ValueError(
             'Invalid input: model should be a string of function name')
 
-    func = _load_attr_from_module(m, name)
-
-    if func is None or not callable(func):
+    if name not in dir(m) or not callable(m.__dict__[name]):
         raise RuntimeError('Canot find callable {} in hubconf'.format(name))
+
+    func = getattr(m, name)
+
+    # func = _load_attr_from_module(m, name)
+    # if func is None or not callable(func):
+    #     raise RuntimeError('Canot find callable {} in hubconf'.format(name))
 
     return func
 
 
-def list(github, force_reload=False):
+def list(repo_dir, source='github', force_reload=False):
     r"""
     List all entrypoints available in `github` hubconf.
 
@@ -150,12 +154,18 @@ def list(github, force_reload=False):
     Example:
         
     """
-    repo_dir = _get_cache_or_reload(github, force_reload, True)
+    if source not in ('github', 'local'):
+        raise ValueError(
+            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
+                source))
+
+    if source == 'github':
+        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
+
+    # repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
 
     sys.path.insert(0, repo_dir)
-
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
-
     sys.path.remove(repo_dir)
 
     entrypoints = [
@@ -166,7 +176,7 @@ def list(github, force_reload=False):
     return entrypoints
 
 
-def help(github, model, force_reload=False):
+def help(repo_dir, model, source='github', force_reload=False):
     """
     show help information of model
 
@@ -180,12 +190,16 @@ def help(github, model, force_reload=False):
     Example:
         >>> paddle.hub.help('', '', True)
     """
-    repo_dir = _get_cache_or_reload(github, force_reload, True)
+    if source not in ('github', 'local'):
+        raise ValueError(
+            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
+                source))
+
+    if source == 'github':
+        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
 
     sys.path.insert(0, repo_dir)
-
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
-
     sys.path.remove(repo_dir)
 
     entry = _load_entry_from_hubconf(hub_module, model)
@@ -193,7 +207,7 @@ def help(github, model, force_reload=False):
     return entry.__doc__
 
 
-def load(repo_dir, model, *args, source=None, force_reload=False, **kwargs):
+def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     """
     load model
 
@@ -203,9 +217,6 @@ def load(repo_dir, model, *args, source=None, force_reload=False, **kwargs):
 
     Example:
     """
-    if source is None and ':' in source:
-        source = 'github'
-
     if source not in ('github', 'local'):
         raise ValueError(
             'Unknown source: "{}". Allowed values: "github" | "local".'.format(
