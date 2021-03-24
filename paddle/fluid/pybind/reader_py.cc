@@ -381,7 +381,7 @@ void BindReader(py::module *module) {
 
   m.def("init_lod_tensor_blocking_queue",
         [](framework::Variable &var, size_t capacity,
-           bool is_ordered) -> py::object {
+           bool is_ordered, size_t queue_num = 10) -> py::object {
           VLOG(1) << "init_lod_tensor_blocking_queue";
           if (is_ordered) {
             auto *holder = var.GetMutable<
@@ -389,10 +389,17 @@ void BindReader(py::module *module) {
             holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
             return py::cast(holder->GetQueue());
           } else {
-            auto *holder =
-                var.GetMutable<reader::LoDTensorBlockingQueueHolder>();
-            holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
-            return py::cast(holder->GetQueue());
+            if (queue_num <= 1) {
+              auto *holder =
+                  var.GetMutable<reader::LoDTensorBlockingQueueHolder>();
+              holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+              return py::cast(holder->GetQueue());
+            } else {
+              auto *holder =
+                  var.GetMutable<reader::LoDTensorBlockingQueuesHolder>();
+              holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+              return py::cast(holder->GetQueue());              
+            }
           }
         },
         py::return_value_policy::copy);
@@ -415,6 +422,22 @@ void BindReader(py::module *module) {
       .def("close", &reader::LoDTensorBlockingQueue::Close)
       .def("kill", &reader::LoDTensorBlockingQueue::Kill)
       .def("wait_for_inited", &reader::LoDTensorBlockingQueue::WaitForInited,
+           py::call_guard<py::gil_scoped_release>());
+
+  py::class_<reader::LoDTensorBlockingQueues,
+             std::shared_ptr<reader::LoDTensorBlockingQueues>>(
+      m, "LoDTensorBlockingQueues", "")
+      .def("push",
+           [](reader::LoDTensorBlockingQueues &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             return self.Push(lod_tensor_vec);
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("size", &reader::LoDTensorBlockingQueues::Size)
+      .def("capacity", &reader::LoDTensorBlockingQueues::Cap)
+      .def("close", &reader::LoDTensorBlockingQueues::Close)
+      .def("kill", &reader::LoDTensorBlockingQueues::Kill)
+      .def("wait_for_inited", &reader::LoDTensorBlockingQueues::WaitForInited,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<reader::OrderedMultiDeviceLoDTensorBlockingQueue,

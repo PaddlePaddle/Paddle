@@ -1165,7 +1165,7 @@ class GeneratorLoader(DataLoaderBase):
 
         var = global_scope().var(queue_name)
         self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity,
-                                                          self._keep_order)
+                                                          self._keep_order, 1)
 
         if self._keep_order:
             block = default_main_program().current_block()

@@ -72,6 +72,7 @@ class CudnnRNNCache;
 
 namespace reader {
 class LoDTensorBlockingQueueHolder;
+class LoDTensorBlockingQueuesHolder;
 class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 }  // namespace reader
 }  // namespace operators
@@ -155,7 +156,8 @@ struct VarTypeRegistryImpl {
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    operators::reader::LoDTensorBlockingQueueHolder, 
+    operators::reader::LoDTensorBlockingQueuesHolder, FetchList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

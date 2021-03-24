@@ -46,6 +46,9 @@ class CreatePyReaderOp : public framework::OperatorBase {
     int dev_idx = -1;
     if (queue_holder_var->IsType<LoDTensorBlockingQueueHolder>()) {
       queue = queue_holder_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    } else if (queue_holder_var->IsType<LoDTensorBlockingQueuesHolder>()) {
+      auto queues = queue_holder_var->Get<LoDTensorBlockingQueuesHolder>().GetQueue();
+      queue = queues->CurQueue();
     } else if (queue_holder_var
                    ->IsType<OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
       auto* queue_holder =

@@ -27,6 +27,12 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
+static inline uint64_t get_rand() {
+    thread_local uint64_t seed = pthread_self();
+    seed = seed * 1103515245 + 12345;
+    return (seed / 65536) % 32768;
+}
+
 class LoDTensorBlockingQueue {
  public:
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
@@ -68,6 +74,67 @@ class LoDTensorBlockingQueue {
 
  private:
   BlockingQueue<std::vector<framework::LoDTensor>> queue_;
+};
+
+class LoDTensorBlockingQueues {
+ public:
+  explicit LoDTensorBlockingQueues(size_t capacity, bool speed_test_mode = false, size_t queue_num = 10) {
+    queues_.resize(queue_num);
+    for (auto& item : queues_) {
+      item.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
+    }    
+  }
+
+  ~LoDTensorBlockingQueues() { VLOG(10) << "Destruct LoDTensorBlockingQueue"; }
+
+  bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+    // randomn choose one queue.
+    auto idx = get_rand() % queues_.size();
+    return queues_[idx]->Push(lod_tensor_vec);
+  }
+
+  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
+    auto idx = get_rand() % queues_.size();
+    return queues_[idx]->Push(std::move(lod_tensor_vec));
+  }
+
+  std::shared_ptr<LoDTensorBlockingQueue>& CurQueue() {
+    return queues_[(data_index_++) % queues_.size()];
+  }
+
+  inline size_t Size() const {
+    size_t size = 0;
+    for (auto& item : queues_) {
+      size += item->Size();
+    }
+    return size;
+  }
+
+  inline void Close() {
+    for (auto& item : queues_) {
+      item->Close();
+    }
+  }
+
+  inline void Kill() {
+    for (auto& item : queues_) {
+      item->Kill();
+    }
+  }
+
+  inline size_t Cap() const {
+    size_t cap = 0;
+    for (auto& item : queues_) {
+      cap += item->Cap();
+    }
+    return cap;
+  }
+
+  inline bool WaitForInited(size_t) { return true; }
+
+ private:
+  std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues_;
+  mutable uint64_t data_index_{0};
 };
 
 class OrderedMultiDeviceLoDTensorBlockingQueue {
@@ -214,6 +281,24 @@ class LoDTensorBlockingQueueHolder {
 
  private:
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
+};
+
+class LoDTensorBlockingQueuesHolder {
+ public:
+  void InitOnce(size_t queue_num, size_t capacity, bool speed_test_mode = false) {
+    PADDLE_ENFORCE_EQ(
+        queue_, nullptr,
+        platform::errors::AlreadyExists("LoDTensorBlockingQueueHolder::"
+                                        "InitOnce() can only be called once"));
+    queue_.reset(new LoDTensorBlockingQueues(queue_num, capacity, speed_test_mode));
+  }
+
+  inline const std::shared_ptr<LoDTensorBlockingQueues>& GetQueue() const {
+    return queue_;
+  }
+
+ private:
+  std::shared_ptr<LoDTensorBlockingQueues> queue_;
 };
 
 class OrderedMultiDeviceLoDTensorBlockingQueueHolder {
