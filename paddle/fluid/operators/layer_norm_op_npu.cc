@@ -21,10 +21,17 @@ namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
+using DataLayout = framework::DataLayout;
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
+template <typename T>
+using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+
 template <typename T>
 class LayerNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using U = LayerNormParamType<T>;
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const auto epsilon = ctx.Attr<float>("epsilon");
     const auto* x = ctx.Input<Tensor>("X");
@@ -43,6 +50,22 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
     for (auto i = begin_norm_axis; i < x_dims.size(); ++i) {
       axes.push_back(x_dims[i]);
     }
+
+    // cast scale from LayerNormParamType to T if needed
+    Tensor cast_scale(x->type());
+    if (x->type() == framework::proto::VarType::FP16 &&
+        scale->type() == framework::proto::VarType::FP32) {
+      cast_scale.Resize(scale->dims());
+      cast_scale.mutable_data<T>(ctx.GetPlace());
+      auto dst_dtype = ConvertToNpuDtype(x->type());
+      auto runner_cast_scale =
+          NpuOpRunner("Cast", {*scale}, {cast_scale},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_scale.Run(stream);
+    }
+
+    // alse for bias
+
     auto place = ctx.GetPlace();
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -78,15 +101,43 @@ class LayerNormNPUKernel : public framework::OpKernel<T> {
       const_cast<Tensor*>(bias)->Resize(framework::make_ddim(axes));
     }
     y->mutable_data<T>(ctx.GetPlace());
-    mean->mutable_data<T>(ctx.GetPlace());
+
+    // mean should be of  U type
+    Tensor* tmp_mean = mean;
+    Tensor cast_mean(x->type());
+    if (x->type() == framework::proto::VarType::FP16 &&
+        mean->type() == framework::proto::VarType::FP32) {
+      cast_mean->Resize(mean->dims());
+      cast_mean->mutable_data<T>(ctx.GetPlace());
+      tmp_mean = &cast_mean;
+    } else {
+      mean->mutable_data<T>(ctx.GetPlace());
+    }
+
+    // cast scale from LayerNormParamType to T if needed
+    Tensor cast_mean(x->type());
+
+    // same for variance
     variance->mutable_data<T>(ctx.GetPlace());
 
-    auto runner =
-        NpuOpRunner("LayerNorm", {*x, *scale, *bias}, {*y, *mean, *variance},
-                    {{"begin_norm_axis", begin_norm_axis},
-                     {"begin_params_axis", begin_norm_axis},
-                     {"epsilon", epsilon}});
+    auto runner = NpuOpRunner("LayerNorm", {*x, *scale, *bias},
+                              {*y, *tmp_mean, *variance},
+                              {{"begin_norm_axis", begin_norm_axis},
+                               {"begin_params_axis", begin_norm_axis},
+                               {"epsilon", epsilon}});
     runner.Run(stream);
+
+    // cast back from FP16 to FP32
+    if (x->type() == framework::proto::VarType::FP16 &&
+        mean->type() == framework::proto::VarType::FP32) {
+      auto dst_dtype = ConvertToNpuDtype(mean->type());
+      auto runner_cast_mean =
+          NpuOpRunner("Cast", {*tmp_mean}, {*mean},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast_mean.Run(stream);
+    }
+    // same for variance
+
     // revert shape of scale and bias
     // TODO(zhiqiu): better implementation, use tmp tensor to avoid write input
     // tensor.
