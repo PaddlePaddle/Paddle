@@ -17,7 +17,6 @@ import re
 import sys
 import shutil
 import zipfile
-import warnings
 from paddle.utils.download import get_path_from_url
 
 MASTER_BRANCH = 'main'
@@ -120,13 +119,9 @@ def _load_entry_from_hubconf(m, name):
     '''
     if not isinstance(name, str):
         raise ValueError(
-            'Invalid input: model should be a string of function name')
+            'Invalid input: model should be a str of function name')
 
-    # if name not in dir(m) or not callable(m.__dict__[name]):
-    #     raise RuntimeError('Canot find callable {} in hubconf'.format(name))
-    # func = getattr(m, name)
-
-    func = _load_attr_from_module(m, name)
+    func = getattr(m, name, None)
 
     if func is None or not callable(func):
         raise RuntimeError('Canot find callable {} in hubconf'.format(name))
@@ -140,7 +135,7 @@ def _check_module_exists(name):
 
 
 def _check_dependencies(m):
-    dependencies = _load_attr_from_module(m, VAR_DEPENDENCY)
+    dependencies = getattr(m, VAR_DEPENDENCY, None)
 
     if dependencies is not None:
         missing_deps = [
@@ -156,8 +151,10 @@ def list(repo_dir, source='github', force_reload=False):
     List all entrypoints available in `github` hubconf.
 
     Args:
-        github (str): a string with format "repo_owner/repo_name[:tag_name]" with an optional
-            tag/branch. The default branch is `master` if not specified.
+        repo_dir:
+            github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
+                tag/branch. The default branch is `master` if not specified.
+            local (str): local repo path
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download.
             Default is `False`.
     Returns:
@@ -179,8 +176,6 @@ def list(repo_dir, source='github', force_reload=False):
     if source == 'github':
         repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
 
-    # repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
-
     sys.path.insert(0, repo_dir)
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
     sys.path.remove(repo_dir)
@@ -198,9 +193,15 @@ def help(repo_dir, model, source='github', force_reload=False):
     show help information of model
 
     Args:
-        github (string):
-        model (string):
+        repo_dir (str): 
+            github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
+                tag/branch. The default branch is `master` if not specified.
+            local (str): local repo path
+        model (str): model name
+        source (str): source of repo_dir, (github, local), 
+            Default is 'github'
         force_reload (bool, optional):
+            Default is `False`
     Return:
         docs
 
@@ -210,7 +211,6 @@ def help(repo_dir, model, source='github', force_reload=False):
 
         paddle.hub.help('lyuwenyu/PaddleClas:hub_L', 'ResNet18Test')
         ```
-
     """
     if source not in ('github', 'local'):
         raise ValueError(
@@ -234,9 +234,13 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
     load model
 
     Args:
-        repo_dir(string)
-        mdoel (string): model name
-        source (string): github | local
+        repo_dir(str): 
+            github (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
+                tag/branch. The default branch is `master` if not specified.
+            local (str): local repo path
+        mdoel (str): model name
+        source (str): github | local
+            Default is 'github'
         *args, **kwargs: model parameters
     Return:
         paddle model
