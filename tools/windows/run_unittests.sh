@@ -223,20 +223,9 @@ fi
 
 set +e
 if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-    UT_list_prec=''
-    re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
-    for case in $UT_list; do
-        flag=$(echo $case|grep -oE $re)
-        if [ -n "$flag" ];then
-            if [ -z "$UT_list_prec" ];then
-                UT_list_prec=$case
-            else
-                UT_list_prec=$UT_list_prec'\n'$case
-            fi
-        else
-            echo $case "won't run in PRECISION_TEST mode."
-        fi
-    done
+    prec_list=$(python ${PADDLE_ROOT}/tools/get_prec_ut_list.py "$UT_list" "$precision_cases" )
+    echo "$prec_list" | grep 'PRECISION_TEST'
+    UT_list_prec=$(echo "$prec_list" | grep -v 'PRECISION_TEST')
     UT_list=$UT_list_prec
 fi
 set -e
