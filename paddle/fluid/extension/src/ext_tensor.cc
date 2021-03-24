@@ -119,7 +119,8 @@ Tensor::Tensor(const PlaceType &place, const std::vector<int64_t> &shape)
     : tensor_(std::make_shared<framework::LoDTensor>()),
       place_(place),
       stream_(StreamWrapper()) {
-  reshape(shape);
+  GET_CASTED_TENSOR
+  tensor->Resize(framework::make_ddim(shape));
 }
 
 template <typename T>
