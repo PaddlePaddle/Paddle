@@ -91,23 +91,6 @@ enum class ActivationMode {
   kBandPass,
 };
 
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
-  switch (mode) {
-    case PoolingMode::kMaximumDeterministic:
-      return CUDNN_POOLING_MAX_DETERMINISTIC;
-    case PoolingMode::kAverageExclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    case PoolingMode::kAverageInclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
-    case PoolingMode::kMaximum:
-      return CUDNN_POOLING_MAX;
-    default:
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
-  }
-}
-#endif  // CUDNN_VERSION < 6000
-
 inline ActivationMode StringToActivationMode(const std::string& str) {
   if (str == "identity") {
     return ActivationMode::kNone;
