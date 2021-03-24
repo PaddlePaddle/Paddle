@@ -188,10 +188,10 @@ def batch_norm(x,
 
     if in_dygraph_mode():
         # for dygraph need tuple
-        attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
-                 data_format, "use_mkldnn", False, "fuse_with_relu", False,
-                 "use_global_stats", use_global_stats, "trainable_statistics",
-                 trainable_statistics)
+        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
+                 not training, "data_layout", data_format, "use_mkldnn", False,
+                 "fuse_with_relu", False, "use_global_stats", use_global_stats,
+                 "trainable_statistics", trainable_statistics)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
@@ -205,6 +205,7 @@ def batch_norm(x,
     attrs = {
         "momentum": momentum,
         "epsilon": epsilon,
+        "is_test": not training,
         "data_layout": data_format,
         "use_mkldnn": False,
         "fuse_with_relu": False,
