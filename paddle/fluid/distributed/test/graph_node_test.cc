@@ -388,7 +388,6 @@ void RunBrpcPushSparse() {
   // }
   // std::vector<std::pair<uint64_t, float>> v;
   // pull_status = worker_ptr_->sample(0, 37, 4, v);
-  std::cerr << "start to test sample nodes" << std::endl;
   testSampleNodes(worker_ptr_);
   sleep(5);
   testSingleSampleNeighboor(worker_ptr_);

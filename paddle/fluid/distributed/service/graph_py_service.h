@@ -111,7 +111,7 @@ class GraphPyService {
 };
 class GraphPyServer : public GraphPyService {
  public:
-  GraphPyServer() { VLOG(0) << "construct a graphPyServer"; }
+  GraphPyServer() {}
   void set_up(std::string ips_str, int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types, int rank) {
