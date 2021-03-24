@@ -32,7 +32,7 @@ class BasicEngine : public Engine {
  public:
   void Init(const std::vector<std::shared_ptr<VarBase>>& tensors,
             const std::vector<std::shared_ptr<VarBase>>& grad_tensors,
-            bool retain_graph);
+            bool retain_graph = false);
 
   void Execute() override;
 
