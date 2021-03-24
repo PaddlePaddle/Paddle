@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
@@ -84,6 +85,29 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
     def test_serialize(self):
         self.serialize = True
         self.run_test()
+
+    def test_all(self):
+        precision_opt = [
+            AnalysisConfig.Precision.Half, AnalysisConfig.Precision.Float32
+        ]
+        serialize_opt = [True, False]
+        dynamic_shape_opt = [
+            None, super().DynamicShapeParam({
+                'data':
+                [self.bs, self.channel, self.height // 2, self.width // 2]
+            }, {
+                'data':
+                [self.bs, self.channel, self.height * 2, self.width * 2]
+            }, {'data': [self.bs, self.channel, self.height, self.width]},
+                                            False)
+        ]
+
+        for precision, serialize, dynamic_shape in itertools.product(
+                precision_opt, serialize_opt, dynamic_shape_opt):
+            self.precision = precision
+            self.serialize = serialize
+            self.dynamic_shape_params = dynamic_shape
+            self.run_test()
 
     def check_output(self):
         if core.is_compiled_with_cuda():
