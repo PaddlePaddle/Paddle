@@ -119,9 +119,8 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
                                         const std::vector<float>& aspect_ratios,
                                         const std::vector<float>& stride,
                                         const std::vector<float>& variances,
-                                        const float offset, const int height,
-                                        const int width, const int num_anchors,
-                                        const int box_num);
+                                        const float offset,
+                                        const int num_anchors);
   AnchorGeneratorPluginDynamic(void const* data, size_t length);
   ~AnchorGeneratorPluginDynamic();
   nvinfer1::IPluginV2DynamicExt* clone() const override;
@@ -170,10 +169,7 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
   void* aspect_ratios_device_;
   void* stride_device_;
   void* variances_device_;
-  int height_;
-  int width_;
   int num_anchors_;
-  int box_num_;
   std::string namespace_;
 };
 

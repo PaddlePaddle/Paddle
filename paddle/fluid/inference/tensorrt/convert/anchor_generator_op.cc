@@ -57,8 +57,8 @@ class AnchorGeneratorOpConverter : public OpConverter {
     const auto offset = BOOST_GET_CONST(float, op_desc.GetAttr("offset"));
     const int num_anchors = aspect_ratios.size() * anchor_sizes.size();
     bool is_dynamic = engine_->with_dynamic_shape();
-    const auto height = is_dynamic ? input_dims.d[2] : input_dims.d[1];
-    const auto width = is_dynamic ? input_dims.d[3] : input_dims.d[2];
+    const auto height = input_dims.d[1];
+    const auto width = input_dims.d[2];
     const int box_num = width * height * num_anchors;
     const nvinfer1::DataType data_type = nvinfer1::DataType::kFLOAT;
 
@@ -66,7 +66,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
     if (is_dynamic) {
       anchor_generator_plugin = new plugin::AnchorGeneratorPluginDynamic(
           data_type, anchor_sizes, aspect_ratios, stride, variances, offset,
-          height, width, num_anchors, box_num);
+          num_anchors);
     } else {
       anchor_generator_plugin = new plugin::AnchorGeneratorPlugin(
           data_type, anchor_sizes, aspect_ratios, stride, variances, offset,
@@ -77,6 +77,7 @@ class AnchorGeneratorOpConverter : public OpConverter {
     auto* anchor_generator_layer = engine_->network()->addPluginV2(
         anchor_generator_inputs.data(), anchor_generator_inputs.size(),
         *anchor_generator_plugin);
+
     RreplenishLayerAndOutput(anchor_generator_layer, "anchor_generator",
                              output_names, test_mode);
   }

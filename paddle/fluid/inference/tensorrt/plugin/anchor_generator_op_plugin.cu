@@ -32,11 +32,11 @@ __global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
                            const T* anchor_sizes, const int as_num,
                            const T* stride, const int sd_num, const int height,
                            const int width, const float offset) {
-  int num_anchors = as_num * ar_num;
-  int box_num = height * width * num_anchors;
+  const int num_anchors = as_num * ar_num;
+  const int box_num = height * width * num_anchors;
   CUDA_KERNEL_LOOP(i, box_num) {
-    int h_idx = i / (num_anchors * width);
-    int w_idx = (i / num_anchors) % width;
+    const int h_idx = i / (num_anchors * width);
+    const int w_idx = (i / num_anchors) % width;
     T stride_width = stride[0];
     T stride_height = stride[1];
     T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
@@ -372,35 +372,21 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::deserializePlugin(
 AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
     const nvinfer1::DataType data_type, const std::vector<float>& anchor_sizes,
     const std::vector<float>& aspect_ratios, const std::vector<float>& stride,
-    const std::vector<float>& variances, const float offset, const int height,
-    const int width, const int num_anchors, const int box_num)
+    const std::vector<float>& variances, const float offset,
+    const int num_anchors)
     : data_type_(data_type),
       anchor_sizes_(anchor_sizes),
       aspect_ratios_(aspect_ratios),
       stride_(stride),
       variances_(variances),
       offset_(offset),
-      height_(height),
-      width_(width),
-      num_anchors_(num_anchors),
-      box_num_(box_num) {
+      num_anchors_(num_anchors) {
   // data_type_ is used to determine the output data type
   // data_type_ can only be float32
+  // height, width, num_anchors are calculated at configurePlugin
   PADDLE_ENFORCE_EQ(data_type_, nvinfer1::DataType::kFLOAT,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
-
-  PADDLE_ENFORCE_GE(height_, 0,
-                    platform::errors::InvalidArgument(
-                        "TRT anchor generator plugin only accepts height "
-                        "greater than 0, but receive height = %d.",
-                        height_));
-
-  PADDLE_ENFORCE_GE(width_, 0,
-                    platform::errors::InvalidArgument(
-                        "TRT anchor generator plugin only accepts width "
-                        "greater than 0, but receive width = %d.",
-                        width_));
 
   PADDLE_ENFORCE_GE(
       num_anchors_, 0,
@@ -408,12 +394,6 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
-
-  PADDLE_ENFORCE_GE(box_num_, 0,
-                    platform::errors::InvalidArgument(
-                        "TRT anchor generator plugin only accepts box_num "
-                        "greater than 0, but receive box_num = %d.",
-                        box_num_));
 
   const size_t data_size = 4;
   cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
@@ -451,16 +431,13 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(void const* data,
   DeserializeValue(&data, &length, &stride_);
   DeserializeValue(&data, &length, &variances_);
   DeserializeValue(&data, &length, &offset_);
-  DeserializeValue(&data, &length, &height_);
-  DeserializeValue(&data, &length, &width_);
   DeserializeValue(&data, &length, &num_anchors_);
-  DeserializeValue(&data, &length, &box_num_);
 }
 
 nvinfer1::IPluginV2DynamicExt* AnchorGeneratorPluginDynamic::clone() const {
   auto plugin = new AnchorGeneratorPluginDynamic(
       data_type_, anchor_sizes_, aspect_ratios_, stride_, variances_, offset_,
-      height_, width_, num_anchors_, box_num_);
+      num_anchors_);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
@@ -470,8 +447,8 @@ nvinfer1::DimsExprs AnchorGeneratorPluginDynamic::getOutputDimensions(
     nvinfer1::IExprBuilder& exprBuilder) {
   nvinfer1::DimsExprs ret{};
   ret.nbDims = 4;
-  ret.d[0] = exprBuilder.constant(height_);
-  ret.d[1] = exprBuilder.constant(width_);
+  ret.d[0] = inputs[0].d[2];  // feature height
+  ret.d[1] = inputs[0].d[3];  // feature width
   ret.d[2] = exprBuilder.constant(num_anchors_);
   ret.d[3] = exprBuilder.constant(4);
   return ret;
@@ -504,21 +481,29 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
     const nvinfer1::PluginTensorDesc* inputDesc,
     const nvinfer1::PluginTensorDesc* outputDesc, const void* const* inputs,
     void* const* outputs, void* workspace, cudaStream_t stream) {
+  const int height = inputDesc[0].dims.d[2];
+  const int width = inputDesc[0].dims.d[3];
+  const int box_num = height * width * num_anchors_;
   const int block = 512;
-  const int gen_anchor_grid = (box_num_ + block - 1) / block;
+  const int gen_anchor_grid = (box_num + block - 1) / block;
+
   T* anchors = static_cast<T*>(outputs[0]);
   T* vars = static_cast<T*>(outputs[1]);
+
   const T* anchor_sizes_device = static_cast<const T*>(anchor_sizes_device_);
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
+
   GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
       anchors, aspect_ratios_device, aspect_ratios_.size(), anchor_sizes_device,
-      anchor_sizes_.size(), stride_device, stride_.size(), height_, width_,
+      anchor_sizes_.size(), stride_device, stride_.size(), height, width,
       offset_);
-  const int var_grid = (box_num_ * 4 + block - 1) / block;
+
+  const int var_grid = (box_num * 4 + block - 1) / block;
   SetVariance<T><<<var_grid, block, 0, stream>>>(
-      vars, variances_device, variances_.size(), box_num_ * 4);
+      vars, variances_device, variances_.size(), box_num * 4);
+
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -555,10 +540,7 @@ size_t AnchorGeneratorPluginDynamic::getSerializationSize() const {
   serialize_size += SerializedSize(stride_);
   serialize_size += SerializedSize(variances_);
   serialize_size += SerializedSize(offset_);
-  serialize_size += SerializedSize(height_);
-  serialize_size += SerializedSize(width_);
   serialize_size += SerializedSize(num_anchors_);
-  serialize_size += SerializedSize(box_num_);
   return serialize_size;
 }
 
@@ -569,10 +551,7 @@ void AnchorGeneratorPluginDynamic::serialize(void* buffer) const {
   SerializeValue(&buffer, stride_);
   SerializeValue(&buffer, variances_);
   SerializeValue(&buffer, offset_);
-  SerializeValue(&buffer, height_);
-  SerializeValue(&buffer, width_);
   SerializeValue(&buffer, num_anchors_);
-  SerializeValue(&buffer, box_num_);
 }
 
 void AnchorGeneratorPluginDynamic::destroy() {}
@@ -610,9 +589,7 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
   std::vector<float> stride;
   std::vector<float> variances;
   float offset = .5;
-  int height = -1, width = -1;
   int num_anchors = -1;
-  int box_num = -1;
   for (int i = 0; i < fc->nbFields; ++i) {
     const std::string field_name(fc->fields[i].name);
     const auto length = fc->fields[i].length;
@@ -632,21 +609,15 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
       variances.insert(variances.end(), data, data + length);
     } else if (field_name.compare("offset")) {
       offset = *static_cast<const float*>(fc->fields[i].data);
-    } else if (field_name.compare("height")) {
-      height = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("width")) {
-      width = *static_cast<const int*>(fc->fields[i].data);
     } else if (field_name.compare("num_anchors")) {
       num_anchors = *static_cast<const int*>(fc->fields[i].data);
-    } else if (field_name.compare("box_num")) {
-      box_num = *static_cast<const int*>(fc->fields[i].data);
     } else {
       assert(false && "unknown plugin field name.");
     }
   }
-  return new AnchorGeneratorPluginDynamic(
-      nvinfer1::DataType::kFLOAT, anchor_sizes, aspect_ratios, stride,
-      variances, offset, height, width, num_anchors, box_num);
+  return new AnchorGeneratorPluginDynamic(nvinfer1::DataType::kFLOAT,
+                                          anchor_sizes, aspect_ratios, stride,
+                                          variances, offset, num_anchors);
 }
 
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
