@@ -192,8 +192,60 @@ def cross_entropy_soft_2d(softmax,
 
 class CrossEntropyLoss(unittest.TestCase):
 
-    ###chajchaj soft_label start
+    ###chajchaj  test for deprecated softmax_with_cross_entropy
+    def test_softmax_with_cross_entropy(self):
+        self.numeric_stable_mode = False
+        self.soft_label = True
+        self.dtype = np.float64
+        self.axis = -1
+        self.ignore_index = -100  #should not be changed
+        self.N = 4
+        self.C = 3
+        self.shape = [self.N, self.C]
+        self.use_softmax = True
+        self.reduction = 'none'
+        self.weight = None
+        self.logits = getattr(
+            self, "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
+        softmax = np.apply_along_axis(stable_softmax, self.axis, self.logits)
 
+        self.labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
+
+        expected = cross_entropy_soft(
+            softmax,
+            self.labels,
+            self.axis,
+            self.N,
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index)
+
+        paddle.set_device("cpu")
+
+        #2. swce 
+        paddle.disable_static()
+        paddle_loss_swce = paddle.nn.functional.softmax_with_cross_entropy(
+            fluid.dygraph.to_variable(self.logits),
+            fluid.dygraph.to_variable(self.labels),
+            soft_label=True,
+            axis=self.axis)
+
+        #3. ce
+        paddle_loss_ce = paddle.nn.functional.cross_entropy(
+            fluid.dygraph.to_variable(self.logits),
+            fluid.dygraph.to_variable(self.labels),
+            soft_label=True,
+            axis=self.axis,
+            weight=fluid.dygraph.to_variable(self.weight)
+            if self.weight is not None else None,
+            reduction=self.reduction)
+
+        self.assertTrue(np.allclose(paddle_loss_swce.numpy(), expected))
+        self.assertTrue(np.allclose(paddle_loss_ce.numpy(), expected))
+
+    ###chajchaj soft_label start
     ###chajchaj soft_label 1
     def test_cross_entropy_loss_soft_1d(self):
         self.numeric_stable_mode = False
