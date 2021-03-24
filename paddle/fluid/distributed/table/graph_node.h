@@ -79,11 +79,19 @@ class FeatureNode: public Node{
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
-  virtual std::string get_feature(int idx) { return this->feature[idx]; }
+  virtual std::string get_feature(int idx) { 
+    if (idx < (int)this->feature.size()){
+      return this->feature[idx]; 
+    }
+    else{
+      return std::string("");
+    }
+  }
+
   virtual void set_feature(int idx, std::string str) {
-    //if (idx >= this->feature.size()){
-      //this->feature.resize(idx+1);
-    //}
+    if (idx >= (int)this->feature.size()){
+      this->feature.resize(idx+1);
+    }
     this->feature[idx] = str;
   }
   virtual void set_feature_size(int size) {this->feature.resize(size);}
