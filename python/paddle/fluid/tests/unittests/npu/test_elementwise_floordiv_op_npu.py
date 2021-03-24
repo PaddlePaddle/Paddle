@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 
 paddle.enable_static()
-SEED = 2021
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -46,12 +45,12 @@ class TestElementwiseFloorDiv(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def init_input_output(self):
-        self.x = np.random.uniform(1, 2, [10, 10]).astype(self.dtype)
-        self.y = np.random.uniform(1, 2, [10, 10]).astype(self.dtype)
+        self.x = np.random.uniform(1, 1000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(1, 1000, [10, 10]).astype(self.dtype)
         self.out = np.floor_divide(self.x, self.y)
 
     def init_dtype(self):
-        self.dtype = np.int32
+        self.dtype = "int64"
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
@@ -61,7 +60,7 @@ class TestElementwiseFloorDiv(OpTest):
                  "core is not compiled with NPU")
 class TestElementwiseFloorDiv2(TestElementwiseFloorDiv):
     def init_dtype(self):
-        self.dtype = np.int64
+        self.dtype = "int32"
 
 
 if __name__ == '__main__':
