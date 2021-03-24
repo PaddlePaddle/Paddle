@@ -50,9 +50,13 @@ class TestLayerNormOp(unittest.TestCase):
 
     def init_dtype(self):
         self.dtype = np.float32
+        self.atol = 1e-4
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        self.assertTrue(
+            np.allclose(
+                np.array(tensor).astype(np_array.dtype), np_array, atol=atol),
+            msg)
 
     def check_forward_backward(self,
                                shape,
@@ -72,13 +76,13 @@ class TestLayerNormOp(unittest.TestCase):
             scale_shape = [D]
 
             np.random.seed(123)
-            x = np.random.random_sample(x_shape).astype(np.float32)
+            x = np.random.random_sample(x_shape).astype(self.dtype)
             scale = np.random.random_sample(scale_shape).astype(
                 np.float32) if has_scale else None
             bias = np.random.random_sample(scale_shape).astype(
                 np.float32) if has_bias else None
             y_grad = (np.random.random_sample(x_shape) *
-                      y_grad_scale).astype(np.float32)
+                      y_grad_scale).astype(self.dtype)
 
             # reference forward & backward
             y, mean, variance = _reference_layer_norm_naive(
@@ -101,7 +105,7 @@ class TestLayerNormOp(unittest.TestCase):
                 for name in ground_truth:
                     block.create_var(
                         name=name,
-                        dtype='float32',
+                        dtype=self.dtype,
                         shape=ground_truth[name].shape)
                 inputs = {"X": block.var('x')}
                 fetch_list = [
@@ -152,18 +156,18 @@ class TestLayerNormOp(unittest.TestCase):
                                   for name in ['x', 'scale', 'bias', 'y@GRAD']
                               },
                               fetch_list=fetch_list)
-                self.__assert_close(y, out[0], "y")
+                self.__assert_close(y, out[0], "y", self.atol)
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
                 self.__assert_close(x_grad, out[3], "x_grad", 1e-2)
                 if has_scale:
                     self.__assert_close(scale_grad,
                                         out[fetch_list.index('scale@GRAD')],
-                                        "scale_grad", 1e-3)
+                                        "scale_grad", 1e-2)
                 if has_bias:
                     self.__assert_close(bias_grad,
                                         out[fetch_list.index('bias@GRAD')],
-                                        "bias_grad")
+                                        "bias_grad", self.atol)
 
         test_with_place(self.place, shape, begin_norm_axis)
 
@@ -185,6 +189,14 @@ class TestLayerNormOp(unittest.TestCase):
             has_scale=False,
             has_bias=False)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
+class TestLayerNormOpFP16(TestLayerNormOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.atol = 1e-2
 
 
 if __name__ == '__main__':
