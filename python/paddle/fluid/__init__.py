@@ -175,7 +175,6 @@ def __bootstrap__():
     sysstr = platform.system()
     read_env_flags = [
         'check_nan_inf',
-        'fast_check_nan_inf',
         'benchmark',
         'eager_delete_scope',
         'fraction_of_cpu_memory_to_use',
