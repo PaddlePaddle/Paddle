@@ -648,7 +648,7 @@ def load(path, **configs):
                         load_result[key] = _ndarray_to_tensor(
                             load_result[key], config.return_numpy)
 
-                    if not config.keep_name_table:
+                    if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
                         del load_result["StructuredToParameterName@@"]
                 else:
                     # paddle2.1 static.save/load

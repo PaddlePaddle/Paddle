@@ -152,39 +152,29 @@ class TestSaveLoadAny(unittest.TestCase):
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
                 ten = scope.find_var(var.name).get_tensor()
-                if ten is None:
-                    import pdb
-                    pdb.set_trace()
-                ten.set(np.zeros_like(np.array(ten)), place)
-
-                new_t = np.array(scope.find_var(var.name).get_tensor())
-                self.assertTrue(np.sum(np.abs(new_t)) == 0)
+                if ten is not None:
+                    ten.set(np.zeros_like(np.array(ten)), place)
+                    new_t = np.array(scope.find_var(var.name).get_tensor())
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
     def replace_static_save(self, program, model_path, pickle_protocol=2):
         with self.assertRaises(TypeError):
             program.state_dict(1)
-
         with self.assertRaises(TypeError):
             program.state_dict(scope=1)
-
         with self.assertRaises(ValueError):
             program.state_dict('x')
-
         state_dict_param = program.state_dict('param')
         paddle.save(state_dict_param, model_path + '.pdparams')
-
         state_dict_opt = program.state_dict('opt')
         paddle.save(state_dict_opt, model_path + '.pdopt')
-
         state_dict_all = program.state_dict()
         paddle.save(state_dict_opt, model_path + '.pdall')
 
     def replace_static_load(self, program, model_path):
         with self.assertRaises(TypeError):
             program.set_state_dict(1)
-
         state_dict_param = paddle.load(model_path + '.pdparams')
-
         state_dict_param['fake_var_name.@@'] = np.random.randn(1, 2)
         state_dict_param['static_x'] = 'UserWarning'
         program.set_state_dict(state_dict_param)
@@ -195,11 +185,8 @@ class TestSaveLoadAny(unittest.TestCase):
         program.set_state_dict(state_dict_opt)
 
     def test_replace_static_save_load(self):
-        # enable static mode
         paddle.enable_static()
-
         with new_program_scope():
-            # create network
             x = paddle.static.data(
                 name="static_x", shape=[None, IMAGE_SIZE], dtype='float32')
             z = paddle.static.nn.fc(x, 10)
@@ -213,7 +200,6 @@ class TestSaveLoadAny(unittest.TestCase):
             prog = paddle.static.default_main_program()
             fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
             exe.run(prog, feed={'static_x': fake_inputs}, fetch_list=[loss])
-
             base_map = {}
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -222,14 +208,11 @@ class TestSaveLoadAny(unittest.TestCase):
                     base_map[var.name] = t
 
             path = os.path.join("test_replace_static_save_load", "model")
-
             # paddle.save, legacy paddle.fluid.load
             self.replace_static_save(prog, path)
             # set var to zero
             self.set_zero(prog, place)
-
             paddle.fluid.io.load(prog, path)
-
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(fluid.global_scope().find_var(var.name)
@@ -248,19 +231,16 @@ class TestSaveLoadAny(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
-
             # test for return tensor
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
                     tensor = var.get_tensor(fluid.global_scope())
                     paddle.save(tensor, os.path.join(path_vars, var.name))
-
             with self.assertRaises(TypeError):
                 var.get_tensor('fluid.global_scope()')
             with self.assertRaises(ValueError):
                 x.get_tensor()
-
             with self.assertRaises(TypeError):
                 x.set_tensor('1')
             fake_data = np.zeros([3, 2, 1, 2, 3])
@@ -270,7 +250,6 @@ class TestSaveLoadAny(unittest.TestCase):
                 x.set_tensor(fake_data)
             with self.assertRaises(ValueError):
                 var.set_tensor(fake_data)
-
             # set var to zero
             self.set_zero(prog, place)
             for var in prog.list_vars():
@@ -284,20 +263,15 @@ class TestSaveLoadAny(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
     def test_paddle_save_load_v2(self):
-        # enable dygraph mode
         paddle.disable_static()
         layer = LinearNet()
         state_dict = layer.state_dict()
         path = 'paddle_save_load_v2/model.pdparams'
-
-        # paddle.save
         with self.assertRaises(TypeError):
             paddle.save(state_dict, path, use_binary_format='False')
-
         # legacy paddle.save, paddle.load
         paddle.framework.io._legacy_save(state_dict, path)
         load_dict_tensor = paddle.load(path, return_numpy=False)
-
         # legacy paddle.load, paddle.save
         paddle.save(state_dict, path)
         load_dict_np = paddle.framework.io._legacy_load(path)
@@ -313,17 +287,13 @@ class TestSaveLoadAny(unittest.TestCase):
         layer = LinearNet()
         path = 'paddle_save_load_v2/var_dygraph'
         tensor = layer._linear.weight
-
         with self.assertRaises(ValueError):
             paddle.save(tensor, path, pickle_protocol='3')
-
         with self.assertRaises(ValueError):
             paddle.save(tensor, path, pickle_protocol=5)
-
         paddle.save(tensor, path)
         np_dygraph = paddle.load(path)
         t_dygraph = paddle.load(path, return_numpy=False)
-
         self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
@@ -331,7 +301,6 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.enable_static()
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
-
         self.assertTrue(isinstance(lod_static, paddle.fluid.core.LoDTensor))
         self.assertTrue(np.array_equal(tensor.numpy(), np_static))
         self.assertTrue(np.array_equal(tensor.numpy(), np.array(lod_static)))
@@ -339,7 +308,6 @@ class TestSaveLoadAny(unittest.TestCase):
     def test_single_pickle_var_static(self):
         # enable static mode
         paddle.enable_static()
-
         with new_program_scope():
             # create network
             x = paddle.static.data(
@@ -360,9 +328,7 @@ class TestSaveLoadAny(unittest.TestCase):
         origin_tensor = np.array(tensor)
         path = 'test_single_pickle_var_static/var'
         paddle.save(tensor, path)
-
         self.set_zero(prog, place, scope)
-
         # static load
         np_static = paddle.load(path)
         lod_static = paddle.load(path, return_numpy=False)
@@ -379,6 +345,31 @@ class TestSaveLoadAny(unittest.TestCase):
         var_dygraph = paddle.load(path, return_numpy=False)
         self.assertTrue(np.array_equal(np.array(tensor), np_dygraph))
         self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
+
+    def test_dygraph_save_static_load(self):
+        inps = np.random.randn(2, IMAGE_SIZE).astype('float32')
+        path = 'test_dygraph_save_static_load/dy-static.pdparams'
+        paddle.disable_static()
+        with paddle.utils.unique_name.guard():
+            layer = LinearNet()
+            state_dict = paddle.save(layer.state_dict(), path)
+            y_dy = layer(paddle.to_tensor(inps))
+
+        paddle.enable_static()
+        with paddle.utils.unique_name.guard():
+            layer = LinearNet()
+            data = paddle.static.data(
+                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32')
+            y_static = layer(data)
+            program = paddle.static.default_main_program()
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            state_dict = paddle.load(path, keep_name_table=True)
+            program.set_state_dict(state_dict)
+            result_static, = exe.run(program,
+                                     feed={'x_static_save': inps},
+                                     fetch_list=[y_static.name])
+        self.assertTrue(np.array_equal(result_static, y_dy.numpy()))
 
 
 class TestSaveLoad(unittest.TestCase):

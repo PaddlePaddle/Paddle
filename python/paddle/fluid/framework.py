@@ -5608,7 +5608,13 @@ class Program(object):
                     type(state_dict)))
 
         vars_dict = {var.name: var for var in self.list_vars()}
+        condition = True if 'StructuredToParameterName@@' in state_dict else False
         for name, value in state_dict.items():
+            if condition:
+                if name == "StructuredToParameterName@@":
+                    continue
+                if name in state_dict['StructuredToParameterName@@']:
+                    name = state_dict['StructuredToParameterName@@'][name]
             if name in vars_dict:
                 try:
                     vars_dict[name].set_tensor(value, scope)
