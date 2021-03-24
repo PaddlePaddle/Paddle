@@ -36,7 +36,7 @@ static void nll_loss_1D(T* out_data, T* total_weight_data, const T* x_data,
       }
       PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
                         platform::errors::InvalidArgument(
-                            "label value is out of bound. "
+                            "Label value is out of range. "
                             "Expected label value in range of [0, %d), but "
                             "received value is %d.",
                             n_classes, cur_label));
