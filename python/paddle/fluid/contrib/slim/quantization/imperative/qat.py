@@ -510,13 +510,11 @@ class ImperativeCalcOutputScale(object):
         attr_name = "out_threshold"
 
         for scale_name, scale_value in self._out_scale_dict.items():
-            _logger.info('---scale_name:' + scale_name)
             while True:
                 if op_idx >= len(target_ops):
                     break
 
                 op = target_ops[op_idx]
-                _logger.info('op_type:' + op.type)
                 if not self._is_scale_op_matched(scale_name, op, global_block):
                     op_idx += 1
                 else:
@@ -525,11 +523,9 @@ class ImperativeCalcOutputScale(object):
                         and target_ops[op_idx+1].type == "elementwise_add":
                         target_ops[op_idx + 1]._set_attr(attr_name, scale_value)
                         op_idx += 2
-                        _logger.info('save scale to elementwise_add')
                     else:
                         op._set_attr(attr_name, scale_value)
                         op_idx += 1
-                        _logger.info('save scale to ' + op.type)
                     scale_idx += 1
                     break
 
@@ -593,22 +589,23 @@ class ImperativeCalcOutputScale(object):
                 if output_var_tensor.dtype not in fp_type:
                     return False
 
-        # Note that, the items have priority in corresponding_dict
-        corresponding_dict = {
-            'conv2d_tranpose': [['conv2d_transpose', \
+        # corresponding_map: [name, op_types, function]
+        # Note that, the items have priority in corresponding_map
+        corresponding_map = [
+            ['conv2d_tranpose', ['conv2d_transpose', \
                                 'depthwise_conv2d_transpose'], None],
-            'conv2d': [['conv2d', 'depthwise_conv2d'], None],
-            'linear': [['matmul'], None],
-            're_lu6': [['relu6'], None],
-            'p_re_lu': [['prelu'], None],
-            'leaky_re_lu': [['leaky_relu'], None],
-            're_lu': [['relu'], None],
-        }
+            ['conv2d', ['conv2d', 'depthwise_conv2d'], None],
+            ['linear', ['matmul'], None],
+            ['re_lu6', ['relu6'], None],
+            ['p_re_lu', ['prelu'], None],
+            ['leaky_re_lu', ['leaky_relu'], None],
+            ['re_lu', ['relu'], None],
+        ]
 
-        for key, value in corresponding_dict.items():
-            if key in scale_name:
-                return (op.type in value[0]) and \
-                    (len(value) == 1 or value[1] is None or value[1](op))
+        for item in corresponding_map:
+            if item[0] in scale_name:
+                return (op.type in item[1]) and \
+                    (len(item) == 2 or item[2] is None or item[2](op))
 
         return op.type in scale_name
 
