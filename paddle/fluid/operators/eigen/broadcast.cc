@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -34,9 +35,9 @@ struct EigenBroadcastGrad<Eigen::DefaultDevice, T, Rank> {
   using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
   using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
   using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
   static void Eval(Eigen::DefaultDevice* dev, OutType* out, InType* in,
                    Array* reduce_dims, Array2* reshape_dims) {
     out->device(*dev) =
@@ -51,14 +52,22 @@ struct EigenBroadcastGrad<Eigen::DefaultDevice, T, Rank> {
   template struct FUNCTOR<Eigen::DefaultDevice, T, 4>; \
   template struct FUNCTOR<Eigen::DefaultDevice, T, 5>; \
   template struct FUNCTOR<Eigen::DefaultDevice, T, 6>
+INSTANTIATION(EigenBroadcast, bool);
+INSTANTIATION(EigenBroadcast, platform::float16);
 INSTANTIATION(EigenBroadcast, float);
 INSTANTIATION(EigenBroadcast, double);
 INSTANTIATION(EigenBroadcast, int);
 INSTANTIATION(EigenBroadcast, int64_t);
+INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
+INSTANTIATION(EigenBroadcastGrad, platform::float16);
 INSTANTIATION(EigenBroadcastGrad, double);
 INSTANTIATION(EigenBroadcastGrad, int);
 INSTANTIATION(EigenBroadcastGrad, int64_t);
+template struct EigenBroadcastGrad<Eigen::DefaultDevice, float, 0>;
+template struct EigenBroadcastGrad<Eigen::DefaultDevice, double, 0>;
+template struct EigenBroadcastGrad<Eigen::DefaultDevice, int, 0>;
+template struct EigenBroadcastGrad<Eigen::DefaultDevice, int64_t, 0>;
 #undef INSTANTIATION
 
 }  // namespace operators

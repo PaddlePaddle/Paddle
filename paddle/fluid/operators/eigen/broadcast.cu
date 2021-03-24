@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -51,14 +52,22 @@ struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, T, 4>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 6>
+INSTANTIATION(EigenBroadcast, bool);
+INSTANTIATION(EigenBroadcast, platform::float16);
 INSTANTIATION(EigenBroadcast, float);
 INSTANTIATION(EigenBroadcast, double);
 INSTANTIATION(EigenBroadcast, int);
 INSTANTIATION(EigenBroadcast, int64_t);
+INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
+INSTANTIATION(EigenBroadcastGrad, platform::float16);
 INSTANTIATION(EigenBroadcastGrad, double);
 INSTANTIATION(EigenBroadcastGrad, int);
 INSTANTIATION(EigenBroadcastGrad, int64_t);
+template struct EigenBroadcastGrad<Eigen::GpuDevice, float, 0>;
+template struct EigenBroadcastGrad<Eigen::GpuDevice, double, 0>;
+template struct EigenBroadcastGrad<Eigen::GpuDevice, int, 0>;
+template struct EigenBroadcastGrad<Eigen::GpuDevice, int64_t, 0>;
 #undef INSTANTIATION
 
 }  // namespace operators
