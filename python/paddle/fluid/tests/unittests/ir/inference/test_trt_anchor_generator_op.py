@@ -23,9 +23,28 @@ from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 
 
-class TRTAnchorGeneratorTest(InferencePassTest):
+class TRTAnchorGeneratorBaseTest(InferencePassTest):
     def setUp(self):
-        self.set_params()
+        self.bs = 1
+        self.channel = 32
+        self.height = 64
+        self.width = 64
+        self.anchor_sizes = [64., 128., 256., 512.]
+        self.aspect_ratios = [.5, 1., 2.]
+        self.variance = [.1, .1, .2, .2]
+        self.stride = [8., 8.]
+        self.precision = AnalysisConfig.Precision.Float32
+        self.serialize = False
+        self.enable_trt = True
+        self.trt_parameters = InferencePassTest.TensorRTParam(
+            1 << 30, self.bs, 1, self.precision, self.serialize, False)
+        self.feeds = {
+            'data':
+            np.random.random([self.bs, self.channel, self.height,
+                              self.width]).astype('float32'),
+        }
+
+    def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
@@ -37,35 +56,38 @@ class TRTAnchorGeneratorTest(InferencePassTest):
                 aspect_ratios=self.aspect_ratios,
                 variance=self.variance,
                 stride=self.stride)
-            out = fluid.layers.batch_norm(var, is_test=True)
+            if self.dynamic_shape_params is not None:
+                anchor = fluid.layers.transpose(anchor, [2, 3, 0, 1])
+            out = fluid.layers.batch_norm(anchor, is_test=True)
 
-        self.feeds = {
-            "data":
-            np.random.random([self.bs, self.channel, self.height,
-                              self.width]).astype('float32'),
-        }
-        self.enable_trt = True
-        self.trt_parameters = TRTAnchorGeneratorTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [out, var]
+        self.fetch_list = [out, anchor, var]
 
-    def set_params(self):
-        self.bs = 1
-        self.channel = 32
-        self.height = 64
-        self.width = 64
-        self.anchor_sizes = [64., 128., 256., 512.]
-        self.aspect_ratios = [.5, 1., 2.]
-        self.variance = [.1, .1, .2, .2]
-        self.stride = [8., 8.]
+    def run_test(self):
+        self.build()
+        self.check_output()
 
-    def test_check_output(self):
+    def test_base(self):
+        self.run_test()
+
+    def test_fp16(self):
+        self.precision = AnalysisConfig.Precision.Half
+        self.run_test()
+
+    def test_dynamic(self):
+        self.dynamic_shape_params = super().DynamicShapeParam({
+            'data': [self.bs, self.channel, self.height // 2, self.width // 2]
+        }, {
+            'data': [self.bs, self.channel, self.height * 2, self.width * 2]
+        }, {'data': [self.bs, self.channel, self.height, self.width]}, False)
+        self.run_test()
+
+    def test_serialize(self):
+        self.serialize = True
+        self.run_test()
+
+    def check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
-if __name__ == "__main__":
-    unittest.main()
