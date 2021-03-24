@@ -347,7 +347,7 @@ class TestSaveLoadAny(unittest.TestCase):
         self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
 
     def test_dygraph_save_static_load(self):
-        inps = np.random.randn(2, IMAGE_SIZE).astype('float32')
+        inps = np.random.randn(1, IMAGE_SIZE).astype('float32')
         path = 'test_dygraph_save_static_load/dy-static.pdparams'
         paddle.disable_static()
         with paddle.utils.unique_name.guard():
@@ -356,20 +356,23 @@ class TestSaveLoadAny(unittest.TestCase):
             y_dy = layer(paddle.to_tensor(inps))
 
         paddle.enable_static()
-        with paddle.utils.unique_name.guard():
-            layer = LinearNet()
-            data = paddle.static.data(
-                name='x_static_save', shape=(None, IMAGE_SIZE), dtype='float32')
-            y_static = layer(data)
-            program = paddle.static.default_main_program()
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            state_dict = paddle.load(path, keep_name_table=True)
-            program.set_state_dict(state_dict)
-            result_static, = exe.run(program,
-                                     feed={'x_static_save': inps},
-                                     fetch_list=[y_static.name])
-        self.assertTrue(np.array_equal(result_static, y_dy.numpy()))
+        with new_program_scope():
+            with paddle.utils.unique_name.guard():
+                layer = LinearNet()
+                data = paddle.static.data(
+                    name='x_static_save',
+                    shape=(None, IMAGE_SIZE),
+                    dtype='float32')
+                y_static = layer(data)
+                program = paddle.static.default_main_program()
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(paddle.static.default_startup_program())
+                state_dict = paddle.load(path, keep_name_table=True)
+                program.set_state_dict(state_dict)
+                result_static = exe.run(program,
+                                        feed={'x_static_save': inps},
+                                        fetch_list=[y_static])
+            self.assertTrue(np.array_equal(result_static[0], y_dy.numpy()))
 
 
 class TestSaveLoad(unittest.TestCase):
