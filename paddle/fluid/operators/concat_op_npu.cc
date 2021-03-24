@@ -71,15 +71,6 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
-    {
-      auto dx = outs;
-      auto x = ins;
-      for (size_t i = 0; i < dx.size(); ++i) {
-        if (dx[i] != nullptr) {
-          dx[i]->set_lod(x[i]->lod());
-        }
-      }
-    }
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(
                                 "The first input tensor is not initalized."));
@@ -88,26 +79,39 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
 
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
-    // get output tensor that the name is not kEmptyVarName
-    std::vector<framework::Tensor> outputs;
+
     std::vector<int> sizes;
-    for (size_t j = 0; j < outs.size(); ++j) {
-      if (out_var_names[j] != framework::kEmptyVarName &&
-          outs[j]->numel() != 0UL) {
-        outs[j]->mutable_data<T>(ctx.GetPlace());
-        outputs.push_back(*outs[j]);
-        sizes.push_back(outs[j]->dims()[axis]);
-      }
-    }
-    auto runner =
-        NpuOpRunner("SplitVD", {*out_grad}, outputs,
-                    {{"split_dim", axis},
-                     {"size_splits", sizes},
-                     {"num_split", static_cast<int>(outputs.size())}});
+    int offset = 0;
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    runner.Run(stream);
+    for (size_t j = 0; j < outs.size(); ++j) {
+      // For stop gradient
+      // get output tensor that the name is not kEmptyVarName
+      if (out_var_names[j] != framework::kEmptyVarName &&
+          outs[j]->numel() != 0UL) {
+        outs[j]->mutable_data<T>(ctx.GetPlace());
+        sizes.push_back(outs[j]->dims()[axis]);
+        std::vector<int> offsets;
+        std::vector<int> sizes;
+        for (int dim = 0; dim < ins[j]->dims().size(); ++dim) {
+          if (dim == axis) {
+            offsets.push_back(offset);
+            sizes.push_back(ins[j]->dims()[dim]);
+          } else {
+            offsets.push_back(0);
+            sizes.push_back(ins[j]->dims()[dim]);
+          }
+        }
+        auto runner =
+            NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
+                        {{"offsets", offset}, {"size", ins[j]->dims()[axis]}});
+        runner.Run(stream);
+      }
+      if (ins[j]->numel() != 0UL) {
+        offset += ins[j]->dims()[axis];
+      }
+    }
   }
 };
 
