@@ -80,7 +80,6 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
 
-    std::vector<int> sizes;
     int offset = 0;
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -91,7 +90,6 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
-        sizes.push_back(outs[j]->dims()[axis]);
         std::vector<int> offsets;
         std::vector<int> sizes;
         for (int dim = 0; dim < ins[j]->dims().size(); ++dim) {
@@ -103,9 +101,8 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
             sizes.push_back(ins[j]->dims()[dim]);
           }
         }
-        auto runner =
-            NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
-                        {{"offsets", offset}, {"size", ins[j]->dims()[axis]}});
+        auto runner = NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
+                                  {{"offsets", offsets}, {"size", sizes}});
         runner.Run(stream);
       }
       if (ins[j]->numel() != 0UL) {
