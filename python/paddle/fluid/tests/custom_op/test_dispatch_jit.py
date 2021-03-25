@@ -83,6 +83,12 @@ class TestJitDispatch(unittest.TestCase):
             self.run_dispatch_test(
                 dispatch_op.dispatch_test_float_and_integer_and_complex, dtype)
 
+    def test_dispatch_float_and_half(self):
+        dtypes = ["float32", "float64", "float16"]
+        for dtype in dtypes:
+            self.run_dispatch_test(dispatch_op.dispatch_test_float_and_half,
+                                   dtype)
+
 
 if __name__ == '__main__':
     unittest.main()
