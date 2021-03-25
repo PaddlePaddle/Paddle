@@ -201,7 +201,7 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._calc_output_scale = ImperativeCalcOutputScale()
+        self._calc_output_scale = ImperativeQuantizeOutputs()
 
     def quantize(self, model):
         """
@@ -323,10 +323,10 @@ class ImperativeQuantizeInputs(object):
                 idx += 1
             target = name[last_idx:idx]
 
-            quant_layer = self._get_quantized_layer(layer)
+            quant_layer = self._get_input_quantized_layer(layer)
             setattr(obj, target, quant_layer)
 
-    def _get_quantized_layer(self, layer):
+    def _get_input_quantized_layer(self, layer):
         quant_layer_name = None
         for key, value in utils.quant_input_layers_map.items():
             if isinstance(layer, value):
@@ -651,3 +651,91 @@ class ImperativeCalcOutputScale(object):
                     layer, output.name, self._moving_rate, output.dtype)
             # TODO (jc): consider the ops that have several outputs 
             self._out_scale(output)
+
+
+class ImperativeQuantizeOutputs(object):
+    def __init__(self, moving_rate=0.9):
+        """
+        Add the logic of calculating and setting output scales of some layers. 
+
+        Args:
+            moving_rate(float): The decay coefficient of moving average.
+                                The default value is 0.9.
+        """
+        super(ImperativeQuantizeOutputs, self).__init__()
+        self._moving_rate = moving_rate
+
+    def apply(self, model):
+        """
+        Insert the `moving_average_abs_max_scale` op to calculate output 
+        scale of specific layers in model.
+
+        Args:
+            model(fluid.dygraph.Layer): The target model which would be
+                calculate the output quantization scale.
+
+        Returns:
+            None
+        """
+
+        assert isinstance(model, dygraph.Layer), \
+            "The model must be the instance of dygraph.Layer."
+
+        for name, layer in model.named_sublayers():
+            if not self._is_target_layer(layer):
+                continue
+
+            # TODO(jc): optimize this module
+            last_idx = 0
+            idx = 0
+            obj = model
+            while idx < len(name):
+                if (name[idx] == '.'):
+                    if hasattr(obj, name[last_idx:idx]):
+                        obj = getattr(obj, name[last_idx:idx])
+                        last_idx = idx + 1
+                idx += 1
+            target = name[last_idx:idx]
+
+            quant_layer = quant_nn.__dict__["QuantizedOutputLayer"](
+                layer, self._moving_rate)
+            setattr(obj, target, quant_layer)
+
+    def _is_target_layer(self, layer):
+        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
+            or ('quantized' in layer.full_name() and \
+                'quantized_noweight' not in layer.full_name())
+
+    def save_quantized_model(self, layer, path, input_spec=None, **config):
+        """
+        Save the quantized model for the inference.
+
+        Args:
+            layer (Layer): The Layer to be saved.
+            path (str): The path prefix to save model. The format is 
+                ``dirname/file_prefix`` or ``file_prefix``.
+            input_spec (list[InputSpec|Tensor], optional): Describes the input
+                of the saved model's forward method, which can be described by
+                InputSpec or example Tensor. If None, all input variables of 
+                the original Layer's forward method would be the inputs of
+                the saved model. Default None.
+            **configs (dict, optional): Other save configuration options for
+                compatibility. We do not recommend using these configurations,
+                they may be removed in the future. If not necessary, DO NOT use
+                them. Default None.
+                The following options are currently supported:
+                (1) output_spec (list[Tensor]): Selects the output targets of
+                the saved model. By default, all return variables of original
+                Layer's forward method are kept as the output of the saved model.
+                If the provided ``output_spec`` list is not all output variables, 
+                the saved model will be pruned according to the given
+                ``output_spec`` list. 
+
+        Returns:
+            None
+        """
+
+        assert isinstance(layer, dygraph.Layer), \
+            "The model must be the instance of dygraph.Layer."
+
+        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)

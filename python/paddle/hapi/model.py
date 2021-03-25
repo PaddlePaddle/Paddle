@@ -1776,6 +1776,7 @@ class Model(object):
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []
+        idx = 0
         for step, data in enumerate(data_loader):
             # data might come from different types of data_loader and have
             # different format, as following:
@@ -1831,6 +1832,10 @@ class Model(object):
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
             callbacks.on_batch_end(mode, step, logs)
+
+            idx += 1
+            if idx > 20:
+                break
         self._reset_metrics()
 
         if mode == 'predict':

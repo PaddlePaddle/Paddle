@@ -647,6 +647,8 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                    "MovingAverageAbsMaxScale");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "MovingAverageAbsMaxScale");
     OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
                    "MovingAverageAbsMaxScale");
     if (ctx->HasOutput("OutState")) {
@@ -655,7 +657,9 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput("OutAccum")) {
       ctx->SetOutputDim("OutAccum", {1});
     }
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -673,6 +677,8 @@ class MovingAverageAbsMaxScaleOpMaker
     AddInput("X", "(Tensor) Input is float data type.");
     AddInput("InAccum", "Last accum.").AsDispensable();
     AddInput("InState", "Last state.").AsDispensable();
+    AddOutput("Out",
+              "(Tensor) Output tensor is just equivalent to the input tensor.");
     AddOutput("OutScale", " Current scale");
     AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
     AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
@@ -820,4 +826,8 @@ REGISTER_OP_VERSION(moving_average_abs_max_scale)
             "Out",
             "Delete output in order to make the inference model not "
             "save moving_average_abs_max_scale operator. This will "
-            "make the quantitative model be correctly applied in inference."));
+            "make the quantitative model be correctly applied in inference."))
+    .AddCheckpoint(
+        R"ROC(Incompatible upgrade of output [Out])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "Out", "In order to support dygraph qat, add output again."));
