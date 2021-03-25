@@ -59,7 +59,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
         self._as_outer_parallelism = False
-        self._inner_parallelism_size = None
+        self.mp_degree = None
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -92,7 +92,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "hybrid_dp"]
         self._as_outer_parallelism = self.user_defined_strategy.sharding_configs[
             "as_outer_parallelism"]
-        self._inner_parallelism_size = int(
+        self.mp_degree = int(
             self.user_defined_strategy.sharding_configs["parallelism"])
         self.use_pipeline = self.user_defined_strategy.sharding_configs[
             "use_pipeline"]
@@ -107,7 +107,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "optimize_offload"]
         # turn off sharding
         self.sharding_degree = int(self.user_defined_strategy.sharding_configs['sharding_group_size'])
-        if self.role_maker._worker_index() // self.sharding_degree // self._inner_parallelism_size > 1 :
+        if self.role_maker._worker_index() // self.sharding_degree // self.mp_degree > 1 :
             assert self.use_pipeline ==  True
             
         self.pure_dp_degree = 1
@@ -125,7 +125,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt['pp_bz'] = self.pp_bz
             pp_rank = self.role_maker._worker_index() // (
                 self.user_defined_strategy.sharding_configs[
-                    'sharding_group_size'] * self._inner_parallelism_size)
+                    'sharding_group_size'] * self.mp_degree)
             main_program._pipeline_opt['local_rank'] = pp_rank
             main_program._pipeline_opt[
                 'global_rank'] = self.role_maker._worker_index()
@@ -184,13 +184,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             startup_block._sync_with_cpp()
 
             # step4: insert reduce_sum for grad
-            # grad_scale_coeff = self.role_maker._worker_num()
-            # if self._as_outer_parallelism:
-            #     grad_scale_coeff = grad_scale_coeff / self._inner_parallelism_size
-            # insert_scale_loss_grad_ops(main_block, scale=1.0 / grad_scale_coeff)
-            sharding_group_size = self.user_defined_strategy.sharding_configs[
-                'sharding_group_size']
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / sharding_group_size)
+            insert_scale_loss_grad_ops(main_block, scale=1.0 / self.sharding_degree)
             main_block._sync_with_cpp()
 
             # step5: remove unneeded ops and vars from block
@@ -279,7 +273,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.global_ring_id, True)
 
         # mp ring
-        if self.mp_group_degree > 1:
+        if self.mp_degree > 1:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
                 self.mp_group_endpoints, self.mp_rank, self.mp_ring_id, False)
@@ -336,7 +330,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step 2: split params
         self._params = set([x[0].name for x in params_grads])
         self._shard.setup(params_grads, self.sharding_rank,
-                          self.sharding_group_size)
+                          self.sharding_degree)
 
         # step 3: get broadcast vars
         self._broadcast_vars = self._shard.find_broadcast_params(
@@ -357,21 +351,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             if self.sharding_rank == 0:
                 self._collective_helper._wait(current_endpoint, endpoints)
-
-    # def _wait(self, ):
-    #     # only the first parallelsm group that init nccl need to be wait. 
-    #     if self._as_outer_parallelism:
-    #         endpoints = self.role_maker._get_trainer_endpoints()
-    #     else:
-    #         endpoints = self.sharding_group_endpoints[:]
-    #     current_endpoint = endpoints[self.role_maker._worker_index()]
-
-    #     if self._as_outer_parallelism:
-    #         if self.role_maker._worker_index() == 0:
-    #             self._collective_helper._wait(current_endpoint, endpoints)
-    #     else:
-    #         if self.sharding_rank == 0:
-    #             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
         for op_idx, op in reversed(list(enumerate(block.ops))):
@@ -745,19 +724,18 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._collective_helper = CollectiveHelper(self.role_maker, nrings=1) 
 
         # mp ring
-        if self._inner_parallelism_size > 1:
-            self.mp_group_degree = self._inner_parallelism_size
+        if self.mp_degree > 1:
             self.mp_ring_id = 0
-            self.mp_rank = self.global_rank % self._inner_parallelism_size
-            self.mp_group_id = self.global_rank // self._inner_parallelism_size
+            self.mp_rank = self.global_rank % self.mp_degree
+            self.mp_group_id = self.global_rank // self.mp_degree
             self.mp_group_endpoints = [
                 ep for idx, ep in enumerate(self.global_endpoints)
-                if idx // self._inner_parallelism_size == self.mp_group_id
+                if idx // self.mp_degree == self.mp_group_id
             ]
             assert self.current_endpoint in self.mp_group_endpoints
-            assert len(self.mp_group_endpoints) == self.mp_group_degree, "num of mp worker in group is [{}], but mp group size is [{}]".format(len(self.mp_group_endpoints), self.mp_group_degree)
+            assert len(self.mp_group_endpoints) == self.mp_degree, "num of mp worker in group is [{}], but mp group size is [{}]".format(len(self.mp_group_endpoints), self.mp_degree)
         else:
-            self.mp_group_degree = 1
+            self.mp_degree = 1
             self.mp_ring_id = -1
             self.mp_rank = -1
             self.mp_group_id = -1
@@ -765,33 +743,32 @@ class ShardingOptimizer(MetaOptimizerBase):
         
         # sharding 
         if self.sharding_degree > 1:
-            self.sharding_group_size = self.sharding_degree
             self.sharding_ring_id = 1
             self.sharding_rank = (
                 self.global_rank //
-                self._inner_parallelism_size) % self.sharding_group_size            
+                self.mp_degree) % self.sharding_degree           
             self.sharding_group_id = self.global_rank // (
-                self._inner_parallelism_size * self.sharding_group_size)
+                self.mp_degree * self.sharding_degree)
             # mp + sharding + ...
-            if self._inner_parallelism_size > 1:
+            if self.mp_degree > 1:
                 self.sharding_group_endpoints = [
                     ep for idx, ep in enumerate(self.global_endpoints)
-                    if (idx // (self._inner_parallelism_size *
-                                self.sharding_group_size)
+                    if (idx // (self.mp_degree *
+                                self.sharding_degree)
                         ) == self.sharding_group_id and idx %
-                    self._inner_parallelism_size == self.mp_rank
+                    self.mp_degree == self.mp_rank
                 ]
             # sharding + ...    
             else:
                 self.sharding_group_endpoints = [
                     ep for idx, ep in enumerate(self.global_endpoints)
-                    if (idx // (self._inner_parallelism_size *
-                                self.sharding_group_size)
+                    if (idx // (self.mp_degree *
+                                self.sharding_degree)
                         ) == self.sharding_group_id 
                 ]
             assert self.current_endpoint in self.sharding_group_endpoints
         else:
-            self.sharding_group_size = 1
+            self.sharding_degree = 1
             self.sharding_ring_id = -1
             self.sharding_rank = -1   
             self.sharding_group_id = -1   
@@ -801,11 +778,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             self.pp_ring_id = 20
             self.pp_rank = self.global_rank // (
-                self.sharding_degree * self.mp_group_degree) % self.pp_degree
+                self.sharding_degree * self.mp_degree) % self.pp_degree
             # (NOTE): Already adjust for (outter-pure) dp
-            self.pp_group_id = self.global_rank // (self._inner_parallelism_size * self.sharding_group_size * self.pp_degree)
-            pp_first_stage_idx = self.global_rank % (self.sharding_group_size * self._inner_parallelism_size) + self.pp_group_id * (self._inner_parallelism_size * self.sharding_group_size * self.pp_degree)
-            pp_stage_offset = self.sharding_group_size * self._inner_parallelism_size
+            self.pp_group_id = self.global_rank // (self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_first_stage_idx = self.global_rank % (self.sharding_degree * self.mp_degree) + self.pp_group_id * (self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_stage_offset = self.sharding_degree * self.mp_degree
             self.pp_group_endpoints = []
             for i in range(self.pp_degree):
                 self.pp_group_endpoints.append(self.global_endpoints[
@@ -813,6 +790,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     )
             assert self.current_endpoint in self.pp_group_endpoints
         else:
+            self.pp_degree = 1
             self.pp_ring_id = -1
             self.pp_rank = -1   
             self.pp_group_id = -1   
@@ -822,14 +800,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
         # e.g. mp-sharding-pp-dp
         # sharding-hybrid-dp as one senario of outter-pure-dp 
-        assert self.global_word_size == self.mp_group_degree * self.sharding_degree * self.pp_degree * self.pure_dp_degree, "mp_group_degree: [{}], mp_group_degree: [{}], mp_group_degree: [{}], mp_group_degree: [{}]; BUT global nrank: [{}]".format(
-            self.mp_group_degree, self.sharding_degree, self.pp_degree, self.pure_dp_degree, self.global_word_size
+        assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.pure_dp_degree, "mp_degree: [{}], mp_degree: [{}], mp_degree: [{}], mp_degree: [{}]; BUT global nrank: [{}]".format(
+            self.mp_degree, self.sharding_degree, self.pp_degree, self.pure_dp_degree, self.global_word_size
         )
         if self.pure_dp_degree > 1 :
             self.pure_dp_ring_id = 2
-            self.pure_dp_rank = self.global_rank // (self.sharding_degree * self.mp_group_degree * self.pp_degree)
-            pure_dp_first_rank_idx = self.global_rank % (self.sharding_degree * self.mp_group_degree * self.pp_degree)
-            pure_dp_offset = (self.sharding_degree * self.mp_group_degree * self.pp_degree)
+            self.pure_dp_rank = self.global_rank // (self.sharding_degree * self.mp_degree * self.pp_degree)
+            pure_dp_first_rank_idx = self.global_rank % (self.sharding_degree * self.mp_degree * self.pp_degree)
+            pure_dp_offset = (self.sharding_degree * self.mp_degree * self.pp_degree)
             self.pure_dp_group_endpoints = []
             for i in range(self.pure_dp_degree):
                 self.pure_dp_group_endpoints.append(self.global_endpoints[
@@ -849,11 +827,11 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         logging.info("global word size: {}".format(self.global_word_size))
         logging.info("global rank: {}".format(self.global_rank))
-        logging.info("global endpoints: {}".format(self.global_rank))
+        logging.info("global endpoints: {}".format(self.global_endpoints))
         logging.info("global ring id: {}".format(self.global_ring_id))
         logging.info("#####" * 6)
 
-        logging.info("mp group size: {}".format(self.mp_group_degree))
+        logging.info("mp group size: {}".format(self.mp_degree))
         logging.info("mp rank: {}".format(self.mp_rank))
         logging.info("mp group id: {}".format(self.mp_group_id))
         logging.info("mp group endpoints: {}".format(self.mp_group_endpoints))
