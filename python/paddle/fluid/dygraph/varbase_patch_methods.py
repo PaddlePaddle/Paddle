@@ -14,6 +14,7 @@
 
 import inspect
 import numpy as np
+import warnings
 import weakref
 
 import paddle
@@ -29,7 +30,7 @@ from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 
 class TensorHookRemoveHelper(object):
     """
-    A helper class that for removing Tensor gradient's hook. 
+    A helper class that for removing Tensor gradient's hook.
     """
 
     def __init__(self, tensor, hook_id):
@@ -37,9 +38,22 @@ class TensorHookRemoveHelper(object):
         self._hook_id = hook_id
 
     def remove(self):
+        """
+        Remove reference Tensor's hook.
+
+        Returns:
+            bool: Return True if removed successfully
+        """
         tensor = self._tensor_ref()
         if tensor is not None:
-            tensor._remove_grad_hook(self._hook_id)
+            res = tensor._remove_grad_hook(self._hook_id)
+            if res is True:
+                return True
+            else:
+                warnings.warn(
+                    "The backward hook (ID: %d) of Tensor `%s` you want to remove does not exist or has been removed."
+                    % (self._hook_id, tensor.name), RuntimeWarning)
+        return False
 
 
 def monkey_patch_varbase():
@@ -232,14 +246,14 @@ def monkey_patch_varbase():
         """
         Registers a backward hook for current Tensor.
 
-        The hook will be called every time the gradient Tensor of Current Tensor is computed.
+        The hook will be called every time the gradient Tensor of current Tensor is computed.
 
         The hook should not modify the input gradient Tensor, but it can optionally return
         a new gradient Tensor which will be used in place of current Tensor's gradient.
 
         The hook should have the following signature:
 
-            hook(grad) -> Variable or None
+            hook(grad) -> Tensor or None
 
         Args:
             hook(function): A backward hook to be registered for Tensor.grad
@@ -251,16 +265,36 @@ def monkey_patch_varbase():
              .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                def hook_fn(g):
-                    g = 2 * g
-                    print g
+                # hook function return None
+                def print_hook_fn(grad):
+                    print(grad)
 
-                t = paddle.randn([2, 3])
-                t.stop_gradient = False
-                h = t.register_hook(hook_fn)
-                t.backward()
+                # hook function return Tensor
+                def double_hook_fn(grad):
+                    grad = grad * 2
+                    return grad
+
+                x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
+                y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
+                z = paddle.to_tensor([1., 2., 3., 4.])
+
+                # one Tensor can register multiple hooks
+                h = x.register_hook(print_hook_fn)
+                x.register_hook(double_hook_fn)
+
+                w = x + y
+                # register hook by lambda function
+                w.register_hook(lambda grad: grad * 2)
+
+                o = z.matmul(w)
+                o.backward()
+
+                # ('w.grad: ', array([1., 2., 3., 4.], dtype=float32))
+                # ('x.grad: ', array([ 4.,  8., 12., 16.], dtype=float32))
+                # ('y.grad: ', array([2., 4., 6., 8.], dtype=float32))
+
+                # remove hook
                 h.remove()
         """
         if self.stop_gradient is True:
