@@ -4136,20 +4136,6 @@ class PipelineOptimizer(object):
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
             op._set_attr(self._op_device_key, "gpu:all")
-        elif op.type == "sum" and self._is_backward_op(op):
-            # For sum ops that compute the sum of @RENAMED@ vars
-            for name in op.desc.input_arg_names():
-                assert '@RENAME@' in name, \
-                    "The op must be sum used to accumulate renamed vars."
-            assert len(op.desc.output_arg_names()) == 1
-            out_name = op.desc.output_arg_names()[0]
-            post_op = self._find_post_op(block.ops, op, out_name)
-            assert post_op.has_attr(self._op_device_key), \
-                "{} has no op_device attr for var {}".format(
-                 post_op.type, out_name)
-            device = post_op.attr(self._op_device_key)
-            assert device, "The post op must have op_device set."
-            op._set_attr(self._op_device_key, device)
         elif (op.type == "cast" or
               op.type == "scale") and self._is_backward_op(op):
             prev_op = self._find_real_prev_op(block.ops, op,
@@ -4386,7 +4372,7 @@ class PipelineOptimizer(object):
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
                             attrs={
-                                self._op_device_key: cur_device,
+                                self._op_device_key: prev_device,
                                 self._op_role_key: self._op_role.Backward,
                                 'ring_id': ring_id,
                             })
