@@ -88,7 +88,7 @@ template <>
 __device__ __forceinline__ CudaVecType<float16>::type
 ReluGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* in) {
 // relu forward : out = max(in, 0)
-#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) 
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(in), kzero), __ldg(in));
 #else
@@ -117,7 +117,7 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<T> {
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
-    // relu backward : dx = out > 0 ? dout : 0;
+    // relu backward : dx = out > 0 ? dout : 0
     return out > zero_ ? dout : zero_;
   }
 
@@ -151,7 +151,7 @@ __device__ __forceinline__ CudaVecType<float16>::type
 ReluGradGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* out,
                                      const CudaVecType<float16>::type* dout) {
 // relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) 
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(out), kzero), __ldg(dout));
 #else
