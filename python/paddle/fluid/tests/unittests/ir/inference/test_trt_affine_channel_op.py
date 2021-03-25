@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
@@ -25,15 +26,29 @@ from paddle.fluid.core import AnalysisConfig
 
 class TRTAffineChannelTest(InferencePassTest):
     def setUp(self):
-        self.set_params()
+        self.bs = 2
+        self.channel = 8
+        self.height = 16
+        self.width = 16
+        self.data_layout = 'NCHW'
+        self.precision = AnalysisConfig.Precision.Float32
+        self.serialize = False
+        self.enable_trt = True
+
+        # set min_graph_size to 2, 
+        # because affine channel doesn't support nhwc format
+        self.trt_parameters = super().TensorRTParam(
+            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+
+    def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
-                shape = [-1, self.channel, self.hw[0], self.hw[1]]
+                shape = [-1, self.channel, self.height, self.width]
             else:
-                shape = [-1, self.hw[0], self.hw[1], self.channel]
+                shape = [-1, self.height, self.width, self.channel]
 
-            data = fluid.data(name='data', shape=shape, dtype='float32')
-            # scale, bias by constant
+            data = fluid.data(name='in', shape=shape, dtype='float32')
+            # set scale, bias by constant
             scale = fluid.layers.create_parameter(
                 shape=[self.channel],
                 dtype='float32',
@@ -42,40 +57,81 @@ class TRTAffineChannelTest(InferencePassTest):
                 shape=[self.channel],
                 dtype='float32',
                 default_initializer=fluid.initializer.Constant(.5))
-            affine_channel_out = self.append_affine_channel(data, scale, bias)
+            affine_channel_out = fluid.layers.affine_channel(
+                data, scale=scale, bias=bias, data_layout=self.data_layout)
             out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
-        self.feeds = {'data': np.random.random(shape).astype('float32'), }
-        self.enable_trt = True
-        self.trt_parameters = TRTAffineChannelTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.feeds = {'in': np.random.random(shape).astype('float32'), }
         self.fetch_list = [out]
 
-    def set_params(self):
-        self.bs = 2
-        self.channel = 8
-        self.hw = (16, 16)
-        self.data_layout = 'NCHW'
-
-    def append_affine_channel(self, data, scale, bias):
-        return fluid.layers.affine_channel(
-            data, scale=scale, bias=bias, data_layout=self.data_layout)
-
-    def test_check_output(self):
+    def check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
+    def run_test(self):
+        self.build()
+        self.check_output()
 
-class TRTAffineChannelTest1(TRTAffineChannelTest):
-    def set_params(self):
-        self.bs = 2
-        self.channel = 8
-        self.hw = (16, 16)
+    def run_test_all(self):
+        precision_opt = [
+            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+        ]
+        serialize_opt = [False, True]
+
+        if self.data_layout == 'NCHW':
+            min_shape = [
+                self.bs, self.channel, self.height // 2, self.width // 2
+            ]
+            max_shape = [self.bs, self.channel, self.height * 2, self.width * 2]
+            opt_shape = [self.bs, self.channel, self.height, self.width]
+
+        if self.data_layout == 'NHWC':
+            min_shape = [
+                self.bs, self.height // 2, self.width // 2, self.channel
+            ]
+            max_shape = [self.bs, self.height * 2, self.width * 2, self.channel]
+            opt_shape = [self.bs, self.height, self.width, self.channel]
+
+        dynamic_shape_profile = super().DynamicShapeParam({
+            'in': min_shape
+        }, {'in': max_shape}, {'in': opt_shape}, False)
+        dynamic_shape_opt = [None, dynamic_shape_profile]
+
+        for precision, serialize, dynamic_shape in itertools.product(
+                precision_opt, serialize_opt, dynamic_shape_opt):
+            self.precision = precision
+            self.serialize = serialize
+            self.dynamic_shape_params = dynamic_shape
+            self.run_test()
+
+    def test_base(self):
+        self.run_test()
+
+    def test_fp16(self):
+        self.precision = AnalysisConfig.Precision.Half
+        self.run_test()
+
+    def test_serialize(self):
+        self.serialize = True
+        self.run_test()
+
+    def test_dynamic(self):
+        self.dynamic_shape_params = super().DynamicShapeParam({
+            'in': [self.bs, self.channel, self.height // 2, self.width // 2]
+        }, {'in': [self.bs, self.channel, self.height * 2, self.width * 2]
+            }, {'in': [self.bs, self.channel, self.height, self.width]}, False)
+        self.run_test()
+
+    def test_nchw_all(self):
+        self.run_test_all()
+
+    def test_nhwc(self):
         self.data_layout = 'NHWC'
+        self.run_test_all()
 
 
 if __name__ == "__main__":
