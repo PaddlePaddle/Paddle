@@ -586,7 +586,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
     set(TEST_TRT_ERNIE_UNSER_FP16_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_fp16_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_unserialized.tgz)
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_fp16_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_fp16_unserialized.tgz")
     endif()
 
