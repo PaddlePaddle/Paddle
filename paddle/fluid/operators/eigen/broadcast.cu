@@ -65,6 +65,7 @@ INSTANTIATION(EigenBroadcastGrad, double);
 INSTANTIATION(EigenBroadcastGrad, int);
 INSTANTIATION(EigenBroadcastGrad, int64_t);
 template struct EigenBroadcastGrad<Eigen::GpuDevice, float, 0>;
+template struct EigenBroadcastGrad<Eigen::GpuDevice, platform::float16, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, double, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, int, 0>;
 template struct EigenBroadcastGrad<Eigen::GpuDevice, int64_t, 0>;
