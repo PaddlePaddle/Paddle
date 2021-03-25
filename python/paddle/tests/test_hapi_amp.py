@@ -51,27 +51,26 @@ class MnistDataset(MNIST):
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestDistTraningUsingAMP(unittest.TestCase):
-    def test_amp_training_purefp16(self):
-        if not fluid.is_compiled_with_cuda():
-            self.skipTest('module not tested when ONLY_CPU compling')
-        paddle.enable_static()
-        device = paddle.set_device('gpu')
-        net = LeNet()
-        amp_level = "O2"
-        # mnist_data = MnistDatasetFP16(mode='train', sample_num=2048)
-        mnist_data = MnistDataset(mode='train', sample_num=2048)
-        inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
-        label = InputSpec([None, 1], "int64", "y")
-        model = Model(net, inputs, label)
-        optim = paddle.optimizer.Adam(
-            learning_rate=0.001,
-            parameters=model.parameters())  #, multi_precision=True)
-        amp_configs = {"level": amp_level, "use_fp16_guard": False}
-        model.prepare(
-            optimizer=optim,
-            loss=CrossEntropyLoss(reduction="sum"),
-            amp_configs=amp_configs)
-        model.fit(mnist_data, batch_size=64, verbose=0)
+    def test_amp_training(self):
+        for dynamic in [True, False]:
+            amp_level = "O1"
+            if not fluid.is_compiled_with_cuda():
+                self.skipTest('module not tested when ONLY_CPU compling')
+            paddle.enable_static() if not dynamic else None
+            device = paddle.set_device('gpu')
+            net = LeNet()
+            mnist_data = MnistDataset(mode='train', sample_num=2048)
+            inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
+            label = InputSpec([None, 1], "int64", "y")
+            model = Model(net, inputs, label)
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters())
+            amp_configs = {"level": amp_level}
+            model.prepare(
+                optimizer=optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                amp_configs=amp_configs)
+            model.fit(mnist_data, batch_size=64, verbose=0)
 
 
 if __name__ == '__main__':

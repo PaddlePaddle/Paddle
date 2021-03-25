@@ -1296,11 +1296,44 @@ class Model(object):
         """
         return self._adapter.parameters()
 
-    def prepare(self,
-                optimizer=None,
-                loss=None,
-                metrics=None,
-                amp_configs={'level': 'O0'}):
+    def _prepare_amp(self, amp_configs):
+        self._adapter._amp_configs = amp_configs if amp_configs else {}
+        self._adapter._amp_custom_lists = {}
+
+        # check and get amp level
+        if not amp_configs:
+            self._adapter._amp_level = 'O0'
+            return
+        else:
+            if 'level' not in amp_configs:
+                self._adapter._amp_level = 'O1'
+            elif amp_configs['level'] not in ('O0', 'O1', 'O2'):
+                raise ValueError(
+                    "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
+            else:
+                self._adapter._amp_level = amp_configs.pop('level')
+
+        # pure float16 training has some restricts now
+        if self._adapter._amp_level == "O2":
+            if in_dygraph_mode():
+                warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
+                    "and it will be supported in future version.")
+            else:
+                # grad clip is not supported in pure fp16 training now.
+                assert self._optimizer._grad_clip is None, \
+                    "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
+
+        if self._adapter._amp_level != 'O0' and self._adapter._amp_configs:
+            for param_name in [
+                    'custom_white_list', 'custom_black_list',
+                    'custom_black_varnames'
+            ]:
+                if param_name in self._adapter._amp_configs:
+                    self._adapter._amp_custom_lists[
+                        param_name] = amp_configs.pop(param_name)
+
+    def prepare(self, optimizer=None, loss=None, metrics=None,
+                amp_configs=None):
         """
         Configures the model before runing.
 
@@ -1317,7 +1350,7 @@ class Model(object):
             amp_configs (dict|None): AMP configurations. If AMP or pure
                 float16 training is used, the key 'level' of `amp_configs`
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
-                value of 'level' should be 'O0', which means training without
+                value of 'level' defaults to 'O0', which means training without
                 using AMP or pure float training. In addition to 'level',
                 users could pass in more parameters consistent with low-level
                 API. The supported keys are: 'init_loss_scaling', 'incr_ratio',
@@ -1326,11 +1359,10 @@ class Model(object):
                 'custom_black_list' and 'custom_black_varnames', and
                 'custom_black_varnames' is only supported in static mode. It
                 could be None if default parameters are chosen or AMP is not
-                used. Default: {'level': 'O0'}.
+                used. Default: None.
         Returns:
             None
         """
-
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
@@ -1363,30 +1395,7 @@ class Model(object):
                 "{} is not sub class of Metric".format(
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
-
-        if not amp_configs or amp_configs and 'level' not in amp_configs or amp_configs[
-                'level'] not in ('O0', 'O1', 'O2'):
-            raise ValueError(
-                "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
-        if amp_configs['level'] == "O2" and in_dygraph_mode():
-            warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
-                "and it will be supported in future version.")
-        self._adapter._amp_level = amp_configs.pop('level')
-        self._adapter._amp_configs = amp_configs if amp_configs else {}
-        self._adapter._amp_custom_lists = {}
-
-        if self._adapter._amp_level != 'O0':
-            # Grad clip is not supported in AMP now.
-            assert self._optimizer._grad_clip is None, \
-                "Grad clip is not supported in AMP now, and it will be supported in future version."
-
-            for param_name in [
-                    'custom_white_list', 'custom_black_list',
-                    'custom_black_varnames'
-            ]:
-                if param_name in self._adapter._amp_configs:
-                    self._adapter._amp_custom_lists[
-                        param_name] = amp_configs.pop(param_name)
+        self._prepare_amp(amp_configs)
 
         if not in_dygraph_mode():
             self._adapter.prepare()
