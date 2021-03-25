@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
 
 #include <atomic>
 #include <ctime>
@@ -26,6 +27,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#ifdef PADDLE_WITH_GLOO
+#include <gloo/broadcast.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -33,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
@@ -79,11 +85,48 @@ class PSGPUWrapper {
   void BuildTask(std::shared_ptr<HeterContext> gpu_task, uint64_t table_id,
                  int feature_dim);
   void InitializeGPU(const std::vector<int>& dev_ids) {
-    if (s_instance_ != NULL) {
+    if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
+      is_initialized_ = true;
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
+      if (multi_node_) {
+        int dev_size = dev_ids.size();
+        // init inner comm
+        inner_comms_.resize(dev_size);
+        inter_ncclids_.resize(dev_size);
+        platform::dynload::ncclCommInitAll(&(inner_comms_[0]), dev_size,
+                                           &dev_ids[0]);
+// init inter comm
+#ifdef PADDLE_WITH_GLOO
+        inter_comms_.resize(dev_size);
+        auto gloo = paddle::framework::GlooWrapper::GetInstance();
+        if (gloo->Rank() == 0) {
+          for (int i = 0; i < dev_size; ++i) {
+            platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+          }
+        }
+
+        PADDLE_ENFORCE_EQ(
+            gloo->IsInitialized(), true,
+            platform::errors::PreconditionNotMet(
+                "You must initialize the gloo environment first to use it."));
+        gloo::BroadcastOptions opts(gloo->GetContext());
+        opts.setOutput(&inter_ncclids_[0], dev_size);
+        opts.setRoot(0);
+        gloo::broadcast(opts);
+
+        for (int i = 0; i < dev_size; ++i) {
+          platform::dynload::ncclCommInitRank(&inter_comms_[i], gloo->Size(),
+                                              inter_ncclids_[i], gloo->Rank());
+        }
+        node_size_ = gloo->Size();
+#else
+        PADDLE_THROW(
+            platform::errors::Unavailable("heter ps need compile with GLOO"));
+#endif
+      }
       heter_devices_ = dev_ids;
     }
   }
@@ -176,10 +219,15 @@ class PSGPUWrapper {
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
+  int multi_node_{1};
+  int node_size_;
+  std::vector<ncclComm_t> inner_comms_;
+  std::vector<ncclComm_t> inter_comms_;
+  std::vector<ncclUniqueId> inter_ncclids_;
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
-  std::vector<std::vector<std::vector<uint64_t>>> thread_keys_;
+  std::vector<std::vector<std::unordered_set<uint64_t>>> thread_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;

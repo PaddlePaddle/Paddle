@@ -79,16 +79,13 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
     }
   }
 
-  VLOG(0) << "BrpcPsServer::start registe_ps_server";
   _environment->registe_ps_server(ip, port, _rank);
-  VLOG(0) << "BrpcPsServer::start wait";
   cv_.wait(lock, [&] { return stoped_; });
 
   PSHost host;
   host.ip = ip;
   host.port = port;
   host.rank = _rank;
-  VLOG(0) << "BrpcPsServer::start return host.rank";
   return host.rank;
 }
 
@@ -464,7 +461,7 @@ int32_t BrpcPsService::save_one_table(Table *table,
 
   int32_t feasign_size = 0;
 
-  VLOG(0) << "save one table " << request.params(0) << " " << request.params(1);
+  VLOG(3) << "save table " << request.params(0) << " " << request.params(1);
   feasign_size = table->save(request.params(0), request.params(1));
   if (feasign_size < 0) {
     set_response_code(response, -1, "table save failed");
@@ -507,7 +504,7 @@ int32_t BrpcPsService::shrink_table(Table *table,
     set_response_code(response, -1, "table shrink failed");
     return -1;
   }
-  VLOG(0) << "Pserver Shrink Finished";
+  VLOG(3) << "Pserver Shrink Finished";
   return 0;
 }
 

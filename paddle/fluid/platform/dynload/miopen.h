@@ -16,9 +16,14 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include <miopen/miopen.h>
+#include <miopen/version.h>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
+
+#define MIOPEN_VERSION                                        \
+  (MIOPEN_VERSION_MAJOR * 1000 + MIOPEN_VERSION_MINOR * 100 + \
+   MIOPEN_VERSION_PATCH)  // NOLINT
 
 namespace paddle {
 namespace platform {
@@ -120,6 +125,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenCreateRNNDescriptor);                     \
   __macro(miopenDestroyRNNDescriptor);                    \
   __macro(miopenSetRNNDescriptor);                        \
+  __macro(miopenSetRNNDescriptor_V2);                     \
   __macro(miopenGetRNNParamsSize);                        \
   __macro(miopenGetRNNWorkspaceSize);                     \
   __macro(miopenGetRNNTrainingReserveSize);               \

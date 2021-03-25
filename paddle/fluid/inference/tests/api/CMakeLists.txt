@@ -142,6 +142,19 @@ function(inference_analysis_api_lexical_test_run TARGET_NAME test_binary infer_m
              --iterations=2)
 endfunction()
 
+function(inference_analysis_api_lexical_bfloat16_test_run TARGET_NAME test_binary infer_model data_path)
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${infer_model}
+             --infer_data=${data_path}
+             --batch_size=50
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_accuracy_layer=true
+             --use_analysis=true
+             --enable_bf16=true
+             --iterations=2)
+endfunction()
+
 function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
 	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
 	        ARGS --data_dir=${data_dir}
@@ -421,6 +434,8 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
   # run lexcial analysis test
   inference_analysis_api_lexical_test_run(test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
+  # run bfloat16 lexical analysis test
+  inference_analysis_api_lexical_bfloat16_test_run(test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
 
   ### optimized FP32 vs. Quant INT8 tests
   
@@ -584,13 +599,12 @@ endif()
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
 download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
 
-#TODO(wilber): tmp disable ut.
-#inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
-#        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-#        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
-#inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
-#        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-#        ARGS --infer_model=${RESNET50_MODEL_DIR})
+inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
+inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
 
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_inference_c
@@ -642,8 +656,7 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
 endif()
 
-#TODO(wilber): tmp disable ut
-#set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
+set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)

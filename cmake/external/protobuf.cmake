@@ -250,5 +250,8 @@ IF(NOT PROTOBUF_FOUND)
 
     SET(PROTOBUF_PROTOC_EXECUTABLE ${extern_protobuf_PROTOC_EXECUTABLE}
         CACHE FILEPATH "protobuf executable." FORCE)
+    # `EXTERN_PROTOBUF_DEPEND` used in cmake function `proto_library` to ensure
+    # `protoc.exe` existed before calling it.
+    set(EXTERN_PROTOBUF_DEPEND extern_protobuf)
     PROMPT_PROTOBUF_LIB(extern_protobuf)
 ENDIF(NOT PROTOBUF_FOUND)

@@ -15,9 +15,18 @@
 #include "paddle/fluid/operators/dist_op.h"
 
 namespace ops = paddle::operators;
+#ifdef PADDLE_WITH_HIP
+// Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
+// do not support double in HIPCC platform (Eigen3 to be fixed)
+REGISTER_OP_CUDA_KERNEL(
+    dist, ops::DistKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    dist_grad, ops::DistGradKernel<paddle::platform::CUDADeviceContext, float>);
+#else
 REGISTER_OP_CUDA_KERNEL(
     dist, ops::DistKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DistKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     dist_grad, ops::DistGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DistGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_ptr.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
@@ -107,7 +107,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     auto *x_data = x->data<Tx>();
     auto x_numel = x->numel();
     if (maxlen < 0) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       VLOG(10)
           << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
       maxlen = static_cast<int>(

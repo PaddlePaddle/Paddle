@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
@@ -612,6 +613,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       platform::errors::InvalidArgument(
           "Note: Each config can only be used for one predictor."));
 
+  // Register custom operators compiled by the user.
+  // This function can only be executed once per process.
+  static std::once_flag custom_operators_registered;
+  std::call_once(custom_operators_registered,
+                 []() { paddle::RegisterAllCustomOperator(); });
+
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
     static bool process_level_allocator_enabled;
@@ -1010,8 +1017,8 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+      std::string engine_name = BOOST_GET_CONST(
+          std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
@@ -1173,6 +1180,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(group_norm);
 USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
@@ -1183,23 +1191,12 @@ USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
 USE_TRT_CONVERTER(clip);
+USE_TRT_CONVERTER(gather);
+
+USE_TRT_CONVERTER(nearest_interp);
 #endif
 
 namespace paddle_infer {
-
-void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
-
-std::vector<int> Tensor::shape() const { return tensor_->shape(); }
-
-void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
-  return tensor_->SetLoD(x);
-}
-
-std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
-
-const std::string &Tensor::name() const { return tensor_->name(); }
-
-DataType Tensor::type() const { return tensor_->type(); }
 
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
@@ -1213,9 +1210,7 @@ std::vector<std::string> Predictor::GetInputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetInputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetInputTensor(name);
 }
 
 std::vector<std::string> Predictor::GetOutputNames() {
@@ -1223,9 +1218,7 @@ std::vector<std::string> Predictor::GetOutputNames() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
-  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
-  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
-  return tensor;
+  return predictor_->GetOutputTensor(name);
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
