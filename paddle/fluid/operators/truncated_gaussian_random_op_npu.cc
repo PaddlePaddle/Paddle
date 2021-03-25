@@ -99,6 +99,8 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     framework::TensorCopy(
         cpu_tensor, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), tensor);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
   }
 };
 
