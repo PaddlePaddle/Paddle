@@ -69,7 +69,7 @@ template <>
 __device__ __forceinline__ CudaVecType<double>::type
 ReluGPUFunctor<double>::Compute(const CudaVecType<double>::type* x) {
 // relu forward : out = max(x, 0)
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
   return __ldg(x) > zero_ ? __ldg(x) : zero_;
 #else
   return (*x) > zero_ ? (*x) : zero_;
@@ -88,7 +88,7 @@ template <>
 __device__ __forceinline__ CudaVecType<float16>::type
 ReluGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* in) {
 // relu forward : out = max(in, 0)
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) 
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(in), kzero), __ldg(in));
 #else
@@ -129,7 +129,7 @@ __device__ __forceinline__ CudaVecType<double>::type
 ReluGradGPUFunctor<double>::Compute(const CudaVecType<double>::type* out,
                                     const CudaVecType<double>::type* dout) {
 // relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
   return __ldg(out) > zero_ ? __ldg(dout) : zero_;
 #else
   return (*out) > zero_ ? (*dout) : zero_;
@@ -151,7 +151,7 @@ __device__ __forceinline__ CudaVecType<float16>::type
 ReluGradGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* out,
                                      const CudaVecType<float16>::type* dout) {
 // relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__) 
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(out), kzero), __ldg(dout));
 #else
