@@ -22,6 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 extern __global__ void GenAnchors(T* out, const T* aspect_ratios,
                                   const int ar_num, const T* anchor_sizes,
@@ -32,6 +33,7 @@ extern __global__ void GenAnchors(T* out, const T* aspect_ratios,
 template <typename T>
 extern __global__ void SetVariance(T* out, const T* var, const int vnum,
                                    const int num);
+#endif
 
 template <typename T>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
