@@ -75,7 +75,7 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.run_test()
 
     def test_dynamic(self):
-        self.dynamic_shape_params = super().DynamicShapeParam({
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
             'data': [self.bs, self.channel, self.height // 2, self.width // 2]
         }, {
             'data': [self.bs, self.channel, self.height * 2, self.width * 2]
