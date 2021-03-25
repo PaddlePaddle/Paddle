@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <typeindex>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex128.h"
 #include "paddle/fluid/platform/complex64.h"

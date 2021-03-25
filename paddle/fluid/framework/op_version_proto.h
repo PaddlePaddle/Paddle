@@ -17,6 +17,8 @@ limitations under the License. */
 #include <stdint.h>
 #include <string>
 
+#include "paddle/fluid/framework/framework.pb.h"
+
 namespace paddle {
 namespace framework {
 namespace compatible {
