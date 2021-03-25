@@ -245,6 +245,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             logging.info("Sharding with optimize offload !")
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
+            offload_helper.offload_fp32param(main_block, startup_block)
 
         with open("start_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
