@@ -129,8 +129,8 @@ class TestMultipleGpus(unittest.TestCase):
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
 
-    def test_hapi_amp_training(self):
-        self.run_mnist_2gpu('dist_hapi_amp.py')
+    def test_hapi_amp_static(self):
+        self.run_mnist_2gpu('dist_hapi_amp_static.py')
 
 
 if __name__ == "__main__":
