@@ -79,13 +79,12 @@ class LSTMMKLDNNHandler
                                    MKLDNNMemoryFormat::ldgo);
       auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T_out>(),
                                      MKLDNNMemoryFormat::tnc);
+
+
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
-                                 MKLDNNMemoryFormat::ldnc);
+                                MKLDNNMemoryFormat::ldnc);
       auto c0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<float>(),  // Vanilla LSTM and LSTM
-                                                      // with peepoles has c0 as
-                                                      // fp32
-          MKLDNNMemoryFormat::ldnc);
+          {L, D, N, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -305,7 +304,6 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     const auto* bias = ctx.Input<Tensor>("Bias");
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
     auto* cell = ctx.Output<LoDTensor>("Cell");
-    cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                           ? framework::flatten_to_2d(x_dims, 1)
@@ -338,7 +336,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
         ctx.InputName("X") + ctx.InputName("WeightH"));
 
     auto input_memory_p =
-        handler.AcquireInputMemoryWithReorder(input, is_reverse);
+        handler.AcquireInputMemoryWithReorder(input, is_reverse); 
     auto c0_memory_p = handler.AcquireC0Memory(c0);
 
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
@@ -360,6 +358,12 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
               weight_h);
+    } else {
+      h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
+      weight_x_memory_p =
+          handler.template AcquireWeightXMemory<int8_t>(weight_x);
+      weight_h_memory_p =
+          handler.template AcquireWeightHMemory<int8_t>(weight_h);
     }
 
     auto bias_memory_p = handler.AcquireBiasMemory(bias);
@@ -406,4 +410,5 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm, MKLDNN, paddle::platform::CPUPlace,
                    ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>);
+                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::FusionLSTMMKLDNNKernel<uint8_t>);
