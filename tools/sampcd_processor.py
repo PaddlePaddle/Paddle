@@ -39,21 +39,24 @@ for example, you can run cpu version python2 testing like this:
 
 logger = logging.getLogger()
 if logger.handlers:
-    console = logger.handlers[0]  # we assume the first handler is the one we want to configure
+    console = logger.handlers[
+        0]  # we assume the first handler is the one we want to configure
 else:
     console = logging.StreamHandler()
     logger.addHandler(console)
-console.setFormatter(logging.Formatter(
-    "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+console.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 
 RUN_ON_DEVICE = 'cpu'
-GPU_ID=0
+GPU_ID = 0
 methods = []
 whl_error = []
 API_DEV_SPEC_FN = 'paddle/fluid/API_DEV.spec'
 API_PR_SPEC_FN = 'paddle/fluid/API_PR.spec'
 API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 SAMPLECODE_TEMPDIR = 'samplecode_temp'
+
 
 def find_all(srcstr, substr):
     """
@@ -189,11 +192,12 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         if RUN_ON_DEVICE == "cpu":
             sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
         if RUN_ON_DEVICE == "gpu":
-            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(GPU_ID) + sampcd
+            sampcd = '\nimport os\nos.environ["CUDA_VISIBLE_DEVICES"] = "{}"\n'.format(
+                GPU_ID) + sampcd
         sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
 
-        tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(name,
-            '.py' if len(sampcd_begins) > 1 else '_{}.py'.format(y)))
+        tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
+            name, '.py' if len(sampcd_begins) > 1 else '_{}.py'.format(y)))
         logging.info('running %s', tfname)
         with open(tfname, 'w') as tempf:
             tempf.write(sampcd)
@@ -371,7 +375,8 @@ def srccoms_extract(srcfile, wlist, methods):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    result,_,_ = sampcd_extract_and_run(opcom, opname, "def", opname)
+                    result, _, _ = sampcd_extract_and_run(opcom, opname, "def",
+                                                          opname)
                     if not result:
                         error_methods.append(opname)
                         process_result = False
@@ -408,7 +413,8 @@ def srccoms_extract(srcfile, wlist, methods):
                               ", but it deserves.")
                         continue
                     else:
-                        result,_,_ = sampcd_extract_and_run(fcombody, fn, "def", fn)
+                        result, _, _ = sampcd_extract_and_run(fcombody, fn,
+                                                              "def", fn)
                         if not result:
                             error_methods.append(fn)
                             process_result = False
@@ -432,7 +438,8 @@ def srccoms_extract(srcfile, wlist, methods):
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
                     if classcom != "":
-                        result,_,_ = sampcd_extract_and_run(classcom, cn, "class", cn)
+                        result, _, _ = sampcd_extract_and_run(classcom, cn,
+                                                              "class", cn)
                         if not result:
                             error_methods.append(cn)
                             process_result = False
@@ -492,7 +499,8 @@ def srccoms_extract(srcfile, wlist, methods):
                                 thismtdcom = single_defcom_extract(0,
                                                                    thismethod)
                                 if thismtdcom != "":
-                                    result,_,_ = sampcd_extract_and_run(thismtdcom, name, "method", name)
+                                    result, _, _ = sampcd_extract_and_run(
+                                        thismtdcom, name, "method", name)
                                     if not result:
                                         error_methods.append(name)
                                         process_result = False
@@ -513,10 +521,13 @@ def test(file_list):
 
 
 def run_a_test(tc_filename):
+    """
+    execute a sample code-block.
+    """
     global methods  # readonly
     process_result = True
     with open(tc_filename, 'r') as src:
-        process_result, error_methods  = srccoms_extract(src, wlist, methods)
+        process_result, error_methods = srccoms_extract(src, wlist, methods)
     return process_result, tc_filename, error_methods
 
 
@@ -684,15 +695,16 @@ def parse_args():
     return args
 
 
-
 if __name__ == '__main__':
     args = parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
     if args.logf:
         logfHandler = logging.FileHandler(args.logf)
-        logfHandler.setFormatter(logging.Formatter(
-            "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+        logfHandler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"
+            ))
         logger.addHandler(logfHandler)
 
     wlist, wlist_file, gpu_not_white = get_wlist()
@@ -732,7 +744,6 @@ if __name__ == '__main__':
         logger.info("REMOVE white files: %s", rm_file)
     logger.info("API_PR is diff from API_DEV: %s", filenames)
 
-
     threads = multiprocessing.cpu_count()
     if args.threads:
         threads = args.threads
@@ -761,7 +772,8 @@ if __name__ == '__main__':
         )
         for temp in result:
             if not temp[0]:
-                logger.info("In addition, mistakes found in sample codes: %s", temp[1])
+                logger.info("In addition, mistakes found in sample codes: %s",
+                            temp[1])
                 logger.info("error_methods: %s", str(temp[2]))
         logger.info("----------------------------------------------------")
         exit(1)
@@ -769,7 +781,8 @@ if __name__ == '__main__':
         has_error = False
         for temp in result:
             if not temp[0]:
-                logger.info("In addition, mistakes found in sample codes: %s", temp[1])
+                logger.info("In addition, mistakes found in sample codes: %s",
+                            temp[1])
                 logger.info("error_methods: %s", str(temp[2]))
                 has_error = True
         if has_error:

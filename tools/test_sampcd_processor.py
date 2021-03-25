@@ -1,4 +1,19 @@
 #! python
+
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import os
 import tempfile
@@ -14,31 +29,35 @@ from sampcd_processor import get_api_md5
 from sampcd_processor import get_incrementapi
 from sampcd_processor import get_wlist
 
+
 class Test_find_all(unittest.TestCase):
-    # def test_srcstr_is_None(self):
-    #    self.assertIsNone(find_all(None, 'hello world'))
     def test_find_none(self):
         self.assertEqual(0, len(find_all('hello', 'world')))
+
     def test_find_one(self):
         self.assertListEqual([0], find_all('hello', 'hello'))
+
     def test_find_two(self):
-        self.assertListEqual([1, 15], find_all(' hello, world; hello paddle!', 'hello'))
+        self.assertListEqual([1, 15],
+                             find_all(' hello, world; hello paddle!', 'hello'))
+
 
 class Test_check_indent(unittest.TestCase):
     def test_no_indent(self):
         self.assertEqual(0, check_indent('hello paddle'))
+
     def test_indent_4_spaces(self):
         self.assertEqual(4, check_indent('    hello paddle'))
+
     def test_indent_1_tab(self):
         self.assertEqual(4, check_indent("\thello paddle"))
-    # def test_indent_mixed_spaces_and_tab(self):
-    #     with self.assertRaises(Exception):
-    #         check_indent("  \thello paddle")
+
 
 class Test_sampcd_extract_and_run(unittest.TestCase):
     def setUp(self):
         if not os.path.exists('samplecode_temp/'):
             os.mkdir('samplecode_temp/')
+
     def test_run_a_defs_samplecode(self):
         comments = """
         Examples:
@@ -47,12 +66,14 @@ class Test_sampcd_extract_and_run(unittest.TestCase):
         """
         funcname = 'one_plus_one'
         self.assertTrue(sampcd_extract_and_run(comments, funcname))
+
     def test_run_a_def_no_code(self):
         comments = """
         placeholder
         """
         funcname = 'one_plus_one'
         self.assertFalse(sampcd_extract_and_run(comments, funcname))
+
     def test_run_a_def_raise_expection(self):
         comments = """
         placeholder
@@ -63,9 +84,10 @@ class Test_sampcd_extract_and_run(unittest.TestCase):
         funcname = 'one_plus_one'
         self.assertFalse(sampcd_extract_and_run(comments, funcname))
 
+
 class Test_single_defcom_extract(unittest.TestCase):
     def test_extract_from_func(self):
-        defstr='''
+        defstr = '''
 import os
 def foo():
             """
@@ -75,20 +97,24 @@ def foo():
 def bar():
             pass
 '''
-        comm = single_defcom_extract(2, defstr.splitlines(True), is_class_begin=False)
+        comm = single_defcom_extract(
+            2, defstr.splitlines(True), is_class_begin=False)
         self.assertEqual("            foo is a function.\n", comm)
         pass
+
     def test_extract_from_func_with_no_docstring(self):
-        defstr='''
+        defstr = '''
 import os
 def bar():
             pass
 '''
-        comm = single_defcom_extract(2, defstr.splitlines(True), is_class_begin=False)
+        comm = single_defcom_extract(
+            2, defstr.splitlines(True), is_class_begin=False)
         self.assertEqual('', comm)
         pass
+
     def test_extract_from_class(self):
-        defstr=r'''
+        defstr = r'''
 import os
 class Foo():
             """
@@ -101,14 +127,16 @@ class Foo():
 def foo():
             pass
 '''
-        comm = single_defcom_extract(2, defstr.splitlines(True), is_class_begin=True)
+        comm = single_defcom_extract(
+            2, defstr.splitlines(True), is_class_begin=True)
         rcomm = """            Foo is a class.
             second line.
 """
         self.assertEqual(rcomm, comm)
         pass
+
     def test_extract_from_class_with_no_docstring(self):
-        defstr='''
+        defstr = '''
 import os
 class Foo():
             pass
@@ -117,60 +145,75 @@ class Foo():
 def foo():
             pass
 '''
-        comm = single_defcom_extract(0, defstr.splitlines(True), is_class_begin=True)
+        comm = single_defcom_extract(
+            0, defstr.splitlines(True), is_class_begin=True)
         self.assertEqual('', comm)
+
 
 class Test_get_api_md5(unittest.TestCase):
     def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_PR.spec'))
+        self.api_pr_spec_filename = os.path.abspath(
+            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
                 """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
                 """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
                 """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
                 """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
-                ]))
+            ]))
+
     def tearDown(self):
         os.remove(self.api_pr_spec_filename)
         pass
+
     def test_get_api_md5(self):
         res = get_api_md5('paddle/fluid/API_PR.spec')
         self.assertEqual("'md5sum of one_plus_one'", res['one_plus_one'])
         self.assertEqual("'md5sum of two_plus_two'", res['two_plus_two'])
-        self.assertEqual("'md5sum of three_plus_three'", res['three_plus_three'])
+        self.assertEqual("'md5sum of three_plus_three'",
+                         res['three_plus_three'])
         self.assertEqual("'md5sum of four_plus_four'", res['four_plus_four'])
+
 
 class Test_get_incrementapi(unittest.TestCase):
     def setUp(self):
-        self.api_pr_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_PR.spec'))
+        self.api_pr_spec_filename = os.path.abspath(
+            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
                 """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
                 """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
                 """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
                 """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
-                ]))
-        self.api_dev_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_DEV.spec'))
+            ]))
+        self.api_dev_spec_filename = os.path.abspath(
+            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_DEV.spec'))
         with open(self.api_dev_spec_filename, 'w') as f:
             f.write("\n".join([
                 """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
-                ]))
-        self.api_diff_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "dev_pr_diff_api.spec"))
+            ]))
+        self.api_diff_spec_filename = os.path.abspath(
+            os.path.join(os.getcwd(), "dev_pr_diff_api.spec"))
+
     def tearDown(self):
         os.remove(self.api_pr_spec_filename)
         os.remove(self.api_dev_spec_filename)
         os.remove(self.api_diff_spec_filename)
+
     def test_it(self):
         get_incrementapi()
         with open(self.api_diff_spec_filename, 'r') as f:
             lines = f.readlines()
-            self.assertCountEqual(["two_plus_two\n", "three_plus_three\n", "four_plus_four\n"], lines)
+            self.assertCountEqual(
+                ["two_plus_two\n", "three_plus_three\n", "four_plus_four\n"],
+                lines)
+
 
 class Test_get_wlist(unittest.TestCase):
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp()
         self.wlist_filename = os.path.join(self.tmpDir, 'wlist.json')
-        with open(self.wlist_filename , 'w') as f:
+        with open(self.wlist_filename, 'w') as f:
             f.write(r'''
 {
     "wlist_dir":[
@@ -197,41 +240,43 @@ class Test_get_wlist(unittest.TestCase):
         "deformable_conv"
     ]
 }
-'''
-)
+''')
+
     def tearDown(self):
         os.remove(self.wlist_filename)
         shutil.rmtree(self.tmpDir)
+
     def test_get_wlist(self):
         wlist, wlist_file, gpu_not_white = get_wlist(self.wlist_filename)
-        self.assertCountEqual(["xxxxx",
-            "to_tensor",
-            "save_persistables@dygraph/checkpoint.py"
-            ], wlist)
+        self.assertCountEqual(
+            ["xxxxx", "to_tensor",
+             "save_persistables@dygraph/checkpoint.py"], wlist)
         self.assertCountEqual([
             "../python/paddle/fluid/contrib",
             "../python/paddle/verison.py",
-            ], wlist_file)
-        self.assertCountEqual([
-            "deformable_conv"
-            ], gpu_not_white)
+        ], wlist_file)
+        self.assertCountEqual(["deformable_conv"], gpu_not_white)
+
 
 class Test_srccoms_extract(unittest.TestCase):
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp()
         sys.path.append(self.tmpDir)
-        self.api_pr_spec_filename = os.path.abspath(os.path.join(os.getcwd(), "..",'paddle/fluid/API_PR.spec'))
+        self.api_pr_spec_filename = os.path.abspath(
+            os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
                 """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "one_plus_one"))""",
                 """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "two_plus_two"))""",
                 """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "three_plus_three"))""",
                 """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', "four_plus_four"))""",
-                ]))
+            ]))
+
     def tearDown(self):
         sys.path.remove(self.tmpDir)
         shutil.rmtree(self.tmpDir)
         os.remove(self.api_pr_spec_filename)
+
     def test_from_ops_py(self):
         filecont = '''
 def add_sample_code(obj, docstr):
@@ -283,14 +328,21 @@ add_sample_code(globals()["two_plus_two"], """
         self.assertTrue(os.path.exists(pyfilename))
         utsp = importlib.import_module('ops')
         print('testing srccoms_extract from ops.py')
-        methods = ['one_plus_one','two_plus_two','exp']
-        os.remove("samplecode_temp/" "one_plus_one_example.py") 
-        self.assertFalse(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 
+        methods = ['one_plus_one', 'two_plus_two', 'exp']
+        os.remove("samplecode_temp/" "one_plus_one_example.py")
+        self.assertFalse(
+            os.path.exists("samplecode_temp/"
+                           "one_plus_one_example.py"))
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, [], methods))
-        self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py")) 
-        self.assertTrue(os.path.exists("samplecode_temp/" "two_plus_two_example.py"))
+        self.assertTrue(
+            os.path.exists("samplecode_temp/"
+                           "one_plus_one_example.py"))
+        self.assertTrue(
+            os.path.exists("samplecode_temp/"
+                           "two_plus_two_example.py"))
         self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
+
     def test_from_not_ops_py(self):
         filecont = '''
 __all__ = [
@@ -315,12 +367,16 @@ def one_plus_one():
         methods = ['one_plus_one']
         with open(pyfilename, 'r') as pyfile:
             self.assertTrue(srccoms_extract(pyfile, [], methods))
-        self.assertTrue(os.path.exists("samplecode_temp/" "one_plus_one_example.py"))
+        self.assertTrue(
+            os.path.exists("samplecode_temp/"
+                           "one_plus_one_example.py"))
+
     def test_with_empty_wlist(self):
         """
         see test_from_ops_py
         """
         pass
+
     def test_with_wlist(self):
         filecont = '''
 __all__ = [
@@ -352,14 +408,15 @@ def three_plus_three():
         with open(pyfilename, 'w') as pyfile:
             pyfile.write(filecont)
         utsp = importlib.import_module('three_and_four')
-        methods = [
-        'four_plus_four',
-        'three_plus_three'
-        ]
+        methods = ['four_plus_four', 'three_plus_three']
         with open(pyfilename, 'r') as pyfile:
-            self.assertTrue(srccoms_extract(pyfile, ['three_plus_three'], methods))
-        self.assertTrue(os.path.exists("samplecode_temp/four_plus_four_example.py"))
-        self.assertFalse(os.path.exists("samplecode_temp/three_plus_three_example.py"))
+            self.assertTrue(
+                srccoms_extract(pyfile, ['three_plus_three'], methods))
+        self.assertTrue(
+            os.path.exists("samplecode_temp/four_plus_four_example.py"))
+        self.assertFalse(
+            os.path.exists("samplecode_temp/three_plus_three_example.py"))
+
 
 # https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/layers/ops.py
 # why? unabled to use the ast module. emmmmm
