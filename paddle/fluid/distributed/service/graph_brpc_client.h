@@ -71,6 +71,10 @@ class GraphBrpcClient : public BrpcPsClient {
                                                    int server_index,
                                                    int sample_size,
                                                    std::vector<uint64_t>& ids);
+  virtual std::future<int32_t> get_node_feat(
+      const uint32_t& table_id, const std::vector<uint64_t>& node_ids,
+      const std::vector<std::string>& feature_names,
+      std::vector<std::vector<std::string>>& res);
   virtual int32_t initialize();
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }

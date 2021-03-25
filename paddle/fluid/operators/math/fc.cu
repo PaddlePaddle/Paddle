@@ -61,7 +61,7 @@ __global__ void InplaceAddReluKernel(const int N, const T* bias, T* data) {
 
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     T temp;
-#if __CUDA_ARCH__ >= 350
+#if defined(__HIPCC__) || __CUDA_ARCH__ >= 350
     temp = __ldg(data + offset + i) + __ldg(bias + i);
 #else
     temp = data[offset + i] + bias[i];

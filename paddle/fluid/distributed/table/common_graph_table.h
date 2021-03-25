@@ -100,7 +100,7 @@ class GraphTable : public SparseTable {
   int32_t load_edges(const std::string &path, bool reverse);
 
   int32_t load_nodes(const std::string &path, std::string node_type);
-    
+
   Node *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys, size_t num) {
@@ -121,16 +121,20 @@ class GraphTable : public SparseTable {
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
   virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
 
+  virtual int32_t get_node_feat(const std::vector<uint64_t> &node_ids,
+                                const std::vector<std::string> &feature_names,
+                                std::vector<std::vector<std::string>> &res);
+
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
   const int task_pool_size_ = 11;
   const int random_sample_nodes_ranges = 3;
 
-  std::vector<std::string > feat_name;
-  std::vector<std::string > feat_dtype;
-  std::vector<int32_t > feat_shape;
-  std::unordered_map<std::string, int32_t > feat_id_map;
+  std::vector<std::string> feat_name;
+  std::vector<std::string> feat_dtype;
+  std::vector<int32_t> feat_shape;
+  std::unordered_map<std::string, int32_t> feat_id_map;
   std::string table_name;
   std::string table_type;
 

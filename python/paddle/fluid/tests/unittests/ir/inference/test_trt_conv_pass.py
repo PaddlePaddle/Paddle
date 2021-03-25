@@ -67,15 +67,12 @@ class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
         self.conv_padding = 'VALID'
 
 
-'''
-# conv2d padded in 'SAME' mode is not yet supported in TRT, reopen this when support is complete.
 class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
         self.conv_groups = 3
         self.conv_padding = 'SAME'
-'''
 
 
 class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
@@ -131,15 +128,13 @@ class TensorRTSubgraphPassConvTransposeValidPaddingTest(
         self.conv_padding = 'VALID'
 
 
-'''
-# conv2d_transpose padded in 'SAME' mode is not yet supported in TRT, reopen this when support is complete.
-class TensorRTSubgraphPassConvTransposeSamePaddingTest(TensorRTSubgraphPassConvTransposeTest):
+class TensorRTSubgraphPassConvTransposeSamePaddingTest(
+        TensorRTSubgraphPassConvTransposeTest):
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
         self.conv_groups = 1
         self.conv_padding = 'SAME'
-'''
 
 
 class TensorRTSubgraphPassDepthwiseConvTransposeTest(

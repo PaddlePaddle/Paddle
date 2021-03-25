@@ -15,22 +15,27 @@
 #pragma once
 
 #include <stdint.h>
+
+#include <cmath>
+#include <cstring>
+#include <iostream>
 #include <limits>
+
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
-#include <cstring>
-
-#include "paddle/fluid/platform/hostdevice.h"
-#include "unsupported/Eigen/CXX11/Tensor"
-
-namespace Eigen {
-template <typename T>
-struct NumTraits;
-}  // namespace Eigen
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
 
 namespace paddle {
 namespace platform {
@@ -351,105 +356,3 @@ struct numeric_limits<paddle::platform::bfloat16> {
 };
 
 }  // namespace std
-
-namespace Eigen {
-
-using bfloat16 = paddle::platform::bfloat16;
-
-template <>
-struct NumTraits<bfloat16> : GenericNumTraits<bfloat16> {
-  enum {
-    IsSigned = true,
-    IsInteger = false,
-    IsComplex = false,
-    RequireInitialization = false
-  };
-
-  HOSTDEVICE static inline bfloat16 epsilon() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x3400);
-  }
-  HOSTDEVICE static inline bfloat16 dummy_precision() {
-    return bfloat16(1e-5f);
-  }
-  HOSTDEVICE static inline bfloat16 highest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  HOSTDEVICE static inline bfloat16 lowest() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xff7f);
-  }
-  HOSTDEVICE static inline bfloat16 infinity() {
-    return paddle::platform::raw_uint16_to_bfloat16(0x7f80);
-  }
-  HOSTDEVICE static inline bfloat16 quiet_NaN() {
-    return paddle::platform::raw_uint16_to_bfloat16(0xffc1);
-  }
-};
-namespace numext {
-
-template <>
-HOSTDEVICE inline bool(isnan)(const bfloat16& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const bfloat16& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline bfloat16 exp(const bfloat16& a) {
-  return bfloat16(::expf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 erf(const bfloat16& a) {
-  return bfloat16(::erff(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 log(const bfloat16& a) {
-  return bfloat16(::logf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 tanh(const bfloat16& a) {
-  return bfloat16(::tanhf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 sqrt(const bfloat16& a) {
-  return bfloat16(::sqrtf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 ceil(const bfloat16& a) {
-  return bfloat16(::ceilf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 floor(const bfloat16& a) {
-  return bfloat16(::floorf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 round(const bfloat16& a) {
-  return bfloat16(::roundf(static_cast<float>(a)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 pow(const bfloat16& a, const bfloat16& b) {
-  return bfloat16(::powf(static_cast<float>(a), static_cast<float>(b)));
-}
-
-template <>
-HOSTDEVICE inline bfloat16 abs(const bfloat16& a) {
-  return bfloat16(::fabs(static_cast<float>(a)));
-}
-
-}  // namespace numext
-}  // namespace Eigen

@@ -219,6 +219,7 @@ CPU_PARALLEL_JOB = [
     'test_full_op',
     'test_framework_debug_str',
     'test_fp16_utils',
+    'test_bf16_utils',
     'test_fleet_rolemaker_4',
     'test_flags_use_mkldnn',
     'test_filter_by_instag_op',

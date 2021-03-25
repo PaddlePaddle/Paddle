@@ -24,13 +24,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
@@ -73,17 +66,17 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     int batch_size = input->dims()[0];
     int frame_size = hidden_prev->dims()[1];
 
-    auto x = EigenMatrix<T>::From(*input);
-    auto h_p = EigenMatrix<T>::From(*hidden_prev);
-    auto g = EigenMatrix<T>::From(*gate);
-    auto r_h_p = EigenMatrix<T>::From(*reset_hidden_prev);
-    auto h = EigenMatrix<T>::From(*hidden);
+    auto x = framework::EigenMatrix<T>::From(*input);
+    auto h_p = framework::EigenMatrix<T>::From(*hidden_prev);
+    auto g = framework::EigenMatrix<T>::From(*gate);
+    auto r_h_p = framework::EigenMatrix<T>::From(*reset_hidden_prev);
+    auto h = framework::EigenMatrix<T>::From(*hidden);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
     // calculate unactivated gate outputs
     if (bias) {
-      auto b = EigenMatrix<T>::From(*bias);
+      auto b = framework::EigenMatrix<T>::From(*bias);
       g.device(place) = x +
                         b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
                             .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
@@ -177,11 +170,11 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     T* reset_hidden_prev_grad_data = reset_hidden_prev_grad.mutable_data<T>(
         reset_hidden_prev->dims(), context.GetPlace());
 
-    auto h_p = EigenMatrix<T>::From(*hidden_prev);
-    auto g = EigenMatrix<T>::From(*gate);
-    auto d_h = EigenMatrix<T>::From(*hidden_grad);
-    auto d_g = EigenMatrix<T>::From(gate_grad);
-    auto d_r_h_p = EigenMatrix<T>::From(reset_hidden_prev_grad);
+    auto h_p = framework::EigenMatrix<T>::From(*hidden_prev);
+    auto g = framework::EigenMatrix<T>::From(*gate);
+    auto d_h = framework::EigenMatrix<T>::From(*hidden_grad);
+    auto d_g = framework::EigenMatrix<T>::From(gate_grad);
+    auto d_r_h_p = framework::EigenMatrix<T>::From(reset_hidden_prev_grad);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
@@ -237,7 +230,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     if (hidden_prev_grad) {
       T* hidden_prev_grad_data =
           hidden_prev_grad->mutable_data<T>(context.GetPlace());
-      auto d_h_p = EigenMatrix<T>::From(*hidden_prev_grad);
+      auto d_h_p = framework::EigenMatrix<T>::From(*hidden_prev_grad);
       if (context.Attr<bool>("origin_mode")) {
         d_h_p.device(place) = d_r_h_p * r + d_h * u;
       } else {
@@ -250,13 +243,13 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     // backward for input
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      auto d_x = EigenMatrix<T>::From(*input_grad);
+      auto d_x = framework::EigenMatrix<T>::From(*input_grad);
       d_x.device(place) = d_g;
     }
     // backward for bias
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      auto d_b = EigenVector<T>::Flatten(*bias_grad);
+      auto d_b = framework::EigenVector<T>::Flatten(*bias_grad);
       d_b.device(place) = d_g.sum(Eigen::array<int, 1>({{0}}));
     }
   }

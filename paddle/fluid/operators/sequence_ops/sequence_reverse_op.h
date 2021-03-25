@@ -130,13 +130,13 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     const size_t *lod;
     size_t lod_count = x.lod()[0].size();
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       lod = x.lod()[0].CUDAData(ctx.GetPlace());
     } else {
 #endif
       lod = x.lod()[0].data();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     }
 #endif
 

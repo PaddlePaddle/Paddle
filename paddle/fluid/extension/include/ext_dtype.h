@@ -11,22 +11,23 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
-#include "paddle/fluid/platform/float16.h"
+#include <cstdint>
+#include <string>
+
+#include "complex128.h"     // NOLINT
+#include "complex64.h"      // NOLINT
+#include "ext_exception.h"  // NOLINT
+#include "float16.h"        // NOLINT
 
 namespace paddle {
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
 using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
+using float16 = paddle::platform::float16;
 
-enum DataType {
+enum class DataType {
   BOOL,
   INT8,
   UINT8,
@@ -34,7 +35,6 @@ enum DataType {
   INT32,
   INT64,
   FLOAT16,
-  BFLOAT16,
   FLOAT32,
   FLOAT64,
   COMPLEX64,
@@ -58,8 +58,6 @@ inline std::string ToString(DataType dtype) {
       return "int64_t";
     case DataType::FLOAT16:
       return "float16";
-    case DataType::BFLOAT16:
-      return "bfloat16";
     case DataType::FLOAT32:
       return "float";
     case DataType::FLOAT64:
@@ -69,7 +67,7 @@ inline std::string ToString(DataType dtype) {
     case DataType::COMPLEX128:
       return "complex128";
     default:
-      throw std::runtime_error("Unsupported paddle enum data type.");
+      PD_THROW("Unsupported paddle enum data type.");
   }
 }
 
@@ -81,7 +79,6 @@ inline std::string ToString(DataType dtype) {
   _(int, DataType::INT32)           \
   _(int64_t, DataType::INT64)       \
   _(float16, DataType::FLOAT16)     \
-  _(bfloat16, DataType::BFLOAT16)   \
   _(float, DataType::FLOAT32)       \
   _(double, DataType::FLOAT64)      \
   _(complex64, DataType::COMPLEX64) \

@@ -116,7 +116,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv2DTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False

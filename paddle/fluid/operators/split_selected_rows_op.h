@@ -82,7 +82,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
                 platform::CPUPlace(), dst + j * row_numel, platform::CPUPlace(),
                 src + outs_dense_idx[i][j] * row_numel, sizeof(T) * row_numel);
           } else {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             auto stream = ctx.cuda_device_context().stream();
             memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
                          platform::CUDAPlace(),
