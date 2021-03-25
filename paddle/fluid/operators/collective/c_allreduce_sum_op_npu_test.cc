@@ -117,7 +117,9 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
                                     {{"Out", {"Out"}}}, 
                                     attrs);
 
-  op->Run(*scope, place);
+  for (int i = 0; i < 10; i ++) {
+    op->Run(*scope, place);
+  }
   ctx.Wait();
 
   std::vector<float> out_vec;

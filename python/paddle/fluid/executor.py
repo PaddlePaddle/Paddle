@@ -1447,7 +1447,7 @@ class Executor(object):
                 if var.is_data:
                     data_vars.append(var)
             dataset = paddle.fluid.DatasetFactory().create_dataset(
-                'FileInstantDataset')
+                'InMemoryDataset')
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])

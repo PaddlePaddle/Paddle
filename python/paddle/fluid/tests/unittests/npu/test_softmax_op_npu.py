@@ -20,68 +20,43 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 
 paddle.enable_static()
-
 SEED = 2021
-EPOCH = 100
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSliceOp(OpTest):
+class TestSoftmax(OpTest):
     def setUp(self):
-        self.op_type = "slice"
         self.set_npu()
-        self.init_dtype()
-        self.config()
-        self.inputs = {'Input': self.input}
-        self.outputs = {'Out': self.out}
-        self.attrs = {
-            'axes': self.axes,
-            'starts': self.starts,
-            'ends': self.ends,
-            'infer_flags': self.infer_flags
-        }
-
-    def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-        self.starts = [1, 0, 2]
-        self.ends = [3, 3, 4]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1:3, 0:3, 2:4, :]
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def set_npu(self):
-        self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
+        self.op_type = "softmax"
+        self.init_dtype()
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        x = np.random.random([3, 3]).astype(self.dtype)
+        np_out = np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
+        self.inputs = {'X': x}
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(
-            self.place, ['Input'], 'Out', check_dygraph=False)
-
-
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
-class TestSliceOpFp16(TestSliceOp):
-    def init_dtype(self):
-        self.dtype = np.float16
+        self.attrs = {}
+        self.outputs = {'Out': np_out}
 
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
-        self.place = paddle.NPUPlace(0)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestSliceNet(unittest.TestCase):
+class TestSoftmaxNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -89,27 +64,30 @@ class TestSliceNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        batch_size = 32
-        data_shape = (32, 32)
-        a_np = np.random.random(size=data_shape).astype('float32')
-        b_np = np.random.random(size=data_shape).astype('float32')
-        label_np = np.random.randint(2, size=(batch_size, 1)).astype('int64')
+        a_np = np.random.random(size=(4, 32)).astype('float32')
+        b_np = np.random.random(size=(4, 32)).astype('float32')
+        label_np = np.random.randint(2, size=(4, 1)).astype('int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=data_shape, dtype='float32')
-            b = paddle.static.data(name="b", shape=data_shape, dtype='float32')
+            a = paddle.static.data(name="a", shape=[4, 32], dtype='float32')
+            b = paddle.static.data(name="b", shape=[4, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[batch_size, 1], dtype='int64')
+                name="label", shape=[4, 1], dtype='int64')
 
-            sum = paddle.add(a, b)
-            z = paddle.slice(sum, axes=[0, 1], starts=[0, 0], ends=[33, 2])
+            c = paddle.multiply(a, b)
+            d = paddle.sqrt(c)
 
-            prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
+            # 4 x 128
+            fc_1 = fluid.layers.fc(input=d, size=128)
+            # 4 x 2
+            prediction = fluid.layers.fc(input=fc_1, size=2)
 
-            cost = paddle.nn.functional.cross_entropy(
-                input=prediction, label=label)
-            loss = paddle.mean(cost)
-            sgd = paddle.optimizer.SGD(learning_rate=0.01)
+            # 4 x 2
+            prob = fluid.layers.softmax(prediction, axis=1)
+
+            cost = fluid.layers.cross_entropy(input=prob, label=label)
+            loss = fluid.layers.mean(cost)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
         if run_npu:
@@ -119,8 +97,9 @@ class TestSliceNet(unittest.TestCase):
 
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
+
         print("Start run on {}".format(place))
-        for epoch in range(EPOCH):
+        for epoch in range(100):
 
             pred_res, loss_res = exe.run(
                 main_prog,
@@ -138,8 +117,8 @@ class TestSliceNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-2))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-2))
 
 
 if __name__ == '__main__':

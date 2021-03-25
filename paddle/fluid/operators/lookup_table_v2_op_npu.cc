@@ -54,6 +54,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"use_locking", true}};
 
     auto runner = NpuOpRunner("ScatterAdd", {*table_t, *ids_t, *output_grad_t},

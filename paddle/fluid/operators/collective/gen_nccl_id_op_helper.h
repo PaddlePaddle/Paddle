@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <functional>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <vector>
 
@@ -25,7 +27,7 @@ class Scope;
 }  // namespace paddle
 
 namespace paddle {
-namespace operators {
+namespace platform {
 
 int CreateListenSocket(const std::string& ep);
 
@@ -41,8 +43,26 @@ void RecvBroadCastNCCLID(std::string endpoint, int nccl_comm_num,
                          const framework::Scope& scope);
 
 // recv nccl id from socket
-void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
-                         std::function<std::string(size_t)> func,
-                         const framework::Scope& scope);
-}  // namespace operators
+template <typename CommUniqueId>
+void RecvBroadCastCommID(int server_fd, std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids);
+
+class SocketServer {
+ public:
+  SocketServer() = default;
+
+  ~SocketServer() { CloseSocket(server_fd_); }
+
+  int socket() const { return server_fd_; }
+
+  static SocketServer& GetInstance(const std::string& end_point);
+
+ private:
+  int server_fd_{-1};
+  std::string end_point_;
+
+  static std::once_flag init_flag_;
+};
+
+}  // namespace platform
 }  // namespace paddle

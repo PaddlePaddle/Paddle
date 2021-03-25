@@ -320,7 +320,7 @@ class PSGPUTrainer : public TrainerBase {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+//#if defined(PADDLE_WITH_NCCL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}
@@ -351,7 +351,7 @@ class PipelineTrainer : public TrainerBase {
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
 };
-#endif
+//#endif
 
 }  // namespace framework
 }  // namespace paddle

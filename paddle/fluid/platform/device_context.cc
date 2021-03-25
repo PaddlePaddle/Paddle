@@ -153,7 +153,11 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
+//      VLOG(4) << "DeviceContextSet OK" << p;
       EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
+//      for (auto it=device_contexts_.begin(); it != device_contexts_.end(); ++it) {
+//        VLOG(4) << "byf__________device_contexts_" << it->first;
+//      }
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
           "NPUPlace is not supported. Please "

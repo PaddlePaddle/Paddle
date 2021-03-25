@@ -76,8 +76,9 @@ REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
 REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+//#if defined(PADDLE_WITH_NCCL)
+//REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
+//#endif
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
-#endif
 }  // namespace framework
 }  // namespace paddle

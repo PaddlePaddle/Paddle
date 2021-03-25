@@ -99,7 +99,9 @@ void TestHcomRecvOp(f::Scope* scope, const p::DeviceContext& ctx){
     auto op = f::OpRegistry::CreateOp("recv_v2", {}, {{"Out", {"Out"}}}, attrs);
     VLOG(3) << "CreateOp recv_v2";
 
-    op->Run(*scope, place);
+    for (int i = 0; i < 10; i ++) {
+      op->Run(*scope, place);
+    }
     VLOG(3) << "Run op recv_v2";
     std::vector<float> out_vec;
     TensorToVector(*tensor_out, ctx, &out_vec);

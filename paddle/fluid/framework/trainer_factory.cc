@@ -71,8 +71,9 @@ REGISTER_TRAINER_CLASS(HeterBoxTrainer);
 #if (defined PADDLE_WITH_NCCL) && (defined PADDLE_WITH_PSLIB)
 REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #endif
-#if defined(PADDLE_WITH_NCCL)
+//#if (defined PADDLE_WITH_NCCL || define PADDLE_WITH_ASCEND)
+//REGISTER_TRAINER_CLASS(PipelineTrainer);
+//#endif
 REGISTER_TRAINER_CLASS(PipelineTrainer);
-#endif
 }  // namespace framework
 }  // namespace paddle
