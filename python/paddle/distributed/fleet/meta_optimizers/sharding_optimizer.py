@@ -183,11 +183,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block._sync_with_cpp()
             startup_block._sync_with_cpp()
 
-            # step4: insert reduce_sum for grad
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / self.sharding_degree)
             main_block._sync_with_cpp()
 
-            # step5: remove unneeded ops and vars from block
+            # step4: remove unneeded ops and vars from block
             self._prune_main_program(main_block)
             self._prune_startup_program(startup_block)
             if self.hybrid_dp:
@@ -227,7 +225,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     core.op_proto_and_checker_maker.OpRole.Optimize,
                     use_calc_stream=True)
 
-        # if not use sharding, adapt amp/clip for remain parallelism.
+        # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
         if self.sharding_degree <= 1:
             # amp
@@ -236,6 +234,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             # clip
             gradientclip_helper = GradientClipHelper(self.global_ring_id)
             gradientclip_helper.sync_global_norm(main_block, self.global_ring_id, self.pure_dp_degree)
+
+        # loss div dp_degree 
+        global_dp_degree = self.sharding_degree * self.pure_dp_degree
+        assert int(global_dp_degree) == global_dp_degree
+        if global_dp_degree > 1:
+            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
 
 
         main_block._sync_with_cpp()
