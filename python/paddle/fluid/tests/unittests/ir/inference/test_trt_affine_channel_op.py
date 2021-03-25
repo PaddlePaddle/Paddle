@@ -37,7 +37,7 @@ class TRTAffineChannelTest(InferencePassTest):
 
         # set min_graph_size to 2, 
         # because affine channel doesn't support nhwc format
-        self.trt_parameters = super().TensorRTParam(
+        self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)
 
     def build(self):
@@ -96,7 +96,7 @@ class TRTAffineChannelTest(InferencePassTest):
             max_shape = [self.bs, self.height * 2, self.width * 2, self.channel]
             opt_shape = [self.bs, self.height, self.width, self.channel]
 
-        dynamic_shape_profile = super().DynamicShapeParam({
+        dynamic_shape_profile = InferencePassTest.DynamicShapeParam({
             'in': min_shape
         }, {'in': max_shape}, {'in': opt_shape}, False)
         dynamic_shape_opt = [None, dynamic_shape_profile]
