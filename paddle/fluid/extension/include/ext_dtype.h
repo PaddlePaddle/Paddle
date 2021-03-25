@@ -19,11 +19,13 @@ limitations under the License. */
 #include "complex128.h"     // NOLINT
 #include "complex64.h"      // NOLINT
 #include "ext_exception.h"  // NOLINT
+#include "float16.h"        // NOLINT
 
 namespace paddle {
 
 using complex64 = paddle::platform::complex64;
 using complex128 = paddle::platform::complex128;
+using float16 = paddle::platform::float16;
 
 enum class DataType {
   BOOL,
@@ -32,6 +34,7 @@ enum class DataType {
   INT16,
   INT32,
   INT64,
+  FLOAT16,
   FLOAT32,
   FLOAT64,
   COMPLEX64,
@@ -53,6 +56,8 @@ inline std::string ToString(DataType dtype) {
       return "int32_t";
     case DataType::INT64:
       return "int64_t";
+    case DataType::FLOAT16:
+      return "float16";
     case DataType::FLOAT32:
       return "float";
     case DataType::FLOAT64:
@@ -73,6 +78,7 @@ inline std::string ToString(DataType dtype) {
   _(int16_t, DataType::INT16)       \
   _(int, DataType::INT32)           \
   _(int64_t, DataType::INT64)       \
+  _(float16, DataType::FLOAT16)     \
   _(float, DataType::FLOAT32)       \
   _(double, DataType::FLOAT64)      \
   _(complex64, DataType::COMPLEX64) \
