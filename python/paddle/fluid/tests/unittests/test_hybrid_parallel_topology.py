@@ -36,8 +36,11 @@ class TestCommunicateTopology(unittest.TestCase):
         # test get_parallel_names
         parallel_names = ["dp", "mp", "pp"]
         np.testing.assert_array_equal(parallel_names, topo.get_parallel_names())
+
         # test get_dims
-        np.testing.assert_array_equal([2, 2, 2], topo.get_dims())
+        np.testing.assert_array_equal(2, topo.get_dim("dp"))
+        np.testing.assert_array_equal(2, topo.get_dim("mp"))
+        np.testing.assert_array_equal(2, topo.get_dim("pp"))
 
         # test word size
         self.assertEqual(topo.word_size(), 8)

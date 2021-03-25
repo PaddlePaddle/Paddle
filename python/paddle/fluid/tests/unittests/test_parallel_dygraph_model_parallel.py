@@ -47,7 +47,7 @@ class TestMultipleGpus(unittest.TestCase):
         ) or fluid.core.get_cuda_device_count() == 0:
             return
 
-        selected_gpus = get_gpus('0,1')
+        selected_gpus = get_gpus('0,1,2,3,4,5,6,7')
         cluster = None
         pod = None
 
@@ -68,7 +68,7 @@ class TestMultipleGpus(unittest.TestCase):
             time.sleep(3)
 
     def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('dygraph_model_parallel.py')
+        self.run_mnist_2gpu('parallel_dygraph_model_parallel.py')
 
 
 if __name__ == "__main__":

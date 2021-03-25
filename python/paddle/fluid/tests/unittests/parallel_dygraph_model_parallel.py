@@ -48,8 +48,12 @@ class SimpleNet(fluid.Layer):
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         strategy = fleet.DistributedStrategy()
-        # strategy.
-        fleet.init(is_collective=True)
+        strategy.hybrid_configs = {
+            "num_data_parallel": 4,
+            "num_model_parallel": 2,
+            "num_pipeline_parallel": 1
+        }
+        fleet.init(is_collective=True, strategy=strategy)
 
         # optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         # optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

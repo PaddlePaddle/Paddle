@@ -38,8 +38,8 @@ class CommunicateTopology(object):
     def get_parallel_names(self):
         return self._parallel_names
 
-    def get_dims(self):
-        return self._dims
+    def get_dim(self, axis_name):
+        return self._dims[self._parallel_names.index(axis_name)]
 
     def word_size(self):
         return self._word_size
@@ -96,39 +96,39 @@ class CommunicateTopology(object):
 
 class HybridCommunicateGroup(object):
     def __init__(self, topology):
-        self.nranks = dist.get_world_size()
-        self.global_rank = dist.get_rank()
+        self.nranks = paddle.distributed.get_world_size()
+        self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
 
         self._num_data_parallel = self._topo.get_dim('data')
         self._num_model_parallel = self._topo.get_dim('model')
         self._num_pipe_parallel = self._topo.get_dim('pipe')
 
+        self._data_parallel_id = self._get_data_parallel_id()
+        self._model_parallel_id = self._get_model_parallel_id()
+
         assert self._check_vaild_topo(
         ), "Here is an unreasonable topogy setting"
 
         # create comm group for data parallel
-        self.dp_group, self.dp_comm_group = self._set_comm_group("data")
-        print("data parallel group", self.dp_group)
+        self._dp_group, self._dp_comm_group = self._set_comm_group("data")
+        print("data parallel group", self._dp_group)
 
         # create comm group for model parallel
-        self.mp_group, self.mp_comm_group = self._set_comm_group("model")
-        print("model parallel group", self.mp_group)
+        self._mp_group, self._mp_comm_group = self._set_comm_group("model")
+        print("model parallel group", self._mp_group)
 
     def _check_vaild_topo(self):
         return self._num_data_parallel * self._num_model_parallel * self._num_pipe_parallel == self.nranks
-
-    def _get_data_parallel_id(self):
-        return self._topo.get_coord(self.global_rank).data
 
     def _set_comm_group(self, parallel_method="data"):
         parallel_group = []
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
-        for g in parallel_groups:
-            comm_group = dist.new_group(ranks=group)
-            if global_rank in group:
+        for group in parallel_groups:
+            comm_group = paddle.distributed.new_group(ranks=group)
+            if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group
 
@@ -136,3 +136,35 @@ class HybridCommunicateGroup(object):
         assert parallel_comm_group is not None
 
         return parallel_group, parallel_comm_group
+
+    def topology(self):
+        return self._topo
+
+    def get_global_rank(self):
+        return self.global_rank
+
+    # data parallel message:
+    def _get_data_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).data
+
+    def get_data_parallel_rank(self):
+        return self._data_parallel_id
+
+    def get_data_parallel_world_size(self):
+        return self._num_data_parallel
+
+    def get_data_parallel_group(self):
+        return self._dp_comm_group
+
+    # model parallel message:
+    def _get_model_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).model
+
+    def get_model_parallel_rank(self):
+        return self._model_parallel_id
+
+    def get_model_parallel_world_size(self):
+        return self._num_model_parallel
+
+    def get_model_parallel_group(self):
+        return self._mp_comm_group
