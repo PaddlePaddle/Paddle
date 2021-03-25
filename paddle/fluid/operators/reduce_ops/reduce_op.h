@@ -494,7 +494,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_;
-    library_ = ramework::LibraryType::kPlain;
+    library_ = framework::LibraryType::kPlain;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
