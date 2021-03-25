@@ -61,6 +61,7 @@ if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
 endif()
 
+
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
 
@@ -124,7 +125,7 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838")
 
     foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
-        string(APPEND ${flag_var} "/ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
+        set(${flag_var} "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
     endforeach(flag_var)
 
     if (WITH_WIN_DUMP_DBG)
