@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -1149,7 +1150,7 @@ def cross_entropy(input,
 
     The calculation of this operator includes the following two steps.
 
-    - **I.softmax cross entropy**
+    - **1.softmax cross entropy**
 
         1. Hard label (each sample can only be assigned into one category)
 
@@ -1166,7 +1167,7 @@ def cross_entropy(input,
             where, N is the number of samples and C is the number of categories.
 
 
-    - **II. Weight and reduction processing**
+    - **2. Weight and reduction processing**
 
         1. Weight
 
@@ -1235,7 +1236,7 @@ def cross_entropy(input,
 
         - **label** (Tensor)
 
-            1. If soft_label=False，the shape is 
+            1. If soft_label=False, the shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64. 
 
