@@ -48,7 +48,7 @@ class SimpleNet(fluid.Layer):
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         strategy = fleet.DistributedStrategy()
-        strategy
+        # strategy.
         fleet.init(is_collective=True)
 
         # optimizer = paddle.optimizer.SGD(learning_rate=0.001)
