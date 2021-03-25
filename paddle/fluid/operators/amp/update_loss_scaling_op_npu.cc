@@ -148,7 +148,7 @@ class LazyZerosNPU {
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
       if (found_inf_vec[0]) {
-        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
+        VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
 
         auto place = dev_ctx.GetPlace();
         auto stream = dev_ctx.stream();
