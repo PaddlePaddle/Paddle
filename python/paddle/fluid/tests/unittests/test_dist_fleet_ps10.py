@@ -23,6 +23,7 @@ import os
 
 paddle.enable_static()
 
+
 # For Net
 base_lr = 0.2
 emb_lr = base_lr * 3

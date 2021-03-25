@@ -160,6 +160,5 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
         print("time cost", ret['time'], 'step_list', ret['step'])
         return ret
 
-
 if __name__ == '__main__':
     unittest.main()

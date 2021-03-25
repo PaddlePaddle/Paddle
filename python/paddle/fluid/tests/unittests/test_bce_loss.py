@@ -27,10 +27,8 @@ def test_static_layer(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
-            name='input', shape=input_np.shape, dtype='float64')
-        label = paddle.fluid.data(
-            name='label', shape=label_np.shape, dtype='float64')
+        input = paddle.fluid.data(name='input', shape=input_np.shape, dtype='float64')
+        label = paddle.fluid.data(name='label', shape=label_np.shape, dtype='float64')
         if weight_np is not None:
             weight = paddle.fluid.data(
                 name='weight', shape=weight_np.shape, dtype='float64')
@@ -60,10 +58,8 @@ def test_static_functional(place,
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.fluid.data(
-            name='input', shape=input_np.shape, dtype='float64')
-        label = paddle.fluid.data(
-            name='label', shape=label_np.shape, dtype='float64')
+        input = paddle.fluid.data(name='input', shape=input_np.shape, dtype='float64')
+        label = paddle.fluid.data(name='label', shape=label_np.shape, dtype='float64')
         if weight_np is not None:
             weight = paddle.fluid.data(
                 name='weight', shape=weight_np.shape, dtype='float64')
