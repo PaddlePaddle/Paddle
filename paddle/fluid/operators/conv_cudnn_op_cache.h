@@ -34,6 +34,12 @@ namespace operators {
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 1;
+#elif CUDNN_VERSION_MIN(6, 0, 5)
+static constexpr size_t kNUM_CUDNN_FWD_ALGS = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
+static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =
+    CUDNN_CONVOLUTION_BWD_FILTER_ALGO_COUNT;
+static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS =
+    CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
 #endif
 
 }  // namespace operators
