@@ -109,7 +109,7 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
     def test_base(self):
-        self.run_test_all()
+        self.run_test()
 
     def test_fp16(self):
         self.precision = AnalysisConfig.Precision.Half
@@ -117,6 +117,18 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
 
     def test_serialize(self):
         self.serialize = True
+        self.run_test()
+
+    def test_dynamic(self):
+        max_shape = {
+            'bboxes': [self.bs, self.num_boxes, 4],
+            'scores': [self.bs, self.num_classes, self.num_boxes],
+        }
+        opt_shape = max_shape
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
+            'bboxes': [1, 1, 4],
+            'scores': [1, 1, 1]
+        }, max_shape, opt_shape, False)
         self.run_test()
 
     def test_background(self):
