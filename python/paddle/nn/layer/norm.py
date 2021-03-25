@@ -45,7 +45,7 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
-from ..functional import batch_norm, layer_norm, instance_norm
+from ..functional import layer_norm, instance_norm
 
 import numpy as np
 import numbers
@@ -644,7 +644,7 @@ class _BatchNormBase(layers.Layer):
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        return batch_norm(
+        return F.norm._batch_norm_nd(
             input,
             self._mean,
             self._variance,

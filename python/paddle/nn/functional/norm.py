@@ -114,6 +114,88 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         x, paddle.maximum(out, eps), name=name)
 
 
+def _batch_norm_nd(x,
+                   running_mean,
+                   running_var,
+                   weight,
+                   bias,
+                   training=False,
+                   momentum=0.9,
+                   epsilon=1e-05,
+                   data_format="NCHW",
+                   use_global_stats=None,
+                   name=None):
+
+    # input ad out must share the memory
+    mean_out = running_mean
+    variance_out = running_var
+
+    if use_global_stats == None:
+        use_global_stats = not training
+        trainable_statistics = False
+    else:
+        trainable_statistics = not use_global_stats
+
+    if in_dygraph_mode():
+        # for dygraph need tuple
+        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
+                 not training, "data_layout", data_format, "use_mkldnn", False,
+                 "fuse_with_relu", False, "use_global_stats", use_global_stats,
+                 "trainable_statistics", trainable_statistics)
+        batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+            x, weight, bias, running_mean, running_var, mean_out, variance_out,
+            *attrs)
+        return batch_norm_out
+
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'BatchNorm')
+
+    # for static need dict
+    attrs = {
+        "momentum": momentum,
+        "epsilon": epsilon,
+        "is_test": not training,
+        "data_layout": data_format,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+        "trainable_statistics": trainable_statistics,
+    }
+
+    inputs = {
+        "X": [x],
+        "Scale": [weight],
+        "Bias": [bias],
+        "Mean": [running_mean],
+        "Variance": [running_var]
+    }
+
+    helper = LayerHelper('batch_norm', **locals())
+
+    dtype = x.dtype if x.dtype is not 'float16' else 'float32'
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+
+    outputs = {
+        "Y": [batch_norm_out],
+        "MeanOut": [running_mean],
+        "VarianceOut": [running_var],
+        "SavedMean": [saved_mean],
+        "SavedVariance": [saved_variance],
+        "ReserveSpace": [reserve_space]
+    }
+
+    helper.append_op(
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+
+    return batch_norm_out
+
+
 def batch_norm(x,
                running_mean,
                running_var,
@@ -166,27 +248,6 @@ def batch_norm(x,
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
           print(batch_norm_out)
     """
-    # input ad out must share the memory
-    mean_out = running_mean
-    variance_out = running_var
-
-    if use_global_stats == None:
-        use_global_stats = not training
-        trainable_statistics = False
-    else:
-        trainable_statistics = not use_global_stats
-
-    if in_dygraph_mode():
-        # for dygraph need tuple
-        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
-                 not training, "data_layout", data_format, "use_mkldnn", False,
-                 "fuse_with_relu", False, "use_global_stats", use_global_stats,
-                 "trainable_statistics", trainable_statistics)
-        batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
-            x, weight, bias, running_mean, running_var, mean_out, variance_out,
-            *attrs)
-        return batch_norm_out
-
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
     true_data_format = ['NC', 'NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']
@@ -197,53 +258,9 @@ def batch_norm(x,
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'BatchNorm')
-
-    # for static need dict
-    attrs = {
-        "momentum": momentum,
-        "epsilon": epsilon,
-        "is_test": not training,
-        "data_layout": data_format,
-        "use_mkldnn": False,
-        "fuse_with_relu": False,
-        "use_global_stats": use_global_stats,
-        "trainable_statistics": trainable_statistics,
-    }
-
-    inputs = {
-        "X": [x],
-        "Scale": [weight],
-        "Bias": [bias],
-        "Mean": [running_mean],
-        "Variance": [running_var]
-    }
-
-    helper = LayerHelper('batch_norm', **locals())
-
-    dtype = x.dtype if x.dtype is not 'float16' else 'float32'
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    saved_variance = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    batch_norm_out = helper.create_variable_for_type_inference(dtype)
-    reserve_space = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-
-    outputs = {
-        "Y": [batch_norm_out],
-        "MeanOut": [running_mean],
-        "VarianceOut": [running_var],
-        "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance],
-        "ReserveSpace": [reserve_space]
-    }
-
-    helper.append_op(
-        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
-
-    return helper.append_activation(batch_norm_out)
+    return _batch_norm_nd(x, running_mean, running_var, weight, bias, training,
+                          momentum, epsilon, data_format, use_global_stats,
+                          name)
 
 
 def layer_norm(x,
