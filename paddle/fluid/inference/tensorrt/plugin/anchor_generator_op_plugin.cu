@@ -265,12 +265,8 @@ AnchorGeneratorPluginCreator::getFieldNames() {
 nvinfer1::IPluginV2Ext* AnchorGeneratorPluginCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
-
   int type_id = -1;
-  std::vector<float> anchor_sizes;
-  std::vector<float> aspect_ratios;
-  std::vector<float> stride;
-  std::vector<float> variances;
+  std::vector<float> anchor_sizes, aspect_ratios, stride, variances;
   float offset = .5;
   int height = -1, width = -1;
   int num_anchors = -1;
@@ -527,10 +523,7 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
   int type_id = -1;
-  std::vector<float> anchor_sizes;
-  std::vector<float> aspect_ratios;
-  std::vector<float> stride;
-  std::vector<float> variances;
+  std::vector<float> anchor_sizes, aspect_ratios, stride, variances;
   float offset = .5;
   int num_anchors = -1;
   for (int i = 0; i < fc->nbFields; ++i) {
