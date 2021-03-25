@@ -69,6 +69,7 @@ def init_parallel_env():
         
     Examples:
         .. code-block:: python
+            # required: gpu, distributed
 
             import paddle
             import paddle.nn as nn
