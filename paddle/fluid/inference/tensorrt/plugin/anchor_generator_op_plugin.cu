@@ -27,47 +27,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-template <typename T>
-__global__ void GenAnchors(T* out, const T* aspect_ratios, const int ar_num,
-                           const T* anchor_sizes, const int as_num,
-                           const T* stride, const int sd_num, const int height,
-                           const int width, const float offset) {
-  const int num_anchors = as_num * ar_num;
-  const int box_num = height * width * num_anchors;
-  CUDA_KERNEL_LOOP(i, box_num) {
-    const int h_idx = i / (num_anchors * width);
-    const int w_idx = (i / num_anchors) % width;
-    T stride_width = stride[0];
-    T stride_height = stride[1];
-    T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
-    T y_ctr = (h_idx * stride_height) + offset * (stride_height - 1);
-    int anch_idx = i % num_anchors;
-    int ar_idx = anch_idx / as_num;
-    int as_idx = anch_idx % as_num;
-    T aspect_ratio = aspect_ratios[ar_idx];
-    T anchor_size = anchor_sizes[as_idx];
-    T area = stride_width * stride_height;
-    T area_ratios = area / aspect_ratio;
-    T base_w = round(sqrt(area_ratios));
-    T base_h = round(base_w * aspect_ratio);
-    T scale_w = anchor_size / stride_width;
-    T scale_h = anchor_size / stride_height;
-    T anchor_width = scale_w * base_w;
-    T anchor_height = scale_h * base_h;
-    const T xmin = (x_ctr - .5f * (anchor_width - 1));
-    const T ymin = (y_ctr - .5f * (anchor_height - 1));
-    const T xmax = (x_ctr + .5f * (anchor_width - 1));
-    const T ymax = (y_ctr + .5f * (anchor_height - 1));
-    reinterpret_cast<float4*>(out)[i] = make_float4(xmin, ymin, xmax, ymax);
-  }
-}
-
-template <typename T>
-__global__ void SetVariance(T* out, const T* var, const int vnum,
-                            const int num) {
-  CUDA_KERNEL_LOOP(i, num) { out[i] = var[i % vnum]; }
-}
-
 AnchorGeneratorPlugin::AnchorGeneratorPlugin(
     const nvinfer1::DataType data_type, const std::vector<float>& anchor_sizes,
     const std::vector<float>& aspect_ratios, const std::vector<float>& stride,
@@ -88,26 +47,22 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
   PADDLE_ENFORCE_EQ(data_type_, nvinfer1::DataType::kFLOAT,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
-
   PADDLE_ENFORCE_GE(height_, 0,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts height "
                         "greater than 0, but receive height = %d.",
                         height_));
-
   PADDLE_ENFORCE_GE(width_, 0,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts width "
                         "greater than 0, but receive width = %d.",
                         width_));
-
   PADDLE_ENFORCE_GE(
       num_anchors_, 0,
       platform::errors::InvalidArgument(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
-
   PADDLE_ENFORCE_GE(box_num_, 0,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts box_num "
@@ -198,12 +153,12 @@ int AnchorGeneratorPlugin::enqueue_impl(int batch_size,
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-  GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
+  paddle::operators::GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
       anchors, aspect_ratios_device, aspect_ratios_.size(), anchor_sizes_device,
       anchor_sizes_.size(), stride_device, stride_.size(), height_, width_,
       offset_);
   const int var_grid = (box_num_ * 4 + block - 1) / block;
-  SetVariance<T><<<var_grid, block, 0, stream>>>(
+  paddle::operators::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num_ * 4);
   return cudaGetLastError() != cudaSuccess;
 }
@@ -387,7 +342,6 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
   PADDLE_ENFORCE_EQ(data_type_, nvinfer1::DataType::kFLOAT,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
-
   PADDLE_ENFORCE_GE(
       num_anchors_, 0,
       platform::errors::InvalidArgument(
@@ -486,24 +440,19 @@ int AnchorGeneratorPluginDynamic::enqueue_impl(
   const int box_num = height * width * num_anchors_;
   const int block = 512;
   const int gen_anchor_grid = (box_num + block - 1) / block;
-
   T* anchors = static_cast<T*>(outputs[0]);
   T* vars = static_cast<T*>(outputs[1]);
-
   const T* anchor_sizes_device = static_cast<const T*>(anchor_sizes_device_);
   const T* aspect_ratios_device = static_cast<const T*>(aspect_ratios_device_);
   const T* stride_device = static_cast<const T*>(stride_device_);
   const T* variances_device = static_cast<const T*>(variances_device_);
-
-  GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
+  paddle::operators::GenAnchors<T><<<gen_anchor_grid, block, 0, stream>>>(
       anchors, aspect_ratios_device, aspect_ratios_.size(), anchor_sizes_device,
       anchor_sizes_.size(), stride_device, stride_.size(), height, width,
       offset_);
-
   const int var_grid = (box_num * 4 + block - 1) / block;
-  SetVariance<T><<<var_grid, block, 0, stream>>>(
+  paddle::operators::SetVariance<T><<<var_grid, block, 0, stream>>>(
       vars, variances_device, variances_.size(), box_num * 4);
-
   return cudaGetLastError() != cudaSuccess;
 }
 
@@ -626,7 +575,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPluginDynamicCreator::deserializePlugin(
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-
 #endif
 
 }  // namespace plugin
