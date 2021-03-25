@@ -92,14 +92,14 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         ]
         serialize_opt = [True, False]
         dynamic_shape_opt = [
-            None, super().DynamicShapeParam({
+            None, InferencePassTest.DynamicShapeParam({
                 'data':
                 [self.bs, self.channel, self.height // 2, self.width // 2]
             }, {
                 'data':
                 [self.bs, self.channel, self.height * 2, self.width * 2]
             }, {'data': [self.bs, self.channel, self.height, self.width]},
-                                            False)
+                                                      False)
         ]
 
         for precision, serialize, dynamic_shape in itertools.product(
