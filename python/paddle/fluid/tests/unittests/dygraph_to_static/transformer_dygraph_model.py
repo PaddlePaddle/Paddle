@@ -53,7 +53,8 @@ class PrePostProcessLayer(Layer):
             elif cmd == "n":  # add layer normalization
                 self.functors.append(
                     self.add_sublayer(
-                        "layer_norm_%d" % len([l for layer in self.children()]),
+                        "layer_norm_%d" % len(
+                            [layer for layer in self.children()]),
                         LayerNorm(
                             normalized_shape=d_model,
                             param_attr=fluid.ParamAttr(
