@@ -221,13 +221,20 @@ class VarBase {
 
   void BumpInplaceVersion();
 
-  /* Hook related method: only can be call by GradVarBase */
+  /* Hook related method: now only used for GradVarBase */
+  bool HasHook() const { return var_->HasHook(); }
+
   int64_t AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
     return var_->AddHook(
         std::forward<std::shared_ptr<VariableWrapperHook>>(hook));
   }
 
   bool RemoveHook(const int64_t& hook_id) { return var_->RemoveHook(hook_id); }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>& GetHooks()
+      const {
+    return var_->GetHooks();
+  }
 
   void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
     var_->AddReduceHook(

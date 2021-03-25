@@ -40,8 +40,8 @@ class GradientAccumulator {
     }
 
     // inner_var_ record the grad of this auto-grad.
-    // Only need to generate inner var for non-empty leaf-tensor.
-    if (var->IsLeafGrad() && !var->IsEmpty()) {
+    // Only need to generate inner var for leaf-tensor.
+    if (var->IsLeafGrad()) {
       inner_var_ = std::make_shared<VariableWrapper>(var->Name());
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
@@ -111,7 +111,7 @@ class GradientAccumulator {
    *                        |
    *      [ Gradient accumulation across batchs ]
    *                        |
-   *          [ Gradient reduce / allreduce]
+   *          [ Gradient reduce / allreduce hooks ]
 
    *    Because we currently intend to accumulate these two gradient
    *    accumulation in one GradientAccumulator, We must distinguish between
@@ -122,25 +122,9 @@ class GradientAccumulator {
    *    parallel multi-card training.
    */
 
-  // VariableWrapper CallHooks() {
-  //   if (var_->HasHook()) {
-  //     VariableWrapper tmp = *var_;
-  //     for (const auto& hook : var_->GetHooks()) {
-  //       VLOG(3) << "call gradient accumulator backward hooks.";
-  //       tmp = (*hook)(tmp);
-  //     }
-  //     *var_ = tmp;
-  //   }
-  // }
+  void CallHooks();
 
-  void CallReduceHooks() {
-    if (var_->HasReduceHook()) {
-      for (const auto& hook : var_->GetReduceHooks()) {
-        VLOG(3) << "call gradient accumulator backward hooks.";
-        (*hook)(var_);
-      }
-    }
-  }
+  void CallReduceHooks();
 
  protected:
   VariableWrapper* var_;

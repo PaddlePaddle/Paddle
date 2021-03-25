@@ -78,7 +78,7 @@ class InplaceVariableWrapperHook {
 class LambdaInplaceVariableWrapperHook : public InplaceVariableWrapperHook {
  public:
   explicit LambdaInplaceVariableWrapperHook(
-      std::function<void(VariableWrapper*)> fn)
+      std::function<void(VariableWrapper*)>&& fn)
       : fn_(std::move(fn)) {}
 
   void operator()(VariableWrapper* var) override { fn_(var); }

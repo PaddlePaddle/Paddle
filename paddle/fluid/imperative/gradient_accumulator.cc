@@ -397,7 +397,7 @@ void GradientAccumulator::AccumulateGrad() {
                         "this auto-grad"));
   PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(), true,
                     platform::errors::InvalidArgument(
-                        "Interior var of Leaf tensor  should be initialized."));
+                        "Interior var of Leaf tensor should be initialized."));
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
@@ -430,6 +430,41 @@ void GradientAccumulator::AccumulateGrad() {
     var_->SetDataType(inner_var_->DataType());
   }
   inner_var_.reset();
+}
+
+void GradientAccumulator::CallHooks() {
+  if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
+    return;
+  }
+  PADDLE_ENFORCE_EQ(
+      HasInnerVar(), true,
+      platform::errors::InvalidArgument(
+          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(), true,
+                    platform::errors::InvalidArgument("Leaf Tensor's inner var "
+                                                      "is not initialized when "
+                                                      "call gradient hook."));
+  if (var_->HasHook()) {
+    VLOG(3) << "Call " << var_->GetHooks().size()
+            << " hooks of leaf gradient accumulator's inner var `"
+            << var_->Name() << "`.";
+    auto tmp_var = inner_var_;
+    VLOG(3) << "Input var " << var_->Name() << "'s hook size - "
+            << var_->GetHooks().size();
+    for (const auto& hook_pair : var_->GetHooks()) {
+      tmp_var = (*hook_pair.second)(tmp_var);
+    }
+    inner_var_ = tmp_var;
+  }
+}
+
+void GradientAccumulator::CallReduceHooks() {
+  if (var_->HasReduceHook()) {
+    for (const auto& hook : var_->GetReduceHooks()) {
+      VLOG(3) << "call gradient accumulator backward hooks.";
+      (*hook)(var_);
+    }
+  }
 }
 
 void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,

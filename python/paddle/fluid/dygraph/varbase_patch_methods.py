@@ -39,7 +39,7 @@ class TensorHookRemoveHelper(object):
     def remove(self):
         tensor = self._tensor_ref()
         if tensor is not None:
-            tensor._remove_grad_hook(self.hook_id)
+            tensor._remove_grad_hook(self._hook_id)
 
 
 def monkey_patch_varbase():

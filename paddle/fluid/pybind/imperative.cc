@@ -77,12 +77,10 @@ static T PyObjectCast(PyObject *obj) {
 class PyVariableWrapperHook : public imperative::VariableWrapperHook {
  public:
   explicit PyVariableWrapperHook(PyObject *func) : py_func_(func) {
-    VLOG(0) << "Construct PyVariableWrapperHook based func " << func;
-    Py_INCREF(func);
+    Py_INCREF(py_func_);
   }
 
   ~PyVariableWrapperHook() {
-    VLOG(0) << "Destruct PyVariableWrapperHook based func " << py_func_;
     py::gil_scoped_acquire gil;
     Py_DECREF(py_func_);
   }
@@ -90,20 +88,37 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
   std::shared_ptr<imperative::VariableWrapper> operator()(
       const std::shared_ptr<imperative::VariableWrapper> &var) override {
     py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyVariableWrapperHook for var " << var->Name();
 
     // 1. unpack temp VarBase from VariableWrapper
     std::shared_ptr<imperative::VarBase> tmp_varbase =
         std::make_shared<imperative::VarBase>(var);
 
     // 2. call hook and return
-    PyObject *res = PyObject_CallFunctionObjArgs(
-        py_func_, py::cast(tmp_varbase).ptr(), nullptr);
+    PyObject *res = nullptr;
+    try {
+      res = PyObject_CallFunctionObjArgs(py_func_, py::cast(tmp_varbase).ptr(),
+                                         nullptr);
+    } catch (platform::EnforceNotMet &e) {
+      throw std::move(e);
+    } catch (std::exception &e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      // NOTE: this branch represents a very serious bug with
+      // low probability of occurrence, and we can't get its
+      // exception content here.
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+
     PADDLE_ENFORCE_NOT_NULL(res,
                             platform::errors::Unavailable(
-                                "The gradient Tensor hook return nullptr."));
+                                "Hook function of Tensor return a nullptr."));
     if (res == Py_None) {
       return var;
     }
+
     return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
   }
 

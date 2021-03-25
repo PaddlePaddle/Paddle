@@ -281,10 +281,25 @@ void BasicEngine::Execute() {
       auto& bwd_ins = cur_op.GetInsMap();
       auto& bwd_outs = cur_op.GetOutsMap();
 
+      /**
+       * [ Why need temporary inputs and outputs here? ]
+       *
+       * 1. For inputs
+       * - Hook execution should not change original input tensor.
+       *   User can register hook for Tensor's gradient, It is expected
+       *   that the hook only affects the gradient of the backward
+       *   propagation, and does not affect the gradient value input
+       *   as the hook.
+       *
+       * 2. For outputs
+       *
+       * - construct the temp output map, avoid to disrupt graph
+       * - replace the element in the map by temp var, because a
+       *   var may be coresponding to several grad var in one op
+       */
+      NameVarMap<VariableWrapper> tmp_ins(bwd_ins);
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
-      // 1. construct the temp output map, avoid to disrupt graph
-      // 2. replace the element in the map by temp var, because a
-      // var may be coresponding to several grad var in one op
+
       for (auto& pair : tmp_outs) {
         if (!pair.second.IsGrad()) {
           continue;
@@ -355,7 +370,7 @@ void BasicEngine::Execute() {
             // If a tmp var has been created, there is no need to create it
             // again.
             for (auto& in_var :
-                 bwd_ins.at(inplace_grad_name_map.at(pair.first))) {
+                 tmp_ins.at(inplace_grad_name_map.at(pair.first))) {
               if (in_var == var) {
                 auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
                 tmp_var->SetType(var->Type());
@@ -374,7 +389,7 @@ void BasicEngine::Execute() {
 
       VLOG(4) << "Check whether there is any inplace operation affecting "
                  "gradient calculation.";
-      for (auto& pair : bwd_ins) {
+      for (auto& pair : tmp_ins) {
         for (auto& var_wrapper : pair.second) {
           auto wrapper_version_snapshot = var_wrapper->InplaceVersionSnapshot();
           auto tensor_version =
@@ -397,9 +412,25 @@ void BasicEngine::Execute() {
         }
       }
 
+      for (auto& pair : tmp_ins) {
+        for (size_t i = 0; i < pair.second.size(); ++i) {
+          auto& var = pair.second[i];
+          if (var->HasHook()) {
+            VLOG(3) << "Call " << var->GetHooks().size() << " hooks of "
+                    << cur_op.Type() << "'s input `" << pair.first
+                    << "`'s var `" << var->Name() << "`.";
+            auto tmp_var = var;
+            for (const auto& hook_pair : var->GetHooks()) {
+              tmp_var = (*hook_pair.second)(tmp_var);
+            }
+            tmp_ins[pair.first][i] = tmp_var;
+          }
+        }
+      }
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
-        OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
+        OpBase::Run(cur_op.InnerOp(), tmp_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
       }
 
@@ -418,6 +449,7 @@ void BasicEngine::Execute() {
           continue;
         }
         // 1. Call Hooks for **inner_var_**
+        accumulator->CallHooks();
 
         // 2. Sum Gradient with Previous Graph
         accumulator->AccumulateGrad();
