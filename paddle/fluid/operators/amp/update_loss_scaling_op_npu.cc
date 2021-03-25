@@ -154,7 +154,7 @@ class LazyZerosNPU {
         auto stream = dev_ctx.stream();
         auto g = out->mutable_data<T>(place);
         platform::NPUMemsetAsync(static_cast<void*>(g), 0,
-                                 out->numel() * sizeof(int), stream);
+                                 out->numel() * sizeof(T), stream);
       }
     }
   }
