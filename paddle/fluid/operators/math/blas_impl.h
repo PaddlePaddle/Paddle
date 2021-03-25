@@ -51,10 +51,30 @@ struct CBlas<platform::bfloat16> {
 
 #ifdef PADDLE_WITH_MKLDNN
   template <typename... ARGS>
-  static void AXPY(ARGS... args) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Blas AXPY do not supported on CPU with bfloat16,"
-        " please check your code"));
+  static void AXPY(int n, platform::bfloat16 alpha, const platform::bfloat16* x, int incx, platform::bfloat16* y, int incy) {
+
+    // TODO(jczaja): support other increments values diffrent from 1
+    PADDLE_ENFORCE_EQ(incx , 1,platform::errors::Unimplemented("Blas AXPY support incx == 1 only"));
+    PADDLE_ENFORCE_EQ(incy , 1,platform::errors::Unimplemented("Blas AXPY support incy == 1 only"));
+
+    auto& pool = platform::DeviceContextPool::Instance();
+    auto cpu_place = platform::CPUPlace();
+    auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(cpu_place));
+    auto& cpu_engine = dev_ctx->GetEngine();
+
+    // AXPY Handler
+    platform::AXPYMKLDNNHandler<platform::bfloat16> handler(*dev_ctx, cpu_engine, cpu_place, n, float(alpha));
+
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(x);
+    auto reorder_dst_memory_p = handler.AcquireDstMemory(y);
+    auto reorder_p =
+        handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    platform::RecordEvent record_reorder("axpy_int_reorder",
+                                         platform::EventRole::kUniqueOp);
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+    astream.wait();
   }
 #else
   template <typename... ARGS>
