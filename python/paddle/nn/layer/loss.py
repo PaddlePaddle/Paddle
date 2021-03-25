@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -311,28 +312,26 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
             2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
 
-
-    Example1(hard labels):
+     Example1(hard labels):
 
         .. code-block:: python
             
             import paddle
             import numpy as np
-            np.random.seed(99999)
+            paddle.seed(99999)
             N=100
             C=200
             reduction='mean'
-            input_np = np.random.random([N, C]).astype(np.float64)  
-            label_np = np.random.randint(0, C, size=(N)).astype(np.int64)  
-            weight_np = np.random.random([C]).astype(np.float64)  
+            input =  paddle.rand([N, C], dtype='float64')  
+            label =  paddle.randint(0, C, shape=[N], dtype='int64')
+            weight = paddle.rand([C], dtype='float64') 
             
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=paddle.to_tensor(weight_np), reduction=reduction)
+                weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                paddle.to_tensor(input_np),
-                paddle.to_tensor(label_np))
-            print(dy_ret.numpy()) #[5.37996124]
-
+                                       input,
+                                       label)
+            print(dy_ret.numpy()) #[5.41993642]
 
 
     Example2(soft labels):
@@ -341,30 +340,25 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             
             import paddle
             import numpy as np
-            np.random.seed(99999)
-            soft_label = True
-            dtype = np.float64
             axis = -1
-            ignore_index = -100 #should not be changed
+            ignore_index = -100
             N = 4
             C = 3
             shape = [N, C]
-            use_softmax = True
             reduction='mean'
             weight = None
-            logits = np.random.uniform(0.1, 1.0, shape).astype(dtype)
-            labels = np.random.uniform(0.1, 1.0, shape).astype(dtype)
-            labels /= np.sum(labels, axis=axis, keepdims=True)
+            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0, seed=99999)
+            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0, seed=99999)
+            labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle.set_device("cpu")
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                 paddle.to_tensor(logits),  
-                                                                 paddle.to_tensor(labels), 
-                                                                 soft_label=True, 
-                                                                 axis=axis,
-                                                                 weight=weight,
-                                                                 reduction=reduction)
-            print("paddle_loss_mean:",paddle_loss_mean.numpy()) #[1.11473992]
-
+                                                                  logits,  
+                                                                  labels, 
+                                                                  soft_label=True, 
+                                                                  axis=axis,
+                                                                  weight=weight,
+                                                                  reduction=reduction)
+            print(paddle_loss_mean.numpy()) #[1.05313515]
 
     """
 
