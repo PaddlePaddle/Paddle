@@ -20,16 +20,12 @@ from .base.util_factory import UtilBase
 from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 from . import metrics
+from .base.topology import CommunicateTopology
 
 __all__ = [
-    "DistributedStrategy",
-    "UtilBase",
-    "UserDefinedRoleMaker",
-    "PaddleCloudRoleMaker",
-    "Fleet",
-    "MultiSlotDataGenerator",
-    "MultiSlotStringDataGenerator",
-    "Role",
+    "DistributedStrategy", "UtilBase", "UserDefinedRoleMaker",
+    "PaddleCloudRoleMaker", "Fleet", "MultiSlotDataGenerator",
+    "MultiSlotStringDataGenerator", "Role", "CommunicateTopology"
 ]
 
 fleet = Fleet()

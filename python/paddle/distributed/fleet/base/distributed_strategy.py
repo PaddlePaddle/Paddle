@@ -840,6 +840,31 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
+    def hybrid_configs(self):
+        """
+        Set hybrid configurations. 
+        **Note**:
+            num_data_parallel(int): 
+            num_model_parallel(int): 
+            num_pipeline_parallel(int): 
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hybrid_configs = {
+                "num_data_parallel": 1,
+                "num_model_parallel": 2,
+                "num_pipeline_parallel": 1}
+        """
+        return get_msg_dict(self.strategy.hybrid_configs)
+
+    @hybrid_configs.setter
+    def hybrid_configs(self, configs):
+        check_configs_key(self.strategy.hybrid_configs, configs,
+                          "hybrid_configs")
+        assign_configs_value(self.strategy.hybrid_configs, configs)
+
+    @property
     def localsgd(self):
         """
         Indicating whether we are using Local SGD training. Default Value: False

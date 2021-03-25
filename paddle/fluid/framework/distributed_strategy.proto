@@ -34,6 +34,12 @@ message ShardingConfig {
   optional int32 sharding_group_size = 3 [ default = 8 ];
 }
 
+message HybridConfig {
+  optional int32 num_data_parallel = 1 [ default = 0 ];
+  optional int32 num_model_parallel = 2 [ default = 0 ];
+  optional int32 num_pipeline_parallel = 3 [ default = 0 ];
+}
+
 message AMPConfig {
   optional float init_loss_scaling = 1 [ default = 32768.0 ];
   optional int32 incr_every_n_steps = 2 [ default = 1000 ];
@@ -164,6 +170,7 @@ message DistributedStrategy {
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
+  optional HybridConfig hybrid_configs = 112;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

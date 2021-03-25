@@ -234,6 +234,25 @@ class Fleet(object):
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
 
+        self._init_hybrid_parallel_env()
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        hybrid_configs = self._user_defined_strategy.hybrid_configs
+        dp_num = hybrid_configs["num_data_parallel"]
+        mp_num = hybrid_configs["num_model_parallel"]
+        pp_num = hybrid_configs["num_pipeline_parallel"]
+
+        # print("dp_num: {}, mp_num: {}, pp_num: {}".format(dp_num, mp_num, pp_num))
+        # assert dp_num > 0 or mp_num > 0 or pp_num > 0, \
+        #     "hybrid configs must be greater than 0"
+
+        nranks = paddle.distributed.get_world_size()
+
+        assert nranks == dp_num * mp_num * pp_num, \
+                "nranks must be equal to dp_num * mp_num * pp_num"
+
     def is_first_worker(self):
         """
         Check whether the node is the first instance of worker.
