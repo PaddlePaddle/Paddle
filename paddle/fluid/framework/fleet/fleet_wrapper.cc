@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -192,7 +193,6 @@ void FleetWrapper::HeterPullSparseVars(
   for (auto& t : fea_values) {
     pull_result_ptr.push_back(t.data());
   }
-  /*
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(
       workerid, pull_result_ptr.data(), table_id, fea_keys.data(),
       fea_keys.size(), task->taskid_);
@@ -206,7 +206,6 @@ void FleetWrapper::HeterPullSparseVars(
       exit(-1);
     }
   }
-  */
 }
 
 void FleetWrapper::HeterPushSparseVars(

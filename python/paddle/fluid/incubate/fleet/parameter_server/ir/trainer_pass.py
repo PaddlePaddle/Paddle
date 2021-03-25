@@ -32,7 +32,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_ta
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "@CLIP"
+CLIP_OP_NAME_SCOPE = "gradient_clip"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -172,8 +172,21 @@ def distributed_ops_pass(program, config):
                         "lookup_table_version": op_type
                     })
             else:
-                raise ValueError(
-                    "something wrong with Fleet, submit a issue is recommended")
+                for i in range(len(inputs_idxs)):
+                    distributed_idx = op_idxs[i] + 1
+
+                    program.global_block()._insert_op(
+                        index=distributed_idx,
+                        type="distributed_lookup_table",
+                        inputs={"Ids": [inputs[i]],
+                                'W': w},
+                        outputs={"Outputs": [outputs[i]]},
+                        attrs={
+                            "is_distributed": is_distributed,
+                            "padding_idx": padding_idx,
+                            "table_id": table_id,
+                            "lookup_table_version": op_type
+                        })
 
     pull_sparse_ops = _get_pull_sparse_ops(program)
     _pull_sparse_fuse(program, pull_sparse_ops)

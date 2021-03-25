@@ -36,6 +36,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+std::once_flag SocketServer::init_flag_;
+
 constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
 
 // Check system calls, such as socket, bind.
@@ -328,6 +330,22 @@ void RecvBroadCastCommID(int server_fd, std::string endpoint,
 
   VLOG(3) << "receiving completed...";
   CloseSocket(client);
+}
+
+SocketServer& SocketServer::GetInstance(const std::string& end_point) {
+  static SocketServer instance;
+  std::call_once(init_flag_, [&]() {
+    instance.server_fd_ = CreateListenSocket(end_point);
+    instance.end_point_ = end_point;
+  });
+  PADDLE_ENFORCE_NE(instance.server_fd_, -1,
+                    platform::errors::Unavailable(
+                        "listen socket failed with end_point=%s", end_point));
+  PADDLE_ENFORCE_EQ(instance.end_point_, end_point,
+                    platform::errors::InvalidArgument(
+                        "old end_point=%s must equal with new end_point=%s",
+                        instance.end_point_, end_point));
+  return instance;
 }
 
 /// template instantiation
