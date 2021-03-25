@@ -1145,6 +1145,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_share_memory",
            [](const std::shared_ptr<imperative::VarBase> &self) {
 #ifndef _WIN32
+             PADDLE_ENFORCE_EQ(
+                 platform::is_cpu_place(self->Place()), true,
+                 platform::errors::InvalidArgument(
+                     "Sharing memory only support CPU Tensor currently"));
              // 1. get LoDTensor
              auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
              // 2. allocate shared memory
