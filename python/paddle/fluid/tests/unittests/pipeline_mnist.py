@@ -73,6 +73,14 @@ def cnn_model(data):
             act="softmax",
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)))
+        # To cover @RENAMED@GRADIENT
+        predict2 = fluid.layers.fc(
+            input=conv_pool_1,
+            size=SIZE,
+            act="softmax",
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01)))
+        predict += predict2
     return predict
 
 
