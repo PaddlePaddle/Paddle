@@ -107,40 +107,32 @@ class HybridCommunicateGroup(object):
         assert self._check_vaild_topo(
         ), "Here is an unreasonable topogy setting"
 
-        # Create new ProcessGroups for all model parallelism. DeepSpeedLight uses these
-        # to detect overflow, etc.
-        # self.ds_model_proc_group = None
-        # self.ds_model_rank = -1
-        # for dp in range(self.data_parallel_size):
-        #     ranks = sorted(self._topo.get_comm_list(axis='data', idx=dp))
-        #     if self.global_rank == 0:
-        #         #print(f'RANK={self.global_rank} building DeepSpeed model group: {ranks}')
-        #         pass
-        #     proc_group = dist.new_group(ranks=ranks)
-        #     if self.global_rank in ranks:
-        #         self.ds_model_proc_group = proc_group
-        #         self.ds_model_world_size = len(ranks)
-        #         self.ds_model_rank = ranks.index(self.global_rank)
-        # assert self.ds_model_rank > -1
-        # assert self.ds_model_proc_group is not None
+        # create comm group for data parallel
+        self.dp_group, self.dp_comm_group = self._set_comm_group("data")
+        print("data parallel group", self.dp_group)
 
-        # Create new ProcessGroup for gradient all-reduces - these are the data parallel groups
-        self.dp_group = []
-        self.dp_groups = self._topo.get_comm_list('data')
-
-        # for g in self.dp_groups:
-        #     comm_group = 
-
-        # self.dp_group = []
-        # self.dp_groups = self._topo.get_axis_comm_lists('data')
-        # for g in self.dp_groups:
-        #     proc_group = dist.new_group(ranks=g)
-        #     if self.global_rank in g:
-        #         self.dp_group = g
-        #         self.dp_proc_group = proc_group
+        # create comm group for model parallel
+        self.mp_group, self.mp_comm_group = self._set_comm_group("model")
+        print("model parallel group", self.mp_group)
 
     def _check_vaild_topo(self):
         return self._num_data_parallel * self._num_model_parallel * self._num_pipe_parallel == self.nranks
 
     def _get_data_parallel_id(self):
         return self._topo.get_coord(self.global_rank).data
+
+    def _set_comm_group(self, parallel_method="data"):
+        parallel_group = []
+        parallel_comm_group = None
+        parallel_groups = self._topo.get_comm_list(parallel_method)
+
+        for g in parallel_groups:
+            comm_group = dist.new_group(ranks=group)
+            if global_rank in group:
+                parallel_group = group
+                parallel_comm_group = comm_group
+
+        assert len(parallel_group) > 0
+        assert parallel_comm_group is not None
+
+        return parallel_group, parallel_comm_group
