@@ -43,7 +43,6 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
       num_anchors_(num_anchors),
       box_num_(box_num) {
   // anchors must be float32, which is the generator proposals' input
-
   PADDLE_ENFORCE_EQ(data_type_, nvinfer1::DataType::kFLOAT,
                     platform::errors::InvalidArgument(
                         "TRT anchor generator plugin only accepts float32."));
@@ -68,7 +67,6 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
                         "TRT anchor generator plugin only accepts box_num "
                         "greater than 0, but receive box_num = %d.",
                         box_num_));
-
   constexpr int data_size = 4;
   cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
   cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size);
@@ -241,8 +239,6 @@ nvinfer1::IPluginV2Ext* AnchorGeneratorPlugin::clone() const {
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }
-
-AnchorGeneratorPluginCreator::AnchorGeneratorPluginCreator() {}
 
 void AnchorGeneratorPluginCreator::setPluginNamespace(
     const char* lib_namespace) {
@@ -504,8 +500,6 @@ void AnchorGeneratorPluginDynamic::serialize(void* buffer) const {
 }
 
 void AnchorGeneratorPluginDynamic::destroy() {}
-
-AnchorGeneratorPluginDynamicCreator::AnchorGeneratorPluginDynamicCreator() {}
 
 void AnchorGeneratorPluginDynamicCreator::setPluginNamespace(
     const char* lib_namespace) {

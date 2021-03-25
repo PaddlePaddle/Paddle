@@ -91,7 +91,7 @@ class AnchorGeneratorPlugin : public nvinfer1::IPluginV2Ext {
 
 class AnchorGeneratorPluginCreator : public nvinfer1::IPluginCreator {
  public:
-  AnchorGeneratorPluginCreator();
+  AnchorGeneratorPluginCreator() = default;
   ~AnchorGeneratorPluginCreator() override = default;
   void setPluginNamespace(const char* lib_namespace) override;
   const char* getPluginNamespace() const override;
@@ -175,7 +175,7 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
 
 class AnchorGeneratorPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  AnchorGeneratorPluginDynamicCreator();
+  AnchorGeneratorPluginDynamicCreator() = default;
   ~AnchorGeneratorPluginDynamicCreator() override = default;
   void setPluginNamespace(const char* lib_namespace) override;
   const char* getPluginNamespace() const override;
