@@ -148,13 +148,13 @@ class LazyZerosNPU {
     for (size_t i = 0; i < xs.size(); ++i) {
       auto* out = outs[i];
       if (found_inf_vec[0]) {
-        VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
+        VLOG(4) << "-- UpdateLossScaling: Find infinite grads. --";
 
         auto place = dev_ctx.GetPlace();
         auto stream = dev_ctx.stream();
-        auto g = out->mutable_data<int>(place);
+        auto g = out->mutable_data<T>(place);
         platform::NPUMemsetAsync(static_cast<void*>(g), 0,
-                                 out->numel() * sizeof(int), stream);
+                                 out->numel() * sizeof(T), stream);
       }
     }
   }

@@ -36,7 +36,15 @@ void UpdateAttr(const framework::DDim in_dims, const std::vector<int> axes,
 
     if (axis == i) {
       start = starts[cnt];
-      end = ends[cnt] <= in_dims[i] ? ends[cnt] : end;
+      if (start < 0) {
+        start = (start + in_dims[i]);
+      }
+      start = std::max(start, static_cast<int>(0));
+      end = ends[cnt];
+      if (end < 0) {
+        end = (end + in_dims[i]);
+      }
+      end = std::min(end, static_cast<int>(in_dims[i]));
       cnt++;
     }
 

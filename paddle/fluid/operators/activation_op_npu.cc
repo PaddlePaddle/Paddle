@@ -364,4 +364,5 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     square, ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
-                         paddle::platform::float16>);
+                         paddle::platform::float16>,
+    ops::SquareNPUKernel<paddle::platform::NPUDeviceContext, int>);
