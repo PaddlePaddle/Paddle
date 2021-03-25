@@ -39,7 +39,12 @@ def get_place(target):
             format(target))
 
 
-def train(target, is_sparse, is_parallel, save_dirname, is_local=True):
+def train(target,
+          is_sparse,
+          is_parallel,
+          save_dirname,
+          is_local=True,
+          use_bf16=False):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -101,6 +106,8 @@ def train(target, is_sparse, is_parallel, save_dirname, is_local=True):
         raise NotImplementedError()
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    if use_bf16:
+        paddle.static.amp.rewrite_program_bf16(fluid.default_main_program())
     sgd_optimizer.minimize(avg_cost)
 
     train_reader = paddle.batch(
@@ -239,10 +246,13 @@ def infer(target, save_dirname=None):
             assert np.isclose(a, b, rtol=5e-5), "a: {}, b: {}".format(a, b)
 
 
-def main(target, is_sparse, is_parallel):
+def main(target, is_sparse, is_parallel, use_bf16):
     if target == "cuda" and not fluid.core.is_compiled_with_cuda():
         return
     if target == "xpu" and not fluid.core.is_compiled_with_xpu():
+        return
+
+    if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
     if not is_parallel:
@@ -255,7 +265,7 @@ def main(target, is_sparse, is_parallel):
         # so only inference is turned on.
         train("cpu", is_sparse, is_parallel, save_dirname)
     else:
-        train(target, is_sparse, is_parallel, save_dirname)
+        train(target, is_sparse, is_parallel, save_dirname, use_bf16=use_bf16)
     infer(target, save_dirname)
 
 
@@ -268,10 +278,11 @@ class W2VTest(unittest.TestCase):
     pass
 
 
-def inject_test_method(target, is_sparse, is_parallel):
-    fn_name = "test_{0}_{1}_{2}".format(target, "sparse"
-                                        if is_sparse else "dense", "parallel"
-                                        if is_parallel else "normal")
+def inject_test_method(target, is_sparse, is_parallel, use_bf16=False):
+    fn_name = "test_{0}_{1}_{2}{3}".format(target, "sparse"
+                                           if is_sparse else "dense", "parallel"
+                                           if is_parallel else "normal", "_bf16"
+                                           if use_bf16 else "")
 
     def __impl__(*args, **kwargs):
         prog = fluid.Program()
@@ -279,8 +290,7 @@ def inject_test_method(target, is_sparse, is_parallel):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                main(
-                    target=target, is_sparse=is_sparse, is_parallel=is_parallel)
+                main(target, is_sparse, is_parallel, use_bf16)
 
     if (not fluid.core.is_compiled_with_cuda() or
             target == "cuda") and is_sparse:
@@ -297,6 +307,7 @@ for target in ("cuda", "cpu", "xpu"):
     for is_sparse in (False, True):
         for is_parallel in (False, ):
             inject_test_method(target, is_sparse, is_parallel)
+inject_test_method("cpu", False, False, use_bf16=True)
 
 if __name__ == '__main__':
     unittest.main()

@@ -442,7 +442,8 @@ def find_cuda_home():
                     [which_cmd, 'nvcc'], stderr=devnull)
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
-                nvcc_path = nvcc_path.rstrip('\r\n')
+                # Multi CUDA, select the first
+                nvcc_path = nvcc_path.split('\r\n')[0]
 
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
@@ -460,9 +461,6 @@ def find_cuda_home():
     if cuda_home and not os.path.exists(
             cuda_home) and core.is_compiled_with_cuda():
         cuda_home = None
-        warnings.warn(
-            "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
-        )
 
     return cuda_home
 
@@ -493,9 +491,6 @@ def find_rocm_home():
     if rocm_home and not os.path.exists(
             rocm_home) and core.is_compiled_with_rocm():
         rocm_home = None
-        warnings.warn(
-            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
-        )
 
     return rocm_home
 
