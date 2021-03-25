@@ -68,6 +68,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     reshape2, ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext,
@@ -76,6 +78,8 @@ REGISTER_OP_NPU_KERNEL(
     reshape2_grad,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext,
