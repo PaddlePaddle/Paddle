@@ -31,31 +31,34 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
-class TestPowNet(unittest.TestCase):
+class TestTruncatedNormal(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
+        scope = paddle.fluid.core.Scope()
+
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
         paddle.seed(SEED)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.TruncatedNormal(
-                    mean=0.0, std=2.0))
-            linear = paddle.nn.Linear(
-                2, 2, weight_attr=weight_attr, bias_attr=False)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                weight_attr = paddle.framework.ParamAttr(
+                    name="linear_weight",
+                    initializer=paddle.nn.initializer.TruncatedNormal(
+                        mean=0.0, std=2.0))
+                linear = paddle.nn.Linear(
+                    2, 2, weight_attr=weight_attr, bias_attr=False)
 
-        if run_npu:
-            place = paddle.NPUPlace(0)
-        else:
-            place = paddle.CPUPlace()
+            if run_npu:
+                place = paddle.NPUPlace(0)
+            else:
+                place = paddle.CPUPlace()
 
-        exe = paddle.static.Executor(place)
-        w = exe.run(startup_prog, fetch_list=['linear_weight'])
-        return w
+            exe = paddle.static.Executor(place)
+            w = exe.run(startup_prog, fetch_list=['linear_weight'])
+            return w
 
     def test_npu(self):
         cpu_w = self._test(False)
