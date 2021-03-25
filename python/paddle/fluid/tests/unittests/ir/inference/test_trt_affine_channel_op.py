@@ -53,9 +53,9 @@ class TRTAffineChannelTest(InferencePassTest):
         self.fetch_list = [out]
 
     def set_params(self):
-        self.bs = 4
-        self.channel = 16
-        self.hw = (32, 32)
+        self.bs = 2
+        self.channel = 8
+        self.hw = (16, 16)
         self.data_layout = 'NCHW'
 
     def append_affine_channel(self, data, scale, bias):
@@ -72,9 +72,9 @@ class TRTAffineChannelTest(InferencePassTest):
 
 class TRTAffineChannelTest1(TRTAffineChannelTest):
     def set_params(self):
-        self.bs = 4
-        self.channel = 16
-        self.hw = (32, 32)
+        self.bs = 2
+        self.channel = 8
+        self.hw = (16, 16)
         self.data_layout = 'NHWC'
 
 
