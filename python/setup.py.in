@@ -179,6 +179,7 @@ packages=['paddle',
           'paddle.fluid.contrib.utils',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.mixed_precision',
+          'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details',
@@ -334,6 +335,17 @@ if '${WITH_XPU}' == 'ON':
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
+
+# Only for lite xpu inference.
+if '${WITH_XPU}' == 'OFF' and '${XPU_SDK_ROOT}' != '':
+    xpu_api_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/shlib/', 'libxpuapi.so')
+    xpu_rt_lib = os.path.join('${XPU_SDK_ROOT}', 'XTDK/runtime/shlib/', 'libxpurt.so')
+    if os.path.exists(xpu_api_lib):
+        shutil.copy(xpu_api_lib, libs_path)
+        package_data['paddle.libs']+=['libxpuapi.so']
+    if os.path.exists(xpu_rt_lib):
+        shutil.copy(xpu_rt_lib, libs_path)
+        package_data['paddle.libs']+=['libxpurt.so']
 
 ### Old custom op extension mechanism related, will be removed in 2.1.0 ###
 # copy libpaddle_framework.so to libs on linux

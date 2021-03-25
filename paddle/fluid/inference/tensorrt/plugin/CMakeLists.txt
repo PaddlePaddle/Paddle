@@ -8,3 +8,6 @@ nv_library(tensorrt_plugin
            yolo_box_op_plugin.cu
 
            DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
+
+nv_test(test_split_plugin SRCS test_split_plugin.cc DEPS
+  paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)

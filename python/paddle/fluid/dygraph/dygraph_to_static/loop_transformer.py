@@ -594,7 +594,7 @@ class LoopTransformer(gast.NodeTransformer):
         # append return values for loop body
         body_stmts.append(
             gast.Return(value=generate_name_node(
-                loop_var_names, ctx=gast.Load())))
+                loop_var_names, ctx=gast.Load(), gen_tuple_if_single=True)))
         body_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(
