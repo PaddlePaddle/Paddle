@@ -74,6 +74,10 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         self.fetch_list = [out]
 
     def run_test(self):
+        self.build()
+        self.check_output()
+
+    def run_test_all(self):
         precision_opt = [
             AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
         ]
@@ -105,6 +109,14 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
     def test_base(self):
+        self.run_test_all()
+
+    def test_fp16(self):
+        self.precision = AnalysisConfig.Precision.Half
+        self.run_test()
+
+    def test_serialize(self):
+        self.serialize = True
         self.run_test()
 
     def test_background(self):
