@@ -37,7 +37,7 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         self.normalized = False
         self.num_classes = 8
         self.num_boxes = 8
-        self.trt_parameters = super().TensorRTParam(
+        self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)
 
     def build(self):
@@ -84,7 +84,7 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         }
         opt_shape = max_shape
         dynamic_shape_opt = [
-            None, super().DynamicShapeParam({
+            None, InferencePassTest.DynamicShapeParam({
                 'bboxes': [1, 1, 4],
                 'scores': [1, 1, 1]
             }, max_shape, opt_shape, False)
