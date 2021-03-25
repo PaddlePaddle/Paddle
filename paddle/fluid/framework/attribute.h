@@ -23,7 +23,6 @@ limitations under the License. */
 #include <vector>
 
 #include "boost/variant/get.hpp"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
