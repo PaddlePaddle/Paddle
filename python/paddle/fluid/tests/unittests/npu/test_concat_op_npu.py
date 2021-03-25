@@ -32,7 +32,7 @@ class TestConcat(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "concat"
-        self.place = paddle.NPUPlace(4)
+        self.place = paddle.NPUPlace(0)
         self.init_dtype()
         self.init_test_data()
 
@@ -66,7 +66,7 @@ class TestConcat(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['x0'], 'Out', check_dygraph=False)
+            self.place, ['x0', 'x2'], 'Out', check_dygraph=False)
         self.check_grad_with_place(
             self.place, ['x1'], 'Out', check_dygraph=False)
         self.check_grad_with_place(
@@ -77,7 +77,7 @@ class TestConcatFP16(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "concat"
-        self.place = paddle.NPUPlace(4)
+        self.place = paddle.NPUPlace(0)
         self.init_dtype()
         self.init_test_data()
 

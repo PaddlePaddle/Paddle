@@ -63,8 +63,20 @@ class TestSliceOp(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad_normal(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             self.place, ['Input'], 'Out', check_dygraph=False)
+
+
+class TestSliceOp2(TestSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = [1, 0, -3]
+        self.ends = [3, 3, -1]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[1:3, 0:3, -3:-1, :]
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
