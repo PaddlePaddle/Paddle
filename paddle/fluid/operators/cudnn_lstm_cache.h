@@ -85,7 +85,7 @@ class ScopedRNNBase {
     dropout_desc_.descriptor(handle, place, initialized_, dropout_prob_,
                              dropout_state, seed_, state_size);
 
-// ------------------- cudnn rnn descriptors ---------------------
+    // ------------------- cudnn rnn descriptors ---------------------
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,
         dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
