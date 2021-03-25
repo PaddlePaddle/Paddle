@@ -349,7 +349,7 @@ function unittests_retry(){
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
-        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        failed_test_lists_ult=`echo "${failed_test_lists}"
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
