@@ -27,9 +27,9 @@ from paddle.fluid.core import AnalysisConfig
 class TRTAnchorGeneratorBaseTest(InferencePassTest):
     def setUp(self):
         self.bs = 1
-        self.channel = 32
-        self.height = 64
-        self.width = 64
+        self.channel = 16
+        self.height = 32
+        self.width = 32
         self.anchor_sizes = [64., 128., 256., 512.]
         self.aspect_ratios = [.5, 1., 2.]
         self.variance = [.1, .1, .2, .2]
