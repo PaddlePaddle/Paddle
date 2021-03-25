@@ -538,7 +538,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
     set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR}/yolov3_r50_quant_aware.tgz)
+    if (NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
