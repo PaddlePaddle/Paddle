@@ -118,10 +118,13 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
 
 int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   auto paths = paddle::string::split_string<std::string>(path, ";");
+  int64_t count = 0;
+  int64_t valid_count = 0;
   for (auto path : paths) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
+      count ++;
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 2) continue;
       auto id = std::stoull(values[1]);
@@ -131,6 +134,10 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
         VLOG(4) << "will not load " << id << " from " << path
                 << ", please check id distribution";
         continue;
+      }
+
+      if (count % 1000000 == 0) {
+        VLOG(0) << count << " nodes are loaded from filepath";
       }
 
       std::string nt = values[0];
@@ -152,8 +159,12 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
           VLOG(4) << "Node feature:  " << values[slice] << " not in feature_map.";
         }
       }
+      valid_count ++;
     }
   }
+
+  VLOG(0) << valid_count << "/" << count << " nodes in type " << 
+      node_type << " are loaded successfully in " << path;
   return 0;
 }
 
@@ -162,6 +173,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   int count = 0;
   std::string sample_type = "random";
   bool is_weighted = false;
+  int valid_count = 0;
 
   for (auto path : paths) {
     std::ifstream file(path);
@@ -189,13 +201,18 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
                 << ", please check id distribution";
         continue;
       }
+      if (count % 1000000 == 0) {
+        VLOG(0) << count << " edges are loaded from filepath";
+      }
 
       size_t index = src_shard_id - shard_start;
       shards[index].add_graph_node(src_id)->build_edges(is_weighted);
       shards[index].add_neighboor(src_id, dst_id, weight);
+      valid_count ++;
     }
   }
-  VLOG(0) << "Load Finished Total Edge Count " << count;
+  VLOG(0) << valid_count << "/" << count << " edges in type " << 
+      node_type << " are loaded successfully in " << path;
 
   // Build Sampler j
 

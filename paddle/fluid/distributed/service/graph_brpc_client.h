@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <ThreadPool.h>
 
 #include <utility>
 #include "brpc/channel.h"
