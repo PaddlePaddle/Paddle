@@ -80,11 +80,10 @@ class LSTMMKLDNNHandler
       auto hidden_md = MKLDNNMemDesc({Ti, N, OC}, MKLDNNGetDataType<T_out>(),
                                      MKLDNNMemoryFormat::tnc);
 
-
       auto h0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<T>(),
-                                MKLDNNMemoryFormat::ldnc);
-      auto c0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldnc);
+                                 MKLDNNMemoryFormat::ldnc);
+      auto c0_md = MKLDNNMemDesc({L, D, N, OC}, MKLDNNGetDataType<float>(),
+                                 MKLDNNMemoryFormat::ldnc);
 
       // Create LSTM oneDNN primitive
       const auto direction =
