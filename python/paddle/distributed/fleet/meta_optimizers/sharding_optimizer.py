@@ -15,7 +15,7 @@
 import paddle
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
