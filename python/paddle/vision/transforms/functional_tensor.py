@@ -153,21 +153,22 @@ def _affine_grid(theta, w, h, ow, oh):
     return output_grid.reshape((1, oh, ow, 2))
 
 
-def rotate(
-        img,
-        angle,
-        interpolation='nearest',
-        expand=False,
-        center=None,
-        fill=None,
-        translate=None, ):
+def rotate(img,
+           angle,
+           interpolation='nearest',
+           expand=False,
+           center=None,
+           fill=None,
+           translate=None,
+           data_format='CHW'):
     '''
     https://github.com/python-pillow/Pillow/blob/11de3318867e4398057373ee9f12dcb33db7335c/src/PIL/Image.py#L2054
     '''
 
     angle = -angle % 360
 
-    n, c, h, w = img.shape
+    # n, c, h, w = img.shape
+    w, h = _get_image_size(img, data_format=data_format)
 
     # image center is (0, 0) in matrix
     if translate is None:
