@@ -20,7 +20,8 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, con
 import paddle.fluid as fluid
 import paddle
 
-
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
 @skip_check_grad_ci(reason="not implemented")
 class TestReduceSumDefaultBF16ONEDNNOp(OpTest):
     def setUp(self):
