@@ -21,6 +21,11 @@ import paddle
 from paddle.nn.functional import affine_grid, grid_sample
 
 
+def _assert_paddle_image(img):
+    if img.ndim != 3:
+        raise RuntimeError('not support dim={} paddle image'.format(img.ndim))
+
+
 def _assert_data_format(data_format):
     assert data_format.lower() in ('chw', 'hwc'
                                    ), "data_format should in ('chw', 'hwc')"
