@@ -105,9 +105,6 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
       PADDLE_THROW(platform::errors::Unavailable(
           "Hook function of Tensor raises an exception: %s.", e.what()));
     } catch (...) {
-      // NOTE: this branch represents a very serious bug with
-      // low probability of occurrence, and we can't get its
-      // exception content here.
       PADDLE_THROW(platform::errors::Fatal(
           "Hook function of Tensor raises an unknown exception."));
     }
@@ -1058,8 +1055,6 @@ void BindImperative(py::module *m_ptr) {
                      "Cannot remove hook on a tensor without gradient."));
              return self.GradVarBase()->RemoveHook(hook_id);
            })
-      .def("_register_grad_reduce_hook",
-           [](imperative::VarBase &self, const py::handle &hook) { return; })
       .def("cpu",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              if (platform::is_cpu_place(self->Place())) {
