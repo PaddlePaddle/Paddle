@@ -142,7 +142,7 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
     for (int w_in = w_in_start; w_in < w_in_end; w_in += dilate_width) {
       if (h_in >= h_start && h_in < h_end && w_in >= w_start && w_in < w_end) {
         int offset = ((batch * input_height + h_in) * input_width + w_in) *
-                         output_channels +
+                         input_channels +
                      c_in;
         T in_data = input_data[offset];
         if (fuse_relu_before_conv) {
