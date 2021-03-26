@@ -478,30 +478,5 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
         self.assertTrue(op_count == 14)
 
 
-class TestSaveQuantizedModel_Warning(unittest.TestCase):
-    def test_warning(self):
-        path = "./dynamic_outscale_infer_model_with_warnings/lenet"
-        imperative_out_scale = ImperativeQuantAware()
-        with fluid.dygraph.guard():
-            lenet = ImperativeLenet()
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            imperative_out_scale.save_quantized_model(
-                layer=lenet,
-                path=path,
-                input_spec=[
-                    paddle.static.InputSpec(
-                        shape=[None, 1, 28, 28], dtype='float32')
-                ])
-
-        warning_message = "Warning: No Layer of the model while to be " \
-                          "saved contains the out_threshold attribute, so the " \
-                          "generated inference model would not contain the " \
-                          "out_threshold."
-        num = get_vaild_warning_num(warning_message, w)
-        assert num == 0
-
-
 if __name__ == '__main__':
     unittest.main()
