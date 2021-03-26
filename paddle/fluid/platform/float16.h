@@ -344,7 +344,7 @@ struct PADDLE_ALIGN(2) float16 {
 // CUDA 9.0 regarding the half data type.
 // ROCM has built-in arithmetic operators as not defined
 // __HIP_NO_HALF_OPERATORS__
-#if defined(PADDLE_CUDA_FP16) && !defined(__HIPCC__) && CUDA_VERSION < 9000
+#if defined(PADDLE_CUDA_FP16) && !defined(__HIPCC__)
 DEVICE inline half operator+(const half& a, const half& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hadd(a, b);

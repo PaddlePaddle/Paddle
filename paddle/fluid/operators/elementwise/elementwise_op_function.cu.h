@@ -34,10 +34,6 @@ limitations under the License. */
 #endif
 #endif  // PADDLE_WITH_HIP
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
-#define __h2div h2div
-#endif
-
 #define DIV_ERROR_INFO                                                     \
   "InvalidArgumentError: Integer division by zero encountered in divide. " \
   "Please check.\n"

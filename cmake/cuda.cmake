@@ -6,15 +6,9 @@ endif()
 if (WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
-  set(paddle_known_gpu_archs7 "53")
-  set(paddle_known_gpu_archs8 "53 62")
-  set(paddle_known_gpu_archs9 "53 62")
   set(paddle_known_gpu_archs10 "53 62 72")
 else()
   set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
-  set(paddle_known_gpu_archs7 "30 35 50 52")
-  set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
-  set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
   set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
@@ -158,25 +152,7 @@ function(select_nvcc_arch_flags out_variable)
 endfunction()
 
 message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
-if (${CMAKE_CUDA_COMPILER_VERSION} LESS 7.0)
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 8.0) # CUDA 7.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 9.0) # CUDA 8.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-  # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
-  # warning for now.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0) # CUDA 9.x
-  set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
+if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
