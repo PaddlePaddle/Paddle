@@ -21,14 +21,14 @@ import warnings
 
 import paddle
 from paddle.fluid import dygraph, core, framework, unique_name
-from paddle.fluid.executor import Executor
+from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
 from paddle.fluid.log_helper import get_logger
-from . import quant_nn
 from .. import quantization_pass
+from . import quant_nn
 from . import utils
 
 __all__ = ['ImperativeQuantAware']
@@ -201,7 +201,7 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._calc_output_scale = ImperativeQuantizeOutputs()
+        self._quantize_outputs = ImperativeQuantizeOutputs()
 
     def quantize(self, model):
         """
@@ -219,11 +219,11 @@ class ImperativeQuantAware(object):
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
         self._quantize_inputs.apply(model)
-        self._calc_output_scale.apply(model)
+        self._quantize_outputs.apply(model)
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        self._calc_output_scale.save_quantized_model(layer, path, input_spec,
-                                                     **config)
+        self._quantize_outputs.save_quantized_model(layer, path, input_spec,
+                                                    **config)
 
 
 class ImperativeQuantizeInputs(object):
@@ -343,320 +343,14 @@ class ImperativeQuantizeInputs(object):
         return quant_nn.__dict__[quant_layer_name](layer, **self._kwargs)
 
 
-class ImperativeCalcOutputScale(object):
-    def __init__(self, moving_rate=0.9):
-        """
-        Add the logic of calculating and setting output scales of some layers. 
-
-        Args:
-            moving_rate(float): The decay coefficient of moving average.
-                                The default value is 0.9.
-        """
-        super(ImperativeCalcOutputScale, self).__init__()
-        self._moving_rate = moving_rate
-        self._register_hook_handle_list = []
-        self._out_scale_dict = collections.OrderedDict()
-
-    def apply(self, model):
-        """
-        Insert the `moving_average_abs_max_scale` op to calculate output 
-        scale of specific layers in model.
-
-        Args:
-            model(fluid.dygraph.Layer): The target model which would be
-                calculate the output quantization scale.
-
-        Returns:
-            None
-        """
-        assert isinstance(model, dygraph.Layer), \
-            "The model must be the instance of dygraph.Layer."
-
-        # Calculate the target ops's output scale, and don't consider
-        # the skip_quant attr
-        for _, layer in model.named_sublayers():
-            if self._is_target_layer(layer):
-                self._init_scale_params(layer)
-                hook_handle = layer.register_forward_post_hook(
-                    self._calc_output_scale_hook)
-                self._register_hook_handle_list.append(hook_handle)
-
-    def save_quantized_model(self, layer, path, input_spec=None, **config):
-        """
-        Save the quantized model for the inference.
-
-        Args:
-            layer (Layer): The Layer to be saved.
-            path (str): The path prefix to save model. The format is 
-                ``dirname/file_prefix`` or ``file_prefix``.
-            input_spec (list[InputSpec|Tensor], optional): Describes the input
-                of the saved model's forward method, which can be described by
-                InputSpec or example Tensor. If None, all input variables of 
-                the original Layer's forward method would be the inputs of
-                the saved model. Default None.
-            **configs (dict, optional): Other save configuration options for
-                compatibility. We do not recommend using these configurations,
-                they may be removed in the future. If not necessary, DO NOT use
-                them. Default None.
-                The following options are currently supported:
-                (1) output_spec (list[Tensor]): Selects the output targets of
-                the saved model. By default, all return variables of original
-                Layer's forward method are kept as the output of the saved model.
-                If the provided ``output_spec`` list is not all output variables, 
-                the saved model will be pruned according to the given
-                ``output_spec`` list. 
-
-        Returns:
-            None
-        """
-
-        assert isinstance(layer, dygraph.Layer), \
-            "The model must be the instance of dygraph.Layer."
-
-        self._gather_output_scale(layer)
-
-        with dygraph.guard():
-            layer.eval()
-            for handle in self._register_hook_handle_list:
-                handle.remove()
-        paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
-
-        if len(self._out_scale_dict) == 0:
-            warnings.warn("Warning: No Layer of the model while to be " \
-                          "saved contains the out_threshold attribute, so the " \
-                          "generated inference model would not contain the " \
-                          "out_threshold.")
-            return
-
-        # load static model
-        is_dynamic_mode = False
-        if paddle.in_dynamic_mode():
-            is_dynamic_mode = True
-            paddle.enable_static()
-
-        place = core.CUDAPlace(0) if core.is_compiled_with_cuda() \
-            else core.CPUPlace()
-        exe = Executor(place)
-
-        dirname = os.path.dirname(path)
-        basename = os.path.basename(path)
-        model_filename = basename + INFER_MODEL_SUFFIX
-        params_filename = basename + INFER_PARAMS_SUFFIX
-
-        [infer_program, feed_target_names, fetch_targets] = (
-            load_inference_model(
-                dirname=dirname,
-                executor=exe,
-                model_filename=model_filename,
-                params_filename=params_filename))
-
-        # TODO(jc): analyse whether the dygraph model has
-        # several blocks before applying qat
-        assert infer_program.num_blocks == 1, \
-            "Quantization aware training (QAT) requires the program " \
-            "only has a block for now. When the model has if-else or " \
-            "while, the program will have several blocks."
-
-        # set output scales to the static model
-        self._save_output_scale(infer_program)
-
-        # process skip quant
-        self._set_skip_quant_attr(infer_program)
-
-        # save the final quantized model that has output scales
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
-            executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename)
-
-        if is_dynamic_mode:
-            paddle.disable_static()
-
-    def _gather_output_scale(self, layer):
-        """
-        Gather all output scales to self._out_scale_dict
-        """
-        with dygraph.guard():
-            layer.eval()
-            for _, sub_layer in layer.named_sublayers():
-                if self._is_target_layer(sub_layer):
-                    layer_name = sub_layer.full_name()
-                    if hasattr(sub_layer, "_quant_out_scale"):
-                        self._out_scale_dict[layer_name] = float(
-                            sub_layer._quant_out_scale)
-
-    def _save_output_scale(self, infer_program):
-        """
-        Save all output scales to the corresponding ops in static
-        inference program.
-
-        Because the Layer in dygraph may correspond to multiple ops
-        in static program after being saved. To ensure correctness,
-        the outscale collected for output of dygraph Layer can only
-        be set to the last op in the corresponding ops in static program.
-        """
-        assert infer_program.num_blocks == 1, \
-            "The inference program should only have a block."
-
-        global_block = infer_program.global_block()
-        target_ops = global_block.ops
-
-        scale_idx = 0
-        op_idx = 0
-        attr_name = "out_threshold"
-
-        for scale_name, scale_value in self._out_scale_dict.items():
-            while True:
-                if op_idx >= len(target_ops):
-                    break
-
-                op = target_ops[op_idx]
-                if not self._is_scale_op_matched(scale_name, op, global_block):
-                    op_idx += 1
-                else:
-                    if op.type in utils.weight_op_types \
-                        and op_idx + 1 < len(target_ops) \
-                        and target_ops[op_idx+1].type == "elementwise_add":
-                        target_ops[op_idx + 1]._set_attr(attr_name, scale_value)
-                        op_idx += 2
-                    else:
-                        op._set_attr(attr_name, scale_value)
-                        op_idx += 1
-                    scale_idx += 1
-                    break
-
-        if scale_idx != len(self._out_scale_dict):
-            _logger.warning("Warning: the model have %s output scales, "\
-                "but it only saves %s output scales." \
-                % (len(self._out_scale_dict), scale_idx))
-
-    def _is_target_layer(self, layer):
-        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
-            or ('quantized_' in layer.full_name() and \
-                'quantized_noweight' not in layer.full_name())
-
-    def _init_scale_params(self, layer, name=None):
-        """
-        Init the scale params for calculating output scales and save them in the
-        target layer.
-        After the users define the dygraph model, the hooks for calculating output
-        scales will not execute immediately. If the users load parameters form
-        checkpoint and save the quantized inference model immediately, the inference
-        model would not be saved successfully. Beacuse the dygraph_to_static requires
-        that the parameters created in __init__, but the uniqueness of hook make it
-        impossible to create parameters in __init__. To avoid this mistake, we define
-        the scale parameters in the beginning instead of hook.
-        """
-
-        def _create_param(in_layer, first_name, last_name, dtype):
-            prefix = '{}.{}'.format(first_name, last_name) \
-                if first_name else 'outscale.{}'.format(last_name)
-            attr = ParamAttr(
-                name=unique_name.generate(prefix),
-                initializer=Constant(1),
-                trainable=False)
-            param = in_layer.create_parameter(shape=[1], attr=attr, dtype=dtype)
-            return param
-
-        dtype = layer._dtype if layer._dtype is not None else "float32"
-        if dtype not in ["float32", "float64"]:
-            return
-
-        layer._quant_out_scale = _create_param(layer, name, "scale", dtype)
-        layer._quant_out_scale.stop_gradient = True
-
-        layer._quant_out_state = _create_param(layer, name, "state", dtype)
-        layer._quant_out_state.stop_gradient = True
-
-        layer._quant_out_accum = _create_param(layer, name, "accum", dtype)
-        layer._quant_out_accum.stop_gradient = True
-
-    def _is_scale_op_matched(self, scale_name, op, block):
-        """
-        Based on the op name and attrs to judge whether the op in
-        program matches the scale_name. We must know the corresponding
-        name between dgraph and static model.
-        """
-        fp_type = [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]
-        if op.type in quantization_pass._op_real_in_out_name.keys():
-            output_var_names = quantization_pass._get_op_output_var_names(op)
-            for output_var_name in output_var_names:
-                output_var_tensor = block.var(output_var_name)
-                if output_var_tensor.dtype not in fp_type:
-                    return False
-
-        # corresponding_map: [name, op_types, function]
-        # Note that, the items have priority in corresponding_map
-        corresponding_map = [
-            ['conv2d_tranpose', ['conv2d_transpose', \
-                                'depthwise_conv2d_transpose'], None],
-            ['conv2d', ['conv2d', 'depthwise_conv2d'], None],
-            ['linear', ['matmul'], None],
-            ['re_lu6', ['relu6'], None],
-            ['p_re_lu', ['prelu'], None],
-            ['leaky_re_lu', ['leaky_relu'], None],
-            ['re_lu', ['relu'], None],
-        ]
-
-        for item in corresponding_map:
-            if item[0] in scale_name:
-                return (op.type in item[1]) and \
-                    (len(item) == 2 or item[2] is None or item[2](op))
-
-        return op.type in scale_name
-
-    def _set_skip_quant_attr(self, program):
-        block = program.global_block()
-        for op in block.ops:
-            if self._is_skip_quant_op(block, op):
-                op._set_attr("skip_quant", True)
-
-    def _is_skip_quant_op(self, block, in_op):
-        """
-        The input op should be skipped quantization.
-        1. the type of input op should be conv2d, depthwise_conv2d or matmul
-        2. the previous ops of the input op are not fake_quantize_dequantize ops
-        """
-
-        def _find_previous_op(block, var_name):
-            for op in block.ops:
-                if var_name in op.output_arg_names:
-                    return op
-
-        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
-        if in_op.type not in target_op_types:
-            return False
-
-        previous_ops = [_find_previous_op(block, arg_name) \
-            for arg_name in in_op.input_arg_names]
-        return any(op is not None and op.type not in utils.fake_quantize_dequantize_types \
-            for op in previous_ops )
-
-    def _calc_output_scale_hook(self, layer, input, output):
-        """
-        Create the MovingAverageAbsMaxScale layer for the target layer if needed.
-        Execute MovingAverageAbsMaxScale layer to calculate the output scale. 
-        """
-        assert isinstance(output, (core.VarBase, framework.Variable)), \
-            "Multiple outputs are not currently supported in ImperativeOutScale."
-
-        fp_types = [core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64]
-        if output.dtype in fp_types:
-            if not hasattr(layer, "_out_scale"):
-                self._out_scale = quant_nn.MovingAverageAbsMaxScale(
-                    layer, output.name, self._moving_rate, output.dtype)
-            # TODO (jc): consider the ops that have several outputs 
-            self._out_scale(output)
-
-
 class ImperativeQuantizeOutputs(object):
+    """
+    Calculate the output scales for some layers.
+    """
+
     def __init__(self, moving_rate=0.9):
         """
-        Add the logic of calculating and setting output scales of some layers. 
+        The constructor for ImperativeQuantizeOutputs.
 
         Args:
             moving_rate(float): The decay coefficient of moving average.
@@ -667,8 +361,8 @@ class ImperativeQuantizeOutputs(object):
 
     def apply(self, model):
         """
-        Insert the `moving_average_abs_max_scale` op to calculate output 
-        scale of specific layers in model.
+        Insert the `moving_average_abs_max_scale` layers to calculate the
+        output scales for specific layers in the dygraph model.
 
         Args:
             model(fluid.dygraph.Layer): The target model which would be
@@ -677,7 +371,6 @@ class ImperativeQuantizeOutputs(object):
         Returns:
             None
         """
-
         assert isinstance(model, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
@@ -701,11 +394,6 @@ class ImperativeQuantizeOutputs(object):
                 layer, self._moving_rate)
             setattr(obj, target, quant_layer)
 
-    def _is_target_layer(self, layer):
-        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
-            or ('quantized' in layer.full_name() and \
-                'quantized_noweight' not in layer.full_name())
-
     def save_quantized_model(self, layer, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
@@ -734,8 +422,96 @@ class ImperativeQuantizeOutputs(object):
         Returns:
             None
         """
-
         assert isinstance(layer, dygraph.Layer), \
             "The model must be the instance of dygraph.Layer."
 
         paddle.jit.save(layer=layer, path=path, input_spec=input_spec, **config)
+
+        is_dynamic_mode = False
+        if paddle.in_dynamic_mode():
+            is_dynamic_mode = True
+            paddle.enable_static()
+
+        place = core.CPUPlace()
+        scope = global_scope()
+        exe = Executor(place)
+
+        dirname = os.path.dirname(path)
+        basename = os.path.basename(path)
+        model_filename = basename + INFER_MODEL_SUFFIX
+        params_filename = basename + INFER_PARAMS_SUFFIX
+
+        [infer_program, feed_target_names, fetch_targets] = (
+            load_inference_model(
+                dirname=dirname,
+                executor=exe,
+                model_filename=model_filename,
+                params_filename=params_filename))
+
+        self._save_output_scale(infer_program, scope)
+
+        self._set_skip_quant_attr(infer_program)
+
+        save_inference_model(
+            dirname=dirname,
+            feeded_var_names=feed_target_names,
+            target_vars=fetch_targets,
+            executor=exe,
+            main_program=infer_program.clone(),
+            model_filename=model_filename,
+            params_filename=params_filename)
+
+        if is_dynamic_mode:
+            paddle.disable_static()
+
+    def _is_target_layer(self, layer):
+        """
+        Whether the layer needs to calculate output scales.
+        """
+        return isinstance(layer, tuple(utils.quant_output_layers_map.values())) \
+            or ('quantized' in layer.full_name() and \
+                'quantized_noweight' not in layer.full_name())
+
+    def _save_output_scale(self, program, scope):
+        """
+        Save all output scales to the corresponding ops in static
+        inference program and delete 'moving_average_abs_max_scale' ops.
+        """
+        for block in program.blocks:
+            for op in block.ops:
+                if op.type == "moving_average_abs_max_scale":
+                    in_var_name = op.input('X')[0]
+                    out_var_name = op.output('Out')[0]
+                    out_scale_name = op.output('OutScale')[0]
+
+                    out_scale = utils.load_variable_data(scope, out_scale_name)
+                    previous_op = utils.find_previous_op(block, in_var_name)
+                    previous_op._set_attr("out_threshold", float(out_scale))
+
+                    next_ops = utils.find_next_ops(block, out_var_name)
+                    for next_op in next_ops:
+                        next_op._rename_input(out_var_name, in_var_name)
+
+    def _set_skip_quant_attr(self, program):
+        """
+        Label the skip quantized ops.
+        """
+        for block in program.blocks:
+            for op in block.ops:
+                if self._is_skip_quant_op(block, op):
+                    op._set_attr("skip_quant", True)
+
+    def _is_skip_quant_op(self, block, in_op):
+        """
+        The input op should be skipped quantization.
+        1. the type of input op should be conv2d, depthwise_conv2d or matmul
+        2. the previous ops of the input op are not fake_quantize_dequantize ops
+        """
+        target_op_types = ["conv2d", "depthwise_conv2d", "matmul"]
+        if in_op.type not in target_op_types:
+            return False
+
+        previous_ops = [utils.find_previous_op(block, arg_name) \
+            for arg_name in in_op.input_arg_names]
+        return any(op is not None and op.type not in \
+            utils.fake_quantize_dequantize_types for op in previous_ops)

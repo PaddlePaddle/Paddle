@@ -348,17 +348,17 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class FakeQuantDequantGradKernel : public framework::OpKernel<T> {
+class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out =
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     auto* d_x = context.Output<framework::LoDTensor>(x_grad_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_x, platform::errors::PreconditionNotMet(
-                 "FakeQuantDequantGradOp doesn't have the output named %s.",
-                 x_grad_name));
+    PADDLE_ENFORCE_NOT_NULL(d_x, platform::errors::PreconditionNotMet(
+                                     "StrightThroughEstimatorGradKernel "
+                                     "doesn't have the output named %s.",
+                                     x_grad_name));
 
     // Initialize dx as same as d_out
     d_x->mutable_data<T>(context.GetPlace());
