@@ -134,11 +134,11 @@ void NPUDefaultStreamGarbageCollector::ClearCallback(
   static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
       ->AddStreamCallback(callback);
 }
-NPUUnsafeFastGPUGarbageCollector::NPUUnsafeFastGPUGarbageCollector(
+NPUUnsafeFastGarbageCollector::NPUUnsafeFastGarbageCollector(
     const platform::NPUPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
-void NPUUnsafeFastGPUGarbageCollector::ClearCallback(
+void NPUUnsafeFastGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback();
 }

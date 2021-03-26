@@ -470,7 +470,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       if (IsFastEagerDeletionModeEnabled()) {
-        s VLOG(4) << "Use unsafe fast gc for NPU.";
+        VLOG(4) << "Use unsafe fast gc for NPU.";
         gc.reset(new NPUUnsafeFastGarbageCollector(
             BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
       } else {
