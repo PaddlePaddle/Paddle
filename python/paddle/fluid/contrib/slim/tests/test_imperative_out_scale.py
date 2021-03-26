@@ -500,7 +500,7 @@ class TestSaveQuantizedModel_Warning(unittest.TestCase):
                           "generated inference model would not contain the " \
                           "out_threshold."
         num = get_vaild_warning_num(warning_message, w)
-        assert num == 1
+        assert num == 0
 
 
 if __name__ == '__main__':
