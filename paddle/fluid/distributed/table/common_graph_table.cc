@@ -211,8 +211,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       valid_count ++;
     }
   }
-  VLOG(0) << valid_count << "/" << count << " edges in type " << 
-      node_type << " are loaded successfully in " << path;
+  VLOG(0) << valid_count << "/" << count << " edges are loaded successfully in " << path;
 
   // Build Sampler j
 
