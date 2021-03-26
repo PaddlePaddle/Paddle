@@ -1834,7 +1834,7 @@ def save(program, model_path, protocol=2, **configs):
     if 'pickle_protocol' in configs:
         protocol = configs['pickle_protocol']
         warnings.warn(
-            "If you use the default argument 'pickle_protocol' to specify the version of pickle, the default argument 'protocol' will be ignored."
+            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
         )
 
     if not isinstance(protocol, int):

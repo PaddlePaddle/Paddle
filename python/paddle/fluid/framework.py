@@ -2009,7 +2009,7 @@ class Variable(object):
 
         Args:
             scope(Scope, optional) : If `scope` is None, it will be set to global scope 
-                obtained through 'global_scope()'. Otherwise, use `scope`.
+                obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
         Retruns:
@@ -5578,7 +5578,7 @@ class Program(object):
                 The key is the name of the parameter or the name of the buffer.
                 The value is the tensor of this variable in the given scope.
             scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
-                obtained through 'global_scope()'. Otherwise, value will be set to scope.
+                obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
         
         Returns:

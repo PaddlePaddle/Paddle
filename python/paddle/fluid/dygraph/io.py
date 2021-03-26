@@ -18,8 +18,6 @@ import os
 import six
 import pickle
 import numpy as np
-import math
-import sys
 
 import paddle
 from paddle import compat as cpt

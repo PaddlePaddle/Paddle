@@ -381,7 +381,7 @@ def save(obj, path, protocol=2, **configs):
     Examples:
         .. code-block:: python
 
-            # example 1: dygraph
+            # example 1: dynamic graph
             import paddle
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
@@ -453,7 +453,7 @@ def save(obj, path, protocol=2, **configs):
     if config.pickle_protocol is not None:
         protocol = config.pickle_protocol
         warnings.warn(
-            "The default argument 'pickle_protocol' has be deprecated. Please use 'protocol' instead."
+            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
         )
 
     if _use_legacy(obj):
@@ -557,7 +557,8 @@ def load(path, **configs):
             (2) params_filename (str): The persistable variables file name of the paddle 1.x 
             ``save_inference_model`` save format. No default file name, save variables separately 
             by default.            
-            (3) return_numpy(bool): If specified as True, return tensor as tensor, otherwise return tensor as numpy.ndarray.
+            (3) return_numpy(bool): If specified as False, return tensor as paddle.Tensor, otherwise return tensor as numpy.ndarray. 
+            Default True.
 
     Returns:
         Object(Object): a target object can be used in paddle
@@ -567,7 +568,7 @@ def load(path, **configs):
 
             import paddle
 
-            # example 1: dygraph
+            # example 1: dynamic graph
             import paddle
             emb = paddle.nn.Embedding(10, 10)
             layer_state_dict = emb.state_dict()
