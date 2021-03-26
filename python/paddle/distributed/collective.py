@@ -587,6 +587,7 @@ def all_gather(tensor_list, tensor, group=0, use_calc_stream=True):
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     _default_group = _get_global_default_group()
+
     if in_dygraph_mode():
         core.ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
                              'ring_id', group, 'nranks', _default_group.nranks)
@@ -615,7 +616,7 @@ def all_gather(tensor_list, tensor, group=0, use_calc_stream=True):
                 'nranks': _default_group.nranks
             })
 
-    tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
+    tensor_list.extend(paddle.split(out, nranks, 0))
 
 
 def scatter(tensor, tensor_list=None, src=0, group=0, use_calc_stream=True):

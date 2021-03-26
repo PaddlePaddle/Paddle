@@ -16,7 +16,7 @@ import paddle
 from paddle.fluid.dygraph.layers import Layer
 from paddle.distributed.fleet import fleet
 
-__all__ = ['ParallelLinear', 'ParallelEmbedding']
+__all__ = ['ParallelLinear']
 
 
 class ParallelLinear(Layer):
