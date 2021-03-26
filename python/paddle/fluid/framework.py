@@ -1997,7 +1997,8 @@ class Variable(object):
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(value)))
 
-        self.block.append_op(
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
 
         return self

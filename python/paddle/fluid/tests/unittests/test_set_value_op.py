@@ -106,6 +106,23 @@ class TestSetValueItemSlice4(TestSetValueApi):
         self.data[0:, 1:2, :] = self.value
 
 
+class TestSetValueItemSliceInWhile(TestSetValueApi):
+    def _call_setitem(self, x):
+        def cond(i, x):
+            return i < 1
+        
+        def body(i, x):
+            x[i] = self.value
+            i = i+1
+            return i, x
+        
+        i = paddle.zeros(shape=(1,), dtype='int32')
+        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+
+    def _get_answer(self):
+        self.data[0] = self.value
+
+
 # 1.2.2 step > 1
 class TestSetValueItemSliceStep(TestSetValueApi):
     def set_shape(self):
