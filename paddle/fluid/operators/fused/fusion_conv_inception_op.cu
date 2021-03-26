@@ -153,7 +153,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
                                                          CUDNN_DEFAULT_MATH));
-#if CUDNN_VERSION >= 11000
+#if CUDA_VERSION >= 11000
       if (!platform::allow_tf32_cudnn) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
