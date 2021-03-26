@@ -15,6 +15,7 @@
 from __future__ import division
 
 import math
+import numbers
 
 import paddle
 from paddle.nn.functional import affine_grid, grid_sample
@@ -27,6 +28,18 @@ def _get_num_channels(img, data_format='CHW'):
         return img.shape[-1]
 
     raise ValueError('data_format')
+
+
+def _get_image_size(img, data_format='CHW'):
+    if data_format.lower() == 'chw':
+        return img.shape[-1], img.shape[-2]
+    elif data_format.lower() == 'hwc':
+        return img.shape[-2], img.shape[-3]
+
+
+def _assert_data_format(data_format):
+    assert data_format.lower() in ('chw', 'hwc'
+                                   ), "data_format should in ('chw', 'hwc')"
 
 
 def normalize(img, mean, std, data_format='CHW'):
@@ -191,6 +204,8 @@ def vflip(img, data_format='CHW'):
 
     Args:
         img (paddle.Tensor): Image to be flipped.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
 
     Returns:
         paddle.Tensor:  Vertically flipped image.
@@ -210,6 +225,8 @@ def hflip(img, data_format='CHW'):
 
     Args:
         img (paddle.Tensor): Image to be flipped.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
 
     Returns:
         paddle.Tensor:  Horizontall flipped image.
@@ -222,3 +239,58 @@ def hflip(img, data_format='CHW'):
         return img.flip(axis=[-1])
     else:
         return img.flip(axis=[-2])
+
+
+def crop(img, top, left, height, width, data_format='CHW'):
+    """Crops the given paddle.Tensor Image.
+
+    Args:
+        img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left 
+            corner of the image.
+        top (int): Vertical component of the top left corner of the crop box.
+        left (int): Horizontal component of the top left corner of the crop box.
+        height (int): Height of the crop box.
+        width (int): Width of the crop box.
+        data_format (str, optional): Data format of img, should be 'HWC' or 
+            'CHW'. Default: 'CHW'.
+    Returns:
+        paddle.Tensor: Cropped image.
+
+    """
+    assert data_format.lower() in ('chw', 'hwc'
+                                   ), "data_format should in ('chw', 'hwc')"
+
+    if data_format.lower() == 'chw':
+        return img[:, top:top + height, left:left + width]
+    else:
+        return img[top:top + height, left:left + width, :]
+
+
+def center_crop(img, output_size, data_format='CHW'):
+    """Crops the given paddle.Tensor Image and resize it to desired size.
+
+        Args:
+            img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left corner of the image.
+            output_size (sequence or int): (height, width) of the crop box. If int,
+                it is used for both directions   
+            data_format (str, optional): Data format of img, should be 'HWC' or 
+                'CHW'. Default: 'CHW'.     
+        Returns:
+            paddle.Tensor: Cropped image.
+
+        """
+
+    if isinstance(output_size, numbers.Number):
+        output_size = (int(output_size), int(output_size))
+
+    image_width, image_height = _get_image_size(img, data_format)
+    crop_height, crop_width = output_size
+    crop_top = int(round((image_height - crop_height) / 2.))
+    crop_left = int(round((image_width - crop_width) / 2.))
+    return crop(
+        img,
+        crop_top,
+        crop_left,
+        crop_height,
+        crop_width,
+        data_format=data_format)
