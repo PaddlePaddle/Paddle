@@ -62,48 +62,18 @@ class RoiAlignOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> inputs{input_tensor, rois_tensor};
     nvinfer1::ILayer* layer = nullptr;
 
-    if (engine_->with_dynamic_shape()) {
-      auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(
-          data_type_, pooled_height, pooled_width, spatial_scale,
-          sampling_ratio);
-      auto roi_align_layer = engine_->network()->addPluginV2(
-          inputs.data(), inputs.size(), *roi_align_plugin);
-      layer = roi_align_layer;
-    } else {
-      std::vector<nvinfer1::Dims> dims{input_tensor->getDimensions(),
-                                       rois_tensor->getDimensions()};
+    PADDLE_ENFORCE_EQ(
+        engine_->with_dynamic_shape(), true,
+        platform::errors::InvalidArgument(
+            "TRT roi align plugin only accept the dynamic shape, because that "
+            "the roi_align will change the batch size."));
 
-      auto* roi_align_plugin =
-          new plugin::RoiAlignPlugin(data_type_, pooled_height, pooled_width,
-                                     spatial_scale, sampling_ratio, dims);
-      auto roi_align_layer = engine_->network()->addPluginV2(
-          inputs.data(), inputs.size(), *roi_align_plugin);
-      layer = roi_align_layer;
-    }
-    /*
-        auto dim = rois_tensor->getDimensions();
-        std::cerr << "rois_tensor.nbDims: " << dim.nbDims << ", " << std::endl;
-        for (int i = 0; i < dim.nbDims; ++ i) {
-          std::cerr <<  dim.d[i] << " ";
-        }
-        std::cerr << std::endl;
+    auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(
+        data_type_, pooled_height, pooled_width, spatial_scale, sampling_ratio);
+    auto roi_align_layer = engine_->network()->addPluginV2(
+        inputs.data(), inputs.size(), *roi_align_plugin);
+    layer = roi_align_layer;
 
-        // const auto input_tensor = engine_->GetITensor(input_name);
-        dim = input_tensor->getDimensions();
-        std::cerr << "input_tensor.nbDims: " << dim.nbDims << ", " << std::endl;
-        for (int i = 0; i < dim.nbDims; ++ i) {
-          std::cerr <<  dim.d[i] << " ";
-        }
-        std::cerr << std::endl;
-
-        const auto odim = layer->getOutput(0)->getDimensions();
-        std::cerr << "output_tensor.nbDims: " << odim.nbDims << ", " <<
-       std::endl;
-        for (int i = 0; i < odim.nbDims; ++ i) {
-          std::cerr << odim.d[i] << " ";
-        }
-        std::cerr << std::endl;
-    */
     std::vector<std::string> output_names{output_name};
     RreplenishLayerAndOutput(layer, "roi_align", output_names, test_mode);
   }

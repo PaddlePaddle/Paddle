@@ -223,6 +223,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (interp_method != "nearest") return false;
     }
 
+    if (op_type == "roi_align") {
+      if (!with_dynamic_shape) return false;
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
