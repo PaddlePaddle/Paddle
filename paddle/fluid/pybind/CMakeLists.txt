@@ -5,7 +5,6 @@ include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator ps_service graph_py_service)
 
 if (WITH_GPU OR WITH_ROCM)
@@ -84,6 +83,10 @@ if(WITH_PYTHON)
   if (WITH_NCCL OR WITH_RCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif()
+
+  if(WITH_XPU_BKCL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
+  endif(WITH_XPU_BKCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
