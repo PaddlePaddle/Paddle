@@ -37,8 +37,6 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.precision = AnalysisConfig.Precision.Float32
         self.serialize = False
         self.enable_trt = True
-        self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 1, self.precision, self.serialize, False)
         self.feeds = {
             'data':
             np.random.random([self.bs, self.channel, self.height,
@@ -46,6 +44,8 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         }
 
     def build(self):
+        self.trt_parameters = InferencePassTest.TensorRTParam(
+            1 << 30, self.bs, 1, self.precision, self.serialize, False)
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
@@ -112,7 +112,10 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
     def check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
