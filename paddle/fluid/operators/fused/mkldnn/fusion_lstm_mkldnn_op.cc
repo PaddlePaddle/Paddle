@@ -337,7 +337,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
         ctx.InputName("X") + ctx.InputName("WeightH"));
 
     auto input_memory_p =
-        handler.AcquireInputMemoryWithReorder(input, is_reverse); 
+        handler.AcquireInputMemoryWithReorder(input, is_reverse);
     auto c0_memory_p = handler.AcquireC0Memory(c0);
 
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
