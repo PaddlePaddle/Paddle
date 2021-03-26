@@ -196,6 +196,13 @@ class NPUDeviceContext : public DeviceContext {
   void set_hccl_context(HCCLContext_t context) { hccl_context_ = context; }
 #endif
 
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
  private:
   NPUPlace place_;
   aclrtContext context_;
