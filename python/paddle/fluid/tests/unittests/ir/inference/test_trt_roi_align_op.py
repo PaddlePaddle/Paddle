@@ -44,9 +44,6 @@ class TRTRoiAlignTest(InferencePassTest):
             rois = fluid.data(
                 name='rois', shape=[-1, 4], dtype='float32', lod_level=1)
             roi_align_out = fluid.layers.roi_align(data, rois)
-            # roi_align_out = roi_align_out * 1.
-            # roi_align_out = fluid.layers.reshape(roi_align_out,
-            #                                      [self.bs, self.channel])
             out = fluid.layers.batch_norm(roi_align_out, is_test=True)
 
         rois_lod = fluid.create_lod_tensor(
