@@ -32,7 +32,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         self.act_cell = 'tanh'
         self.act_gate = 'sigmoid'
         self.act_cand = 'tanh'
-        self.use_peepholes = False # LSTM u8 doesn't support peepholes
+        self.use_peepholes = False  # LSTM u8 doesn't support peepholes
         self.use_mkldnn = True
         self.force_fp32_output = False
         self.error_margin = 1e-5
@@ -60,13 +60,9 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         # Scales shape in oneDNN:   [3, OC]
         s8_max = 127.0
 
-        scale_weights = s8_max / np.max(np.abs(
-            np.concatenate(
-                [
-                    wx[:,:], wh[:,:]
-                ],
-                axis=0)),
-                                axis=0)
+        scale_weights = s8_max / np.max(
+            np.abs(np.concatenate(
+                [wx[:, :], wh[:, :]], axis=0)), axis=0)
 
         scale_weights = scale_weights.astype('float')
 
@@ -87,13 +83,10 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             h0 = np.zeros((N, self.OC)).astype('float32')
             c0 = np.zeros((N, self.OC)).astype('float32')
 
-
-        hidden_f32, c = fusion_lstm(x_f32, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
-                                self.is_reverse, ACTIVATION[self.act_gate],
-                                ACTIVATION[self.act_cell],
-                                ACTIVATION[self.act_cand])
-
-        #hidden = hidden.astype('float32')
+        hidden_f32, c = fusion_lstm(
+            x_f32, self.lod, wx, bx, h0, c0, wh, w_b, w_c, self.is_reverse,
+            ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
+            ACTIVATION[self.act_cand])
 
         self.inputs = {
             'X': (x_u8, self.lod),
@@ -105,7 +98,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         if self.has_initial_state:
             self.inputs['H0'] = h0
             self.inputs['C0'] = c0
- 
+
         if self.force_fp32_output:
             self.error_margin = 1e-1
             self.outputs = {
@@ -116,7 +109,6 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             self.error_margin = 2
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
                 np.uint8)
-            #  hidden_u8 = (hidden_f32 * scale_data + shift_data).astype(np.uint8)
             self.outputs = {
                 'Hidden': (hidden_u8, self.lod),
                 'Cell': (c, self.lod)
@@ -138,12 +130,15 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"], atol=self.error_margin)
+            self.check_output(
+                check_dygraph=False,
+                no_check_set=["Cell"],
+                atol=self.error_margin)
 
 
 class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
     def set_confs(self):
-        self.force_fp32_output = False
+        self.force_fp32_output = True
 
 
 class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
