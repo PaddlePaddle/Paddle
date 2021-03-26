@@ -15,7 +15,6 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <algorithm>
-#include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/roi_align_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
@@ -140,19 +139,46 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
       pooled_width_(pooled_width),
       spatial_scale_(spatial_scale),
       sampling_ratio_(sampling_ratio) {
-  assert(data_type_ == nvinfer1::DataType::kFLOAT ||
-         data_type_ == nvinfer1::DataType::kHALF);
-  assert(pooled_height > 0);
-  assert(pooled_width > 0);
-  assert(spatial_scale > 0.f);
+  bool data_type_is_valid = data_type_ == nvinfer1::DataType::kFLOAT ||
+                            data_type_ == nvinfer1::DataType::kHALF;
+  PADDLE_ENFORCE_EQ(data_type_is_valid, true,
+                    platform::errors::InvalidArgument(
+                        "TRT RoiAlign plugin only accepts kFLOAT(%d) or "
+                        "kHALF(%d) data type, but the received data type = %d",
+                        static_cast<int>(nvinfer1::DataType::kFLOAT),
+                        static_cast<int>(nvinfer1::DataType::kHALF),
+                        static_cast<int>(data_type_)));
+
+  PADDLE_ENFORCE_GT(pooled_height_, 0,
+                    platform::errors::InvalidArgument(
+                        "TRT RoiAlign plugin only accepts pooled_height "
+                        "greater than %d, but the received pooled_height = %d",
+                        0, pooled_height_));
+
+  PADDLE_ENFORCE_GT(pooled_width_, 0,
+                    platform::errors::InvalidArgument(
+                        "TRT RoiAlign plugin only accepts pooled_width greater "
+                        "than %d, but the received pooled_width = %d",
+                        0, pooled_height_));
+
+  PADDLE_ENFORCE_GT(spatial_scale_, 0.f,
+                    platform::errors::InvalidArgument(
+                        "TRT RoiAlign plugin only accepts spatial_scale "
+                        "greater than %f, but the received spatial_scale = %f",
+                        0, spatial_scale_));
 
   int smem_per_block = -1;
   int device = -1;
   cudaGetDevice(&device);
-  assert(device >= 0);
+
+  PADDLE_ENFORCE_GE(
+      device, 0,
+      platform::errors::InvalidArgument(
+          "The cuda device ID should be greater than %d, but device ID is %d",
+          0, device));
+
   cudaDeviceGetAttribute(&smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock,
                          device);
-  assert(smem_per_block >= 0);
   smem_per_block_ = smem_per_block;
 }
 
@@ -165,10 +191,13 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(void const* data, size_t length) {
   int smem_per_block = -1;
   int device = -1;
   cudaGetDevice(&device);
-  assert(device >= 0);
+  PADDLE_ENFORCE_GE(
+      device, 0,
+      platform::errors::InvalidArgument(
+          "The cuda device ID should be greater than %d, but device ID is %d",
+          0, device));
   cudaDeviceGetAttribute(&smem_per_block, cudaDevAttrMaxSharedMemoryPerBlock,
                          device);
-  assert(smem_per_block >= 0);
   smem_per_block_ = smem_per_block;
 }
 
@@ -195,7 +224,6 @@ nvinfer1::DimsExprs RoiAlignPluginDynamic::getOutputDimensions(
 bool RoiAlignPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
     int nbOutputs) {
-  assert(pos < 2 + 1);
   if (inOut[pos].format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
   }
@@ -261,7 +289,11 @@ int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                    const void* const* inputs,
                                    void* const* outputs, void* workspace,
                                    cudaStream_t stream) {
-  assert(outputDesc[0].type == data_type_);
+  PADDLE_ENFORCE_EQ(outputDesc[0].type, data_type_,
+                    platform::errors::InvalidArgument(
+                        "TRT RoiAlignPluginDynamic expects outputDesc[0].type "
+                        "equal to data_type_"));
+
   if (data_type_ == nvinfer1::DataType::kHALF) {
     return enqueue_impl<float, half>(inputDesc, outputDesc, inputs, outputs,
                                      workspace, stream);
