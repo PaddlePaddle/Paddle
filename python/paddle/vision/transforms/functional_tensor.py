@@ -184,3 +184,41 @@ def rotate(
     out = grid_sample(img, grid, mode=interpolation)
 
     return out
+
+
+def vflip(img, data_format='CHW'):
+    """Vertically flips the given paddle tensor.
+
+    Args:
+        img (paddle.Tensor): Image to be flipped.
+
+    Returns:
+        paddle.Tensor:  Vertically flipped image.
+
+    """
+    assert data_format.lower() in ('chw', 'hwc'
+                                   ), "data_format should in ('chw', 'hwc')"
+
+    if data_format.lower() == 'chw':
+        return img.flip(axis=[-2])
+    else:
+        return img.flip(axis=[-3])
+
+
+def hflip(img, data_format='CHW'):
+    """Horizontally flips the given paddle.Tensor Image.
+
+    Args:
+        img (paddle.Tensor): Image to be flipped.
+
+    Returns:
+        paddle.Tensor:  Horizontall flipped image.
+
+    """
+    assert data_format.lower() in ('chw', 'hwc'
+                                   ), "data_format should in ('chw', 'hwc')"
+
+    if data_format.lower() == 'chw':
+        return img.flip(axis=[-1])
+    else:
+        return img.flip(axis=[-2])
