@@ -38,7 +38,7 @@ def _assert_image_data_format(data_format):
                                    ), "data_format should in ('chw', 'hwc')"
 
 
-def _get_image_h_axis(data_format='CHW'):
+def _get_image_h_axis(data_format):
     if data_format.lower() == 'chw':
         return -2
     elif data_format.lower() == 'hwc':
@@ -46,7 +46,7 @@ def _get_image_h_axis(data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_w_axis(data_format='CHW'):
+def _get_image_w_axis(data_format):
     if data_format.lower() == 'chw':
         return -1
     elif data_format.lower() == 'hwc':
@@ -54,7 +54,7 @@ def _get_image_w_axis(data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_c_axis(data_format='CHW'):
+def _get_image_c_axis(data_format):
     if data_format.lower() == 'chw':
         return -3
     elif data_format.lower() == 'hwc':
@@ -62,7 +62,7 @@ def _get_image_c_axis(data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_n_axis(data_format='CHW'):
+def _get_image_n_axis(data_format):
     if len(data_format) == 3:
         return None
     elif len(data_format) == 4:
@@ -78,17 +78,17 @@ def _is_channel_first(data_format):
     return _get_image_c_axis(data_format) == -3
 
 
-def _get_image_num_batches(img, data_format='CHW'):
+def _get_image_num_batches(img, data_format):
     if _get_image_n_axis(data_format):
         return img.shape[_get_image_n_axis(data_format)]
     return None
 
 
-def _get_image_num_channels(img, data_format='CHW'):
+def _get_image_num_channels(img, data_format):
     return img.shape[_get_image_c_axis(data_format)]
 
 
-def _get_image_size(img, data_format='CHW'):
+def _get_image_size(img, data_format):
     return img.shape[_get_image_w_axis(data_format)], img.shape[
         _get_image_h_axis(data_format)]
 
