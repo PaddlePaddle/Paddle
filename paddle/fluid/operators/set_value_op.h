@@ -212,13 +212,16 @@ class SetValueKernel : public framework::OpKernel<T> {
     // set_value is what we want.
     TensorCopy(*in, place, out);
 
-    Tensor slice_t(dtype), pad_t(dtype);
+    Tensor slice_t(dtype), pad_t(dtype), zeros_t(dtype);
     slice_t.mutable_data<T>(slice_dims, place);
     pad_t.mutable_data<T>(in_dims, place);
+    zeros_t.mutable_data<T>(slice_dims, place);
 
     auto pad_e = framework::EigenTensor<T, D>::From(pad_t, in_dims);
     auto out_e = framework::EigenTensor<T, D>::From(*out);
     auto slice_e = framework::EigenTensor<T, D>::From(slice_t, slice_dims);
+    auto zeros_e = framework::EigenTensor<T, D>::From(zeros_t, slice_dims);
+    zeros_e.device(eigen_place) = slice_e.constant(T(0));
 
     // Step 1: Set the value of out at `_index` to zero
     slice_e.device(eigen_place) = slice_e.constant(T(0));
@@ -248,7 +251,7 @@ class SetValueKernel : public framework::OpKernel<T> {
     if (value_tensor != nullptr) {
       // ElementwiseComputeEx can do broadcasting
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          ctx, &slice_t, value_tensor, -1, SubFunctor<T>(), &slice_t);
+          ctx, &zeros_t, value_tensor, -1, SubFunctor<T>(), &slice_t);
     } else {
       Tensor value_t(dtype);
       auto value_dims = framework::make_ddim(shape);
@@ -257,7 +260,7 @@ class SetValueKernel : public framework::OpKernel<T> {
       CopyVecotorToTensor<T>(value_name.c_str(), &value_t, ctx);
       value_t.Resize(value_dims);
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          ctx, &slice_t, &value_t, -1, SubFunctor<T>(), &slice_t);
+          ctx, &zeros_t, &value_t, -1, SubFunctor<T>(), &slice_t);
     }
 
     // - Step 2.2 Pad slice tensor with 0

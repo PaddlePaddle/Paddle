@@ -671,6 +671,20 @@ class TestSetValueValueShape4(TestSetValueApi):
         self.data[0] = self.value
 
 
+class TestSetValueValueShape5(TestSetValueApi):
+    def set_value(self):
+        self.value = np.array([3, 3, 3]).astype(self.dtype)  # shape is (3,4)
+
+    def set_shape(self):
+        self.shape = [3, 4]
+
+    def _call_setitem(self, x):
+        x[:, 0] = paddle.assign(self.value)  # x is Paddle.Tensor
+
+    def _get_answer(self):
+        self.data[:, 0] = self.value
+
+
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
