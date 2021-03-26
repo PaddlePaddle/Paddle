@@ -25,42 +25,97 @@ from paddle.fluid.core import AnalysisConfig
 
 class TRTRoiAlignTest(InferencePassTest):
     def setUp(self):
-        self.set_params()
+        self.bs = 2
+        self.num_rois = 4
+        self.channel = 16
+        self.height = 32
+        self.width = 32
+        self.precision = AnalysisConfig.Precision.Float32
+        self.serialize = False
+        self.enable_trt = True
+
+    def build(self):
+        self.trt_parameters = TRTRoiAlignTest.TensorRTParam(
+            1 << 30, self.bs * self.num_rois, 1, self.precision, self.serialize,
+            False)
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name='data', shape=[-1, 32, 64, 64], dtype='float32')
+            data_shape = [-1, self.channel, self.height, self.width]
+            data = fluid.data(name='data', shape=data_shape, dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[-1, 4], dtype='float32', lod_level=1)
-            roi_align_out = self.append_roi_align(data, rois)
-            roi_align_out = fluid.layers.reshape(roi_align_out,
-                                                 [self.num_rois, 32])
+            roi_align_out = fluid.layers.roi_align(data, rois)
+            # roi_align_out = roi_align_out * 1.
+            # roi_align_out = fluid.layers.reshape(roi_align_out,
+            #                                      [self.bs, self.channel])
             out = fluid.layers.batch_norm(roi_align_out, is_test=True)
 
         rois_lod = fluid.create_lod_tensor(
-            np.random.random([self.num_rois, 4]).astype('float32'),
-            [[0, self.num_rois]], fluid.CPUPlace())
+            np.random.random([self.bs * self.num_rois, 4]).astype('float32'),
+            [[self.num_rois, self.num_rois]], fluid.CPUPlace())
+
+        data_shape[0] = self.bs
         self.feeds = {
-            'data': np.random.random([self.bs, 32, 64, 64]).astype('float32'),
+            'data': np.random.random(data_shape).astype('float32'),
             'rois': rois_lod,
         }
-        self.enable_trt = True
-        self.trt_parameters = TRTRoiAlignTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
-    def set_params(self):
-        self.bs = 2
-        self.num_rois = 2
-
-    def append_roi_align(self, data, rois):
-        return fluid.layers.roi_align(data, rois)
-
-    def test_check_output(self):
+    def check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+    def set_dynamic(self):
+        min_shape_spec = dict()
+        max_shape_spec = dict()
+        opt_shape_spec = dict()
+        min_shape_spec['data'] = [
+            self.bs, self.channel, self.height // 2, self.width // 2
+        ]
+        min_shape_spec['rois'] = [1, 4]
+        max_shape_spec[
+            'data'] = [self.bs, self.channel, self.height * 2, self.width * 2]
+        max_shape_spec['rois'] = [self.bs * self.num_rois, 4]
+        opt_shape_spec[
+            'data'] = [self.bs, self.channel, self.height, self.width]
+        opt_shape_spec['rois'] = [self.bs * self.num_rois, 4]
+
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+            min_shape_spec, max_shape_spec, opt_shape_spec, False)
+
+    def run_test(self):
+        self.build()
+        self.check_output()
+
+    def test_base(self):
+        self.run_test()
+
+    def test_fp16(self):
+        self.precision = AnalysisConfig.Precision.Half
+        self.run_test()
+
+    def test_serialize(self):
+        self.serialize = True
+        self.run_test()
+
+    def test_dynamic(self):
+        self.set_dynamic()
+        self.run_test()
+
+    def test_dynamic_fp16(self):
+        self.set_dynamic()
+        self.precision = AnalysisConfig.Precision.Half
+        self.run_test()
+
+    def test_dynamic_serialize(self):
+        self.set_dynamic()
+        self.serialize = True
+        self.run_test()
 
 
 if __name__ == "__main__":
