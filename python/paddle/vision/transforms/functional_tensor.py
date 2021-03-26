@@ -30,7 +30,7 @@ def _assert_image_tensor(img):
 
 # def _assert_data_format(data_format):
 #     assert data_format.lower() in ('chw', 'hwc', 'nchw', 'nhwc'
-#                                    ), "data_format should in ('chw', 'hwc', 'nchw', 'nhwc')"
+#                                    ), "`data_format` should in ('chw', 'hwc', 'nchw', 'nhwc')"
 
 
 def _assert_image_data_format(data_format):
@@ -84,14 +84,15 @@ def _get_image_c_axis(img, data_format='CHW'):
 
 
 def _get_image_n_axis(img, data_format='CHW'):
-    if len(data_format) != 4:
+    if len(data_format) == 3:
         return None
-    else:
+    elif len(data_format) == 4:
         return 0
+    raise ValueError('data_format')
 
 
 def normalize(img, mean, std, data_format='CHW'):
-    """Normalizes a tensor image with mean and standard deviation.
+    """Normalizes a tensor image given mean and standard deviation.
 
     Args:
         img (paddle.Tensor): input data to be normalized.
