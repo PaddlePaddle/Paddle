@@ -469,11 +469,18 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #endif
     } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
-      // TODO(ascendrc): Support garbage collector on NPUPlace
-      VLOG(4) << "Skip NPU gc because it is not implemented now.";
+      if (IsFastEagerDeletionModeEnabled()) {
+        s VLOG(4) << "Use unsafe fast gc for NPU.";
+        gc.reset(new NPUUnsafeFastGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      } else {
+        VLOG(4) << "Use default stream gc for NPU.";
+        gc.reset(new NPUDefaultStreamGarbageCollector(
+            BOOST_GET_CONST(platform::NPUPlace, place_), max_memory_size));
+      }
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "No NPU gc found in CPU/GPU/XPU paddle"));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No NPU gc found in CPU/NPU paddle"));
 #endif
     }
   }
