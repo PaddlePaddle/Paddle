@@ -448,13 +448,13 @@ void BasicEngine::Execute() {
         if (!accumulator->SumGradCompleted()) {
           continue;
         }
-        // 1. Call Hooks for **inner_var_**
+        // 1. Call Hooks for `inner_var_`
         accumulator->CallHooks();
 
-        // 2. Sum Gradient with Previous Graph
+        // 2. Sum Gradient `inner_var_` to `var_` of Current or Previous Graph
         accumulator->AccumulateGrad();
 
-        // 3. Call backward Hooks for **var_**
+        // 3. Call backward Hooks for `var_`
         accumulator->CallReduceHooks();
       }
 

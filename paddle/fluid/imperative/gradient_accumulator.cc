@@ -385,8 +385,8 @@ static platform::Place GetPlaceOfVar(
 
 void GradientAccumulator::AccumulateGrad() {
   /**
-   * If the gradient has been calculated by previous graph,
-   * it should be added to the previous graph result.
+   * If the leaf gradient has been calculated done, the inner_var_
+   * should be added to the var_.
    */
   if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
     return;

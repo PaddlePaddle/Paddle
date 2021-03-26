@@ -367,6 +367,38 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.assertTrue(h.remove())
             self.assertFalse(h.remove())
 
+    def test_hook_in_double_grad(self):
+        def double_print_hook(grad):
+            grad = grad * 2
+            print(grad)
+            return grad
+
+        x = paddle.ones(shape=[1], dtype='float32')
+        x.stop_gradient = False
+
+        # hook only works in backward
+        # for forward var x, the x.grad generated in
+        # paddle.grad will not deal with by hook
+        x.register_hook(double_print_hook)
+
+        y = x * x
+
+        # Since y = x * x, dx = 2 * x
+        dx = paddle.grad(
+            outputs=[y], inputs=[x], create_graph=True, retain_graph=True)[0]
+
+        z = y + dx
+        self.assertTrue(x.grad is None)
+
+        # If create_graph = True, the gradient of dx
+        # would be backpropagated. Therefore,
+        # z = x * x + dx = x * x + 2 * x, and
+        # x.gradient() = 2 * x + 2 = 4.0
+        # after changed by hook: 8.0
+
+        z.backward()
+        self.assertTrue(np.array_equal(x.grad, np.array([8.])))
+
 
 if __name__ == '__main__':
     unittest.main()

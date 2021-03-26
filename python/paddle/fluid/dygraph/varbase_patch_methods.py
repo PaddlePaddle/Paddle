@@ -289,10 +289,13 @@ def monkey_patch_varbase():
 
                 o = z.matmul(w)
                 o.backward()
+                # print_hook_fn print content in backward
+                # Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #        [2., 4., 6., 8.])
 
-                # ('w.grad: ', array([1., 2., 3., 4.], dtype=float32))
-                # ('x.grad: ', array([ 4.,  8., 12., 16.], dtype=float32))
-                # ('y.grad: ', array([2., 4., 6., 8.], dtype=float32))
+                print("w.grad:", w.grad) # w.grad: [1. 2. 3. 4.]
+                print("x.grad:", x.grad) # x.grad: [ 4.  8. 12. 16.]
+                print("y.grad:", y.grad) # y.grad: [2. 4. 6. 8.]
 
                 # remove hook
                 h.remove()
