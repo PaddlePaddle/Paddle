@@ -50,8 +50,8 @@ class AvgPool {
 
  public:
   DEVICE inline T initial() {
-    return static_cast<T>(0);
     intermediate_res = static_cast<float>(0.0f);
+    return static_cast<T>(0);
   }
   DEVICE inline void compute(const T& x, T* y) { *y += x; }
   DEVICE inline void finalize(const T& pool_field, T* y) { *y /= pool_field; }
