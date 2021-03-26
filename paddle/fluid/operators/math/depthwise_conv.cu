@@ -236,34 +236,34 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
       r_weight[i] = weight[0];
     }
     const int c_in = c_out / filter_multiplier;
-    for (int i_dw = 0; i_dw < dilate_width; ++i_dw) {
-      for (int i_wi = threadIdx.y; i_wi < wi_size; i_wi += blockDim.y) {
-        int w_out = i_wi * dilate_width + i_dw;
-        if (w_out >= output_width) {
-          continue;
-        }
-        T value = 0;
-        const int w_in_start = -padding_width + w_out * stride_width;
-        for (int h_in = h_in_start, h_f = 0; h_f < c_filter;
-             h_in += dilate_height, h_f++) {
-          for (int w_in = w_in_start, w_f = 0; w_f < c_filter;
-               w_in += dilate_width, w_f++) {
-            if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
-                w_in < input_width) {
-              int offset = in_offset +
-                           (h_in * input_width + w_in) * input_channels + c_in;
-              if (fuse_relu_before_conv) {
-                value += r_weight[h_f * c_filter + w_f] *
-                         max(0.0f, input_data[offset]);
-              } else {
-                value += r_weight[h_f * c_filter + w_f] * input_data[offset];
-              }
+    for (int i = threadIdx.y; i < wi_size * dilate_width; i += blockDim.y) {
+      int i_dw = i / wi_size;
+      int i_wi = i - i_dw * wi_size;
+      int w_out = i_wi * dilate_width + i_dw;
+      if (w_out >= output_width) {
+        continue;
+      }
+      T value = 0;
+      const int w_in_start = -padding_width + w_out * stride_width;
+      for (int h_in = h_in_start, h_f = 0; h_f < c_filter;
+           h_in += dilate_height, h_f++) {
+        for (int w_in = w_in_start, w_f = 0; w_f < c_filter;
+             w_in += dilate_width, w_f++) {
+          if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
+              w_in < input_width) {
+            int offset =
+                in_offset + (h_in * input_width + w_in) * input_channels + c_in;
+            if (fuse_relu_before_conv) {
+              value += r_weight[h_f * c_filter + w_f] *
+                       max(0.0f, input_data[offset]);
+            } else {
+              value += r_weight[h_f * c_filter + w_f] * input_data[offset];
             }
           }
         }
-        int index = out_offset + w_out * output_channels + c_out;
-        output_data[index] = value;
       }
+      int index = out_offset + w_out * output_channels + c_out;
+      output_data[index] = value;
     }
   }
 }
@@ -523,50 +523,49 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
             filter_data[(c_filter * c_filter - i - 1) * output_channels +
                         c_out];
     }
-    for (int i_dw = 0; i_dw < dilate_width; ++i_dw) {
-      for (int i_wi = threadIdx.y; i_wi < wi_size; i_wi += blockDim.y) {
-        int w_in = i_wi * dilate_width + i_dw;
-        if (w_in >= input_width) {
+    for (int i = threadIdx.y; i < wi_size * dilate_width; i += blockDim.y) {
+      int i_dw = i / wi_size;
+      int i_wi = i - i_dw * wi_size;
+      int w_in = i_wi * dilate_width + i_dw;
+      if (w_in >= input_width) {
+        continue;
+      }
+      int w_out_start = w_in - (c_filter - 1) * dilate_width + padding_width;
+
+      T value = 0;
+      int index = ((batch * input_height + h_in) * input_width + w_in) *
+                      input_channels +
+                  c_in;
+      if (fuse_relu_before_conv) {
+        if (input_data[index] <= 0) {
+          input_grad_data[index] = 0;
           continue;
         }
-        int w_out_start = w_in - (c_filter - 1) * dilate_width + padding_width;
+      }
 
-        T value = 0;
-        int index = ((batch * input_height + h_in) * input_width + w_in) *
-                        input_channels +
-                    c_in;
-        if (fuse_relu_before_conv) {
-          if (input_data[index] <= 0) {
-            input_grad_data[index] = 0;
-            continue;
-          }
-        }
-
-        for (int c_i = 0; c_i < c_filter_multiplier; c_i++) {
-          int c_out = c_in * c_filter_multiplier + c_i;
-          for (int h_out = h_out_start, h_f = 0; h_f < c_filter;
-               h_out += dilate_height, h_f++) {
-            for (int w_out = w_out_start, w_f = 0; w_f < c_filter;
-                 w_out += dilate_width, w_f++) {
-              int s_h_out = h_out / stride_height;
-              int s_w_out = w_out / stride_width;
-              if (h_out % stride_height == 0 && w_out % stride_width == 0 &&
-                  s_h_out >= 0 && s_h_out < output_height && s_w_out >= 0 &&
-                  s_w_out < output_width) {
-                int output_grad_offset =
-                    ((batch * output_height + s_h_out) * output_width +
-                     s_w_out) *
-                        output_channels +
-                    c_out;
-                value +=
-                    output_grad_data[output_grad_offset] *
-                    r_weight[h_f * c_filter + w_f + c_i * c_filter * c_filter];
-              }
+      for (int c_i = 0; c_i < c_filter_multiplier; c_i++) {
+        int c_out = c_in * c_filter_multiplier + c_i;
+        for (int h_out = h_out_start, h_f = 0; h_f < c_filter;
+             h_out += dilate_height, h_f++) {
+          for (int w_out = w_out_start, w_f = 0; w_f < c_filter;
+               w_out += dilate_width, w_f++) {
+            int s_h_out = h_out / stride_height;
+            int s_w_out = w_out / stride_width;
+            if (h_out % stride_height == 0 && w_out % stride_width == 0 &&
+                s_h_out >= 0 && s_h_out < output_height && s_w_out >= 0 &&
+                s_w_out < output_width) {
+              int output_grad_offset =
+                  ((batch * output_height + s_h_out) * output_width + s_w_out) *
+                      output_channels +
+                  c_out;
+              value +=
+                  output_grad_data[output_grad_offset] *
+                  r_weight[h_f * c_filter + w_f + c_i * c_filter * c_filter];
             }
           }
         }
-        input_grad_data[index] = value;
       }
+      input_grad_data[index] = value;
     }
   }
 }
@@ -575,36 +574,29 @@ template <typename T, int c_filter_multiplier, int c_stride, int c_filter,
           DataLayout data_layout, bool fuse_relu_before_conv>
 __global__ void KernelDepthwiseConvInputGradSp(
     ARG_DEFINE_KernelDepthwiseConvInputGrad) {
-  if (c_filter_multiplier == 0) {
+  int final_filter_multiplier = filter_multiplier;
+  int h_stride = stride_height;
+  int w_stride = stride_width;
+  if (c_filter_multiplier != 0) {
+    final_filter_multiplier = c_filter_multiplier;
+    h_stride = c_stride;
+    w_stride = c_stride;
+  }
+
+  if (c_filter_multiplier == 0 || c_filter == -1) {
     if (data_layout != DataLayout::kNHWC) {
       KernelDepthwiseConvInputGradNCHW<T, fuse_relu_before_conv>(
           input_data, output_grad_data, filter_data, batch_size,
           output_channels, output_height, output_width, input_channels,
-          input_height, input_width, filter_multiplier, filter_height,
-          filter_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, input_grad_data);
-    } else {
-      KernelDepthwiseConvInputGradNHWC<T, fuse_relu_before_conv>(
-          input_data, output_grad_data, filter_data, batch_size,
-          output_channels, output_height, output_width, input_channels,
-          input_height, input_width, filter_multiplier, filter_height,
-          filter_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, input_grad_data);
-    }
-  } else if (c_filter == -1) {
-    if (data_layout != DataLayout::kNHWC) {
-      KernelDepthwiseConvInputGradNCHW<T, fuse_relu_before_conv>(
-          input_data, output_grad_data, filter_data, batch_size,
-          output_channels, output_height, output_width, input_channels,
-          input_height, input_width, c_filter_multiplier, filter_height,
-          filter_width, c_stride, c_stride, padding_height, padding_width,
+          input_height, input_width, final_filter_multiplier, filter_height,
+          filter_width, h_stride, w_stride, padding_height, padding_width,
           dilate_height, dilate_width, input_grad_data);
     } else {
       KernelDepthwiseConvInputGradNHWC<T, fuse_relu_before_conv>(
           input_data, output_grad_data, filter_data, batch_size,
           output_channels, output_height, output_width, input_channels,
-          input_height, input_width, c_filter_multiplier, filter_height,
-          filter_width, c_stride, c_stride, padding_height, padding_width,
+          input_height, input_width, final_filter_multiplier, filter_height,
+          filter_width, h_stride, w_stride, padding_height, padding_width,
           dilate_height, dilate_width, input_grad_data);
     }
   } else {
@@ -722,8 +714,71 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
   }
 }
 
-template <typename T, int c_filter_multiplier, DataLayout data_layout,
-          bool fuse_relu_before_conv>
+template <typename T, int c_filter, bool fuse_relu_before_conv>
+__device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
+    const T* output_grad_data, const T* input_data, const int num,
+    const int output_channels, const int output_height, const int output_width,
+    const int input_channels, const int input_height, const int input_width,
+    const int filter_multiplier, const int filter_height,
+    const int filter_width, const int stride_height, const int stride_width,
+    const int padding_height, const int padding_width, const int dilate_height,
+    const int dilate_width, T* filter_grad_data) {
+  const int bid = blockIdx.z;
+  int image_h = blockIdx.x * dilate_height + blockIdx.y;
+  if (image_h >= output_height) {
+    return;
+  }
+  const int kWeightSize = c_filter * c_filter;
+  T r_weight[kWeightSize];
+  const int wi_size = (output_width + dilate_width - 1) / dilate_width;
+
+  for (int kernel_id = threadIdx.x; kernel_id < output_channels;
+       kernel_id += blockDim.x) {
+    for (int i = 0; i < c_filter * c_filter; ++i) {
+      r_weight[i] = 0;
+    }
+    for (int i = threadIdx.y; i < wi_size * dilate_width; i += blockDim.y) {
+      int i_dw = i / wi_size;
+      int i_wi = i - i_dw * wi_size;
+      int image_w = i_wi * dilate_width + i_dw;
+      if (image_w >= output_width) {
+        continue;
+      }
+      for (int kernel_ih = 0; kernel_ih < c_filter; ++kernel_ih) {
+        for (int kernel_iw = 0; kernel_iw < c_filter; ++kernel_iw) {
+          int kernel_h = kernel_ih * dilate_height - padding_height;
+          int kernel_w = kernel_iw * dilate_width - padding_width;
+          int image_hk = image_h * stride_height + kernel_h;
+          int image_wk = image_w * stride_width + kernel_w;
+          if (image_hk < 0 || image_hk >= input_height) continue;
+          if (image_wk < 0 || image_wk >= input_width) continue;
+          int input_id =
+              ((bid * input_height + image_hk) * input_width + image_wk) *
+                  input_channels +
+              kernel_id / filter_multiplier;
+          int output_id =
+              ((bid * output_height + image_h) * output_width + image_w) *
+                  output_channels +
+              kernel_id;
+          T s = 0;
+          if (fuse_relu_before_conv) {
+            s = output_grad_data[output_id] * max(0.0f, input_data[input_id]);
+          } else {
+            s = output_grad_data[output_id] * input_data[input_id];
+          }
+          r_weight[kernel_ih * c_filter + kernel_iw] += s;
+        }
+      }
+    }
+    for (int i = 0; i < c_filter * c_filter; ++i) {
+      T* weight = filter_grad_data + i * output_channels + kernel_id;
+      platform::CudaAtomicAdd(&weight[0], r_weight[i]);
+    }
+  }
+}
+
+template <typename T, int c_filter_multiplier, int c_stride, int c_filter,
+          DataLayout data_layout, bool fuse_relu_before_conv>
 __global__ void KernelDepthwiseConvFilterGradSp(
     const T* output_grad_data, const T* input_data, const int num,
     const int output_channels, const int output_height, const int output_width,
@@ -732,37 +787,46 @@ __global__ void KernelDepthwiseConvFilterGradSp(
     const int filter_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width, const int dilate_height,
     const int dilate_width, T* filter_grad_data) {
-  if (c_filter_multiplier == 0) {
+  int final_filter_multiplier = filter_multiplier;
+  int h_stride = stride_height;
+  int w_stride = stride_width;
+  if (c_filter_multiplier != 0) {
+    final_filter_multiplier = c_filter_multiplier;
+    h_stride = c_stride;
+    w_stride = c_stride;
+  }
+  if (c_filter_multiplier == 0 || c_filter == -1) {
     if (data_layout != DataLayout::kNHWC) {
       KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data, input_data, num, output_channels, output_height,
           output_width, input_channels, input_height, input_width,
-          filter_multiplier, filter_height, filter_width, stride_height,
-          stride_width, padding_height, padding_width, dilate_height,
-          dilate_width, filter_grad_data);
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          filter_grad_data);
     } else {
       KernelDepthwiseConvFilterGradNHWC<T, fuse_relu_before_conv>(
           output_grad_data, input_data, num, output_channels, output_height,
           output_width, input_channels, input_height, input_width,
-          filter_multiplier, filter_height, filter_width, stride_height,
-          stride_width, padding_height, padding_width, dilate_height,
-          dilate_width, filter_grad_data);
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          filter_grad_data);
     }
   } else {
     if (data_layout != DataLayout::kNHWC) {
       KernelDepthwiseConvFilterGradNCHW<T, fuse_relu_before_conv>(
           output_grad_data, input_data, num, output_channels, output_height,
           output_width, input_channels, input_height, input_width,
-          c_filter_multiplier, filter_height, filter_width, stride_height,
-          stride_width, padding_height, padding_width, dilate_height,
-          dilate_width, filter_grad_data);
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          filter_grad_data);
     } else {
-      KernelDepthwiseConvFilterGradNHWC<T, fuse_relu_before_conv>(
+      KernelDepthwiseConvFilterGradCFilterNHWC<T, c_filter,
+                                               fuse_relu_before_conv>(
           output_grad_data, input_data, num, output_channels, output_height,
           output_width, input_channels, input_height, input_width,
-          c_filter_multiplier, filter_height, filter_width, stride_height,
-          stride_width, padding_height, padding_width, dilate_height,
-          dilate_width, filter_grad_data);
+          final_filter_multiplier, filter_height, filter_width, h_stride,
+          w_stride, padding_height, padding_width, dilate_height, dilate_width,
+          filter_grad_data);
     }
   }
 }
@@ -840,8 +904,9 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
       threads = dim3(std::min(output_width, thread), blocks, 1);
       grid = dim3(output_channels, batch_size, 1);
     } else {
-      blocks = std::min(std::max(thread / output_channels, 1),
-                        (output_width + dilate_width - 1) / dilate_width);
+      blocks = std::min(
+          std::max(thread / output_channels, 1),
+          ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
       threads = dim3(std::min(output_channels, thread), blocks, 1);
       grid = dim3((output_height + dilate_height - 1) / dilate_height,
                   dilate_height, batch_size);
@@ -977,8 +1042,9 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T,
       threads = dim3(std::min(input_width, thread), blocks, 1);
       grid = dim3(input_channels, batch_size, 1);
     } else {
-      blocks = std::min(std::max(thread / input_channels, 1),
-                        (input_width + dilate_width - 1) / dilate_width);
+      blocks = std::min(
+          std::max(thread / input_channels, 1),
+          ((input_width + dilate_width - 1) / dilate_width) * dilate_width);
       threads = dim3(std::min(input_channels, thread), blocks, 1);
       grid = dim3((input_height + dilate_height - 1) / dilate_height,
                   dilate_height, batch_size);
@@ -1086,43 +1152,82 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
       grid = dim3(ksize_width, ksize_height, output_channels);
       threads = dim3(std::min(output_width, block_size), blocks, 1);
     } else {
-      if (output_channels > 1024 && output_channels <= 2048) {
-        block_size = (output_channels - 1) / 2 + 1;
-      } else if (output_channels > 512 && output_channels <= 1024) {
-        block_size = output_channels;
-      }
-      blocks =
-          std::min(std::max(block_size / output_channels, 1), output_width);
-      grid = dim3(ksize_width * ksize_height, output_height, batch_size);
+      blocks = std::min(
+          std::max(block_size / output_channels, 1),
+          ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
+      grid = dim3((output_height + dilate_height - 1) / dilate_height,
+                  dilate_height, batch_size);
       threads = dim3(std::min(output_channels, block_size), blocks, 1);
     }
     int filter_multiplier = output_channels / input_channels;
 
-#define check_case(c_filter_multiplier)                                       \
-  if (c_filter_multiplier == 0 || c_filter_multiplier == filter_multiplier) { \
-    if (data_layout != DataLayout::kNHWC) {                                   \
-      KernelDepthwiseConvFilterGradSp<                                        \
-          T, c_filter_multiplier, DataLayout::kNCHW,                          \
-          fuse_relu_before_conv><<<grid, threads, 0, context.stream()>>>(     \
-          output_grad_data, input_data, batch_size, output_channels,          \
-          output_height, output_width, input_channels, input_height,          \
-          input_width, filter_multiplier, ksize_height, ksize_width,          \
-          stride_height, stride_width, padding_height, padding_width,         \
-          dilate_height, dilate_width, filter_grad_data);                     \
-    } else {                                                                  \
-      KernelDepthwiseConvFilterGradSp<                                        \
-          T, c_filter_multiplier, DataLayout::kNHWC,                          \
-          fuse_relu_before_conv><<<grid, threads, 0, context.stream()>>>(     \
-          output_grad_data, input_data, batch_size, output_channels,          \
-          output_height, output_width, input_channels, input_height,          \
-          input_width, filter_multiplier, ksize_height, ksize_width,          \
-          stride_height, stride_width, padding_height, padding_width,         \
-          dilate_height, dilate_width, filter_grad_data);                     \
-    }                                                                         \
-    return;                                                                   \
+#define check_case(c_filter_multiplier, c_stride, c_filter)                    \
+  if (c_filter_multiplier == 0 ||                                              \
+      filter_multiplier == c_filter_multiplier &&                              \
+          stride_height == stride_width && stride_height == c_stride &&        \
+          (ksize_height == ksize_width && ksize_height == c_filter ||          \
+           c_filter == -1)) {                                                  \
+    if (data_layout != DataLayout::kNHWC) {                                    \
+      KernelDepthwiseConvFilterGradSp<                                         \
+          T, c_filter_multiplier, c_stride, c_filter, DataLayout::kNCHW,       \
+          fuse_relu_before_conv><<<grid, threads, 0, context.stream()>>>(      \
+          output_grad_data, input_data, batch_size, output_channels,           \
+          output_height, output_width, input_channels, input_height,           \
+          input_width, filter_multiplier, ksize_height, ksize_width,           \
+          stride_height, stride_width, padding_height, padding_width,          \
+          dilate_height, dilate_width, filter_grad_data);                      \
+    } else {                                                                   \
+      framework::Tensor filter_grad_hwc;                                       \
+      if (c_filter != -1) {                                                    \
+        framework::DDim filter_grad_hwc_dims(                                  \
+            {filter_grad->dims()[2], filter_grad->dims()[3],                   \
+             filter_grad->dims()[0], filter_grad->dims()[1]});                 \
+        filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
+        filter_grad_hwc.mutable_data<T>(context.GetPlace());                   \
+        math::SetConstant<platform::CUDADeviceContext, T> set_zero;            \
+        set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
+        filter_grad_data = filter_grad_hwc.data<T>();                          \
+      } else {                                                                 \
+        block_size = 512;                                                      \
+        if (output_channels > 1024 && output_channels <= 2048) {               \
+          block_size = (output_channels - 1) / 2 + 1;                          \
+        } else if (output_channels > 512 && output_channels <= 1024) {         \
+          block_size = output_channels;                                        \
+        }                                                                      \
+        blocks =                                                               \
+            std::min(std::max(block_size / output_channels, 1), output_width); \
+        grid = dim3(ksize_width * ksize_height, output_height, batch_size);    \
+        threads = dim3(std::min(output_channels, block_size), blocks, 1);      \
+      }                                                                        \
+      KernelDepthwiseConvFilterGradSp<                                         \
+          T, c_filter_multiplier, c_stride, c_filter, DataLayout::kNHWC,       \
+          fuse_relu_before_conv><<<grid, threads, 0, context.stream()>>>(      \
+          output_grad_data, input_data, batch_size, output_channels,           \
+          output_height, output_width, input_channels, input_height,           \
+          input_width, filter_multiplier, ksize_height, ksize_width,           \
+          stride_height, stride_width, padding_height, padding_width,          \
+          dilate_height, dilate_width, filter_grad_data);                      \
+      if (c_filter != -1) {                                                    \
+        std::vector<int> perm_axis({2, 3, 0, 1});                              \
+        math::TransposeNormal<platform::CUDADeviceContext, T> trans;           \
+        trans(context, filter_grad_hwc, filter_grad, perm_axis);               \
+      }                                                                        \
+    }                                                                          \
+    return;                                                                    \
   }
-    check_case(1);
-    check_case(0);
+    check_case(1, 1, 3);
+    check_case(1, 1, 5);
+    check_case(1, 1, -1);
+    check_case(1, 2, 3);
+    check_case(1, 2, 5);
+    check_case(1, 2, -1);
+    check_case(2, 1, 3);
+    check_case(2, 1, 5);
+    check_case(2, 1, -1);
+    check_case(2, 2, 3);
+    check_case(2, 2, 5);
+    check_case(2, 2, -1);
+    check_case(0, 0, -1);
 #undef check_case
   }
 };
