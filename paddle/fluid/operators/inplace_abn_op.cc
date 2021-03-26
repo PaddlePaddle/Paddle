@@ -16,7 +16,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 
 namespace paddle {
