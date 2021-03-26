@@ -60,7 +60,7 @@ def _get_image_size(img, data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_h_axis(img, data_format='CHW'):
+def _get_image_h_axis(data_format='CHW'):
     if data_format.lower() == 'chw':
         return -2
     elif data_format.lower() == 'hwc':
@@ -68,7 +68,7 @@ def _get_image_h_axis(img, data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_w_axis(img, data_format='CHW'):
+def _get_image_w_axis(data_format='CHW'):
     if data_format.lower() == 'chw':
         return -1
     elif data_format.lower() == 'hwc':
@@ -76,19 +76,27 @@ def _get_image_w_axis(img, data_format='CHW'):
     raise ValueError('data_format')
 
 
-def _get_image_c_axis(img, data_format='CHW'):
+def _get_image_c_axis(data_format='CHW'):
     if data_format.lower() == 'chw':
         return -3
     elif data_format.lower() == 'hwc':
         return -1
 
 
-def _get_image_n_axis(img, data_format='CHW'):
+def _get_image_n_axis(data_format='CHW'):
     if len(data_format) == 3:
         return None
     elif len(data_format) == 4:
         return 0
     raise ValueError('data_format')
+
+
+def _is_channel_last(data_format):
+    return _get_image_c_axis == -1
+
+
+def _is_channel_first(data_format):
+    return not _is_channel_last(data_format)
 
 
 def normalize(img, mean, std, data_format='CHW'):
@@ -105,13 +113,13 @@ def normalize(img, mean, std, data_format='CHW'):
         Tensor: Normalized mage.
 
     """
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
 
     mean = paddle.to_tensor(mean, place=img.place)
     std = paddle.to_tensor(std, place=img.place)
 
-    if data_format.lower == 'chw':
+    if _is_channel_first(data_format):
         mean = mean.reshape([-1, 1, 1])
         std = std.reshape([-1, 1, 1])
 
@@ -132,18 +140,18 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
     Returns:
         paddle.Tensor: Grayscale version of the image.
     """
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
+
     assert num_output_channels in (1, 3), ""
 
     rgb_weights = paddle.to_tensor(
         [0.2989, 0.5870, 0.1140], place=img.place).astype(img.dtype)
 
-    if data_format.lower() == 'chw':
-        _c_index = -3
+    if _is_channel_first(data_format):
         rgb_weights = rgb_weights.reshape((-1, 1, 1))
-    else:
-        _c_index = -1
+
+    _c_index = _get_image_c_axis(data_format)
 
     img = (img * rgb_weights).sum(axis=_c_index, keepdim=True)
     _shape = img.shape
@@ -261,10 +269,10 @@ def vflip(img, data_format='CHW'):
         paddle.Tensor:  Vertically flipped image.
 
     """
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
 
-    h_axis = _get_image_h_axis(img, data_format)
+    h_axis = _get_image_h_axis(data_format)
 
     return img.flip(axis=[h_axis])
 
@@ -281,10 +289,10 @@ def hflip(img, data_format='CHW'):
         paddle.Tensor:  Horizontall flipped image.
 
     """
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
 
-    w_axis = _get_image_w_axis(img, data_format)
+    w_axis = _get_image_w_axis(data_format)
 
     return img.flip(axis=[w_axis])
 
@@ -305,10 +313,10 @@ def crop(img, top, left, height, width, data_format='CHW'):
         paddle.Tensor: Cropped image.
 
     """
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
 
-    if data_format.lower() == 'chw':
+    if _is_channel_first(data_format):
         return img[:, top:top + height, left:left + width]
     else:
         return img[top:top + height, left:left + width, :]
