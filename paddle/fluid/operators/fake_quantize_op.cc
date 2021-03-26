@@ -647,19 +647,20 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                    "MovingAverageAbsMaxScale");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "MovingAverageAbsMaxScale");
     OP_INOUT_CHECK(ctx->HasOutput("OutScale"), "Output", "OutScale",
                    "MovingAverageAbsMaxScale");
+
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }
     if (ctx->HasOutput("OutAccum")) {
       ctx->SetOutputDim("OutAccum", {1});
     }
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("OutScale", {1});
-    ctx->ShareLoD("X", /*->*/ "Out");
+    if (ctx->HasOutput("Out")) {
+      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+      ctx->SetOutputDim("OutScale", {1});
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 
  protected:
@@ -678,7 +679,8 @@ class MovingAverageAbsMaxScaleOpMaker
     AddInput("InAccum", "Last accum.").AsDispensable();
     AddInput("InState", "Last state.").AsDispensable();
     AddOutput("Out",
-              "(Tensor) Output tensor is just equivalent to the input tensor.");
+              "(Tensor) Output tensor is just equivalent to the input tensor.")
+        .AsDispensable();
     AddOutput("OutScale", " Current scale");
     AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
     AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
