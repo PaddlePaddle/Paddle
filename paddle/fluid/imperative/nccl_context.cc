@@ -35,7 +35,7 @@ namespace imperative {
 
 void NCCLParallelContext::BcastNCCLId(
     std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
-    int root) {
+    int root, int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
     for (auto &ep : strategy_.trainer_endpoints_) {
@@ -45,11 +45,15 @@ void NCCLParallelContext::BcastNCCLId(
     }
     platform::SendBroadCastCommID(other_trainers, &nccl_ids);
   } else {
-    platform::RecvBroadCastCommID(strategy_.current_endpoint_, &nccl_ids);
+    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
+                                  &nccl_ids);
   }
 }
 
 void NCCLParallelContext::Init() {
+  int server_fd =
+      platform::SocketServer::GetInstance(strategy_.current_endpoint_).socket();
+
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(strategy_.nrings_);
 
@@ -59,7 +63,7 @@ void NCCLParallelContext::Init() {
       platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
     }
   }
-  BcastNCCLId(nccl_ids, 0);
+  BcastNCCLId(nccl_ids, 0, server_fd);
 
   int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
