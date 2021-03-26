@@ -142,9 +142,11 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     r"""
-    This operator implements the cross entropy loss function with softmax. This function 
+    By default, this operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable computing.
+
+    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
     By default, this operator will calculate the mean of the result, and you can also affect 
     the default behavior by using the reduction parameter. Please refer to the part of 
@@ -160,18 +162,37 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
         1. Hard label (each sample can only be assigned into one category)
 
+        1.1. when use_softmax=True
+
             .. math::
               \\loss_j=-\text{logits}_{label_j}+\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right) , j = 1,...,N
 
             where, N is the number of samples and C is the number of categories.
 
-        2. Soft label (each sample is assigned to multiple categories with a certain probability, 
-        and the probability sum is 1).
+        1.2. when use_softmax=False
+
+            .. math::
+              \\loss_j=-\log\left({P}_{label_j}\right) , j = 1,...,N
+
+            where, N is the number of samples and C is the number of categories, P is input(the output of softmax).
+
+
+        2. Soft label (each sample is assigned to multiple categories with a certain probability, and the probability sum is 1).
+
+        2.1. when use_softmax=True
 
             .. math::
               \\loss_j=-\sum_{i=0}^{C}\text{label}_i\left(\text{logits}_i-\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right)\right) , j = 1,...,N
 
             where, N is the number of samples and C is the number of categories.
+
+        2.2. when use_softmax=False
+
+            .. math::
+              \\loss_j=-\sum_{j=0}^{C}\left({label}_j*\log\left({P}_{label_j}\right)\right) , j = 1,...,N
+
+            where, N is the number of samples and C is the number of categories, P is input(the output of softmax).
+
 
 
     -  **II.Weight and reduction processing** 
@@ -286,14 +307,20 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
             Input tensor, the data type is float32, float64. Shape is
 	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
-            Note: it expects unscaled logits. This operator should not be used with the 
-            output of softmax operator, which will produce incorrect results.
+
+            Note: 
+
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
+                output of softmax operator, which will produce incorrect results.
+
+                2. when use_softmax=False, it expects the output of softmax operator.
+ 
 
         - **label** (Tensor)
 
             1. If soft_label=False，the shape is 
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
-            the data type is int32, int64, float32, float64. 
+            the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
             2. If soft_label=True, the shape and data type should be same with ``input`` , 
             and the sum of the labels for each sample should be 1.
