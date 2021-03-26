@@ -526,6 +526,23 @@ void RunBrpcPushSparse() {
   std::cout << "get_node_feat: " << node_feat[1][0] << std::endl;
   std::cout << "get_node_feat: " << node_feat[1][1] << std::endl;
 
+  // Test string
+  node_ids.clear();
+  node_ids.push_back(37);
+  node_ids.push_back(96);
+  // std::vector<std::string> feature_names;
+  feature_names.clear();
+  feature_names.push_back(std::string("a"));
+  feature_names.push_back(std::string("b"));
+  node_feat =
+      client1.get_node_feat(std::string("user"), node_ids, feature_names);
+  ASSERT_EQ(node_feat.size(), 2);
+  ASSERT_EQ(node_feat[0].size(), 2);
+  std::cout << "get_node_feat: " << node_feat[0][0].size() << std::endl;
+  std::cout << "get_node_feat: " << node_feat[0][1].size() << std::endl;
+  std::cout << "get_node_feat: " << node_feat[1][0].size() << std::endl;
+  std::cout << "get_node_feat: " << node_feat[1][1].size() << std::endl;
+
   std::remove(edge_file_name);
   std::remove(node_file_name);
   LOG(INFO) << "Run stop_server";

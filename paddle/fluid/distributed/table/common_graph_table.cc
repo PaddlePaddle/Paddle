@@ -142,17 +142,15 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 
       auto node = shards[index].add_feature_node(id);
 
-      // auto mutable_feature = node->get_mutable_feature();
-
-      // mutable_feature.clear();
-      // mutable_feature.resize(this->feat_name.size());
       node->set_feature_size(feat_name.size());
 
       for (size_t slice = 2; slice < values.size(); slice++) {
         auto feat = this->parse_feature(values[slice]);
-        if (feat.first > 0) {
-          // mutable_feature[feat.first] = feat.second;
+        if (feat.first >= 0) {
           node->set_feature(feat.first, feat.second);
+        } else {
+          VLOG(4) << "Node feature:  " << values[slice]
+                  << " not in feature_map.";
         }
       }
     }
@@ -363,6 +361,27 @@ int32_t GraphTable::get_node_feat(const std::vector<uint64_t> &node_ids,
   return 0;
 }
 
+if (node == nullptr) {
+  return 0;
+}
+for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+  const std::string &feature_name = feature_names[feat_idx];
+  if (feat_id_map.find(feature_name) != feat_id_map.end()) {
+    // res[feat_idx][idx] =
+    // node->get_feature(feat_id_map[feature_name]);
+    auto feat = node->get_feature(feat_id_map[feature_name]);
+    res[feat_idx][idx] = feat;
+  }
+}
+return 0;
+}));
+}
+for (size_t idx = 0; idx < node_num; ++idx) {
+  tasks[idx].get();
+}
+return 0;
+}
+
 std::pair<int32_t, std::string> GraphTable::parse_feature(
     std::string feat_str) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,
@@ -488,4 +507,5 @@ int32_t GraphTable::initialize() {
   return 0;
 }
 }
-};
+}
+;
