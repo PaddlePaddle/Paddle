@@ -192,22 +192,26 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self._initialization_broadcast(startup_program)
 
         if self.use_pipeline:
+
+            # sharding-pp related logic
             # pp_optimizer._rename_gradient_var_name(main_block)
             # crop ops
-            for idx, op in reversed(list(enumerate(main_block.ops))):
-                if is_update_op(op):
-                    op_role_var = op.attr('op_role_var')
-                    param_name = op_role_var[0]
-                    if not self._shard.has_param(param_name):
+            if self.sharding_degree > 1:
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if is_update_op(op):
+                        op_role_var = op.attr('op_role_var')
+                        param_name = op_role_var[0]
+                        if not self._shard.has_param(param_name):
+                            main_block._remove_op(idx)
+
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if op.type != 'cast': continue
+                    in_name = op.input_arg_names[0]
+                    if in_name not in self._params: continue
+                    #if self._shard.has_param(param_name): continue
+                    if in_name not in main_block.vars:
                         main_block._remove_op(idx)
 
-            for idx, op in reversed(list(enumerate(main_block.ops))):
-                if op.type != 'cast': continue
-                in_name = op.input_arg_names[0]
-                if in_name not in self._params: continue
-                #if self._shard.has_param(param_name): continue
-                if in_name not in main_block.vars:
-                    main_block._remove_op(idx)
             accumulated_grad_names = pp_optimizer._accumulate_gradients(
                 main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
@@ -224,6 +228,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._shard,
                     core.op_proto_and_checker_maker.OpRole.Optimize,
                     use_calc_stream=True)
+
+        with open("main_bf_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
 
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
