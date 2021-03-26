@@ -122,11 +122,19 @@ class RNNDescriptors {
         miopenRNNlinear,
         is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, mode_,
         miopenRNNwithBias, miopenRNNdefault, cudnn_type));
+#elif CUDNN_VERSION >= 6000
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,
         dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, mode_,
         CUDNN_RNN_ALGO_STANDARD, cudnn_type));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
+        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
+        CUDNN_LINEAR_INPUT,
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, mode_,
+        cudnn_type));
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
