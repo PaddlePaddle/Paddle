@@ -303,6 +303,23 @@ __global__ void KeBilinearInterpFw(
   }
 }
 
+template <typename T>
+__forceinline__ __device__ void PreCalculatorForInputIndex(
+    int* in_img_idx, int* in_img_idy, int* w_id, int* h_id, T* w1lambda,
+    T* h1lambda, T* w2lambda, T* h2lambda, T src_w, T src_h, const int in_img_w,
+    const int in_img_h) {
+  src_w = (src_w > 0) ? src_w : 0.f;
+  src_h = (src_h > 0) ? src_h : 0.f;
+  *in_img_idx = static_cast<int>(src_w);
+  *in_img_idy = static_cast<int>(src_h);
+  *w_id = (*in_img_idx < in_img_w - 1) ? 1 : 0;
+  *h_id = (*in_img_idy < in_img_h - 1) ? 1 : 0;
+  *w1lambda = src_w - *in_img_idx;
+  *h1lambda = src_h - *in_img_idy;
+  *w2lambda = 1.f - *w1lambda;
+  *h2lambda = 1.f - *h1lambda;
+}
+
 /* Calculate the minimum of partial elements in a block */
 template <typename T>
 __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
@@ -317,9 +334,11 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
     val = math::warpReduceMin(val, mask);
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+      shared[wid] = val;
+    }
   } else {
-    shared_last_val = 1e10;
+    shared_last_val = std::numeric_limits<T>::max();
     platform::CudaAtomicMin(&shared_last_val, val);
     shared[wid] = shared_last_val;
     shared_last_idx = wid;
@@ -327,57 +346,55 @@ __inline__ __device__ T PartialBlockMin(T val, size_t threads_num_in_block,
   __syncthreads();
 
   if (threadIdx.x < threshold) {
-    val = (lane <= shared_last_idx) ? shared[lane] : 1e10f;
+    val = (lane <= shared_last_idx) ? shared[lane]
+                                    : std::numeric_limits<T>::max();
     val = math::warpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
-  if (threadIdx.x >= threshold) val = shared_last_val;
+  if (threadIdx.x >= threshold) {
+    val = shared_last_val;
+  }
   return val;
 }
 
 template <typename T>
 __global__ void KeBilinearInterpBwShareMemory(
-    T* in, const int in_img_h, const int in_img_w, const int input_h,
-    const int input_w, const T* __restrict__ out, const int out_img_h,
-    const int out_img_w, const int output_h, const int output_w,
-    const int num_channels, float ratio_h, float ratio_w, T align_type_value,
-    const DataLayout data_layout) {
+    T* in, const int in_h, const int in_w, const T* __restrict__ out,
+    const int out_h, const int out_w, const int n, const int num_channels,
+    float ratio_h, float ratio_w, const T align_type_value, bool is_nchw) {
+  __shared__ T s_data[2][1024];
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  int nthreads = output_h * output_w;
+  int in_chw = in_h * in_w * num_channels;
+  int out_chw = num_channels * out_h * out_w;
+  int nthreads = n * out_chw;
 
   for (; tid < nthreads; tid += stride) {
-    __shared__ T s_data[2][1024];
-    int out_id_h = tid / output_w;
-    int out_id_w = tid % output_w;
-    const int in_img_size = in_img_h * in_img_w;
-    const int out_img_size = out_img_h * out_img_w;
-    T out_pos = out[out_id_h * output_w + out_id_w];
+    int out_id_h = tid / out_chw;
+    int out_id_w = tid % out_chw;
+    const int in_img_size = in_h * in_w;
+    const int out_img_size = out_h * out_w;
+    T value = out[out_id_h * out_chw + out_id_w];
 
     int channel_id = out_id_w / out_img_size;
-    int out_img_idy = (out_id_w % out_img_size) / out_img_w;
-    int out_img_idx = tid % out_img_w;
+    int out_img_idy = (out_id_w % out_img_size) / out_w;
+    int out_img_idx = tid % out_w;
 
+    int in_img_idx, in_img_idy, w_id, h_id;
+    T w1lambda, h1lambda, w2lambda, h2lambda;
     T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
     T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-    src_w = (src_w > 0) ? src_w : 0.f;
-    src_h = (src_h > 0) ? src_h : 0.f;
-    int in_img_idx = static_cast<int>(src_w);
-    int in_img_idy = static_cast<int>(src_h);
-    int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T w1lambda = src_w - in_img_idx;
-    T h1lambda = src_h - in_img_idy;
-    T w2lambda = 1.f - w1lambda;
-    T h2lambda = 1.f - h1lambda;
+    PreCalculatorForInputIndex(&in_img_idx, &in_img_idy, &w_id, &h_id,
+                               &w1lambda, &h1lambda, &w2lambda, &h2lambda,
+                               src_w, src_h, in_w, in_h);
 
     // top_left_index is just input_index.
-    int input_index = out_id_h * input_w + channel_id * in_img_size +
-                      in_img_idy * in_img_w + in_img_idx;
+    int input_index = out_id_h * in_chw + channel_id * in_img_size +
+                      in_img_idy * in_w + in_img_idx;
     int top_right_index = input_index + w_id;
-    int bot_left_index = input_index + h_id * in_img_w;
-    int bot_right_index = input_index + h_id * in_img_w + w_id;
+    int bot_left_index = input_index + h_id * in_w;
+    int bot_right_index = input_index + h_id * in_w + w_id;
     int in_top_min_index, in_bot_min_index;
 
     s_data[0][threadIdx.x] = 0.f;
@@ -399,18 +416,18 @@ __global__ void KeBilinearInterpBwShareMemory(
                                     : (in_bot_max_index - in_bot_min_index);
     if (h_id != 0) {
       platform::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
-                              h2lambda * w2lambda * out_pos);
+                              h2lambda * w2lambda * value);
       platform::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                              h2lambda * w1lambda * out_pos);
+                              h2lambda * w1lambda * value);
       platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                              h1lambda * w2lambda * out_pos);
+                              h1lambda * w2lambda * value);
       platform::CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
-                              h1lambda * w1lambda * out_pos);
+                              h1lambda * w1lambda * value);
     } else {
       platform::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                              (h2lambda + h1lambda) * w1lambda * out_pos);
+                              (h2lambda + h1lambda) * w1lambda * value);
       platform::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                              (h1lambda + h2lambda) * w2lambda * out_pos);
+                              (h1lambda + h2lambda) * w2lambda * value);
     }
     __syncthreads();
 
@@ -425,85 +442,74 @@ __global__ void KeBilinearInterpBwShareMemory(
 
 template <typename T>
 __global__ void CommonKeBilinearInterpBw(
-    T* in, const int in_img_h, const int in_img_w, const int input_h,
-    const int input_w, const T* __restrict__ out, const int out_img_h,
-    const int out_img_w, const int output_h, const int output_w,
-    const int num_channels, float ratio_h, float ratio_w, T align_type_value,
-    const DataLayout data_layout) {
+    T* in, const int in_h, const int in_w, const T* __restrict__ out,
+    const int out_h, const int out_w, const int n, const int num_channels,
+    float ratio_h, float ratio_w, const T align_type_value, bool is_nchw) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  int nthreads = output_h * output_w;
+  int in_chw = in_h * in_w * num_channels;
+  int out_chw = num_channels * out_h * out_w;
+  int nthreads = n * out_chw;
 
-  if (data_layout == DataLayout::kNCHW) {
+  if (is_nchw) {
     for (; tid < nthreads; tid += stride) {
-      int out_id_h = tid / output_w;
-      int out_id_w = tid % output_w;
-      const int in_img_size = in_img_h * in_img_w;
-      const int out_img_size = out_img_h * out_img_w;
-      T out_pos = out[out_id_h * output_w + out_id_w];
+      int out_id_h = tid / out_chw;
+      int out_id_w = tid % out_chw;
+      const int in_img_size = in_h * in_w;
+      const int out_img_size = out_h * out_w;
+      T value = out[out_id_h * out_chw + out_id_w];
 
       int channel_id = out_id_w / out_img_size;
-      int out_img_idy = (out_id_w % out_img_size) / out_img_w;
-      int out_img_idx = tid % out_img_w;
+      int out_img_idy = (out_id_w % out_img_size) / out_w;
+      int out_img_idx = tid % out_w;
+      int in_img_idx, in_img_idy, w_id, h_id;
+      T w1lambda, h1lambda, w2lambda, h2lambda;
 
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-      src_w = (src_w > 0) ? src_w : 0.f;
-      src_h = (src_h > 0) ? src_h : 0.f;
-      int in_img_idx = static_cast<int>(src_w);
-      int in_img_idy = static_cast<int>(src_h);
-      int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-      int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-      T w1lambda = src_w - in_img_idx;
-      T h1lambda = src_h - in_img_idy;
-      T w2lambda = 1.f - w1lambda;
-      T h2lambda = 1.f - h1lambda;
+      PreCalculatorForInputIndex(&in_img_idx, &in_img_idy, &w_id, &h_id,
+                                 &w1lambda, &h1lambda, &w2lambda, &h2lambda,
+                                 src_w, src_h, in_w, in_h);
 
-      T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
-                      in_img_idy * in_img_w + in_img_idx];
-      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos);
-      platform::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * out_pos);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w],
-                              h1lambda * w2lambda * out_pos);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w + w_id],
-                              h1lambda * w1lambda * out_pos);
+      T* in_pos = &in[out_id_h * in_chw + channel_id * in_img_size +
+                      in_img_idy * in_w + in_img_idx];
+      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
+      platform::CudaAtomicAdd(&in_pos[w_id], h2lambda * w1lambda * value);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_w],
+                              h1lambda * w2lambda * value);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_w + w_id],
+                              h1lambda * w1lambda * value);
     }
   } else {
     for (; tid < nthreads; tid += stride) {
-      int out_id_h = tid / output_w;
-      int out_id_w = tid % output_w;
-      const int in_img_size = in_img_h * in_img_w;
-      const int out_img_size = out_img_h * out_img_w;
-      T out_pos = out[out_id_h * output_w + out_id_w];
+      int out_id_h = tid / out_chw;
+      int out_id_w = tid % out_chw;
+      const int in_img_size = in_h * in_w;
+      const int out_img_size = out_h * out_w;
+      T value = out[out_id_h * out_chw + out_id_w];
 
-      int out_img_idy = out_id_w / (out_img_w * num_channels);
-      int out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
+      int out_img_idy = out_id_w / (out_w * num_channels);
+      int out_img_idx = out_id_w % (out_w * num_channels) / num_channels;
       int channel_id = tid % num_channels;
 
+      int in_img_idx, in_img_idy, w_id, h_id;
+      T w1lambda, h1lambda, w2lambda, h2lambda;
       T src_w = ratio_w * (out_img_idx + align_type_value) - align_type_value;
       T src_h = ratio_h * (out_img_idy + align_type_value) - align_type_value;
-      src_w = (src_w > 0) ? src_w : 0;
-      src_h = (src_h > 0) ? src_h : 0;
-      int in_img_idx = static_cast<int>(src_w);
-      int in_img_idy = static_cast<int>(src_h);
-      int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-      int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-      T w1lambda = src_w - in_img_idx;
-      T h1lambda = src_h - in_img_idy;
-      T w2lambda = 1.f - w1lambda;
-      T h2lambda = 1.f - h1lambda;
+      PreCalculatorForInputIndex(&in_img_idx, &in_img_idy, &w_id, &h_id,
+                                 &w1lambda, &h1lambda, &w2lambda, &h2lambda,
+                                 src_w, src_h, in_w, in_h);
 
-      T* in_pos =
-          &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
-              in_img_idx * num_channels + channel_id];
-      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * out_pos);
+      T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
+                      in_img_idx * num_channels + channel_id];
+      platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
       platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                              h2lambda * w1lambda * out_pos);
-      platform::CudaAtomicAdd(&in_pos[h_id * in_img_w * num_channels],
-                              h1lambda * w2lambda * out_pos);
+                              h2lambda * w1lambda * value);
+      platform::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
+                              h1lambda * w2lambda * value);
       platform::CudaAtomicAdd(
-          &in_pos[h_id * in_img_w * num_channels + w_id * num_channels],
-          h1lambda * w1lambda * out_pos);
+          &in_pos[h_id * in_w * num_channels + w_id * num_channels],
+          h1lambda * w1lambda * value);
     }
   }
 }
@@ -1512,25 +1518,25 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   } else if ("bilinear" == interp_method) {
-    T align_type_value = (align_mode == 0 && !align_corners) ? 0.5f : 0;
+    const T align_type_value = (align_mode == 0 && !align_corners) ? 0.5f : 0;
+    bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
     bool optimize_flag = false;
     optimize_flag = (in_h < (out_h >> 6) && in_w < (out_w >> 6))
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);
-    if (optimize_flag & (data_layout == DataLayout::kNCHW)) {
+
+    if (optimize_flag & is_nchw) {
       KeBilinearInterpBwShareMemory<
           T><<<config.block_per_grid, config.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
-          input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-          out_w, n, out_chw, c, ratio_h, ratio_w, align_type_value,
-          data_layout);
+          input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
+          ratio_h, ratio_w, align_type_value, is_nchw);
     } else {
       CommonKeBilinearInterpBw<
           T><<<config.block_per_grid, config.thread_per_block, 0,
                ctx.cuda_device_context().stream()>>>(
-          input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-          out_w, n, out_chw, c, ratio_h, ratio_w, align_type_value,
-          data_layout);
+          input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
+          ratio_h, ratio_w, align_type_value, is_nchw);
     }
   } else if ("bicubic" == interp_method) {
     KeBicubicInterpBw<T><<<config.block_per_grid, 512, 0,
