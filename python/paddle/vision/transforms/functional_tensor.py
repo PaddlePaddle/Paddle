@@ -22,7 +22,7 @@ from paddle.nn.functional import affine_grid, grid_sample
 
 
 def _assert_paddle_image(img):
-    if img.ndim != 3:
+    if not isinstance(img, paddle.Tensor) or img.ndim != 3:
         raise RuntimeError('not support dim={} paddle image'.format(img.ndim))
 
 
@@ -36,7 +36,6 @@ def _get_image_channels(img, data_format='CHW'):
         return img.shape[-3]
     elif data_format.lower() == 'hwc':
         return img.shape[-1]
-
     raise ValueError('data_format')
 
 
@@ -45,6 +44,7 @@ def _get_image_size(img, data_format='CHW'):
         return img.shape[-1], img.shape[-2]
     elif data_format.lower() == 'hwc':
         return img.shape[-2], img.shape[-3]
+    raise ValueError('data_format')
 
 
 def _get_image_h_axis(img, data_format='CHW'):
@@ -52,6 +52,7 @@ def _get_image_h_axis(img, data_format='CHW'):
         return -2
     elif data_format.lower() == 'hwc':
         return -3
+    raise ValueError('data_format')
 
 
 def _get_image_w_axis(img, data_format='CHW'):
@@ -59,6 +60,7 @@ def _get_image_w_axis(img, data_format='CHW'):
         return -1
     elif data_format.lower() == 'hwc':
         return -2
+    raise ValueError('data_format')
 
 
 def _get_image_c_axis(img, data_format='CHW'):
@@ -305,6 +307,8 @@ def center_crop(img, output_size, data_format='CHW'):
             paddle.Tensor: Cropped image.
 
         """
+    _assert_paddle_image(img)
+    _assert_data_format(data_format)
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
