@@ -245,10 +245,9 @@ def vflip(img, data_format='CHW'):
     assert data_format.lower() in ('chw', 'hwc'
                                    ), "data_format should in ('chw', 'hwc')"
 
-    if data_format.lower() == 'chw':
-        return img.flip(axis=[-2])
-    else:
-        return img.flip(axis=[-3])
+    h_axis = _get_image_h_axis(img, data_format)
+
+    return img.flip(axis=[h_axis])
 
 
 def hflip(img, data_format='CHW'):
@@ -266,10 +265,9 @@ def hflip(img, data_format='CHW'):
     assert data_format.lower() in ('chw', 'hwc'
                                    ), "data_format should in ('chw', 'hwc')"
 
-    if data_format.lower() == 'chw':
-        return img.flip(axis=[-1])
-    else:
-        return img.flip(axis=[-2])
+    w_axis = _get_image_w_axis(img, data_format)
+
+    return img.flip(axis=[w_axis])
 
 
 def crop(img, top, left, height, width, data_format='CHW'):
