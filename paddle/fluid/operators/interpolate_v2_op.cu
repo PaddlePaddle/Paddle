@@ -441,10 +441,12 @@ __global__ void KeBilinearInterpBwShareMemory(
 }
 
 template <typename T>
-__global__ void CommonKeBilinearInterpBw(
-    T* in, const int in_h, const int in_w, const T* __restrict__ out,
-    const int out_h, const int out_w, const int n, const int num_channels,
-    float ratio_h, float ratio_w, const T align_type_value, bool is_nchw) {
+__global__ void KeBilinearInterpBw(T* in, const int in_h, const int in_w,
+                                   const T* __restrict__ out, const int out_h,
+                                   const int out_w, const int n,
+                                   const int num_channels, float ratio_h,
+                                   float ratio_w, const T align_type_value,
+                                   bool is_nchw) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int in_chw = in_h * in_w * num_channels;
@@ -1532,9 +1534,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
           input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
           ratio_h, ratio_w, align_type_value, is_nchw);
     } else {
-      CommonKeBilinearInterpBw<
-          T><<<config.block_per_grid, config.thread_per_block, 0,
-               ctx.cuda_device_context().stream()>>>(
+      KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
+                              ctx.cuda_device_context().stream()>>>(
           input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
           ratio_h, ratio_w, align_type_value, is_nchw);
     }
