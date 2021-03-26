@@ -265,7 +265,7 @@ class LSTMMKLDNNHandler
           this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
       auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-      dnnl::reorder(user_c0_memory, *memory_p, this->attr_)
+      dnnl::reorder(user_c0_memory, *memory_p)
           .execute(astream, user_c0_memory, *memory_p);
 
       this->dev_ctx_.SetBlob(c0_key, memory_p);

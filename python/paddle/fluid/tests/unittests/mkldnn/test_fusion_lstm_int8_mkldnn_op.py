@@ -113,7 +113,7 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
                 'Cell': (c, self.lod)
             }
         else:
-            self.error_margin = 1
+            self.error_margin = 2
             hidden_u8 = np.rint(hidden_f32 * scale_data + shift_data).astype(
                 np.uint8)
             #  hidden_u8 = (hidden_f32 * scale_data + shift_data).astype(np.uint8)
@@ -138,27 +138,22 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False, no_check_set=["Cell"])
+            self.check_output(check_dygraph=False, no_check_set=["Cell"], atol=self.error_margin)
 
 
-#class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
-#    def set_confs(self):
-#        self.force_fp32_output = False
-#
-#
-#class TestFusionLSTMINT8MKLDNNOp3(TestFusionLSTMINT8MKLDNNOp):
-#    def set_confs(self):
-#        self.origin_mode = False
-#
-#
-#class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
-#    def set_confs(self):
-#        self.with_bias = False
-#
-#
-#class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
-#    def set_confs(self):
-#        self.has_initial_state = False
+class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+    def set_confs(self):
+        self.force_fp32_output = False
+
+
+class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+    def set_confs(self):
+        self.is_reverse = True
+
+
+class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+    def set_confs(self):
+        self.has_initial_state = True
 
 
 if __name__ == "__main__":
