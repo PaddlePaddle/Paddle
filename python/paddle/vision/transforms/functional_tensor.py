@@ -21,7 +21,12 @@ import paddle
 from paddle.nn.functional import affine_grid, grid_sample
 
 
-def _get_num_channels(img, data_format='CHW'):
+def _assert_data_format(data_format):
+    assert data_format.lower() in ('chw', 'hwc'
+                                   ), "data_format should in ('chw', 'hwc')"
+
+
+def _get_image_channels(img, data_format='CHW'):
     if data_format.lower() == 'chw':
         return img.shape[-3]
     elif data_format.lower() == 'hwc':
@@ -37,9 +42,25 @@ def _get_image_size(img, data_format='CHW'):
         return img.shape[-2], img.shape[-3]
 
 
-def _assert_data_format(data_format):
-    assert data_format.lower() in ('chw', 'hwc'
-                                   ), "data_format should in ('chw', 'hwc')"
+def _get_image_h_axis(img, data_format='CHW'):
+    if data_format.lower() == 'chw':
+        return -2
+    elif data_format.lower() == 'hwc':
+        return -3
+
+
+def _get_image_w_axis(img, data_format='CHW'):
+    if data_format.lower() == 'chw':
+        return -1
+    elif data_format.lower() == 'hwc':
+        return -2
+
+
+def _get_image_c_axis(img, data_format='CHW'):
+    if data_format.lower() == 'chw':
+        return -3
+    elif data_format.lower() == 'hwc':
+        return -1
 
 
 def normalize(img, mean, std, data_format='CHW'):
