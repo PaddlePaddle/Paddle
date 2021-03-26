@@ -47,6 +47,22 @@ namespace paddle {
     }                                                                     \
   }()
 
+#define PD_DISPATCH_FLOATING_AND_HALF_TYPES(TYPE, NAME, ...)                   \
+  [&] {                                                                        \
+    const auto& __dtype__ = TYPE;                                              \
+    switch (__dtype__) {                                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT32, float,           \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT64, double,          \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::FLOAT16, paddle::float16, \
+                           __VA_ARGS__)                                        \
+      default:                                                                 \
+        PD_THROW("function " #NAME " is not implemented for data type `",      \
+                 ::paddle::ToString(__dtype__), "`");                          \
+    }                                                                          \
+  }()
+
 ///////// Integral Dispatch Marco ///////////
 
 #define PD_DISPATCH_INTEGRAL_TYPES(TYPE, NAME, ...)                           \

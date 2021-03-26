@@ -33,7 +33,6 @@ from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
-from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph import nn
 
@@ -131,8 +130,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 bias_attr=False),
             BatchNorm2D(6),
             ReLU(),
-            Pool2D(
-                pool_size=2, pool_type='max', pool_stride=2),
+            MaxPool2D(
+                kernel_size=2, stride=2),
             Conv2D(
                 in_channels=6,
                 out_channels=16,
@@ -357,7 +356,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                     "diff({}) at {}, dynamic loss = {}, static loss = {}".
                     format(diff, i, loss_d, loss_s))
                 break
-
         self.assertTrue(
             np.allclose(
                 np.array(dynamic_loss_rec),
@@ -393,11 +391,20 @@ class TestImperativeOutSclae(unittest.TestCase):
             if 'fake' in op.type:
                 static_ops.remove(op)
 
+        op_count = 0
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
+                if dynamic_ops[i].attr("out_threshold") != static_ops[i].attr(
+                        "out_threshold"):
+                    _logger.info(dynamic_ops[i].attr("out_threshold"))
+                    _logger.info(static_ops[i].attr("out_threshold"))
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
 
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
@@ -459,11 +466,16 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             if 'fake' in op.type:
                 static_ops.remove(op)
 
+        op_count = 0
         for i in range(len(dynamic_ops)):
             if dynamic_ops[i].has_attr("out_threshold"):
+                op_count += 1
                 self.assertTrue(dynamic_ops[i].type == static_ops[i].type)
                 self.assertTrue(dynamic_ops[i].attr("out_threshold") ==
                                 static_ops[i].attr("out_threshold"))
+
+        _logger.info("op_cout: {}".format(op_count))
+        self.assertTrue(op_count == 14)
 
 
 class TestSaveQuantizedModel_Warning(unittest.TestCase):
@@ -483,8 +495,10 @@ class TestSaveQuantizedModel_Warning(unittest.TestCase):
                         shape=[None, 1, 28, 28], dtype='float32')
                 ])
 
-        warning_message = "Warning: No Layer of the model while to be saved contains the out_threshold attribute, " \
-                "so the generated inference model would not contain the out_threshold."
+        warning_message = "Warning: No Layer of the model while to be " \
+                          "saved contains the out_threshold attribute, so the " \
+                          "generated inference model would not contain the " \
+                          "out_threshold."
         num = get_vaild_warning_num(warning_message, w)
         assert num == 1
 
