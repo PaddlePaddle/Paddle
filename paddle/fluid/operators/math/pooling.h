@@ -46,11 +46,28 @@ class MaxPool {
 
 template <class T>
 class AvgPool {
+  float intermediate_res;
+
  public:
-  DEVICE inline T initial() { return static_cast<T>(0); }
+  DEVICE inline T initial() {
+    return static_cast<T>(0);
+    intermediate_res = static_cast<float>(0.0f);
+  }
   DEVICE inline void compute(const T& x, T* y) { *y += x; }
   DEVICE inline void finalize(const T& pool_field, T* y) { *y /= pool_field; }
 };
+template <>
+DEVICE inline void AvgPool<paddle::platform::float16>::compute(
+    const paddle::platform::float16& x, paddle::platform::float16* y) {
+  intermediate_res += static_cast<float>(x);
+}
+
+template <>
+DEVICE inline void AvgPool<paddle::platform::float16>::finalize(
+    const paddle::platform::float16& pool_field, paddle::platform::float16* y) {
+  *y = static_cast<paddle::platform::float16>(intermediate_res /
+                                              (static_cast<float>(pool_field)));
+}
 
 template <class T>
 class MaxPoolGrad {
