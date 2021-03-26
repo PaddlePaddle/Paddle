@@ -382,6 +382,9 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
         paddle.Tensor: Padded image.
 
     """
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
+
     if not isinstance(padding, (numbers.Number, list, tuple)):
         raise TypeError('Got inappropriate padding arg')
     if not isinstance(fill, (numbers.Number, str, list, tuple)):
