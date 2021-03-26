@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {

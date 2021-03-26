@@ -25,7 +25,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
