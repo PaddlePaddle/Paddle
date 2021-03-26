@@ -23,17 +23,28 @@ from paddle.nn.functional import affine_grid, grid_sample
 from paddle.nn.functional import pad as paddle_pad
 
 
-def _assert_paddle_image(img):
+def _assert_image_tensor(img):
     if not isinstance(img, paddle.Tensor) or img.ndim != 3:
         raise RuntimeError('not support dim={} paddle image'.format(img.ndim))
 
 
-def _assert_data_format(data_format):
+# def _assert_data_format(data_format):
+#     assert data_format.lower() in ('chw', 'hwc', 'nchw', 'nhwc'
+#                                    ), "data_format should in ('chw', 'hwc', 'nchw', 'nhwc')"
+
+
+def _assert_image_data_format(data_format):
     assert data_format.lower() in ('chw', 'hwc'
                                    ), "data_format should in ('chw', 'hwc')"
 
 
-def _get_image_channels(img, data_format='CHW'):
+def _get_image_num_batches(img, data_format='CHW'):
+    if len(data_format) == 3:
+        return None
+    return img.shape[0]
+
+
+def _get_image_num_channels(img, data_format='CHW'):
     if data_format.lower() == 'chw':
         return img.shape[-3]
     elif data_format.lower() == 'hwc':
@@ -70,6 +81,13 @@ def _get_image_c_axis(img, data_format='CHW'):
         return -3
     elif data_format.lower() == 'hwc':
         return -1
+
+
+def _get_image_n_axis(img, data_format='CHW'):
+    if len(data_format) != 4:
+        return None
+    else:
+        return 0
 
 
 def normalize(img, mean, std, data_format='CHW'):
@@ -308,8 +326,8 @@ def center_crop(img, output_size, data_format='CHW'):
             paddle.Tensor: Cropped image.
 
         """
-    _assert_paddle_image(img)
-    _assert_data_format(data_format)
+    _assert_image_tensor(img)
+    _assert_image_data_format(data_format)
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
