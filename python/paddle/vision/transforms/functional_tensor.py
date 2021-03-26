@@ -38,28 +38,6 @@ def _assert_image_data_format(data_format):
                                    ), "data_format should in ('chw', 'hwc')"
 
 
-def _get_image_num_batches(img, data_format='CHW'):
-    if len(data_format) == 3:
-        return None
-    return img.shape[0]
-
-
-def _get_image_num_channels(img, data_format='CHW'):
-    if data_format.lower() == 'chw':
-        return img.shape[-3]
-    elif data_format.lower() == 'hwc':
-        return img.shape[-1]
-    raise ValueError('data_format')
-
-
-def _get_image_size(img, data_format='CHW'):
-    if data_format.lower() == 'chw':
-        return img.shape[-1], img.shape[-2]
-    elif data_format.lower() == 'hwc':
-        return img.shape[-2], img.shape[-3]
-    raise ValueError('data_format')
-
-
 def _get_image_h_axis(data_format='CHW'):
     if data_format.lower() == 'chw':
         return -2
@@ -81,6 +59,7 @@ def _get_image_c_axis(data_format='CHW'):
         return -3
     elif data_format.lower() == 'hwc':
         return -1
+    raise ValueError('data_format')
 
 
 def _get_image_n_axis(data_format='CHW'):
@@ -92,11 +71,26 @@ def _get_image_n_axis(data_format='CHW'):
 
 
 def _is_channel_last(data_format):
-    return _get_image_c_axis == -1
+    return _get_image_c_axis(data_format) == -1
 
 
 def _is_channel_first(data_format):
-    return not _is_channel_last(data_format)
+    return _get_image_c_axis(data_format) == -3
+
+
+def _get_image_num_batches(img, data_format='CHW'):
+    if _get_image_n_axis(data_format):
+        return img.shape[_get_image_n_axis(data_format)]
+    return None
+
+
+def _get_image_num_channels(img, data_format='CHW'):
+    return img.shape[_get_image_c_axis(data_format)]
+
+
+def _get_image_size(img, data_format='CHW'):
+    return img.shape[_get_image_w_axis(data_format)], img.shape[
+        _get_image_h_axis(data_format)]
 
 
 def normalize(img, mean, std, data_format='CHW'):
