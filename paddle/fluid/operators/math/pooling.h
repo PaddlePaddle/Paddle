@@ -56,6 +56,7 @@ class AvgPool {
   DEVICE inline void compute(const T& x, T* y) { *y += x; }
   DEVICE inline void finalize(const T& pool_field, T* y) { *y /= pool_field; }
 };
+
 template <>
 DEVICE inline void AvgPool<paddle::platform::float16>::compute(
     const paddle::platform::float16& x, paddle::platform::float16* y) {
