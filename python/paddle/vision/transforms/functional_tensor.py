@@ -16,9 +16,11 @@ from __future__ import division
 
 import math
 import numbers
+from typing import Sequence
 
 import paddle
 from paddle.nn.functional import affine_grid, grid_sample
+from paddle.nn.functional import pad as paddle_pad
 
 
 def _assert_paddle_image(img):
@@ -109,7 +111,7 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
             'CHW'. Default: 'CHW'.
 
     Returns:
-        PIL.Image: Grayscale version of the image.
+        paddle.Tensor: Grayscale version of the image.
     """
     assert data_format.lower() in ('chw', 'hwc'
                                    ), "data_format should in ('chw', 'hwc')"
@@ -324,3 +326,84 @@ def center_crop(img, output_size, data_format='CHW'):
         crop_height,
         crop_width,
         data_format=data_format)
+
+
+def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
+    """
+    Pads the given paddle.Tensor on all sides with specified padding mode and fill value.
+
+    Args:
+        img (paddle.Tensor): Image to be padded.
+        padding (int|list|tuple): Padding on each border. If a single int is provided this
+            is used to pad all borders. If tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            this is the padding for the left, top, right and bottom borders
+            respectively.
+        fill (float, optional): Pixel fill value for constant fill. If a tuple of
+            length 3, it is used to fill R, G, B channels respectively.
+            This value is only used when the padding_mode is constant. Default: 0. 
+        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
+
+            - constant: pads with a constant value, this value is specified with fill
+
+            - edge: pads with the last value on the edge of the image
+
+            - reflect: pads with reflection of image (without repeating the last value on the edge)
+
+                       padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+                       will result in [3, 2, 1, 2, 3, 4, 3, 2]
+
+            - symmetric: pads with reflection of image (repeating the last value on the edge)
+
+                         padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
+                         will result in [2, 1, 1, 2, 3, 4, 4, 3]
+
+    Returns:
+        paddle.Tensor: Padded image.
+
+    """
+    if not isinstance(padding, (numbers.Number, list, tuple)):
+        raise TypeError('Got inappropriate padding arg')
+    if not isinstance(fill, (numbers.Number, str, list, tuple)):
+        raise TypeError('Got inappropriate fill arg')
+    if not isinstance(padding_mode, str):
+        raise TypeError('Got inappropriate padding_mode arg')
+
+    if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
+        raise ValueError(
+            "Padding must be an int or a 2, or 4 element tuple, not a " +
+            "{} element tuple".format(len(padding)))
+
+    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
+        'Padding mode should be either constant, edge, reflect or symmetric'
+
+    if isinstance(padding, int):
+        pad_left = pad_right = pad_top = pad_bottom = padding
+    elif len(padding) == 1:
+        pad_left = pad_right = pad_top = pad_bottom = padding[0]
+    elif len(padding) == 2:
+        pad_left = pad_right = padding[0]
+        pad_top = pad_bottom = padding[1]
+    else:
+        pad_left = padding[0]
+        pad_top = padding[1]
+        pad_right = padding[2]
+        pad_bottom = padding[3]
+
+    padding = [pad_left, pad_right, pad_top, pad_bottom]
+
+    if padding_mode == 'edge':
+        padding_mode = 'replicate'
+    # elif padding_mode == 'symmetric':
+    #     raise RuntimeError('Do not support symmetric by now')
+
+    img = img.unsqueeze(0)
+    #  'constant', 'reflect', 'replicate', 'circular'
+    img = paddle_pad(
+        img,
+        pad=padding,
+        mode=padding_mode,
+        value=float(fill),
+        data_format='N' + data_format)
+
+    return img.squeeze(0)
