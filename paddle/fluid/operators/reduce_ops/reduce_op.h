@@ -493,13 +493,10 @@ class ReduceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
-    framework::LibraryType library_;
-    library_ = framework::LibraryType::kPlain;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
