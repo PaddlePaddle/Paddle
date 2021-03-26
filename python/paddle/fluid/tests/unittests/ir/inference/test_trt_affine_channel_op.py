@@ -35,12 +35,12 @@ class TRTAffineChannelTest(InferencePassTest):
         self.serialize = False
         self.enable_trt = True
 
+    def build(self):
         # set min_graph_size to 2, 
         # because affine channel doesn't support nhwc format
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)
 
-    def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
                 shape = [-1, self.channel, self.height, self.width]
@@ -68,7 +68,10 @@ class TRTAffineChannelTest(InferencePassTest):
     def check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
