@@ -32,28 +32,54 @@ in_dim = 10
 out_dim = 20
 
 
-class SimpleNet(fluid.Layer):
-    def __init__(self, train_id):
-        super(SimpleNet, self).__init__()
-        self.w1 = self.create_parameter(
-            shape=[in_dim, out_dim], dtype="float32")
-        self.share_net = Linear(out_dim, 10)
-        self.trainer_id = train_id
+class IdentityLayer2D(fluid.dygraph.Layer):
+    def __init__(self, m, n):
+        super(IdentityLayer2D, self).__init__()
+        weight_attr = paddle.framework.ParamAttr(
+            name="linear_weight",
+            initializer=paddle.nn.initializer.Normal(
+                mean=0.0, std=2.0))
+        self.weight = self.create_parameter(
+            attr=weight_attr, shape=[m, n], dtype='float32', is_bias=False)
 
-    def forward(self, x):
-        tmp = paddle.matmul(x, self.w1)
-        return self.share_net(tmp)
+    def forward(self):
+        return self.weight
 
 
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
         strategy = fleet.DistributedStrategy()
+        model_parallel_size = 8
         strategy.hybrid_configs = {
-            "num_data_parallel": 4,
-            "num_model_parallel": 2,
+            "num_data_parallel": 1,
+            "num_model_parallel": model_parallel_size,
             "num_pipeline_parallel": 1
         }
         fleet.init(is_collective=True, strategy=strategy)
+
+        # test X * Y
+        # input_size_coeff = 13
+        # input_size = input_size_coeff * model_parallel_size
+        # output_size_coeff = 17
+        # output_size = output_size_coeff * model_parallel_size
+        # batch_size = 7
+
+        # identity_layer = IdentityLayer2D(batch_size, input_size)
+        # linear_layer = fleet.parallel_layer.ParallelLinear(
+        #                     size=(input_size, output_size),
+        #                     axis=1,
+        #                     num_partitions=model_parallel_size)
+        # loss_weight = paddle.randn([output_size, 20], 'float32')
+        # # forward
+        # input_ = identity_layer()
+        # output = linear_layer(input_)
+        # loss = paddle.matmul(output, loss_weight)
+
+        # print(loss.numpy())
+        # loss.sum().backward()
+
+        # weight_attr=paddle.nn.initializer.Normal(
+        #         mean=0.0, std=0.01)     
 
         # optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         # optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)

@@ -31,7 +31,10 @@ class ParallelLinear(Layer):
         super(ParallelLinear, self).__init__()
 
         self.hcg = fleet.get_hybrid_communicate_group()
+
         self.model_parallel_group = self.hcg.get_model_parallel_group()
+        assert num_partitions == self.hcg.get_model_parallel_world_size(), \
+            "num_partitions must be equal to the model parallel world size"
 
         if axis == 0:
             assert size[0] % num_partitions == 0, (
@@ -52,7 +55,6 @@ class ParallelLinear(Layer):
             raise ValueError("The value of axis must be 0 or 1, but the value "
                              "given is {}.".format(axis))
 
-        self.num_partitions = num_partitions
         self.linear = paddle.nn.Linear(
             linear_size[0],
             linear_size[1],
@@ -60,7 +62,6 @@ class ParallelLinear(Layer):
             bias_attr=bias_attr,
             name=name)
         self.linear_size = linear_size
-
         self.axis = axis
         self.gather_out = gather_out
 
