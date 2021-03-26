@@ -256,16 +256,12 @@ class ShardingOptimizer(MetaOptimizerBase):
                     for input_name in op.desc.input_arg_names():
 
                         # NOTE (JZ-LIANG) naive rule to support amp, if amp change, should modify here accordingly
-                        if 'AMPOptimizer' in fleet._get_applied_meta_list():
-                            # if ".cast_fp16@GRAD" not in input_name:
-                            #     continue
-                            # else:
-                            #     input_name = input_name[:input_name.find(".cast_fp16@GRAD")]
-                            if (op.type != "cast" and op.type != "layer_norm") or "@Fetch_0" not in input_name:
+                        if self.user_defined_strategy.amp:
+                            if ".cast_fp16@GRAD" not in input_name:
                                 continue
                             else:
-                                input_name = input_name[:input_name.find("@Fetch_0")]
-                                                        
+                                input_name = input_name[:input_name.find(".cast_fp16@GRAD")]
+
                         if input_name in self._backward_remain_anchors:
                             logging.info("backward segment:")
                             logging.info("op [{}] input [{}] output [{}]".format(op.desc.type() ,op.desc.input_arg_names(), op.desc.output_arg_names()))
