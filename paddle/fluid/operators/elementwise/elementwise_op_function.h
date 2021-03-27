@@ -259,7 +259,7 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     const int *x_strides_array, const int *y_strides_array,
     const int *out_dims_array, const uint32_t *shift_array,
     const uint32_t *mul_array, const T *__restrict__ x, const T *__restrict__ y,
-    OutType *__restrict__ out, int out_size, Functor func) {
+    OutType *__restrict__ out, const size_t out_size, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int x_index = 0, y_index = 0;
@@ -281,7 +281,8 @@ __global__ void CommonForwardBroadcastCUDAKernel(
     const int *x_strides_array, const int *y_strides_array,
     const int *out_dims_array, const uint32_t *shift_array,
     const uint32_t *mul_array, const T *__restrict__ x, const T *__restrict__ y,
-    OutType *__restrict__ out, int out_size, const int max_dim, Functor func) {
+    OutType *__restrict__ out, const size_t out_size, const int max_dim,
+    Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int x_index = 0, y_index = 0;
@@ -336,8 +337,9 @@ void CommonForwardBroadcastCUDA(
   auto cplace = platform::CPUPlace();
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
+  const size_t out_size = std::accumulate(
+      out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
-
   int x_stride = 1;
   int y_stride = 1;
 
@@ -347,7 +349,7 @@ void CommonForwardBroadcastCUDA(
   std::vector<uint32_t> mul_array(max_dim);
 
   for (int i = max_dim - 1; i >= 0; i--) {
-    uint64_t one = 1l;
+    uint64_t one_uint64 = 1l;
     uint32_t shift = 0;
     uint64_t temp_div = 0l;
     x_strides_array[i] = x_dims_array[i] == 1 ? 0 : x_stride;
@@ -359,14 +361,13 @@ void CommonForwardBroadcastCUDA(
       if ((1U << shift) >= out_dims_array[i]) break;
     }
     shift_array[i] = shift;
-    temp_div = ((one << 32) * ((one << shift_array[i]) - out_dims_array[i])) /
+    temp_div = ((one_uint64 << 32) *
+                ((one_uint64 << shift_array[i]) - out_dims_array[i])) /
                    out_dims_array[i] +
                1;
     mul_array[i] = (uint32_t)temp_div;
   }
 
-  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
-                                       1, std::multiplies<int>());
   int bytes = max_dim * sizeof(int);
   auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
   auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
@@ -383,16 +384,25 @@ void CommonForwardBroadcastCUDA(
       reinterpret_cast<uint32_t *>(shift_array_tmp->ptr());
   uint32_t *mul_array_gpu = reinterpret_cast<uint32_t *>(mul_array_tmp->ptr());
 
-  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
-               bytes, ctx.stream());
-  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
-               bytes, ctx.stream());
   memory::Copy(gplace, shift_array_gpu, cplace, shift_array.data(), bytes,
                ctx.stream());
   memory::Copy(gplace, mul_array_gpu, cplace, mul_array.data(), bytes,
                ctx.stream());
   memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
                ctx.stream());
+
+  if (is_xsize_larger) {
+    memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
+                 bytes, ctx.stream());
+    memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
+                 bytes, ctx.stream());
+  } else {
+    std::swap(x_data, y_data);
+    memory::Copy(gplace, x_strides_array_gpu, cplace, y_strides_array.data(),
+                 bytes, ctx.stream());
+    memory::Copy(gplace, y_strides_array_gpu, cplace, x_strides_array.data(),
+                 bytes, ctx.stream());
+  }
 
   int threads = 256;
   int blocks = (out_size + threads - 1) / threads;
