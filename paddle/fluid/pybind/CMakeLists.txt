@@ -17,6 +17,11 @@ if (WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
 
+if (WITH_XPU_BKCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+  set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
