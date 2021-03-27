@@ -50,7 +50,7 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
   do {                                         \
     const auto dividend_copy = dividend;       \
     *div = dividend_copy / divisor;            \
-    *mod = dividend_copy % divisor;            \
+    *mod = dividend_copy - (*div * divisor);   \
   } while (0)
 
 namespace paddle {
@@ -242,29 +242,87 @@ void ComputeElementwiseCUDA(const framework::Tensor *x,
   }
 }
 
+__forceinline__ __device__ void ELementwsieIndexFinder(
+    const int x_stride, const int y_stride, const int out_dim,
+    const uint32_t shift, const uint32_t mul, int *out_index_quotient,
+    int *x_index, int *y_index) {
+  uint32_t t = __umulhi(*out_index_quotient, mul);
+  uint32_t out_index_quotient_tmp = (t + *out_index_quotient) >> shift;
+  uint32_t mod_value = *out_index_quotient - (out_index_quotient_tmp * out_dim);
+  *x_index += mod_value * x_stride;
+  *y_index += mod_value * y_stride;
+  *out_index_quotient = out_index_quotient_tmp;
+}
+
+template <typename Functor, typename T, typename OutType = T, int MaxDim>
+__global__ void CommonForwardBroadcastCUDAKernel(
+    const int *x_strides_array, const int *y_strides_array,
+    const int *out_dims_array, const uint32_t *shift_array,
+    const uint32_t *mul_array, const T *__restrict__ x, const T *__restrict__ y,
+    OutType *__restrict__ out, int out_size, Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  int x_index = 0, y_index = 0;
+
+  for (; tid < out_size; tid += stride) {
+    int out_index = tid;
+#pragma unroll
+    for (int i = MaxDim; i >= 0; --i) {
+      ELementwsieIndexFinder(x_strides_array[i], y_strides_array[i],
+                             out_dims_array[i], shift_array[i], mul_array[i],
+                             &out_index, &x_index, &y_index);
+    }
+    out[tid] = func(x[x_index], y[y_index]);
+  }
+}
+
 template <typename Functor, typename T, typename OutType = T>
 __global__ void CommonForwardBroadcastCUDAKernel(
     const int *x_strides_array, const int *y_strides_array,
-    const int *out_dims_array, const T *x, const T *y, OutType *out,
-    int out_size, int max_dim, Functor func, const bool is_xsize_larger) {
-  for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
-       out_index < out_size; out_index += blockDim.x * gridDim.x) {
-    int x_index = 0;
-    int y_index = 0;
-    int out_index_quotient = out_index;
-    int remainder = 0;
+    const int *out_dims_array, const uint32_t *shift_array,
+    const uint32_t *mul_array, const T *__restrict__ x, const T *__restrict__ y,
+    OutType *__restrict__ out, int out_size, const int max_dim, Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  int x_index = 0, y_index = 0;
+  for (; tid < out_size; tid += stride) {
+    int out_index = tid;
 #pragma unroll
     for (int i = max_dim - 1; i >= 0; --i) {
-      GetDivMod(out_index_quotient, out_dims_array[i], &out_index_quotient,
-                &remainder);
-      x_index += remainder * x_strides_array[i];
-      y_index += remainder * y_strides_array[i];
+      ELementwsieIndexFinder(x_strides_array[i], y_strides_array[i],
+                             out_dims_array[i], shift_array[i], mul_array[i],
+                             &out_index, &x_index, &y_index);
     }
-    if (is_xsize_larger) {
-      out[out_index] = func(x[x_index], y[y_index]);
-    } else {
-      out[out_index] = func(y[y_index], x[x_index]);
+    out[tid] = func(x[x_index], y[y_index]);
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+__global__ void CommonForwardBroadcastCUDAKernel1(
+    const int *x_strides_array, const int *y_strides_array,
+    const int *out_dims_array, const uint32_t *shift_array,
+    const uint32_t *mul_array, const T *__restrict__ x, const T *__restrict__ y,
+    OutType *__restrict__ out, int out_size, const int max_dim_index,
+    Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for (; tid < out_size; tid += stride) {
+    int x_index = 0, y_index = 0;
+    int out_index_quotient = tid;
+
+#pragma unroll
+    for (int i = 3; i >= 0; --i) {
+      uint32_t t = __umulhi(out_index_quotient, mul_array[i]);
+      uint32_t out_index_quotient_tmp =
+          (t + out_index_quotient) >> shift_array[i];
+      uint32_t mod_value =
+          out_index_quotient - (out_index_quotient_tmp * out_dims_array[i]);
+      x_index += mod_value * x_strides_array[i];
+      y_index += mod_value * y_strides_array[i];
+      out_index_quotient = out_index_quotient_tmp;
     }
+    out[tid] = func(x[x_index], y[y_index]);
   }
 }
 
@@ -280,45 +338,106 @@ void CommonForwardBroadcastCUDA(
   const T *y_data = y->data<T>();
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
-  std::vector<int> x_strides_array(max_dim);
-  std::vector<int> y_strides_array(max_dim);
   int x_stride = 1;
   int y_stride = 1;
+
+  std::vector<int> x_strides_array(max_dim);
+  std::vector<int> y_strides_array(max_dim);
+  std::vector<uint32_t> shift_array(max_dim);
+  std::vector<uint32_t> mul_array(max_dim);
+
   for (int i = max_dim - 1; i >= 0; i--) {
+    uint64_t one = 1l;
+    uint32_t shift = 0;
+    uint64_t temp_div = 0l;
     x_strides_array[i] = x_dims_array[i] == 1 ? 0 : x_stride;
     y_strides_array[i] = y_dims_array[i] == 1 ? 0 : y_stride;
     x_stride *= x_dims_array[i];
     y_stride *= y_dims_array[i];
+
+    for (shift = 0; shift < 32; shift++) {
+      if ((1U << shift) >= out_dims_array[i]) break;
+    }
+    shift_array[i] = shift;
+    temp_div = ((one << 32) * ((one << shift_array[i]) - out_dims_array[i])) /
+                   out_dims_array[i] +
+               1;
+    mul_array[i] = (uint32_t)temp_div;
   }
-
-  int bytes = max_dim * sizeof(int);
-  auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
-  int *x_strides_array_gpu =
-      reinterpret_cast<int *>(x_strides_array_tmp->ptr());
-  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
-               bytes, ctx.stream());
-
-  auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
-  int *y_strides_array_gpu =
-      reinterpret_cast<int *>(y_strides_array_tmp->ptr());
-  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
-               bytes, ctx.stream());
-
-  auto out_dims_array_tmp = memory::Alloc(ctx, bytes);
-  int *out_dims_array_gpu = reinterpret_cast<int *>(out_dims_array_tmp->ptr());
-  memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
-               ctx.stream());
 
   const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
                                        1, std::multiplies<int>());
-  dim3 gird_size = dim3(
-      (out_size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  int bytes = max_dim * sizeof(int);
+  auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
+  auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
+  auto shift_array_tmp = memory::Alloc(ctx, bytes);
+  auto mul_array_tmp = memory::Alloc(ctx, bytes);
+  auto out_dims_array_tmp = memory::Alloc(ctx, bytes);
 
-  CommonForwardBroadcastCUDAKernel<
-      Functor, T, OutType><<<gird_size, block_size, 0, ctx.stream()>>>(
-      x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
-      y_data, out_data, out_size, max_dim, func, is_xsize_larger);
+  int *x_strides_array_gpu =
+      reinterpret_cast<int *>(x_strides_array_tmp->ptr());
+  int *y_strides_array_gpu =
+      reinterpret_cast<int *>(y_strides_array_tmp->ptr());
+  int *out_dims_array_gpu = reinterpret_cast<int *>(out_dims_array_tmp->ptr());
+  uint32_t *shift_array_gpu =
+      reinterpret_cast<uint32_t *>(shift_array_tmp->ptr());
+  uint32_t *mul_array_gpu = reinterpret_cast<uint32_t *>(mul_array_tmp->ptr());
+
+  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
+               bytes, ctx.stream());
+  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
+               bytes, ctx.stream());
+  memory::Copy(gplace, shift_array_gpu, cplace, shift_array.data(), bytes,
+               ctx.stream());
+  memory::Copy(gplace, mul_array_gpu, cplace, mul_array.data(), bytes,
+               ctx.stream());
+  memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
+               ctx.stream());
+
+  int threads = 256;
+  int blocks = (out_size + threads - 1) / threads;
+
+  switch (max_dim) {
+    case 2: {
+      CommonForwardBroadcastCUDAKernel<Functor, T, OutType,
+                                       1><<<blocks, threads, 0, ctx.stream()>>>(
+          x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+          shift_array_gpu, mul_array_gpu, x_data, y_data, out_data, out_size,
+          func);
+      break;
+    }
+    case 3: {
+      CommonForwardBroadcastCUDAKernel<Functor, T, OutType,
+                                       2><<<blocks, threads, 0, ctx.stream()>>>(
+          x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+          shift_array_gpu, mul_array_gpu, x_data, y_data, out_data, out_size,
+          func);
+      break;
+    }
+    case 4: {
+      CommonForwardBroadcastCUDAKernel<Functor, T, OutType,
+                                       3><<<blocks, threads, 0, ctx.stream()>>>(
+          x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+          shift_array_gpu, mul_array_gpu, x_data, y_data, out_data, out_size,
+          func);
+      break;
+    }
+    case 5: {
+      CommonForwardBroadcastCUDAKernel<Functor, T, OutType,
+                                       4><<<blocks, threads, 0, ctx.stream()>>>(
+          x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+          shift_array_gpu, mul_array_gpu, x_data, y_data, out_data, out_size,
+          func);
+      break;
+    }
+    default: {
+      CommonForwardBroadcastCUDAKernel<
+          Functor, T, OutType><<<blocks, threads, 0, ctx.stream()>>>(
+          x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+          shift_array_gpu, mul_array_gpu, x_data, y_data, out_data, out_size,
+          max_dim, func);
+    }
+  }
 }
 
 #endif  // __NVCC__ or __HIPCC__
