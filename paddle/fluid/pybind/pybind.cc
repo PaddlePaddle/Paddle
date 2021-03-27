@@ -142,14 +142,6 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
-bool IsCompiledWithROCM() {
-#ifndef PADDLE_WITH_HIP
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
