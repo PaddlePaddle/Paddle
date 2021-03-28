@@ -67,6 +67,13 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.build()
         self.check_output()
 
+    def set_dynamic(self):
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
+            'data': [self.bs, self.channel, self.height // 2, self.width // 2]
+        }, {
+            'data': [self.bs, self.channel, self.height * 2, self.width * 2]
+        }, {'data': [self.bs, self.channel, self.height, self.width]}, False)
+
     def test_base(self):
         self.run_test()
 
@@ -74,40 +81,29 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.precision = AnalysisConfig.Precision.Half
         self.run_test()
 
-    def test_dynamic(self):
-        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
-            'data': [self.bs, self.channel, self.height // 2, self.width // 2]
-        }, {
-            'data': [self.bs, self.channel, self.height * 2, self.width * 2]
-        }, {'data': [self.bs, self.channel, self.height, self.width]}, False)
-        self.run_test()
-
     def test_serialize(self):
         self.serialize = True
         self.run_test()
 
-    def test_all(self):
-        precision_opt = [
-            AnalysisConfig.Precision.Half, AnalysisConfig.Precision.Float32
-        ]
-        serialize_opt = [True, False]
-        dynamic_shape_opt = [
-            None, InferencePassTest.DynamicShapeParam({
-                'data':
-                [self.bs, self.channel, self.height // 2, self.width // 2]
-            }, {
-                'data':
-                [self.bs, self.channel, self.height * 2, self.width * 2]
-            }, {'data': [self.bs, self.channel, self.height, self.width]},
-                                                      False)
-        ]
+    def test_dynamic(self):
+        self.set_dynamic()
+        self.run_test()
 
-        for precision, serialize, dynamic_shape in itertools.product(
-                precision_opt, serialize_opt, dynamic_shape_opt):
-            self.precision = precision
-            self.serialize = serialize
-            self.dynamic_shape_params = dynamic_shape
-            self.run_test()
+    def test_dynamic_fp16(self):
+        self.precision = AnalysisConfig.Precision.Half
+        self.set_dynamic()
+        self.run_test()
+
+    def test_dynamic_serialize(self):
+        self.serialize = True
+        self.set_dynamic()
+        self.run_test()
+
+    def test_dynamic_fp16_serialize(self):
+        self.serialize = True
+        self.precision = AnalysisConfig.Precision.Half
+        self.set_dynamic()
+        self.run_test()
 
     def check_output(self):
         if core.is_compiled_with_cuda():
