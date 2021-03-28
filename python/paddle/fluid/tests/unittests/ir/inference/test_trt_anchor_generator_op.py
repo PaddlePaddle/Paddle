@@ -44,8 +44,10 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         }
 
     def build(self):
+        min_graph_size = 3 if self.dynamic_shape_params is not None else 2
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, min_graph_size, self.precision, self.serialize,
+            False)
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
