@@ -405,9 +405,13 @@ bool AnchorGeneratorPluginDynamic::supportsFormatCombination(
     int nbOutputs) {
   // input can be any, doesn't matter
   // anchor generator doesn't read input raw data, only need the shape info
-  if (pos == 0) return true;
   auto type = inOut[pos].type;
   auto format = inOut[pos].format;
+#if IS_TRT_VERSION_GE(7234)
+  if (pos == 0) return true;
+#else
+  if (pos == 0) return format == nvinfer1::TensorFormat::kLINEAR;
+#endif
   return (type == nvinfer1::DataType::kFLOAT &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
