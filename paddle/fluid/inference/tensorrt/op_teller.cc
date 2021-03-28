@@ -231,7 +231,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
->>>>>>> bf09dcb346c9aa4c20fbfaf520ab781d4f640346
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
