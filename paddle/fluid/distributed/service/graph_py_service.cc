@@ -246,6 +246,7 @@ void GraphPyClient::load_edge_file(std::string name, std::string filepath,
     params += ">";
   }
   if (this->table_id_map.count(name)) {
+    VLOG(0) << "loadding data with type " << name << " from " << filepath;
     uint32_t table_id = this->table_id_map[name];
     auto status =
         get_ps_client()->load(table_id, std::string(filepath), params);
