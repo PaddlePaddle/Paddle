@@ -166,7 +166,10 @@ void BindGraphNode(py::module* m) {
       .def("get_feature", &GraphNode::get_feature);
 }
 void BindGraphPyFeatureNode(py::module* m) {
-  py::class_<FeatureNode>(*m, "FeatureNode").def(py::init<>());
+  py::class_<FeatureNode>(*m, "FeatureNode")
+      .def(py::init<>())
+      .def("get_id", &GraphNode::get_id)
+      .def("get_feature", &GraphNode::get_feature);
 }
 
 void BindGraphPyService(py::module* m) {
