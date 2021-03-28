@@ -41,8 +41,7 @@ FILE(WRITE ${PSLIB_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${PSLIB_BRPC_NAME}/include ${PSLIB_BRPC_NAME}/lib \n"
   "        DESTINATION ${PSLIB_BRPC_DST_DIR})\n")
-MESSAGE("DOWNLAODING PATH FOR BRPC ---------------",${PSLIB_BRPC_DOWNLOAD_DIR})
-MESSAGE("PREFIX----------",${PSLIB_BRPC_SOURCE_DIR})
+
 ExternalProject_Add(
     ${PSLIB_BRPC_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
