@@ -33,8 +33,10 @@ if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     cp $PADDLE_ROOT/paddle/scripts/paddle_build.sh $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     git remote | grep upstream
-    if [ $? != 0 ]; then git remote add upstream https://github.com/PaddlePaddle/Paddle.git; fi
-    git fetch upstream
+    if [ $? != 0 ]; then 
+        git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+        git fetch upstream develop
+    fi
 fi
 CURBRANCH=`git rev-parse --abbrev-ref HEAD`
 echo $CURBRANCH
