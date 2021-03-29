@@ -157,9 +157,9 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
     std::string dso_path = join(spec_path, dso_name);
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
     if (!dso_handle) {
-      LOG(WARNING) << "dso_path: " << dso_path
+      LOG(WARNING) << "Load library dso_path (failed): " << dso_path
                    << ", dynload_flags: " << dynload_flags
-                   << ", : " << dlerror();
+                   << ", the reason is: " << dlerror();
     }
   }
   return dso_handle;
@@ -174,8 +174,9 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
   if (!dso_handle) {
-    LOG(WARNING) << "dso_path: " << dso_path
-                 << ", dynload_flags: " << dynload_flags << ", : " << dlerror();
+    LOG(WARNING) << "Load library dso_path (failed): " << dso_path
+                 << ", dynload_flags: " << dynload_flags
+                 << ", the reason is: " << dlerror();
   }
 
 // TODO(chenweihang): This path is used to search which libs?
