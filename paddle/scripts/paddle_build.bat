@@ -30,10 +30,6 @@ taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
-:: TODO: Temporarily，REMOVE after VS2017 is stable.
-set WITH_TPCACHE=OFF
-rmdir %cache_dir%\third_party_GPU /s/q
-rmdir %cache_dir%\third_party /s/q
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -85,7 +81,7 @@ git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
-    if %ERRORLEVEL% EQU 0 (
+    if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
     git branch -D last_pr

@@ -111,7 +111,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
-
+      "roi_align",
+      "affine_channel",
+      "multiclass_nms",
       "nearest_interp",
   };
 };
@@ -195,6 +197,45 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       // current not support axis from input, use default 0
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
     }
+
+    if (op_type == "affine_channel") {
+      if (!desc.HasAttr("data_layout")) return false;
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW) return false;
+    }
+
+    if (op_type == "multiclass_nms") {
+      if (with_dynamic_shape) return false;
+      auto* block = desc.Block();
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          const auto shape = var_desc->GetShape();
+          if (shape.size() != 3) {
+            VLOG(1) << "multiclass_nms op dims != 3 not supported in tensorrt, "
+                       "but got dims "
+                    << shape.size() << ", so jump it.";
+            return false;
+          }
+        }
+      }
+      bool has_attrs =
+          (desc.HasAttr("background_label") &&
+           desc.HasAttr("score_threshold") && desc.HasAttr("nms_top_k") &&
+           desc.HasAttr("keep_top_k") && desc.HasAttr("normalized"));
+      if (has_attrs == false) return false;
+
+      auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
+      if (nms_top_k < 0) return false;
+
+      auto keep_top_k = BOOST_GET_CONST(int, desc.GetAttr("keep_top_k"));
+      if (keep_top_k < 0) return false;
+
+      auto registry = GetPluginRegistry();
+      if (registry == nullptr) return false;
+    }
+
     if (op_type == "fc" || op_type == "mul") {
       const int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
@@ -206,6 +247,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
+
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
@@ -221,6 +263,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto interp_method =
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+    }
+
+    if (op_type == "roi_align") {
+      if (!with_dynamic_shape) return false;
+
+      std::vector<std::string> attrs{"pooled_height", "pooled_width",
+                                     "spatial_scale", "sampling_ratio"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+
+      const auto pooled_height =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+      if (pooled_height <= 0) return false;
+
+      const auto pooled_width =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+      if (pooled_width <= 0) return false;
+
+      const auto spatial_scale =
+          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+      if (spatial_scale <= 0.f) return false;
     }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
