@@ -276,7 +276,7 @@ function run_unittest_cpu() {
     wait;
 }
 
-function run_unittest() {
+function run_unittest_gpu() {
     test_case=$1
     parallel_job=$2
     if [ "$2" == "" ]; then
@@ -379,10 +379,10 @@ function show_ut_retry_result() {
 
 set +e
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
-    run_unittest $eight_parallel_job 8
-    run_unittest $tetrad_parallel_jog 4
-    run_unittest $non_parallel_job_1
-    run_unittest $non_parallel_job_2
+    run_unittest_gpu $eight_parallel_job 8
+    run_unittest_gpu $tetrad_parallel_jog 4
+    run_unittest_gpu $non_parallel_job_1
+    run_unittest_gpu $non_parallel_job_2
 else
     run_unittest_cpu
 fi
