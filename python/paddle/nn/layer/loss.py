@@ -286,8 +286,8 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         - **axis** (int, optional)
 
             The index of dimension to perform softmax calculations. 
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the rank of 
-            input :attr:`input`. 
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number 
+            of dimensions of input :attr:`input`. 
             Default is ``-1`` .
 
         - **use_softmax** (bool, optional)
@@ -344,7 +344,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         .. code-block:: python
             
             import paddle
-            import numpy as np
             paddle.seed(99999)
             N=100
             C=200
@@ -366,7 +365,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         .. code-block:: python
             
             import paddle
-            import numpy as np
+            paddle.seed(99999)
             axis = -1
             ignore_index = -100
             N = 4
@@ -374,10 +373,9 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             shape = [N, C]
             reduction='mean'
             weight = None
-            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0, seed=99999)
-            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0, seed=99999)
+            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            paddle.set_device("cpu")
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
                                                                   logits,  
                                                                   labels, 
@@ -385,7 +383,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                                                                   axis=axis,
                                                                   weight=weight,
                                                                   reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.05313515]
+            print(paddle_loss_mean.numpy()) #[1.12908343]
 
     """
 
