@@ -45,6 +45,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_1.b_0", "fc_2.b_0", "fc_2.w_0", "fc_1.b_0_velocity_0",
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0"
             ]))
+
         self.assertEqual(ops, [
             'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
@@ -55,9 +56,9 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'momentum',
+            'momentum', 'momentum'
         ])
 
     def test_sharding_amp_optimizer(self):
@@ -82,6 +83,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0",
                 "loss_scaling_0", "num_bad_steps_0", "num_good_steps_0"
             ]))
+
         self.assertEqual(ops, [
             'cast', 'cast', 'cast', 'fill_constant', 'fill_constant',
             'fill_constant', 'c_sync_calc_stream', 'c_broadcast', 'c_broadcast',
@@ -94,11 +96,10 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
             'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
             'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad',
-            'c_sync_calc_stream', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_sync_comm_stream', 'cast', 'cast', 'cast',
-            'check_finite_and_unscale', 'cast', 'c_sync_calc_stream',
-            'c_allreduce_max', 'c_sync_comm_stream', 'cast',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'cast', 'cast', 'cast',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max', 'cast',
             'update_loss_scaling', 'momentum', 'momentum', 'momentum'
         ])
 
@@ -124,6 +125,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_1.b_0", "fc_2.b_0", "fc_2.w_0", "fc_1.b_0_velocity_0",
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0"
             ]))
+
         self.assertEqual(ops, [
             'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
@@ -134,10 +136,9 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'mul',
             'elementwise_add', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
             'mul', 'elementwise_add', 'tanh_grad', 'elementwise_add_grad',
-            'mul_grad', 'c_sync_calc_stream', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_sync_comm_stream',
-            'momentum', 'momentum', 'momentum'
+            'mul_grad', 'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_amp_recompute_optimizer(self):
@@ -167,29 +168,27 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0",
                 "loss_scaling_0", "num_bad_steps_0", "num_good_steps_0"
             ]))
-
         self.assertEqual(ops, [
-            'cast', 'cast', 'cast', 'fill_constant', 'fill_constant',
+            'cast', 'cast', 'cast', 'cast', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
             'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
-            'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast', 'tanh',
-            'cast', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
-            'mul', 'elementwise_add', 'softmax', 'cast', 'cross_entropy2',
-            'mean', 'elementwise_mul', 'fill_constant', 'scale',
-            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2', 'cast',
-            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast',
-            'cast', 'mul', 'cast', 'elementwise_add', 'cast', 'tanh_grad',
-            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
-            'cast', 'elementwise_add', 'cast', 'tanh_grad', 'cast',
+            'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'elementwise_add',
+            'softmax', 'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'fill_constant', 'scale', 'elementwise_mul_grad', 'mean_grad',
+            'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
+            'elementwise_add', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'mul',
+            'elementwise_add', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_sync_comm_stream', 'cast', 'cast', 'cast',
-            'check_finite_and_unscale', 'cast', 'c_sync_calc_stream',
-            'c_allreduce_max', 'c_sync_comm_stream', 'cast',
-            'update_loss_scaling', 'momentum', 'momentum', 'momentum'
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'cast',
+            'cast', 'cast', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'momentum', 'momentum'
         ])
 
     def test_sharding_weight_decay(self):
@@ -227,10 +226,10 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_sync_comm_stream', 'scale', 'sum', 'scale', 'sum', 'scale',
-            'sum', 'momentum', 'momentum', 'momentum'
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'scale',
+            'sum', 'scale', 'sum', 'scale', 'sum', 'momentum', 'momentum',
+            'momentum'
         ])
 
     def test_sharding_gradient_clip(self):
@@ -253,6 +252,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_1.b_0", "fc_2.b_0", "fc_2.w_0", "fc_1.b_0_velocity_0",
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0"
             ]))
+
         self.assertEqual(ops, [
             'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
@@ -263,14 +263,12 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'c_sync_comm_stream', 'square', 'reduce_sum', 'square',
-            'reduce_sum', 'square', 'reduce_sum', 'sum', 'c_sync_calc_stream',
-            'c_allreduce_sum', 'c_sync_comm_stream', 'sqrt', 'fill_constant',
-            'elementwise_max', 'elementwise_div', 'elementwise_mul',
-            'elementwise_mul', 'elementwise_mul', 'momentum', 'momentum',
-            'momentum'
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream', 'square',
+            'reduce_sum', 'square', 'reduce_sum', 'square', 'reduce_sum', 'sum',
+            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
+            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_clone_for_test(self):
@@ -281,7 +279,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         sharding.utils.comm_analyse(train_prog)
         test_prog = train_prog.clone(for_test=True)
-        sharding.utils.add_sync_comm(test_prog, strategy)
+        # assume sharding_ring_id = 0
+        sharding.utils.add_sync_comm(test_prog, 0)
         ops = [op.type for op in test_prog.global_block().ops]
 
         self.assertEqual(ops, [

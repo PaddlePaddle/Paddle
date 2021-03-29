@@ -59,7 +59,10 @@ def runtime_main():
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2
+            }
 
             optimizer = paddle.fluid.optimizer.Momentum(
                 learning_rate=0.01, momentum=0.9)

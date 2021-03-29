@@ -118,8 +118,13 @@ class FP16Utils(object):
 
                 # the grad checking should take the all and only param in the current shard
                 to_check_param = set(reversed_x_paramname)
-                should_check_param = set(shard.global_params).intersection(set([param for param, worker_idx in shard.global_param2device.items() if worker_idx == shard.worker_idx]))
-                assert to_check_param == should_check_param, "amp check_finite_and_unscale checking miss [{}] and got unexpected [{}]".format(should_check_param - to_check_param, to_check_param - should_check_param)
+                should_check_param = set(shard.global_params).intersection(
+                    set([param for param, worker_idx in shard.global_param2device.items() \
+                        if worker_idx == shard.worker_idx]))
+                assert to_check_param == should_check_param, "amp \
+                    check_finite_and_unscale checking miss [{}] and got unexpected [{}]".format(
+                    should_check_param - to_check_param,
+                    to_check_param - should_check_param)
 
         if update_loss_scaling_op_idx == -1:
             return
@@ -150,9 +155,11 @@ class FP16Utils(object):
             type='c_allreduce_max',
             inputs={'X': inf_var_int32},
             outputs={'Out': inf_var_int32},
-            attrs={'ring_id': ring_id,
-                   'use_calc_stream': True,
-                   OP_ROLE_KEY: OpRole.Optimize})
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Optimize
+            })
 
         # comm_op_num = insert_sync_comm_op(block, update_loss_scaling_op_idx + 3,
         #                                   ring_id, [inf_var_int32])
