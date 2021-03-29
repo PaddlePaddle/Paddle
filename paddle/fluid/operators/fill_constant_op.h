@@ -115,6 +115,12 @@ class FillConstantKernel : public framework::OpKernel<T> {
       }
     }
 
+    if (data_type == framework::proto::VarType::BF16 && actual_place != 0) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "The Bfloat16 type has been introduced and it is not supported by "
+          "GPU or XPU. Change the \"place_type\" attribute to CPU"));
+    }
+
     if (actual_place == 0) {
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
