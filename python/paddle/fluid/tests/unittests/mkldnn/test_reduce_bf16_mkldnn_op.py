@@ -24,6 +24,8 @@ import paddle
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
+@unittest.skipIf(core.is_compiled_with_cuda(),
+                 "core is compiled with CUDA which has no BF implementation")
 @skip_check_grad_ci(reason="not implemented")
 class TestReduceSumDefaultBF16ONEDNNOp(OpTest):
     def setUp(self):
