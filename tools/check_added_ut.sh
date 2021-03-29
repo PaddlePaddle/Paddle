@@ -41,7 +41,6 @@ echo $CURBRANCH
 if [ `git branch | grep 'prec_added_ut'` ];then
     git branch -D 'prec_added_ut'
 fi
-git stash
 git checkout -b prec_added_ut upstream/${BRANCH}
 git branch
 mkdir prec_build
@@ -76,7 +75,6 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
 fi
 git checkout -f $CURBRANCH
-git stash pop
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
