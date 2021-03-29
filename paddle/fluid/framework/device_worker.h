@@ -634,7 +634,7 @@ class PSGPUWorker : public HogwildWorker {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined WITH_ASCEND_CL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

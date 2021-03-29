@@ -424,7 +424,7 @@ class Section(DeviceWorker):
         # cfg.program_desc.CopyFrom(program.program._get_desc())
         place = pipeline_opt["place"]
         place_id = pipeline_opt["place_id"]
-        assert isinstance(place, core.CUDAPlace)
+        # assert isinstance(place, core.CUDAPlace)
         cfg.place = cfg.CUDAPlace
         cfg.place_id = place_id
 

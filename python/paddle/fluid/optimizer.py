@@ -5272,7 +5272,10 @@ class PipelineOptimizer(object):
         place_list = []
         for dev in device_list:
             dev_index = int(dev.split(":")[1])
-            place_list.append(core.CUDAPlace(dev_index % 8))
+            if core.is_compiled_with_cuda():
+                place_list.append(core.CUDAPlace(dev_index % 1))
+            elif core.is_compiled_with_npu():
+                place_list.append(core.NPUPlace(dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(startup_program,
@@ -5295,7 +5298,10 @@ class PipelineOptimizer(object):
             self._accumulate_gradients(real_block)
             real_block._sync_with_cpp()
 
-        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        if core.is_compiled_with_cuda():
+            place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        elif core.is_compiled_with_npu():
+            place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",

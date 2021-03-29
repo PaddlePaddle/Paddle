@@ -82,9 +82,11 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2_grad, ops::LookupTableV2GradNPUKernel<float>,
+    ops::LookupTableV2GradNPUKernel<int>,
     ops::LookupTableV2GradNPUKernel<paddle::platform::float16>);
