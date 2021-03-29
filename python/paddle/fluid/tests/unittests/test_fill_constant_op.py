@@ -449,9 +449,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
-
-class TestFillConstantOp_Bf16_Error(TestFillConstantOp_ValueTensorBf16):
-    def test_check_output(self):
+    def test_error(self):
         if core.is_compiled_with_cuda():
             with self.assertRaises(Exception):
                 self.check_output_with_place(core.CUDAPlace(0))
