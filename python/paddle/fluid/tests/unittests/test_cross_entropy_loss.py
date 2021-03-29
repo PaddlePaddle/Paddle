@@ -192,7 +192,7 @@ def cross_entropy_soft_2d(softmax,
 
 class CrossEntropyLoss(unittest.TestCase):
 
-    ###chajchaj  test for deprecated softmax_with_cross_entropy
+    ###test for deprecated softmax_with_cross_entropy
     def test_softmax_with_cross_entropy(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -224,7 +224,6 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.set_device("cpu")
 
-        #2. swce 
         paddle.disable_static()
         paddle_loss_swce = paddle.nn.functional.softmax_with_cross_entropy(
             fluid.dygraph.to_variable(self.logits),
@@ -232,7 +231,6 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=True,
             axis=self.axis)
 
-        #3. ce
         paddle_loss_ce = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
             fluid.dygraph.to_variable(self.labels),
@@ -245,8 +243,8 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(paddle_loss_swce.numpy(), expected))
         self.assertTrue(np.allclose(paddle_loss_ce.numpy(), expected))
 
-    ###chajchaj soft_label start
-    ###chajchaj soft_label 1
+    ###soft_label test start
+    ###soft_label test 1
     def test_cross_entropy_loss_soft_1d(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -278,7 +276,7 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.set_device("cpu")
 
-        #2. dong 
+        #2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
@@ -290,7 +288,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_none_weight.numpy()
 
-        #3. jing
+        #3. static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -319,7 +317,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label 2
+    ###soft_label test 2
     def test_cross_entropy_loss_soft_1d_weight(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -359,7 +357,7 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.set_device("cpu")
 
-        #2. dong
+        #2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
@@ -370,7 +368,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_none_weight.numpy()
 
-        # 3.jing
+        # 3.static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -401,7 +399,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label 3
+    ###soft_label test 3
     def test_cross_entropy_loss_soft_1d_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -434,7 +432,7 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.set_device("cpu")
 
-        #2 dong 
+        #2 dygraph 
         paddle.disable_static()
         paddle_loss_mean = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
@@ -445,7 +443,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_mean.numpy()
 
-        #3. jing
+        #3. static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -473,7 +471,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label 4
+    ###soft_label test 4
     def test_cross_entropy_loss_soft_1d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -507,7 +505,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.set_device("cpu")
         paddle.disable_static()
 
-        #2. dong
+        #2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
             fluid.dygraph.to_variable(self.labels),
@@ -517,7 +515,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_none_weight.numpy()
 
-        #3. jing
+        #3. static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -547,7 +545,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label 5
+    ###soft_label test 5
     def test_cross_entropy_loss_soft_2d(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -585,7 +583,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.set_device("cpu")
         paddle.disable_static()
 
-        #2. dong
+        #2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
             fluid.dygraph.to_variable(self.labels),
@@ -596,7 +594,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_none_weight.numpy()
 
-        #3. jing
+        #3. static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -629,7 +627,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label 6
+    ###soft_label test 6
     def test_cross_entropy_loss_soft_2d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -667,7 +665,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.set_device("cpu")
         paddle.disable_static()
 
-        #2. dong
+        #2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
             fluid.dygraph.to_variable(self.labels),
@@ -677,7 +675,7 @@ class CrossEntropyLoss(unittest.TestCase):
             reduction=self.reduction)
         dy_ret_value = paddle_loss_none_weight.numpy()
 
-        #3. jing
+        #3. static
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -712,7 +710,7 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
-    ###chajchaj soft_label end
+    ###soft_label test end
 
     def test_cross_entropy_loss_1d_with_mean_ignore(self):
         input_np = np.random.random([2, 4]).astype(np.float64)
