@@ -54,7 +54,7 @@ class TestConstantInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=init_inst)
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
+        num_ops = 2 if dtype in ["float16"] else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -113,11 +113,8 @@ class TestConstantInitializer(unittest.TestCase):
         """Test constant initializer with bfloat16
             No cast operator has been added here
         """
-        block = self.test_constant_initializer_default_value_static(
-            "uint16")  #bfloat16
-        self.assertFalse(check_cast_op(block.ops[1]))
-        block = self.test_constant_initializer_static("uint16")  #bfloat16
-        self.assertFalse(check_cast_op(block.ops[1]))
+        self.test_constant_initializer_default_value_static("uint16")  #bfloat16
+        self.test_constant_initializer_static("uint16")  #bfloat16
 
 
 class TestKaimingInitializer(unittest.TestCase):
