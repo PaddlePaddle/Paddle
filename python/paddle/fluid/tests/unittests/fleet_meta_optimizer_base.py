@@ -148,7 +148,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             strategy.sharding = True
             strategy.sharding_configs = {
                 "sharding_segment_strategy": "segment_broadcast_MB",
-                "segment_broadcast_MB": 0.2
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
             }
         elif name == "recompute-offload":
             strategy.recompute = True

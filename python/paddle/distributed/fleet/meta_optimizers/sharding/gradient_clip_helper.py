@@ -23,7 +23,7 @@ class GradientClipHelper(object):
         return op.desc.has_attr("op_namescope") \
             and op.desc.attr("op_namescope").startswith("/gradient_clip")
 
-    def prune_gradient_clip(self, block, shard):
+    def prune_gradient_clip(self, block, shard, pure_dp_degree=1):
         """
         prune gradient_clip related ops for params that not belong to cur shard
         prune: square, reduce_sum, elementwise_mul
@@ -85,6 +85,21 @@ class GradientClipHelper(object):
                         'use_calc_stream': True,
                         OP_ROLE_KEY: OpRole.Optimize,
                     })
+
+        # global norm should only be sum within each model parallelism word size when use global group
+        if pure_dp_degree > 1:
+            block._insert_op_without_sync(
+                idx + 2,
+                type='scale',
+                inputs={'X': sum_res},
+                outputs={'Out': sum_res},
+                attrs={
+                    'scale': 1.0 / float(pure_dp_degree),
+                    'op_namescope': "/gradient_clip_model_parallelism",
+                    'bias': 0.0,
+                    'bias_after_scale': False,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
 
         # the grad sum here should take the all and only param in the current shard
         to_check_param = set(reversed_x_paramname)

@@ -61,7 +61,8 @@ def runtime_main():
             strategy.sharding = True
             strategy.sharding_configs = {
                 "sharding_segment_strategy": "segment_broadcast_MB",
-                "segment_broadcast_MB": 0.2
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
             }
 
             optimizer = paddle.fluid.optimizer.Momentum(

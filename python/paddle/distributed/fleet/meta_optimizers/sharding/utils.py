@@ -556,3 +556,25 @@ def get_grad_device(grad_name, shard):
         base_name)
 
     return shard.global_param2device[base_name]
+
+
+def append_naive_sync(block, sync_var, ring_id):
+    # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
+    # sync within global 
+    block.append_op(
+        type="fill_constant",
+        outputs={"Out": sync_var},
+        attrs={
+            "shape": sync_var.shape,
+            "dtype": sync_var.dtype,
+            "value": int(1),
+        })
+    block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': sync_var},
+        outputs={'Out': sync_var},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            OP_ROLE_KEY: OpRole.Forward
+        })

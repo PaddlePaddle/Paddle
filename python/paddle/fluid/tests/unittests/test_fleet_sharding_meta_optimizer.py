@@ -279,8 +279,8 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         sharding.utils.comm_analyse(train_prog)
         test_prog = train_prog.clone(for_test=True)
-        # assume sharding_ring_id = 0
-        sharding.utils.add_sync_comm(test_prog, 0)
+        # assume sharding_ring_id = 1
+        sharding.utils.add_sync_comm(test_prog, 1)
         ops = [op.type for op in test_prog.global_block().ops]
 
         self.assertEqual(ops, [
