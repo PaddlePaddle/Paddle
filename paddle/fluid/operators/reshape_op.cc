@@ -377,31 +377,9 @@ class ReshapeKernel {
 
     out->Resize(out_dims);
     out->mutable_data(ctx.GetPlace(), in->type());
-
-#ifdef PADDLE_WITH_XPU
-    if (platform::is_xpu_place(ctx.GetPlace())) {
-      void *out_ptr = out->data<void>();
-      const void *in_ptr = in->data<void>();
-      if ((out_ptr != nullptr) && (in_ptr != nullptr) &&
-          (paddle::framework::SizeOfType(in->type()) > 0)) {
-        auto &dev_ctx =
-            ctx.template device_context<paddle::platform::XPUDeviceContext>();
-        int r = xpu::memcpy_device(
-            dev_ctx.x_context(), out_ptr, in_ptr,
-            in->numel() * paddle::framework::SizeOfType(in->type()));
-        PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                          platform::errors::External(
-                              "XPU memcpy_device return wrong value[%d %s]", r,
-                              XPUAPIErrorMsg[r]));
-      }
-    } else {
-#endif
-      framework::TensorCopy(
-          *in, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
-#ifdef PADDLE_WITH_XPU
-    }
-#endif
+    framework::TensorCopy(
+        *in, ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
   }
 };
