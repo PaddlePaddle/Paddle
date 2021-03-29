@@ -312,7 +312,6 @@ void BasicEngine::Execute() {
        * - replace the element in the map by temp var, because a
        *   var may be coresponding to several grad var in one op
        */
-      NameVarMap<VariableWrapper> tmp_ins(bwd_ins);
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
 
       for (auto& pair : tmp_outs) {
