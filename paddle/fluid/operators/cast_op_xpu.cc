@@ -23,8 +23,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+class XPUFPTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUFPTypeTrait<platform::float16> {
+ public:
+  using Type = float16;
+};
+
 template <typename DeviceContext, typename InT>
 class CastXPUKernel : public framework::OpKernel<InT> {
+  using XPUInTDType = typename XPUFPTypeTrait<InT>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
@@ -34,27 +48,39 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     auto out_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("out_dtype"));
     auto* in_data = in->data<InT>();
+
+    // using XPUOutTDType = typename XPUFPTypeTrait<InT>::Type;
     auto numel = in->numel();
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = -1;
     if (out_type == framework::proto::VarType::FP32) {
       auto* out_data = out->mutable_data<float>(context.GetPlace());
-      r = xpu::cast_v2<InT, float>(dev_ctx.x_context(), in_data, out_data,
-                                   numel);
+      r = xpu::cast_v2<XPUInTDType, float>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUInTDType*>(in_data),
+          out_data, numel);
     } else if (out_type == framework::proto::VarType::INT32) {
       auto* out_data = out->mutable_data<int>(context.GetPlace());
-      r = xpu::cast_v2<InT, int32_t>(dev_ctx.x_context(), in_data, out_data,
-                                     numel);
+      r = xpu::cast_v2<XPUInTDType, int32_t>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUInTDType*>(in_data),
+          out_data, numel);
     } else if (out_type == framework::proto::VarType::INT64) {
       auto* out_data = out->mutable_data<int64_t>(context.GetPlace());
-      r = xpu::cast_v2<InT, int64_t>(dev_ctx.x_context(), in_data, out_data,
-                                     numel);
+      r = xpu::cast_v2<XPUInTDType, int64_t>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUInTDType*>(in_data),
+          out_data, numel);
     } else if ((out_type == framework::proto::VarType::BOOL) &&
                (in_type == framework::proto::VarType::FP32)) {
       auto* out_data = out->mutable_data<bool>(context.GetPlace());
       r = xpu::cast_v2<float, int8_t>(
           dev_ctx.x_context(), (const float*)in_data,
           reinterpret_cast<int8_t*>(out_data), numel);
+    } else if (out_type == framework::proto::VarType::FP16) {
+      auto* out_data =
+          out->mutable_data<paddle::platform::float16>(context.GetPlace());
+      r = xpu::cast_v2<XPUInTDType, float16>(
+          dev_ctx.x_context(), reinterpret_cast<const XPUInTDType*>(in_data),
+          reinterpret_cast<float16*>(out_data), numel);
+
     } else {
       PADDLE_THROW(platform::errors::Unavailable("Not supported cast %d -> %d",
                                                  in_type, out_type));
@@ -75,5 +101,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     cast, ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::CastXPUKernel<paddle::platform::XPUDeviceContext,
+                       paddle::platform::float16>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int64_t>);
 #endif
