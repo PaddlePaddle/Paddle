@@ -409,5 +409,15 @@ HOSTDEVICE inline float16 abs(const float16& a) {
   return float16(::fabs(static_cast<float>(a)));
 }
 
+template <>
+HOSTDEVICE inline float16 mini(const float16& x, const float16& y) {
+  return y < x ? y : x;
+}
+
+template <>
+HOSTDEVICE inline float16 maxi(const float16& x, const float16& y) {
+  return x < y ? y : x;
+}
+
 }  // namespace numext
 }  // namespace Eigen
