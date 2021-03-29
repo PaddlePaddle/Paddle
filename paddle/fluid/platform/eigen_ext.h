@@ -212,6 +212,18 @@ HOSTDEVICE inline paddle::platform::bfloat16 abs(
   return paddle::platform::bfloat16(::fabs(static_cast<float>(a)));
 }
 
+template <>
+HOSTDEVICE inline paddle::platform::bfloat16 mini(
+    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+  return b < a ? b : a;
+}
+
+template <>
+HOSTDEVICE inline paddle::platform::bfloat16 maxi(
+    const paddle::platform::bfloat16& a, const paddle::platform::bfloat16& b) {
+  return a < b ? b : a;
+}
+
 //////////// complex64 methods /////////////
 
 template <>
@@ -410,13 +422,13 @@ HOSTDEVICE inline float16 abs(const float16& a) {
 }
 
 template <>
-HOSTDEVICE inline float16 mini(const float16& x, const float16& y) {
-  return y < x ? y : x;
+HOSTDEVICE inline float16 mini(const float16& a, const float16& b) {
+  return b < a ? b : a;
 }
 
 template <>
-HOSTDEVICE inline float16 maxi(const float16& x, const float16& y) {
-  return x < y ? y : x;
+HOSTDEVICE inline float16 maxi(const float16& a, const float16& b) {
+  return a < b ? b : a;
 }
 
 }  // namespace numext
