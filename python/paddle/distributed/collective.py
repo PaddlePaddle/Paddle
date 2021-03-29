@@ -224,7 +224,7 @@ def new_group(ranks=None, backend=None):
     return gp
 
 
-def wait(tensor, group=None, use_calc_stream=False):
+def wait(tensor, group=None, use_calc_stream=True):
     """
 
     wait to sync stream for group.
@@ -294,7 +294,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         attrs={'ring_id': ring_id}, )
 
 
-def broadcast(tensor, src, group=None, use_calc_stream=False):
+def broadcast(tensor, src, group=None, use_calc_stream=True):
     """
 
     Broadcast a tensor from the source to all others.
@@ -360,7 +360,7 @@ def broadcast(tensor, src, group=None, use_calc_stream=False):
         })
 
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=False):
+def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -442,7 +442,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=False):
                'use_calc_stream': use_calc_stream})
 
 
-def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=False):
+def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
 
     Reduce a tensor to the destination from all others.
@@ -535,7 +535,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=False):
         })
 
 
-def all_gather(tensor_list, tensor, group=None, use_calc_stream=False):
+def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """
 
     Gather tensors from all participators and all get the result.
@@ -613,7 +613,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=False):
     tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=False):
+def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
 
     Scatter a tensor to all participators.
@@ -758,10 +758,10 @@ def _parallel_linear(x, num_rows, num_cols, axis, param_attr, bias_attr,
 
     if gather_out:
         if axis == 0:
-            paddle.distributed.all_reduce(linear_out, group=0)
+            paddle.distributed.all_reduce(linear_out)
         else:
             output = []
-            paddle.distributed.all_gather(output, linear_out, group=0)
+            paddle.distributed.all_gather(output, linear_out)
             linear_out = paddle.concat(output, axis=len(linear_out.shape) - 1)
     return linear_out
 
@@ -802,7 +802,7 @@ def _parallel_embedding(x, per_part_embeddings, origin_size, param_attr,
     main_block = paddle.static.default_main_program().global_block()
     startup_block.vars[embedding.weight.name].is_distributed = True
     main_block.vars[embedding.weight.name].is_distributed = True
-    paddle.distributed.all_reduce(emb_out, group=0)
+    paddle.distributed.all_reduce(emb_out, group=None)
     return emb_out
 
 
