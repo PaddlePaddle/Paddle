@@ -52,9 +52,6 @@ class GradientAccumulator {
               << ") to store result of this Graph";
     }
 
-    // TODO(zhouwei): fix Tensor.clear_gradient() bug, remove this hard flag
-    var->SetIsEmpty(false);
-
     // var_ is the final grad, processed by hooks and grad accumulation
     var_ = var;
   }

@@ -428,6 +428,7 @@ void GradientAccumulator::AccumulateGrad() {
     *(dst) = std::move(*src);
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());
+    var_->SetIsEmpty(false);
   }
   inner_var_.reset();
 }
