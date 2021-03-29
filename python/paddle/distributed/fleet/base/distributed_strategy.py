@@ -865,6 +865,32 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
+    def model_parallel_configs(self):
+        """
+        **Notes**:
+            **Detailed arguments for model_parallel_configs**
+
+            **global_seed**: the global seed for random
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.model_parallel_configs = {"global_seed": 1024}
+
+        """
+
+        return get_msg_dict(self.strategy.model_parallel_configs)
+
+    @model_parallel_configs.setter
+    def model_parallel_configs(self, configs):
+        check_configs_key(self.strategy.model_parallel_configs, configs,
+                          "model_parallel_configs")
+        assign_configs_value(self.strategy.model_parallel_configs, configs)
+
+    @property
     def localsgd(self):
         """
         Indicating whether we are using Local SGD training. Default Value: False

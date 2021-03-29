@@ -129,6 +129,10 @@ message PipelineConfig {
   optional string schedule_mode = 3 [ default = '1F1B' ];
 }
 
+message ModelParallelConfig {
+  optional int32 global_seed = 1 [ default = 2021 ];
+}
+
 message DistributedStrategy {
   // bool options
   optional Mode mode = 1 [ default = COLLECTIVE ];
@@ -171,6 +175,7 @@ message DistributedStrategy {
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
   optional ShardingConfig sharding_configs = 111;
   optional HybridConfig hybrid_configs = 112;
+  optional ModelParallelConfig model_parallel_configs = 113;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

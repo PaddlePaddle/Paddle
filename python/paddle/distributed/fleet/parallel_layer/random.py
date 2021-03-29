@@ -14,8 +14,9 @@
 
 import paddle
 import contextlib
-from paddle.distributed.fleet import fleet
-__all__ = ['RNGStatesTracker']
+__all__ = [
+    'RNGStatesTracker', 'model_parallel_random_seed', 'get_rng_state_tracker'
+]
 
 MODEL_PARALLEL_RNG = 'model_parallel_rng'
 
@@ -27,6 +28,10 @@ class RNGStatesTracker:
 
     def __init__(self):
         # Map from name to the rng state.
+        self.states_ = {}
+        self.seeds_ = set()
+
+    def reset(self):
         self.states_ = {}
         self.seeds_ = set()
 
@@ -55,3 +60,20 @@ class RNGStatesTracker:
 
 
 RNG_STATE_TRACKER = RNGStatesTracker()
+
+
+def get_rng_state_tracker():
+    return RNG_STATE_TRACKER
+
+
+def model_parallel_random_seed(seed=2048):
+    import paddle.distributed.fleet as fleet
+    hcg = fleet.get_hybrid_communicate_group()
+    rank = hcg.get_model_parallel_rank()
+
+    local_seed = seed + 1024 + rank
+    global_seed = seed
+
+    RNG_STATE_TRACKER.reset()
+    paddle.seed(global_seed)
+    RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)

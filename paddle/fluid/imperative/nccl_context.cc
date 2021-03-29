@@ -84,6 +84,8 @@ void NCCLParallelContext::Init() {
 }
 
 void NCCLParallelContext::InitWithRingID(int ring_id) {
+  int server_fd =
+      platform::SocketServer::GetInstance(strategy_.current_endpoint_).socket();
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(1);
 
@@ -91,7 +93,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
     // generate the unique ncclid on the root worker
     platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
   }
-  BcastNCCLId(nccl_ids, 0);
+  BcastNCCLId(nccl_ids, 0, server_fd);
 
   int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_

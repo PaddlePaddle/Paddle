@@ -409,25 +409,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, use_calc_stream=True):
     if not _is_my_group(group):
         return
 
-    if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', group)
-        elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', group)
-        elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min(tensor, tensor, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', group)
-        elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
-                                             use_calc_stream, 'ring_id', group)
-        else:
-            raise ValueError("Unknown parameter: {}.".format(op))
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
@@ -441,13 +422,38 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, use_calc_stream=True):
         op_type = 'c_allreduce_prod'
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for all_reduce should be int.")
+
     helper = LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            return core.ops.c_allreduce_sum(tensor, out, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', group)
+        elif op == ReduceOp.MAX:
+            return core.ops.c_allreduce_max(tensor, out, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', group)
+        elif op == ReduceOp.MIN:
+            return core.ops.c_allreduce_min(tensor, out, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', group)
+        elif op == ReduceOp.PROD:
+            return core.ops.c_allreduce_prod(tensor, out, 'use_calc_stream',
+                                             use_calc_stream, 'ring_id', group)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'all_reduce')
+
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        outputs={'Out': [out]},
         attrs={'ring_id': group,
                'use_calc_stream': use_calc_stream})
+
+    return out
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=0, use_calc_stream=True):
@@ -586,11 +592,13 @@ def all_gather(tensor_list, tensor, group=0, use_calc_stream=True):
     op_type = 'c_allgather'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-    _default_group = _get_global_default_group()
+    # _default_group = _get_global_default_group()
+    gm = _get_group_map()
+    nranks = gm[group].nranks
 
     if in_dygraph_mode():
         core.ops.c_allgather(tensor, out, 'use_calc_stream', use_calc_stream,
-                             'ring_id', group, 'nranks', _default_group.nranks)
+                             'ring_id', group, 'nranks', nranks)
     else:
         if not isinstance(tensor_list, list):
             raise ValueError("The type of 'tensor_list' for all_gather "
@@ -613,7 +621,7 @@ def all_gather(tensor_list, tensor, group=0, use_calc_stream=True):
             attrs={
                 'ring_id': group,
                 'use_calc_stream': use_calc_stream,
-                'nranks': _default_group.nranks
+                'nranks': nranks
             })
 
     tensor_list.extend(paddle.split(out, nranks, 0))
