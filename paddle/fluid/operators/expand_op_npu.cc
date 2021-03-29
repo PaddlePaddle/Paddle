@@ -76,6 +76,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     expand, ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
 
