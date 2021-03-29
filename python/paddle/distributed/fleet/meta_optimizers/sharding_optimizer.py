@@ -103,6 +103,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.pp_bz = self.user_defined_strategy.sharding_configs["pp_bz"]
         self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs[
             "pp_allreduce_in_optimize"]
+        self.optimize_offload = self.user_defined_strategy.sharding_configs[
+            "optimize_offload"]
 
         if self.inner_opt is None:
             raise ValueError(
@@ -238,7 +240,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         #check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
         #                    self.dp_ring_id)
         #check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
-        self._wait()
+        # self._wait()
         return optimize_ops, params_grads
 
     def _set_up(self, params_grads):

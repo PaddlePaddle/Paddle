@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined WITH_ASCEND_CL)
 #include <map>
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -35,7 +35,11 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
+#if (defined PADDLE_WITH_NCCL)
   place_ = platform::CUDAPlace(place_id);
+#elif (defined WITH_ASCEND_CL)
+  place_ = platform::NPUPlace(place_id);
+#endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
       trainer_desc.device_worker_name());
   auto this_worker =
