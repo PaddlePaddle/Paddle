@@ -184,6 +184,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         # this feature is design for ascend, and should NOT be used in GPU training
         self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs[
             "pp_allreduce_in_optimize"]
+        self.optimize_offload = self.user_defined_strategy.sharding_configs[
+            "optimize_offload"]
 
         if self.inner_opt is None:
             raise ValueError(
@@ -365,8 +367,17 @@ class ShardingOptimizer(MetaOptimizerBase):
                   'w') as f:
             f.writelines(str(main_block.program))
 
+<<<<<<< HEAD
         self._wait()
 
+=======
+        # check op dependecy
+        check_broadcast(main_block)
+        #check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
+        #                    self.dp_ring_id)
+        #check_allreduce_sum(main_block, self._shard, self.dp_ring_id)
+        # self._wait()
+>>>>>>> 3ab39705ea... adapter npu (#31926)
         return optimize_ops, params_grads
 
     def _init_comm(self):
