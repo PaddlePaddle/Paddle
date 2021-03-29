@@ -201,8 +201,8 @@ __global__ void SplitKernel(const T* input_data, const int64_t in_row,
 }
 
 static inline void GetBlockDims(const platform::CUDADeviceContext& context,
-                                int64_t num_rows, int64_t num_cols, dim3* block_dims,
-                                dim3* grid_dims) {
+                                int64_t num_rows, int64_t num_cols,
+                                dim3* block_dims, dim3* grid_dims) {
   // Set the thread block and grid according to CurrentDeviceId
   const int kThreadsPerBlock = 1024;
   int block_cols = kThreadsPerBlock;
@@ -217,8 +217,8 @@ static inline void GetBlockDims(const platform::CUDADeviceContext& context,
 
   int grid_cols =
       std::min((num_cols + block_cols - 1) / block_cols, max_blocks);
-  int grid_rows =
-      std::min(max_blocks / grid_cols, std::max(num_rows / block_rows, (int64_t)1));
+  int grid_rows = std::min(max_blocks / grid_cols,
+                           std::max(num_rows / block_rows, (int64_t)1));
   *grid_dims = dim3(grid_cols, grid_rows, 1);
 }
 
