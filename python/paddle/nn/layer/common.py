@@ -578,7 +578,7 @@ class Bilinear(layers.Layer):
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,out_features-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
 
       out = out + b
 
