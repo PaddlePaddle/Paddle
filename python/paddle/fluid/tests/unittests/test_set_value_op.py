@@ -673,7 +673,7 @@ class TestSetValueValueShape4(TestSetValueApi):
 
 class TestSetValueValueShape5(TestSetValueApi):
     def set_value(self):
-        self.value = np.array([3, 3, 3]).astype(self.dtype)  # shape is (3,4)
+        self.value = np.array([3, 3, 3]).astype(self.dtype)
 
     def set_shape(self):
         self.shape = [3, 4]
