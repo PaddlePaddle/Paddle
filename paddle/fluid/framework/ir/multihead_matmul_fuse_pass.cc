@@ -683,6 +683,7 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
+  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_op_input("matmul");
 
@@ -740,12 +741,12 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
       pattern->NewNode(softmax_qk_repr())->assert_is_op("softmax");
   auto* softmax_qk_out_var =
       pattern->NewNode(softmax_qk_out_repr())->assert_is_op_output("softmax");
-  softmax_qk_out_var->AsIntermediate()->assert_is_op_input("matmul_v2");
+  softmax_qk_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
 
   auto* matmul_qkv =
-      pattern->NewNode(matmul_qkv_repr())->assert_is_op("matmul_v2");
+      pattern->NewNode(matmul_qkv_repr())->assert_is_ops(matmul_ops);
   auto* matmul_qkv_out_var =
-      pattern->NewNode(matmul_qkv_out_repr())->assert_is_op_output("matmul_v2");
+      pattern->NewNode(matmul_qkv_out_repr())->assert_is_ops_output(matmul_ops);
   matmul_qkv_out_var->AsIntermediate()->assert_is_op_input("transpose2");
 
   auto* transpose2_qkv =
@@ -829,8 +830,8 @@ PDNode* MultiHeadMatmulV3Pattern::operator()() {
       pattern->NewNode(transpose2_2_repr())->assert_is_op("transpose2");
   auto* transpose2_2_out_var = pattern->NewNode(transpose2_2_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
-      "matmul_v2");  // link to matmul qkv
+  transpose2_2_out_var->AsIntermediate()->assert_is_ops_input(
+      matmul_ops);  // link to matmul qkv
 
   // Q path
   mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
