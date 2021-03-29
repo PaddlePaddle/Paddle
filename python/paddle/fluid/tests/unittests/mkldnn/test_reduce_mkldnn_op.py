@@ -165,6 +165,7 @@ class TestReduceMean3DONEDNNOp(TestReduceSumDefaultONEDNNOp):
             'Out': self.inputs['X'].sum(axis=0) / self.inputs['X'].shape[0]
         }
 
+
 @skip_check_grad_ci(reason="not implemented")
 class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
     def setUp(self):
@@ -173,7 +174,8 @@ class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
         self.inputs = {'X': np.random.random((5, 6, 8, 10)).astype("float32")}
         self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {
-            'Out': self.inputs['X'].sum() / np.asarray(self.inputs['X'].shape).prod()
+            'Out':
+            self.inputs['X'].sum() / np.asarray(self.inputs['X'].shape).prod()
         }
 
 
