@@ -13,22 +13,7 @@
 # limitations under the License.
 
 import paddle
-
-op_real_in_out_name = {
-    "conv2d": [["Input", "Filter"], ["Output"]],
-    "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
-    "pool2d": [["X"], ["Out"]],
-    "elementwise_add": [["X", "Y"], ["Out"]],
-    "softmax": [["X"], ["Out"]],
-    "relu": [["X"], ["Out"]],
-    "relu6": [["X"], ["Out"]],
-    "leaky_relu": [["X"], ["Out"]],
-    "prelu": [["X"], ["Out"]],
-    "tanh": [["X"], ["Out"]],
-    "batch_norm": [["X"], ["Y"]],
-    "sigmoid": [["X"], ["Out"]],
-    "swish": [["X"], ["Out"]],
-}
+import numpy as np
 
 quant_input_layers_map = {
     'Conv2D': paddle.nn.Conv2D,
@@ -85,3 +70,33 @@ weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
     "depthwise_conv2d_transpose"
 ]
+
+
+def load_variable_data(scope, var_name):
+    '''
+    Load variable value from scope
+    '''
+    var_node = scope.find_var(var_name)
+    assert var_node is not None, \
+        "Can not find " + var_name + " in the scope."
+    return np.array(var_node.get_tensor())
+
+
+def find_previous_op(block, var_name):
+    """
+    Find the previous op for the input variable.
+    """
+    for op in block.ops:
+        if var_name in op.output_arg_names:
+            return op
+
+
+def find_next_ops(block, var_name):
+    """
+    Find all followed ops for the input variable.
+    """
+    res_ops = []
+    for op in block.ops:
+        if var_name in op.input_arg_names:
+            res_ops.append(op)
+    return res_ops

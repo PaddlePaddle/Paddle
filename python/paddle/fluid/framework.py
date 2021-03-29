@@ -1863,6 +1863,7 @@ class Variable(object):
         if not isinstance(item, tuple):
             item = [item]
 
+        decrease_axes = []
         axes = []
         starts = []
         ends = []
@@ -1933,15 +1934,23 @@ class Variable(object):
                 if end is None:
                     end = max_integer if step > 0 else (0 - max_integer)
             else:
+                decrease_axes.append(dim)
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
                 step = 1
+
             axes.append(dim)
             starts.append(start)
             ends.append(end)
             steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes
+        }
 
         from .layers import utils
         if utils._contain_var(starts):
