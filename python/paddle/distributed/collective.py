@@ -220,6 +220,8 @@ def new_group(ranks=None, backend=None):
     if core.is_compiled_with_cuda():
         place = core.CUDAPlace(genv.device_id)
         core.NCCLParallelContext(strategy, place).init_with_ring_id(ring_id)
+    else:
+        assert False
 
     return gp
 
