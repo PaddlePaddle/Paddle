@@ -351,7 +351,7 @@ class Adam(Optimizer):
         """
         params_grads = []
         for param in self._parameter_list:
-            if not param.trainable:
+            if param.stop_gradient:
                 continue
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()

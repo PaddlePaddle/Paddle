@@ -25,6 +25,7 @@ __all__ = [
 
 import numpy as np
 
+from ...fluid import get_flags
 from ...fluid import core
 from ...device import get_cudnn_version
 from ...fluid.dygraph import layers
@@ -643,6 +644,10 @@ class Conv2D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format)
+
+        if (core.is_compiled_with_cuda() and get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+            self._use_cudnn = False
 
     def forward(self, x):
         if self._padding_mode != 'zeros':
