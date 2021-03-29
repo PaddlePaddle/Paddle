@@ -21,21 +21,21 @@ namespace paddle {
 namespace distributed {
 
 class Sampler {
-public:
+ public:
   virtual ~Sampler() {}
-  virtual void build(GraphEdgeBlob* edges) = 0;
+  virtual void build(GraphEdgeBlob *edges) = 0;
   virtual std::vector<int> sample_k(int k) = 0;
 };
 
-class RandomSampler: public Sampler {
-public:
+class RandomSampler : public Sampler {
+ public:
   virtual ~RandomSampler() {}
-  virtual void build(GraphEdgeBlob* edges);
+  virtual void build(GraphEdgeBlob *edges);
   virtual std::vector<int> sample_k(int k);
-  GraphEdgeBlob* edges;
+  GraphEdgeBlob *edges;
 };
 
-class WeightedSampler: public Sampler {
+class WeightedSampler : public Sampler {
  public:
   WeightedSampler();
   virtual ~WeightedSampler();
@@ -43,17 +43,16 @@ class WeightedSampler: public Sampler {
   float weight;
   int count;
   int idx;
-  GraphEdgeBlob * edges;
-  virtual void build(GraphEdgeBlob* edges);
+  GraphEdgeBlob *edges;
+  virtual void build(GraphEdgeBlob *edges);
   virtual void build_one(WeightedGraphEdgeBlob *edges, int start, int end);
   virtual std::vector<int> sample_k(int k);
 
  private:
-  int sample(
-      float query_weight,
-      std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
-      std::unordered_map<WeightedSampler *, int> &subtract_count_map,
-      float &subtract);
+  int sample(float query_weight,
+             std::unordered_map<WeightedSampler *, float> &subtract_weight_map,
+             std::unordered_map<WeightedSampler *, int> &subtract_count_map,
+             float &subtract);
 };
 }
 }

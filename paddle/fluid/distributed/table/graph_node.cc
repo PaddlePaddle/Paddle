@@ -17,13 +17,12 @@
 namespace paddle {
 namespace distributed {
 
-
 GraphNode::~GraphNode() {
-  if (sampler != nullptr){
+  if (sampler != nullptr) {
     delete sampler;
     sampler = nullptr;
   }
-  if (edges != nullptr){
+  if (edges != nullptr) {
     delete edges;
     edges = nullptr;
   }
@@ -33,9 +32,7 @@ int Node::weight_size = sizeof(float);
 int Node::id_size = sizeof(uint64_t);
 int Node::int_size = sizeof(int);
 
-int Node::get_size(bool need_feature) {
-  return id_size + int_size; 
-}
+int Node::get_size(bool need_feature) { return id_size + int_size; }
 
 void Node::to_buffer(char* buffer, bool need_feature) {
   memcpy(buffer, &id, id_size);
@@ -45,15 +42,13 @@ void Node::to_buffer(char* buffer, bool need_feature) {
   memcpy(buffer, &feat_num, sizeof(int));
 }
 
-void Node::recover_from_buffer(char* buffer) {
-  memcpy(&id, buffer, id_size);
-}
+void Node::recover_from_buffer(char* buffer) { memcpy(&id, buffer, id_size); }
 
 int FeatureNode::get_size(bool need_feature) {
-  int size = id_size + int_size; // id, feat_num
-  if (need_feature){
+  int size = id_size + int_size;  // id, feat_num
+  if (need_feature) {
     size += feature.size() * int_size;
-    for (const std::string& fea: feature){
+    for (const std::string& fea : feature) {
       size += fea.size();
     }
   }
@@ -61,8 +56,8 @@ int FeatureNode::get_size(bool need_feature) {
 }
 
 void GraphNode::build_edges(bool is_weighted) {
-  if (edges == nullptr){
-    if (is_weighted == true){
+  if (edges == nullptr) {
+    if (is_weighted == true) {
       edges = new WeightedGraphEdgeBlob();
     } else {
       edges = new GraphEdgeBlob();
@@ -70,11 +65,11 @@ void GraphNode::build_edges(bool is_weighted) {
   }
 }
 void GraphNode::build_sampler(std::string sample_type) {
-  if (sample_type == "random"){
+  if (sample_type == "random") {
     sampler = new RandomSampler();
-  } else if (sample_type == "weighted"){
+  } else if (sample_type == "weighted") {
     sampler = new WeightedSampler();
-  } 
+  }
   sampler->build(edges);
 }
 void FeatureNode::to_buffer(char* buffer, bool need_feature) {
@@ -87,7 +82,7 @@ void FeatureNode::to_buffer(char* buffer, bool need_feature) {
     feat_num += feature.size();
     memcpy(buffer, &feat_num, sizeof(int));
     buffer += sizeof(int);
-    for (int i = 0; i < feat_num; ++i){
+    for (int i = 0; i < feat_num; ++i) {
       feat_len = feature[i].size();
       memcpy(buffer, &feat_len, sizeof(int));
       buffer += sizeof(int);
@@ -99,14 +94,13 @@ void FeatureNode::to_buffer(char* buffer, bool need_feature) {
   }
 }
 void FeatureNode::recover_from_buffer(char* buffer) {
-
   int feat_num, feat_len;
   memcpy(&id, buffer, id_size);
   buffer += id_size;
-  
+
   memcpy(&feat_num, buffer, sizeof(int));
   buffer += sizeof(int);
-  
+
   feature.clear();
   for (int i = 0; i < feat_num; ++i) {
     memcpy(&feat_len, buffer, sizeof(int));
@@ -118,7 +112,6 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     str[feat_len] = '\0';
     feature.push_back(std::string(str));
   }
-
 }
 }
 }

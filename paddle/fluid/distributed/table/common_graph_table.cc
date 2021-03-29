@@ -124,7 +124,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
     std::ifstream file(path);
     std::string line;
     while (std::getline(file, line)) {
-      count ++;
+      count++;
       auto values = paddle::string::split_string<std::string>(line, "\t");
       if (values.size() < 2) continue;
       auto id = std::stoull(values[1]);
@@ -160,12 +160,12 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
                   << " not in feature_map.";
         }
       }
-      valid_count ++;
+      valid_count++;
     }
   }
 
-  VLOG(0) << valid_count << "/" << count << " nodes in type " << 
-      node_type << " are loaded successfully in " << path;
+  VLOG(0) << valid_count << "/" << count << " nodes in type " << node_type
+          << " are loaded successfully in " << path;
   return 0;
 }
 
@@ -209,10 +209,11 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
       size_t index = src_shard_id - shard_start;
       shards[index].add_graph_node(src_id)->build_edges(is_weighted);
       shards[index].add_neighboor(src_id, dst_id, weight);
-      valid_count ++;
+      valid_count++;
     }
   }
-  VLOG(0) << valid_count << "/" << count << " edges are loaded successfully in " << path;
+  VLOG(0) << valid_count << "/" << count << " edges are loaded successfully in "
+          << path;
 
   // Build Sampler j
 

@@ -14,17 +14,15 @@
 
 #include "paddle/fluid/distributed/table/weighted_sampler.h"
 #include <iostream>
-#include<unordered_map>
+#include <unordered_map>
 namespace paddle {
 namespace distributed {
 
-void RandomSampler::build(GraphEdgeBlob* edges) {
-  this->edges = edges;
-}
+void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
 std::vector<int> RandomSampler::sample_k(int k) {
   int n = edges->size();
-  if (k > n){
+  if (k > n) {
     k = n;
   }
   struct timespec tn;
@@ -32,19 +30,19 @@ std::vector<int> RandomSampler::sample_k(int k) {
   srand(tn.tv_nsec);
   std::vector<int> sample_result;
   std::unordered_map<int, int> replace_map;
-  while(k--){
+  while (k--) {
     int rand_int = rand() % n;
     auto iter = replace_map.find(rand_int);
-    if(iter == replace_map.end()){
+    if (iter == replace_map.end()) {
       sample_result.push_back(rand_int);
-    }else{
+    } else {
       sample_result.push_back(iter->second);
     }
 
     iter = replace_map.find(n - 1);
-    if(iter == replace_map.end()){
+    if (iter == replace_map.end()) {
       replace_map[rand_int] = n - 1;
-    }else{
+    } else {
       replace_map[rand_int] = iter->second;
     }
     --n;
@@ -52,36 +50,37 @@ std::vector<int> RandomSampler::sample_k(int k) {
   return sample_result;
 }
 
-WeightedSampler::WeightedSampler(){
+WeightedSampler::WeightedSampler() {
   left = nullptr;
   right = nullptr;
   edges = nullptr;
 }
 
 WeightedSampler::~WeightedSampler() {
-  if(left != nullptr){
+  if (left != nullptr) {
     delete left;
     left = nullptr;
   }
-  if(right != nullptr){
+  if (right != nullptr) {
     delete right;
     right = nullptr;
   }
 }
 
-void WeightedSampler::build(GraphEdgeBlob* edges) {
-  if(left != nullptr){
+void WeightedSampler::build(GraphEdgeBlob *edges) {
+  if (left != nullptr) {
     delete left;
     left = nullptr;
   }
-  if(right != nullptr){
+  if (right != nullptr) {
     delete right;
     right = nullptr;
   }
-  return build_one((WeightedGraphEdgeBlob*)edges, 0, edges->size());
+  return build_one((WeightedGraphEdgeBlob *)edges, 0, edges->size());
 }
 
-void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start, int end) {
+void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
+                                int end) {
   count = 0;
   this->edges = edges;
   if (start + 1 == end) {
@@ -137,7 +136,7 @@ int WeightedSampler::sample(
   if (right_count == 0 ||
       left_count > 0 && left->weight - left_subtract >= query_weight) {
     return_idx = left->sample(query_weight, subtract_weight_map,
-                             subtract_count_map, subtract);
+                              subtract_count_map, subtract);
   } else {
     return_idx =
         right->sample(query_weight - (left->weight - left_subtract),
