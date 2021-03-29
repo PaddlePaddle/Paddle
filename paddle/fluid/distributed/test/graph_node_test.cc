@@ -289,7 +289,7 @@ void GetDownpourSparseTableProto(
 /*-------------------------------------------------------------------------*/
 
 std::string ip_ = "127.0.0.1", ip2 = "127.0.0.1";
-uint32_t port_ = 4209, port2 = 4210;
+uint32_t port_ = 5209, port2 = 5210;
 
 std::vector<std::string> host_sign_list_;
 
@@ -413,7 +413,7 @@ void RunBrpcPushSparse() {
   }
   distributed::GraphPyServer server1, server2;
   distributed::GraphPyClient client1, client2;
-  std::string ips_str = "127.0.0.1:4211;127.0.0.1:4212";
+  std::string ips_str = "127.0.0.1:5211;127.0.0.1:5212";
   std::vector<std::string> edge_types = {std::string("user2item")};
   std::vector<std::string> node_types = {std::string("user"),
                                          std::string("item")};
