@@ -171,6 +171,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         program._pipeline_opt['ring_id'] = self.start_pipeline_ring_id
         program._pipeline_opt['micro_batch_size'] = self.micro_batch_size
         program._pipeline_opt['schedule_mode'] = self.schedule_mode
+        program._pipeline_opt['use_sharding'] = False
         optimize_ops, params_grads, prog_list, pp_pair, ring_map = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         self.startup_program = orig_startup_program._pipeline_opt[
