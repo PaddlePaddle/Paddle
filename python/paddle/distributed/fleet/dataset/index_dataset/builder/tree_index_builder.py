@@ -118,8 +118,8 @@ class TreeIndexBuilder:
                         kv_item.value = node.SerializeToString()
                         self._write_kv(f, kv_item.SerializeToString())
                         filter_set.add(ancessor)
-
-	    tree_meta.branch = self.branch
+                        
+            tree_meta.branch = self.branch
             tree_meta.height = max_level
             kv_item = index_dataset_pb2.KVItem()
             kv_item.key = '.tree_meta'
@@ -139,4 +139,3 @@ class TreeIndexBuilder:
     def _write_kv(self, fwr, message):
         fwr.write(struct.pack('i', len(message)))
         fwr.write(message)
-        

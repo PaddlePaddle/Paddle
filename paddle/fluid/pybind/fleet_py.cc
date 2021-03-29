@@ -180,6 +180,21 @@ void BindTreeIndex(py::module* m) {
       })
       .def("get_ancestor_given_level", [](TreeIndex& self, std::vector<uint64_t>& ids, int level, bool ret_code){
            return self.get_ancestor_given_level(ids, level, ret_code);
+      })
+      .def("get_all_items", [](TreeIndex& self){
+           return self.get_all_items();
+      })
+      .def("get_pi_relation", [](TreeIndex& self, std::vector<uint64_t>& ids, int level){
+           return self.get_relation(level, ids);
+      })
+      .def("get_children_given_ancestor_and_level", [](TreeIndex& self, uint64_t ancestor, int level){
+           return self.get_children_given_ancestor_and_level(ancestor, level);
+      })
+      .def("get_travel_path", [](TreeIndex& self, uint64_t child, uint64_t ancestor){
+           return self.get_travel_path(child, ancestor);
+      })
+      .def("tree_max_node", [](TreeIndex& self){
+           return self.tree_max_node();
       });
 }
 

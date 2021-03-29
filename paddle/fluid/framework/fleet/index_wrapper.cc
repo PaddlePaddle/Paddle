@@ -37,6 +37,7 @@ int TreeIndex::load(std::string filename) {
   }
 
   int num = 0;
+  max_id_ = 0;
   size_t ret = fread(&num, sizeof(num), 1, fp);
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
@@ -61,6 +62,9 @@ int TreeIndex::load(std::string filename) {
         id_codes_map_[node.id()] = code;
       }
       data_[code] = node;
+      if (node.id() > max_id_) {
+        max_id_ = node.id();
+      }
     }
     ret = fread(&num, sizeof(num), 1, fp);
   }
