@@ -1193,6 +1193,8 @@ USE_TRT_CONVERTER(stack);
 USE_TRT_CONVERTER(clip);
 USE_TRT_CONVERTER(gather);
 USE_TRT_CONVERTER(yolo_box);
+USE_TRT_CONVERTER(roi_align);
+USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(nearest_interp);
 #endif
