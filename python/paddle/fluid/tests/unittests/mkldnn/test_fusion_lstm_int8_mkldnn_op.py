@@ -47,7 +47,6 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         scale_data = 63.0
         shift_data = 64.0
         x_u8 = np.rint(x_f32 * scale_data + shift_data).astype(np.uint8)
-        #  x_u8 = (x_f32 * scale_data + shift_data).astype(np.uint8)
 
         # WeightX/WeightH data
         wx = np.random.rand(self.IC, 4 * self.OC).astype('float32') * 2 - 1
@@ -55,9 +54,6 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
 
         # Calculating weight scales
         # scales = 127 / max(abs(channel_wise(weightsX + weightsH)))
-        # WeightX data shape in PP: [IC, 3 * OC]
-        # WeightH data shape in PP: [OC, 2 * OC] + [OC, OC]
-        # Scales shape in oneDNN:   [3, OC]
         s8_max = 127.0
 
         scale_weights = s8_max / np.max(
