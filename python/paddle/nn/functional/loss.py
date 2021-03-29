@@ -1296,7 +1296,6 @@ def cross_entropy(input,
         - **soft_label** (bool, optional)
 
             Indicate whether label is soft. 
-            If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
 
         - **axis** (int, optional)
