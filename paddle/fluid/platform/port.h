@@ -54,13 +54,8 @@ static void *dlsym(void *handle, const char *symbol_name) {
 }
 
 static void *dlopen(const char *filename, int flag) {
-  LOG(WARNING) << "filename: " << filename << ", falg: " << flag;
-
   std::string file_name(filename);
   HMODULE hModule = LoadLibrary(file_name.c_str());
-  LOG(WARNING) << "hModule: " << hModule;
-  if (!hModule) ShowMessage(SysErrorMessage(GetLastError()));
-
   if (!hModule) {
     if (flag) {
       throw std::runtime_error(file_name + " not found.");
