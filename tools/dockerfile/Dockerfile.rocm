@@ -52,6 +52,10 @@ RUN echo "[ROCm]" > /etc/yum.repos.d/rocm.repo && \
     echo "gpgcheck=1" >> /etc/yum.repos.d/rocm.repo && \
     echo "gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key" >> /etc/yum.repos.d/rocm.repo
 RUN yum install -y rocm-dev rocm-utils rocfft miopen-hip rocblas hipsparse rocrand rccl hipcub rocthrust rocprofiler-dev roctracer-dev
+# fix miopen
+RUN cd /opt/rocm && rm -rf miopen/ && wget https://paddle-ci.cdn.bcebos.com/miopen.2.11.0.tar.gz && \
+    tar -zxvf miopen.2.11.0.tar.gz && rm -rf miopen.2.11.0.tar.gz && \
+    cd /opt/rocm/lib && rm -rf libMIOpen.so.1.0.40001 && ln -s ../miopen/lib/libMIOpen.so.1.0 ./
 # fix rocthrust
 RUN sed -i '21 a #include <thrust/system/hip/config.h>' /opt/rocm/include/thrust/system/hip/detail/error.inl
 # fix openblas
@@ -63,6 +67,10 @@ ENV HIP_CLANG_PATH=/opt/rocm/llvm/bin
 ENV PATH=/opt/rocm/bin:$PATH
 ENV PATH=/opt/rocm/opencl/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+# env for miopen
+ENV MIOPEN_FIND_MODE=5
+ENV MIOPEN_DEBUG_CONV_IMPLICIT_GEMM=0
+ENV MIOPEN_SYSTEM_DB_PATH=/opt/rocm/miopen/share/miopen/db/
 
 # git 2.17.1
 RUN cd /opt && wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
