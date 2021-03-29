@@ -23,9 +23,13 @@ from paddle.nn.functional import affine_grid, grid_sample
 from paddle.nn.functional import pad as paddle_pad
 
 
-def _assert_image_tensor(img):
-    if not isinstance(img, paddle.Tensor) or img.ndim != 3:
-        raise RuntimeError('not support dim={} paddle image'.format(img.ndim))
+def _assert_image_tensor(img, data_format):
+    if not isinstance(
+            img, paddle.Tensor) or img.ndim != 3 or not data_format.lower() in (
+                'chw', 'hwc'):
+        raise RuntimeError(
+            'Not support [type={}, ndim={}, data_format={}] paddle image'.
+            format(type(img), img.ndim, data_format))
 
 
 # def _assert_data_format(data_format):
@@ -107,8 +111,7 @@ def normalize(img, mean, std, data_format='CHW'):
         Tensor: Normalized mage.
 
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     mean = paddle.to_tensor(mean, place=img.place)
     std = paddle.to_tensor(std, place=img.place)
@@ -134,8 +137,7 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
     Returns:
         paddle.Tensor: Grayscale version of the image.
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     assert num_output_channels in (1, 3), ""
 
@@ -263,8 +265,7 @@ def vflip(img, data_format='CHW'):
         paddle.Tensor:  Vertically flipped image.
 
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     h_axis = _get_image_h_axis(data_format)
 
@@ -283,8 +284,7 @@ def hflip(img, data_format='CHW'):
         paddle.Tensor:  Horizontall flipped image.
 
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     w_axis = _get_image_w_axis(data_format)
 
@@ -307,8 +307,7 @@ def crop(img, top, left, height, width, data_format='CHW'):
         paddle.Tensor: Cropped image.
 
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     if _is_channel_first(data_format):
         return img[:, top:top + height, left:left + width]
@@ -329,8 +328,7 @@ def center_crop(img, output_size, data_format='CHW'):
             paddle.Tensor: Cropped image.
 
         """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
@@ -382,8 +380,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
         paddle.Tensor: Padded image.
 
     """
-    _assert_image_tensor(img)
-    _assert_image_data_format(data_format)
+    _assert_image_tensor(img, data_format)
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
         raise TypeError('Got inappropriate padding arg')
