@@ -433,18 +433,24 @@ void GradientAccumulator::AccumulateGrad() {
   inner_var_.reset();
 }
 
-void GradientAccumulator::CallHooks() {
-  if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
-    return;
-  }
+void GradientAccumulator::CallGradientHooks() {
+  PADDLE_ENFORCE_EQ(var_->IsLeafGrad(), true,
+                    platform::errors::Unavailable(
+                        "Only leaf gradient Tensor can deal with by gradient "
+                        "hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(
+      SumGradCompleted(), true,
+      platform::errors::PreconditionNotMet(
+          "Only can call gradient hooks after sum gradient completed."));
   PADDLE_ENFORCE_EQ(
       HasInnerVar(), true,
-      platform::errors::InvalidArgument(
+      platform::errors::PreconditionNotMet(
           "Leaf Tensor's inner var is nullptr when call gradient hook."));
-  PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(), true,
-                    platform::errors::InvalidArgument("Leaf Tensor's inner var "
-                                                      "is not initialized when "
-                                                      "call gradient hook."));
+  PADDLE_ENFORCE_EQ(
+      inner_var_->Var().IsInitialized(), true,
+      platform::errors::PreconditionNotMet("Leaf Tensor's inner var "
+                                           "is not initialized when "
+                                           "call gradient hook."));
   if (var_->HasHook()) {
     VLOG(3) << "Call " << var_->GetHooks().size()
             << " hooks of leaf gradient accumulator's inner var `"
@@ -460,6 +466,19 @@ void GradientAccumulator::CallHooks() {
 }
 
 void GradientAccumulator::CallReduceHooks() {
+  PADDLE_ENFORCE_EQ(
+      var_->IsLeafGrad(), true,
+      platform::errors::Unavailable("Only leaf gradient Tensor can deal with "
+                                    "by reduce hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(SumGradCompleted(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the gradient "
+                        "summation is completed in current batch."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(), false,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the "
+                        "gradient accumulation is completed in "
+                        "current batch or across batchs."));
   if (var_->HasReduceHook()) {
     for (const auto& hook : var_->GetReduceHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";

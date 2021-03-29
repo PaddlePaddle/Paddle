@@ -262,7 +262,7 @@ def monkey_patch_varbase():
             TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
 
         Examples:
-             .. code-block:: python
+            .. code-block:: python
 
                 import paddle
 

@@ -119,7 +119,7 @@ class GradientAccumulator {
    *    parallel multi-card training.
    */
 
-  void CallHooks();
+  void CallGradientHooks();
 
   void CallReduceHooks();
 

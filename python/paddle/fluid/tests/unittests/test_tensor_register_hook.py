@@ -356,17 +356,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.assertTrue(np.array_equal(x_grad, z))
             self.assertTrue(np.array_equal(y_grad, z))
 
-    def test_remove_one_hook_multiple_times(self):
-        for device in self.devices:
-            paddle.set_device(device)
-
-            x = paddle.to_tensor([1., 2., 3., 4.])
-            x.stop_gradient = False
-
-            h = x.register_hook(lambda grad: grad * 2)
-            self.assertTrue(h.remove())
-            self.assertFalse(h.remove())
-
     def test_hook_in_double_grad(self):
         def double_print_hook(grad):
             grad = grad * 2
@@ -398,6 +387,26 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         z.backward()
         self.assertTrue(np.array_equal(x.grad, np.array([8.])))
+
+    def test_remove_one_hook_multiple_times(self):
+        for device in self.devices:
+            paddle.set_device(device)
+
+            x = paddle.to_tensor([1., 2., 3., 4.])
+            x.stop_gradient = False
+
+            h = x.register_hook(lambda grad: grad * 2)
+            self.assertTrue(h.remove())
+            self.assertFalse(h.remove())
+
+    def test_register_hook_for_stop_gradient_var(self):
+        for device in self.devices:
+            paddle.set_device(device)
+
+            x = paddle.to_tensor([1., 2., 3., 4.])
+
+            with self.assertRaises(RuntimeError):
+                x.register_hook(lambda grad: grad * 2)
 
 
 if __name__ == '__main__':
