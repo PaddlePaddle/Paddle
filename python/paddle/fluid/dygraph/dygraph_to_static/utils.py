@@ -381,9 +381,15 @@ def get_attribute_full_name(node):
     return astor.to_source(gast.gast_to_ast(node)).strip()
 
 
-def generate_name_node(name_ids, ctx=gast.Load()):
+def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
     """
-    Generate list or gast.Tuple of ast.Name for Return statement.
+    If name_ids is list or tuple or set with multiple strings, this function
+    generates gast.Tuple of gast.Name.
+    If the name_ids is single string or contains only 1 string, this function
+    returns gast.Name if gen_tuple_if_single==False else returns gast.Tuple
+    with only one gast.Name
+
+    This function is used at several gast.Return statements.
     """
     if isinstance(name_ids, six.string_types):
         name_ids = [name_ids]
@@ -395,7 +401,7 @@ def generate_name_node(name_ids, ctx=gast.Load()):
             id=name_id, ctx=ctx, annotation=None, type_comment=None)
         for name_id in name_ids
     ]
-    if len(gast_names) == 1:
+    if len(gast_names) == 1 and not gen_tuple_if_single:
         name_node = gast_names[0]
     else:
         name_node = gast.Tuple(elts=gast_names, ctx=ctx)
