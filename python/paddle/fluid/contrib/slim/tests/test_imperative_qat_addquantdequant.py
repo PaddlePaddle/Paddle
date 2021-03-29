@@ -228,6 +228,8 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".
                             format(epoch, batch_id,
                                    avg_loss.numpy(), acc.numpy()))
+                    if batch_id == 500:  # For shortening CI time
+                        break
 
                 lenet.eval()
                 for batch_id, data in enumerate(test_reader()):
