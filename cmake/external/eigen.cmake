@@ -51,11 +51,6 @@ elseif(LINUX)
     # so use following patch to solve compilation error with different version of gcc.
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Geometry_SSE.h native_src1)
     file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst1)
-    # The compiler fully support const expressions since c++14,
-    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
-    # add patch to avoid compilation error in c++11
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/MathFunctions.h native_src2)
-    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/MathFunctions.h native_dst2)
     if(WITH_ROCM)
         # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
         # which will cause compiler error of using __host__ funciont in __host__ __device__
@@ -67,7 +62,7 @@ elseif(LINUX)
         file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/functors/BinaryFunctors.h native_dst4)
         set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1} && cp ${native_src2} ${native_dst2} && cp ${native_src3} ${native_dst3} && cp ${native_src4} ${native_dst4})
     else()
-        set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1} && cp ${native_src2} ${native_dst2})
+        set(EIGEN_PATCH_COMMAND cp ${native_src1} ${native_dst1})
     endif()
 endif()
 
