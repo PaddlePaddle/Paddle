@@ -76,7 +76,7 @@ void BKCLParallelContext::Init() {
   bkcl_ids.resize(strategy_.nrings_);
 
   if (strategy_.local_rank_ == 0) {
-    // generate the unique ncclid on the root worker
+    // generate the unique bkclid on the root worker
     for (size_t i = 0; i < bkcl_ids.size(); ++i) {
       auto ret = bkcl_get_unique_id(&bkcl_ids[i]);
       PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,

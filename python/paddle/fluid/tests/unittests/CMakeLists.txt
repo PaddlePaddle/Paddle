@@ -519,6 +519,7 @@ if(WITH_DISTRIBUTE)
         if(WITH_GPU OR WITH_ROCM)
             bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_launch_coverage MODULES test_launch_coverage)
+            bash_test_modules(test_new_group START_BASH test_new_group.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         endif()
 
         bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})

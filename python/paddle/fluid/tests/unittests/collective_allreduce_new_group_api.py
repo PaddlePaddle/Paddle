@@ -46,12 +46,9 @@ class TestCollectiveAllreduceNewGroupAPI(TestCollectiveAPIRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
-            gid = paddle.distributed.new_group([0, 1])
-            paddle.distributed.get_group(gid)
+            gp = paddle.distributed.new_group([0, 1])
             paddle.distributed.all_reduce(
-                tindata, group=gid, use_calc_stream=False)
-            paddle.distributed.sync_calc_stream(tindata)
-            paddle.distributed.sync_comm_stream(tindata, gid)
+                tindata, group=gp, use_calc_stream=False)
             return [tindata]
 
 
