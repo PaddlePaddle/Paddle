@@ -142,28 +142,26 @@ def npu_profiler(output_file, config=None):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            output_file = 'cuda_profiler.txt'
-            with profiler.cuda_profiler(output_file, 'csv') as nvprof:
+            output_file = 'npu.txt'
+            with profiler.cuda_profiler(output_file) as nvprof:
                 for i in range(epoc):
                     input = np.random.random(dshape).astype('float32')
                     exe.run(fluid.default_main_program(), feed={'data': input})
-            # then use  NVIDIA Visual Profiler (nvvp) to load this output file
+            # then use  NPU profiler tools to load this output file
             # to visualize results.
     """
     # TODO: support config in python.
-
     if not config:
         config = core.npu_prof_create_config()
 
-    core.npu_prof_init(output_file, output_mode, config_file)
-    # Enables profiler collection by the active CUDA profiling tool.
-    core.npu_prof_start()
+    core.npu_prof_init(output_file)
+    # Enables profiler collection by the active NPU profiling tool.
+    core.npu_prof_start(config)
     try:
         yield
     # Disables profiler collection.
     finally:
         core.npu_prof_stop(config)
-        os.remove(config_file)
 
 
 def reset_profiler():

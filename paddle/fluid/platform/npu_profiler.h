@@ -23,28 +23,52 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-void NPUProfilerInit(std::string output_path, std::string output_mode,
-                     std::string config_file) {
+// ACL_AICORE_ARITHMETIC_UTILIZATION = 0, record arithmetic stats
+// ACL_AICORE_PIPE_UTILIZATION = 1, record pipe
+// ACL_AICORE_MEMORY_BANDWIDTH = 2, record memory
+// ACL_AICORE_L0B_AND_WIDTH = 3, recore internal io
+// ACL_AICORE_RESOURCE_CONFLICT_RATI = 4, record conflict ratio
+constexpr aclprofAicoreMetrics default_metrics =
+    ACL_AICORE_ARITHMETIC_UTILIZATION;
+
+// ACL_PROF_ACL_API, record ACL API stats
+// ACL_PROF_TASK_TIME, record AI core stats
+// ACL_PROF_AICORE_METRICS, must include
+// ACL_PROF_AICPU_TRACE, recore AICPU, not supported yet
+constexpr dataTypeConfig default_type =
+    ACL_PROF_ACL_API | ACL_PROF_AICORE_METRICS | ACL_PROF_TASK_TIME;
+
+void NPUProfilerInit(std::string output_path) {
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclprofInit(output_path.c_str(), output_path.size()));
 }
 
 void NPUProfilerStart(const aclprofConfig *config)) {
+  if (config == nullptr) {
+    // NOTE(zhiqiu): support single device by default.
+    int device_id = GetCurrentNPUDeviceId();
+    std::vector<uint32_t> devices = {static_cast<uint32_t>(device_id)};
+    config = NPUProfilerCreateConfig(devices, metrics, c);
+  }
   PADDLE_ENFORCE_NPU_SUCCESS(aclprofStart(config));
 }
 
 void NPUProfilerStop(const aclprofConfig *config)) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclprofStop(config));
+  NPUProfilerDestroyConfig(config);
 }
 
 void NPUProfilerFinalize() { PADDLE_ENFORCE_NPU_SUCCESS(aclprofFinalize()); }
 
-void NPUProfilerCreateConfig(std::vector<int32_t> devices,
-                             aclprofAicoreMetrics metrics,
-                             dataTypeConfig config,
-                             p aclprofAicoreEvents *events = nullptr) {
-  PADDLE_ENFORCE_NPU_SUCCESS(aclprofCreateConfig(devices.data(), devices.size(),
-                                                 metrics, events, config));
+aclprofConfig *NPUProfilerCreateConfig(
+    std::vector<int32_t> devices,
+    aclprofAicoreMetrics metrics = default_metrics,
+    dataTypeConfig c = default_type, p aclprofAicoreEvents *events = nullptr) {
+  aclprofConfig* config = aclprofCreateConfig(devices.data(), devices.size(),
+                                            metrics, events, c));
+  PADDLE_ENFORCE_NOT_NULL(config, paddle::platform::errors::External(
+                                      "Failed to create prof config for NPU"));
+  return config;
 }
 
 void NPUProfilerDestroyConfig(const aclprofConfig *config) {
