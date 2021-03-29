@@ -74,7 +74,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   mul_attr_map["use_mkldnn"] = false;
 
   // add GradAccumulatorPostHook
-  x->GradVarBase()->AddReduceHook(
+  x->GradVarBase()->AddMutableHook(
       std::make_shared<LambdaInplaceVariableWrapperHook>(
           [=](VariableWrapper* grad) {
             auto* grad_tensor =
@@ -151,7 +151,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
                sizeof(float) * src_data.size());
 
   // add ReduceBackwardHook
-  x->GradVarBase()->AddReduceHook(
+  x->GradVarBase()->AddMutableHook(
       std::make_shared<LambdaInplaceVariableWrapperHook>(
           [=](VariableWrapper* grad) {
             auto* grad_tensor =

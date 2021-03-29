@@ -310,7 +310,7 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
   for (size_t global_var_index = 0; global_var_index < vars_.size();
        ++global_var_index) {
     auto var = vars_[global_var_index];
-    var->GradVarBase()->AddReduceHook(
+    var->GradVarBase()->AddMutableHook(
         std::make_shared<LambdaInplaceVariableWrapperHook>([=](
             VariableWrapper *grad) { this->AddDistHook(global_var_index); }));
     var_index_map_[var->GradVarBase()->SharedVar().get()] = global_var_index;

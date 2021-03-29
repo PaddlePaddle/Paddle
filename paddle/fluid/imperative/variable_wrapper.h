@@ -222,7 +222,7 @@ class VariableWrapper {
   /* Hook related methods */
   bool HasHook() const { return !hooks_.empty(); }
 
-  bool HasReduceHook() const { return !reduce_hooks_.empty(); }
+  bool HasMutableHook() const { return !mutable_hooks_.empty(); }
 
   int64_t AddHook(std::shared_ptr<VariableWrapperHook>&& hook) {
     hooks_.emplace(next_hook_id_, std::move(hook));
@@ -242,13 +242,13 @@ class VariableWrapper {
     return hooks_;
   }
 
-  void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
-    reduce_hooks_.emplace_back(std::move(hook));
+  void AddMutableHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
+    mutable_hooks_.emplace_back(std::move(hook));
   }
 
   const std::vector<std::shared_ptr<InplaceVariableWrapperHook>>&
-  GetReduceHooks() const {
-    return reduce_hooks_;
+  GetMutableHooks() const {
+    return mutable_hooks_;
   }
 
  private:
@@ -326,7 +326,7 @@ class VariableWrapper {
   std::map<int64_t, std::shared_ptr<VariableWrapperHook>> hooks_;
   // Hooks executed after the execution of the entire backward process is over,
   // currently only supported for reducing in distributed training
-  std::vector<std::shared_ptr<InplaceVariableWrapperHook>> reduce_hooks_;
+  std::vector<std::shared_ptr<InplaceVariableWrapperHook>> mutable_hooks_;
 };
 
 }  // namespace imperative

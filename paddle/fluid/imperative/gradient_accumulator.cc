@@ -479,8 +479,8 @@ void GradientAccumulator::CallReduceHooks() {
                         "Only can call reduce hooks after the "
                         "gradient accumulation is completed in "
                         "current batch or across batchs."));
-  if (var_->HasReduceHook()) {
-    for (const auto& hook : var_->GetReduceHooks()) {
+  if (var_->HasMutableHook()) {
+    for (const auto& hook : var_->GetMutableHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";
       (*hook)(var_);
     }

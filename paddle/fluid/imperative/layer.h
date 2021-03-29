@@ -236,8 +236,8 @@ class VarBase {
     return var_->GetHooks();
   }
 
-  void AddReduceHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
-    var_->AddReduceHook(
+  void AddMutableHook(std::shared_ptr<InplaceVariableWrapperHook>&& hook) {
+    var_->AddMutableHook(
         std::forward<std::shared_ptr<InplaceVariableWrapperHook>>(hook));
   }
 
