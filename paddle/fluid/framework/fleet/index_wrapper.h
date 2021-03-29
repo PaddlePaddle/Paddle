@@ -51,11 +51,39 @@ class TreeIndex : public Index {
 
 using TreePtr = std::shared_ptr<TreeIndex>;
 
+
+
+class GraphIndex : public Index {
+ public:
+  GraphIndex() {}
+  ~GraphIndex() {}
+
+  int depth() {return meta_.depth();}
+  int width() {return meta_.width();}
+  int k_;  //数据扩展的倍数
+  
+ // std::vector<float> node_pro;//map()
+  std::unordered_map<uint64 code, float probability> next_node_pro;
+  
+  int load(std::string path);
+  
+  std::unordered_map<uint64_t, Node> dat_;
+  std::unordered_map<uint64_t, uint64_t> id_codes_map_;
+  std::unordered_map<itemId, codepath>
+  
+  uint64_t k_;
+  GraphMeta meta_;
+};
+
+using GraphPtr = std::shared_ptr<GraphIndex>;
+
+
 class IndexWrapper {
  public:
   virtual ~IndexWrapper() {}
   IndexWrapper() {}
 
+  // tree
   void clear_tree() { tree_map.clear(); }
 
   TreeIndex* GetTreeIndex(const std::string name) { 
@@ -73,6 +101,26 @@ class IndexWrapper {
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 
+
+  // graph
+  void clear_graph() { graph_map.clear(); }
+
+  TreeIndex* GetGraphIndex(const std::string name) { 
+    PADDLE_ENFORCE_NE(graph_map.find(name), graph_map.end(), "");
+    return graph_map[name].get();
+  }
+
+  void insert_graph_index(std::string name, std::string graph_path) {
+    if (graph_map.find(name) != graph_map.end()) {
+      return;
+    }
+    GrahPtr graph = std::make_shared<GraphIndex>();
+    int ret = graph->load(graph_path);
+    if (ret != 0) return;
+    graph_map.insert(std::pair<std::string, GraphPtr>{name, graph});
+  }
+
+
   // IndexWrapper singleton
   static std::shared_ptr<IndexWrapper> GetInstancePtr() {
     if (NULL == s_instance_) {
@@ -81,19 +129,13 @@ class IndexWrapper {
     return s_instance_;
   }
 
-  // IndexWrapper singleton
-  static IndexWrapper* GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::IndexWrapper());
-    }
-    return s_instance_.get();
-  }
 
+  
  private:
   static std::shared_ptr<IndexWrapper> s_instance_;
   std::unordered_map<std::string, TreePtr> tree_map;
+  std::unordered_map<std::string, GraphPtr> graph_map;
 };
-
 
 }  // end namespace framework
 }  // end namespace paddle

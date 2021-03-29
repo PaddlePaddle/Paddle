@@ -1,5 +1,5 @@
-from paddle.fluid.core import IndexWrapper, TreeIndex
-from builder import TreeIndexBuilder
+from paddle.fluid.core import IndexWrapper, TreeIndex, GraphIndex
+from builder import TreeIndexBuilder, GraphIndexBuilder
 
 class Index(object):
     def __init__(self, name):
@@ -8,6 +8,32 @@ class Index(object):
 class GraphIndex(Index):
     def __init__(self, name):
         super(GraphIndex, self).__init__(name)
+        self._graph=None
+        self._builder=GraphIndexBuilder(name)
+        self._wrapper=IndexWrapper()
+
+    def _init_by_category(self,input_filename,output_filename):
+        self._builder.graph_init_by_category(input_filename, output_filename)
+        self._init_graph(output_filename)
+
+    def _init_by_kmeans(self,output_filename):
+        self._builder.graph_init_by_kmeans(output_filename)
+        self._init_graph(output_filename)
+
+    def _init_graph(self,filename):
+        self._graph=self._wrapper.insert_graph_index(self._name, filename)
+
+    def get_path_given_item(self,item_id):
+        return self._graph.get_path_given_item(item_id)
+
+    def get_item_given_path(self,path_code):
+        return self._graph.get_item_given_path(path_code)
+
+    def graph_width(self):
+        return self._graph.width()
+
+    def graph_depth(self):
+        return self._graph.depth()
 
 class TreeIndex(Index):
     def __init__(self, name):

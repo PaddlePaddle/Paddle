@@ -8,6 +8,7 @@ class IndexDataset(object):
         self._index = index
         self._layerwise_sampler = None
         self._beamsearch_sampler = None
+        self._random_sample=None
 
     def init_layerwise_sampler(self, layer_sample_counts, name):
         assert self._layerwise_sampler is None
@@ -19,6 +20,11 @@ class IndexDataset(object):
         self._beamsearch_sampler = IndexSampler("by_beamsearch", name)
         self._beamsearch_sampler.init_beamsearch_conf(top_k)
 
+    def init_random_sampler(self, k):
+        assert self._random_sample is None
+        self._random_sampler = IndexSampler("by_random", name)
+        self._random_sampler.init_random_conf(k)
+
     def layerwise_sample(user_input, index_input):
         if self._layerwise_sampler is None:
             raise ValueError("please init layerwise_sampler first.")
@@ -28,3 +34,8 @@ class IndexDataset(object):
         if self._beamsearch_sampler is None:
             raise ValueError("please init _beamsearch_sampler first.")
         return self._beamsearch_sampler.sample(user_input, index_input)
+
+    def random_sampler(user_input, index_input):
+        if self._random_sampler is None:
+            raise ValueError("please init _random_sampler first.")
+        return self._random_sampler.sample(user_input,index_input)

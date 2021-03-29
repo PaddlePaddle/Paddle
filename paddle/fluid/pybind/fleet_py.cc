@@ -77,7 +77,7 @@ void BindPSHost(py::module* m) {
       .def("from_uint64", &distributed::PSHost::parse_from_uint64)
       .def("to_string", &distributed::PSHost::to_string);
 }
-
+// pybind;`
 void BindCommunicatorContext(py::module* m) {
   py::class_<CommContext>(*m, "CommContext")
       .def(
@@ -155,6 +155,7 @@ void BindHeterClient(py::module* m) {
 }
 
 using paddle::framework::TreeIndex;
+using paddle::framework::GraphIndex;
 using paddle::framework::IndexWrapper;
 using paddle::framework::Node;
 
@@ -194,9 +195,43 @@ void BindIndexWrapper(py::module* m) {
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
 
+void BindGraphIndexNode(py::module* m) {
+  py::class_<Node>(*m, "IndexNode")
+      .def(py::init<>())
+      .def("id", [](Node& self){ return self.id(); })
+      .def("next_id", [](Node& self){ return self.next_id(); })
+      .def("probability", [](Node& self){ return self.probability(); });  
+}
+
+void BindGraphIndex(py::module* m) {
+  py::class_<Graph>(*m, "Graph")
+      .def(py::init<>())
+      .def("width", [](GraphIndex& self){ return self.width(); })
+      .def("hight", [](GraphIndex& self){ return self.hight(); })
+      .def("path_to_item", [pair<uint item_id, float probility>](GraphIndex& self, string path_code) { 
+           return self.path_to_item(path_code); 
+      })
+      .def("item_to_path", [pair<string path_code, float probility>](GraphIndex& self, uint item) {
+           return self.item_to_path(item);
+      });
+      //});
+}
+
+void BindGraphIndexWrapper(py::module* m) {
+  py::class_<IndexWrapper, std::shared_ptr<IndexWrapper>>(*m, "IndexWrapper")
+      .def(py::init(
+          [](){
+            return IndexWrapper::GetInstancePtr();
+      }))
+      .def("insert_graph_index", &IndexWrapper::insert_graph_index)
+      .def("GetGraphIndex", &IndexWrapper::GetGraphIndex)
+      .def("clear_graph", &IndexWrapper::clear_graph);
+}
+
 using paddle::framework::IndexSampler;
 using paddle::framework::LayerWiseSampler;
 using paddle::framework::BeamSearchSampler;
+using paddle::framework::GraphRandomSampler;
 
 void BindIndexSampler(py::module* m) {
    py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")
@@ -211,6 +246,21 @@ void BindIndexSampler(py::module* m) {
       .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
       .def("sample", &IndexSampler::sample);
 }
+
+void BindGraphIndexSampler(py::module* m) {
+   py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")
+      .def(py::init([](const std::string& mode, const std::string& name){
+           if (mode == "by_graphrandom") {
+                return IndexSampler::Init<GraphRandomSampler>(name);
+           } else if (mode == "by_beamsearch") {
+                return IndexSampler::Init<BeamSearchSampler>(name);
+           }
+      }))
+      .def("init_graphrandom_conf", &IndexSampler::init_graphrandom_conf)
+      .def("init_beamsearch_conf", &IndexSampler::init_beamsearch_conf)
+      .def("sample", &IndexSampler::sample);
+}
+
 
 }  // end namespace pybind
 }  // namespace paddle

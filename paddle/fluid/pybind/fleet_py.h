@@ -32,5 +32,9 @@ void BindTreeIndex(py::module* m);
 void BindIndexWrapper(py::module* m);
 void BindIndexSampler(py::module* m);
 
+void BindGraphIndexNode(py::module* m);
+void BindGraphIndex(py::module* m);
+void BindGraphIndexWrapper(py::module* m);
+void BindGraphIndexSampler(py::module* m);
 }  // namespace pybind
 }  // namespace paddle
