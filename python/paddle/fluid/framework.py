@@ -2018,32 +2018,32 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.static as static 
-            import numpy as np
+                import paddle
+                import paddle.static as static 
+                import numpy as np
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
 
-            y = static.nn.fc(x, 10,name='fc')
-            prog = static.default_main_program()
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)     
-            prog = paddle.static.default_main_program()                               
-            exe.run(static.default_startup_program())
-            inputs=np.ones((10,10),dtype='float32')
-            exe.run(prog,feed={'x':inputs},fetch_list=[y,])
-            path='temp/tensor_'
-            for var in prog.list_vars():
-                if var.persistable:
-                    t=var.get_tensor()
-                    paddle.save(t,path+var.name+'.pdtensor')
+                y = static.nn.fc(x, 10,name='fc')
+                prog = static.default_main_program()
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)     
+                prog = paddle.static.default_main_program()                               
+                exe.run(static.default_startup_program())
+                inputs=np.ones((10,10),dtype='float32')
+                exe.run(prog,feed={'x':inputs},fetch_list=[y,])
+                path='temp/tensor_'
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t=var.get_tensor()
+                        paddle.save(t,path+var.name+'.pdtensor')
 
-            for var in prog.list_vars():
-                if var.persistable:
-                    t_load=paddle.load(path+var.name+'.pdtensor')
-                    var.set_tensor(t_load)
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t_load=paddle.load(path+var.name+'.pdtensor')
+                        var.set_tensor(t_load)
         """
         # The 'framework' is a low-level module, and 'executor' 
         # can not be imported at the begainning of this file. 
@@ -2079,32 +2079,32 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.static as static 
-            import numpy as np
+                import paddle
+                import paddle.static as static 
+                import numpy as np
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
 
-            y = static.nn.fc(x, 10,name='fc')
-            prog = static.default_main_program()
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)     
-            prog = paddle.static.default_main_program()                               
-            exe.run(static.default_startup_program())
-            inputs=np.ones((10,10),dtype='float32')
-            exe.run(prog,feed={'x':inputs},fetch_list=[y,])
-            path='temp/tensor_'
-            for var in prog.list_vars():
-                if var.persistable:
-                    t=var.get_tensor()
-                    paddle.save(t,path+var.name+'.pdtensor')
+                y = static.nn.fc(x, 10,name='fc')
+                prog = static.default_main_program()
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)     
+                prog = paddle.static.default_main_program()                               
+                exe.run(static.default_startup_program())
+                inputs=np.ones((10,10),dtype='float32')
+                exe.run(prog,feed={'x':inputs},fetch_list=[y,])
+                path='temp/tensor_'
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t=var.get_tensor()
+                        paddle.save(t,path+var.name+'.pdtensor')
 
-            for var in prog.list_vars():
-                if var.persistable:
-                    t_load=paddle.load(path+var.name+'.pdtensor')
-                    var.set_tensor(t_load)
+                for var in prog.list_vars():
+                    if var.persistable:
+                        t_load=paddle.load(path+var.name+'.pdtensor')
+                        var.set_tensor(t_load)
         '''
 
         # The 'framework' is a low-level module, and 'executor'
@@ -5475,11 +5475,11 @@ class Program(object):
             This function MUST called after run start_up_program
 
         Args:
-            mode(str, optional) : Source of the obtained parameters and buffers. 
+            mode(str, optional): Source of the obtained parameters and buffers. 
                     'opt' :  The return value only contains the variable in the optimizer. 
                     'param' : The return value only contains the variable in the network, not the variable in the optimizer.  
                     'all' : The return value contains the variable in the network and optimizer.
-                Default: 'all'
+                    Default: 'all'
             scope(Scope, optional) : If scope is None, state_dict will be set to global scope 
                 obtained through 'paddle.static.global_scope()'. Otherwise, value will be set to scope.
                 Default: None
@@ -5490,22 +5490,22 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+                y = static.nn.fc(x, 10)
+                z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                exe.run(static.default_startup_program())
+                prog = static.default_main_program()
 
-            path="./temp/model.pdparams"
-            paddle.save(prog.state_dict(),path)
+                path="./temp/model.pdparams"
+                paddle.save(prog.state_dict(),path)
         """
         # The 'framework' is a low-level module, and 'executor'
         # can not be imported at the begainning of this file. 
@@ -5566,7 +5566,6 @@ class Program(object):
 
     def set_state_dict(self, state_dict, scope=None):
         """
-        
         Set parameters and persistable buffers in state_dict to program. 
         An exception will throw if shape or dtype of the parameters is not match.
         
@@ -5587,24 +5586,24 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+                x = static.data(name="x", shape=[10, 10], dtype='float32')
+                y = static.nn.fc(x, 10)
+                z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+                place = paddle.CPUPlace()
+                exe = static.Executor(place)
+                exe.run(static.default_startup_program())
+                prog = static.default_main_program()
 
-            path="./temp/model.pdparams"
-            paddle.save(prog.state_dict(),path)
-            state_dict_load = paddle.load(path)
-            prog.set_state_dict(state_dict_load)
+                path="./temp/model.pdparams"
+                paddle.save(prog.state_dict(),path)
+                state_dict_load = paddle.load(path)
+                prog.set_state_dict(state_dict_load)
         """
 
         if not isinstance(state_dict, dict):

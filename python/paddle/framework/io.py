@@ -370,9 +370,8 @@ def save(obj, path, protocol=2, **configs):
           If saved in the current directory, the input path string will be used as the file name. 
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 2
-        configs(dict, optional) : optional keyword arguments. When the saved object is static graph variable, 
-        you can specify ``use_binary_for_var``.
-            (1) use_binary_format(bool): If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
+        **configs(dict, optional) : optional keyword arguments. The following options are currently supported:
+            (1) use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
                                 Default: False
 
     Returns:
