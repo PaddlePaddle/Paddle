@@ -83,6 +83,7 @@ REGISTER_OP_NPU_KERNEL(
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, bool>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, float>,
