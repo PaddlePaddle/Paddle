@@ -45,15 +45,15 @@ void BasicEngine::Init(
   PADDLE_ENFORCE_EQ(
       tensors.size(), grad_tensors.size(),
       platform::errors::Unavailable(
-          "the size of tensors must equal the size of grad_tensors, but"
-          "the size of tensors is %s, and the size of grad_tensors is %s.",
+          "The size of tensors do not equal the size of grad_tensors,"
+          "the size of tensors is %s, but the size of grad_tensors is %s.",
           tensors.size(), grad_tensors.size()));
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
     auto grad_tensor = grad_tensors[i];
 
-    auto init_node_ = var->GradVarBase()->GradNode();
+    auto init_node = var->GradVarBase()->GradNode();
     PADDLE_ENFORCE_EQ(
         var->GradVarBase()->GraphIsFreed(), false,
         platform::errors::Unavailable(
@@ -70,7 +70,7 @@ void BasicEngine::Init(
       var->GradVarBase()->ClearGradNode();
     }
 
-    if (init_node_ == nullptr || var->OverridedStopGradient()) {
+    if (init_node == nullptr || var->OverridedStopGradient()) {
       VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
                  "stop_gradient=True: "
               << var->Name();
@@ -81,8 +81,7 @@ void BasicEngine::Init(
 
     PADDLE_ENFORCE_EQ(
         var->HasGradVar(), true,
-        platform::errors::NotFound("Grad variable not exist for variable %s",
-                                   var->Name()));
+        platform::errors::NotFound("Tensor %s has no gradient", var->Name()));
 
     auto& fwd_var = var->Var().Get<framework::LoDTensor>();
     auto* grad_var =
@@ -102,7 +101,7 @@ void BasicEngine::Init(
           *dev_ctx, grad_var);
     }
 
-    init_nodes_.push_back(init_node_);
+    init_nodes_.push_back(init_node);
   }
 }
 

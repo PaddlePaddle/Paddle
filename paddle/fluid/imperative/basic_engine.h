@@ -76,7 +76,6 @@ class BasicEngine : public Engine {
   std::vector<GradientAccumulator*> leaf_accumulators_;
 
   bool retain_graph_;
-  bool create_graph_;
 };
 
 }  // namespace imperative

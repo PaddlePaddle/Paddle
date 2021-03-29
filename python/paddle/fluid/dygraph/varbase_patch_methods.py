@@ -197,11 +197,12 @@ def monkey_patch_varbase():
             if paddle.is_compiled_with_xpu():
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                scaled_loss._run_backward(framework._dygraph_tracer(),
-                                          retain_graph, grad_tensor)
+                core.dygraph_run_backward([scaled_loss], [grad_tensor],
+                                          retain_graph,
+                                          framework._dygraph_tracer())
             else:
-                self._run_backward(framework._dygraph_tracer(), retain_graph,
-                                   grad_tensor)
+                core.dygraph_run_backward([self], [grad_tensor], retain_graph,
+                                          framework._dygraph_tracer())
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")

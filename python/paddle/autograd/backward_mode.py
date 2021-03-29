@@ -93,8 +93,9 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     tensors = check_tensors(tensors, "tensors")
 
-    assert len(tensors) == len(set(
-        tensors)), "the arg tensors should not contains same element"
+    assert len(tensors) == len(
+        set(tensors)
+    ), "The argument 'tensors' of paddle.autograd.backward contains duplicate paddle.Tensor object."
 
     if grad_tensors is not None:
         if not isinstance(grad_tensors, (list, tuple)):
@@ -104,7 +105,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             if each_tensor is not None:
                 assert isinstance(
                     each_tensor, paddle.Tensor
-                ), "grad_tensors must be None, Tensor or list containing None or Tensor"
+                ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
         grad_tensors = [None] * len(tensors)
 
