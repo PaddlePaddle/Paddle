@@ -59,7 +59,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
         self._as_outer_parallelism = False
-        self._inner_parallelism_size = None
+        self.mp_degree = None
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -92,7 +92,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "hybrid_dp"]
         self._as_outer_parallelism = self.user_defined_strategy.sharding_configs[
             "as_outer_parallelism"]
-        self._inner_parallelism_size = int(
+        self.mp_degree = int(
             self.user_defined_strategy.sharding_configs["parallelism"])
         self.use_pipeline = self.user_defined_strategy.sharding_configs[
             "use_pipeline"]
@@ -105,10 +105,17 @@ class ShardingOptimizer(MetaOptimizerBase):
             "pp_allreduce_in_optimize"]
         self.optimize_offload = self.user_defined_strategy.sharding_configs[
             "optimize_offload"]
+        # turn off sharding
+        self.sharding_degree = int(self.user_defined_strategy.sharding_configs['sharding_group_size'])
+        if self.role_maker._worker_index() // self.sharding_degree // self.mp_degree > 1 :
+            assert self.use_pipeline ==  True
+            
+        self.pure_dp_degree = 1
 
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
+
         if self.use_pipeline:
             pp_optimizer = fluid.optimizer.PipelineOptimizer(self.inner_opt,
                                                              self.acc_steps)
@@ -118,7 +125,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt['pp_bz'] = self.pp_bz
             pp_rank = self.role_maker._worker_index() // (
                 self.user_defined_strategy.sharding_configs[
-                    'sharding_group_size'] * self._inner_parallelism_size)
+                    'sharding_group_size'] * self.mp_degree)
             main_program._pipeline_opt['local_rank'] = pp_rank
             main_program._pipeline_opt[
                 'global_rank'] = self.role_maker._worker_index()
@@ -126,10 +133,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_program._pipeline_opt['ring_id'] = 20
             optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
-            self.pipeline_nodes = len(program_list)
+            self.pp_degree = len(program_list)
         else:
             optimize_ops, params_grads = self.inner_opt.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
+            self.pp_degree = 1
 
         if startup_program is None:
             startup_program = default_startup_program()
@@ -149,6 +157,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         else:
             main_block = loss.block
+
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
@@ -158,50 +167,51 @@ class ShardingOptimizer(MetaOptimizerBase):
             with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
                 f.writelines(str(main_program))
 
-        # step1: set_up
-        self._set_up(params_grads)
+        # step0: init comm ring
+        self._init_comm()
+    
+        if self.sharding_degree > 1:
 
-        # step2: split_program
-        self._split_program(main_block)
+            # step1: build shard
+            self._build_shard( params_grads)
 
-        # step3: add broadcast and reduce ops
-        self._add_broadcast_allreduce(main_block)
-        main_block._sync_with_cpp()
-        startup_block._sync_with_cpp()
+            # step2: split_program
+            self._split_program(main_block)
 
-        # step4: insert reduce_sum for grad
-        # grad_scale_coeff = self.role_maker._worker_num()
-        # if self._as_outer_parallelism:
-        #     grad_scale_coeff = grad_scale_coeff / self._inner_parallelism_size
-        # insert_scale_loss_grad_ops(main_block, scale=1.0 / grad_scale_coeff)
-        sharding_group_size = self.user_defined_strategy.sharding_configs[
-            'sharding_group_size']
-        insert_scale_loss_grad_ops(main_block, scale=1.0 / sharding_group_size)
-        main_block._sync_with_cpp()
+            # step3: add broadcast and reduce ops
+            self._add_broadcast_allreduce(main_block)
+            main_block._sync_with_cpp()
+            startup_block._sync_with_cpp()
 
-        # step5: remove unneeded ops and vars from block
-        self._prune_main_program(main_block)
-        self._prune_startup_program(startup_block)
-        if self.hybrid_dp:
-            self._initialization_broadcast(startup_program)
+            main_block._sync_with_cpp()
+
+            # step4: remove unneeded ops and vars from block
+            self._prune_main_program(main_block)
+            self._prune_startup_program(startup_block)
+            if self.hybrid_dp:
+                self._initialization_broadcast(startup_program)
 
         if self.use_pipeline:
+
+            # sharding-pp related logic
             # pp_optimizer._rename_gradient_var_name(main_block)
             # crop ops
-            for idx, op in reversed(list(enumerate(main_block.ops))):
-                if is_update_op(op):
-                    op_role_var = op.attr('op_role_var')
-                    param_name = op_role_var[0]
-                    if not self._shard.has_param(param_name):
+            if self.sharding_degree > 1:
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if is_update_op(op):
+                        op_role_var = op.attr('op_role_var')
+                        param_name = op_role_var[0]
+                        if not self._shard.has_param(param_name):
+                            main_block._remove_op(idx)
+
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if op.type != 'cast': continue
+                    in_name = op.input_arg_names[0]
+                    if in_name not in self._params: continue
+                    #if self._shard.has_param(param_name): continue
+                    if in_name not in main_block.vars:
                         main_block._remove_op(idx)
 
-            for idx, op in reversed(list(enumerate(main_block.ops))):
-                if op.type != 'cast': continue
-                in_name = op.input_arg_names[0]
-                if in_name not in self._params: continue
-                #if self._shard.has_param(param_name): continue
-                if in_name not in main_block.vars:
-                    main_block._remove_op(idx)
             accumulated_grad_names = pp_optimizer._accumulate_gradients(
                 main_block)
             # accumulated_grad_names = sorted(accumulated_grad_names)
@@ -218,6 +228,27 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._shard,
                     core.op_proto_and_checker_maker.OpRole.Optimize,
                     use_calc_stream=True)
+
+        with open("main_bf_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
+
+        # if not use sharding, adapt amp/clip, for remain parallelism.
+        # cast --> amp --> clip --> opt
+        if self.sharding_degree <= 1:
+            # amp
+            FP16Utils.sync_amp_check_nan_inf(main_block, self.global_ring_id)
+
+            # clip
+            gradientclip_helper = GradientClipHelper(self.global_ring_id)
+            gradientclip_helper.sync_global_norm(main_block, self.global_ring_id, self.pure_dp_degree)
+
+        # loss div dp_degree 
+        global_dp_degree = self.sharding_degree * self.pure_dp_degree
+        assert int(global_dp_degree) == global_dp_degree
+        if global_dp_degree > 1:
+            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+
 
         main_block._sync_with_cpp()
 
@@ -243,54 +274,31 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._wait()
         return optimize_ops, params_grads
 
-    def _set_up(self, params_grads):
-        # step 1: initialize nccl
-        self.global_word_size = self.role_maker._worker_num()
-        self.global_rank = self.role_maker._worker_index()
-        self.endpoints = self.role_maker._get_trainer_endpoints()
-        self.current_endpoint = self.endpoints[self.global_rank]
-        self._collective_helper = CollectiveHelper(self.role_maker,
-                                                   self._nrings_sharding)
+    def _init_comm(self):
+
         # config sharding & dp groups
-        self._init_comm()
+        self._build_groups()
 
-        # global
-        if self._as_outer_parallelism:
-            print("global_group_endpoints:", self.global_group_endpoints)
-            print("global_rank:", self.global_rank)
-            print("global_ring_id:", self.global_group_id)
-            self._collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint,
-                self.global_group_endpoints, self.global_rank,
-                self.global_group_id, True)
-
-        if self._as_outer_parallelism:
-            print("mp_group_endpoints:", self.mp_group_endpoints)
-            print("mp_rank:", self.mp_rank)
-            print("mp_ring_id:", self.mp_group_id)
-            self._collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint,
-                self.mp_group_endpoints, self.mp_rank, self.mp_group_id, False)
-
-        # sharding
-        print("sharding_group_endpoints:", self.sharding_group_endpoints)
-        print("sharding_rank:", self.sharding_rank)
-        print("sharding_ring_id:", self.sharding_ring_id)
+        # global ring
         self._collective_helper._init_communicator(
             self._startup_program, self.current_endpoint,
-            self.sharding_group_endpoints, self.sharding_rank,
-            self.sharding_ring_id, False)
+            self.global_endpoints, self.global_rank,
+            self.global_ring_id, True)
 
-        # dp
-        if self.hybrid_dp:
+        # mp ring
+        if self.mp_degree > 1:
             self._collective_helper._init_communicator(
                 self._startup_program, self.current_endpoint,
-                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, False)
-        # pp
+                self.mp_group_endpoints, self.mp_rank, self.mp_ring_id, False)
+
+        # sharding ring
+        if self.sharding_degree > 1:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.sharding_group_endpoints, self.sharding_rank,
+                self.sharding_ring_id, False)
+        # pp ring
         if self.use_pipeline:
-            print("pp_group_endpoints:", self.pp_group_endpoints)
-            print("pp_rank:", self.pp_rank)
-            print("pp_ring_id:", self.pp_ring_id)
             if self.schedule_mode == 0:  # GPipe
                 self._collective_helper._init_communicator(
                     self._startup_program, self.current_endpoint,
@@ -320,13 +328,22 @@ class ShardingOptimizer(MetaOptimizerBase):
                         self._startup_program, self.current_endpoint,
                         pp_group_endpoints, pp_rank, ring_id, False, False)
 
+        # pure dp ring
+        if self.pure_dp_degree > 1:
+            self._collective_helper._init_communicator(
+                self._startup_program, self.current_endpoint,
+                self.pure_dp_group_endpoints, self.pure_dp_rank,
+                self.pure_dp_ring_id, False)
+
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
 
+    
+    def _build_shard(self, params_grads):
         # step 2: split params
         self._params = set([x[0].name for x in params_grads])
         self._shard.setup(params_grads, self.sharding_rank,
-                          self.sharding_group_size)
+                          self.sharding_degree)
 
         # step 3: get broadcast vars
         self._broadcast_vars = self._shard.find_broadcast_params(
@@ -347,21 +364,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             if self.sharding_rank == 0:
                 self._collective_helper._wait(current_endpoint, endpoints)
-
-    # def _wait(self, ):
-    #     # only the first parallelsm group that init nccl need to be wait. 
-    #     if self._as_outer_parallelism:
-    #         endpoints = self.role_maker._get_trainer_endpoints()
-    #     else:
-    #         endpoints = self.sharding_group_endpoints[:]
-    #     current_endpoint = endpoints[self.role_maker._worker_index()]
-
-    #     if self._as_outer_parallelism:
-    #         if self.role_maker._worker_index() == 0:
-    #             self._collective_helper._wait(current_endpoint, endpoints)
-    #     else:
-    #         if self.sharding_rank == 0:
-    #             self._collective_helper._wait(current_endpoint, endpoints)
 
     def _split_program(self, block):
         for op_idx, op in reversed(list(enumerate(block.ops))):
@@ -448,7 +450,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # group. and each Data Parallelism group should have its own sync of FoundInfinite
         Model_Paramllelism_ring_id = self.sharding_ring_id
         if self._as_outer_parallelism:
-            Model_Paramllelism_ring_id = self.global_group_id
+            Model_Paramllelism_ring_id = self.global_ring_id
         FP16Utils.prune_fp16(block, self._shard, self._reduced_grads_to_param,
                              Model_Paramllelism_ring_id)
         gradientclip_helper = GradientClipHelper(Model_Paramllelism_ring_id)
@@ -716,222 +718,158 @@ class ShardingOptimizer(MetaOptimizerBase):
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
 
-    def _init_comm(self):
+    def _build_groups(self):
+        """
+        ring id assign
+            mp: 0
+            sharding: 1
+            pure-dp: 2
+            global: 3
+            pp: >= 20
+        if one parallelism is not enable: -1
+        and only support parallelism hierarchy: mp --> sharding --> pp --> dp
+        """
+        # step 1: initialize nccl
+        self.global_word_size = self.role_maker._worker_num()
+        self.global_rank = self.role_maker._worker_index()
+        self.global_endpoints = self.role_maker._get_trainer_endpoints()
+        self.current_endpoint = self.global_endpoints[self.global_rank]
+        self._collective_helper = CollectiveHelper(self.role_maker, nrings=1) 
 
-        if self.hybrid_dp:
-            assert self._as_outer_parallelism == False, "hybrid dp is conflict when using sharding as outer parallelism"
-            self.sharding_group_size = self.user_defined_strategy.sharding_configs[
-                "sharding_group_size"]
-            self.sharding_ring_id = 0
-            self.sharding_rank = self.global_rank % self.sharding_group_size
-
-            self.dp_group_size = self.global_word_size // self.sharding_group_size
-            self.dp_rank = self.global_rank // self.sharding_group_size
-            self.dp_ring_id = self.sharding_rank + 1
-
-            self.sharding_group_endpoints = [
-                ep for idx, ep in enumerate(self.endpoints)
-                if (idx // self.sharding_group_size) == self.dp_rank
+        # mp ring
+        if self.mp_degree > 1:
+            self.mp_ring_id = 0
+            self.mp_rank = self.global_rank % self.mp_degree
+            self.mp_group_id = self.global_rank // self.mp_degree
+            self.mp_group_endpoints = [
+                ep for idx, ep in enumerate(self.global_endpoints)
+                if idx // self.mp_degree == self.mp_group_id
             ]
-            self.dp_group_endpoints = [
-                ep for idx, ep in enumerate(self.endpoints)
-                if (idx % self.sharding_group_size) == self.sharding_rank
-            ]
-
-            assert self.global_word_size > self.sharding_group_size, \
-                "global_word_size: {} should be larger than sharding_group_size: {}".format(self.global_word_size, self.sharding_group_size)
-            assert self.global_word_size % self.sharding_group_size == 0, \
-                "global_word_size: {} should be divisible to the sharding_group_size: {}".format(self.global_word_size, self.sharding_group_size)
-            assert self.dp_group_size *  self.sharding_group_size == self.global_word_size, \
-                "global_word_size: {} should be equal to the product of sharding_group_size: {} and dp_group_size: {}".format(
-                self.global_word_size,
-                self.sharding_group_size,
-                self.dp_group_size)
-            self.pp_ring_id = -1
-            self.pp_rank = -1
-            self.pp_group_size = None
-            self.pp_group_endpoints = None
-
-            # sharding parallelism is the only model parallelism in the current setting
-            self.mp_group_id = self.sharding_ring_id
-            self.mp_rank = self.sharding_rank
-            self.mp_group_size = self.sharding_group_size
-            self.mp_group_endpoints = self.sharding_group_endpoints[:]
-
-            logging.info("Using Sharing&DP mode !")
+            assert self.current_endpoint in self.mp_group_endpoints
+            assert len(self.mp_group_endpoints) == self.mp_degree, "num of mp worker in group is [{}], but mp group size is [{}]".format(len(self.mp_group_endpoints), self.mp_degree)
         else:
-            if self._as_outer_parallelism and not self.use_pipeline:
-                self.sharding_ring_id = 1
-                assert self.global_word_size > self._inner_parallelism_size, \
-                    "global_word_size: {} should be larger than inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
-                assert self.global_word_size % self._inner_parallelism_size == 0, \
-                    "global_word_size: {} should be divisible to the inner_parallelism_size: {}".format(self.global_word_size, self._inner_parallelism_size)
-                self.sharding_rank = self.global_rank // self._inner_parallelism_size
-                self.sharding_group_size = self.role_maker._worker_num(
-                ) // self._inner_parallelism_size
-                _offset = self.global_rank % self._inner_parallelism_size
+            self.mp_degree = 1
+            self.mp_ring_id = -1
+            self.mp_rank = -1
+            self.mp_group_id = -1
+            self.mp_group_endpoints = []
+        
+        # sharding 
+        if self.sharding_degree > 1:
+            self.sharding_ring_id = 1
+            self.sharding_rank = (
+                self.global_rank //
+                self.mp_degree) % self.sharding_degree           
+            self.sharding_group_id = self.global_rank // (
+                self.mp_degree * self.sharding_degree)
+            # mp + sharding + ...
+            if self.mp_degree > 1:
                 self.sharding_group_endpoints = [
-                    ep for idx, ep in enumerate(self.endpoints)
-                    if idx % self._inner_parallelism_size == _offset
+                    ep for idx, ep in enumerate(self.global_endpoints)
+                    if (idx // (self.mp_degree *
+                                self.sharding_degree)
+                        ) == self.sharding_group_id and idx %
+                    self.mp_degree == self.mp_rank
                 ]
+            # sharding + ...    
+            else:
+                self.sharding_group_endpoints = [
+                    ep for idx, ep in enumerate(self.global_endpoints)
+                    if (idx // (self.mp_degree *
+                                self.sharding_degree)
+                        ) == self.sharding_group_id 
+                ]
+            assert self.current_endpoint in self.sharding_group_endpoints
+        else:
+            self.sharding_degree = 1
+            self.sharding_ring_id = -1
+            self.sharding_rank = -1   
+            self.sharding_group_id = -1   
+            self.sharding_group_endpoints = []
 
-                # the current entire model parallelism group is the combination of innert & sharding parallelism
-                self.mp_group_id = 2
-                self.mp_rank = self.global_rank
-                self.mp_group_size = self.role_maker._worker_num()
-                self.mp_group_endpoints = self.endpoints[:]
-                logging.info("Using Sharing as Outer parallelism mode !")
-
-                # print(
-                #     "init the nccl comm for megatron paramllelism, this should be done in Megatron Metaoptimizer"
-                # )
-                # partition_idx = self.global_rank // self._inner_parallelism_size
-                # magetron_endpoints = self.endpoints[
-                #     partition_idx * self._inner_parallelism_size:partition_idx *
-                #     self._inner_parallelism_size + self._inner_parallelism_size]
-                # magetron_rank = self.global_rank % self._inner_parallelism_size
-
-                # self._collective_helper._init_communicator(
-                #     program=self._startup_program,
-                #     current_endpoint=self.current_endpoint,
-                #     endpoints=magetron_endpoints,
-                #     rank=magetron_rank,
-                #     ring_id=0,
-                #     wait_port=True)
-                # logging.info("megatron group size: {}".format(
-                #     self._inner_parallelism_size))
-                # logging.info("megatron rank: {}".format(magetron_rank))
-                # logging.info("megatron endpoints: {}".format(
-                #     magetron_endpoints))
-            if self.use_pipeline:
-                if self._inner_parallelism_size == 1:
-                    self.sharding_ring_id = 0
-                    self.sharding_group_size = self.user_defined_strategy.sharding_configs[
-                        'sharding_group_size']
-                    self.sharding_rank = self.global_rank % self.sharding_group_size
-                    assert self.sharding_group_size * self.pipeline_nodes * self._inner_parallelism_size == self.role_maker._worker_num(
+        # pp
+        if self.pp_degree > 1:
+            self.pp_ring_id = 20
+            self.pp_rank = self.global_rank // (
+                self.sharding_degree * self.mp_degree) % self.pp_degree
+            # (NOTE): Already adjust for (outter-pure) dp
+            self.pp_group_id = self.global_rank // (self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_first_stage_idx = self.global_rank % (self.sharding_degree * self.mp_degree) + self.pp_group_id * (self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_stage_offset = self.sharding_degree * self.mp_degree
+            self.pp_group_endpoints = []
+            for i in range(self.pp_degree):
+                self.pp_group_endpoints.append(self.global_endpoints[
+                    pp_first_stage_idx + pp_stage_offset * i]
                     )
-                    self.pp_ring_id = 20
-                    self.pp_rank = self.global_rank // (
-                        self.sharding_group_size * self._inner_parallelism_size)
-                    self.sharding_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints)
-                        if (idx // self.sharding_group_size) == self.pp_rank
-                    ]
-                    self.pp_group_size = self.pipeline_nodes
-                    self.pp_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints)
-                        if (idx % self.sharding_group_size
-                            ) == self.sharding_rank
-                    ]
-                else:
-                    self.mp_group_id = 0
-                    self.sharding_ring_id = 1
-                    self.pp_ring_id = 20
-                    self.mp_rank = self.global_rank % self._inner_parallelism_size
-                    self.mp_group = self.global_rank // self._inner_parallelism_size
-                    self.mp_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints)
-                        if idx // self._inner_parallelism_size == self.mp_group
-                    ]
-                    print("megatron_group_endpoints:", self.mp_group_endpoints)
-                    print("megatron_rank:", self.mp_rank)
-                    # self.cards_per_node = 8
-                    self.sharding_group_size = self.user_defined_strategy.sharding_configs[
-                        'sharding_group_size']
-                    self.sharding_rank = (
-                        self.global_rank //
-                        self._inner_parallelism_size) % self.sharding_group_size
-                    self.sharding_group_id = self.global_rank // (
-                        self._inner_parallelism_size * self.sharding_group_size)
-                    self.megatron_rank = self.global_rank % self._inner_parallelism_size
-                    self.sharding_group_endpoints = [
-                        ep for idx, ep in enumerate(self.endpoints)
-                        if (idx // (self._inner_parallelism_size *
-                                    self.sharding_group_size)
-                            ) == self.sharding_group_id and idx %
-                        self._inner_parallelism_size == self.megatron_rank
-                    ]
-                    print("sharding_endpoint:", self.sharding_group_endpoints)
-                    print("sharding_rank:", self.sharding_rank)
-                    assert self.sharding_group_size * self.pipeline_nodes * self._inner_parallelism_size == self.role_maker._worker_num(
+            assert self.current_endpoint in self.pp_group_endpoints
+        else:
+            self.pp_degree = 1
+            self.pp_ring_id = -1
+            self.pp_rank = -1   
+            self.pp_group_id = -1   
+            self.pp_group_endpoints = []
+
+        # outter-pure-dp 
+        # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
+        # e.g. mp-sharding-pp-dp
+        # sharding-hybrid-dp as one senario of outter-pure-dp 
+        assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.pure_dp_degree, "mp_degree: [{}], mp_degree: [{}], mp_degree: [{}], mp_degree: [{}]; BUT global nrank: [{}]".format(
+            self.mp_degree, self.sharding_degree, self.pp_degree, self.pure_dp_degree, self.global_word_size
+        )
+        if self.pure_dp_degree > 1 :
+            self.pure_dp_ring_id = 2
+            self.pure_dp_rank = self.global_rank // (self.sharding_degree * self.mp_degree * self.pp_degree)
+            pure_dp_first_rank_idx = self.global_rank % (self.sharding_degree * self.mp_degree * self.pp_degree)
+            pure_dp_offset = (self.sharding_degree * self.mp_degree * self.pp_degree)
+            self.pure_dp_group_endpoints = []
+            for i in range(self.pure_dp_degree):
+                self.pure_dp_group_endpoints.append(self.global_endpoints[
+                    pure_dp_first_rank_idx + pure_dp_offset * i]
                     )
-                    self.pp_rank = self.global_rank // (
-                        self.sharding_group_size *
-                        self._inner_parallelism_size) % self.pipeline_nodes
-                    offset = self.sharding_group_size * self._inner_parallelism_size
-                    # TODO: Adjust for dp
-                    idx_with_pp_0 = self.global_rank % (
-                        self.sharding_group_size * self._inner_parallelism_size)
-                    self.pp_group_endpoints = []
-                    for i in range(self.pipeline_nodes):
-                        self.pp_group_endpoints.append(self.endpoints[
-                            idx_with_pp_0])
-                        idx_with_pp_0 += offset
-                    print("pp_group_endpoints:", self.pp_group_endpoints)
-                    print("pp_rank:", self.pp_rank)
+            assert self.current_endpoint in self.pure_dp_group_endpoints
+        else:
+            self.pure_dp_ring_id = -1
+            self.pure_dp_rank = -1   
+            self.pure_dp_group_endpoints = []
+                       
+        # global ring
+        # use for gen_nccl_comm_sync, amp check nan inf, clip by global norm
+        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be devided by dp_degree
+        self.global_ring_id = 3
 
-                    #self.pp_group_endpoints = [
-                    #    ep for idx, ep in enumerate(self.endpoints)
-                    #    if (idx % self.sharding_group_size) == self.sharding_rank
-                    #]
-                self.global_group_id = 3
-                self.global_rank = self.global_rank
-                self.global_group_size = self.role_maker._worker_num()
-                self.global_group_endpoints = self.endpoints[:]
-                logging.info("Using Sharing as Outer parallelism mode !")
-                self.dp_ring_id = -1
-                self.dp_rank = -1
-                self.dp_group_size = None
-                self.dp_group_endpoints = None
 
-                logging.info("Using Sharing with pipeline !")
-            #else:
-            #    self.sharding_ring_id = 0
-            #    self.sharding_rank = self.global_rank
-            #    self.sharding_group_size = self.role_maker._worker_num()
-            #    self.sharding_group_endpoints = self.endpoints
+        logging.info("global word size: {}".format(self.global_word_size))
+        logging.info("global rank: {}".format(self.global_rank))
+        logging.info("global endpoints: {}".format(self.global_endpoints))
+        logging.info("global ring id: {}".format(self.global_ring_id))
+        logging.info("#####" * 6)
 
-            #    # sharding parallelism is the only model parallelism in the current setting
-            #    self.mp_group_id = self.sharding_ring_id
-            #    self.mp_rank = self.sharding_rank
-            #    self.mp_group_size = self.sharding_group_size
-            #    self.mp_group_endpoints = self.sharding_group_endpoints[:]
+        logging.info("mp group size: {}".format(self.mp_degree))
+        logging.info("mp rank: {}".format(self.mp_rank))
+        logging.info("mp group id: {}".format(self.mp_group_id))
+        logging.info("mp group endpoints: {}".format(self.mp_group_endpoints))
+        logging.info("mp ring id: {}".format(self.mp_ring_id))
+        logging.info("#####" * 6)
 
-            #    logging.info("Using Sharing alone mode !")
+        logging.info("sharding group size: {}".format(self.sharding_degree))
+        logging.info("sharding rank: {}".format(self.sharding_rank))
+        logging.info("sharding group id: {}".format(self.sharding_group_id))
+        logging.info("sharding group endpoints: {}".format(self.sharding_group_endpoints))
+        logging.info("sharding ring id: {}".format(self.sharding_ring_id))
+        logging.info("#####" * 6)
 
-            self.dp_ring_id = -1
-            self.dp_rank = -1
-            self.dp_group_size = None
-            self.dp_group_endpoints = None
+        logging.info("pp group size: {}".format(self.pp_degree))
+        logging.info("pp rank: {}".format(self.pp_rank))
+        logging.info("pp group id: {}".format(self.pp_group_id))
+        logging.info("pp group endpoints: {}".format(self.pp_group_endpoints))
+        logging.info("pp ring id: {}".format(self.pp_ring_id))
+        logging.info("#####" * 6)
 
-            #self.pp_ring_id = -1
-            #self.pp_rank = -1
-            #self.pp_group_size = None
-            #self.pp_group_endpoints = None
-            #self.dp_ring_id = -1
-            #self.dp_rank = -1
-            #self.dp_group_size = None
-            #self.dp_group_endpoints = None
-
-            logging.info("Using Sharing alone mode !")
-
-        #logging.info("global word size: {}".format(self.global_word_size))
-        #logging.info("global rank: {}".format(self.global_rank))
-        #logging.info("sharding group_size: {}".format(self.sharding_group_size))
-        #logging.info("sharding rank: {}".format(self.sharding_rank))
-        #logging.info("current model parallelism group_size: {}".format(
-        #    self.mp_group_size))
-        #logging.info("current model parallelism rank: {}".format(self.mp_rank))
-        #logging.info("dp group size: {}".format(self.dp_group_size))
-        #logging.info("dp rank: {}".format(self.dp_rank))
-        #logging.info("current endpoint: {}".format(self.current_endpoint))
-        #logging.info("global word endpoints: {}".format(self.endpoints))
-        #logging.info("sharding group endpoints: {}".format(
-        #    self.sharding_group_endpoints))
-        #logging.info("current model parallelism group endpoints: {}".format(
-        #    self.mp_group_endpoints))
-        #logging.info("dp group endpoints: {}".format(self.dp_group_endpoints))
+        logging.info("pure dp group size: {}".format(self.pure_dp_degree))
+        logging.info("pure dp rank: {}".format(self.pure_dp_rank))
+        logging.info("pure dp group endpoints: {}".format(self.pure_dp_group_endpoints))
+        logging.info("pure dp ring id: {}".format(self.pure_dp_ring_id))
+        logging.info("#####" * 6)
 
         return
 

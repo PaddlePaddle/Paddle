@@ -74,14 +74,6 @@ class GradientClipHelper(object):
                 assert (len(op.desc.output_arg_names()) == 1)
                 sum_res = op.desc.output_arg_names()[0]
 
-                # this allreduce should not overlap with calc and should be scheduled in calc stream
-                # block._insert_op_without_sync(
-                #     idx + 1,
-                #     type='c_sync_comm_stream',
-                #     inputs={'X': sum_res},
-                #     outputs={'Out': sum_res},
-                #     attrs={'ring_id': 0,
-                #            OP_ROLE_KEY: OpRole.Optimize})
                 block._insert_op_without_sync(
                     idx + 1,
                     type='c_allreduce_sum',
@@ -93,14 +85,7 @@ class GradientClipHelper(object):
                         'use_calc_stream': True,
                         OP_ROLE_KEY: OpRole.Optimize,
                     })
-                # block._insert_op_without_sync(
-                #     idx + 1,
-                #     type='c_sync_calc_stream',
-                #     inputs={'X': sum_res},
-                #     outputs={'Out': sum_res},
-                #     attrs={OP_ROLE_KEY: OpRole.Optimize})
 
-            # the grad sum here should take the all and only param in the current shard
         to_check_param = set(reversed_x_paramname)
         should_check_param = set(shard.global_params).intersection(
             set([
@@ -114,4 +99,45 @@ class GradientClipHelper(object):
         for var_name in deperated_vars:
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
+        return
+
+    def sync_global_norm(self, block, ring_id, pure_dp_degree=1):
+        """
+        prune gradient_clip related ops for params that not belong to cur shard
+        prune: square, reduce_sum, elementwise_mul
+        keep: sum, sqrt, elementwise_max, elementwise_div
+        """
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_gradient_clip_op(op):
+                continue
+
+            if op.type == "sum":
+                sum_res = op.desc.output_arg_names()[0]
+                block._insert_op_without_sync(
+                    idx + 1,
+                    type='c_allreduce_sum',
+                    inputs={'X': sum_res},
+                    outputs={'Out': sum_res},
+                    attrs={
+                        'ring_id': ring_id,
+                        'op_namescope': "/gradient_clip_model_parallelism",
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Optimize,
+                    })
+
+                # global norm should only be sum within each model parallelism word size
+                if pure_dp_degree > 1:
+                    block._insert_op_without_sync(
+                        idx + 2,
+                        type='scale',
+                        inputs={'X': sum_res},
+                        outputs={'Out': sum_res},
+                        attrs={
+                            'scale': 1.0 / float(pure_dp_degree),
+                            'op_namescope': "/gradient_clip_model_parallelism",
+                            'bias': 0.0,
+                            'bias_after_scale': False,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })     
+
         return
