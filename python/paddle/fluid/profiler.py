@@ -143,7 +143,7 @@ def npu_profiler(output_file, config=None):
             exe.run(fluid.default_startup_program())
 
             output_file = 'npu.txt'
-            with profiler.cuda_profiler(output_file) as nvprof:
+            with profiler.npu_profiler(output_file) as npu_prof:
                 for i in range(epoc):
                     input = np.random.random(dshape).astype('float32')
                     exe.run(fluid.default_main_program(), feed={'data': input})
@@ -162,6 +162,7 @@ def npu_profiler(output_file, config=None):
     # Disables profiler collection.
     finally:
         core.npu_prof_stop(config)
+        core.npu_prof_finalize()
 
 
 def reset_profiler():
