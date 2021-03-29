@@ -83,7 +83,7 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
   predictor->ZeroCopyRun();
 
   auto out_tensor =
-      predictor->GetOutputTensor(predictor->GetOutputNames().front();
+      predictor->GetOutputTensor(predictor->GetOutputNames().front());
   std::vector<float> data_o(10);
   out_tensor->copy_to_cpu(data_o.data());
 
