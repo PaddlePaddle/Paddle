@@ -111,6 +111,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "affine_channel",
       "multiclass_nms",
       "nearest_interp",
   };
@@ -196,6 +197,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
     }
 
+    if (op_type == "affine_channel") {
+      if (!desc.HasAttr("data_layout")) return false;
+      auto data_layout = framework::StringToDataLayout(
+          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != framework::DataLayout::kNCHW) return false;
+    }
+
     if (op_type == "multiclass_nms") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
@@ -238,6 +246,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
+
     if (op_type == "nearest_interp") {
       std::vector<std::string> attrs{"data_layout",   "interp_method",
                                      "align_corners", "scale",
@@ -254,7 +263,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
     }
-
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
