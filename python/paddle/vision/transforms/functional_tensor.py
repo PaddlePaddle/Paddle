@@ -28,7 +28,7 @@ def _assert_image_tensor(img, data_format):
             img, paddle.Tensor) or img.ndim != 3 or not data_format.lower() in (
                 'chw', 'hwc'):
         raise RuntimeError(
-            'Not support [type={}, ndim={}, data_format={}] paddle image'.
+            'not support [type={}, ndim={}, data_format={}] paddle image'.
             format(type(img), img.ndim, data_format))
 
 
@@ -157,8 +157,6 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
 
 
 def _affine_grid(theta, w, h, ow, oh):
-    '''
-    '''
     d = 0.5
     # tic = time.time()
     base_grid = paddle.ones((1, oh, ow, 3), dtype=theta.dtype)
@@ -176,24 +174,81 @@ def _affine_grid(theta, w, h, ow, oh):
     return output_grid.reshape((1, oh, ow, 2))
 
 
+def _grid_transform(img, grid, mode, fill):
+
+    if img.shape[0] > 1:
+        # Apply same grid to a batch of images
+        grid = grid.expand(img.shape[0], grid.shape[1], grid.shape[2],
+                           grid.shape[3])
+
+    # Append a dummy mask for customized fill colors, should be faster than grid_sample() twice
+    if fill is not None:
+        dummy = paddle.ones(
+            (img.shape[0], 1, img.shape[2], img.shape[3]), dtype=img.dtype)
+        img = paddle.concat((img, dummy), axis=1)
+
+    img = grid_sample(
+        img, grid, mode=mode, padding_mode="zeros", align_corners=False)
+
+    # Fill with required color
+    if fill is not None:
+        mask = img[:, -1:, :, :]  # n 1 h w
+        img = img[:, :-1, :, :]  # n c h w
+        mask = mask.expand_as(img)
+        len_fill = len(fill) if isinstance(fill, (tuple, list)) else 1
+        fill_img = paddle.to_tensor(fill).reshape(
+            (1, len_fill, 1, 1)).expand_as(img)
+
+        if mode == 'nearest':
+            mask = paddle.cast(mask < 0.5, img.dtype)
+            img = img * (1. - mask) + mask * fill_img
+        else:  # 'bilinear'
+            img = img * mask + (1.0 - mask) * fill_img
+
+    return img
+
+
 def rotate(img,
            angle,
            interpolation='nearest',
            expand=False,
            center=None,
            fill=None,
-           translate=None,
            data_format='CHW'):
-    '''
-    https://github.com/python-pillow/Pillow/blob/11de3318867e4398057373ee9f12dcb33db7335c/src/PIL/Image.py#L2054
-    '''
+    """Rotates the image by angle.
+
+    Args:
+        img (paddle.Tensor): Image to be rotated.
+        angle (float or int): In degrees degrees counter clockwise order.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest" 
+            - "bilinear"
+            - "bicubic"
+        expand (bool, optional): Optional expansion flag.
+            If true, expands the output image to make it large enough to hold the entire rotated image.
+            If false or omitted, make the output image the same size as the input image.
+            Note that the expand flag assumes rotation around the center and no translation.
+        center (2-tuple, optional): Optional center of rotation.
+            Origin is the upper left corner.
+            Default is the center of the image.
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        paddle.Tensor: Rotated image.
+
+    """
 
     angle = -angle % 360
+    img = img.unsqueeze(0)
 
     # n, c, h, w = img.shape
     w, h = _get_image_size(img, data_format=data_format)
 
     # image center is (0, 0) in matrix
+    translate = None
     if translate is None:
         post_trans = [0, 0]
     else:
@@ -204,7 +259,7 @@ def rotate(img,
     else:
         rotn_center = [(p - s * 0.5) for p, s in zip(center, [w, h])]
 
-    angle = -math.radians(angle)
+    angle = math.radians(angle)
     matrix = [
         math.cos(angle),
         math.sin(angle),
@@ -248,9 +303,10 @@ def rotate(img,
 
     grid = _affine_grid(matrix, w, h, ow, oh)
 
-    out = grid_sample(img, grid, mode=interpolation)
+    # out = grid_sample(img, grid, mode=interpolation)
+    out = _grid_transform(img, grid, mode=interpolation, fill=fill)
 
-    return out
+    return out.squeeze(0)
 
 
 def vflip(img, data_format='CHW'):
