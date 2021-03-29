@@ -39,7 +39,6 @@ void SectionWorker::RunForward(
     int op_role = op->Attr<int>(std::string("op_role"));
     // We run op with op_role = kLRSched only for the first microbatch
     // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-
     bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
                             (op_role == (static_cast<int>(OpRole::kForward) |
                                          static_cast<int>(OpRole::kLoss))) ||
@@ -47,7 +46,6 @@ void SectionWorker::RunForward(
     bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
                       (op_role == (static_cast<int>(OpRole::kForward) |
                                    static_cast<int>(OpRole::kLoss)));
-
     if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
       VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
               << micro_id;
