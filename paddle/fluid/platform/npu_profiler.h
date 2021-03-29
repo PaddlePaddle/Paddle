@@ -23,49 +23,33 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// ACL_AICORE_ARITHMETIC_UTILIZATION = 0, record arithmetic stats
-// ACL_AICORE_PIPE_UTILIZATION = 1, record pipe
-// ACL_AICORE_MEMORY_BANDWIDTH = 2, record memory
-// ACL_AICORE_L0B_AND_WIDTH = 3, recore internal io
-// ACL_AICORE_RESOURCE_CONFLICT_RATI = 4, record conflict ratio
+// For ACL 20.1
+// ACL_AICORE_ARITHMATIC_THROUGHPUT = 0, record arithmetic stats
+// ACL_AICORE_PIPELINE = 1, record pipeline
+// ACL_AICORE_SYNCHRONIZATION = 2, record sync
+// ACL_AICORE_MEMORY = 3, recore memory
+// ACL_AICORE_INTERNAL_MEMORY = 4, recore internal memory
+// ACL_AICORE_STALL = 5, record pipeline ratio
 constexpr aclprofAicoreMetrics default_metrics =
-    ACL_AICORE_ARITHMETIC_UTILIZATION;
+    ACL_AICORE_ARITHMATIC_THROUGHPUT;
 
 // ACL_PROF_ACL_API, record ACL API stats
 // ACL_PROF_TASK_TIME, record AI core stats
 // ACL_PROF_AICORE_METRICS, must include
 // ACL_PROF_AICPU_TRACE, recore AICPU, not supported yet
-constexpr dataTypeConfig default_type =
+constexpr uint64_t default_type =
     ACL_PROF_ACL_API | ACL_PROF_AICORE_METRICS | ACL_PROF_TASK_TIME;
 
-void NPUProfilerInit(std::string output_path) {
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclprofInit(output_path.c_str(), output_path.size()));
-}
-
-void NPUProfilerStart(const aclprofConfig *config)) {
-  if (config == nullptr) {
-    // NOTE(zhiqiu): support single device by default.
-    int device_id = GetCurrentNPUDeviceId();
-    std::vector<uint32_t> devices = {static_cast<uint32_t>(device_id)};
-    config = NPUProfilerCreateConfig(devices, metrics, c);
-  }
-  PADDLE_ENFORCE_NPU_SUCCESS(aclprofStart(config));
-}
-
-void NPUProfilerStop(const aclprofConfig *config)) {
-  PADDLE_ENFORCE_NPU_SUCCESS(aclprofStop(config));
-  NPUProfilerDestroyConfig(config);
-}
-
-void NPUProfilerFinalize() { PADDLE_ENFORCE_NPU_SUCCESS(aclprofFinalize()); }
-
 aclprofConfig *NPUProfilerCreateConfig(
-    std::vector<int32_t> devices,
-    aclprofAicoreMetrics metrics = default_metrics,
-    dataTypeConfig c = default_type, p aclprofAicoreEvents *events = nullptr) {
-  aclprofConfig* config = aclprofCreateConfig(devices.data(), devices.size(),
-                                            metrics, events, c));
+    std::vector<uint32_t> devices = {},
+    aclprofAicoreMetrics metrics = default_metrics, uint64_t c = default_type,
+    aclprofAicoreEvents *events = nullptr) {
+  if (devices.size() == 0) {
+    int device_id = GetCurrentNPUDeviceId();
+    devices.emplace_back(device_id);
+  }
+  aclprofConfig *config =
+      aclprofCreateConfig(devices.data(), devices.size(), metrics, events, c);
   PADDLE_ENFORCE_NOT_NULL(config, paddle::platform::errors::External(
                                       "Failed to create prof config for NPU"));
   return config;
@@ -74,6 +58,34 @@ aclprofConfig *NPUProfilerCreateConfig(
 void NPUProfilerDestroyConfig(const aclprofConfig *config) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclprofDestroyConfig(config));
 }
+
+void NPUProfilerInit(std::string output_path) {
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclprofInit(output_path.c_str(), output_path.size()));
+}
+
+void NPUProfilerStart(const aclprofConfig *config) {
+  if (config == nullptr) {
+    // NOTE(zhiqiu): support single device by default.
+    int device_id = GetCurrentNPUDeviceId();
+    std::vector<uint32_t> devices = {static_cast<uint32_t>(device_id)};
+    config = NPUProfilerCreateConfig(devices);
+  }
+  PADDLE_ENFORCE_NPU_SUCCESS(aclprofStart(config));
+}
+
+void NPUProfilerStop(const aclprofConfig *config) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclprofStop(config));
+  NPUProfilerDestroyConfig(config);
+}
+
+void NPUProfilerFinalize() { PADDLE_ENFORCE_NPU_SUCCESS(aclprofFinalize()); }
+
+struct NPUProfConfigWrapper {
+  aclprofConfig *p_;
+  explicit NPUProfConfigWrapper(aclprofConfig *p) : p_(p) {}
+  aclprofConfig *ptr() { return p_; }
+};
 
 }  // namespace platform
 }  // namespace paddle

@@ -2084,12 +2084,23 @@ All parameter, weight, gradient are variables in Paddle.
     platform::AclInstance::Instance().Finalize();
   });  // private interface
 
+  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
+
   m.def("npu_prof_init", platform::NPUProfilerInit);
-  m.def("npu_prof_start", platform::NPUProfilerStart);
-  m.def("npu_prof_stop", platform::NPUProfilerStop);
+  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStart(c.ptr());
+  });
+  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerStop(c.ptr());
+  });
   m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
-  m.def("npu_prof_create_config", platform::NPUProfilerCreateConfig);
-  m.def("npu_prof_destropy_config", platform::NPUProfilerDestroyConfig);
+  m.def("npu_prof_create_config", []() {
+    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
+  });
+
+  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
+    platform::NPUProfilerDestroyConfig(c.ptr());
+  });
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
