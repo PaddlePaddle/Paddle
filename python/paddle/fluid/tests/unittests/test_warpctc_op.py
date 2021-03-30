@@ -243,10 +243,16 @@ class TestWarpCTCOp(OpTest):
         self.outputs['WarpCTCGrad'] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.009, check_dygraph=False)
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.009,
+                check_dygraph=False)
         else:
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.007,
+                check_dygraph=False)
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
@@ -342,10 +348,16 @@ class TestWarpCTCOpWithPadding(OpTest):
         self.outputs['WarpCTCGrad'] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.009, check_dygraph=False)
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.009,
+                check_dygraph=False)
         else:
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.007,
+                check_dygraph=False)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
