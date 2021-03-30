@@ -23,6 +23,7 @@ message GraphItem {
 }
 
 message GraphMeta {
-    required int64 wideth = 1; //D
-    required int64 hegiht = 2; //K
+    required int64 width = 1; //D
+    required int64 height = 2; //K
+    required int64 item_path_nums = 3; //J
 }

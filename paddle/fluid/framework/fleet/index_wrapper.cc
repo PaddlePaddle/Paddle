@@ -19,13 +19,10 @@ limitations under the License. */
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/fleet/index_wrapper.h"
 
 namespace paddle {
 namespace framework {
-
-using paddle::distributed::Communicator;
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
@@ -135,17 +132,74 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
   return res;
 }
 
-int GraphIndex::load(std::string path) { return 0; }
+int GraphIndex::load(std::string filename) {
+  FILE* fp = fopen(filename.c_str(), "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "Can not open file: %s\n", filename.c_str());
+    return -1;
+  }
 
-std::vector<int64_t> GraphIndex::get_path_of_item(
+  int num = 0;
+  size_t ret = fread(&num, sizeof(num), 1, fp);
+  while (ret == 1 && num > 0) {
+    std::string content(num, '\0');
+    if (fread(const_cast<char*>(content.data()), 1, num, fp) !=
+        static_cast<size_t>(num)) {
+      fprintf(stderr, "Read from file: %s failed, invalid format.\n",
+              filename.c_str());
+      break;
+    }
+    KVItem item;
+    if (!item.ParseFromString(content)) {
+      fprintf(stderr, "Parse from file: %s failed.\n", filename.c_str());
+      break;
+    }
+    if (item.key() == ".graph_meta") {
+      meta_.ParseFromString(item.value());
+      path_item_set_dict_.reserve(std::pow(meta_.height(), meta_.width()));
+    } else {
+      GraphItem graph_item;
+      graph_item.ParseFromString(item.value());
+
+      uint64_t item_id = graph_item.item_id();
+      if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
+        std::vector<int64_t> path_ids;
+        for (int i = 0; i < graph_item.path_id_size(); i++) {
+          path_ids.push_back(graph_item.path_id(i));
+        }
+        item_path_dict_[item_id] = path_ids;
+        for (auto& path_id : path_ids) {
+          if (path_item_set_dict_.find(path_id) == path_item_set_dict_.end()) {
+            std::unordered_set<uint64_t> path_set;
+            path_item_set_dict_[path_id] = path_set;
+          } else {
+            path_item_set_dict_[path_id].insert(item_id);
+          }
+        }
+      }
+    }
+    ret = fread(&num, sizeof(num), 1, fp);
+  }
+  fclose(fp);
+  return 0;
+}
+
+std::vector<std::vector<int64_t>> GraphIndex::get_path_of_item(
     std::vector<uint64_t>& items) {
-  std::vector<int64_t> result;
+  std::vector<std::vector<int64_t>> result;
+  for (auto& item : items) {
+    result.push_back(item_path_dict_[item]);
+  }
   return result;
 }
 
-std::vector<uint64_t> GraphIndex::get_item_of_path(
+std::vector<std::vector<uint64_t>> GraphIndex::get_item_of_path(
     std::vector<int64_t>& paths) {
-  std::vector<uint64_t> result;
+  std::vector<std::vector<uint64_t>> result;
+  for (auto& path : paths) {
+    result.push_back(std::vector<uint64_t>(path_item_set_dict_[path].begin(),
+                                           path_item_set_dict_[path].end()));
+  }
   return result;
 }
 

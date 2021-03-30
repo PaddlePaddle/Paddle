@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cmath>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -127,12 +128,14 @@ class GraphIndex : public Index {
 
   int load(std::string path);
 
-  std::vector<int64_t> get_path_of_item(std::vector<uint64_t>& items);
-  std::vector<uint64_t> get_item_of_path(std::vector<int64_t>& paths);
+  std::vector<std::vector<int64_t>> get_path_of_item(
+      std::vector<uint64_t>& items);
+  std::vector<std::vector<uint64_t>> get_item_of_path(
+      std::vector<int64_t>& paths);
 
  private:
   GraphMeta meta_;
-  std::unordered_map<uint64_t, int64_t> item_path_dict_;
+  std::unordered_map<uint64_t, std::vector<int64_t>> item_path_dict_;
   std::unordered_map<int64_t, std::unordered_set<uint64_t>> path_item_set_dict_;
 };
 
