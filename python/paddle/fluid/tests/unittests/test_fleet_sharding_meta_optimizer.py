@@ -292,5 +292,200 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         ])
 
 
+class TestFleetMetaOptimizer(TestFleetMetaOptimizer):
+    def setUp(self):
+        os.environ["PADDLE_TRAINER_ID"] = "3"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+
+    def test_sharding_with_mp(self):
+        # NOTE(JZ-LIANG) MP parallelism need user to build model with MP API
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, _ = self.net(train_prog, startup_prog)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_segment_strategy": "segment_broadcast_MB",
+            "segment_broadcast_MB": 0.2,
+            "segment_anchors": None,
+            "sharding_degree": 2,
+            "hybrid_dp": False,
+            "gradient_merge_acc_step": 1,
+            "mp_degree": 2
+        }
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # should has ring id for MP
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(0, created_ring_ids)
+
+        # check correctness of MP group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_1":
+                sharding_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of sharding group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_2":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+    def test_sharding_hybrid_dp(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, _ = self.net(train_prog, startup_prog)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_segment_strategy": "segment_broadcast_MB",
+            "segment_broadcast_MB": 0.2,
+            "segment_anchors": None,
+            "sharding_degree": 2,
+            "hybrid_dp": True,
+            "gradient_merge_acc_step": 1,
+            "mp_degree": 1
+        }
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check ring id for outter dp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(2, created_ring_ids)
+
+        # check correctness of sharding group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_1":
+                sharding_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_2":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+        # check loss scale for sharding hybrid dp
+        scale_ = -1
+        for op in main_prog_ops:
+            if op.type == "scale":
+                scale_ = float(op.desc.attr("scale"))
+        self.assertEqual(scale_, 0.25)
+
+        # check program (allreudce)
+        ops = [op.type for op in main_prog_ops]
+        self.assertEqual(ops, [
+            'fill_constant', 'fill_constant', 'fill_constant',
+            'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
+            'mul', 'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh',
+            'mul', 'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
+            'fill_constant', 'scale', 'mean_grad', 'cross_entropy_grad2',
+            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
+            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'c_sync_comm_stream', 'momentum', 'momentum', 'momentum'
+        ])
+
+    def test_sharding_hybrid_dp_gm(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, _ = self.net(train_prog, startup_prog)
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_segment_strategy": "segment_broadcast_MB",
+            "segment_broadcast_MB": 0.2,
+            "segment_anchors": None,
+            "sharding_degree": 2,
+            "hybrid_dp": True,
+            "gradient_merge_acc_step": 4,
+            "mp_degree": 1
+        }
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check ring id for outter dp
+        created_ring_ids = [
+            op.desc.attr("ring_id") for op in startup_prog_ops
+            if op.type == "c_comm_init"
+        ]
+        self.assertIn(2, created_ring_ids)
+
+        # check correctness of sharding group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_1":
+                sharding_group_waiting_ports = op.desc.attr("other_endpoints")
+
+        self.assertEqual(sharding_group_waiting_ports, ['127.0.0.1:36003'])
+
+        # check correctness of dp group
+        sharding_group_waiting_port = None
+        for op in startup_prog_ops:
+            if op.type == "c_gen_nccl_id" and op.desc.output_arg_names()[
+                    0] == "nccl_id_2":
+                dp_group_waiting_ports = op.desc.attr("other_endpoints")
+        self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
+
+        # check program
+        fw_bw_ops = [op.type for op in train_prog.blocks[0].ops]
+        opt_ops = [op.type for op in train_prog.blocks[2].ops]
+        self.assertEqual(fw_bw_ops, [
+            'fill_constant', 'fill_constant', 'fill_constant',
+            'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream',
+            'c_sync_comm_stream', 'mul', 'elementwise_add', 'tanh', 'mul',
+            'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'softmax',
+            'cross_entropy2', 'mean', 'fill_constant', 'scale', 'mean_grad',
+            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
+            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'tanh_grad', 'elementwise_add_grad', 'mul_grad',
+            'c_sync_calc_stream', 'c_reduce_sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'elementwise_add', 'elementwise_add',
+            'elementwise_add', 'increment', 'elementwise_mod', 'equal',
+            'conditional_block'
+        ])
+        self.assertEqual(opt_ops, [
+            'c_allreduce_sum', 'c_allreduce_sum', 'c_allreduce_sum', 'scale',
+            'scale', 'scale', 'momentum', 'momentum', 'momentum',
+            'fill_constant', 'fill_constant', 'fill_constant'
+        ])
+
+        # # check loss scale for gradient merge
+        scale_ = -1
+        for op in train_prog.blocks[2].ops:
+            if op.type == "scale":
+                scale_ = float(op.desc.attr("scale"))
+                self.assertEqual(scale_, 0.25)
+
+
 if __name__ == "__main__":
     unittest.main()
