@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import unittest
 import paddle
 import numpy as np
@@ -51,11 +50,17 @@ class TestJITLoad(unittest.TestCase):
             custom_module.custom_relu, custom_module.custom_relu_dup
         ]
         self.dtypes = ['float32', 'float64']
-        self.devices = ['cpu', 'gpu']
+        if paddle.is_compiled_with_cuda():
+            self.dtypes.append('float16')
+        self.devices = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.devices.append('gpu')
 
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static(custom_op, device, dtype, x)
@@ -69,6 +74,8 @@ class TestJITLoad(unittest.TestCase):
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
@@ -88,7 +95,7 @@ class TestJITLoad(unittest.TestCase):
         caught_exception = False
         try:
             x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
-            custom_relu_dynamic(custom_module.custom_relu, 'cpu', 'float32', x)
+            custom_relu_dynamic(custom_module.custom_relu, 'cpu', 'int32', x)
         except OSError as e:
             caught_exception = True
             self.assertTrue(
@@ -96,25 +103,25 @@ class TestJITLoad(unittest.TestCase):
                 in str(e))
             if IS_WINDOWS:
                 self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:48"
+                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc:47"
                     in str(e))
             else:
                 self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:48"
+                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc:47"
                     in str(e))
         self.assertTrue(caught_exception)
 
         caught_exception = False
         try:
-            x = np.random.uniform(-1, 1, [4, 8]).astype('int64')
-            custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'float32', x)
+            x = np.random.uniform(-1, 1, [4, 8]).astype('int32')
+            custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'int32', x)
         except OSError as e:
             caught_exception = True
             self.assertTrue(
-                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int64_t`"
+                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32_t`"
                 in str(e))
             self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:49" in
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu:50" in
                 str(e))
         self.assertTrue(caught_exception)
 

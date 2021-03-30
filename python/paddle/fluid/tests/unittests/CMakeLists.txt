@@ -84,6 +84,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
     LIST(REMOVE_ITEM TEST_OPS test_memcpy_op)
 endif()
 
@@ -449,6 +450,7 @@ py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_stat
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
     FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")

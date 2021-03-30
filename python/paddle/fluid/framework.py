@@ -53,7 +53,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'load_op_library',
     'require_version',
     'device_guard',
     'set_flags',
@@ -877,7 +876,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
+                temp_out = var.block.create_var(dtype='int64')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
@@ -1863,6 +1862,7 @@ class Variable(object):
         if not isinstance(item, tuple):
             item = [item]
 
+        decrease_axes = []
         axes = []
         starts = []
         ends = []
@@ -1933,15 +1933,23 @@ class Variable(object):
                 if end is None:
                     end = max_integer if step > 0 else (0 - max_integer)
             else:
+                decrease_axes.append(dim)
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
                 step = 1
+
             axes.append(dim)
             starts.append(start)
             ends.append(end)
             steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes
+        }
 
         from .layers import utils
         if utils._contain_var(starts):
@@ -1997,7 +2005,8 @@ class Variable(object):
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(value)))
 
-        self.block.append_op(
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
 
         return self
@@ -2121,7 +2130,8 @@ class Operator(object):
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
-        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
+        'c_wait_comm', 'c_wait_compute'
     }
 
     def __init__(self,
@@ -3030,7 +3040,11 @@ class Block(object):
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
                         # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
-                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                        # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
+                        if op.type in [
+                                "c_broadcast", "c_sync_comm_stream",
+                                "coalesce_tensor"
+                        ]:
                             continue
                         init_ops.append(op)
                 return init_ops
@@ -5754,33 +5768,6 @@ def _dygraph_place_guard(place):
     finally:
         _global_expected_place_ = tmp_place
         _set_dygraph_tracer_expected_place(tmp_place)
-
-
-def load_op_library(lib_filename):
-    """
-    :api_attr: Static Graph
-
-    Load a dynamic library, including custom operators and kernels.
-    When library is loaded, ops and kernels registered in the library
-    will be available in PaddlePaddle main process.
-    Please note, the type of custom operators can't have the same type
-    with the existing operators in the framework.
-
-    Args:
-        lib_filename (str): name of dynamic library.
-    
-    Returns:
-        list[str]: new registered custom op names.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            #fluid.load_op_library('custom_op.so')
-
-    """
-    core.load_op_library(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
 
 
 def switch_device(device):
