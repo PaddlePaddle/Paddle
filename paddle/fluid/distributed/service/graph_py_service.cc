@@ -90,6 +90,7 @@ void GraphPyClient::start_client() {
       (paddle::distributed::GraphBrpcClient*)
           paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr->configure(worker_proto, dense_regions, _ps_env, client_id);
+  worker_ptr->set_shard_num(get_shard_num());
 }
 void GraphPyServer::start_server() {
   std::string ip = server_list[rank];
@@ -119,7 +120,6 @@ void GraphPyServer::start_server() {
 ::paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
   // Generate server proto desc
   ::paddle::distributed::PSParameter server_fleet_desc;
-  server_fleet_desc.set_shard_num(get_shard_num());
   ::paddle::distributed::ServerParameter* server_proto =
       server_fleet_desc.mutable_server_param();
   ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
@@ -162,7 +162,6 @@ void GraphPyServer::start_server() {
 
 ::paddle::distributed::PSParameter GraphPyClient::GetWorkerProto() {
   ::paddle::distributed::PSParameter worker_fleet_desc;
-  worker_fleet_desc.set_shard_num(get_shard_num());
   ::paddle::distributed::WorkerParameter* worker_proto =
       worker_fleet_desc.mutable_worker_param();
 

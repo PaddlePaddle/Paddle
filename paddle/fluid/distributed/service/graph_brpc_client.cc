@@ -324,7 +324,7 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   return fut;
 }
 int32_t GraphBrpcClient::initialize() {
-  set_shard_num(_config.shard_num());
+  // set_shard_num(_config.shard_num());
   BrpcPsClient::initialize();
   server_size = get_server_nums();
   graph_service = NULL;

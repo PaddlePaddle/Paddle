@@ -214,11 +214,6 @@ void prepare_file(char file_name[], bool load_edge) {
       ofile << x << std::endl;
     }
   }
-  // for(int i = 0;i < 10;i++){
-  //   for(int j = 0;j < 10;j++){
-  //    ofile<<i * 127 + j<<"\t"<<i <<"\t"<< 0.5<<std::endl;
-  //   }
-  //}
   ofile.close();
 }
 void GetDownpourSparseTableProto(
@@ -235,7 +230,6 @@ void GetDownpourSparseTableProto(
 ::paddle::distributed::PSParameter GetServerProto() {
   // Generate server proto desc
   ::paddle::distributed::PSParameter server_fleet_desc;
-  server_fleet_desc.set_shard_num(127);
   ::paddle::distributed::ServerParameter* server_proto =
       server_fleet_desc.mutable_server_param();
   ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
@@ -256,7 +250,6 @@ void GetDownpourSparseTableProto(
 
 ::paddle::distributed::PSParameter GetWorkerProto() {
   ::paddle::distributed::PSParameter worker_fleet_desc;
-  worker_fleet_desc.set_shard_num(127);
   ::paddle::distributed::WorkerParameter* worker_proto =
       worker_fleet_desc.mutable_worker_param();
 
@@ -344,6 +337,7 @@ void RunClient(
       (paddle::distributed::GraphBrpcClient*)
           paddle::distributed::PSClientFactory::create(worker_proto));
   worker_ptr_->configure(worker_proto, dense_regions, _ps_env, 0);
+  worker_ptr_->set_shard_num(127);
   worker_ptr_->set_local_channel(index);
   worker_ptr_->set_local_graph_service(
       (paddle::distributed::GraphBrpcService*)service);
@@ -379,16 +373,6 @@ void RunBrpcPushSparse() {
   srand(time(0));
   pull_status.wait();
   std::vector<std::vector<std::pair<uint64_t, float>>> vs;
-  // for(int i = 0;i < 100000000;i++){
-  //   std::vector<distributed::GraphNode> nodes;
-  // pull_status = worker_ptr_->pull_graph_list(0, 0, 0, 1, nodes);
-  //  pull_status.wait();
-  // pull_status = worker_ptr_->batch_sample(0, std::vector<uint64_t>(1, 37), 4,
-  // vs);
-  // pull_status.wait();
-  // }
-  // std::vector<std::pair<uint64_t, float>> v;
-  // pull_status = worker_ptr_->sample(0, 37, 4, v);
   testSampleNodes(worker_ptr_);
   sleep(5);
   testSingleSampleNeighboor(worker_ptr_);
@@ -560,7 +544,6 @@ void RunBrpcPushSparse() {
 
 void testGraphToBuffer() {
   ::paddle::distributed::GraphNode s, s1;
-  // s.add_feature("hhhh");
   s.set_feature_size(1);
   s.set_feature(0, std::string("hhhh"));
   s.set_id(65);
