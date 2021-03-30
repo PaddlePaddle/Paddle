@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.layers import Layer
+from .meta_parallel_base import MetaParallelBase
 
 
 class ModelParallel(MetaParallelBase):
-    def __init__(self, layers):
-        super(ModelParallel,
-              self).__init__(layers.full_name() + "_model_parallel")
+    def __init__(self, layers, hcg):
+        super(ModelParallel, self).__init__(layers)
         self._layers = layers
         self.prepare_for_model()
 

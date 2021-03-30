@@ -243,17 +243,17 @@ class Fleet(object):
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment
         """
-        hybrid_configs = self._user_defined_strategy.hybrid_configs
-        self.dp_num = hybrid_configs["num_data_parallel"]
-        self.mp_num = hybrid_configs["num_model_parallel"]
-        self.pp_num = hybrid_configs["num_pipeline_parallel"]
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_num = self.hybrid_configs["num_data_parallel"]
+        self.mp_num = self.hybrid_configs["num_model_parallel"]
+        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
 
         self._topology = CommunicateTopology(
             hybrid_names=["data", "model", "pipe"],
-            dims=[dp_num, mp_num, pp_num])
+            dims=[self.dp_num, self.mp_num, self.pp_num])
         self._hcg = HybridCommunicateGroup(self._topology)
 
-        if mp_num > 1:
+        if self.mp_num > 1:
             # initialize the seed
             model_parallel_configs = self._user_defined_strategy.model_parallel_configs
             global_seed = model_parallel_configs["global_seed"]
@@ -735,9 +735,9 @@ class Fleet(object):
         """
         assert model is not None
         # add rule to select MetaParallel
-        self.dp_num = hybrid_configs["num_data_parallel"]
-        self.mp_num = hybrid_configs["num_model_parallel"]
-        self.pp_num = hybrid_configs["num_pipeline_parallel"]
+        self.dp_num = self.hybrid_configs["num_data_parallel"]
+        self.mp_num = self.hybrid_configs["num_model_parallel"]
+        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
 
         if self.mp_num == 1 and self.pp_num == 1:
             self.model = paddle.DataParallel(
