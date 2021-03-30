@@ -63,7 +63,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                 outputs={"Out": cpu_var_name},
                 attrs={
                     "shape": [10, 10],
-                    "dtype": npu_var.dtype,
+                    "dtype": cpu_var.dtype,
                     "value": 0.0,
                     "place_type": 2
                 })
@@ -84,7 +84,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         self.assertTrue(np.allclose(npu_, cpu_))
         self.assertTrue(np.allclose(cpu_, np.ones((10, 10))))
 
-    def test_cpu_cpoy_gpu(self):
+    def test_cpu_cpoy_npu(self):
         main_program, npu_var, cpu_var = self.get_prog()
         main_program.global_block().append_op(
             type='memcpy',
