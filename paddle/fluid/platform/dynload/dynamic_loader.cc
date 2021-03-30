@@ -156,10 +156,6 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-    if (!dso_handle) {
-      LOG(WARNING) << "Load library dso_path (failed): " << dso_path
-                   << ", dynload_flags: " << dynload_flags
-                   << ", the reason is: " << dlerror();
     }
   }
   return dso_handle;
@@ -167,17 +163,11 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
-  VLOG(3) << "Try to find library: " << dso_path
-          << " from default system path.";
-
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-  if (!dso_handle) {
-    LOG(WARNING) << "Load library dso_path (failed): " << dso_path
-                 << ", dynload_flags: " << dynload_flags
-                 << ", the reason is: " << dlerror();
-  }
+  VLOG(3) << "Try to find library: " << dso_path
+          << " from default system path.";
 
 // TODO(chenweihang): This path is used to search which libs?
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
