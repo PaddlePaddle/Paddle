@@ -703,6 +703,20 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
                           "The sparse parameter[%d][%s] must have a gradient",
                           var_index, vars_[var_index]->Name()));
     auto var_base = vars_[var_index]->GradVarBase();
+    // need to check tensor type
+    PADDLE_ENFORCE_EQ(
+        var_base->Var().IsType<framework::SelectedRows>(), true,
+        platform::errors::PreconditionNotMet(
+            "The sparse parameter[%d][%s] must have a selectedrows gradient. "
+            "Before forward pass, the parameter type is inferred to be "
+            "SelectedRows, but after backward pass, its actual type becomes "
+            "LodTensor. It is currently not supported by DataParallel. "
+            "For example, if sparse embedding is used, and the weight of "
+            "embedding is shared with subsequent dense parameters, then "
+            "the parameter gradient of the embedding will be converted "
+            "to dense parameters.",
+            var_index, vars_[var_index]->Name()));
+
     group.sparse_contents_ = var_base->MutableVar();
   }
 
