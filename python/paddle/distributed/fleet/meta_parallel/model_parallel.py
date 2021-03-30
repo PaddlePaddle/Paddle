@@ -14,6 +14,7 @@
 
 from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
+from ..mpu.data import broadcast_input_data
 
 
 class ModelParallel(MetaParallelBase):
@@ -27,11 +28,10 @@ class ModelParallel(MetaParallelBase):
         pass
 
     def _pre_forward(self, *inputs, **kwargs):
-        # set same input
-        pass
+        return broadcast_input_data(inputs, kwargs)
 
     def forward(self, *inputs, **kwargs):
-        self._pre_forward(*inputs, **kwargs)
+        self._pre_forward(inputs, kwargs)
 
         output = self._layers(*inputs, **kwargs)
 
