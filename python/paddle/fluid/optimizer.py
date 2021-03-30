@@ -4728,7 +4728,7 @@ class PipelineOptimizer(object):
         ]
         for key in required_keys:
             assert key in main_program._pipeline_opt, \
-                f'Please use pipeline with fleet to use {key}.'
+                'Please use pipeline with fleet to use {}.'.format(key)
         self.local_rank = main_block.program._pipeline_opt['local_rank']
         self.schedule_mode = main_block.program._pipeline_opt['schedule_mode']
         self.micro_batch_size = main_block.program._pipeline_opt[
