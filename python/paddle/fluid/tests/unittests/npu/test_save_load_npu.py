@@ -1314,12 +1314,6 @@ class TestProgramStateOldSave(unittest.TestCase):
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
-        # make sure `load_program_state` can be used in dynamic graph mode
-        with fluid.dygraph.guard(place):
-            load_state = fluid.load_program_state("test_program_1")
-            for k, v in load_state.items():
-                self.assertTrue(np.array_equal(base_map[k], v))
-
     def check_in_static(self, main_program, base_map):
         for var in main_program.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
