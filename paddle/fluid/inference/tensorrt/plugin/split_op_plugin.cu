@@ -22,11 +22,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-SplitPlugin* CreateSplitPluginDeserialize(const void* buffer, size_t length) {
-  return new SplitPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("split_plugin", CreateSplitPluginDeserialize);
-
 template <typename T>
 __device__ int upper_bound(T const* vals, int n, T const& key) {
   int i = 0;

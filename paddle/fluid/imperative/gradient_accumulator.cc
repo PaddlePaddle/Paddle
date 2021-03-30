@@ -18,7 +18,6 @@
 #include <memory>
 #include <utility>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/imperative/layer.h"
