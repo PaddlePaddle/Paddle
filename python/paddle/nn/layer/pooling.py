@@ -589,8 +589,8 @@ class MaxPool3D(layers.Layer):
 
     def __init__(self,
                  kernel_size,
-                 stride,
-                 padding,
+                 stride=None,
+                 padding=0,
                  return_mask=False,
                  ceil_mode=False,
                  data_format="NCDHW",

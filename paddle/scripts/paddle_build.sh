@@ -991,7 +991,7 @@ function case_count(){
 EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    if [ "$2" == "" ]; then
+    if (( $2 == -1 )); then
         echo "exclusive TestCases count is $num"
         echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
     else
@@ -1038,6 +1038,19 @@ function card_test() {
     testcases=$1
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
+
+    # get the CUDA device count, XPU device count is one
+    if [ "${WITH_XPU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ROCM}" == "ON" ];then
+        CUDA_DEVICE_COUNT=4
+    else
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    fi
+
+    if (( $cardnumber == -1 ));then
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
 
     if (( $# > 2 )); then
         parallel_job=`expr $3 \* $parallel_level_base`
@@ -1202,21 +1215,21 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
                         exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
                     else
                         exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
                         multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
                     else
                         multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $cpu_parallel_job | grep $testcase) != "" ]]; then
+                    if [[ $(echo $cpu_parallel_job | grep -o $testcase) != "" ]]; then
                         single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep $testcase) != "" ]]; then
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
                         single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
                     else
                         single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
@@ -1230,22 +1243,13 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        # get the CUDA device count, XPU device count is one
-        if [ "${WITH_XPU}" == "ON" ];then
-            CUDA_DEVICE_COUNT=1
-        elif [ "${WITH_ROCM}" == "ON" ];then
-            CUDA_DEVICE_COUNT=4
-        else
-            CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-        fi
-
-        card_test "$single_card_tests_high_parallel" 1 8                # run cases the most each time with single GPU
-        card_test "$single_card_tests_two_parallel" 1 2                 # run cases 2 job each time with single GPU
-        card_test "$single_card_tests_non_parallel" 1                   # run cases 1 job each time with single GPU
-        card_test "$multiple_card_tests_two_parallel" 2 2               # run cases 2 job each time with two GPUs
-        card_test "$multiple_card_tests_non_parallel" 2                 # run cases 1 job each time with two GPUs
-        card_test "$exclusive_tests_two_parallel" $CUDA_DEVICE_COUNT 2  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        card_test "$exclusive_tests_two_parallel" $CUDA_DEVICE_COUNT    # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
+        card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
+        card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
+        card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
+        card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1809,11 +1813,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, GaoWei8 53294385
+    # Xreki 12538138, luotao1 6836917, Avin0323 16167147
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 53294385 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 16167147 12538138 6836917)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="

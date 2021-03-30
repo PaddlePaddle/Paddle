@@ -48,12 +48,12 @@ class BaseGPUFunctor {
 
 /* ===========================    relu forward   ============================ */
 template <typename T>
-class ReluGPUFuctor : public BaseGPUFunctor<T> {
+class ReluGPUFunctor : public BaseGPUFunctor<T> {
  private:
   T zero_;
 
  public:
-  ReluGPUFuctor() { zero_ = static_cast<T>(0.0f); }
+  ReluGPUFunctor() { zero_ = static_cast<T>(0.0f); }
 
   // for relu forward when T is double
   __device__ __forceinline__ typename CudaVecType<T>::type Compute(
@@ -67,9 +67,9 @@ class ReluGPUFuctor : public BaseGPUFunctor<T> {
 
 template <>
 __device__ __forceinline__ CudaVecType<double>::type
-ReluGPUFuctor<double>::Compute(const CudaVecType<double>::type* x) {
+ReluGPUFunctor<double>::Compute(const CudaVecType<double>::type* x) {
 // relu forward : out = max(x, 0)
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
   return __ldg(x) > zero_ ? __ldg(x) : zero_;
 #else
   return (*x) > zero_ ? (*x) : zero_;
@@ -78,7 +78,7 @@ ReluGPUFuctor<double>::Compute(const CudaVecType<double>::type* x) {
 
 template <>
 __device__ __forceinline__ CudaVecType<float>::type
-ReluGPUFuctor<float>::Compute(const CudaVecType<float>::type* xx) {
+ReluGPUFunctor<float>::Compute(const CudaVecType<float>::type* xx) {
   // relu forward : out = max(xx, 0)
   return make_float4((xx->x > zero_) * (xx->x), (xx->y > zero_) * (xx->y),
                      (xx->z > zero_) * (xx->z), (xx->w > zero_) * (xx->w));
@@ -86,9 +86,9 @@ ReluGPUFuctor<float>::Compute(const CudaVecType<float>::type* xx) {
 
 template <>
 __device__ __forceinline__ CudaVecType<float16>::type
-ReluGPUFuctor<float16>::Compute(const CudaVecType<float16>::type* in) {
+ReluGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* in) {
 // relu forward : out = max(in, 0)
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(in), kzero), __ldg(in));
 #else
@@ -117,7 +117,7 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<T> {
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
-    // relu backward : dx = out > 0 ? dout : 0;
+    // relu backward : dx = out > 0 ? dout : 0
     return out > zero_ ? dout : zero_;
   }
 
@@ -129,7 +129,7 @@ __device__ __forceinline__ CudaVecType<double>::type
 ReluGradGPUFunctor<double>::Compute(const CudaVecType<double>::type* out,
                                     const CudaVecType<double>::type* dout) {
 // relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
   return __ldg(out) > zero_ ? __ldg(dout) : zero_;
 #else
   return (*out) > zero_ ? (*dout) : zero_;
@@ -151,7 +151,7 @@ __device__ __forceinline__ CudaVecType<float16>::type
 ReluGradGPUFunctor<float16>::Compute(const CudaVecType<float16>::type* out,
                                      const CudaVecType<float16>::type* dout) {
 // relu backward : dx = out > 0 ? dout : 0;
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350 || CUDA_VERSION >= 300
+#ifdef __HIPCC__ || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half2 kzero = __float2half2_rn(0.0f);
   return __hmul2(__hgt2(__ldg(out), kzero), __ldg(dout));
 #else
@@ -233,8 +233,9 @@ class ActivationGPUKernel
     Functor functor;
     constexpr int vecsize = CudaVecType<T>::vecsize;
     int grid = max((num / vecsize + block - 1) / block, 1);
-    ActivationkernelVec<T, Functor><<<grid, block>>>(input_data, output_data,
-                                                     num, functor);
+    auto stream = context.cuda_device_context().stream();
+    ActivationkernelVec<T, Functor><<<grid, block, 0, stream>>>(
+        input_data, output_data, num, functor);
   }
 };
 
@@ -272,7 +273,8 @@ class ActivationGradGPUKernel
     Functor functor;
     constexpr int vecsize = CudaVecType<T>::vecsize;
     int grid = max((numel / vecsize + block - 1) / block, 1);
-    ActivationGradKernelVec<T, Functor><<<grid, block>>>(
+    auto stream = context.cuda_device_context().stream();
+    ActivationGradKernelVec<T, Functor><<<grid, block, 0, stream>>>(
         forward_data, dout_data, dx_data, numel, functor);
   }
 };
@@ -330,11 +332,11 @@ REGISTER_OP_CUDA_KERNEL(
 /* ===========================    relu register  ============================ */
 REGISTER_OP_CUDA_KERNEL(
     relu, ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
-                                   ops::ReluGPUFuctor<float>>,
+                                   ops::ReluGPUFunctor<float>>,
     ops::ActivationGPUKernel<paddle::platform::CUDADeviceContext,
-                             ops::ReluGPUFuctor<double>>,
+                             ops::ReluGPUFunctor<double>>,
     ops::ActivationGPUKernel<plat::CUDADeviceContext,
-                             ops::ReluGPUFuctor<plat::float16>>);
+                             ops::ReluGPUFunctor<plat::float16>>);
 
 REGISTER_OP_CUDA_KERNEL(
     relu_grad, ops::ActivationGradGPUKernel<paddle::platform::CUDADeviceContext,

@@ -30,10 +30,6 @@ taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
-:: TODO: Temporarily，REMOVE after VS2017 is stable.
-set WITH_TPCACHE=OFF
-rmdir %cache_dir%\third_party_GPU /s/q
-rmdir %cache_dir%\third_party /s/q
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
