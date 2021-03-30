@@ -49,6 +49,7 @@ template struct SetConstant<platform::CPUDeviceContext, platform::complex128>;
 
 #ifdef PADDLE_WITH_XPU
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
+template struct SetConstant<platform::XPUDeviceContext, platform::bfloat16>;
 template struct SetConstant<platform::XPUDeviceContext, float>;
 template struct SetConstant<platform::XPUDeviceContext, double>;
 template struct SetConstant<platform::XPUDeviceContext, uint8_t>;
