@@ -363,6 +363,10 @@ class ActivationGPUKernel
     block = 256;
 #endif
     Functor functor;
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = context.Attr<float>(attr.first);
+    }
     constexpr int vecsize = CudaVecType<T>::vecsize;
     int grid = max((num / vecsize + block - 1) / block, 1);
     auto stream = context.cuda_device_context().stream();
