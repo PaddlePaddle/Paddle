@@ -441,9 +441,6 @@ def find_cuda_home():
     if cuda_home and not os.path.exists(
             cuda_home) and core.is_compiled_with_cuda():
         cuda_home = None
-        warnings.warn(
-            "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
-        )
 
     return cuda_home
 
@@ -474,9 +471,6 @@ def find_rocm_home():
     if rocm_home and not os.path.exists(
             rocm_home) and core.is_compiled_with_rocm():
         rocm_home = None
-        warnings.warn(
-            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
-        )
 
     return rocm_home
 

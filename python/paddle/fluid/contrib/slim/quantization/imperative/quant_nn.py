@@ -507,59 +507,42 @@ class QuantizedNoweightLayer(layers.Layer):
 
 
 class MovingAverageAbsMaxScale(layers.Layer):
-    def __init__(self, layer=None, name=None, moving_rate=0.9, dtype='float32'):
+    def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
         r"""
-        MovingAverageMaxScale layer is used to calculating the output quantization scale of Layer.
-        Its computational formula is described as below:
+        MovingAverageMaxScale layer is used to calculating the output quantization
+        scale of Layer. Its computational formula is described as below:
 
         :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
         :math:`Out = X`
         """
         super(MovingAverageAbsMaxScale, self).__init__()
         self._moving_rate = moving_rate
-        self._dtype = dtype
-        self._layer = layer
 
-        if self._layer is None or not hasattr(self._layer, "_quant_out_scale"):
-            scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
-            scale_name = unique_name.generate(scale_prefix)
-            scale_attr = ParamAttr(
-                name=scale_name, initializer=Constant(1), trainable=False)
-            self._scale = self.create_parameter(
-                shape=[1], attr=scale_attr, dtype=self._dtype)
-            self._scale.stop_gradient = True
-            if self._layer is not None:
-                setattr(self._layer, "_quant_out_scale", self._scale)
-        else:
-            self._scale = self._layer._quant_out_scale
+        scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
+        scale_name = unique_name.generate(scale_prefix)
+        scale_attr = ParamAttr(
+            name=scale_name, initializer=Constant(1), trainable=False)
+        self._scale = self.create_parameter(
+            shape=[1], attr=scale_attr, dtype=dtype)
+        self._scale.stop_gradient = True
 
-        if self._layer is None or not hasattr(self._layer, "_quant_out_state"):
-            state_prefix = "{}.state".format(name) if name else 'outscale.state'
-            state_attr = ParamAttr(
-                name=unique_name.generate(state_prefix),
-                initializer=Constant(1),
-                trainable=False)
-            self._state = self.create_parameter(
-                shape=[1], attr=state_attr, dtype=self._dtype)
-            self._state.stop_gradient = True
-            if self._layer is not None:
-                setattr(self._layer, "_quant_out_state", self._state)
-        else:
-            self._state = self._layer._quant_out_state
+        state_prefix = "{}.state".format(name) if name else 'outscale.state'
+        state_attr = ParamAttr(
+            name=unique_name.generate(state_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        self._state = self.create_parameter(
+            shape=[1], attr=state_attr, dtype=dtype)
+        self._state.stop_gradient = True
 
-        if self._layer is None or not hasattr(self._layer, "_quant_out_accum"):
-            accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
-            accum_attr = ParamAttr(
-                name=unique_name.generate(accum_prefix),
-                initializer=Constant(1),
-                trainable=False)
-            self._accum = self.create_parameter(
-                shape=[1], attr=accum_attr, dtype=self._dtype)
-            self._accum.stop_gradient = True
-            if self._layer is not None:
-                setattr(self._layer, "_quant_out_accum", self._accum)
-        else:
-            self._accum = self._layer._quant_out_accum
+        accum_prefix = "{}.accum".format(name) if name else 'outscale.accum'
+        accum_attr = ParamAttr(
+            name=unique_name.generate(accum_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        self._accum = self.create_parameter(
+            shape=[1], attr=accum_attr, dtype=dtype)
+        self._accum.stop_gradient = True
 
     def forward(self, input):
         if in_dygraph_mode():
@@ -567,18 +550,30 @@ class MovingAverageAbsMaxScale(layers.Layer):
                      not self.training)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
+            quant_out = _varbase_creator(
+                type=input.type,
+                name="{}.tmp".format(input.name),
+                shape=input.shape,
+                dtype=input.dtype,
+                persistable=False)
 
-            self._scale, _, _ = core.ops.moving_average_abs_max_scale(
-                input, accum, state, self._scale, state, accum, *attrs)
-            return self._scale
+            out, _, _, _ = core.ops.moving_average_abs_max_scale(
+                input, accum, state, quant_out, self._scale, state, accum,
+                *attrs)
+            return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'MovingAverageAbsMaxScale')
 
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
-
         inputs = {"X": [input]}
-        outputs = {"OutScale": [self._scale]}
+        quant_out = self._helper.create_variable(
+            name="{}.tmp".format(input.name),
+            dtype=input.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        outputs = {"Out": [quant_out], "OutScale": [self._scale]}
 
         if self.training:
             inputs['InState'] = [self._state]
@@ -592,4 +587,22 @@ class MovingAverageAbsMaxScale(layers.Layer):
             outputs=outputs,
             attrs=attrs)
 
-        return self._scale
+        return quant_out
+
+
+class QuantizedOutputLayer(layers.Layer):
+    def __init__(self, layer=None, moving_rate=0.9, dtype='float32'):
+        r"""
+        Add MovingAverageMaxScale layer to the behind of the input layer.
+        """
+        super(QuantizedOutputLayer, self).__init__()
+        self._layer = layer
+        self._moving_average_abs_max_scale = \
+            MovingAverageAbsMaxScale(layer.full_name(), moving_rate, dtype)
+
+    def forward(self, input):
+        if isinstance(input, list):
+            assert len(input) == 1, \
+                "The QuantizedOutputLayer should only have one input."
+        out = self._layer(input)
+        return self._moving_average_abs_max_scale(out)

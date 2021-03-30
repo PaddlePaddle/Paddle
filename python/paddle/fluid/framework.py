@@ -1862,6 +1862,7 @@ class Variable(object):
         if not isinstance(item, tuple):
             item = [item]
 
+        decrease_axes = []
         axes = []
         starts = []
         ends = []
@@ -1932,15 +1933,23 @@ class Variable(object):
                 if end is None:
                     end = max_integer if step > 0 else (0 - max_integer)
             else:
+                decrease_axes.append(dim)
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
                 step = 1
+
             axes.append(dim)
             starts.append(start)
             ends.append(end)
             steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends, 'steps': steps}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes
+        }
 
         from .layers import utils
         if utils._contain_var(starts):
@@ -1996,7 +2005,8 @@ class Variable(object):
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(value)))
 
-        self.block.append_op(
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
 
         return self
@@ -3030,7 +3040,11 @@ class Block(object):
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
                         # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
-                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                        # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
+                        if op.type in [
+                                "c_broadcast", "c_sync_comm_stream",
+                                "coalesce_tensor"
+                        ]:
                             continue
                         init_ops.append(op)
                 return init_ops
