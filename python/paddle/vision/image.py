@@ -15,7 +15,11 @@
 from PIL import Image
 from paddle.utils import try_import
 
-__all__ = ['set_image_backend', 'get_image_backend', 'image_load']
+__all__ = [  #noqa
+    'set_image_backend',
+    'get_image_backend',
+    'image_load',
+]
 
 _image_backend = 'pil'
 

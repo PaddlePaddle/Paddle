@@ -17,8 +17,6 @@ import paddle.nn as nn
 
 from paddle.utils.download import get_weights_path_from_url
 
-__all__ = ['MobileNetV1', 'mobilenet_v1']
-
 model_urls = {
     'mobilenetv1_1.0':
     ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v1_x1.0.pdparams',

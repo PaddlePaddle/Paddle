@@ -15,8 +15,6 @@
 import paddle
 import paddle.nn as nn
 
-__all__ = ['LeNet']
-
 
 class LeNet(nn.Layer):
     """LeNet model from

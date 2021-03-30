@@ -20,8 +20,6 @@ import paddle
 from paddle.io import Dataset
 from paddle.utils import try_import
 
-__all__ = ["DatasetFolder", "ImageFolder"]
-
 
 def has_valid_extension(filename, extensions):
     """Checks if a file is a vilid extension.
