@@ -143,6 +143,7 @@ int GraphIndex::load(std::string filename) {
   size_t ret = fread(&num, sizeof(num), 1, fp);
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
+    VLOG(0) << "content: " << content;
     if (fread(const_cast<char*>(content.data()), 1, num, fp) !=
         static_cast<size_t>(num)) {
       fprintf(stderr, "Read from file: %s failed, invalid format.\n",
@@ -162,10 +163,13 @@ int GraphIndex::load(std::string filename) {
       graph_item.ParseFromString(item.value());
 
       uint64_t item_id = graph_item.item_id();
+
       if (item_path_dict_.find(item_id) == item_path_dict_.end()) {
         std::vector<int64_t> path_ids;
         for (int i = 0; i < graph_item.path_id_size(); i++) {
           path_ids.push_back(graph_item.path_id(i));
+          VLOG(0) << "Graph insert item: " << item_id
+                  << " path: " << graph_item.path_id(i);
         }
         item_path_dict_[item_id] = path_ids;
         for (auto& path_id : path_ids) {
@@ -181,6 +185,7 @@ int GraphIndex::load(std::string filename) {
     ret = fread(&num, sizeof(num), 1, fp);
   }
   fclose(fp);
+  VLOG(0) << "Graph Load Success.";
   return 0;
 }
 

@@ -173,13 +173,27 @@ void BindGraphItem(py::module* m) {
       .def(py::init<>())
       .def("item_id", [](GraphItem& self) { return self.item_id(); })
       .def("path_id", [](GraphItem& self) { return self.path_id(); });
+  //  .def("item_path_nums",
+  //       [](GraphItem& self) { return self.item_path_nums(); })
 }
 
 void BindGraphIndex(py::module* m) {
-  py::class_<GraphIndex>(*m, "GraphIndex")
-      .def(py::init<>())
+  py::class_<GraphIndex, std::shared_ptr<GraphIndex>>(*m, "GraphIndex")
+      .def(py::init([](const std::string name, const std::string path) {
+        auto index_wrapper = IndexWrapper::GetInstancePtr();
+        index_wrapper->insert_graph_index(name, path);
+        return index_wrapper->GetGraphIndex(name);
+      }))
       .def("height", [](GraphIndex& self) { return self.height(); })
-      .def("width", [](GraphIndex& self) { return self.width(); });
+      .def("width", [](GraphIndex& self) { return self.width(); })
+      .def("get_path_of_item",
+           [](GraphIndex& self, std::vector<uint64_t>& items) {
+             return self.get_path_of_item(items);
+           })
+      .def("get_item_of_path",
+           [](GraphIndex& self, std::vector<int64_t>& paths) {
+             return self.get_item_of_path(paths);
+           });
 }
 
 void BindTreeIndex(py::module* m) {
@@ -231,7 +245,8 @@ void BindIndexWrapper(py::module* m) {
       .def("insert_tree_index", &IndexWrapper::insert_tree_index)
       .def("get_tree_index", &IndexWrapper::GetTreeIndex)
       .def("clear_tree", &IndexWrapper::clear_tree)
-      .def("inset_graph_index", &IndexWrapper::insert_graph_index);
+      .def("insert_graph_index", &IndexWrapper::insert_graph_index)
+      .def("get_graph_index", &IndexWrapper::GetGraphIndex);
 }
 
 using paddle::framework::IndexSampler;

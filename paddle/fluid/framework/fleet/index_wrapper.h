@@ -164,9 +164,9 @@ class IndexWrapper {
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 
-  GraphIndex* GetGraphIndex(const std::string name) {
+  GraphPtr GetGraphIndex(const std::string name) {
     PADDLE_ENFORCE_NE(graph_map.find(name), graph_map.end(), "");
-    return graph_map[name].get();
+    return graph_map[name];
   }
 
   void insert_graph_index(std::string name, std::string graph_path) {
