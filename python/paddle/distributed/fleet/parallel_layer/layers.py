@@ -33,67 +33,6 @@ def _get_model_parallel_messgae():
     return model_parallel_group, world_size, rank
 
 
-class ParallelLinear(Layer):
-    def __init__(self,
-                 size,
-                 axis=0,
-                 num_partitions=1,
-                 gather_out=True,
-                 param_attr=None,
-                 bias_attr=None,
-                 name=None):
-        super(ParallelLinear, self).__init__()
-        import paddle.distributed.fleet as fleet
-
-        self.hcg = fleet.get_hybrid_communicate_group()
-        self.model_parallel_group = self.hcg.get_model_parallel_group()
-        assert num_partitions == self.hcg.get_model_parallel_world_size(), \
-            "num_partitions must be equal to the model parallel world size"
-
-        if axis == 0:
-            assert size[0] % num_partitions == 0, (
-                "Number of rows of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(size[0],
-                                                           num_partitions))
-            per_part_size = size[0] // num_partitions
-            linear_size = (per_part_size, size[1])
-
-        elif axis == 1:
-            assert size[1] % num_partitions == 0, (
-                "Number of column of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(size[1],
-                                                           num_partitions))
-            per_part_size = size[1] // num_partitions
-            linear_size = (size[0], per_part_size)
-        else:
-            raise ValueError("The value of axis must be 0 or 1, but the value "
-                             "given is {}.".format(axis))
-
-        self.linear = paddle.nn.Linear(
-            linear_size[0],
-            linear_size[1],
-            weight_attr=param_attr,
-            bias_attr=bias_attr,
-            name=name)
-        self.linear_size = linear_size
-        self.axis = axis
-        self.gather_out = gather_out
-
-    def forward(self, x):
-        linear_out = self.linear(x)
-        if self.gather_out:
-            if self.axis == 0:
-                linear_out = paddle.distributed.all_reduce(
-                    linear_out, group=self.model_parallel_group)
-            else:
-                output = []
-                paddle.distributed.all_gather(
-                    output, linear_out, group=self.model_parallel_group)
-                linear_out = paddle.concat(
-                    output, axis=len(linear_out.shape) - 1)
-        return linear_out
-
-
 class ColumnParallelLinear(Layer):
     def __init__(self,
                  in_features,
@@ -201,6 +140,67 @@ class RowParallelLinear(Layer):
             output_parallel, group=self.model_parallel_group)
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class ParallelLinear(Layer):
+    def __init__(self,
+                 size,
+                 axis=0,
+                 num_partitions=1,
+                 gather_out=True,
+                 param_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(ParallelLinear, self).__init__()
+
+        self.model_parallel_group, self.world_size, _ = _get_model_parallel_messgae(
+        )
+
+        assert num_partitions == self.world_size, \
+            "num_partitions must be equal to the model parallel world size"
+
+        if axis == 0:
+            assert size[0] % num_partitions == 0, (
+                "Number of rows of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[0],
+                                                           num_partitions))
+            per_part_size = size[0] // num_partitions
+            linear_size = (per_part_size, size[1])
+
+        elif axis == 1:
+            assert size[1] % num_partitions == 0, (
+                "Number of column of the weight for linear ({}) must be"
+                " divisible by num_partitions ({})".format(size[1],
+                                                           num_partitions))
+            per_part_size = size[1] // num_partitions
+            linear_size = (size[0], per_part_size)
+        else:
+            raise ValueError("The value of axis must be 0 or 1, but the value "
+                             "given is {}.".format(axis))
+
+        self.linear = paddle.nn.Linear(
+            linear_size[0],
+            linear_size[1],
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+            name=name)
+        self.linear_size = linear_size
+        self.axis = axis
+        self.gather_out = gather_out
+
+    def forward(self, x):
+        linear_out = self.linear(x)
+        if self.gather_out:
+            if self.axis == 0:
+                linear_out = paddle.distributed.all_reduce(
+                    linear_out, group=self.model_parallel_group)
+            else:
+                output = []
+                paddle.distributed.all_gather(
+                    output, linear_out, group=self.model_parallel_group)
+                linear_out = paddle.concat(
+                    output, axis=len(linear_out.shape) - 1)
+        return linear_out
 
 
 class VocabParallelEmbedding(Layer):
