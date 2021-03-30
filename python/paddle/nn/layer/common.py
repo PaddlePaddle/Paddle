@@ -571,7 +571,7 @@ class Bilinear(layers.Layer):
 
     .. math::
 
-      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,outfeatures-1
 
       out = out + b
 
@@ -579,7 +579,7 @@ class Bilinear(layers.Layer):
      - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
      - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
      - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
-     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size], and out's shape is [batch_size, out_features].
      - :math:`b`: the learned bias, shape is [1, out_features].
      - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
 
