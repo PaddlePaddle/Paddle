@@ -1096,7 +1096,7 @@ function card_test() {
     done
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
-    if [ "$2" == "" ]; then
+    if (( $2 == -1 )); then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     else
@@ -1322,7 +1322,7 @@ set +x
                         fi
 
                         if [[ "$exclusive_retry" != "" ]]; then
-                            card_test "$exclusive_retry"
+                            card_test "$exclusive_retry" -1
                         fi
                         
                         exec_times=$[$exec_times+1]
