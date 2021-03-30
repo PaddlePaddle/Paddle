@@ -144,6 +144,14 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
+bool IsCompiledWithAscend() {
+#ifndef PADDLE_WITH_ASCEND
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -1758,6 +1766,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -2887,6 +2896,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
+  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);
