@@ -20,6 +20,7 @@ class ModelParallel(MetaParallelBase):
         super(ModelParallel,
               self).__init__(layers.full_name() + "_model_parallel")
         self._layers = layers
+        self.prepare_for_model()
 
     def prepare_for_model(self):
         # need to broadcast parameters

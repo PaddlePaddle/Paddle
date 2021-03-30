@@ -47,12 +47,12 @@ class CommunicateTopology(object):
     def get_rank(self, **args):
         assert len(args) == len(self._dims)
         key = self.coordinate(**args)
-        assert self._coord2rank.has_key(key)
+        assert key in self._coord2rank.keys()
         return self._coord2rank[key]
 
     def get_coord(self, rank):
         assert rank < self._word_size
-        assert self._rank2coord.has_key(rank)
+        assert rank in self._rank2coord.keys()
         return self._rank2coord[rank]
 
     def get_axis_list(self, axis_name, index):

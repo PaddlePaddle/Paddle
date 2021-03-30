@@ -28,6 +28,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from .topology import CommunicateTopology, HybridCommunicateGroup
 from ..parallel_layer.random import model_parallel_random_seed
+from ..meta_parallel import ModelParallel
 
 
 def _inited_runtime_handler_(func):
@@ -243,9 +244,9 @@ class Fleet(object):
         """initialize the hybrid environment
         """
         hybrid_configs = self._user_defined_strategy.hybrid_configs
-        dp_num = hybrid_configs["num_data_parallel"]
-        mp_num = hybrid_configs["num_model_parallel"]
-        pp_num = hybrid_configs["num_pipeline_parallel"]
+        self.dp_num = hybrid_configs["num_data_parallel"]
+        self.mp_num = hybrid_configs["num_model_parallel"]
+        self.pp_num = hybrid_configs["num_pipeline_parallel"]
 
         self._topology = CommunicateTopology(
             hybrid_names=["data", "model", "pipe"],
@@ -733,11 +734,23 @@ class Fleet(object):
 
         """
         assert model is not None
-        self.model = paddle.DataParallel(
-            model,
-            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
+        # add rule to select MetaParallel
+        self.dp_num = hybrid_configs["num_data_parallel"]
+        self.mp_num = hybrid_configs["num_model_parallel"]
+        self.pp_num = hybrid_configs["num_pipeline_parallel"]
+
+        if self.mp_num == 1 and self.pp_num == 1:
+            self.model = paddle.DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB)
+        elif self.mp_num > 1 and self.pp_num == 1:
+            self.model = ModelParallel(model, self._hcg)
+        else:
+            print("Now it doesn't support the parallel")
+
         return self.model
 
     @dygraph_only
