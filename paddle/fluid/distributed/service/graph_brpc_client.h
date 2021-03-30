@@ -62,9 +62,11 @@ class GraphBrpcClient : public BrpcPsClient {
  public:
   GraphBrpcClient() {}
   virtual ~GraphBrpcClient() {}
+  // given a batch of nodes, sample graph_neighboors for each of them
   virtual std::future<int32_t> batch_sample_neighboors(
       uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
       std::vector<std::vector<std::pair<uint64_t, float>>>& res);
+
   virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
                                                int server_index, int start,
                                                int size, int step,

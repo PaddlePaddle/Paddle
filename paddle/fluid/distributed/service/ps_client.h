@@ -155,46 +155,7 @@ class PSClient {
     promise.set_value(-1);
     return fut;
   }
-  virtual std::future<int32_t> batch_sample_neighboors(
-      uint32_t table_id, std::vector<uint64_t> node_ids, int sample_size,
-      std::vector<std::vector<std::pair<uint64_t, float>>> &res) {
-    LOG(FATAL) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
-  virtual std::future<int32_t> pull_graph_list(uint32_t table_id,
-                                               int server_index, int start,
-                                               int size, int step,
-                                               std::vector<FeatureNode> &res) {
-    LOG(FATAL) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
 
-  virtual std::future<int32_t> random_sample_nodes(uint32_t table_id,
-                                                   int server_index,
-                                                   int sample_size,
-                                                   std::vector<uint64_t> &ids) {
-    LOG(FATAL) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
-  virtual std::future<int32_t> get_node_feat(
-      const uint32_t &table_id, const std::vector<uint64_t> &node_ids,
-      const std::vector<std::string> &feature_names,
-      std::vector<std::vector<std::string>> &res) {
-    LOG(FATAL) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;

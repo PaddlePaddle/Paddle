@@ -197,16 +197,6 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
 
-  // inline brpc::Channel *get_sparse_channel(size_t server_id) {
-  //   return _server_channels[server_id][0].get();
-  // }
-  // inline brpc::Channel *get_dense_channel(size_t server_id) {
-  //   return _server_channels[server_id][1].get();
-  // }
-  // inline brpc::Channel *get_cmd_channel(size_t server_id) {
-  //   return _server_channels[server_id][2].get();
-  // }
-
   bool _running = false;
   bool _flushing = false;
   std::atomic<uint32_t> _async_call_num;  //异步请求计数
@@ -232,8 +222,6 @@ class BrpcPsClient : public PSClient {
                                                  const float **update_values,
                                                  size_t num,
                                                  void *done) override;
-
-  // virtual size_t get_server_nums() { return _server_channels.size(); }
 
  private:
   int32_t start_client_service();

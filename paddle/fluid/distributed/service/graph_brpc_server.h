@@ -51,14 +51,7 @@ class GraphBrpcServer : public PSServer {
   std::shared_ptr<PsBaseService> _service;
   std::vector<std::shared_ptr<brpc::Channel>> _pserver_channels;
 };
-// class GraphBrpcServer : public GraphBrpcServer {
-//  public:
-//   GraphBrpcServer() {}
-//   virtual ~GraphBrpcServer() {}
 
-//  private:
-//   virtual int32_t initialize();
-// };
 class GraphBrpcService;
 
 typedef int32_t (GraphBrpcService::*serviceFunc)(
@@ -113,16 +106,6 @@ class GraphBrpcService : public PsBaseService {
   std::vector<float> _ori_values;
   const int sample_nodes_ranges = 3;
 };
-// class GraphBrpcService : public BrpcPsService {
-//  public:
-//   virtual int32_t initialize() override;
-//   int32_t pull_graph_list(Table *table, const PsRequestMessage &request,
-//                            PsResponseMessage &response, brpc::Controller
-//                            *cntl);
-// int32_t graph_random_sample(Table *table, const PsRequestMessage &request,
-//                            PsResponseMessage &response, brpc::Controller
-//                            *cntl);
-// };
 
 }  // namespace distributed
 }  // namespace paddle
