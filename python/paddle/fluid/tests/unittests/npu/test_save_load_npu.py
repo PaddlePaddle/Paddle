@@ -32,6 +32,8 @@ import pickle
 import os
 import errno
 
+paddle.enable_static()
+
 
 class SimpleLSTMRNN(fluid.Layer):
     def __init__(self,
