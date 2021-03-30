@@ -35,14 +35,6 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
-__all__ = [
-    "BaseTransform", "Compose", "Resize", "RandomResizedCrop", "CenterCrop",
-    "RandomHorizontalFlip", "RandomVerticalFlip", "Transpose", "Normalize",
-    "BrightnessTransform", "SaturationTransform", "ContrastTransform",
-    "HueTransform", "ColorJitter", "RandomCrop", "Pad", "RandomRotation",
-    "Grayscale", "ToTensor"
-]
-
 
 def _get_image_size(img):
     if F._is_pil_image(img):

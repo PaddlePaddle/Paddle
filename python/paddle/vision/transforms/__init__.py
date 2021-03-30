@@ -12,11 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import transforms
-from . import functional
+from .transforms import BaseTransform  # noqa: F401
+from .transforms import Compose  # noqa: F401
+from .transforms import Resize  # noqa: F401
+from .transforms import RandomResizedCrop  # noqa: F401
+from .transforms import CenterCrop  # noqa: F401
+from .transforms import RandomHorizontalFlip  # noqa: F401
+from .transforms import RandomVerticalFlip  # noqa: F401
+from .transforms import Transpose  # noqa: F401
+from .transforms import Normalize  # noqa: F401
+from .transforms import BrightnessTransform  # noqa: F401
+from .transforms import SaturationTransform  # noqa: F401
+from .transforms import ContrastTransform  # noqa: F401
+from .transforms import HueTransform  # noqa: F401
+from .transforms import ColorJitter  # noqa: F401
+from .transforms import RandomCrop  # noqa: F401
+from .transforms import Pad  # noqa: F401
+from .transforms import RandomRotation  # noqa: F401
+from .transforms import Grayscale  # noqa: F401
+from .transforms import ToTensor  # noqa: F401
+from .transforms import Sequence  # noqa: F401
 
-from .transforms import *
-from .functional import *
+from . import functional  # noqa: F401
 
-__all__ = transforms.__all__ \
-        + functional.__all__
+__all__ = [     #noqa
+           'BaseTransform',
+           'Compose',
+           'Resize',
+           'RandomResizedCrop',
+           'CenterCrop',
+           'RandomHorizontalFlip',
+           'RandomVerticalFlip',
+           'Transpose',
+           'Normalize',
+           'BrightnessTransform',
+           'SaturationTransform',
+           'ContrastTransform',
+           'HueTransform',
+           'ColorJitter',
+           'RandomCrop',
+           'Pad',
+           'RandomRotation',
+           'Grayscale',
+           'ToTensor',
+           'Sequence'
+]

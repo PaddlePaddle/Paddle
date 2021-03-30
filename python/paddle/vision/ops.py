@@ -22,8 +22,6 @@ from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
 
-__all__ = ['yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D']
-
 
 def yolo_loss(x,
               gt_box,

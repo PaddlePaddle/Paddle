@@ -12,21 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import models
-from .models import *
-
-from . import transforms
-from .transforms import *
-
-from . import datasets
-from .datasets import *
-
-from . import image
-from .image import *
-
-from . import ops
-
-__all__ = models.__all__ \
-        + transforms.__all__ \
-        + datasets.__all__ \
-        + image.__all__
+from . import models  # noqa: F401
+from . import transforms  # noqa: F401
+from . import datasets  # noqa: F401
+from . import image  # noqa: F401
+from . import ops  # noqa: F401

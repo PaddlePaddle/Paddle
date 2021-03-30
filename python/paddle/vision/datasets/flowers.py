@@ -25,8 +25,6 @@ from paddle.io import Dataset
 from paddle.utils import try_import
 from paddle.dataset.common import _check_exists_and_download
 
-__all__ = ["Flowers"]
-
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
 SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
