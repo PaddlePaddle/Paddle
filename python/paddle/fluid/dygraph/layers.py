@@ -653,18 +653,13 @@ class Layer(core.Layer):
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, param
 
-    def named_sublayers(self,
-                        prefix='',
-                        include_sublayers=True,
-                        include_self=False,
-                        layers_set=None):
+    def named_sublayers(self, prefix='', include_self=False, layers_set=None):
         """
         Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
         The duplicate sublayer will only be yielded once.
 
         Parameters:
             prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
-            include_sublayers(bool, optional): Whether include the sublayers. Default: True.
             include_self(bool, optional): Whether include the Layer itself. Default: False.
             layers_set(set, optioanl): The set to record duplicate sublayers. Default: None.
 
