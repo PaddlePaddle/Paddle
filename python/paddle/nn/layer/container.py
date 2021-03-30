@@ -68,13 +68,13 @@ class LayerDict(Layer):
         if sublayers is not None:
             self._sub_layers.update(sublayers)
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key):
         return self._sub_layers[key]
 
-    def __setitem__(self, key: str, sublayer):
+    def __setitem__(self, key, sublayer):
         return self.add_sublayer(key, sublayer)
 
-    def __delitem__(self, key: str):
+    def __delitem__(self, key):
         del self._sub_layers[key]
 
     def __len__(self):
@@ -83,7 +83,7 @@ class LayerDict(Layer):
     def __iter__(self):
         return iter(self._sub_layers)
 
-    def __contains__(self, key: str):
+    def __contains__(self, key):
         return key in self._sub_layers
 
     def clear(self):
@@ -116,7 +116,7 @@ class LayerDict(Layer):
         """
         self._sub_layers.clear()
 
-    def pop(self, key: str):
+    def pop(self, key):
         """
         Remove the key from the LayerDict and return the layer of the key.
 
