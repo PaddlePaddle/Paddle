@@ -156,7 +156,7 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-    }
+  }
   return dso_handle;
 }
 
