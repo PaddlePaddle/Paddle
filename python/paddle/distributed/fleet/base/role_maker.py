@@ -614,13 +614,28 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return len(self._get_pserver_endpoints(
         )) if self._get_pserver_endpoints() is not None else 0
 
-    def _node_num(self):
+    def _get_node_num(self):
         """
         return the training node number
         """
         if not self._role_is_generated:
             self._generate_role()
         return self._nodes_num
+
+    def _get_local_rank(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_rank
+
+    def _get_local_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._local_device_ids
+
+    def _get_world_device_ids(self):
+        if not self._role_is_generated:
+            self._generate_role()
+        return self._world_device_ids
 
     def _get_trainer_endpoints(self):
         """
@@ -782,6 +797,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = len(self._worker_endpoints)
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
+        self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
+        self._local_device_ids=os.getenv("PADDLE_LOCAL_DEVICE_IDS")
+        self._world_device_ids=os.getenv("PADDLE_WORLD_DEVICE_IDS")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier
