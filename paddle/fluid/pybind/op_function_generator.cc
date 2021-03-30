@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <unistd.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <string>
+#ifndef _WIN32
+#include <unistd.h>
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -603,3 +604,4 @@ int main(int argc, char* argv[]) {
 #endif
   return 0;
 }
+#endif

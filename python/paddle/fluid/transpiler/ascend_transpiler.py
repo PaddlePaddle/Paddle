@@ -17,13 +17,13 @@ from .. import core
 OpRole = core.op_proto_and_checker_maker.OpRole
 from paddle.distributed import fleet
 
+
 class AscendTranspiler(collective.Collective):
     def __init__(self, startup_program, main_program):
         self.nrings = 1
         super(AscendTranspiler, self).__init__(self.nrings)
         self._startup_program = startup_program
         self._main_program = main_program
-
 
     def _insert_allreduce_ops(self):
         block = self._main_program.global_block()

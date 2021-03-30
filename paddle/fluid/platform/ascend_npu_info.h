@@ -14,12 +14,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
-namespace ascend{
+namespace ascend {
 
-class NPUDevice{
-public:
-    //! Get the total number of XPU devices in system.
-    static int GetDeviceCount();
+class NPUDevice {
+ public:
+  //! Get the total number of XPU devices in system.
+  static int GetDeviceCount();
 };
 
 }  // namespace ascend

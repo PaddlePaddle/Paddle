@@ -798,8 +798,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
         self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
-        self._local_device_ids=os.getenv("PADDLE_LOCAL_DEVICE_IDS")
-        self._world_device_ids=os.getenv("PADDLE_WORLD_DEVICE_IDS")
+        self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
+        self._world_device_ids = os.getenv("PADDLE_WORLD_DEVICE_IDS")
 
     def _gloo_init(self):
         # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier

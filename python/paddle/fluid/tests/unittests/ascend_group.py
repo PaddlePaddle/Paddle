@@ -36,12 +36,14 @@ OP_ROLE_VAR_KEY = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 role = fleet.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 
-def init_communicator(startup_program, main_program, current_endpoint, endpoints, ring_id):
+
+def init_communicator(startup_program, main_program, current_endpoint,
+                      endpoints, ring_id):
     nranks = len(endpoints)
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
-    group_rank=endpoints.index(current_endpoint)
-    assert group_rank >=0
+    group_rank = endpoints.index(current_endpoint)
+    assert group_rank >= 0
 
     block = startup_program.global_block()
     nccl_id_var = block.create_var(
@@ -70,8 +72,8 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
         })
 
     with fluid.program_guard(main_program):
-        op_type="c_allreduce_sum"
-        data=fluid.layers.fill_constant(shape=[1], dtype='float32', value=2.5)
+        op_type = "c_allreduce_sum"
+        data = fluid.layers.fill_constant(shape=[1], dtype='float32', value=2.5)
         helper = LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
@@ -83,16 +85,17 @@ def init_communicator(startup_program, main_program, current_endpoint, endpoints
     print("startup program:", startup_program)
     print("main program:", main_program)
 
-def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
-    startup_programs=[]
-    main_programs=[]
+
+def train(world_endpoints, world_device_ids, local_device_ids, local_rank):
+    startup_programs = []
+    main_programs = []
 
     #trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
-    trainer_endpoints=world_endpoints
-    groups=[[], [], []]
-    groups[0]=[trainer_endpoints[0], trainer_endpoints[1]]
-    groups[1]=[trainer_endpoints[2], trainer_endpoints[3]]
-    groups[2]=[trainer_endpoints[0], trainer_endpoints[2]]
+    trainer_endpoints = world_endpoints
+    groups = [[], [], []]
+    groups[0] = [trainer_endpoints[0], trainer_endpoints[1]]
+    groups[1] = [trainer_endpoints[2], trainer_endpoints[3]]
+    groups[2] = [trainer_endpoints[0], trainer_endpoints[2]]
     print("groups:", groups)
 
     for i in range(len(trainer_endpoints)):
@@ -103,7 +106,7 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
         for te in group:
             te_idx = trainer_endpoints.index(te)
             startup_program = startup_programs[te_idx]
-            main_program=main_programs[te_idx]
+            main_program = main_programs[te_idx]
             init_communicator(startup_program, main_program, te, group, idx)
 
     print(len(startup_programs))
@@ -124,14 +127,14 @@ def train(world_endpoints, world_device_ids, local_device_ids,local_rank):
     exe.run(main_program)
 
 
-worker_endpoints=fleet.worker_endpoints()
-world_device_ids=fleet.world_device_ids()
-local_device_ids=fleet.local_device_ids()
-local_rank=int(fleet.local_rank())
+worker_endpoints = fleet.worker_endpoints()
+world_device_ids = fleet.world_device_ids()
+local_device_ids = fleet.local_device_ids()
+local_rank = int(fleet.local_rank())
 
 print("worker_endpoints:", worker_endpoints)
 print("world_device_ids:", world_device_ids)
 print("local_device_ids:", local_device_ids)
 print("local_rank:", local_rank)
 
-train(worker_endpoints, world_device_ids,local_device_ids,local_rank)
+train(worker_endpoints, world_device_ids, local_device_ids, local_rank)
