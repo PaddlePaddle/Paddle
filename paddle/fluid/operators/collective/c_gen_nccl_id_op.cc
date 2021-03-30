@@ -22,11 +22,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/fluid/operators/collective/gen_nccl_id_op_helper.h"
+#endif
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace operators {
 
+#ifdef PADDLE_WITH_NCCL
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -83,6 +87,21 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     scope.DeleteScope(&local_scope);
   }
 };
+
+#else
+class CGenNCCLIdOp : public framework::OperatorBase {
+ public:
+  CGenNCCLIdOp(const std::string& type,
+               const framework::VariableNameMap& inputs,
+               const framework::VariableNameMap& outputs,
+               const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {}
+};
+
+#endif
 
 class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
