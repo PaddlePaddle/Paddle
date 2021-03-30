@@ -4249,7 +4249,7 @@ class PipelineOptimizer(object):
         Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        extra_index = 0
+        extra_index_info = {'index': 0}
 
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
@@ -4291,8 +4291,6 @@ class PipelineOptimizer(object):
                 device_type = cur_device.split(':')[0] + ':'
 
                 def _insert_send_recv(cur_id, prev_id):
-                    nonlocal extra_index
-
                     cur_dev = device_type + str(cur_id)
                     prev_dev = device_type + str(prev_id)
                     if (cur_dev, prev_dev) in input_var_to_device[var_name]:
@@ -4329,7 +4327,7 @@ class PipelineOptimizer(object):
 
                     if self.schedule_mode == 'F-then-B':  # F-then-B
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
                             attrs={
@@ -4339,9 +4337,9 @@ class PipelineOptimizer(object):
                                 'peer': 1,
                                 'ring_id': ring_id
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
                             attrs={
@@ -4353,10 +4351,10 @@ class PipelineOptimizer(object):
                                 'peer': 0,
                                 'ring_id': ring_id
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                     elif self.schedule_mode == '1F1B':  # 1F1B
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='c_sync_calc_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
@@ -4364,9 +4362,9 @@ class PipelineOptimizer(object):
                                 self._op_device_key: prev_dev,
                                 self._op_role_key: op_role,
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='send_v2',
                             inputs={'X': var},
                             attrs={
@@ -4376,9 +4374,9 @@ class PipelineOptimizer(object):
                                 'ring_id': ring_id,
                                 'peer': 1,
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
@@ -4387,12 +4385,12 @@ class PipelineOptimizer(object):
                                 self._op_role_key: self._op_role.Backward,
                                 'ring_id': ring_id,
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
                         block._insert_op(
-                            index=index + extra_index,
+                            index=index + extra_index_info['index'],
                             type='recv_v2',
                             outputs={'Out': [var]},
                             attrs={
@@ -4404,7 +4402,7 @@ class PipelineOptimizer(object):
                                 'peer': 0,
                                 'ring_id': ring_id
                             })
-                        extra_index += 1
+                        extra_index_info['index'] += 1
                     else:
                         raise ValueError(
                             "Now only 'F-then-B' and '1F1B' are supported."
