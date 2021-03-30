@@ -401,7 +401,6 @@ def save(obj, path, protocol=2, **configs):
             # save weight of emb
             paddle.save(emb.weight, "emb.weight.pdtensor")
 
-
             # example 2: static graph
             import paddle
             import paddle.static as static
@@ -411,7 +410,6 @@ def save(obj, path, protocol=2, **configs):
             # create network
             x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
             z = paddle.static.nn.fc(x, 10)
-
 
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -519,7 +517,7 @@ def load(path, **configs):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now only supports load ``state_dict`` of Layer or Optimizer, Tensor.
+        Now supports load ``state_dict`` of Layer or Optimizer, Tensor.
 
     .. note::
         In order to use the model parameters saved by paddle more efficiently, 
@@ -605,7 +603,6 @@ def load(path, **configs):
             # create network
             x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
             z = paddle.static.nn.fc(x, 10)
-
 
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)

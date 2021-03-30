@@ -2012,8 +2012,8 @@ class Variable(object):
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
 
-        Retruns:
-            LoDTensor: the tensor in given scope.
+        Returns:
+            Tensor: the tensor in given scope.
 
         Examples:
             .. code-block:: python
@@ -2026,23 +2026,22 @@ class Variable(object):
 
                 x = static.data(name="x", shape=[10, 10], dtype='float32')
 
-                y = static.nn.fc(x, 10,name='fc')
-                prog = static.default_main_program()
+                y = static.nn.fc(x, 10, name='fc')
                 place = paddle.CPUPlace()
-                exe = static.Executor(place)     
-                prog = paddle.static.default_main_program()                               
+                exe = static.Executor(place)
+                prog = paddle.static.default_main_program()
                 exe.run(static.default_startup_program())
-                inputs=np.ones((10,10),dtype='float32')
-                exe.run(prog,feed={'x':inputs},fetch_list=[y,])
-                path='temp/tensor_'
+                inputs = np.ones((10, 10), dtype='float32')
+                exe.run(prog, feed={'x': inputs}, fetch_list=[y, ])
+                path = 'temp/tensor_'
                 for var in prog.list_vars():
                     if var.persistable:
-                        t=var.get_tensor()
-                        paddle.save(t,path+var.name+'.pdtensor')
+                        t = var.get_tensor()
+                        paddle.save(t, path+var.name+'.pdtensor')
 
                 for var in prog.list_vars():
                     if var.persistable:
-                        t_load=paddle.load(path+var.name+'.pdtensor')
+                        t_load = paddle.load(path+var.name+'.pdtensor')
                         var.set_tensor(t_load)
         """
         # The 'framework' is a low-level module, and 'executor' 
@@ -2068,7 +2067,7 @@ class Variable(object):
         Set the value to the tensor in given scope. 
 
         Args:
-            value(LoDTensor/ndarray) : The value to be set.
+            value(Tensor/ndarray) : The value to be set.
             scope(Scope, optional) : If `scope` is None, it will be set to global scope 
                 obtained through 'paddle.static.global_scope()'. Otherwise, use `scope`.
                 Default: None
@@ -2087,23 +2086,22 @@ class Variable(object):
 
                 x = static.data(name="x", shape=[10, 10], dtype='float32')
 
-                y = static.nn.fc(x, 10,name='fc')
-                prog = static.default_main_program()
+                y = static.nn.fc(x, 10, name='fc')
                 place = paddle.CPUPlace()
-                exe = static.Executor(place)     
-                prog = paddle.static.default_main_program()                               
+                exe = static.Executor(place)
+                prog = paddle.static.default_main_program()
                 exe.run(static.default_startup_program())
-                inputs=np.ones((10,10),dtype='float32')
-                exe.run(prog,feed={'x':inputs},fetch_list=[y,])
-                path='temp/tensor_'
+                inputs = np.ones((10, 10), dtype='float32')
+                exe.run(prog, feed={'x': inputs}, fetch_list=[y, ])
+                path = 'temp/tensor_'
                 for var in prog.list_vars():
                     if var.persistable:
-                        t=var.get_tensor()
-                        paddle.save(t,path+var.name+'.pdtensor')
+                        t = var.get_tensor()
+                        paddle.save(t, path+var.name+'.pdtensor')
 
                 for var in prog.list_vars():
                     if var.persistable:
-                        t_load=paddle.load(path+var.name+'.pdtensor')
+                        t_load = paddle.load(path+var.name+'.pdtensor')
                         var.set_tensor(t_load)
         '''
 
@@ -5504,8 +5502,8 @@ class Program(object):
                 exe.run(static.default_startup_program())
                 prog = static.default_main_program()
 
-                path="./temp/model.pdparams"
-                paddle.save(prog.state_dict(),path)
+                path = "./temp/model.pdparams"
+                paddle.save(prog.state_dict(), path)
         """
         # The 'framework' is a low-level module, and 'executor'
         # can not be imported at the begainning of this file. 
@@ -5600,8 +5598,8 @@ class Program(object):
                 exe.run(static.default_startup_program())
                 prog = static.default_main_program()
 
-                path="./temp/model.pdparams"
-                paddle.save(prog.state_dict(),path)
+                path = "./temp/model.pdparams"
+                paddle.save(prog.state_dict(), path)
                 state_dict_load = paddle.load(path)
                 prog.set_state_dict(state_dict_load)
         """
