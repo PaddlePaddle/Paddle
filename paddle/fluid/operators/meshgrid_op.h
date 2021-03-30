@@ -72,8 +72,9 @@ class MeshgridKernel : public framework::OpKernel<T> {
     auto outs = context.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
         ins.size() > 1, true,
-        platform::errors::InvalidArgument("Expected at least 2 input tensors, but only received d%.",
-        ins.size()));
+        platform::errors::InvalidArgument(
+            "Expected at least 2 input tensors, but only received d%.",
+            ins.size()));
 
     int64_t size = ins.size();
     std::vector<int64_t> shape(size);
