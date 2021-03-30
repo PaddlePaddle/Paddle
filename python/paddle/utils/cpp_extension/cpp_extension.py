@@ -50,14 +50,14 @@ else:
 def setup(**attr):
     """
     The interface is used to config the process of compiling customized operators,
-    mainly includes how to complile shared library, automatically generate python API 
+    mainly includes how to compile shared library, automatically generate python API 
     and install it into site-package. It supports using customized operators directly with
     ``import`` statement.
 
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
     and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
     concepts, such as necessary compiling flags, included paths of head files, and linking
-    flags. It also will automatically search and valid local enviromment and versions of 
+    flags. It also will automatically search and valid local environment and versions of 
     ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators 
     supporting CPU or GPU device according to the specified Extension type.
 
@@ -67,7 +67,7 @@ def setup(**attr):
 
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
-    For Windows, Visual Studio version will be checked, and it shoule be greater than or equal to that of 
+    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
     PaddlePaddle (Visual Studio 2015 update3). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
@@ -130,7 +130,7 @@ def setup(**attr):
         ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al. 
                                 If only compile operator supporting CPU device, please use ``CppExtension`` ; If compile operator
                                 supporting CPU and GPU devices, please use ``CUDAExtension`` .
-        include_dirs(list[str], optional): Specify the extra include directoies to search head files. The interface will automatically add
+        include_dirs(list[str], optional): Specify the extra include directories to search head files. The interface will automatically add
                                  ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
                                  head files. Default is None.
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
@@ -158,7 +158,7 @@ def setup(**attr):
         setup(name='custom_module',
               ext_modules=CUDAExtension(
               sources=['relu_op.cc', 'relu_op.cu'])
-        
+
         # After running `python setup.py install`
         from custom_module import relu
     """
@@ -209,7 +209,7 @@ def CppExtension(sources, *args, **kwargs):
     Op Kernel only supporting CPU device. Please use ``CUDAExtension`` if you want to
     compile Op Kernel that supports both CPU and GPU devices.
 
-    It furtherly encapsulates python built-in ``setuptools.Extension`` .The arguments and
+    It further encapsulates python built-in ``setuptools.Extension`` .The arguments and
     usage are same as the native interface, except for no need to explicitly specify
     ``name`` .
 
@@ -259,7 +259,7 @@ def CUDAExtension(sources, *args, **kwargs):
     Op Kernel supporting both CPU and GPU devices. Please use ``CppExtension`` if you want to
     compile Op Kernel that supports only CPU device.
 
-    It furtherly encapsulates python built-in ``setuptools.Extension`` .The arguments and
+    It further encapsulates python built-in ``setuptools.Extension`` .The arguments and
     usage are same as the native interface, except for no need to explicitly specify
     ``name`` .
 
@@ -371,7 +371,7 @@ class BuildExtension(build_ext, object):
 
         # Note(Aurelius84): If already compiling source before, we should check whether
         # cflags have changed and delete the built shared library to re-compile the source
-        # even though source file content keep unchanaged.
+        # even though source file content keep unchanged.
         so_name = self.get_ext_fullpath(self.extensions[0].name)
         clean_object_if_change_cflags(
             os.path.abspath(so_name), self.extensions[0])
@@ -397,17 +397,21 @@ class BuildExtension(build_ext, object):
             cflags = copy.deepcopy(extra_postargs)
             try:
                 original_compiler = self.compiler.compiler_so
-                # ncvv compile CUDA source
+                # nvcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert ROCM_HOME is not None, "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
+                        assert ROCM_HOME is not None, "Not found ROCM runtime, \
+                            please use `export ROCM_PATH= XXX` to specify it."
+
                         hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                         self.compiler.set_executable('compiler_so', hipcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
                     else:
-                        assert CUDA_HOME is not None, "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
+                        assert CUDA_HOME is not None, "Not found CUDA runtime, \
+                            please use `export CUDA_HOME= XXX` to specify it."
+
                         nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                         self.compiler.set_executable('compiler_so', nvcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
@@ -470,7 +474,9 @@ class BuildExtension(build_ext, object):
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert CUDA_HOME is not None, "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
+                    assert CUDA_HOME is not None, "Not found CUDA runtime, \
+                        please use `export CUDA_HOME= XXX` to specify it."
+
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                     if isinstance(self.cflags, dict):
                         cflags = self.cflags['nvcc']
@@ -702,7 +708,7 @@ def load(name,
 
     For Linux, GCC version will be checked . For example if Paddle with CUDA 10.1 is built with GCC 8.2, 
     then the version of user's local machine should satisfy GCC >= 8.2. 
-    For Windows, Visual Studio version will be checked, and it shoule be greater than or equal to that of 
+    For Windows, Visual Studio version will be checked, and it should be greater than or equal to that of 
     PaddlePaddle (Visual Studio 2015 update3). 
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may 
     occur because of ABI compatibility.
@@ -729,7 +735,7 @@ def load(name,
 
         custom_op_module = load(
             name="op_shared_libary_name",                # name of shared library
-            sources=['relu_op.cc', 'relu_op.cu'],        # source files of cusomized op
+            sources=['relu_op.cc', 'relu_op.cu'],        # source files of customized op
             extra_cxx_cflags=['-g', '-w'],               # optional, specify extra flags to compile .cc/.cpp file
             extra_cuda_cflags=['-O2'],                   # optional, specify extra flags to compile .cu file
             verbose=True                                 # optional, specify to output log information
@@ -761,7 +767,7 @@ def load(name,
         verbose(bool, optional): whether to verbose compiled log information. Default is False
 
     Returns:
-        Moudle: A callable python module contains all CustomOp Layer APIs.
+        Module: A callable python module contains all CustomOp Layer APIs.
 
     """
 

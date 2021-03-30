@@ -354,6 +354,11 @@ if sys.platform.startswith('linux'):
     shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
     package_data['paddle.libs'] += ['libpaddle_custom_op.so']
 
+# copy libpaddle_custom_op.so to libs on MacOS
+if sys.platform.startswith('darwin'):
+    shutil.copy('${PADDLE_CUSTOM_OP_SHARED_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_custom_op.dylib']
+
 # copy paddle_custom_op.lib/paddle_custom_op.dll to libs on Windows
 if os.name == 'nt':
     shutil.copy('${PADDLE_CUSTOM_OP_IMPORT_LIB}', libs_path)

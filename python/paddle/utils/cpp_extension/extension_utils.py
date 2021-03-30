@@ -247,7 +247,7 @@ class VersionManager:
 def combine_hash(md5, value):
     """
     Return new hash value.
-    DO NOT use `hash()` beacuse it doesn't generate stable value between different process.
+    DO NOT use `hash()` because it doesn't generate stable value between different process.
     See https://stackoverflow.com/questions/27522626/hash-function-in-python-3-3-returns-different-results-between-sessions
     """
     md5.update(repr(value).encode())
@@ -286,13 +286,13 @@ def clean_object_if_change_cflags(so_path, extension):
     if os.path.exists(so_path) and os.path.exists(version_file):
         old_version_info = deserialize(version_file)
         so_version = old_version_info.get(so_name, None)
-        # delete shared library file if versison is changed to re-compile it.
+        # delete shared library file if version is changed to re-compile it.
         if so_version is not None and so_version != versioner.version:
             log_v(
                 "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".
                 format(so_name, versioner.version, version_file))
             os.remove(so_path)
-            # upate new version information
+            # update new version information
             new_version_info = versioner.details
             new_version_info[so_name] = versioner.version
             serialize(version_file, new_version_info)
@@ -383,7 +383,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     else:
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
         # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
-        # We align it automatially with pre-installed Paddle.
+        # We align it automatically with pre-installed Paddle.
         if core.is_compiled_with_mkldnn():
             add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
@@ -614,9 +614,6 @@ def get_build_directory(verbose=False):
         if IS_WINDOWS:
             root_extensions_directory = os.path.normpath(
                 root_extensions_directory)
-        elif OS_NAME.startswith('darwin'):
-            # TODO(Aurelius84): consider macOs
-            raise NotImplementedError("Not support Mac now.")
 
         log_v("$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
               format(root_extensions_directory), verbose)
@@ -654,6 +651,8 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     """
     if IS_WINDOWS:
         dynamic_suffix = '.pyd'
+    elif OS_NAME.startswith('darwin'):
+        dynamic_suffix = '.dylib'
     else:
         dynamic_suffix = '.so'
     ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
@@ -708,7 +707,7 @@ def _custom_api_content(op_name):
                 # Set 'float32' temporarily, and the actual dtype of output variable will be inferred
                 # in runtime.
                 outs[out_name] = helper.create_variable(dtype='float32')
-            
+
             helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
 
             res = [outs[out_name] for out_name in out_names]
@@ -757,7 +756,7 @@ def _get_api_inputs_str(op_name):
     # e.g: x, y, z
     param_names = in_names + attr_names
     # NOTE(chenweihang): we add suffix `@VECTOR` for std::vector<Tensor> input,
-    # but the string contains `@` cannot used as argument name, so we split 
+    # but the string contains `@` cannot used as argument name, so we split
     # input name by `@`, and only use first substr as argument
     params_str = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
