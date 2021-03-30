@@ -17,6 +17,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
 
@@ -238,8 +239,8 @@ class SliceKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto new_out_dims = out->dims();
-    auto offsets = Eigen::array<int64_t, D>();
-    auto extents = Eigen::array<int64_t, D>();
+    auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
     for (size_t i = 0; i < D; ++i) {
       offsets[i] = 0;
       extents[i] = new_out_dims[i];
@@ -259,7 +260,8 @@ class SliceKernel : public framework::OpKernel<T> {
     auto out_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *out, new_out_dims);
-    out_t.device(place) = in_t.slice(offsets, extents);
+    EigenSlice<typename std::remove_reference<decltype(place)>::type, T,
+               D>::Eval(place, out_t, in_t, offsets, extents);
 
     out->Resize(out_dims);
   }
@@ -430,7 +432,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       start = std::max(start, static_cast<int64_t>(0));
       offsets[axes[i]] = start;
     }
-    Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
+    std::array<std::pair<int64_t, int64_t>, D> paddings;
     for (size_t i = 0; i < paddings.size(); ++i) {
       paddings[i].first = offsets[i];
       paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
@@ -441,7 +443,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto d_out_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *d_out, out_dims);
-    d_in_t.device(place) = d_out_t.pad(paddings, T(0));
+    EigenPad<typename std::remove_reference<decltype(place)>::type, T, D>::Eval(
+        place, d_in_t, d_out_t, paddings, static_cast<T>(0));
   }
 };
 }  // namespace operators

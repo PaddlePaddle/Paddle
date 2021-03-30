@@ -12,36 +12,37 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, int Rank>
-struct EigenBroadcast<Eigen::GpuDevice, T, Rank> {
+struct EigenSlice<Eigen::GpuDevice, T, Rank> {
   using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType = Eigen::TensorMap<
       Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   static void Eval(Eigen::GpuDevice dev, OutType out, InType in,
-                   const Array& bcast) {
-    out.device(dev) = in.broadcast(bcast);
+                   const Array& offsets, const Array& extents) {
+    out.device(dev) = in.slice(offsets, extents);
   }
 };
 
 template <typename T, int Rank>
-struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
+struct EigenPad<Eigen::GpuDevice, T, Rank> {
+  using Array =
+      std::array<std::pair<Eigen::DenseIndex, Eigen::DenseIndex>, Rank>;
   using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
   static void Eval(Eigen::GpuDevice dev, OutType out, InType in,
-                   const Array& reduce_dims, const Array2& reshape_dims) {
-    out.device(dev) =
-        in.reshape(reshape_dims).sum(reduce_dims).reshape(out.dimensions());
+                   const Array& padding, T padding_value) {
+    out.device(dev) = in.pad(padding, padding_value);
   }
 };
 
@@ -52,23 +53,20 @@ struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, T, 4>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, T, 6>
-INSTANTIATION(EigenBroadcast, bool);
-INSTANTIATION(EigenBroadcast, platform::float16);
-INSTANTIATION(EigenBroadcast, float);
-INSTANTIATION(EigenBroadcast, double);
-INSTANTIATION(EigenBroadcast, int);
-INSTANTIATION(EigenBroadcast, int64_t);
-INSTANTIATION(EigenBroadcastGrad, bool);
-INSTANTIATION(EigenBroadcastGrad, float);
-INSTANTIATION(EigenBroadcastGrad, platform::float16);
-INSTANTIATION(EigenBroadcastGrad, double);
-INSTANTIATION(EigenBroadcastGrad, int);
-INSTANTIATION(EigenBroadcastGrad, int64_t);
-template struct EigenBroadcastGrad<Eigen::GpuDevice, float, 0>;
-template struct EigenBroadcastGrad<Eigen::GpuDevice, platform::float16, 0>;
-template struct EigenBroadcastGrad<Eigen::GpuDevice, double, 0>;
-template struct EigenBroadcastGrad<Eigen::GpuDevice, int, 0>;
-template struct EigenBroadcastGrad<Eigen::GpuDevice, int64_t, 0>;
+INSTANTIATION(EigenSlice, float);
+INSTANTIATION(EigenSlice, platform::float16);
+INSTANTIATION(EigenSlice, double);
+INSTANTIATION(EigenSlice, int);
+INSTANTIATION(EigenSlice, int64_t);
+INSTANTIATION(EigenSlice, platform::complex64);
+INSTANTIATION(EigenSlice, platform::complex128);
+INSTANTIATION(EigenPad, float);
+INSTANTIATION(EigenPad, platform::float16);
+INSTANTIATION(EigenPad, double);
+INSTANTIATION(EigenPad, int);
+INSTANTIATION(EigenPad, int64_t);
+INSTANTIATION(EigenPad, platform::complex64);
+INSTANTIATION(EigenPad, platform::complex128);
 #undef INSTANTIATION
 
 }  // namespace operators
