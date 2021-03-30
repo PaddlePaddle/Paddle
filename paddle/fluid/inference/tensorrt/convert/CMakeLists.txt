@@ -7,6 +7,8 @@ nv_library(tensorrt_converter
                 emb_eltwise_layernorm.cc skip_layernorm.cc scale_op.cc slice_op.cc hard_sigmoid_op.cc hard_swish_op.cc clip_op.cc
                 gather_op.cc
                 anchor_generator_op.cc
+                yolo_box_op.cc
+                roi_align_op.cc
                 affine_channel_op.cc
                 multiclass_nms_op.cc
                 nearest_interp_op.cc

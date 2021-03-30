@@ -112,6 +112,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten2",
       "flatten",
       "gather",
+      "yolo_box",
+      "roi_align",
       "affine_channel",
       "multiclass_nms",
       "nearest_interp",
@@ -198,6 +200,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape || desc.Input("Axis").size() > 0) return false;
     }
 
+    if (op_type == "yolo_box") {
+      if (with_dynamic_shape) return false;
+      bool has_attrs =
+          (desc.HasAttr("class_num") && desc.HasAttr("anchors") &&
+           desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
+           desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
+      return has_attrs;
+    }
+
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
@@ -264,6 +275,29 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
     }
+
+    if (op_type == "roi_align") {
+      if (!with_dynamic_shape) return false;
+
+      std::vector<std::string> attrs{"pooled_height", "pooled_width",
+                                     "spatial_scale", "sampling_ratio"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+
+      const auto pooled_height =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+      if (pooled_height <= 0) return false;
+
+      const auto pooled_width =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+      if (pooled_width <= 0) return false;
+
+      const auto spatial_scale =
+          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+      if (spatial_scale <= 0.f) return false;
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
