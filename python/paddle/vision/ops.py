@@ -398,6 +398,7 @@ def deform_conv2d(x,
                   stride=1,
                   padding=0,
                   dilation=1,
+                  deformable_groups=1,
                   groups=1,
                   mask=None,
                   name=None):
@@ -462,6 +463,8 @@ def deform_conv2d(x,
         dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
+        deformable_groups (int): The number of deformable group partitions.
+            Default: deformable_groups = 1.
         groups (int, optonal): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -521,7 +524,8 @@ def deform_conv2d(x,
 
     if in_dygraph_mode():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
-                 'groups', groups, 'im2col_step', 1)
+                 'deformable_groups', deformable_groups, 'groups', groups,
+                 'im2col_step', 1)
         if use_deform_conv2d_v1:
             op_type = 'deformable_conv_v1'
             pre_bias = getattr(core.ops, op_type)(x, offset, weight, *attrs)
@@ -572,7 +576,7 @@ def deform_conv2d(x,
             'paddings': padding,
             'dilations': dilation,
             'groups': groups,
-            'deformable_groups': 1,
+            'deformable_groups': deformable_groups,
             'im2col_step': 1,
         }
         helper.append_op(
@@ -649,6 +653,8 @@ class DeformConv2D(Layer):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        deformable_groups (int): The number of deformable group partitions.
+            Default: deformable_groups = 1.
         groups(int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -726,6 +732,7 @@ class DeformConv2D(Layer):
                  stride=1,
                  padding=0,
                  dilation=1,
+                 deformable_groups=1,
                  groups=1,
                  weight_attr=None,
                  bias_attr=None):
@@ -733,6 +740,7 @@ class DeformConv2D(Layer):
         assert weight_attr is not False, "weight_attr should not be False in Conv."
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
+        self._deformable_groups = deformable_groups
         self._groups = groups
         self._in_channels = in_channels
         self._out_channels = out_channels
@@ -770,6 +778,7 @@ class DeformConv2D(Layer):
             stride=self._stride,
             padding=self._padding,
             dilation=self._dilation,
+            deformable_groups=self._deformable_groups,
             groups=self._groups,
             mask=mask)
         return out

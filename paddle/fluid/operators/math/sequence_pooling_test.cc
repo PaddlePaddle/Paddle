@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include <gtest/gtest.h>
-#include <vector>
 
 template <typename DeviceContext, typename T>
 void TestSequencePoolingSum(const DeviceContext &context,
@@ -124,7 +123,7 @@ TEST(SequencePoolingGrad, CPU_SUM) {
                                                                     lod2, 128);
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(SequencePoolingGrad, CUDA_SUM) {
   auto place = paddle::platform::CUDAPlace(0);
   auto *context = static_cast<paddle::platform::CUDADeviceContext *>(

@@ -40,17 +40,17 @@ init = fleet.init
 is_first_worker = fleet.is_first_worker
 worker_index = fleet.worker_index
 worker_num = fleet.worker_num
-node_num=fleet.node_num
-rank=fleet.worker_index
-nranks=fleet.worker_num
-world_size=fleet.worker_num
+node_num = fleet.node_num
+rank = fleet.worker_index
+nranks = fleet.worker_num
+world_size = fleet.worker_num
 # device id in current trainer
-local_device_ids=fleet.local_device_ids
+local_device_ids = fleet.local_device_ids
 # device ids in world
-world_device_ids=fleet.world_device_ids
+world_device_ids = fleet.world_device_ids
 # rank in node
-local_rank=fleet.local_rank
-rank_in_node=local_rank
+local_rank = fleet.local_rank
+rank_in_node = local_rank
 is_worker = fleet.is_worker
 worker_endpoints = fleet.worker_endpoints
 server_num = fleet.server_num
@@ -74,3 +74,4 @@ set_lr = fleet.set_lr
 get_lr = fleet.get_lr
 state_dict = fleet.state_dict
 set_state_dict = fleet.set_state_dict
+shrink = fleet.shrink

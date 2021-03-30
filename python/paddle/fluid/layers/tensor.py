@@ -228,6 +228,7 @@ def cast(x, dtype):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         out = core.ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        return out
 
     check_variable_and_dtype(
         x, 'x',
@@ -1373,19 +1374,19 @@ def range(start, end, step, dtype, name=None):
 
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start)
+            start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
         start = cast(start, dtype)
 
     if not isinstance(end, Variable):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end)
+            end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
         end = cast(end, dtype)
 
     if not isinstance(step, Variable):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step)
+            step = fill_constant([1], dtype, step, force_cpu=True)
     elif step.dtype != dtype:
         step = cast(step, dtype)
 

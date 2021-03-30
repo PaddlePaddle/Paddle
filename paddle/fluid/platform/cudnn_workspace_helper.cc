@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#include <cstdlib>
-#include <string>
-#include "boost/lexical_cast.hpp"
 
+#include <cstdlib>
+#include "boost/lexical_cast.hpp"
 namespace paddle {
 namespace platform {
 

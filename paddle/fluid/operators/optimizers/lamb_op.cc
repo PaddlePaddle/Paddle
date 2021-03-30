@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/lamb_op.h"
+#include <string>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -21,7 +23,7 @@ class LambOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
                       platform::errors::NotFound(
                           "Input(Param) of LambOp should not be null."));
@@ -53,6 +55,12 @@ class LambOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
                       platform::errors::NotFound(
                           "Output(Moment2Out) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta1PowOut"), true,
+                      platform::errors::NotFound(
+                          "Output(Beta1PowOut) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta2PowOut"), true,
+                      platform::errors::NotFound(
+                          "Output(Beta2PowOut) of LambOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(
@@ -108,13 +116,25 @@ class LambOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("Moment1Out", param_dims);
     ctx->SetOutputDim("Moment2Out", param_dims);
+    ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
+    ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext &ctx) const {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
 };
 
@@ -136,6 +156,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output parameter.");
     AddOutput("Moment1Out", "(Tensor) Output first moment.");
     AddOutput("Moment2Out", "(Tensor) Output second moment.");
+    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator")
+        .AsDispensable();
+    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator")
+        .AsDispensable();
     AddAttr<float>("weight_decay", "(float) Weight decay rate.");
     AddAttr<float>("beta1",
                    "(float, default 0.9) The exponential decay rate for the "
@@ -164,6 +188,10 @@ m_t &= \beta_1 m_{t - 1}+ (1 - \beta_1)g_t \\
 
 v_t &= \beta_2 v_{t - 1}  + (1 - \beta_2)g_t^2 \\
 
+m_t &= \frac{m_t}{\beta_1^t} \\
+
+v_t &= \frac{v_t}{\beta_2^t} \\
+
 r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 
 w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
@@ -183,3 +211,15 @@ REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
 REGISTER_OP_CPU_KERNEL(
     lamb, ops::LambOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LambOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(lamb)
+    .AddCheckpoint(
+        R"ROC(Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("Beta1PowOut",
+                      "The Output beta1 power accumulator. 'Beta1PowOut' is "
+                      "dispensable.")
+            .NewInput("Beta2PowOut",
+                      "The Output beta2 power accumulator. 'Beta2PowOut' is "
+                      "dispensable."));

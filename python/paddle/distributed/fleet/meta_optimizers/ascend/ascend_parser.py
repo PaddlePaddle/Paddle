@@ -276,7 +276,6 @@ class AscendParserBase(object):
         return tensor_shape
 
 
-### elementwise_op
 class AddParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(AddParser, self).__init__(graph, var2geop)

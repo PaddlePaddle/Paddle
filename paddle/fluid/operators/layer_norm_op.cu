@@ -12,14 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cub/cub.cuh>
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include <memory>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -32,7 +43,11 @@ template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 inline static int GetDesiredBlockDim(int block_dim) {
+#ifdef __HIPCC__
+  const int kMaxBlockDim = 256;
+#else
   const int kMaxBlockDim = 512;
+#endif
   return block_dim >= kMaxBlockDim
              ? kMaxBlockDim
              : (1 << (static_cast<int>(std::log2f(block_dim))));
@@ -108,23 +123,23 @@ struct PairForLayerNormAddFunctor {
 };
 
 template <typename T>
-__inline__ __device__ T rsqrt(const T val) {
+__inline__ __device__ T rsqrt_(const T val) {
   return static_cast<T>(1) / sqrt(val);
 }
 
 template <>
-__inline__ __device__ float rsqrt(const float val) {
+__inline__ __device__ float rsqrt_(const float val) {
   return rsqrtf(val);
 }
 
 template <>
-__inline__ __device__ double rsqrt(const double val) {
+__inline__ __device__ double rsqrt_(const double val) {
   return rsqrt(val);
 }
 
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
 template <>
-__inline__ __device__ half rsqrt(const half val) {
+__inline__ __device__ half rsqrt_(const half val) {
   return hrsqrt(val);
 }
 #endif
@@ -161,7 +176,7 @@ __global__ void LayerNormForward(const T *x, const U *scale, const U *bias,
   __syncthreads();
 
   mean_val = mean_share;
-  U invvar = rsqrt<U>(var_share + static_cast<U>(epsilon));
+  U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // Step 2: Calculate y
   if (scale != nullptr) {
@@ -204,7 +219,7 @@ __inline__ __device__ void cuLoadAddStridedInputs(
   const int i1 = i1_block + thr_load_row_off;
   if (i1 >= i1_end) return;
   U curr_mean = mean[i1];
-  U curr_invvar = rsqrt<U>(var[i1] + epsilon);
+  U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
   for (int k = 0; k < VPT; ++k) {
     const int i2 = i2_off + k;
     const int load_idx = i1 * n2 + i2;
@@ -348,11 +363,15 @@ __global__ void LayerNormBackwardComputeGradInput(
     // epsilon, const T* gamma,
     const U *__restrict__ mean, const U *__restrict__ var, const float epsilon,
     const U *gamma, T *grad_input) {
+#ifdef __HIPCC__
+  for (auto i1 = hipBlockIdx_y; i1 < n1; i1 += hipGridDim_y) {
+#else
   for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+#endif
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
     const U c_mean = mean[i1];
-    const U c_invvar = rsqrt<U>(var[i1] + epsilon);
+    const U c_invvar = rsqrt_<U>(var[i1] + epsilon);
     const T *k_input = input + i1 * n2;
     const T *k_dout = dout + i1 * n2;
     constexpr int numx = BDIMX * BDIMY;
@@ -392,12 +411,19 @@ __global__ void LayerNormBackwardComputeGradInput(
     }
     // intra-warp reductions
     for (int mask = BDIMX / 2; mask > 0; mask /= 2) {
+#ifdef PADDLE_WITH_HIP
+      sum_loss1 += __shfl_xor(sum_loss1, mask,
+                              warpSize);  // WARP_SHFL_XOR(sum_loss1, mask);
+      sum_loss2 += __shfl_xor(sum_loss2, mask,
+                              warpSize);  // WARP_SHFL_XOR(sum_loss2, mask);
+#else
       sum_loss1 +=
           __shfl_xor_sync(0xffffffff, sum_loss1, mask,
                           warpSize);  // WARP_SHFL_XOR(sum_loss1, mask);
       sum_loss2 +=
           __shfl_xor_sync(0xffffffff, sum_loss2, mask,
                           warpSize);  // WARP_SHFL_XOR(sum_loss2, mask);
+#endif
     }
     // inter-warp reductions
     if (BDIMY > 1) {
@@ -676,8 +702,11 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
                               const framework::ExecutionContext &ctx) {
   auto &dev_ctx = ctx.cuda_device_context();
   auto stream = dev_ctx.stream();
-
+#ifdef __HIPCC__
+  const int kMaxBlockDim = 256;
+#else
   const int kMaxBlockDim = 512;
+#endif
   const int kMaxBlockNum = 128;
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |
@@ -821,7 +850,7 @@ static void LayerNormBackward(const T *x, const T *d_y, const U *scale,
 }
 
 template <typename T>
-void LayerNormDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
+void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T *input,
                                                std::vector<int> input_shape,
                                                const T *bias, const T *scale,
@@ -942,6 +971,18 @@ template class LayerNormDirectCUDAFunctor<float>;
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_CUDA_KERNEL(
+    layer_norm,
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    layer_norm_grad,
+    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>);
+#else
 REGISTER_OP_CUDA_KERNEL(
     layer_norm,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
@@ -953,3 +994,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
                              plat::float16>);
+#endif

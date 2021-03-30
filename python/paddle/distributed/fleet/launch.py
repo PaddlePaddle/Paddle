@@ -109,15 +109,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         " bound to one or average number of gpus.")
 
     base_group.add_argument(
-        "--gpus",
-        type=str,
-        default=None,
-        help="It's for gpu training."
-        "For example:"
-        "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
-    )
-
-    base_group.add_argument(
         "--run_mode",
         type=str,
         default="collective",
@@ -132,7 +123,26 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
     )
 
-    base_group.add_argument("--selected_gpus", dest="gpus")
+    if fluid.core.is_compiled_with_cuda():
+        base_group.add_argument(
+            "--gpus",
+            type=str,
+            default=None,
+            help="It's for gpu training."
+            "For example:"
+            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
+        )
+        base_group.add_argument("--selected_gpus", dest="gpus")
+
+    if fluid.core.is_compiled_with_xpu():
+        base_group.add_argument(
+            "--xpus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
+        )
+        base_group.add_argument("--selected_xpus", dest="xpus")
 
     base_group.add_argument(
         "training_script",
@@ -317,8 +327,10 @@ def which_distributed_mode(args):
 
     if fluid.core.is_compiled_with_cuda():
         accelerators = fluid.core.get_cuda_device_count()
-    if fluid.core.is_compiled_with_ascend():
+    elif fluid.core.is_compiled_with_ascend():
         accelerators = fluid.core.NPUDevice.get_device_count()
+    elif fluid.core.is_compiled_with_xpu():
+        accelerators = fluid.core.get_xpu_device_count()
     else:
         accelerators = 0
 
@@ -336,14 +348,15 @@ def which_distributed_mode(args):
                     format(has_collective_args, accelerators))
         return DistributeMode.COLLECTIVE
     else:
-        if not fluid.core.is_compiled_with_cuda():
+        if not fluid.core.is_compiled_with_cuda(
+        ) and not fluid.core.is_compiled_with_xpu():
             logger.warning(
-                "Not found distinct arguments and not compiled with cuda. Default use ps mode"
+                "Not found distinct arguments and not compiled with cuda or xpu. Default use ps mode"
             )
             return DistributeMode.PS
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda. Default use collective mode"
+                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
             )
             return DistributeMode.COLLECTIVE
 

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "thrust/device_vector.h"
 #endif
@@ -87,7 +87,7 @@ struct KronOpFunctor {
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_out(ndims);
@@ -326,7 +326,7 @@ struct KronGradOpFunctor {
     const int64_t* p_stride_y = nullptr;
     const int64_t* p_stride_dout = nullptr;
     const int64_t* p_shape_y = nullptr;
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> d_stride_x(ndims);
     thrust::device_vector<int64_t> d_stride_y(ndims);
     thrust::device_vector<int64_t> d_stride_dout(ndims);
@@ -369,7 +369,7 @@ struct KronGradOpFunctor {
     for_range(func);
 
 // reduce_sum along aixs 1
-#if __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
       TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(

@@ -47,9 +47,11 @@ class DeviceMode():
     """
     Training devices type
     """
+    UNKNOWN = -1
     CPU = 0
     GPU = 1
     KUNLUN = 2
+    XPU = 2
     ASCEND_NPU = 3
     UNKNOWN = 3
 
@@ -144,8 +146,8 @@ class Trainer(object):
         self.rank = None
 
     def __str__(self):
-        return "accelerator:{} endpoint:{} rank:{}".format(self.accelerators, self.endpoint,
-                                                   self.rank)
+        return "accelerator:{} endpoint:{} rank:{}".format(
+            self.accelerators, self.endpoint, self.rank)
 
     def __eq__(self, t):
         if len(self.accelerators) != len(t.accelerators):
@@ -272,7 +274,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
-        pod.device_mode=device_mode
+        pod.device_mode = device_mode
 
         cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > devices_per_proc(user_defined)
@@ -288,7 +290,11 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
                 else:
                     trainer.accelerators.append(devices_per_proc[i])
                     pod.accelerators.append(devices_per_proc[i])
-
+            elif device_mode == DeviceMode.XPU:
+                if isinstance(devices_per_proc[i], (list, tuple)):
+                    trainer.accelerators.extend(devices_per_proc[i])
+                else:
+                    trainer.accelerators.append(devices_per_proc[i])
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
@@ -459,7 +465,7 @@ def start_local_trainers(cluster,
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
-    ids=cluster.world_device_ids()
+    ids = cluster.world_device_ids()
     res = [':'.join(ele) for ele in ids]
     procs = []
     for idx, t in enumerate(pod.trainers):
@@ -469,16 +475,20 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_RANK_IN_NODE": str(idx),
-            "PADDLE_LOCAL_DEVICE_IDS":",".join(t.accelerators),
-            "PADDLE_WORLD_DEVICE_IDS":",".join(res),
+            "PADDLE_LOCAL_DEVICE_IDS": ",".join(t.accelerators),
+            "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
         }
 
-        if len(t.accelerators) > 0 and pod.device_mode==DeviceMode.GPU:
+        if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
             proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
         if len(t.accelerators) > 0:
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
+                [str(g) for g in t.accelerators])
+        # to do: same code style in future
+        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
+            proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
         current_env.update(proc_env)
@@ -588,6 +598,7 @@ def get_ascend_npus(npus):
         ret = [x.strip() for x in npus.split(',')]
     return ret
 
+
 def get_gpus(gpus):
     if gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
@@ -617,6 +628,35 @@ def get_gpus(gpus):
     return res_gpus
 
 
+def get_xpus(xpus):
+    if xpus is None:
+        xpus_num = fluid.core.get_xpu_device_count()
+        res_xpus = [str(x) for x in range(0, xpus_num)]
+    else:
+        xpu_visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
+        if xpu_visible_devices is None or xpu_visible_devices == "":
+            res_xpus = [x.strip() for x in xpus.split(',')]
+        else:
+            # change xpus into relative values
+            # e.g. XPU_VISIBLE_DEVICES=4,5,6,7; args.xpus=4,5,6,7;
+            # therefore xpus=0,1,2,3
+            xpu_visible_devices_list = xpu_visible_devices.split(',')
+            for x in xpus.split(','):
+                assert x in xpu_visible_devices_list, "Can't find "\
+                    "your xpus %s in XPU_VISIBLE_DEVICES[%s]."\
+                    % (x, xpu_visible_devices)
+            res_xpus = [
+                xpu_visible_devices_list.index(x.strip())
+                for x in xpus.split(',')
+            ]
+            logger.info("Change selected_xpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "XPU_VISIBLE_DEVICES:{}".format(
+                            xpus, res_xpus, xpu_visible_devices_list))
+
+    return res_xpus
+
+
 def get_device_mode():
     if fluid.core.is_compiled_with_ascend() and \
             fluid.core.NPUDevice.get_device_count() > 0:
@@ -625,11 +665,17 @@ def get_device_mode():
 
     if fluid.core.is_compiled_with_cuda() and \
             fluid.core.get_cuda_device_count() > 0:
-            print("launch train in GPU mode!")
-            return DeviceMode.GPU
+        print("launch train in GPU mode!")
+        return DeviceMode.GPU
 
-    print("launch train in CPU mode!")
+    if fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
+    ) > 0:
+        print("launch train in XPU mode")
+        return DeviceMode.XPU
+
+    print("launch train in CPU mode")
     return DeviceMode.CPU
+
 
 def get_device_proc_info(args):
     # device_mode
@@ -652,14 +698,26 @@ def get_device_proc_info(args):
     elif device_mode == DeviceMode.ASCEND_NPU:
         npus = get_ascend_npus(args.ascend_npus)
         assert args.nproc_per_node is None, "ascend_npus need't nproc_per_node arguments"
-        devices_per_proc=npus
+        devices_per_proc = npus
+    elif device_mode == DeviceMode.XPU:
+        xpus = get_xpus(args.xpus)
+        if args.nproc_per_node is not None:
+            assert (len(xpus) % int(args.nproc_per_node)) == 0, \
+                "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), arg.nproc_per_node)
+
+            n = int(len(xpus) / int(args.nproc_per_node))
+            devices_per_proc = [
+                xpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
+            ]
+        else:
+            devices_per_proc = xpus
     elif device_mode == DeviceMode.CPU:
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
             devices_per_proc = [x for x in range(0, args.nproc_per_node)]
     else:
-        assert False, "Can't support device_mode:{}, support only cpu and gpu now.".format(
+        assert False, "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
             device_mode)
 
     return (device_mode, devices_per_proc)

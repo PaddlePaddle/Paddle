@@ -244,7 +244,7 @@ class Adam(Optimizer):
             if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
                 warnings.warn(
                     "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
-                    "Consider using multi_precision=True option of the Momentum optimizer."
+                    "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
 
@@ -351,7 +351,7 @@ class Adam(Optimizer):
         """
         params_grads = []
         for param in self._parameter_list:
-            if not param.trainable:
+            if param.stop_gradient:
                 continue
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()

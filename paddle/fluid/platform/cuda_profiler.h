@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -37,6 +38,14 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
 void CudaProfilerStart() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStart()); }
 
 void CudaProfilerStop() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStop()); }
+
+#ifndef _WIN32
+void CudaNvtxRangePush(std::string name) {
+  dynload::nvtxRangePushA(name.c_str());
+}
+
+void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
+#endif
 
 }  // namespace platform
 }  // namespace paddle

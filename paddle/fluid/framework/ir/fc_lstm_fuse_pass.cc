@@ -14,10 +14,14 @@
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
-#include <unordered_set>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

@@ -205,6 +205,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
+                                     -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
+                                     -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -230,7 +237,8 @@ function cmake_base() {
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
+        -DWITH_ROCM=${WITH_ROCM:-OFF}
+        -DWITH_RCCL=${WITH_RCCL:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -253,8 +261,9 @@ function cmake_base() {
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
-        -DLITE_GIT_TAG=develop
+        -DLITE_GIT_TAG=release/v2.8
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -266,7 +275,8 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
-        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
+        -DWITH_ROCM=${WITH_ROCM:-OFF} \
+        -DWITH_RCCL=${WITH_RCCL:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -287,10 +297,11 @@ EOF
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_GLOO=${gloo_flag} \
-        -DLITE_GIT_TAG=develop \
+        -DLITE_GIT_TAG=release/v2.8 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
+        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -605,7 +616,16 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        bash $PADDLE_ROOT/tools/check_added_ut.sh
+        get_precision_ut_mac
+        if [[ "$on_precision" == "0" ]];then
+            ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        else
+            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            tmpfile_rand=`date +%s%N`
+            tmpfile=$tmp_dir/$tmpfile_rand
+            ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+        fi
         failed_test_lists=''
         collect_failed_tests
         mactest_error=0
@@ -613,18 +633,26 @@ EOF
         retry_time=3
         exec_times=0
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
+        is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}"`
-                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
@@ -648,9 +676,8 @@ EOF
                         exec_times=$[$exec_times+1]
                     done
             else
-                echo "========================================="
-                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
             fi
 
         fi
@@ -663,24 +690,46 @@ EOF
         set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
-        set -x
         if [ "$mactest_error" != 0 ];then
-            if [[ "$failed_test_lists" == "" ]]; then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                failed_test_lists_ult=`echo "${failed_test_lists}"`
-                echo "========================================"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${failed_test_lists_ult}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
+        set -x
+    fi
+}
+
+function get_precision_ut_mac() {
+    on_precision=0
+    set -x
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    precison_cases=""
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+        if [[ -f "ut_list" ]]; then
+            set +x
+            echo "PREC length: "`wc -l ut_list`
+            precision_cases=`cat ut_list`
+            set -x
+        fi
+    fi
+    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+        UT_list_re=''
+        on_precision=1
+        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+        UT_list_prec_1='ut_list_prec2'
+        for case in $UT_list; do
+            flag=$(echo $case|grep -oE $re)
+            if [ -n "$flag" ];then
+                if [ -z "$UT_list_prec" ];then
+                    UT_list_prec="^$case$"
+                elif [[ "${#UT_list_prec}" -gt 10000 ]];then
+                    UT_list_prec_1="$UT_list_prec_1|^$case$"
+                else
+                    UT_list_prec="$UT_list_prec|^$case$"
+                fi
+            else
+                echo ${case} "won't run in PRECISION_TEST mode."
+            fi
+        done
     fi
 }
 
@@ -714,6 +763,10 @@ function generate_upstream_develop_api_spec() {
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
 }
 
 function generate_api_spec() {
@@ -984,24 +1037,27 @@ function card_test() {
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ROCM}" == "ON" ];then
+        CUDA_DEVICE_COUNT=4
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
 
     testcases=$1
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if (( $# > 1 )); then
         cardnumber=$2
         if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
             cardnumber=$CUDA_DEVICE_COUNT
         fi
         if (( $# > 2 )); then
-            parallel_job=$3
+            parallel_job=`expr $3 \* $parallel_level_base`
         else
-            parallel_job=1
+            parallel_job=$parallel_level_base
         fi
     else
         cardnumber=$CUDA_DEVICE_COUNT
-        parallel_job=1
+        parallel_job=$parallel_level_base
     fi
 
     if [[ "$testcases" == "" ]]; then
@@ -1069,6 +1125,18 @@ set -x
                 set +x
                 echo "PREC length: "`wc -l ut_list`
                 precision_cases=`cat ut_list`
+                set -x
+            fi
+        fi
+        if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
+            duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
+            if [[ "$duplicate_uts" != "" ]];then
+                set +x
+                echo "========================================"
+                echo "The new unit test has the same name as the existing unit test"
+                cat "$PADDLE_ROOT/duplicate_ut"
+                echo "========================================"
+                exit 102;
                 set -x
             fi
         fi
@@ -1185,23 +1253,33 @@ set +x
         retry_unittests_record=''
         retry_time=3
         exec_time_array=('first' 'second' 'third')
-        exec_retry_threshold=20
+        exec_retry_threshold=10
+        is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
             read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
+            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
-                while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                while ( [ $exec_times -lt $retry_time ] )
                     do
-                        
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                        read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
                         echo "========================================="
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${failed_test_lists_ult}"
+                        echo "${retry_unittests}"
                             
                         for line in ${retry_unittests[@]} ;
                             do
@@ -1251,33 +1329,48 @@ set +x
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry=''
-                        retry_unittests=''
                     done
             else 
-                echo "========================================="
-                echo "There are more than 20 failed unit tests, so no unit test retry!!!"
-                echo "========================================="
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
             fi
         fi
 
         if [[ "$EXIT_CODE" != "0" ]]; then
-            if [[ "$failed_test_lists" == "" ]]; then
-                echo "========================================"
-                echo "There are failed tests, which have been successful after re-run:"
-                echo "========================================"
-                echo "The following tests have been re-ran:"
-                echo "${retry_unittests_record}"
-            else
-                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                echo "========================================"
-                echo "Summary Failed Tests... "
-                echo "========================================"
-                echo "The following tests FAILED: "
-                echo "${failed_test_lists_ult}"
-                exit 8;
-            fi
+            show_ut_retry_result
         fi
 set -ex
+    fi
+}
+
+function show_ut_retry_result() {
+    if [[ "$is_retry_execuate" != "0" ]];then
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        echo "========================================="
+        echo "There are more than 10 failed unit tests, so no unit test retry!!!"
+        echo "========================================="
+        echo "The following tests FAILED: "
+        echo "${failed_test_lists_ult}"
+        exit 8;
+    else
+        read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+        if [ -z "${retry_unittests_record_judge}" ];then
+            echo "========================================"
+            echo "There are failed tests, which have been successful after re-run:"
+            echo "========================================"
+            echo "The following tests have been re-ran:"
+            echo "${retry_unittests_record}"
+        else
+            failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+            echo "========================================"
+            echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
+            exit 8;
+        fi
     fi
 }
 
@@ -1341,7 +1434,7 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$WITH_GPU" == "ON" ];then
+    if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
         parallel_test_base_gpu
     else
         if [ "$WITH_XPU" == "ON" ];then
@@ -1858,6 +1951,8 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
+        PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
@@ -1894,6 +1989,11 @@ function main() {
         parallel_test
         ;;
       check_xpu_coverage)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
+        check_coverage
+        ;;
+      check_rocm_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage

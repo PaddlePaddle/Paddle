@@ -16,27 +16,36 @@
 
 #include <stdint.h>
 
+#include <complex>
+#include <cstring>
+#include <iostream>
 #include <limits>
-#if !defined(_WIN32)
-#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#define PADDLE_ALIGN(x) __declspec(align(x))
-#endif
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuComplex.h>
 #include <thrust/complex.h>
 #endif  // PADDLE_WITH_CUDA
 
-#include <cstring>
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_complex.h>
+#include <thrust/complex.h>  // NOLINT
+#endif
 
-#include "paddle/fluid/platform/hostdevice.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#if !defined(_WIN32)
+#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
 
-namespace Eigen {
-template <typename T>
-struct NumTraits;
-}  // namespace Eigen
+#if (defined(__CUDACC__) || defined(__HIPCC__))
+#define HOSTDEVICE __host__ __device__
+#define DEVICE __device__
+#define HOST __host__
+#else
+#define HOSTDEVICE
+#define DEVICE
+#define HOST
+#endif
 
 namespace paddle {
 namespace platform {
@@ -54,7 +63,7 @@ struct PADDLE_ALIGN(16) complex128 {
   ~complex128() = default;
 
   HOSTDEVICE complex128(double real, double imag) : real(real), imag(imag) {}
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   HOSTDEVICE inline explicit complex128(const thrust::complex<double>& c) {
     real = c.real();
@@ -65,9 +74,15 @@ struct PADDLE_ALIGN(16) complex128 {
     return thrust::complex<double>(real, imag);
   }
 
+#ifdef PADDLE_WITH_HIP
+  HOSTDEVICE inline explicit operator hipDoubleComplex() const {
+    return make_hipDoubleComplex(real, imag);
+  }
+#else
   HOSTDEVICE inline explicit operator cuDoubleComplex() const {
     return make_cuDoubleComplex(real, imag);
   }
+#endif
 #endif
 
   HOSTDEVICE complex128(const float& val)
@@ -202,7 +217,7 @@ struct PADDLE_ALIGN(16) complex128 {
 
 HOSTDEVICE inline complex128 operator+(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::complex<double>(a.real, a.imag) +
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -212,7 +227,7 @@ HOSTDEVICE inline complex128 operator+(const complex128& a,
 
 HOSTDEVICE inline complex128 operator-(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::complex<double>(a.real, a.imag) -
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -222,7 +237,7 @@ HOSTDEVICE inline complex128 operator-(const complex128& a,
 
 HOSTDEVICE inline complex128 operator*(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::complex<double>(a.real, a.imag) *
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -233,7 +248,7 @@ HOSTDEVICE inline complex128 operator*(const complex128& a,
 
 HOSTDEVICE inline complex128 operator/(const complex128& a,
                                        const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::complex<double>(a.real, a.imag) /
                     thrust::complex<double>(b.real, b.imag));
 #else
@@ -244,7 +259,7 @@ HOSTDEVICE inline complex128 operator/(const complex128& a,
 }
 
 HOSTDEVICE inline complex128 operator-(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(-thrust::complex<double>(a.real, a.imag));
 #else
   complex128 res;
@@ -256,7 +271,7 @@ HOSTDEVICE inline complex128 operator-(const complex128& a) {
 
 HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   a = complex128(thrust::complex<double>(a.real, a.imag) +=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -269,7 +284,7 @@ HOSTDEVICE inline complex128& operator+=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   a = complex128(thrust::complex<double>(a.real, a.imag) -=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -282,7 +297,7 @@ HOSTDEVICE inline complex128& operator-=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   a = complex128(thrust::complex<double>(a.real, a.imag) *=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -295,7 +310,7 @@ HOSTDEVICE inline complex128& operator*=(complex128& a,  // NOLINT
 
 HOSTDEVICE inline complex128& operator/=(complex128& a,  // NOLINT
                                          const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   a = complex128(thrust::complex<double>(a.real, a.imag) /=
                  thrust::complex<double>(b.real, b.imag));
   return a;
@@ -339,6 +354,7 @@ HOSTDEVICE inline bool operator>=(const complex128& a, const complex128& b) {
 
 HOSTDEVICE inline bool(isnan)(const complex128& a) {
 #if defined(__CUDA_ARCH__)
+  // __isnanf not supported on HIP platform
   return __isnan(a.real) || __isnan(a.imag);
 #else
   return std::isnan(a.real) || std::isnan(a.imag);
@@ -347,6 +363,7 @@ HOSTDEVICE inline bool(isnan)(const complex128& a) {
 
 HOSTDEVICE inline bool(isinf)(const complex128& a) {
 #if defined(__CUDA_ARCH__)
+  // __isinf not supported on HIP platform
   return __isinf(a.real) || __isinf(a.imag);
 #else
   return std::isinf(a.real) || std::isinf(a.imag);
@@ -358,15 +375,15 @@ HOSTDEVICE inline bool(isfinite)(const complex128& a) {
 }
 
 HOSTDEVICE inline double(abs)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return thrust::abs(thrust::complex<double>(a.real, a.imag));
 #else
-  return std::abs(std::complex<double>(a));
+  return std::abs(std::complex<double>(a.real, a.imag));
 #endif
 }
 
 HOSTDEVICE inline complex128(pow)(const complex128& a, const complex128& b) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::pow(thrust::complex<double>(a.real, a.imag),
                                 thrust::complex<double>(b.real, b.imag)));
 #else
@@ -375,7 +392,7 @@ HOSTDEVICE inline complex128(pow)(const complex128& a, const complex128& b) {
 }
 
 HOSTDEVICE inline complex128(sqrt)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::sqrt(thrust::complex<double>(a.real, a.imag)));
 #else
   return std::sqrt(std::complex<double>(a));
@@ -383,7 +400,7 @@ HOSTDEVICE inline complex128(sqrt)(const complex128& a) {
 }
 
 HOSTDEVICE inline complex128(tanh)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::tanh(thrust::complex<double>(a.real, a.imag)));
 #else
   return std::tanh(std::complex<double>(a));
@@ -391,7 +408,7 @@ HOSTDEVICE inline complex128(tanh)(const complex128& a) {
 }
 
 HOSTDEVICE inline complex128(log)(const complex128& a) {
-#if defined(__CUDA_ARCH__)
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
   return complex128(thrust::log(thrust::complex<double>(a.real, a.imag)));
 #else
   return complex128(std::log(std::complex<double>(a)));
@@ -496,97 +513,5 @@ struct numeric_limits<paddle::platform::complex128> {
 };
 
 }  // namespace std
-namespace Eigen {
-
-using complex128 = paddle::platform::complex128;
-
-template <>
-struct NumTraits<complex128> : GenericNumTraits<std::complex<double>> {
-  typedef double Real;
-  typedef typename NumTraits<double>::Literal Literal;
-  enum {
-    IsComplex = 1,
-    RequireInitialization = NumTraits<double>::RequireInitialization,
-    ReadCost = 2 * NumTraits<double>::ReadCost,
-    AddCost = 2 * NumTraits<Real>::AddCost,
-    MulCost = 4 * NumTraits<Real>::MulCost + 2 * NumTraits<Real>::AddCost
-  };
-
-  EIGEN_DEVICE_FUNC
-  static inline Real epsilon() { return NumTraits<Real>::epsilon(); }
-  EIGEN_DEVICE_FUNC
-  static inline Real dummy_precision() {
-    return NumTraits<Real>::dummy_precision();
-  }
-  EIGEN_DEVICE_FUNC
-  static inline int digits10() { return NumTraits<Real>::digits10(); }
-};
-namespace numext {
-
-template <>
-HOSTDEVICE inline bool(isnan)(const complex128& a) {
-  return (paddle::platform::isnan)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isinf)(const complex128& a) {
-  return (paddle::platform::isinf)(a);
-}
-
-template <>
-HOSTDEVICE inline bool(isfinite)(const complex128& a) {
-  return (paddle::platform::isfinite)(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 exp(const complex128& a) {
-  double com = ::expf(a.real);
-  double res_real = com * ::cosf(a.imag);
-  double res_imag = com * ::sinf(a.imag);
-  return complex128(res_real, res_imag);
-}
-
-template <>
-HOSTDEVICE inline complex128 log(const complex128& a) {
-  return paddle::platform::log(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 tanh(const complex128& a) {
-  return paddle::platform::tanh(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 sqrt(const complex128& a) {
-  return paddle::platform::sqrt(a);
-}
-
-template <>
-HOSTDEVICE inline complex128 ceil(const complex128& a) {
-  return complex128(::ceilf(a.real), ::ceilf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 floor(const complex128& a) {
-  return complex128(::floorf(a.real), ::floor(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 round(const complex128& a) {
-  return complex128(::roundf(a.real), ::roundf(a.imag));
-}
-
-template <>
-HOSTDEVICE inline complex128 pow(const complex128& a, const complex128& b) {
-  return paddle::platform::pow(a, b);
-}
-
-template <>
-HOSTDEVICE inline double abs(const complex128& a) {
-  return paddle::platform::abs(a);
-}
-
-}  // namespace numext
-}  // namespace Eigen
 
 #define MKL_Complex16 paddle::platform::complex128

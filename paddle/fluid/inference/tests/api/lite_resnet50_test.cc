@@ -81,6 +81,7 @@ TEST(Predictor, use_gpu) {
   config.EnableLiteEngine(PrecisionType::kFloat32);
 
   auto predictor = CreatePredictor(config);
+
   const int batch = 1;
   const int channel = 3;
   const int height = 318;

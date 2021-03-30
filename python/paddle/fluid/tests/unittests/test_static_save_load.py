@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import sys
 
 import unittest
 import paddle
@@ -1276,11 +1277,11 @@ class TestProgramStateOldSave(unittest.TestCase):
             # case 2: load with no need file
             def symlink_force(target, link_name):
                 try:
-                    os.symlink(target, link_name)
+                    self.create_symlink(target, link_name)
                 except OSError as e:
                     if e.errno == errno.EEXIST:
                         os.remove(link_name)
-                        os.symlink(target, link_name)
+                        self.create_symlink(target, link_name)
                     else:
                         raise e
 
@@ -1304,6 +1305,14 @@ class TestProgramStateOldSave(unittest.TestCase):
             for k, v in load_state.items():
                 self.assertTrue(np.array_equal(base_map[k], v))
 
+    def create_symlink(self, target, link_name):
+        try:
+            os.symlink(target, link_name)
+        except AttributeError:
+            import ctypes
+            kernel_dll = ctypes.windll.LoadLibrary("kernel32.dll")
+            kernel_dll.CreateSymbolicLinkA(target, link_name, 0)
+
     def check_in_static(self, main_program, base_map):
         for var in main_program.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
@@ -1311,39 +1320,6 @@ class TestProgramStateOldSave(unittest.TestCase):
                                  .get_tensor())
                 base_t = base_map[var.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
-
-
-class TestStaticSaveLoadLargeParameters(unittest.TestCase):
-    def test_large_parameters_static_save(self):
-        # enable static mode
-        paddle.enable_static()
-        LARGE_PARAM = 2**26
-        with new_program_scope():
-            # create network
-            x = paddle.static.data(
-                name="static_save_load_large_x",
-                shape=[None, 10],
-                dtype='float32')
-            z = paddle.static.nn.fc(x, LARGE_PARAM)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            prog = paddle.static.default_main_program()
-
-            inputs = np.random.randn(1, 10).astype("float32")
-            result_z = exe.run(program=prog,
-                               feed={"static_save_load_large_x": inputs},
-                               fetch_list=[z.name])
-            path = "test_static_save_load_large_param/static_save"
-            paddle.fluid.save(prog, path)
-
-            paddle.fluid.load(prog, path)
-            result_load = exe.run(program=prog,
-                                  feed={"static_save_load_large_x": inputs},
-                                  fetch_list=[z.name])
-            # compare results before and after saving
-            self.assertTrue(
-                np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
 
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
@@ -1475,6 +1451,70 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                         main_program.global_block().create_var(
                             name="fake_var_name", persistable=True)
                     ])
+
+
+class TestStaticSaveLoadPickle(unittest.TestCase):
+    def test_pickle_protocol(self):
+        # enable static mode
+        paddle.enable_static()
+
+        with new_program_scope():
+            # create network
+            x = paddle.static.data(
+                name="static_save_load_large_x",
+                shape=[None, 10],
+                dtype='float32')
+            z = paddle.static.nn.fc(x, 10, bias_attr=False)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            prog = paddle.static.default_main_program()
+
+            base_map = {}
+            for var in prog.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                    # make sure all the paramerter or optimizer var have been update
+                    self.assertTrue(np.sum(np.abs(t)) != 0)
+                    base_map[var.name] = t
+
+            path = os.path.join("test_static_save_load_pickle",
+                                "pickle_protocol")
+
+            with self.assertRaises(ValueError):
+                paddle.fluid.save(prog, path, 2.0)
+
+            with self.assertRaises(ValueError):
+                paddle.fluid.save(prog, path, 1)
+
+            with self.assertRaises(ValueError):
+                paddle.fluid.save(prog, path, 5)
+
+            protocols = [2, ]
+            if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
+                protocols += [3, 4]
+            for protocol in protocols:
+                paddle.fluid.save(prog, path, protocol)
+                # set var to zero
+                for var in prog.list_vars():
+                    if isinstance(var, framework.Parameter) or var.persistable:
+                        ten = fluid.global_scope().find_var(
+                            var.name).get_tensor()
+                        ten.set(np.zeros_like(np.array(ten)), place)
+
+                        new_t = np.array(fluid.global_scope().find_var(var.name)
+                                         .get_tensor())
+                        self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+                paddle.fluid.load(prog, path)
+
+                for var in prog.list_vars():
+                    if isinstance(var, framework.Parameter) or var.persistable:
+                        new_t = np.array(fluid.global_scope().find_var(var.name)
+                                         .get_tensor())
+                        base_t = base_map[var.name]
+                        self.assertTrue(np.array_equal(new_t, base_t))
 
 
 if __name__ == '__main__':

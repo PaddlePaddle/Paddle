@@ -30,8 +30,6 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
-set(GFLAGS_NAMESPACE "paddle_gflags")
-
 cache_third_party(extern_gflags
     REPOSITORY   ${GFLAGS_REPOSITORY}
     TAG          ${GFLAGS_TAG}
@@ -59,7 +57,6 @@ ExternalProject_Add(
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_TESTING=OFF
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-                    -DGFLAGS_NAMESPACE=${GFLAGS_NAMESPACE} 
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GFLAGS_INSTALL_DIR}
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON

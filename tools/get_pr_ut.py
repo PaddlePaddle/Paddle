@@ -20,11 +20,15 @@ import sys
 import time
 import subprocess
 import requests
+import urllib.request
+import ssl
+import platform
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
 PADDLE_ROOT += '/'
 PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class PRChecker(object):
@@ -74,7 +78,10 @@ class PRChecker(object):
             if ix // 2 == 0:
                 proxy = ''
             else:
-                proxy = '--no-proxy'
+                if platform.system() == 'Windows':
+                    proxy = '-Y off'
+                else:
+                    proxy = '--no-proxy'
             code = subprocess.call(
                 'wget -q {} --no-check-certificate {}'.format(proxy, url),
                 shell=True)
@@ -85,6 +92,33 @@ class PRChecker(object):
                 format(url, ix, ix * 10, proxy))
             time.sleep(ix * 10)
             ix += 1
+        return False
+
+    def __urlretrieve(self, url, filename):
+        ix = 1
+        with_proxy = urllib.request.getproxies()
+        without_proxy = {'http': '', 'http': ''}
+        while ix < 6:
+            if ix // 2 == 0:
+                cur_proxy = urllib.request.ProxyHandler(without_proxy)
+            else:
+                cur_proxy = urllib.request.ProxyHandler(with_proxy)
+            opener = urllib.request.build_opener(cur_proxy,
+                                                 urllib.request.HTTPHandler)
+            urllib.request.install_opener(opener)
+            try:
+                urllib.request.urlretrieve(url, filename)
+            except Exception as e:
+                print(e)
+                print(
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.
+                    format(url, ix, ix * 10, proxy))
+                continue
+            else:
+                return True
+            time.sleep(ix * 10)
+            ix += 1
+
         return False
 
     def get_pr_files(self):
@@ -201,16 +235,22 @@ class PRChecker(object):
         check_added_ut = False
         ut_list = []
         file_ut_map = None
-        ret = self.__wget_with_retry(
+        ret = self.__urlretrieve(
             'https://sys-p0.bj.bcebos.com/prec/file_ut.json{}'.format(
-                self.suffix))
+                self.suffix), 'file_ut.json{}'.format(self.suffix))
         if not ret:
             print('PREC download file_ut.json failed')
             exit(1)
         with open('file_ut.json' + self.suffix) as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
-            if f not in file_ut_map:
+            current_system = platform.system()
+            if current_system == "Darwin" or current_system == "Windows":
+                f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f_judge = f_judge.replace('//', '/')
+            else:
+                f_judge = f
+            if f_judge not in file_ut_map:
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):
@@ -225,7 +265,8 @@ class PRChecker(object):
                         '.cu'):
                     if f.find('test_') != -1 or f.find('_test') != -1:
                         print('PREC {} need check new ut'.format(f))
-                        check_added_ut = True
+                        if current_system != "Windows":
+                            check_added_ut = True
                     elif self.is_only_comment(f):
                         ut_list.append('nomap_comment_placeholder')
                     else:
@@ -240,7 +281,7 @@ class PRChecker(object):
                 if self.is_only_comment(f):
                     ut_list.append('map_comment_placeholder')
                 else:
-                    ut_list.extend(file_ut_map.get(f))
+                    ut_list.extend(file_ut_map.get(f_judge))
         ut_list = list(set(ut_list))
 
         if check_added_ut:
@@ -250,9 +291,9 @@ class PRChecker(object):
                     ut_list.append(ut.rstrip('\r\n'))
 
         if ut_list:
-            ret = self.__wget_with_retry(
+            ret = self.__urlretrieve(
                 'https://sys-p0.bj.bcebos.com/prec/prec_delta{}'.format(
-                    self.suffix))
+                    self.suffix), 'prec_delta{}'.format(self.suffix))
             if ret:
                 with open('prec_delta' + self.suffix) as delta:
                     for ut in delta:
