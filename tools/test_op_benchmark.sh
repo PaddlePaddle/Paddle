@@ -187,7 +187,7 @@ function run_op_benchmark_test {
   done
   # install tensorflow for testing accuary
   pip install tensorflow==2.3.0 tensorflow-probability
-  for branch_name in "develop" "test_pr"
+  for branch_name in "develop" "test"
   do
     git checkout $branch_name
     [ $? -ne 0 ] && LOG "[FATAL] Missing branch ${branch_name}." && exit 7
