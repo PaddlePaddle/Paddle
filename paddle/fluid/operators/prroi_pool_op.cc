@@ -39,16 +39,15 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
+    AddInput("BatchRoINums",
+             "(Tensor), "
+             "1-D tensor with shape [N], the number of"
+             " rois for each image in batch, where N is the batch size")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "the output of PRROIPoolOp is a 4-D Tensor with shape "
               "(num_rois, output_channels, pooled_h, pooled_w).");
-    AddAttr<int>(
-        "output_channels",
-        "(int), "
-        "the number of channels of the output feature map. "
-        "For a task of C classes of objects, output_channels should be "
-        "(C + 1) for classification only.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "
@@ -80,58 +79,62 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of op(PRROIPool) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
-                      "Input(ROIs) of op(PRROIPool) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of op(PRROIPool) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs", "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "prroi_pool");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE_EQ(input_dims.size(), 4,
-                      "The format of input tensor is NCHW");
-    PADDLE_ENFORCE_EQ(rois_dims.size(), 2,
-                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                      "given as [(x1, y1, x2, y2), ...]");
-    PADDLE_ENFORCE_EQ(rois_dims[1], 4,
-                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                      "given as [(x1, y1, x2, y2), ...]");
-
+                      platform::errors::InvalidArgument(
+                          "The format of input tensor is NCHW"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 4,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
-    int output_channels = ctx->Attrs().Get<int>("output_channels");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE_EQ(
-        input_dims[1], output_channels * pooled_height * pooled_width,
-        "the channel of X(%d) should be equal to the product of "
-        "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
-        input_dims[1], output_channels, pooled_height, pooled_width);
-
     PADDLE_ENFORCE_GT(pooled_height, 0,
-                      "The pooled output height must be greater than 0");
+                      platform::errors::InvalidArgument(
+                          "The pooled output height must be greater than 0"));
     PADDLE_ENFORCE_GT(pooled_width, 0,
-                      "The pooled output width must be greater than 0");
-    PADDLE_ENFORCE_GT(output_channels, 1,
-                      "The pooled output channels must greater than 1");
+                      platform::errors::InvalidArgument(
+                          "The pooled output width must be greater than 0"));
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "The spatial scale must greater than 0."));
 
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
-    out_dims[1] =
-        output_channels;  // input_dims[1] / (pooled_height * pooled_width);
+    out_dims[1] = input_dims[1];
     out_dims[2] = pooled_height;
     out_dims[3] = pooled_width;
+
+    if (ctx->HasInput("BatchRoINums")) {
+      auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
+      PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
+                        platform::errors::InvalidArgument(
+                            "The length of BatchRoINums should equal to  "
+                            "first dim of inputs(X)"));
+    }
     ctx->SetOutputDim("Out", out_dims);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -140,35 +143,39 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "The gradient of Out should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "The gradient of X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "prroi_pool");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
-class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("prroi_pool_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("BatchRoINums", this->Input("BatchRoINums"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("ROIs"), this->InputGrad("ROIs"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
@@ -176,13 +183,18 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(prroi_pool, ops::PRROIPoolOp, ops::PRROIPoolOpMaker,
-                  ops::PRROIPoolGradDescMaker);
+                  ops::PRROIPoolGradMaker<paddle::framework::OpDesc>,
+                  ops::PRROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool,
     ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool_grad,
     ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

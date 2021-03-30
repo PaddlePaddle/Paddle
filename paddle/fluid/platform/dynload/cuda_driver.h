@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -25,8 +26,7 @@ namespace dynload {
 
 extern std::once_flag cuda_dso_flag;
 extern void* cuda_dso_handle;
-
-#ifdef PADDLE_USE_DSO
+extern bool HasCUDADriver();
 
 #define DECLARE_DYNAMIC_LOAD_CUDA_WRAP(__name)                           \
   struct DynLoad__##__name {                                             \
@@ -42,23 +42,12 @@ extern void* cuda_dso_handle;
   };                                                                     \
   extern struct DynLoad__##__name __name
 
-#else
-
-#define DECLARE_DYNAMIC_LOAD_CUDA_WRAP(__name) \
-  struct DynLoad__##__name {                   \
-    template <typename... Args>                \
-    inline auto operator()(Args... args) {     \
-      return ::__name(args...);                \
-    }                                          \
-  };                                           \
-  extern DynLoad__##__name __name
-
-#endif
-
 /**
  * include all needed cuda driver functions
  **/
 #define CUDA_ROUTINE_EACH(__macro)                      \
+  __macro(cuInit);                                      \
+  __macro(cuDriverGetVersion);                          \
   __macro(cuGetErrorString);                            \
   __macro(cuModuleLoadData);                            \
   __macro(cuModuleGetFunction);                         \
@@ -67,7 +56,7 @@ extern void* cuda_dso_handle;
   __macro(cuLaunchKernel);                              \
   __macro(cuCtxCreate);                                 \
   __macro(cuCtxGetCurrent);                             \
-  __macro(cuDeviceGet);                                 \
+  __macro(cuDeviceGetCount);                            \
   __macro(cuDevicePrimaryCtxGetState)
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);

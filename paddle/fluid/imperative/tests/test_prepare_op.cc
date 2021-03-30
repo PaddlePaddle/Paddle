@@ -32,27 +32,6 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
-static framework::RuntimeContext PrepareRuntimeContext(
-    const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
-  framework::VariableValueMap inputs, outputs;
-  for (auto& in_pair : ins) {
-    auto& in_ctx = inputs[in_pair.first];
-    in_ctx.reserve(in_pair.second.size());
-    for (auto& in_var : in_pair.second) {
-      in_ctx.emplace_back(in_var->MutableVar());
-    }
-  }
-
-  for (auto& out_pair : outs) {
-    auto& out_ctx = outputs[out_pair.first];
-    out_ctx.reserve(out_pair.second.size());
-    for (auto& out_var : out_pair.second) {
-      out_ctx.emplace_back(out_var->MutableVar());
-    }
-  }
-  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
-}
-
 static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
@@ -68,8 +47,9 @@ static framework::VariableNameMap CreateVarNameMap(
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE_EQ(
           var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
+          platform::errors::NotFound("Variable %s is not dispensable and "
+                                     "there are no such var in inputs",
+                                     var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -103,15 +83,17 @@ TEST(test_prepare_op, test_prepare_op) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap split_attr_map;
   const auto& info = framework::OpInfoMap::Instance().Get("split");
+  if (info.Checker()) info.Checker()->Check(&split_attr_map);
   framework::VariableNameMap var_in_map =
       CreateVarNameMap(info, "split", ins, true);
   framework::VariableNameMap var_out_map =
       CreateVarNameMap(info, "split", outs, false);
-  framework::OperatorWithKernel op("split", var_in_map, var_out_map,
-                                   split_attr_map);
-  framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
-  ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp =
-                              PreparedOp::Prepare(ctx, op, place, ins));
+  auto op = framework::OpRegistry::CreateOp("split", var_in_map, var_out_map,
+                                            split_attr_map);
+  ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
+                              ins, outs,
+                              dynamic_cast<framework::OperatorWithKernel&>(*op),
+                              place, split_attr_map));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -123,7 +105,8 @@ TEST(test_prepare_op, test_get_tensor_from_var) {
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
-#if defined(PADDLE_WITH_CUDA)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_prepare_op, test_prepare_data) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
@@ -147,18 +130,24 @@ TEST(test_prepare_op, test_prepare_data) {
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap assign_attr_map;
-  const auto& info = framework::OpInfoMap::Instance().Get("assign");
+  const std::string op_type = "relu";
+  framework::AttributeMap attr_map;
+  const auto& info = framework::OpInfoMap::Instance().Get(op_type);
+  if (info.Checker()) info.Checker()->Check(&attr_map);
   framework::VariableNameMap var_in_map =
-      CreateVarNameMap(info, "assign", ins, true);
+      CreateVarNameMap(info, op_type, ins, true);
   framework::VariableNameMap var_out_map =
-      CreateVarNameMap(info, "assign", outs, false);
-  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
-                                          assign_attr_map);
-  framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
+      CreateVarNameMap(info, op_type, outs, false);
+  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
+                                            attr_map);
 
   // test if it can be transformed to GPU place
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, gpu_place, ins);
+  auto prepared_op = PreparedOp::Prepare(
+      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
+      attr_map);
+  PrepareData<imperative::VarBase>(
+      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -168,7 +157,7 @@ TEST(test_prepare_op, test_prepare_data) {
 }
 #endif
 
-TEST(test_prepare_op, test_prepare_data_same_place) {
+void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   std::shared_ptr<imperative::VarBase> vout(
@@ -190,18 +179,24 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap assign_attr_map;
-  const auto& info = framework::OpInfoMap::Instance().Get("assign");
+  const std::string op_type = "relu";
+  const auto& info = framework::OpInfoMap::Instance().Get(op_type);
+  if (info.Checker()) info.Checker()->Check(&attr_map);
   framework::VariableNameMap var_in_map =
-      CreateVarNameMap(info, "assign", ins, true);
+      CreateVarNameMap(info, op_type, ins, true);
   framework::VariableNameMap var_out_map =
-      CreateVarNameMap(info, "assign", outs, false);
-  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
-                                          assign_attr_map);
-  framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
+      CreateVarNameMap(info, op_type, outs, false);
 
-  // test if it never transfered on GPU place
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, cpu_place, ins);
+  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
+                                            attr_map);
+
+  // test if it never transferred on GPU place
+  auto prepared_op = PreparedOp::Prepare(
+      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
+      attr_map);
+  PrepareData<imperative::VarBase>(
+      dynamic_cast<framework::OperatorWithKernel&>(*op), ins,
+      prepared_op.kernel_type());
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -209,8 +204,21 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
     }
   }
 }
+
+TEST(test_prepare_op, test_prepare_data_same_place) {
+  TestPrepareDataSamePlace({});
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
+  TestPrepareDataSamePlace({{"use_mkldnn", true}});
+}
+#endif
 }  // namespace imperative
 }  // namespace paddle
 
 USE_OP(split);
-USE_OP(assign);
+USE_OP(relu);
+#ifdef PADDLE_WITH_MKLDNN
+USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+#endif

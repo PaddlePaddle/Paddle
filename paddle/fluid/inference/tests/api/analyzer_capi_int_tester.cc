@@ -15,19 +15,15 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <fstream>
-#include <iostream>
 #include <string>
-#include <typeinfo>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-template <typename T>
 void zero_copy_run() {
   std::string model_dir = FLAGS_infer_model;
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
@@ -36,7 +32,7 @@ void zero_copy_run() {
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_SetModel(config, model_dir.c_str());  //, params_file1.c_str());
+  PD_SetModel(config, model_dir.c_str(), nullptr);
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
   CHECK(!use_feed_fetch) << "NO";
   bool specify_input_names = PD_SpecifyInputName(config);
@@ -46,26 +42,15 @@ void zero_copy_run() {
   const int channels = 3;
   const int height = 224;
   const int width = 224;
-  T input[batch_size * channels * height * width] = {0};
+  float input[batch_size * channels * height * width] = {0};
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
   int in_size = 2;
-  int *out_size;
+  int out_size;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData[2];
-  PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
+  PD_ZeroCopyData *outputs = nullptr;
   inputs[0].data = static_cast<void *>(input);
-  std::string nm = typeid(T).name();
-  if ("f" == nm) {
-    inputs[0].dtype = PD_FLOAT32;
-  } else if ("i" == nm) {
-    inputs[0].dtype = PD_INT32;
-  } else if ("x" == nm) {
-    inputs[0].dtype = PD_INT64;
-  } else if ("h" == nm) {
-    inputs[0].dtype = PD_UINT8;
-  } else {
-    CHECK(false) << "Unsupport dtype. ";
-  }
+  inputs[0].dtype = PD_FLOAT32;
   inputs[0].name = new char[6];
   inputs[0].name[0] = 'i';
   inputs[0].name[1] = 'm';
@@ -92,14 +77,26 @@ void zero_copy_run() {
   inputs[1].shape = label_shape;
   inputs[1].shape_size = label_shape_size;
 
-  PD_PredictorZeroCopyRun(config, inputs, in_size, outputs, &out_size);
+  PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
+
+  LOG(INFO) << "output size is: " << out_size;
+  LOG(INFO) << outputs[0].name;
+  for (int j = 0; j < out_size; ++j) {
+    LOG(INFO) << "output[" << j
+              << "]'s shape_size is: " << outputs[j].shape_size;
+    for (int i = 0; i < outputs[0].shape_size; ++i) {
+      LOG(INFO) << "output[" << j << "]'s shape is: " << outputs[j].shape[i];
+    }
+    LOG(INFO) << "output[" << j
+              << "]'s DATA is: " << *(static_cast<float *>(outputs[j].data));
+  }
+  delete[] outputs;
+  delete[] inputs;
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) {
-  // zero_copy_run<int32_t>();
-  // zero_copy_run<int64_t>();
-  zero_copy_run<float>();
-}
+#ifdef PADDLE_WITH_MKLDNN
+TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
+#endif
 
 }  // namespace analysis
 }  // namespace inference

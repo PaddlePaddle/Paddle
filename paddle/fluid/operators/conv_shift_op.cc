@@ -29,25 +29,49 @@ class ConvShiftOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ConvShiftOp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ConvShiftOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ConvShiftOp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 2, "Input(Y)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(X)'s dimensions of ConvShiftOp should be 2. "
+            "But received X's shape = [%s] and the dimension is %d.",
+            x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        y_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(Y)'s dimensions of ConvShiftOp should be 2. "
+            "But received Y's shape = [%s] and the dimension is %d.",
+            y_dims, y_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
-      PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                        "The 1st dimension of Input(X) and Input(Y) should "
-                        "be equal.");
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], y_dims[0],
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(X) and Input(Y) of ConvShiftOp "
+              "should be equal. "
+              "But received X's shape = [%s], Y's shape = [%s], "
+              "and the first dimensions are %d and %d respectively.",
+              x_dims, y_dims, x_dims[0], y_dims[0]));
     if (ctx->IsRuntime() || y_dims[1] > 0)
-      PADDLE_ENFORCE_EQ(y_dims[1] % 2, 1,
-                        "The 2nd dimension of Input(Y) should be odd.");
+      PADDLE_ENFORCE_EQ(
+          y_dims[1] % 2, 1,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Y) of ConvShiftOp should be odd."
+              "But received Y's shape = [%s] and the second dimension is %d.",
+              y_dims, y_dims[1]));
     if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
-      PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
-                        "The 2nd dimension of Input(Y) should be less than or "
-                        "equal to the 2nd dimension of Input(X).");
+      PADDLE_ENFORCE_LE(
+          y_dims[1], x_dims[1],
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Y) of ConvShiftOp should be less "
+              "than or equal to the 2nd dimension of Input(X)."
+              "But received X's shape = [%s], Y's shape = [%s], "
+              "and the second dimensions are %d and %d respectively.",
+              x_dims, y_dims, x_dims[1], y_dims[1]));
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -58,10 +82,10 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ConvShiftGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ConvShiftGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "ConvShiftGradOp");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -193,21 +217,20 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
   }
 };
 
-class ConvShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConvShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("conv_shift_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -216,7 +239,8 @@ class ConvShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-                  ops::ConvShiftGradOpDescMaker);
+                  ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);

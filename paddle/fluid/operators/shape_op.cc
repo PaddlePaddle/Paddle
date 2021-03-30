@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shape_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -23,12 +24,23 @@ class ShapeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input (Input) of get_shape op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output (Out) of get_shape op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      platform::errors::InvalidArgument(
+                          "Input (Input) of get_shape op should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output (Out) of get_shape op should not be null."));
     auto in_dim = ctx->GetInputDim("Input");
     ctx->SetOutputDim("Out", {in_dim.size()});
+  }
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
@@ -52,8 +64,11 @@ Return the shape of the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shape, ops::ShapeOp, ops::ShapeOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int32_t>,
+REGISTER_OPERATOR(
+    shape, ops::ShapeOp, ops::ShapeOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
+                       ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
                        ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
                        ops::ShapeKernel<double>);

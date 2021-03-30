@@ -25,6 +25,8 @@ from paddle.fluid import framework
 
 import numpy as np
 
+np.set_seed(123)
+
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
@@ -53,7 +55,7 @@ def step(step_in, pre_hidden, gate_w, gate_b, candidate_w, candidate_b):
 
     r_hidden = r * pre_hidden
 
-    candidate = np.matmul(np.concatenate([step_in, pre_hidden], 1), candidate_w)
+    candidate = np.matmul(np.concatenate([step_in, r_hidden], 1), candidate_w)
 
     candidate += candidate_b
     c = tanh(candidate)

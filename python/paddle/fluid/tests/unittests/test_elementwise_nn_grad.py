@@ -28,8 +28,8 @@ from decorator_helper import prog_scope
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -55,8 +55,8 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
 class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -82,8 +82,8 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -109,8 +109,8 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
 class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -136,8 +136,8 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
 class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -163,8 +163,8 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
 class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
 
@@ -190,8 +190,8 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
 
@@ -218,8 +218,8 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
 class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
-        shape = [2, 3, 7, 9]
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
 

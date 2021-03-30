@@ -20,10 +20,41 @@ class RandomCropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto x_dim = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_GT(
+        x_dim.size(), static_cast<int64_t>(shape.size()),
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(X) must be greater than the length of "
+            "Attr(shape),"
+            "But received dimensions of Input(X) is [%d], receivecd length"
+            "of Attr(shape) is [%d].",
+            x_dim.size(), static_cast<int64_t>(shape.size())));
+    auto out_dim = framework::vectorize<int>(x_dim);
+    for (size_t i = 1; i <= shape.size(); ++i) {
+      size_t x_i = x_dim.size() - i;
+      size_t shape_i = shape.size() - i;
+      if (ctx->IsRuntime() || (x_dim[x_i] > 0 && shape[shape_i] > 0)) {
+        PADDLE_ENFORCE_GE(
+            x_dim[x_i], shape[shape_i],
+            platform::errors::InvalidArgument(
+                "The dimensions of Input(X) must be larger than Attr(shape),"
+                "But received dimensions of Input(X) is [%d], received"
+                "size of Attr(shape) is [%d].",
+                x_dim[x_i], shape[shape_i]));
+      }
+      out_dim[x_i] = shape[shape_i];
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -50,32 +81,15 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class RandomCropOpInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* ctx) const override {
-    auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GT(x_dim.size(), static_cast<int64_t>(shape.size()));
-    auto out_dim = framework::vectorize<int>(x_dim);
-    for (size_t i = 1; i <= shape.size(); ++i) {
-      size_t x_i = x_dim.size() - i;
-      size_t shape_i = shape.size() - i;
-      if (ctx->IsRuntime() || (x_dim[x_i] > 0 && shape[shape_i] > 0)) {
-        PADDLE_ENFORCE_GE(x_dim[x_i], shape[shape_i]);
-      }
-      out_dim[x_i] = shape[shape_i];
-    }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace f = paddle::framework;
-REGISTER_OPERATOR(random_crop, ops::RandomCropOp, ops::RandomCropOpMaker,
-                  ops::RandomCropOpInferShape, f::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    random_crop, ops::RandomCropOp, ops::RandomCropOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 template <typename T>
 using Kernel = ops::RandomCropKernel<paddle::platform::CPUDeviceContext, T>;

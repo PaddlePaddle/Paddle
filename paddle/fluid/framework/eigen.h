@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -26,7 +28,11 @@ struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
 
   static Type From(const DDim& dims) {
-    PADDLE_ENFORCE(arity(dims) == D, "D must match arity(DDim)");
+    PADDLE_ENFORCE_EQ(arity(dims), D,
+                      platform::errors::InvalidArgument(
+                          "Input dimension size should be equal to %d, but "
+                          "received dimension size is %d.",
+                          arity(dims), D));
     Type ret;
     for (int64_t d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
@@ -69,8 +75,11 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
   static typename EigenMatrix::Type Reshape(Tensor& tensor,  // NOLINT
                                             int num_col_dims) {
     int rank = tensor.dims_.size();
-    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
-                   "`num_col_dims` must be between (0, rank_of_tensor).");
+    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
+                      platform::errors::InvalidArgument(
+                          "Input dimension number(num_col_dims) must be "
+                          "between 0 and %d, but received number is %d.",
+                          rank, num_col_dims));
     return EigenMatrix::From(tensor,
                              flatten_to_2d(tensor.dims(), num_col_dims));
   }
@@ -78,8 +87,11 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
   static typename EigenMatrix::ConstType Reshape(const Tensor& tensor,
                                                  int num_col_dims) {
     int rank = tensor.dims_.size();
-    PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
-                   "`num_col_dims` must be between (0, rank_of_tensor).");
+    PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank), true,
+                      platform::errors::InvalidArgument(
+                          "Input dimension number(num_col_dims) must be "
+                          "between 0 and %d, but received number is %d.",
+                          rank, num_col_dims));
     return EigenMatrix::From(tensor,
                              flatten_to_2d(tensor.dims(), num_col_dims));
   }
@@ -114,6 +126,28 @@ struct EigenScalar {
     return ConstType(tensor.data<T>());
   }
 };
+
+// Define Tensor with 32-bit index.
+template <typename T, int D, int MajorType = Eigen::RowMajor>
+using Tensor32BitIndex =
+    Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, int>, Eigen::Aligned>;
+
+template <typename DSizes>
+Eigen::DSizes<int, DSizes::count> To32BitDims(const DSizes& in) {
+  Eigen::DSizes<int, DSizes::count> out;
+  for (int i = 0; i < DSizes::count; ++i) {
+    out[i] = in[i];
+  }
+  return out;
+}
+
+template <typename EigenTensor>
+Tensor32BitIndex<typename EigenTensor::Scalar, EigenTensor::NumIndices>
+To32BitIndex(EigenTensor in) {
+  using RetType =
+      Tensor32BitIndex<typename EigenTensor::Scalar, EigenTensor::NumIndices>;
+  return RetType(in.data(), To32BitDims(in.dimensions()));
+}
 
 }  // namespace framework
 }  // namespace paddle

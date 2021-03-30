@@ -28,23 +28,42 @@ namespace details {
 
 class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
+  enum FeedStatus {
+    kNone = 0,    // No feed
+    kHasFeed = 1  // Has feed
+  };
+
+ public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
+
+  ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
+                           const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
+                           const std::vector<platform::Place> &places,
+                           std::vector<std::unique_ptr<ir::Graph>> graphs);
+
   ~ParallelSSAGraphExecutor() final = default;
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
 
   std::vector<ir::Graph *> Graphs();
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
+
+  void SetHasFeed(size_t dev_idx, bool has_feed) {
+    feed_status_[dev_idx] = has_feed ? FeedStatus::kHasFeed : FeedStatus::kNone;
+  }
+
+  void EnablePartialFeedSupport() { support_partial_feed_ = true; }
+
+  bool SupportPartialFeed() const { return support_partial_feed_; }
 
  private:
-  std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
-      ir::Graph *graph);
-
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
   std::unique_ptr<::ThreadPool> pool_{nullptr};
@@ -54,6 +73,9 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<std::unique_ptr<details::FastThreadedSSAGraphExecutor>>
       executors_;
   ExceptionHolder exception_holder_;
+
+  bool support_partial_feed_{false};
+  std::vector<FeedStatus> feed_status_;
 };
 
 }  // namespace details

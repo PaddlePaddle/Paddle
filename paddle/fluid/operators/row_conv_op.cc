@@ -15,8 +15,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -33,16 +33,17 @@ class RowConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RowConvOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "row_conv");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "row_conv");
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(filter_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Input(Filter)'s dimensions should be 2. Received: "
+                          "Input(Filter)'s shape: [%s].",
+                          filter_dims));
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
@@ -54,10 +55,9 @@ class RowConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "row_conv_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -320,21 +320,20 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("row_conv_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    return op;
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
   }
 };
 
@@ -343,7 +342,8 @@ class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  ops::RowConvGradOpDescMaker);
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

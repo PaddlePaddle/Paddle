@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 
@@ -28,7 +24,10 @@ class SSAGraghBuilderWithPrinterPass : public ir::Pass {
   void ApplyImpl(ir::Graph *graph) const override {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<std::string>(kGraphvizPath)));
-    PADDLE_ENFORCE(fout->good());
+    PADDLE_ENFORCE_EQ(
+        fout->good(), true,
+        platform::errors::Unavailable("Open file fail! kGraphvizPath = %s.",
+                                      Get<std::string>(kGraphvizPath)));
     if (Has("graph_printer")) {
       Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
     } else {

@@ -19,7 +19,7 @@ import numpy as np
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 from testsuite import create_op
 
@@ -40,12 +40,32 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
+class TestGroupNormOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+
+            def test_x_type():
+                input = np.random.random(2, 100, 3, 5).astype('float32')
+                goups = 2
+                fluid.layers.group_norm(input, groups)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[2, 100, 3, 5], dtype='int32')
+                groups = 2
+                fluid.layers.group_norm(x2, groups)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
         self.data_format = "NCHW"
-        self.dtype = np.float32
-        self.shape = (2, 4, 3, 3)
+        self.dtype = np.float64
+        self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
@@ -68,15 +88,22 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
-        atol = 1e-4
-        inplace_atol = 1e-4
+        atol = 0.0
+        inplace_atol = 0.0
         place = core.CPUPlace()
-        # add inplace_atol bacause group_norm doesn't ensure computational consistency
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol)
+
+        self.check_output_with_place(place, atol=atol)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
+            # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+            # computation order when multiple threads write the same address. So the 
+            # result of group_norm is non-deterministic when datatype is float.
+            # When inplace_atol is not None, the inplace check uses numpy.allclose
+            # to check inplace result instead of numpy.array_equal.
+            # Set to inplace_atol to 0, which means the absolute error is 0, and the
+            # relative error is 1e-05 in numpy.allclose by default.
+            # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
                 place, atol=atol, inplace_atol=inplace_atol)
 
@@ -105,15 +132,13 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(
-            place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.01)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
                 set(['X', 'Scale', 'Bias']),
-                'Y',
-                max_relative_error=0.01)
+                'Y', )
 
     def init_test_case(self):
         pass
@@ -146,6 +171,10 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 32, 64, 64)
@@ -185,6 +214,10 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 64, 32, 32)  # NCHW
@@ -193,21 +226,19 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
         self.compare_between_place = True
 
 
-class TestGroupNormAPI_With_NHWC(OpTest):
+class TestGroupNormAPI_With_NHWC(unittest.TestCase):
     def test_case1(self):
-        data1 = fluid.layers.data(
-            name='data1', shape=[3, 3, 4], dtype='float32')
+        data1 = fluid.data(name='data1', shape=[None, 3, 3, 4], dtype='float64')
         out1 = fluid.layers.group_norm(
             input=data1, groups=2, data_layout="NHWC")
-        data2 = fluid.layers.data(
-            name='data2', shape=[4, 3, 3], dtype='float32')
+        data2 = fluid.data(name='data2', shape=[None, 4, 3, 3], dtype='float64')
         out2 = fluid.layers.group_norm(
             input=data2, groups=2, data_layout="NCHW")
 
-        data1_np = np.random.random((2, 3, 3, 4)).astype("float32")
-        data2_np = np.random.random((2, 4, 3, 3)).astype("float32")
-        scale = np.array([1]).astype("float32")
-        bias = np.array([0]).astype("float32")
+        data1_np = np.random.random((2, 3, 3, 4)).astype("float64")
+        data2_np = np.random.random((2, 4, 3, 3)).astype("float64")
+        scale = np.array([1]).astype("float64")
+        bias = np.array([0]).astype("float64")
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
@@ -223,14 +254,17 @@ class TestGroupNormAPI_With_NHWC(OpTest):
         self.assertTrue(np.allclose(results[0], expect_res1[0]))
         self.assertTrue(np.allclose(results[1], expect_res2[0]))
 
+
+class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
-    def test_case2(self):
-        data = fluid.layers.data(name='data', shape=[3, 3, 4], dtype="float32")
-        try:
+    def test_exception(self):
+        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+
+        def attr_data_format():
             out = fluid.layers.group_norm(
                 input=data, groups=2, data_layout="NDHW")
-        except:
-            pass
+
+        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == '__main__':

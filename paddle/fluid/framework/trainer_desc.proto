@@ -39,6 +39,28 @@ message TrainerDesc {
   optional string dump_fields_path = 12;
   repeated string dump_fields = 13;
   optional string dump_converter = 14;
+  repeated string dump_param = 15;
+  optional int32 mpi_size = 16 [ default = -1 ];
+  optional int32 dump_file_num = 17 [ default = 16 ];
+  repeated string check_nan_var_names = 18;
+  optional CopyTableConfig copy_table_config = 19;
+  // adjust ins weight
+  optional AdjustInsWeightConfig adjust_ins_weight_config = 20;
+  optional bool no_cvm = 21 [ default = false ];
+  optional bool thread_barrier = 22;
+  repeated string loss_names = 23;
+  optional bool enable_random_dump = 24 [ default = false ];
+  optional bool random_with_lineid = 25 [ default = false ];
+  optional int32 dump_interval = 26 [ default = 10000 ];
+  repeated int32 worker_places = 27;
+
+  repeated string xpu_send_list = 28;
+  repeated string xpu_recv_list = 29;
+  optional int32 xpu_start_idx = 30;
+  optional int32 xpu_end_idx = 31;
+
+  optional bool use_ps_gpu = 32 [ default = false ];
+  optional string user_define_dump_filename = 33;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
@@ -47,11 +69,12 @@ message TrainerDesc {
   optional SectionWorkerParameter section_param = 104;
   // datafeed desc
   optional DataFeedDesc data_desc = 201;
-  // adjust ins weight
-  optional AdjustInsWeightConfig adjust_ins_weight_config = 301;
 }
 
-message HogwildWorkerParameter { repeated string skip_ops = 1; }
+message HogwildWorkerParameter {
+  repeated string skip_ops = 1;
+  repeated string stat_var_names = 2;
+}
 
 message DownpourWorkerParameter {
   repeated TableParameter sparse_table = 1;
@@ -64,11 +87,12 @@ message DownpourWorkerParameter {
 }
 
 message SectionWorkerParameter {
-  repeated SectionConfig section_config = 1;
+  optional SectionConfig section_config = 1;
   optional int32 queue_size = 2 [ default = 1 ];
   optional int64 sync_steps = 3 [ default = 1 ];
   optional int32 start_cpu_core_id = 4 [ default = 1 ];
   repeated string param_need_sync = 5;
+  optional int32 num_microbatches = 6;
 }
 
 message SectionConfig {
@@ -85,6 +109,7 @@ message SectionConfig {
   optional int32 concurrency = 3 [ default = 1 ];
   repeated string section_in_var_names = 4;
   repeated string section_out_var_names = 5;
+  optional int32 place_id = 6 [ default = -1 ];
 }
 
 message FetchConfig {
@@ -103,12 +128,40 @@ message AdjustInsWeightConfig {
   optional string ins_weight_slot = 5 [ default = "" ];
 }
 
+message TableDependencyMap {
+  required int32 key = 1;
+  repeated int32 values = 2;
+}
+
+message CopyTableConfig {
+  optional bool need_copy = 1 [ default = false ];
+  optional int32 batch_num = 2 [ default = 100 ];
+  repeated int32 src_sparse_tables = 3;
+  repeated int32 dest_sparse_tables = 4;
+  repeated int32 src_dense_tables = 5;
+  repeated int32 dest_dense_tables = 6;
+  repeated string src_var_list = 7;
+  repeated string dest_var_list = 8;
+  // when dest dense table has no grad, should pull explicitly
+  optional bool dense_pull_after_copy = 9 [ default = false ];
+  // copy feasigns or copy the whole table
+  optional bool sparse_copy_by_feasign = 10 [ default = true ];
+  // table dependency for pull/push
+  optional bool enable_dependency = 11 [ default = false ];
+  repeated TableDependencyMap table_denpendency_map = 12;
+}
+
+message CondTableMap {
+  required int32 key = 1;
+  required int32 value = 2;
+}
 message ProgramConfig {
   required string program_id = 1;
   repeated int32 push_sparse_table_id = 2;
   repeated int32 push_dense_table_id = 3;
   repeated int32 pull_sparse_table_id = 4;
   repeated int32 pull_dense_table_id = 5;
+  repeated CondTableMap partial_pushdense_condtable_map = 10;
 }
 
 message PullDenseWorkerParameter {
@@ -134,4 +187,9 @@ message TableParameter {
   optional int32 emb_dim = 10;
   optional int32 fea_dim = 11;
   optional string label_var_name = 12;
+  // if table will pull sparse to local first
+  optional bool is_local = 13 [ default = false ];
+  // if table will pull sparse asynchronously in worker
+  optional bool is_async = 14 [ default = false ];
+  optional string async_wait_op_name = 15;
 }

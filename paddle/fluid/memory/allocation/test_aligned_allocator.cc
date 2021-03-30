@@ -20,9 +20,9 @@ namespace memory {
 namespace allocation {
 
 TEST(aligned, aligned_size) {
-  ASSERT_EQ(AlignedSize(1024, 1024), 1024);
-  ASSERT_EQ(AlignedSize(1023, 1024), 1024);
-  ASSERT_EQ(AlignedSize(1025, 1024), 2048);
+  ASSERT_EQ(AlignedSize(1024, 1024), 1024UL);
+  ASSERT_EQ(AlignedSize(1023, 1024), 1024UL);
+  ASSERT_EQ(AlignedSize(1025, 1024), 2048UL);
 }
 
 struct StubAllocator : public Allocator {
@@ -58,22 +58,22 @@ TEST(aligned_allocator, aligned_allocator) {
       std::make_shared<AlignedAllocator>(allocator, alignment);
 
   auto alloc1 = aligned_allocator->Allocate(1345);
-  ASSERT_EQ(allocator->AllocNum(), 1);
+  ASSERT_EQ(allocator->AllocNum(), 1UL);
   ASSERT_TRUE(IsAligned(alloc1, alignment));
   alloc1.reset();
-  ASSERT_EQ(allocator->AllocNum(), 0);
+  ASSERT_EQ(allocator->AllocNum(), 0UL);
 
   {
     auto alloc2 = aligned_allocator->Allocate(200);
     ASSERT_TRUE(IsAligned(alloc2, alignment));
-    ASSERT_EQ(allocator->AllocNum(), 1);
+    ASSERT_EQ(allocator->AllocNum(), 1UL);
 
     auto alloc3 = aligned_allocator->Allocate(3021);
     ASSERT_TRUE(IsAligned(alloc3, alignment));
-    ASSERT_EQ(allocator->AllocNum(), 2);
+    ASSERT_EQ(allocator->AllocNum(), 2UL);
   }
 
-  ASSERT_EQ(allocator->AllocNum(), 0);
+  ASSERT_EQ(allocator->AllocNum(), 0UL);
 }
 
 }  // namespace allocation

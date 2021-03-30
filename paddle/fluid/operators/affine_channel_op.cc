@@ -61,14 +61,10 @@ class AffineChannelOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of AffineChannelOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                   "Input(Scale) of AffineChannelOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of AffineChannelOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of AffineChannelOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AffineChannel");
+    OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "AffineChannel");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "AffineChannel");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AffineChannel");
 
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
@@ -80,13 +76,32 @@ class AffineChannelOp : public framework::OperatorWithKernel {
                            ? x_dims[1]
                            : x_dims[x_dims.size() - 1]);
 
-    PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL);
-    PADDLE_ENFORCE_EQ(b_dims.size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        scale_dims.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(Scale) must be 1,"
+            "But received the dimensions of Input(Scale) is [%d] ",
+            scale_dims.size()));
+    PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(Bias) must be 1,"
+                          "But received the dimensions of Input(Bias) is [%d] ",
+                          scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
-      PADDLE_ENFORCE_EQ(scale_dims[0], C);
+      PADDLE_ENFORCE_EQ(
+          scale_dims[0], C,
+          platform::errors::InvalidArgument(
+              "The first dimension value of Input(Scale) must be [%d],"
+              "But received [%d].",
+              C, scale_dims[0]));
     }
     if (ctx->IsRuntime() || b_dims[0] > 0) {
-      PADDLE_ENFORCE_EQ(b_dims[0], C);
+      PADDLE_ENFORCE_EQ(
+          b_dims[0], C,
+          platform::errors::InvalidArgument(
+              "The first dimension value of Input(Bias) must be [%d],"
+              "But received [%d].",
+              C, b_dims[0]));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -98,19 +113,19 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "AffineChannelGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                     "Input(Scale) should not be null.");
+      OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
+                     "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("X"),
                         ctx->GetInputDim(framework::GradVarName("Out")));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       // Scale@GRAD and Bias@GRAD must exist at the same time.
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                     "Output(Scale@GRAD) should not be null.");
-      PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
+                     framework::GradVarName("Bias"), "AffineChannelGrad");
+      OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("Scale"),
                         ctx->GetInputDim("Scale"));
       ctx->SetOutputDim(framework::GradVarName("Bias"),
@@ -121,30 +136,28 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
-class AffineChannelGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AffineChannelGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("affine_channel_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Scale", Input("Scale"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Scale", this->Input("Scale"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
   }
 };
 
@@ -297,24 +310,14 @@ class AffineChannelNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
- private:
-  inline bool HasOutput(const std::string& name) const {
-    auto& outputs = Outputs();
-    auto iter = outputs.find(name);
-    if (iter == outputs.end() || iter->second.empty()) {
-      return false;
+  const std::unordered_set<std::string>& operator()(
+      const framework::InferNoNeedBufferVarsContext& ctx) const final {
+    static const std::unordered_set<std::string> kX({"X"});
+    if (!ctx.HasOutput(framework::GradVarName("Scale")) &&
+        !ctx.HasOutput(framework::GradVarName("Bias"))) {
+      return kX;
     } else {
-      return iter->second[0] != framework::kEmptyVarName;
-    }
-  }
-
- public:
-  std::unordered_set<std::string> operator()() const override {
-    if (!HasOutput(framework::GradVarName("Scale")) &&
-        !HasOutput(framework::GradVarName("Bias"))) {
-      return {"X"};
-    } else {
-      return {};
+      return Empty();
     }
   }
 };
@@ -331,7 +334,9 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
-                  ops::AffineChannelOpMaker, ops::AffineChannelGradMaker,
+                  ops::AffineChannelOpMaker,
+                  ops::AffineChannelGradMaker<paddle::framework::OpDesc>,
+                  ops::AffineChannelGradMaker<paddle::imperative::OpBase>,
                   ops::AffineChannelInplaceInferer);
 REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
                   ops::AffineChannelNoNeedBufferVarsInference,

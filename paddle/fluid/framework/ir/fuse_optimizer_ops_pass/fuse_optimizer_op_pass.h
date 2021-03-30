@@ -19,13 +19,24 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
+class BlockDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 constexpr char kGrad[] = "Grad";
 constexpr char kParam[] = "Param";
@@ -55,25 +66,26 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
 
-  void GetSpecifiedOpsAndVars(
+  void GetFusingVarNamesMap(
       const std::vector<std::string> &aux_vars_name,
       const std::vector<ir::Node *> &opt_nodes,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
-  void AppendAllocContinuousSpace(const std::vector<std::string> &in_args,
-                                  const std::vector<std::string> &out_args,
-                                  const std::string &fused_out_arg,
-                                  const proto::VarType::Type &dtype,
-                                  BlockDesc *global_block, bool copy_data,
-                                  bool check_name = true) const;
+  void AppendCoalesceTensorOp(const std::vector<std::string> &in_args,
+                              const std::vector<std::string> &out_args,
+                              const std::string &fused_out_arg,
+                              const proto::VarType::Type &dtype,
+                              BlockDesc *global_block, bool copy_data,
+                              bool check_name = true) const;
 
-  void InitFusedGradsAndAllocSpaceForGrads(
-      const std::vector<std::string> &params,
-      const std::vector<std::string> &grads, const std::string &fused_grad_name,
-      const proto::VarType::Type &dtype, ir::Graph *result) const;
+  void FuseGradientsToContinuousSpace(const std::vector<std::string> &params,
+                                      const std::vector<std::string> &grads,
+                                      const std::string &fused_grad_name,
+                                      const proto::VarType::Type &dtype,
+                                      ir::Graph *result) const;
 
-  void InitFusedVarsAndAllocSpaceForVars(
+  void FuseVarsToContinuousSpace(
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
@@ -82,6 +94,12 @@ class FuseOptimizerOpPass : public ir::Pass {
 
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
+
+  bool OpWithKernelSupportCPUAndGPU(const std::string &op_type) const;
+
+  bool GradGeneratedOpKernelCheck(
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      const std::string &grad_var_name) const;
 
   proto::VarType::Type GetDtypeOfVar(
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,

@@ -75,11 +75,7 @@ def conv3d_forward_naive(input,
         pad = [0, 0, 0, 0, 0, 0]
     elif padding_algorithm == "SAME":
         dilation = [1, 1, 1]
-        input_data_shape = []
-        if data_format == "NCDHW":
-            input_data_shape = input.shape[2:5]
-        elif data_format == "NDHWC":
-            input_data_shape = input.shape[1:4]
+        input_data_shape = input.shape[2:5]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_d_0, pad_d_1 = pad[0], pad[0]
@@ -139,6 +135,8 @@ def create_test_cudnn_class(parent):
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
@@ -173,6 +171,8 @@ def create_test_cudnn_padding_SAME_class(parent):
     class TestCUDNNPaddingSMAECase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1, 1]
@@ -189,6 +189,8 @@ def create_test_cudnn_padding_VALID_class(parent):
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1, 1]
@@ -214,9 +216,13 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_cudnn_channel_last_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_data_format(self):
             self.data_format = "NDHWC"
@@ -230,13 +236,13 @@ def create_test_cudnn_channel_last_class(parent):
     globals()[cls_name] = TestCudnnChannelLastCase
 
 
-class TestConv3dOp(OpTest):
+class TestConv3DOp(OpTest):
     def setUp(self):
         self.op_type = "conv3d"
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -275,35 +281,45 @@ class TestConv3dOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(
+            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
+            place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.03,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -326,7 +342,7 @@ class TestConv3dOp(OpTest):
         pass
 
 
-class TestCase1(TestConv3dOp):
+class TestCase1(TestConv3DOp):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -336,7 +352,7 @@ class TestCase1(TestConv3dOp):
         self.filter_size = [6, f_c, 3, 3, 3]
 
 
-class TestWithGroup1(TestConv3dOp):
+class TestWithGroup1(TestConv3DOp):
     def init_group(self):
         self.groups = 3
 
@@ -346,14 +362,14 @@ class TestWithGroup2(TestCase1):
         self.groups = 3
 
 
-class TestWith1x1(TestConv3dOp):
+class TestWith1x1(TestConv3DOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -362,14 +378,14 @@ class TestWith1x1(TestConv3dOp):
         self.groups = 3
 
 
-class TestWithInput1x1Filter1x1(TestConv3dOp):
+class TestWithInput1x1Filter1x1(TestConv3DOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 1, 1, 1]
+        self.input_size = [40, 3, 1, 1, 1]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -378,14 +394,14 @@ class TestWithInput1x1Filter1x1(TestConv3dOp):
         self.groups = 3
 
 
-class TestWithDilation(TestConv3dOp):
+class TestWithDilation(TestConv3DOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]
@@ -394,15 +410,20 @@ class TestWithDilation(TestConv3dOp):
         self.groups = 3
 
 
-#---------------- Conv3dCUDNN ----------------
+#---------------- Conv3DCUDNN ----------------
 
 
-class TestCUDNN(TestConv3dOp):
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_cudnn = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
-class TestFP16CUDNN(TestConv3dOp):
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFP16CUDNN(TestConv3DOp):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.dtype = np.float16
@@ -414,11 +435,16 @@ class TestFP16CUDNN(TestConv3dOp):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -431,11 +457,16 @@ class TestFP16WithGroup1CUDNN(TestWithGroup1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -448,11 +479,16 @@ class TestFP16WithGroup2CUDNN(TestWithGroup2):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWith1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16With1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -465,11 +501,16 @@ class TestFP16With1x1CUDNN(TestWith1x1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -486,18 +527,19 @@ class TestCUDNNExhaustiveSearch(TestCUDNN):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
 # ---- test asymmetric padding ----
 
 
-class TestConv3dOp_2(OpTest):
+class TestConv3DOp_2(OpTest):
     def setUp(self):
         self.op_type = "conv3d"
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "NCDHW"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -564,7 +606,7 @@ class TestConv3dOp_2(OpTest):
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']))
@@ -596,13 +638,38 @@ class TestConv3dOp_2(OpTest):
         self.data_format = "NCDHW"
 
 
-class TestConv3dOp_AsyPadding(TestConv3dOp_2):
+class TestConv3DOp_AsyPadding(TestConv3DOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3, 3]
+
     def init_paddings(self):
         self.pad = [1, 0, 1, 0, 0, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestCase1_AsyPadding(TestConv3dOp_2):
+class TestConv3DOp_DiffDataInDiffDim(TestConv3DOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 5, 5]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 4, 3]
+
+    def init_paddings(self):
+        self.pad = [1, 0, 1, 0, 0, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+create_test_padding_SAME_class(TestConv3DOp_DiffDataInDiffDim)
+create_test_padding_VALID_class(TestConv3DOp_DiffDataInDiffDim)
+create_test_channel_last_class(TestConv3DOp_DiffDataInDiffDim)
+
+
+class TestCase1_AsyPadding(TestConv3DOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
@@ -615,7 +682,7 @@ class TestCase1_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithGroup1_AsyPadding(TestConv3dOp_2):
+class TestWithGroup1_AsyPadding(TestConv3DOp_2):
     def init_group(self):
         self.groups = 3
 
@@ -624,7 +691,7 @@ class TestWithGroup1_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithGroup2_AsyPadding(TestConv3dOp_2):
+class TestWithGroup2_AsyPadding(TestConv3DOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
@@ -640,13 +707,13 @@ class TestWithGroup2_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWith1x1_AsyPadding(TestConv3dOp_2):
+class TestWith1x1_AsyPadding(TestConv3DOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -659,13 +726,13 @@ class TestWith1x1_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestWithDilation_AsyPadding(TestConv3dOp_2):
+class TestWithDilation_AsyPadding(TestConv3DOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]
@@ -678,41 +745,41 @@ class TestWithDilation_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
-create_test_cudnn_class(TestConv3dOp_AsyPadding)
+create_test_cudnn_class(TestConv3DOp_AsyPadding)
 create_test_cudnn_class(TestWithGroup1_AsyPadding)
 create_test_cudnn_class(TestWithGroup2_AsyPadding)
 create_test_cudnn_class(TestWith1x1_AsyPadding)
 create_test_cudnn_class(TestWithDilation_AsyPadding)
 
-create_test_padding_SAME_class(TestConv3dOp_AsyPadding)
+create_test_padding_SAME_class(TestConv3DOp_AsyPadding)
 create_test_padding_SAME_class(TestWithGroup1_AsyPadding)
 create_test_padding_SAME_class(TestWith1x1_AsyPadding)
 
-create_test_padding_VALID_class(TestConv3dOp_AsyPadding)
+create_test_padding_VALID_class(TestConv3DOp_AsyPadding)
 create_test_padding_VALID_class(TestWithGroup1_AsyPadding)
 create_test_padding_VALID_class(TestWith1x1_AsyPadding)
 
-create_test_cudnn_padding_SAME_class(TestConv3dOp_AsyPadding)
+create_test_cudnn_padding_SAME_class(TestConv3DOp_AsyPadding)
 create_test_cudnn_padding_SAME_class(TestWithGroup1_AsyPadding)
 create_test_cudnn_padding_SAME_class(TestWith1x1_AsyPadding)
 
-create_test_cudnn_padding_VALID_class(TestConv3dOp_AsyPadding)
+create_test_cudnn_padding_VALID_class(TestConv3DOp_AsyPadding)
 create_test_cudnn_padding_VALID_class(TestWithGroup1_AsyPadding)
 create_test_cudnn_padding_VALID_class(TestWith1x1_AsyPadding)
 
-create_test_channel_last_class(TestConv3dOp_AsyPadding)
+create_test_channel_last_class(TestConv3DOp_AsyPadding)
 create_test_channel_last_class(TestWithGroup1_AsyPadding)
 create_test_channel_last_class(TestWith1x1_AsyPadding)
 
-create_test_channel_last_class(TestConv3dOp_AsyPadding)
+create_test_channel_last_class(TestConv3DOp_AsyPadding)
 create_test_channel_last_class(TestWithGroup1_AsyPadding)
 create_test_channel_last_class(TestWith1x1_AsyPadding)
 
-create_test_cudnn_channel_last_class(TestConv3dOp_AsyPadding)
+create_test_cudnn_channel_last_class(TestConv3DOp_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup1_AsyPadding)
 create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
-create_test_cudnn_channel_last_class(TestConv3dOp_AsyPadding)
+create_test_cudnn_channel_last_class(TestConv3DOp_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup1_AsyPadding)
 create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
@@ -724,7 +791,7 @@ create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
 
 # --------- test python API ---------------
-class TestConv3dAPI(OpTest):
+class TestConv3DAPI(unittest.TestCase):
     def test_api(self):
 
         input_NDHWC = fluid.layers.data(
@@ -800,7 +867,7 @@ class TestConv3dAPI(OpTest):
             data_format="NCDHW")
 
 
-class TestConv3dAPI_Error(OpTest):
+class TestConv3DAPI_Error(unittest.TestCase):
     def test_api(self):
         input = fluid.layers.data(
             name="input",

@@ -31,13 +31,15 @@ class TestDistributeFPNProposalsOp(OpTest):
             'max_level': self.roi_max_level,
             'min_level': self.roi_min_level,
             'refer_scale': self.canonical_scale,
-            'refer_level': self.canonical_level
+            'refer_level': self.canonical_level,
+            'pixel_offset': self.pixel_offset,
         }
         output = [('out%d' % i, self.rois_fpn[i])
                   for i in range(len(self.rois_fpn))]
+
         self.outputs = {
             'MultiFpnRois': output,
-            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1)
+            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
         }
 
     def init_test_case(self):
@@ -46,10 +48,12 @@ class TestDistributeFPNProposalsOp(OpTest):
         self.canonical_scale = 224
         self.canonical_level = 4
         self.images_shape = [512, 512]
+        self.pixel_offset = True
 
     def boxes_area(self, boxes):
-        w = (boxes[:, 2] - boxes[:, 0] + 1)
-        h = (boxes[:, 3] - boxes[:, 1] + 1)
+        offset = 1 if self.pixel_offset else 0
+        w = (boxes[:, 2] - boxes[:, 0] + offset)
+        h = (boxes[:, 3] - boxes[:, 1] + offset)
         areas = w * h
         assert np.all(areas >= 0), 'Negative areas founds'
         return areas
@@ -58,7 +62,7 @@ class TestDistributeFPNProposalsOp(OpTest):
         s = np.sqrt(self.boxes_area(rois))
         s0 = self.canonical_scale
         lvl0 = self.canonical_level
-        target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-6))
+        target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-8))
         target_lvls = np.clip(target_lvls, lvl_min, lvl_max)
         return target_lvls
 
@@ -115,6 +119,47 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.rois_fpn, self.rois_idx_restore = self.calc_rois_distribute()
+        self.inputs = {
+            'FpnRois': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': np.array(self.rois_lod[0]).astype('int32')
+        }
+        self.attrs = {
+            'max_level': self.roi_max_level,
+            'min_level': self.roi_min_level,
+            'refer_scale': self.canonical_scale,
+            'refer_level': self.canonical_level,
+            'pixel_offset': self.pixel_offset,
+        }
+        output = [('out%d' % i, self.rois_fpn[i])
+                  for i in range(len(self.rois_fpn))]
+        rois_num_per_level = [
+            ('rois_num%d' % i, np.array(self.rois_fpn[i][1][0]).astype('int32'))
+            for i in range(len(self.rois_fpn))
+        ]
+
+        self.outputs = {
+            'MultiFpnRois': output,
+            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
+            'MultiLevelRoIsNum': rois_num_per_level
+        }
+
+
+class TestDistributeFPNProposalsOpNoOffset(
+        TestDistributeFPNProposalsOpWithRoisNum):
+    def init_test_case(self):
+        self.roi_max_level = 5
+        self.roi_min_level = 2
+        self.canonical_scale = 224
+        self.canonical_level = 4
+        self.images_shape = [512, 512]
+        self.pixel_offset = False
 
 
 if __name__ == '__main__':

@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -32,6 +35,8 @@ struct SameDimsElemwiseDiv<
   }
 };
 
+// use default div function for int32/int64 type because of divison zero
+// checking.
 template <typename T>
 struct SameDimsElemwiseDiv<
     platform::CPUDeviceContext, T,
@@ -39,12 +44,7 @@ struct SameDimsElemwiseDiv<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x / eigen_y;
+    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
   }
 };
 
@@ -70,46 +70,43 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseDivGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_div_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("Out", Output("Out"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-class ElementwiseDivDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_div_grad_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("Out", Input("Out"));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
-    op->SetInput("DX", Output(framework::GradVarName("X")));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
+    op->SetInput("DX", this->Output(framework::GradVarName("X")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetOutput("DOut", InputGrad("Out"));
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-
-    return op;
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetOutput("DOut", this->InputGrad("Out"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
   }
 };
 
@@ -120,25 +117,37 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseDivGradOpDescMaker);
+                  ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseDivDoubleGradDescMaker);
+REGISTER_OPERATOR(
+    elementwise_div_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
-                  ops::ElementwiseDivDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex64>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad_grad,
@@ -149,4 +158,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_div)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_div for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_div.",
+            1.0f));

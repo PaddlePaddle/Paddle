@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -32,9 +33,13 @@ struct ReduceLoDTensor {
 
   template <typename T>
   void apply() const {
-    PADDLE_ENFORCE(!src_tensors_.empty());
+    PADDLE_ENFORCE_NE(src_tensors_.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "The number of tensors to be reduced is 0."));
     auto &t0 = *src_tensors_[0];
-    PADDLE_ENFORCE_NE(t0.numel(), 0);
+    PADDLE_ENFORCE_NE(t0.numel(), 0,
+                      platform::errors::InvalidArgument(
+                          "The size of first tensor to be reduced is 0."));
 
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
@@ -45,8 +50,19 @@ struct ReduceLoDTensor {
         continue;
       }
 
-      PADDLE_ENFORCE_EQ(t.dims(), t0.dims());
-      PADDLE_ENFORCE_EQ(t.type(), t0.type());
+      PADDLE_ENFORCE_EQ(t.dims(), t0.dims(),
+                        platform::errors::InvalidArgument(
+                            "The shape of tensors to be reduced must be "
+                            "consistent. The shape of current tensor is %s, "
+                            "but the shape of the first tensor is %s.",
+                            t.dims(), t0.dims()));
+
+      PADDLE_ENFORCE_EQ(t.type(), t0.type(),
+                        platform::errors::InvalidArgument(
+                            "The type of tensors to be reduced must be "
+                            "consistent. The type of current tensor is %s, "
+                            "but the type of the first tensor is %s.",
+                            t.type(), t0.type()));
       std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,
                      [](T a, T b) -> T { return a + b; });
     }
@@ -88,7 +104,9 @@ struct GatherLocalSelectedRowsFunctor {
         in_places_(in_places),
         out_place_(out_place),
         dst_selected_rows_(dst_selected_rows) {
-    PADDLE_ENFORCE_EQ(src_selected_rows.empty(), false);
+    PADDLE_ENFORCE_NE(src_selected_rows.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "The number of selected_rows to be gathered is 0."));
 
     std::vector<int64_t> out_rows;
 

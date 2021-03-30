@@ -26,13 +26,19 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of ScatterNdAddOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Input(Index) of ScatterNdAddOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
-                      "Input(Updates) of ScatterNdAddOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ScatterNdAddOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Index"), true,
+        platform::errors::InvalidArgument(
+            "Input(Index) of ScatterNdAddOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Updates"), true,
+        platform::errors::InvalidArgument(
+            "Input(Updates) of ScatterNdAddOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ScatterNdAddOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ScatterNdAddOp should not be null."));
 
     auto ref_dims = ctx->GetInputDim("X");
     auto ref_dims_size = ref_dims.size();
@@ -43,9 +49,11 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_LE(
         index_dims[index_dims_size - 1], ref_dims_size,
-        "Input(Index).shape[-1] should be no greater than Input(X).rank");
+        platform::errors::InvalidArgument(
+            "Input(Index).shape[-1] should be no greater than Input(X).rank"));
     PADDLE_ENFORCE_GE(index_dims_size, 2UL,
-                      "The rank of Input(Index) should be greater than 1");
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(Index) should be greater than 1"));
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
@@ -56,22 +64,26 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
       r_updates_dims.emplace_back(ref_dims[i]);
     }
 
-    PADDLE_ENFORCE_EQ(r_updates_dims.size(), updates_dims_size,
-                      "Updates has wrong shape");
+    PADDLE_ENFORCE_EQ(
+        r_updates_dims.size(), updates_dims_size,
+        platform::errors::InvalidArgument("Updates has wrong shape"));
 
     for (int64_t i = 0; i < updates_dims_size; ++i) {
-      PADDLE_ENFORCE_EQ(r_updates_dims[i], updates_dims[i],
-                        "Updates has wrong shape");
+      PADDLE_ENFORCE_EQ(
+          r_updates_dims[i], updates_dims[i],
+          platform::errors::InvalidArgument("Updates has wrong shape"));
     }
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->type(),
-                      ctx.Input<Tensor>("Updates")->type(),
-                      "Ref and Updates must have same type");
+    PADDLE_ENFORCE_EQ(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                      OperatorWithKernel::IndicateVarDataType(ctx, "Updates"),
+                      platform::errors::InvalidArgument(
+                          "Ref and Updates must have same type"));
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
   }
@@ -95,9 +107,9 @@ class ScatterNdAddGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -140,26 +152,26 @@ Output is obtained by applying sparse addition to a single value or slice in a V
   }
 };
 
-class ScatterNdAddGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScatterNdAddGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("scatter_nd_add_grad");
-    op->SetInput("Index", Input("Index"));
-    op->SetInput("Updates", Input("Updates"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Updates"), InputGrad("Updates"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Updates", this->Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"),
+                  this->InputGrad("Updates"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterNdAddGradNoNeedBufferVarsInference,
-                                      "Updates");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInferer,
+                                    "Updates");
 
 }  // namespace operators
 }  // namespace paddle
@@ -167,10 +179,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterNdAddGradNoNeedBufferVarsInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
-                  ops::ScatterNdAddGradDescMaker);
+                  ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,
+                  ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
-                  ops::ScatterNdAddGradNoNeedBufferVarsInference);
+                  ops::ScatterNdAddGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
                        ops::ScatterNdAddOpKernel<double>,

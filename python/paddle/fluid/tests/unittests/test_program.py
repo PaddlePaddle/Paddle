@@ -132,6 +132,36 @@ class TestProgram(unittest.TestCase):
         for i in range(len(no_read_ops)):
             self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
 
+    def test_program_all_parameters(self):
+        program = fluid.default_main_program()
+        data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+        hidden = fluid.layers.fc(input=data, size=10)
+        loss = fluid.layers.mean(hidden)
+        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+        # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
+        param_list = program.all_parameters()
+        self.assertEqual(len(param_list), 2)
+        self.assertEqual(param_list[0].name, "fc_0.w_0")
+        self.assertEqual(param_list[1].name, "fc_0.b_0")
+
+    def test_prune_with_input_type_error(self):
+        program = fluid.default_main_program()
+        feed_var_names = [2, 3, 4]
+        self.assertRaises(ValueError, program._prune_with_input, feed_var_names,
+                          [])
+
+    def test_random_seed_error(self):
+        program = fluid.default_main_program()
+        with self.assertRaises(ValueError):
+            program.random_seed = "seed"
+
+    def test_copy_info_from_error(self):
+        program = fluid.default_main_program()
+        self.assertRaises(TypeError, program._copy_param_info_from, "program")
+        self.assertRaises(TypeError, program._copy_dist_param_info_from,
+                          "program")
+
 
 if __name__ == '__main__':
     unittest.main()

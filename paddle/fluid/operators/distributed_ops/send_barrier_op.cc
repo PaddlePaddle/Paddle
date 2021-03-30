@@ -12,19 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 
-#include "paddle/fluid/platform/profiler.h"
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class SendBarrierOp : public framework::OperatorBase {
  public:
@@ -36,6 +45,13 @@ class SendBarrierOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+    auto is_half_async = Attr<bool>("half_async");
+
+    if (is_half_async) {
+      distributed::Communicator::GetInstance()->Barrier();
+      return;
+    }
+
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
 
     distributed::RPCClient* rpc_client =
@@ -52,7 +68,9 @@ class SendBarrierOp : public framework::OperatorBase {
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(
+          rets[i]->Wait(), 0U,
+          platform::errors::ExecutionTimeout("internal error in RPCClient"));
     }
   }
 };
@@ -76,6 +94,12 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
+    AddAttr<bool>(
+        "half_async",
+        "(bool, default false)"
+        "half_async=True is for half_async mode, this will send signal "
+        "to HalfAsyncCommunicator Instance")
+        .SetDefault(false);
   }
 };
 
@@ -89,6 +113,8 @@ class SendBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_barrier, ops::SendBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::SendBarrierOpMaker,
-                  ops::SendBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    send_barrier, ops::SendBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SendBarrierOpMaker, ops::SendBarrierOpShapeInference);

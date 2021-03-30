@@ -30,10 +30,14 @@ class MaxOutKernel : public framework::OpKernel<T> {
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
     int groups = context.template Attr<int>("groups");
+    int axis = context.template Attr<int>("axis");
+    if (axis < 0) {
+      axis += in_x->dims().size();
+    }
 
     math::MaxOutFunctor<DeviceContext, T> maxout_forward;
     maxout_forward(context.template device_context<DeviceContext>(), *in_x, out,
-                   groups);
+                   groups, axis);
   }
 };
 
@@ -47,13 +51,19 @@ class MaxOutGradKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = context.Output<Tensor>(framework::GradVarName("X"));
     int groups = context.template Attr<int>("groups");
+    int axis = context.template Attr<int>("axis");
+    if (axis < 0) {
+      axis += in_x->dims().size();
+    }
+
     auto& device_ctx = context.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> zero;
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
       zero(device_ctx, in_x_grad, static_cast<T>(0.0));
       math::MaxOutGradFunctor<DeviceContext, T> maxout_backward;
-      maxout_backward(device_ctx, *in_x, in_x_grad, *out, *out_grad, groups);
+      maxout_backward(device_ctx, *in_x, in_x_grad, *out, *out_grad, groups,
+                      axis);
     }
   }
 };

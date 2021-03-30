@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_ptr.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
@@ -80,7 +80,10 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
       auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
-      PADDLE_ENFORCE(max_len_tensor != NULL, "MaxLenTensor is NULL");
+      PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
+                              platform::errors::InvalidArgument(
+                                  "Input(MaxLenTensor) should not be NULL."
+                                  "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
@@ -93,14 +96,18 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       y_dim.push_back(maxlen);
       y->Resize(framework::make_ddim(y_dim));
 
-      PADDLE_ENFORCE_GT(maxlen, 0,
-                        "MaxLenTensor value should be greater than 0");
+      PADDLE_ENFORCE_GT(
+          maxlen, 0,
+          platform::errors::InvalidArgument(
+              "Input(MaxLenTensor) value should be greater than 0. But "
+              "received Input(MaxLenTensor) value = %d.",
+              maxlen));
     }
 
     auto *x_data = x->data<Tx>();
     auto x_numel = x->numel();
     if (maxlen < 0) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       VLOG(10)
           << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
       maxlen = static_cast<int>(

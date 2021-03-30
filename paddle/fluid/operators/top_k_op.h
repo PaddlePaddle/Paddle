@@ -25,14 +25,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
@@ -70,12 +62,13 @@ class TopkKernel : public framework::OpKernel<T> {
       vec.reserve(col);
       // 1D vector
       if (inputdims.size() == 1) {
-        auto eg_input = EigenVector<T>::Flatten(*input);
+        auto eg_input = framework::EigenVector<T>::Flatten(*input);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(j), j));
         }
       } else {
-        auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+        auto eg_input =
+            framework::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
         }
@@ -89,6 +82,36 @@ class TopkKernel : public framework::OpKernel<T> {
       for (size_t j = 0; j < k; j++) {
         output_data[i * k + j] = vec[j].first;
         indices_data[i * k + j] = int64_t(vec[j].second);
+      }
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class TopkGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<Tensor>("X");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<Tensor>("Indices");
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+
+    T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
+    const T* out_grad_data = out_grad->data<T>();
+    const int64_t* indices_data = indices->data<int64_t>();
+    size_t k = indices->dims()[indices->dims().size() - 1];
+
+    framework::DDim xdims = x->dims();
+    const size_t row =
+        framework::product(framework::slice_ddim(xdims, 0, xdims.size() - 1));
+    const size_t col = xdims[xdims.size() - 1];
+
+    memset(x_grad_data, 0, row * col * sizeof(T));
+
+    for (size_t i = 0; i < row; ++i) {
+      for (size_t j = 0; j < k; ++j) {
+        size_t idx = indices_data[i * k + j];
+        x_grad_data[i * col + idx] = out_grad_data[i * k + j];
       }
     }
   }

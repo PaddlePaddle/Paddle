@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <chrono>  // NOLINT
-#include <set>
 #include <thread>  // NOLINT
-#include <vector>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
 using paddle::operators::reader::BlockingQueue;
@@ -71,7 +68,7 @@ TEST(BlockingQueue, SenderBlockingTest) {
       ++send_count;
     }
   });
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   q.Close();
   sender.join();
   EXPECT_EQ(send_count, queue_cap);

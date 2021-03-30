@@ -12,11 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <memory>
+#include "paddle/fluid/framework/mixed_vector.h"
 
 #include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "gtest/gtest_pred_impl.h"
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;

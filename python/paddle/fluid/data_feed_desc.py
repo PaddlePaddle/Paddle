@@ -20,6 +20,8 @@ __all__ = ['DataFeedDesc']
 
 class DataFeedDesc(object):
     """
+    :api_attr: Static Graph
+    
     Datafeed descriptor, describing input training data format. This class is
     currently only used for AsyncExecutor (See comments for class AsyncExecutor
     for a brief introduction)
@@ -53,7 +55,7 @@ class DataFeedDesc(object):
       data_feed = fluid.DataFeedDesc('data.proto')
 
     However, users usually shouldn't care about the message format; instead,
-    they are encouragd to use :code:`Data Generator` as a tool to generate a
+    they are encouraged to use :code:`Data Generator` as a tool to generate a
     valid data description, in the process of converting their raw log files to
     training files acceptable to AsyncExecutor.
 

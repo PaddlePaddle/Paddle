@@ -15,12 +15,26 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
+namespace platform {
+struct EnforceNotMet;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
+
+// insert python call stack & append error op for exception message
 void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
                          platform::EnforceNotMet *exception);
+
+// only append error op for exception message
+void AppendErrorOpHint(const std::string &type,
+                       platform::EnforceNotMet *exception);
+
 }  // namespace framework
 }  // namespace paddle

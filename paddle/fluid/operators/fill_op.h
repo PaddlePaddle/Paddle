@@ -19,7 +19,6 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -44,10 +43,8 @@ template <typename T>
 class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto &out =
-        detail::Ref(ctx.Output<framework::LoDTensor>("Out"),
-                    "Cannot get output lod tensor Out, variable name = %s",
-                    ctx.op().Output("Out"));
+    auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
+                                "Output", "Out", "Fill");
     out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

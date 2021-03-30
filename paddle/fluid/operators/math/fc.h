@@ -26,7 +26,8 @@ class FCFunctor {
  public:
   void operator()(const DeviceContext& context, const int M, const int N,
                   const int K, const T* X, const T* W, T* Y,
-                  const T* B = nullptr, bool relu = false);
+                  const T* B = nullptr, bool relu = false,
+                  bool weight_pass = false);
 };
 
 }  // namespace math

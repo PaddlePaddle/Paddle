@@ -25,21 +25,31 @@ class HingeLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) must be initialized.");
+    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "HingeLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "HingeLoss");
 
     auto pred_dims = ctx->GetInputDim("Logits");
     auto label_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(pred_dims, label_dims);
-    PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
-                      "The rank of Input(Logits) must be 2 and the shape is "
-                      "[batch_size, 1].");
+    PADDLE_ENFORCE_EQ(
+        pred_dims, label_dims,
+        platform::errors::InvalidArgument(
+            "The Input(input) and Input(label) should have the same "
+            "shape, but received input shape [%s] != label shape [%s]",
+            pred_dims, label_dims));
+
+    PADDLE_ENFORCE_EQ(
+        pred_dims.size(), 2,
+        platform::errors::InvalidArgument("Input(input) rank should be 2, "
+                                          "but received input rank(%d) != 2",
+                                          pred_dims.size()));
+
     PADDLE_ENFORCE_EQ(pred_dims[1], 1,
-                      "Each row of Input(Logits) contains a real value, "
-                      "so the 2nd dimension of Input(Logits) must be 1.");
+                      platform::errors::InvalidArgument(
+                          "The second dimension of Input(input) should be 1, "
+                          "as each row of input contains a real value, "
+                          "but received second dimension of input (%d) != 1",
+                          pred_dims[1]));
 
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Logits", "Loss");
@@ -81,39 +91,41 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Input(Logits@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   "Loss@GRAD", "HingeLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
+                   "Logits@GRAD", "HingeLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Logits");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
 
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
+    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+                      platform::errors::InvalidArgument(
+                          "The shape of loss gradient should be the same as "
+                          "the shape of Input(input), but received the loss "
+                          "gradient shape [%s] != input shape [%s]",
+                          loss_grad_dims, pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Logits");
     ctx->SetOutputDim(pred_grad_name, pred_dims);
   }
 };
 
-class HingeLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class HingeLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("hinge_loss_grad");
-    op->SetInput("Logits", Input("Logits"));
-    op->SetInput("Labels", Input("Labels"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput("Labels", this->Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -122,7 +134,8 @@ class HingeLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-                  ops::HingeLossGradOpDescMaker);
+                  ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,

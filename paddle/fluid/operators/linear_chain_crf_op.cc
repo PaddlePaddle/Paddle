@@ -142,24 +142,27 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Emission"),
-                   "Input(Emission) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Transition"),
-                   "Input(Transition) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("Emission"), "Input", "Emission",
+                   "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
+                   "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "LinearChainCRF");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Alpha"),
-                   "Output(Alpha) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("EmissionExps"),
-                   "Output(EmissionExps) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("TransitionExps"),
-                   "Output(TransitionExps) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LogLikelihood"),
-                   "Output(LogLikelihood) should be not null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Alpha"), "Output", "Alpha",
+                   "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasOutput("EmissionExps"), "Output", "EmissionExps",
+                   "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasOutput("TransitionExps"), "Output", "TransitionExps",
+                   "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasOutput("LogLikelihood"), "Output", "LogLikelihood",
+                   "LinearChainCRF");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
-                      "The Input(Transition) should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "The Input(Transition) should be a 2-D tensor. But "
+                          "received: input rank %u, input shape [%s].",
+                          transition_dims.size(), transition_dims));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
@@ -168,46 +171,89 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     if (check) {
       PADDLE_ENFORCE_EQ(
           transition_dims[0] - 2, transition_dims[1],
-          "An invalid dimension for the Input(Transition), which should "
-          "be a 2-D tensor with shape [(D + 2) x D].");
+          platform::errors::InvalidArgument(
+              "An invalid dimension for the Input(Transition), which should "
+              "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
+              "rank %u, "
+              "input shape [%s].",
+              transition_dims.size(), transition_dims));
     }
     auto emission_dims = ctx->GetInputDim("Emission");
-    PADDLE_ENFORCE_NE(emission_dims[0], 0,
-                      "An empty mini-batch is not allowed.");
     if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
-                        "The Input(Emission) should be a 3-D tensor.");
+                        platform::errors::InvalidArgument(
+                            "The Input(Emission) should be a 3-D tensor. But "
+                            "received: input rank %u, input shape [%s].",
+                            emission_dims.size(), emission_dims));
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(
           (label_dims.size() == 3UL && label_dims[2] == 1) ||
               (label_dims.size() == 2UL),
           true,
-          "The Input(Label) should be a 3-D tensor with last "
-          "dimension fixed to 1 or a 2-D tensor in padding mode.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[0], label_dims[0],
-          "The batch size of Input(Emission) and Input(Label) "
-          "should be the same.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[1], label_dims[1],
-          "The max length of Input(Emission) and Input(Label) "
-          "should be the same.");
+          platform::errors::InvalidArgument(
+              "The Input(Label) should be a 3-D tensor with last dimension "
+              "fixed to 1 or a 2-D tensor in padding mode. But received: input "
+              "rank %u, input shape [%s].",
+              label_dims.size(), label_dims));
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[0], label_dims[0],
+                          platform::errors::InvalidArgument(
+                              "The batch size of Input(Emission) "
+                              "and Input(Label) should be the same. But "
+                              "received Input(Emission): "
+                              "rank %u, shape [%s]; received Input(Label): "
+                              "rank %u, shape [%s].",
+                              emission_dims.size(), emission_dims,
+                              label_dims.size(), label_dims));
+        PADDLE_ENFORCE_EQ(emission_dims[1], label_dims[1],
+                          platform::errors::InvalidArgument(
+                              "The max length of Input(Emission) "
+                              "and Input(Label) should be the same. But "
+                              "received Input(Emission): "
+                              "rank %u, shape [%s]; received Input(Label): "
+                              "rank %u, shape [%s].",
+                              emission_dims.size(), emission_dims,
+                              label_dims.size(), label_dims));
+      }
     } else {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
-                        "The Input(Emission) should be a 2-D tensor.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[1], transition_dims[1],
-          "The 2nd dimension of the Input(Emission) and the Input(Transition) "
-          "should be equal to the tag number.");
+      PADDLE_ENFORCE_EQ(
+          emission_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The Input(Emission) should be a 2-D tensor. But received: "
+              "input rank %u, input shape [%s].",
+              emission_dims.size(), emission_dims));
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[1], transition_dims[1],
+                          platform::errors::InvalidArgument(
+                              "The 2nd dimension of the Input(Emission) and "
+                              "the Input(Transition) "
+                              "should be equal to the tag number. But received "
+                              "Input(Emission): rank "
+                              "%u, shape [%s]; received Input(Transition): "
+                              "rank %u, shape [%s].",
+                              emission_dims.size(), emission_dims,
+                              transition_dims.size(), transition_dims));
+      }
 
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2,
-                        "The Input(Label) should be a 2-D tensor with the 2nd "
-                        "dimensions fixed to 1.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[0], label_dims[0],
-          "The height of Input(Emission) and the height of Input(Label) "
-          "should be the same.");
+      PADDLE_ENFORCE_EQ(
+          label_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The Input(Label) should be a 2-D tensor with the 2nd "
+              "dimensions fixed to 1. But received: input rank %u, "
+              "input shape [%s].",
+              label_dims.size(), label_dims));
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            emission_dims[0], label_dims[0],
+            platform::errors::InvalidArgument(
+                "The first dimension of Input(Emission) and Input(Label) "
+                "should be the same. But received Input(Emission): rank %u, "
+                "shape "
+                "[%s]; received Input(Label): rank %u, shape [%s].",
+                emission_dims.size(), emission_dims, label_dims.size(),
+                label_dims));
+      }
     }
     ctx->SetOutputDim("Alpha", emission_dims);
     ctx->SetOutputDim("EmissionExps", emission_dims);
@@ -224,8 +270,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
+        platform::CPUPlace());
   }
 };
 
@@ -234,68 +281,23 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("EmissionExps"),
-                   "Input(EmissionExps) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("TransitionExps"),
-                   "Input(TransitionExps) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("LogLikelihood")),
-                   "Input(LogLikelihood@GRAD) shoudl be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("EmissionExps"), "Input", "EmissionExps",
+                   "LinearChainCRFGrad");
+    OP_INOUT_CHECK(ctx->HasInput("TransitionExps"), "Input", "TransitionExps",
+                   "LinearChainCRFGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("LogLikelihood")),
+                   "Input", framework::GradVarName("LogLikelihood"),
+                   "LinearChainCRFGrad");
 
     auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
-    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2,
-                      "The Input(TransitionExps) should be a 2-D tensor.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) &&
-        (transition_exps_dims[0] <= 0 || transition_exps_dims[1] <= 0)) {
-      check = false;
-    }
-    if (check) {
-      PADDLE_ENFORCE_EQ(
-          transition_exps_dims[0] - 2, transition_exps_dims[1],
-          "An invalid dimension for the Input(TransitionExps), which should "
-          "be a 2-D tensor with shape [(D + 2) x D].");
-    }
-
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
-    auto label_dims = ctx->GetInputDim("Label");
-    if (ctx->HasInput("Length")) {
-      PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 3,
-                        "The Input(EmissionExps) should be a 3-D tensor.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_exps_dims[2], transition_exps_dims[1],
-          "The 3nd dimension of the Input(EmissionExps) and the "
-          "Input(TransitionExps) should be equal to the tag number.");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 3,
-                        "The Input(Label) should be a 3-D tensor with the 3nd "
-                        "dimensions fixed to 1.");
-    } else {
-      PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2,
-                        "The Input(EmissionExps) should be a 2-D tensor.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_exps_dims[1], transition_exps_dims[1],
-          "The 2nd dimension of the Input(EmissionExps) and the "
-          "Input(TransitionExps) should be equal to the tag number.");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2,
-                        "The Input(Label) should be a 2-D tensor");
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "The Input(Label) 2nd dimensions fixed to 1.");
-    }
-    PADDLE_ENFORCE_NE(emission_exps_dims[0], 0,
-                      "An empty mini-batch is not allowed.");
-
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, emission_exps_dims[0], label_dims[0],
-        "The height of Input(EmissionExps) and the height of Input(Label) "
-        "should be the same.");
-
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
       if (ctx->HasInput("Length") == false) {
         ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
       }
     }
-    // ctx->SetOutputDim(framework::GradVarName("Emission"),
-    // emission_exps_dims);
+
     if (ctx->HasOutput(framework::GradVarName("Transition"))) {
       ctx->SetOutputDim(framework::GradVarName("Transition"),
                         transition_exps_dims);
@@ -309,51 +311,53 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
+        OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("LogLikelihood")),
         platform::CPUPlace());
   }
 };
 
-class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("linear_chain_crf_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("Emission", Input("Emission"));
-    op->SetInput("Transition", Input("Transition"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("Alpha", Output("Alpha"));
-    op->SetInput("EmissionExps", Output("EmissionExps"));
-    op->SetInput("TransitionExps", Output("TransitionExps"));
-    if (ForwardOp().Inputs().count("Length") > 0) {
-      op->SetInput("Length", Input("Length"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("Emission", this->Input("Emission"));
+    op->SetInput("Transition", this->Input("Transition"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Alpha", this->Output("Alpha"));
+    op->SetInput("EmissionExps", this->Output("EmissionExps"));
+    op->SetInput("TransitionExps", this->Output("TransitionExps"));
+    if (this->HasInput("Length")) {
+      op->SetInput("Length", this->Input("Length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),
-                 OutputGrad("LogLikelihood"));
+                 this->OutputGrad("LogLikelihood"));
 
-    op->SetOutput(framework::GradVarName("Emission"), InputGrad("Emission"));
+    op->SetOutput(framework::GradVarName("Emission"),
+                  this->InputGrad("Emission"));
     op->SetOutput(framework::GradVarName("Transition"),
-                  InputGrad("Transition"));
-
-    return op;
+                  this->InputGrad("Transition"));
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    LinearChainCRFGradNoNeedBufferVarsInference, "Transition", "Emission");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInferer,
+                                    "Transition", "Emission");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
-                  ops::LinearChainCRFOpMaker, ops::LinearChainCRFGradDescMaker);
+                  ops::LinearChainCRFOpMaker,
+                  ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
+                  ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
-                  ops::LinearChainCRFGradNoNeedBufferVarsInference);
+                  ops::LinearChainCRFGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,

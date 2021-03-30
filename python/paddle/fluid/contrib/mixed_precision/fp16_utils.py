@@ -15,25 +15,27 @@
 from __future__ import print_function
 
 from ... import core
-from ... import layers
 from ... import framework
+from ... import layers
+from ... import global_scope
+from ...log_helper import get_logger
+from ...wrapped_decorator import signature_safe_contextmanager
+from .fp16_lists import AutoMixedPrecisionLists
+import collections
+import logging
+import numpy as np
 
+__all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 
-def append_cast_op(i, o, prog):
-    """
-    Append a cast op in a given Program to cast input `i` to data type `o.dtype`.
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-    Args:
-        i (Variable): The input Variable.
-        o (Variable): The output Variable.
-        prog (Program): The Program to append cast op.
-    """
-    prog.global_block().append_op(
-        type="cast",
-        inputs={"X": i},
-        outputs={"Out": o},
-        attrs={"in_dtype": i.dtype,
-               "out_dtype": o.dtype})
+_valid_types = [
+    core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
+    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+]
+
+_fp16_guard_pattern = "__use_fp16__"
 
 
 def _rename_arg(op, old_name, new_name):
@@ -51,6 +53,18 @@ def _rename_arg(op, old_name, new_name):
         op_desc = op_desc[0]
     op_desc._rename_input(old_name, new_name)
     op_desc._rename_output(old_name, new_name)
+
+
+def _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops):
+    for block in program.blocks:
+        ops = block.ops
+        block_id = block.idx
+        for op in ops:
+            if op not in origin_ops or op in keep_fp32_ops:
+                continue
+            for name in op.input_arg_names:
+                if name in op_var_rename_map[block_id]:
+                    op._rename_input(name, op_var_rename_map[block_id][name])
 
 
 def _dtype_to_str(dtype):
@@ -75,57 +89,93 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         op (Operator): The operator to insert cast op.
         idx (int): The index of current operator.
         src_dtype (VarType): The input variable dtype of cast op.
-        desr_dtype (VarType): The output variable dtype of cast op.
+        dest_dtype (VarType): The output variable dtype of cast op.
 
     Returns:
         num_cast_op (int): The number of cast ops that have been inserted.
     """
     num_cast_ops = 0
-    valid_types = [
-        core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
-        core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ]
+
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
-            if in_name != 'X':
+        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
+                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+        ]:
+            if in_name not in {'X', 'Z'}:
                 continue
         for in_var_name in op.input(in_name):
             in_var = block.var(in_var_name)
-            if in_var.type not in valid_types:
+            if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
                 continue
             if in_var.dtype == src_dtype:
-                out_var = block.create_var(
-                    name=in_var.name + \
-                            '.cast_' + _dtype_to_str(dest_dtype),
-                    dtype=dest_dtype,
-                    persistable=False,
-                    stop_gradient=False)
-                block._insert_op(
-                    idx,
-                    type="cast",
-                    inputs={"X": in_var},
-                    outputs={"Out": out_var},
-                    attrs={
-                        "in_dtype": in_var.dtype,
-                        "out_dtype": out_var.dtype
-                    })
-                num_cast_ops += 1
+                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+                out_var = block.vars.get(cast_name)
+                if out_var is None or out_var.dtype != dest_dtype:
+                    out_var = block.create_var(
+                        name=cast_name,
+                        dtype=dest_dtype,
+                        persistable=False,
+                        stop_gradient=in_var.stop_gradient)
+
+                    block._insert_op(
+                        idx,
+                        type="cast",
+                        inputs={"X": in_var},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "in_dtype": in_var.dtype,
+                            "out_dtype": out_var.dtype
+                        })
+                    num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32:
+    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
-            if op.type == 'batch_norm' and out_name != 'Y':
+            if op.type in [
+                    'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+            ] and out_name != 'Y':
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
-                if out_var.type not in valid_types:
+                if out_var.type not in _valid_types:
                     continue
                 if out_var.dtype == core.VarDesc.VarType.FP32:
                     out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+    return num_cast_ops
+
+
+def _insert_cast_post_op(block, op, idx, src_dtype, dest_dtype, target_name,
+                         op_var_rename_map):
+    num_cast_ops = 0
+
+    target_var = block.var(target_name)
+    if target_var.type not in _valid_types or target_var.dtype == dest_dtype:
+        return num_cast_ops
+
+    assert target_var.dtype == src_dtype, \
+           "The real dtype({}) is not equal to the src dtype({})".format(_dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype))
+
+    cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+    cast_var = block.vars.get(cast_name)
+    if cast_var is None or cast_var.dtype != dest_dtype:
+        cast_var = block.create_var(
+            name=cast_name,
+            dtype=dest_dtype,
+            persistable=False,
+            stop_gradient=target_var.stop_gradient)
+        block._insert_op(
+            idx,
+            type="cast",
+            inputs={"X": target_var},
+            outputs={"Out": cast_var},
+            attrs={"in_dtype": target_var.dtype,
+                   "out_dtype": cast_var.dtype})
+        num_cast_ops += 1
+        op_var_rename_map[block.idx][target_var.name] = cast_var.name
+
     return num_cast_ops
 
 
@@ -155,6 +205,266 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
+def find_true_post_op(ops, cur_op, var_name):
+    """
+    if there are post ops, return them, if there is no post op,
+    return None instead.
+    Args:
+        ops (list): A list of ops.
+        cur_op (Operator): Current operator which has var_name variable.
+        var_name (string): Variable name.
+    """
+    post_op = []
+    for idx, op in enumerate(ops):
+        if op == cur_op:
+            break
+
+    for i in range(idx + 1, len(ops)):
+        op = ops[i]
+        for in_name in op.input_names:
+            for in_var_name in op.input(in_name):
+                if in_var_name == var_name:
+                    post_op.append(op)
+
+    return post_op
+
+
+def find_op_index(block_desc, cur_op_desc):
+    """
+    """
+    for idx in range(block_desc.op_size()):
+        if cur_op_desc == block_desc.op(idx):
+            return idx
+    return -1
+
+
+def _is_in_black_varnames(op, amp_lists):
+    for in_name in op.input_arg_names:
+        if in_name in amp_lists.black_varnames:
+            return True
+
+    for out_name in op.output_arg_names:
+        if out_name in amp_lists.black_varnames:
+            return True
+
+    return False
+
+
+def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
+    if op.type in unsupported_op_list:
+        # the highest priority condition: If ops don't have fp16 computing kernels,
+        # they must be executed in fp32 calculation pattern.
+        return True
+
+    # process ops about learning rate
+    in_out_arg_names = []
+    in_out_arg_names.extend(list(op.input_arg_names))
+    in_out_arg_names.extend(list(op.output_arg_names))
+    for name in in_out_arg_names:
+        if "learning_rate" in name:
+            return True
+
+    if use_fp16_guard:
+        if op.has_attr("op_namescope") and \
+            (_fp16_guard_pattern in op.attr("op_namescope")):
+            # op in fp16 guard
+            return False
+        else:
+            # op not in fp16 guard
+            return True
+    else:
+        return False
+
+
+@signature_safe_contextmanager
+def fp16_guard():
+    """
+    As for the pure fp16 training, if users set `use_fp16_guard` to True,
+    only those ops created in the context manager `fp16_guard` will be
+    transformed as float16 type.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            paddle.enable_static()
+            data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+            conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
+
+            with paddle.static.amp.fp16_guard():
+                bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
+                pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+                hidden = paddle.static.nn.fc(pool, size=10)
+                loss = paddle.mean(hidden)
+    """
+    with framework.name_scope(prefix=_fp16_guard_pattern):
+        yield
+
+
+def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
+    """
+    Traverse all ops in the whole model and set their inputs and outputs
+    to the fp16 data type. This function will do some special process for
+    the batch normalization, which keeps the computational process of
+    batchnorms in FP32.
+    Args:
+        program (Program): The used program.
+        amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
+        use_fp16_guard(bool): Determine whether to use `fp16_guard` when
+                              constructing the program. Default True.
+    """
+
+    if amp_lists is None:
+        amp_lists = AutoMixedPrecisionLists()
+    global_block = program.global_block()
+    keep_fp32_ops = set()
+    to_fp16_var_names = set()
+    origin_ops = []
+    for block in program.blocks:
+        origin_ops.extend(block.ops)
+
+    for block in program.blocks:
+        ops = block.ops
+        for op in ops:
+            if op.type == 'create_py_reader' or op.type == 'read':
+                continue
+            if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
+                keep_fp32_ops.add(op)
+                continue  # processed below
+            for in_name in op.input_names:
+                if op.type in {
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                } and in_name not in {'X', 'Z'}:
+                    continue
+                for in_var_name in op.input(in_name):
+                    in_var = None
+                    try:
+                        in_var = block.var(in_var_name)
+                    except ValueError as e:
+                        _logger.debug(
+                            "-- {}, try to get it in the global block --".
+                            format(e))
+                        in_var = global_block.var(in_var_name)
+                        if in_var is not None:
+                            _logger.debug(
+                                "-- var {} is got in the global block --".
+                                format(in_var_name))
+
+                    if in_var is None or in_var.type not in _valid_types:
+                        continue
+
+                    if in_var.dtype == core.VarDesc.VarType.FP32:
+                        in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        to_fp16_var_names.add(in_var_name)
+
+                    _logger.debug(
+                        "-- op type: {}, in var name: {}, in var dtype: {} --".
+                        format(op.type, in_var_name, in_var.dtype))
+
+            for out_name in op.output_names:
+                if op.type in {
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                } and out_name != 'Y':
+                    continue
+                for out_var_name in op.output(out_name):
+                    out_var = None
+                    try:
+                        out_var = block.var(out_var_name)
+                    except ValueError as e:
+                        _logger.debug(
+                            "-- {}, try to get it in the global block --".
+                            format(e))
+                        out_var = global_block.var(out_var_name)
+                        if out_var is not None:
+                            _logger.debug(
+                                "-- var {} is got in the global block --".
+                                format(out_var_name))
+
+                    if out_var is None or out_var.type not in _valid_types:
+                        continue
+
+                    if out_var.dtype == core.VarDesc.VarType.FP32:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+
+                    _logger.debug(
+                        "-- op type: {}, out var name: {}, out var dtype: {} --".
+                        format(op.type, out_var_name, out_var.dtype))
+            if op.has_attr('in_dtype') and op.attr(
+                    'in_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('out_dtype') and op.attr(
+                    'out_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('dtype') and op.attr(
+                    'dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('dtype', core.VarDesc.VarType.FP16)
+
+    # process ops in keep_fp32_ops
+    op_var_rename_map = [
+        collections.OrderedDict() for _ in range(len(program.blocks))
+    ]
+    for block in program.blocks:
+        ops = block.ops
+        idx = 0
+        while idx < len(ops):
+            op = ops[idx]
+            num_cast_ops = 0
+            if op in keep_fp32_ops:
+                pre_cast_num = _insert_cast_op(block, op, idx,
+                                               core.VarDesc.VarType.FP16,
+                                               core.VarDesc.VarType.FP32)
+                num_cast_ops += pre_cast_num
+                for out_var_name in op.output_arg_names:
+                    out_var = block.vars.get(out_var_name)
+                    if out_var is None or out_var.type not in _valid_types:
+                        continue
+                    if out_var.dtype == core.VarDesc.VarType.FP16:
+                        out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
+                        post_ops = find_true_post_op(ops, op, out_var_name)
+                        for post_op in post_ops:
+                            if post_op in keep_fp32_ops:
+                                continue
+                            post_cast_num = _insert_cast_post_op(
+                                block, op, idx + pre_cast_num + 1,
+                                core.VarDesc.VarType.FP32,
+                                core.VarDesc.VarType.FP16, out_var_name,
+                                op_var_rename_map)
+                            num_cast_ops += post_cast_num
+            idx += num_cast_ops + 1
+
+    _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops)
+    return to_fp16_var_names
+
+
+def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
+    """
+    Traverse all parameters in the whole model and set them to the FP16 data type.
+    Whereas, this function will keep parameters of batchnorms in FP32.
+    Args:
+        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
+        program (Program): The used program.
+        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+                                      Default is None.
+        to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
+                                               will be set to FP16. Usually, it is the returned
+                                               value of `cast_model_to_fp16` API.
+    """
+    all_parameters = []
+    for block in program.blocks:
+        all_parameters.extend(block.all_parameters())
+
+    fp16_var_names = to_fp16_var_names if to_fp16_var_names else set()
+    var_scope = scope if scope else global_scope()
+    for param in all_parameters:
+        if param.name in fp16_var_names:
+            _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
+            param_t = var_scope.find_var(param.name).get_tensor()
+            data = np.array(param_t)
+            param_t.set(np.float16(data), place)
+
+
 def rewrite_program(main_prog, amp_lists):
     """
     Traverse all ops in current block and insert cast op according to 
@@ -180,6 +490,19 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
+
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder, 
+        # we don't need to handle reader op and the input of 'create_py_reader' is not 
+        # in block, which may result in errors.
+        # See GeneratorLoader._init_non_iterable() for details.
+        if op.type == 'create_py_reader' or op.type == 'read':
+            continue
+
+        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+                op, amp_lists):
+            black_op_set.add(op)
+            continue
+
         if op.type in amp_lists.black_list:
             black_op_set.add(op)
         elif op.type in amp_lists.white_list:
@@ -240,7 +563,7 @@ def rewrite_program(main_prog, amp_lists):
 def update_role_var_grad(main_prog, params_grads):
     """
     Update op_role_var attr for some ops to make sure the gradients
-    transfered across gpus is FP16.
+    transferred across GPUs is FP16.
     1. Check whether the op that outputs gradient is cast or not.
     2. If op is cast and gradient is FP32, remove the op_role_var
        and find the prev op which outputs FP16 gradient
@@ -272,79 +595,22 @@ def update_role_var_grad(main_prog, params_grads):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
 
-            # maximize the allreduce overlap
+            # Maximize the all_reduce overlap, and perform the cast
+            # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
+            # optimize op should stay behind forward and backward ops
+            if op == block.ops[-1]:
+                continue
+            post_ops = find_true_post_op(block.ops, op, g.name)
+            if post_ops:
+                raise ValueError("The cast op {0}'s output should not be"
+                                 "used by a non-optimize op, however, it"
+                                 "is used by {1}".format(op, post_ops[0]))
+            new_op_desc = block.desc.append_op()
+            new_op_desc.copy_from(op.desc)
 
-
-def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
-                        num_bad_steps, incr_every_n_steps,
-                        decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
-    """
-    Update loss scaling according to overall gradients. If all gradients is 
-    finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
-    Otherwisw, loss scaling will decrease by decr_ratio after 
-    decr_every_n_nan_or_inf steps and each step some gradients are infinite.
-
-    Args:
-        is_overall_finite (Variable): A boolean variable indicates whether 
-                                     all gradients are finite.
-        prev_loss_scaling (Variable): Previous loss scaling.
-        num_good_steps (Variable): A variable accumulates good steps in which 
-                                   all gradients are finite.
-        num_bad_steps (Variable): A variable accumulates bad steps in which 
-                                  some gradients are infinite.
-        incr_every_n_steps (Variable): A variable represents increasing loss 
-                                       scaling every n consecutive steps with 
-                                       finite gradients.
-        decr_every_n_nan_or_inf (Variable): A variable represents decreasing 
-                                            loss scaling every n accumulated 
-                                            steps with nan or inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
-                           scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
-                           loss scaling.
-    """
-    zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
-    with layers.Switch() as switch:
-        with switch.case(is_overall_finite):
-            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
-                                                        num_good_steps + 1)
-            with layers.Switch() as switch1:
-                with switch1.case(should_incr_loss_scaling):
-                    new_loss_scaling = prev_loss_scaling * incr_ratio
-                    loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
-                    with layers.Switch() as switch2:
-                        with switch2.case(loss_scaling_is_finite):
-                            layers.assign(new_loss_scaling, prev_loss_scaling)
-                        with switch2.default():
-                            pass
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-                with switch1.default():
-                    layers.increment(num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-
-        with switch.default():
-            should_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
-                                                        num_bad_steps + 1)
-            with layers.Switch() as switch3:
-                with switch3.case(should_decr_loss_scaling):
-                    new_loss_scaling = prev_loss_scaling * decr_ratio
-                    static_loss_scaling = \
-                        layers.fill_constant(shape=[1],
-                                             dtype='float32',
-                                             value=1.0)
-                    less_than_one = layers.less_than(new_loss_scaling,
-                                                     static_loss_scaling)
-                    with layers.Switch() as switch4:
-                        with switch4.case(less_than_one):
-                            layers.assign(static_loss_scaling,
-                                          prev_loss_scaling)
-                        with switch4.default():
-                            layers.assign(new_loss_scaling, prev_loss_scaling)
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.assign(zero_steps, num_bad_steps)
-                with switch3.default():
-                    layers.assign(zero_steps, num_good_steps)
-                    layers.increment(num_bad_steps)
+            op_idx = find_op_index(block.desc, op.desc)
+            if op_idx == -1:
+                raise ValueError("The op {0} is not in program".format(op))
+            block.desc._remove_op(op_idx, op_idx + 1)
+        block._sync_with_cpp()

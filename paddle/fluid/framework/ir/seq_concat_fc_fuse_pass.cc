@@ -13,13 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
-#include <set>
-#include <string>
-#include <unordered_set>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -185,11 +181,13 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-#define GET_NODE(id, pattern)                               \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
-                 "pattern has no Node called %s", #id);     \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
-  PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
+#define GET_NODE(id, pattern)                                             \
+  PADDLE_ENFORCE_GT(                                                      \
+      subgraph.count(pattern.RetrieveNode(#id)), 0,                       \
+      platform::errors::NotFound("Pattern has no node called %s.", #id)); \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));                      \
+  PADDLE_ENFORCE_NOT_NULL(                                                \
+      id, platform::errors::NotFound("Subgraph has no node %s.", #id));
 
   int fuse_count{0};
 
@@ -214,7 +212,9 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
     op_desc.SetInput("FCWeight", {fc_w->Name()});
     op_desc.SetInput("FCBias", {fc_bias->Name()});
     const std::string fc_out_tmp = fc_out->Name() + ".tmp";
-    param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
+    VarDesc fc_out_key(fc_out_tmp);
+    fc_out_key.SetPersistable(false);
+    auto* fc_out_node = graph->CreateVarNode(&fc_out_key);
     op_desc.SetOutput("FCOut", {fc_out_tmp});
     op_desc.SetOutput("Out", {fc_out->Name()});
     op_desc.SetAttr("fc_activation", act->Op()->Type());
@@ -227,6 +227,7 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(sequence_expand0_in, op_node);
     IR_NODE_LINK_TO(sequence_expand1_in, op_node);
     IR_NODE_LINK_TO(op_node, fc_out);
+    IR_NODE_LINK_TO(op_node, fc_out_node);
 
     // Clean nodes.
     std::unordered_set<const Node*> marked_nodes;
@@ -253,3 +254,15 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(seq_concat_fc_fuse_pass,
               paddle::framework::ir::SeqConcatFcFusePass);
+REGISTER_PASS_CAPABILITY(seq_concat_fc_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("sequence_expand", 0)
+            .EQ("concat", 0)
+            .EQ("mul", 0)
+            .LE("elementwise_add", 1)
+            .EQ("sigmoid", 0)
+            .EQ("tanh", 0)
+            .EQ("relu", 0)
+            .EQ("identity", 0)
+            .EQ("fusion_seqexpand_concat_fc", 0));

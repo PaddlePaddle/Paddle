@@ -24,14 +24,13 @@ class OneHotV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of OneHotOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of OneHotOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "one_hot_v2");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "one_hot_v2");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 1,
-                      "Rank of Input(X) should be at least 1.");
+                      platform::errors::InvalidArgument(
+                          "Rank of Input(X) should be at least 1."));
 
     int depth = ctx->Attrs().Get<int>("depth");
     if (ctx->HasInput("depth_tensor")) {
@@ -48,8 +47,9 @@ class OneHotV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -115,8 +115,10 @@ Out is a LoDTensor:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     one_hot_v2, ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int>,
     ops::OneHotV2Kernel<paddle::platform::CPUDeviceContext, int64_t>);

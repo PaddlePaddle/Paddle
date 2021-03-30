@@ -266,7 +266,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data =
           memory::Alloc(context, inputs_data.size() * sizeof(T*));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_data.data()),
                    inputs_data.size() * sizeof(T*), context.stream());
@@ -293,7 +293,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     } else {
       auto tmp_dev_ins_col_data =
           memory::Alloc(context, inputs_col.size() * sizeof(int));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_col.data()),
                    inputs_col.size() * sizeof(int), context.stream());
@@ -356,7 +356,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       tmp_dev_outs_data =
           memory::Alloc(context, outputs_data.size() * sizeof(T*));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_outs_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_data.data()),
                    outputs_data.size() * sizeof(T*), context.stream());
@@ -385,7 +385,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
           memory::Alloc(context,
 
                         outputs_cols.size() * sizeof(int));
-      memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_cols.data()),
                    outputs_cols.size() * sizeof(int), context.stream());

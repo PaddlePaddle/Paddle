@@ -14,8 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <nccl.h>
-
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -25,8 +25,6 @@ namespace dynload {
 
 extern std::once_flag nccl_dso_flag;
 extern void* nccl_dso_handle;
-
-#ifdef PADDLE_USE_DSO
 
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
   struct DynLoad__##__name {                                             \
@@ -41,16 +39,6 @@ extern void* nccl_dso_handle;
     }                                                                    \
   };                                                                     \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \
-  struct DynLoad__##__name {                   \
-    template <typename... Args>                \
-    ncclResult_t operator()(Args... args) {    \
-      return __name(args...);                  \
-    }                                          \
-  };                                           \
-  extern DynLoad__##__name __name
-#endif
 
 #define NCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
@@ -70,6 +58,18 @@ extern void* nccl_dso_handle;
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+
+#if NCCL_VERSION_CODE >= 2212
+#define NCCL_RAND_ROUTINE_EACH_AFTER_2212(__macro) __macro(ncclBroadcast);
+NCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+#if NCCL_VERSION_CODE >= 2703
+#define NCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
+  __macro(ncclSend);                               \
+  __macro(ncclRecv);
+NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
 
 }  // namespace dynload
 }  // namespace platform

@@ -11,7 +11,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
@@ -23,7 +29,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+#ifdef __HIPCC__
+static constexpr int kNumCUDAThreads = 256;
+#else
 static constexpr int kNumCUDAThreads = 512;
+#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {
@@ -31,15 +41,11 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUSigmoidForward(const T *x_data, const T *label_data,
                                   const int ignore_index, const int limit,
                                   T *out_data, T *counts) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T label = label_data[i];
     T eps = static_cast<T>(1e-5);
@@ -77,14 +83,14 @@ __global__ void Sum(const T *counts, int num, const T eps, T *sum) {
 
 template <typename T>
 __global__ void Div(T *loss, const int num, const T *norm) {
-  CUDA_1D_KERNEL_LOOP(i, num) { loss[i] /= norm[0]; }
+  CUDA_KERNEL_LOOP(i, num) { loss[i] /= norm[0]; }
 }
 
 template <typename T>
 __global__ void GPUSigmoidBackward(const T *x_data, const T *label_data,
                                    const int ignore_index, const T *dout_data,
                                    const int limit, T *dx_data, T *counts) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T label = label_data[i];
     T dout = dout_data[i];

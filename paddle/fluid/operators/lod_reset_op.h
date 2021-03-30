@@ -31,22 +31,27 @@ class LoDResetKernel : public framework::OpKernel<T> {
     auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
     bool append = ctx.Attr<bool>("append");
 
-    out->ShareDataWith(*in);
+    framework::TensorCopy(*in, in->place(), out);
 
     std::vector<int> level0;
     if (lod_t) {
       if (lod_t->lod().size() > 0) {
         auto y_lod = lod_t->lod();
         auto last_level = y_lod[y_lod.size() - 1];
-        PADDLE_ENFORCE_EQ((int64_t)(last_level.back()), in->dims()[0],
-                          "Last value of `Y`'s last level LoD should be equal "
-                          "to the first dimension of `X`");
+        PADDLE_ENFORCE_EQ(
+            static_cast<int64_t>(last_level.back()), in->dims()[0],
+            platform::errors::InvalidArgument(
+                "The last value of Input(Y)'s last level LoD should be equal "
+                "to the first dimension of Input(X). But received the last "
+                "value of Input(Y)'s last level LoD is %d, the first dimension "
+                "of Input(X) is %d.",
+                static_cast<int64_t>(last_level.back()), in->dims()[0]));
         out->set_lod(y_lod);
         return;  // early return, since lod already set
       } else {
         auto* lod = lod_t->data<int>();
-        if (platform::is_gpu_place(ctx.GetPlace())) {
-          framework::Tensor lod_cpu;
+        framework::Tensor lod_cpu;
+        if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
@@ -56,16 +61,30 @@ class LoDResetKernel : public framework::OpKernel<T> {
       level0 = ctx.Attr<std::vector<int>>("target_lod");
     }
 
-    PADDLE_ENFORCE_GT(level0.size(), 1UL,
-                      "Size of target LoD should be greater than 1.");
-    PADDLE_ENFORCE_EQ(level0[0], 0,
-                      "Target LoD should be a vector starting from 0.");
-    PADDLE_ENFORCE_EQ(level0.back(), in->dims()[0],
-                      "Target LoD should be a vector end with the "
-                      "first dimension of Input(X).");
+    PADDLE_ENFORCE_GT(
+        level0.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The size of target LoD should be greater than 1. But received the "
+            "size of target LoD is %d.",
+            level0.size()));
+    PADDLE_ENFORCE_EQ(static_cast<int64_t>(level0[0]), 0,
+                      platform::errors::InvalidArgument(
+                          "Target LoD should be a vector starting from 0. But "
+                          "target LoD starts from %d.",
+                          static_cast<int64_t>(level0[0])));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int64_t>(level0.back()), in->dims()[0],
+        platform::errors::InvalidArgument(
+            "The last value of 'Target LoD''s last level LoD should be equal "
+            "to the first dimension of Input(X). But received the 'Target LoD' "
+            "is %s, Input(X)'s shape is is %s.",
+            framework::make_ddim(level0), in->dims()));
     for (size_t i = 0; i < level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(level0[i + 1] >= level0[i],
-                     "Target LoD should be an ascending vector.");
+      PADDLE_ENFORCE_GE(level0[i + 1], level0[i],
+                        platform::errors::InvalidArgument(
+                            "'Target LoD' should be an ascending "
+                            "vector. But received the Target LoD is %s.",
+                            framework::make_ddim(level0)));
     }
 
     // cast level0 to size_t
@@ -90,7 +109,7 @@ class LoDResetGradKernel : public framework::OpKernel<T> {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
-    d_x->ShareDataWith(*d_out);
+    framework::TensorCopy(*d_out, d_out->place(), d_x);
   }
 };
 }  // namespace operators

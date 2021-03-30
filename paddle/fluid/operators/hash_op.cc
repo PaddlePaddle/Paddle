@@ -13,7 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hash_op.h"
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -26,14 +42,13 @@ class HashOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of HashOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of HashOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Hash");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Hash");
 
     auto dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dims.size(), 2UL,
-                      "The input of hash_op's dimensions must be 2");
+                      platform::errors::InvalidArgument(
+                          "The input of hash_op's dimensions must be 2"));
     std::vector<int64_t> out_dims;
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);

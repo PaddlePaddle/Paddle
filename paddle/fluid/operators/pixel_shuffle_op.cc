@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/pixel_shuffle_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -20,23 +21,52 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PixelShuffleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PixelShuffleOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "Input(X) of PixelShuffleOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Out) of PixelShuffleOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input should be a 4-D tensor of format [N, C, H, W] "
+                          "or [N, H, W, C], but got %u.",
+                          input_dims.size()));
+
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
-    PADDLE_ENFORCE(input_dims[1] % (upscale_factor * upscale_factor) == 0,
-                   "Upscale_factor should devide the number of channel");
+    const std::string data_format =
+        ctx->Attrs().Get<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC");
 
+    if (!channel_last) {
+      PADDLE_ENFORCE_EQ(
+          input_dims[1] % (upscale_factor * upscale_factor), 0,
+          platform::errors::InvalidArgument(
+              "The square of upscale_factor[%u] should divide the "
+              "number of channel[%u]",
+              upscale_factor * upscale_factor, input_dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          input_dims[3] % (upscale_factor * upscale_factor), 0,
+          platform::errors::InvalidArgument(
+              "The square of upscale_factor[%u] should divide the "
+              "number of channel[%u]",
+              upscale_factor * upscale_factor, input_dims[3]));
+    }
     auto output_dims = input_dims;
     output_dims[0] = input_dims[0];
-    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] * upscale_factor;
+    if (!channel_last) {
+      output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
+      output_dims[2] = input_dims[2] * upscale_factor;
+      output_dims[3] = input_dims[3] * upscale_factor;
+    } else {
+      output_dims[1] = input_dims[1] * upscale_factor;
+      output_dims[2] = input_dims[2] * upscale_factor;
+      output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+    }
     ctx->SetOutputDim("Out", output_dims);
   }
 };
@@ -44,21 +74,27 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
 class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(Tensor, default Tensor<float>), "
-        "the input feature data of PixelShuffleOp, the layout is [N C H W].");
-    AddOutput(
-        "Out",
-        "(Tensor, default Tensor<float>), the output of "
-        "PixelShuffleOp. The layout is [N,C/factor^2,H*factor,W*factor].");
+    AddInput("X",
+             "(Tensor, default Tensor<float>), "
+             "the input feature data of PixelShuffleOp, the layout is [N, C, "
+             "H, W] or [N, H, W, C].");
+    AddOutput("Out",
+              "(Tensor, default Tensor<float>), the output of "
+              "PixelShuffleOp. The layout is [N, C/factor^2, H*factor, "
+              "W*factor] or [N, H*factor, W*factor, C/factor^2].");
     AddAttr<int>("upscale_factor",
                  "the factor to increase spatial resolution by.")
         .SetDefault(1)
         .AddCustomChecker([](const int& upscale_factor) {
           PADDLE_ENFORCE_GE(upscale_factor, 1,
-                            "upscale_factor should be larger than 0.");
+                            platform::errors::InvalidArgument(
+                                "upscale_factor should be larger than 0."));
         });
+    AddAttr<std::string>(
+        "data_format",
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\", Specify the data format of the input data.")
+        .SetDefault("NCHW");
 
     AddComment(R"DOC(
 		Pixel Shuffle operator
@@ -77,17 +113,16 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class PixelShuffleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PixelShuffleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("pixel_shuffle_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -96,21 +131,38 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad) should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@Grad) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::NotFound("Output(X@Grad) should not be null"));
 
     auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(do_dims.size() == 4, "The layout of input is NCHW.");
+    PADDLE_ENFORCE_EQ(do_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input should be a 4-D tensor of format [N, C, H, W] "
+                          "or [N, H, W, C], but got %u.",
+                          do_dims.size()));
 
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
+    const std::string data_format =
+        ctx->Attrs().Get<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC");
+
     auto dx_dims = do_dims;
     dx_dims[0] = do_dims[0];
-    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] / upscale_factor;
+
+    if (!channel_last) {
+      dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
+      dx_dims[2] = do_dims[2] / upscale_factor;
+      dx_dims[3] = do_dims[3] / upscale_factor;
+    } else {
+      dx_dims[1] = do_dims[1] / upscale_factor;
+      dx_dims[2] = do_dims[2] / upscale_factor;
+      dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+    }
     ctx->SetOutputDim(framework::GradVarName("X"), dx_dims);
   }
 };
@@ -120,7 +172,8 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
-                  ops::PixelShuffleGradMaker);
+                  ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
+                  ops::PixelShuffleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
 
@@ -133,3 +186,10 @@ REGISTER_OP_CPU_KERNEL(
     pixel_shuffle_grad,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(pixel_shuffle)
+    .AddCheckpoint(
+        R"ROC(
+               Compatible upgrade of pixel_shuffle, add a new attribute [data_format])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "data_format", "Specify the data format of the input data", true));

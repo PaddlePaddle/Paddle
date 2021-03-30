@@ -59,7 +59,7 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
-  using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
+  using input_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
   // If we set the model using config.SetModelBuffer,
@@ -76,53 +76,62 @@ struct Argument {
     }
   }
 
-#define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
- public:                                                     \
-  type__& field__() {                                        \
-    PADDLE_ENFORCE(Has(#field__), "There is no such field"); \
-    return field__##_;                                       \
-  }                                                          \
-  void Set##Field(const type__& x) {                         \
-    field__##_ = x;                                          \
-    valid_fields_.insert(#field__);                          \
-  }                                                          \
-  DECL_ARGUMENT_FIELD_VALID(field__);                        \
-  type__* field__##_ptr() { return &field__##_; }            \
-                                                             \
- private:                                                    \
+#define DECL_ARGUMENT_FIELD(field__, Field, type__)                      \
+ public:                                                                 \
+  type__& field__() {                                                    \
+    PADDLE_ENFORCE_EQ(                                                   \
+        Has(#field__), true,                                             \
+        platform::errors::PreconditionNotMet("There is no such field")); \
+    return field__##_;                                                   \
+  }                                                                      \
+  void Set##Field(const type__& x) {                                     \
+    field__##_ = x;                                                      \
+    valid_fields_.insert(#field__);                                      \
+  }                                                                      \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                    \
+  type__* field__##_ptr() { return &field__##_; }                        \
+                                                                         \
+ private:                                                                \
   type__ field__##_;
 
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
   bool field__##_valid() { return Has(#field__); }
 
-#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                \
- public:                                                                  \
-  type__& field__() {                                                     \
-    PADDLE_ENFORCE_NOT_NULL(field__##_);                                  \
-    PADDLE_ENFORCE(Has(#field__));                                        \
-    return *static_cast<type__*>(field__##_.get());                       \
-  }                                                                       \
-  void Set##Field(type__* x) {                                            \
-    field__##_ =                                                          \
-        unique_ptr_t(x, [](void* x) { delete static_cast<type__*>(x); }); \
-    valid_fields_.insert(#field__);                                       \
-  }                                                                       \
-  void Set##Field##NotOwned(type__* x) {                                  \
-    valid_fields_.insert(#field__);                                       \
-    field__##_ = unique_ptr_t(x, [](void* x) {});                         \
-  }                                                                       \
-  DECL_ARGUMENT_FIELD_VALID(field__);                                     \
-  type__* field__##_ptr() {                                               \
-    PADDLE_ENFORCE(Has(#field__));                                        \
-    return static_cast<type__*>(field__##_.get());                        \
-  }                                                                       \
-  type__* Release##Field() {                                              \
-    PADDLE_ENFORCE(Has(#field__));                                        \
-    valid_fields_.erase(#field__);                                        \
-    return static_cast<type__*>(field__##_.release());                    \
-  }                                                                       \
-                                                                          \
- private:                                                                 \
+#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                    \
+ public:                                                                      \
+  type__& field__() {                                                         \
+    PADDLE_ENFORCE_NOT_NULL(field__##_, platform::errors::PreconditionNotMet( \
+                                            "filed should not be null."));    \
+    PADDLE_ENFORCE_EQ(                                                        \
+        Has(#field__), true,                                                  \
+        platform::errors::PreconditionNotMet("There is no such field"));      \
+    return *static_cast<type__*>(field__##_.get());                           \
+  }                                                                           \
+  void Set##Field(type__* x) {                                                \
+    field__##_ =                                                              \
+        unique_ptr_t(x, [](void* x) { delete static_cast<type__*>(x); });     \
+    valid_fields_.insert(#field__);                                           \
+  }                                                                           \
+  void Set##Field##NotOwned(type__* x) {                                      \
+    valid_fields_.insert(#field__);                                           \
+    field__##_ = unique_ptr_t(x, [](void* x) {});                             \
+  }                                                                           \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                         \
+  type__* field__##_ptr() {                                                   \
+    PADDLE_ENFORCE_EQ(                                                        \
+        Has(#field__), true,                                                  \
+        platform::errors::PreconditionNotMet("There is no such field"));      \
+    return static_cast<type__*>(field__##_.get());                            \
+  }                                                                           \
+  type__* Release##Field() {                                                  \
+    PADDLE_ENFORCE_EQ(                                                        \
+        Has(#field__), true,                                                  \
+        platform::errors::PreconditionNotMet("There is no such field"));      \
+    valid_fields_.erase(#field__);                                            \
+    return static_cast<type__*>(field__##_.release());                        \
+  }                                                                           \
+                                                                              \
+ private:                                                                     \
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
@@ -149,6 +158,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
                       std::vector<std::string>);
 
+  // whether to mute all logs in inference.
+  DECL_ARGUMENT_FIELD(disable_logs, DisableLogs, bool);
+
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
@@ -166,33 +178,50 @@ struct Argument {
 
   // Scales for variables to be quantized
   DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
+
+  // A set of op types to enable their bfloat16 kernels
+  DECL_ARGUMENT_FIELD(bfloat16_enabled_op_types, Bfloat16EnabledOpTypes,
+                      std::unordered_set<std::string>);
 #endif
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+  DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+
+  // Usually use for trt dynamic shape.
+  // TRT will select the best kernel according to opt shape
+  // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
+  // run fp16.
+  DECL_ARGUMENT_FIELD(min_input_shape, MinInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(max_input_shape, MaxInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(optim_input_shape, OptimInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(disable_trt_plugin_fp16, CloseTrtPluginFp16, bool);
+
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(tensorrt_disabled_ops, TensorRtDisabledOPs,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode,
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
 
-  DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
-                      anakin_max_shape_t);
-  DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
-  DECL_ARGUMENT_FIELD(anakin_precision_mode, AnakinPrecisionMode,
+  DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode,
                       AnalysisConfig::Precision);
-  DECL_ARGUMENT_FIELD(anakin_auto_config_layout, AnakinAutoConfigLayout, bool);
-  DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
-  DECL_ARGUMENT_FIELD(anakin_passes_filter, AnakinPassesFilter,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
-                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
+
+  DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
+  DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
@@ -207,13 +236,19 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
 
+  // Only used in paddle-lite subgraph.
+  DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
+                      int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };
 
 #define ARGUMENT_CHECK_FIELD(argument__, fieldname__) \
-  PADDLE_ENFORCE(argument__->Has(#fieldname__),       \
-                 "the argument field [%s] should be set", #fieldname__);
+  PADDLE_ENFORCE_EQ(                                  \
+      argument__->Has(#fieldname__), true,            \
+      platform::errors::PreconditionNotMet(           \
+          "the argument field [%s] should be set", #fieldname__));
 
 }  // namespace analysis
 }  // namespace inference

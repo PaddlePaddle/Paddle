@@ -44,8 +44,7 @@ class FillOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "Output(Out) of FillOp should not be null.");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "Fill");
     auto& shape = context->Attrs().Get<std::vector<int>>("shape");
     context->SetOutputDim("Out", framework::make_ddim(shape));
   }
@@ -63,18 +62,18 @@ class FillOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
-    auto& out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, data_type);
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+    ctx->SetOutputDataType("Out", data_type);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill, ops::FillOp, ops::FillOpMaker,
-                  ops::FillOpVarTypeInference,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fill, ops::FillOp, ops::FillOpMaker, ops::FillOpVarTypeInference,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fill, ops::FillKernel<float>, ops::FillKernel<double>,
                        ops::FillKernel<int64_t>, ops::FillKernel<int>,
                        ops::FillKernel<paddle::platform::float16>);

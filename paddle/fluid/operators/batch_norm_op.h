@@ -16,8 +16,11 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.h"
 
 namespace paddle {
@@ -42,21 +45,39 @@ using ConstEigenVectorArrayMap =
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override;
+  void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override;
+      const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class BatchNormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override;
+  void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override;
+      const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
+};
+
+class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
 };
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -64,37 +85,50 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
-class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override;
+  void Apply(GradOpPtr<T> op) const override;
+};
 
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
-  }
+template <typename T>
+class BatchNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override;
 };
 
 class BatchNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
+    return m;
   }
 };
 
 template <typename DeviceContext, typename T>
 class BatchNormKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override;
+  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 template <typename DeviceContext, typename T>
 class BatchNormGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override;
+  void Compute(const framework::ExecutionContext& ctx) const override;
+};
+
+template <typename DeviceContext, typename T>
+class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 }  // namespace operators

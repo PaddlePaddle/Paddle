@@ -43,10 +43,10 @@ struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
-    size_t hight = ref_lod.size() - 1;
+    size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < hight; ++i) {
+    for (size_t i = 0; i < height; ++i) {
       size_t span = ref_lod[i + 1] - ref_lod[i];
       T result = 0;
       for (size_t j = 0; j < span; ++j) {
@@ -65,13 +65,13 @@ struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
                   const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
-    size_t hight = ref_lod.size() - 1;
+    size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
     const T *softmax = out.data<T>();
     T *dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
-    for (size_t i = 0; i < hight; ++i) {
+    for (size_t i = 0; i < height; ++i) {
       size_t span = ref_lod[i + 1] - ref_lod[i];
       T result = 0;
       for (size_t j = 0; j < span; ++j) {
@@ -95,20 +95,27 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
 
     auto lod = x->lod();
     auto dims = x->dims();
-    PADDLE_ENFORCE_EQ(lod.empty(), false,
-                      "Input(X) Tensor of SequenceSoftmaxOp does not contain "
-                      "LoD information.");
+    PADDLE_ENFORCE_EQ(
+        lod.empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(X) Tensor of SequenceSoftmax operator does not contain "
+            "LoD information."));
 
     const size_t level = lod.size() - 1;
-    PADDLE_ENFORCE_GT(
-        lod.size(), 0U,
-        "The LoD level of Input X should be larger than 0 (lod.size() > 0).");
-    PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),
-                      "The first dimension of Input(X) should be equal to the "
-                      "sum of all sequences' lengths.");
-    PADDLE_ENFORCE_EQ(dims[0], x->numel(),
-                      "The width of each timestep in Input(X) of "
-                      "SequenceSoftmaxOp should be 1.");
+    PADDLE_ENFORCE_EQ(
+        dims[0], static_cast<int64_t>(lod[level].back()),
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(X) should be equal to the sum of all "
+            "sequences' lengths. But the first dimension of Input(X) is %d, "
+            "the sum of all sequences' lengths is %d.",
+            dims[0], static_cast<int64_t>(lod[level].back())));
+    PADDLE_ENFORCE_EQ(
+        dims[0], x->numel(),
+        platform::errors::InvalidArgument(
+            "The width of each timestep in Input(X) of SequenceSoftmax "
+            "operator should be 1. But the first dimension of Input(X) is %d, "
+            "the number of elements is %d.",
+            dims[0], x->numel()));
 
     out->mutable_data<T>(ctx.GetPlace());
 

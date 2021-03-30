@@ -36,7 +36,8 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
                                const std::vector<Scope *> &local_exec_scopes,
                                const std::vector<platform::Place> &places,
                                ir::Graph *graph);
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
   const ir::Graph &Graph() const override;
 
  private:
@@ -78,17 +79,17 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
-  inline void RunOpSync(OpHandleBase *op);
+  inline bool RunOpSync(OpHandleBase *op);
 
-  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+  bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 
   void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
       std::unordered_map<std::string, std::vector<VarHandleBase *>>
           *fetched_vars,
       std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops);
+      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

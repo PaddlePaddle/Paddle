@@ -88,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2, False)
+        self.generate_data(5, 25, 100, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -116,7 +116,7 @@ class TestNCE(OpTest):
 
 class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5, False)
+        self.generate_data(10, 20, 100, 2, 5, False)
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
@@ -131,12 +131,12 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
     @staticmethod
     def get_train_data(batch_size):
-        batchs = []
+        batches = []
         for i in range(batch_size):
             input = np.random.randn(batch_size, 10).astype(np.float32)
             labels = np.random.randint(0, 20, (batch_size, 1))
-            batchs.append([input, labels])
-        return batchs
+            batches.append([input, labels])
+        return batches
 
     def get_optimizer(self):
         # SGD optimizer
@@ -220,7 +220,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         self.assertEqual(rets[0], rets[1])
 
 
-class TestNCE_OpError(OpTest):
+class TestNCE_OpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input1 = fluid.create_lod_tensor(
@@ -250,6 +250,48 @@ class TestNCE_OpError(OpTest):
                 name='label4', shape=[-1, 1], dtype="int32")
             # the data type of input(label) must be int64.
             self.assertRaises(TypeError, fluid.layers.nce, input4, label4, 5)
+
+
+class TestDygraphNCE_OpError(unittest.TestCase):
+    def test_NCE_errors(self):
+        with program_guard(Program(), Program()):
+            nce = fluid.NCE(20, 5)
+            input1 = fluid.create_lod_tensor(
+                np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
+            label1 = fluid.layers.data(
+                name='label1', shape=[-1, 4], dtype="int64")
+            # the input(input) of NCE layer must be Variable.
+            self.assertRaises(TypeError, nce, input1, label1)
+
+            input2 = fluid.layers.data(
+                name='input2', shape=[-1, 4], dtype="float32")
+            label2 = fluid.create_lod_tensor(
+                np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
+            # the input(label) of NCE layer must be Variable.
+            self.assertRaises(TypeError, nce, input2, label2)
+
+            input3 = fluid.layers.data(
+                name='input3', shape=[-1, 4], dtype="float16")
+            label3 = fluid.layers.data(
+                name='label3', shape=[-1, 1], dtype="int64")
+            # the data type of input(input) must be float32 or float64.
+            self.assertRaises(TypeError, nce, input3, label3)
+
+            input4 = fluid.layers.data(
+                name='input4', shape=[-1, 4], dtype="float32")
+            label4 = fluid.layers.data(
+                name='label4', shape=[-1, 1], dtype="int32")
+            # the data type of input(label) must be int64.
+            self.assertRaises(TypeError, nce, input4, label4)
+
+            input5 = fluid.layers.data(
+                name='input5', shape=[-1, 4], dtype="float32")
+            label5 = fluid.layers.data(
+                name='label5', shape=[-1, 1], dtype="int64")
+            sample_weight = fluid.create_lod_tensor(
+                np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
+            # the sample_weight of nce must be Variable or None.
+            self.assertRaises(TypeError, nce, input5, label5, sample_weight)
 
 
 if __name__ == '__main__':

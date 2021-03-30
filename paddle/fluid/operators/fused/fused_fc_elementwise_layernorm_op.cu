@@ -12,7 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef __NVCC__
 #include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
@@ -52,7 +59,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
                                                  const T* scale, T* out,
                                                  T* mean, T* variance, int M,
                                                  int N, float epsilon) {
-  using BlockReduce = cub::BlockReduce<PairForLayerNorm<double>, BlockDim>;
+  using BlockReduce = cub::BlockReduce<PairForLayerNorm<T>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T shared_mem[BlockDim + 2];
 
@@ -63,8 +70,8 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
     int save_index = threadIdx.x;
     T* save_ptr = shared_mem;
 
-    double sum_i = 0;
-    double square_sum_i = 0;
+    T sum_i = 0;
+    T square_sum_i = 0;
     for (int j = threadIdx.x; j < N; j += blockDim.x) {
       T tmp_0 = out[index];
       // Add bias
@@ -87,8 +94,8 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
     }
 
     auto pair = BlockReduce(temp_storage)
-                    .Reduce(PairForLayerNorm<double>(sum_i, square_sum_i),
-                            PairForLayerNormAddFunctor<double>());
+                    .Reduce(PairForLayerNorm<T>(sum_i, square_sum_i),
+                            PairForLayerNormAddFunctor<T>());
 
     if (threadIdx.x == 0) {
       T mean_i = static_cast<T>(pair.first_ / N);
@@ -197,5 +204,4 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(fused_fc_elementwise_layernorm,
-                        ops::FusedFCElementwiseLayerNormOpKernel<float>,
-                        ops::FusedFCElementwiseLayerNormOpKernel<double>);
+                        ops::FusedFCElementwiseLayerNormOpKernel<float>);

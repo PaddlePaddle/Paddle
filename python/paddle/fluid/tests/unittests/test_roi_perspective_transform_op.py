@@ -22,6 +22,7 @@ import paddle.compat as cpt
 from op_test import OpTest
 from math import sqrt
 from math import floor
+from paddle import fluid
 
 
 def gt_e(a, b):
@@ -135,13 +136,13 @@ def bilinear_interpolate(in_data, in_n, in_c, in_w, in_h):
     height = in_data.shape[2]
     width = in_data.shape[3]
 
-    if gt(-0.5, in_w) or gt(in_w, width - 0.5) or gt(-0.5, in_h) or gt(
+    if gt_e(-0.5, in_w) or gt_e(in_w, width - 0.5) or gt_e(-0.5, in_h) or gt_e(
             in_h, height - 0.5):
         return 0.0
 
-    if gt(0, in_w):
+    if gt_e(0, in_w):
         in_w = 0
-    if gt(0, in_h):
+    if gt_e(0, in_h):
         in_h = 0
 
     in_w_floor = floor(in_w)
@@ -216,9 +217,9 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
                 for out_w in range(transformed_width):
                     in_w, in_h = get_source_coords(transform_matrix, out_w,
                                                    out_h)
-                    if in_quad(in_w, in_h, roi_x, roi_y) and gt_e(
-                            in_w, -0.5) and lt_e(in_w, in_width - 0.5) and gt_e(
-                                in_h, -0.5) and lt_e(in_h, in_height - 0.5):
+                    if in_quad(in_w, in_h, roi_x, roi_y) and gt(
+                            in_w, -0.5) and gt(in_width - 0.5, in_w) and gt(
+                                in_h, -0.5) and gt(in_height - 0.5, in_h):
                         out[n][c][out_h][out_w] = bilinear_interpolate(
                             in_data, image_id, c, in_w, in_h)
                         mask[n][0][out_h][out_w] = 1
@@ -312,6 +313,43 @@ class TestROIPoolOp(OpTest):
         self.outputs['Out2InWeights'] = np.zeros(
             [np.product(self.outputs['Out'].shape), 4]).astype("float32")
         self.check_grad(['X'], 'Out')
+
+    def test_errors(self):
+        x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+        rois = fluid.data(
+            name='rois', shape=[None, 8], lod_level=1, dtype='float32')
+
+        x_int = fluid.data(
+            name='x_int', shape=[100, 256, 28, 28], dtype='int32')
+        rois_int = fluid.data(
+            name='rois_int', shape=[None, 8], lod_level=1, dtype='int32')
+        x_tmp = [1, 2]
+        rois_tmp = [1, 2]
+
+        # type of intput and rois must be variable
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_tmp, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_tmp, 7, 7)
+
+        # dtype of intput and rois must be float32
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_int, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_int, 7, 7)
+
+        height = 7.5
+        width = 7.5
+        # type of transformed_height and transformed_width must be int
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, height, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, width)
+
+        scale = int(2)
+        # type of spatial_scale must be float
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, 7, scale)
 
 
 if __name__ == '__main__':

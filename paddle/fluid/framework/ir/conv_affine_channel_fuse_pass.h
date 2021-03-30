@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -26,6 +27,8 @@ namespace ir {
 /*
  * Fuse the Conv and ConvAffineChannel.
  */
+class Graph;
+
 class ConvAffineChannelFusePass : public FusePassBase {
  public:
   virtual ~ConvAffineChannelFusePass() {}

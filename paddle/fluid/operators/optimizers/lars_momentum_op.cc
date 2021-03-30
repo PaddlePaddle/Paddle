@@ -48,6 +48,9 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("lars_weight_decay",
                    "(float, default 0.0005) LARS weight decay")
         .SetDefault(0.0005);
+    AddAttr<float>("epsilon",
+                   "(float, default 0.0) epsilon to avoid Division by Zero.")
+        .SetDefault(0.0);
 
     AddComment(R"DOC(
 Lars Momentum Optimizer.
@@ -78,8 +81,10 @@ class LarsMomentumOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lars_momentum, ops::MomentumOp, ops::LarsMomentumOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::LarsMomentumOpVarTypeInference);
+REGISTER_OPERATOR(
+    lars_momentum, ops::MomentumOp, ops::LarsMomentumOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::LarsMomentumOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(lars_momentum, ops::LarsMomentumOpKernel<float>,
                        ops::LarsMomentumOpKernel<double>);

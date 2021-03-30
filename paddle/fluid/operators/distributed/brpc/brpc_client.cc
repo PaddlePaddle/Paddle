@@ -37,8 +37,9 @@ void HandleSendResponse(brpc::Controller* cntl, sendrecv::VoidMessage* response,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "Fail to send SendVar: " << var_h->name()
-               << ", error text: " << cntl->ErrorText();
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Failed to send variable %s, error text is %s.", var_h->name(),
+        cntl->ErrorText()));
     var_h->Finish(false);
     cls->DecreaseReqCount();
     return;
@@ -104,8 +105,9 @@ void HandleFetchBarrierResponse(brpc::Controller* cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "Fail to get HandleFetchBarrierResponse: " << var_h->name()
-               << ", error text: " << cntl->ErrorText();
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Failed to get HandleFetchBarrierResponse %s, error text is %s.",
+        var_h->name(), cntl->ErrorText()));
     var_h->Finish(false);
     cls->DecreaseReqCount();
     return;
@@ -131,8 +133,9 @@ void HandleGetResponse(brpc::Controller* cntl,
   ch_ptr->Push(ch_ctx);
 
   if (cntl->Failed()) {
-    LOG(FATAL) << "Fail to GetVar: " << var_h->name()
-               << ", error text: " << cntl->ErrorText();
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Failed to get variable %s, error text is %s.", var_h->name(),
+        cntl->ErrorText()));
     cls->DecreaseReqCount();
     var_h->Finish(false);
     return;
@@ -368,7 +371,8 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   for (int i = 0; i < brpc_channel_num_per_server_; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
-      LOG(FATAL) << "Fail to initialize channel";
+      PADDLE_THROW(
+          platform::errors::Unavailable("Failed to initialize channel."));
       return nullptr;
     }
 
@@ -442,11 +446,13 @@ VarHandlePtr BRPCClient::AsyncSendMessage(const std::string& ep,
 }
 
 VarHandlePtr BRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                               const std::string& dir,
+                                               const std::string& dirname,
+                                               const std::string& varname,
+                                               const int mode,
                                                int64_t time_out) {
   sendrecv::VariableMessage req;
-  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
-  req.set_out_varname(dir);
+  req.set_varname(varname);
+  req.set_out_varname(dirname);
 
   return AsyncSendVarMessage(ep, "CheckPointNotifyRPC", req, time_out);
 }

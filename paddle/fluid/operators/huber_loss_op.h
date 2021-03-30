@@ -94,7 +94,7 @@ class HuberLossGradKernel : public framework::OpKernel<T> {
     auto* in1 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
-    auto delta = static_cast<T>(context.op().Attr<float>("delta"));
+    auto delta = static_cast<T>(context.Attr<float>("delta"));
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 

@@ -143,7 +143,7 @@ class DataGenerator(object):
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the datafeed,and
-        updating proto_info infomation.
+        updating proto_info information.
 
         Args:
             line(str): the output of the process() function rewritten by user.
@@ -243,7 +243,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
-        and updating proto_info infomation.
+        and updating proto_info information.
 
         The input line will be in this format:
             >>> [(name, [str(feasign), ...]), ...]
@@ -284,7 +284,7 @@ class MultiSlotDataGenerator(DataGenerator):
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
-        and updating proto_info infomation.
+        and updating proto_info information.
 
         The input line will be in this format:
             >>> [(name, [feasign, ...]), ...] 

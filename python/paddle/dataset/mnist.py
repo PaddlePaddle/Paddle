@@ -21,6 +21,7 @@ parse training set and test set into paddle reader creators.
 from __future__ import print_function
 
 import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 import gzip
 import numpy
 import struct
@@ -88,6 +89,10 @@ def reader_creator(image_filename, label_filename, buffer_size):
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.MNIST",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def train():
     """
     MNIST training set creator.
@@ -105,6 +110,10 @@ def train():
                                        TRAIN_LABEL_MD5), 100)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.MNIST",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def test():
     """
     MNIST test set creator.
@@ -121,6 +130,10 @@ def test():
         100)
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.MNIST",
+    reason="Please use new dataset API which supports paddle.io.DataLoader")
 def fetch():
     paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
     paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)

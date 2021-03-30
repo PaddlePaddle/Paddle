@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -26,13 +28,13 @@ class TestExpandOpRank1(OpTest):
         self.op_type = "expand"
         self.init_data()
 
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'expand_times': self.expand_times}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
 
     def test_check_output(self):
@@ -44,7 +46,7 @@ class TestExpandOpRank1(OpTest):
 
 class TestExpandOpRank2_Corner(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [120]
         self.expand_times = [2]
 
 
@@ -56,13 +58,13 @@ class TestExpandOpRank2(TestExpandOpRank1):
 
 class TestExpandOpRank3_Corner(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = (2, 4, 5)
+        self.ori_shape = (2, 10, 5)
         self.expand_times = (1, 1, 1)
 
 
 class TestExpandOpRank3(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = (2, 4, 5)
+        self.ori_shape = (2, 4, 15)
         self.expand_times = (2, 1, 4)
 
 
@@ -83,7 +85,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
+            'X': np.random.random(self.ori_shape).astype("float64"),
             'expand_times_tensor': expand_times_tensor,
         }
         self.attrs = {"expand_times": self.infer_expand_times}
@@ -91,7 +93,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
         self.infer_expand_times = [-1]
 
@@ -123,7 +125,7 @@ class TestExpandOpRank1_tensor(OpTest):
         self.init_data()
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
+            'X': np.random.random(self.ori_shape).astype("float64"),
             'ExpandTimes': np.array(self.expand_times).astype("int32"),
         }
         self.attrs = {}
@@ -131,7 +133,7 @@ class TestExpandOpRank1_tensor(OpTest):
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
 
     def test_check_output(self):
@@ -176,8 +178,38 @@ class TestExpandOpBoolean(OpTest):
         self.check_output()
 
 
+# Situation 56: input x is Integer
+class TestExpandOpInt64_t(OpTest):
+    def setUp(self):
+        self.op_type = "expand"
+        self.inputs = {
+            'X': np.random.randint(
+                10, size=(2, 4, 5)).astype("int64")
+        }
+        self.attrs = {'expand_times': [2, 1, 4]}
+        output = np.tile(self.inputs['X'], (2, 1, 4))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestExpandError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            expand_times = [2, 2]
+            self.assertRaises(TypeError, fluid.layers.expand, x1, expand_times)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.expand, x2, expand_times)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3.stop_gradient = True
+            self.assertRaises(ValueError, fluid.layers.expand, x3, expand_times)
+
+
 # Test python API
-class TestExpandAPI(OpTest):
+class TestExpandAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
         x = fluid.layers.data(
@@ -191,6 +223,8 @@ class TestExpandAPI(OpTest):
         out_2 = fluid.layers.expand(x, expand_times=[positive_2, 3])
         out_3 = fluid.layers.expand(x, expand_times=expand_times)
 
+        g0 = fluid.backward.calc_gradient(out_2, x)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
                                       feed={
@@ -202,6 +236,20 @@ class TestExpandAPI(OpTest):
         assert np.array_equal(res_1, np.tile(input, (2, 3)))
         assert np.array_equal(res_2, np.tile(input, (2, 3)))
         assert np.array_equal(res_3, np.tile(input, (1, 3)))
+
+
+class TestExpandDygraphAPI(unittest.TestCase):
+    def test_expand_times_is_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            a = paddle.rand([2, 5])
+            b = paddle.fluid.layers.expand(a, expand_times=[2, 3])
+            c = paddle.fluid.layers.expand(
+                a, expand_times=paddle.to_tensor(
+                    [2, 3], dtype='int32'))
+            self.assertTrue(
+                np.array_equal(b.numpy(), np.tile(a.numpy(), [2, 3])))
+            self.assertTrue(
+                np.array_equal(c.numpy(), np.tile(a.numpy(), [2, 3])))
 
 
 if __name__ == "__main__":

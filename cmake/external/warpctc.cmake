@@ -14,8 +14,11 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
+set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
+set(WARPCTC_TAG         95a461eddeabd51099ef059dcfada1117eb1bfb8)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -29,26 +32,29 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-IF(WIN32)
-    SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
-ELSE()
-    SET(WARPCTC_REPOSITORY "https://github.com/dzhwinter/warp-ctc.git")
-ENDIF()
+cache_third_party(extern_warpctc
+    REPOSITORY   ${WARPCTC_REPOSITORY}
+    TAG          ${WARPCTC_TAG}
+    DIR          WARPCTC_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY ${WARPCTC_REPOSITORY}
-    PREFIX          ${WARPCTC_SOURCES_DIR}
-    UPDATE_COMMAND  ""
+    ${SHALLOW_CLONE}
+    "${WARPCTC_DOWNLOAD_CMD}"
+    PREFIX          ${WARPCTC_PREFIX_DIR}
+    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
+    #UPDATE_COMMAND  ""
+    PATCH_COMMAND   ""
+    BUILD_ALWAYS    1
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-                    -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-                    -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-                    -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                    -DCMAKE_C_FLAGS=$<FILTER:${CMAKE_C_FLAGS},EXCLUDE,/Zc:inline>
+                    -DCMAKE_C_FLAGS_DEBUG=$<FILTER:${CMAKE_C_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
+                    -DCMAKE_C_FLAGS_RELEASE=$<FILTER:${CMAKE_C_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS=$<FILTER:${CMAKE_CXX_FLAGS},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS_RELEASE=$<FILTER:${CMAKE_CXX_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                    -DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                     -DWITH_GPU=${WITH_GPU}
                     -DWITH_OMP=${USE_OMP}
@@ -74,7 +80,6 @@ ENDIF(WIN32)
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
 get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
+
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -60,13 +59,23 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", false);
+    auto* elementwise_add_op_desc = elementwise_add_op->Op();
+    auto out_threshold_attr =
+        elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    // set the out_threshold of the elementwise add op to be the out_threshold
+    // of the conv2d_fusion
+    if (out_threshold_attr.which()) {
+      new_op_desc.SetAttr("out_threshold", out_threshold_attr);
+    }
     new_op_desc.Flush();
 
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);          // Input
@@ -87,3 +96,8 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_elementwise_add_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));

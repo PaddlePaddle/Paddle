@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/unpooling.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -37,7 +38,13 @@ class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
           int index = indices_data[i];
-          PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
+          PADDLE_ENFORCE_LT(
+              index, output_feasize,
+              platform::errors::InvalidArgument(
+                  "index should less than output tensor height * output tensor "
+                  "width. Expected %ld < %ld, but got "
+                  "%ld >= %ld. Please check input value.",
+                  index, output_feasize, index, output_feasize));
           output_data[index] = input_data[i];
         }
         input_data += input_feasize;
@@ -72,7 +79,13 @@ class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, T> {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
           int index = indices_data[i];
-          PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
+          PADDLE_ENFORCE_LT(
+              index, output_feasize,
+              platform::errors::InvalidArgument(
+                  "index should less than output tensor height * output tensor "
+                  "width. Expected %ld < %ld, but got "
+                  "%ld >= %ld. Please check input value.",
+                  index, output_feasize, index, output_feasize));
           input_grad_data[i] = output_grad_data[index];
         }
         input_grad_data += input_feasize;

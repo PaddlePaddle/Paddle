@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
 
 namespace paddle {
@@ -27,11 +28,11 @@ namespace ir {
  */
 class CUDNNPlacementPass : public PlacementPassBase {
  private:
-  const std::string GetPlacementName() const { return "cuDNN"; }
+  const std::string GetPlacementName() const override { return "cuDNN"; }
 
-  const std::string GetAttrName() const { return "use_cudnn"; }
+  const std::string GetAttrName() const override { return "use_cudnn"; }
 
-  const std::unordered_set<std::string> GetOpTypesList() const {
+  const std::unordered_set<std::string> GetOpTypesList() const override {
     return Get<std::unordered_set<std::string>>("cudnn_enabled_op_types");
   }
 };

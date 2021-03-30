@@ -31,6 +31,10 @@ namespace framework {
 
 class VarDesc;
 
+namespace details {
+struct VarHandle;
+}  // namespace details
+
 namespace ir {
 
 using GarbageCollectorMap =

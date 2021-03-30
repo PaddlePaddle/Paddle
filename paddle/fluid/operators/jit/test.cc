@@ -12,11 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
 #include <iostream>
 #include <random>
-#include <string>
-#include <vector>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -850,8 +848,15 @@ void TestKernelSgd() {
   const T lr = 0.1;
   auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
                                   const int64_t upper) -> std::vector<int64_t> {
-    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1);
-    PADDLE_ENFORCE_GT(n, 0);
+    PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1,
+                      paddle::platform::errors::InvalidArgument(
+                          "The range of Sgd (upper - lower) should be lower "
+                          "than n-1 (Sgd size -1). But the upper - lower is %d "
+                          "and n-1 is %d.",
+                          static_cast<size_t>(upper - lower), n - 1));
+    PADDLE_ENFORCE_GT(
+        n, 0, paddle::platform::errors::InvalidArgument(
+                  "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {
       all.push_back(i);
@@ -1141,13 +1146,13 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kVScal) << jit::to_string(jit::kSgd)
       << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
       << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 234);
+  EXPECT_EQ(out.str().size(), 234UL);
 
   // SeqPoolTypes
   out.str("");
   out << jit::to_string(jit::kSum) << jit::to_string(jit::kAvg)
       << jit::to_string(jit::kSqrt);
-  EXPECT_EQ(out.str().size(), 13);
+  EXPECT_EQ(out.str().size(), 13UL);
 
   EXPECT_EQ(jit::to_kerneltype("relu"), jit::kVRelu);
   EXPECT_EQ(jit::to_kerneltype("Identity"), jit::kVIdentity);
@@ -1157,27 +1162,27 @@ TEST(JITKernel_helper, attr) {
 
   out.str("");
   out << jit::lstm_attr_t(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 89);
+  EXPECT_EQ(out.str().size(), 89UL);
 
   out.str("");
   out << jit::gru_attr_t(8, jit::kVIdentity, jit::kVSigmoid);
-  EXPECT_EQ(out.str().size(), 52);
+  EXPECT_EQ(out.str().size(), 52UL);
 
   out.str("");
   out << jit::seq_pool_attr_t(8, jit::SeqPoolType::kSum);
-  EXPECT_EQ(out.str().size(), 44);
+  EXPECT_EQ(out.str().size(), 44UL);
 
   out.str("");
   out << jit::emb_seq_pool_attr_t(1, 2, 3, 4, 5, jit::SeqPoolType::kAvg);
-  EXPECT_EQ(out.str().size(), 93);
+  EXPECT_EQ(out.str().size(), 93UL);
 
   out.str("");
   out << jit::sgd_attr_t(1, 2, 3, 4, 5);
-  EXPECT_EQ(out.str().size(), 81);
+  EXPECT_EQ(out.str().size(), 81UL);
 
   out.str("");
   out << jit::matmul_attr_t(1, 2, 3);
-  EXPECT_EQ(out.str().size(), 14);
+  EXPECT_EQ(out.str().size(), 14UL);
 }
 
 // test keys

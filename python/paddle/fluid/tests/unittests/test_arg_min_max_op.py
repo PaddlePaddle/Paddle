@@ -17,6 +17,10 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 class BaseTestCase(OpTest):
@@ -86,6 +90,115 @@ class TestCase4(BaseTestCase):
         self.dims = (1, )
         self.dtype = 'int32'
         self.axis = 0
+
+
+class TestCase3(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, )
+        self.axis = 0
+
+
+class BaseTestComplex1_1(OpTest):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (4, 5, 6)
+        self.dtype = 'int32'
+        self.axis = 2
+
+    def setUp(self):
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        if self.op_type == "arg_min":
+            self.outputs = {
+                'Out': np.argmin(
+                    self.x, axis=self.axis).asdtype("int32")
+            }
+        else:
+            self.outputs = {
+                'Out': np.argmax(
+                    self.x, axis=self.axis).asdtype("int32")
+            }
+
+
+class BaseTestComplex1_2(OpTest):
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (4, 5, 6)
+        self.dtype = 'int32'
+        self.axis = 2
+
+    def setUp(self):
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        if self.op_type == "arg_min":
+            self.outputs = {
+                'Out': np.argmin(
+                    self.x, axis=self.axis).asdtype("int32")
+            }
+        else:
+            self.outputs = {
+                'Out': np.argmax(
+                    self.x, axis=self.axis).asdtype("int32")
+            }
+
+
+class BaseTestComplex2_1(OpTest):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (4, 5, 6)
+        self.dtype = 'int32'
+        self.axis = 2
+
+    def setUp(self):
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'keep_dims': True}
+        if self.op_type == "arg_min":
+            self.outputs = {
+                'Out': np.argmin(
+                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
+        else:
+            self.outputs = {
+                'Out': np.argmax(
+                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
+
+
+class BaseTestComplex2_2(OpTest):
+    def initTestCase(self):
+        self.op_type = 'arg_min'
+        self.dims = (4, 5, 6)
+        self.dtype = 'int32'
+        self.axis = 2
+
+    def setUp(self):
+        self.initTestCase()
+        self.x = (np.random.random(self.dims)).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.attrs = {'keep_dims': True}
+        if self.op_type == "arg_min":
+            self.outputs = {
+                'Out': np.argmin(
+                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
+        else:
+            self.outputs = {
+                'Out': np.argmax(
+                    self.x, axis=self.axis).asdtype("int32").reshape(4, 5, 1)
+            }
 
 
 if __name__ == '__main__':

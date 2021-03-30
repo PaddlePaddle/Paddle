@@ -10,28 +10,41 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
-#include <memory>
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
-class ElementwisePowOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwisePowOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_pow_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 class ElementwisePowOpMaker : public ElementwiseOpMaker {
@@ -54,7 +67,8 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
                   ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwisePowOpGradDescMaker);
+                  ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -69,3 +83,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+REGISTER_OP_VERSION(elementwise_pow)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_pow for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_pow.",
+            1.0f));

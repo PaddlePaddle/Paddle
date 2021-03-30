@@ -28,22 +28,38 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "teacher_student_sigmoid_loss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+                   "teacher_student_sigmoid_loss");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y",
+                   "teacher_student_sigmoid_loss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "Input(X)'s rank should be 2. But received: "
+                          "Input(X)'s rank is [%d]",
+                          x_dims.size()));
     PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
-                      "Input(Label)'s rank should be 2.");
+                      platform::errors::InvalidArgument(
+                          "Input(Label)'s rank should be 2. But "
+                          "received Input(Label)'s rank is [%d]",
+                          label_dims.size()));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
-                        "The 1st dimension of Input(X) and Input(Label) should "
-                        "be equal.");
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], label_dims[0],
+          platform::errors::InvalidArgument(
+              "The 1st dimension of Input(X) and Input(Label) should "
+              "be equal. The difference is [%d]: [%d]",
+              x_dims[0], label_dims[0]));
       PADDLE_ENFORCE_EQ(label_dims[1], 1UL,
-                        "The 2nd dimension of "
-                        "Input(Label) should be 1.");
+                        platform::errors::InvalidArgument(
+                            "The 2nd dimension of "
+                            "Input(Label) should be 1. But received "
+                            "Input(Label)'s 2nd dim is [%d]",
+                            label_dims[1]));
     }
     ctx->SetOutputDim("Y", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Y");
@@ -55,30 +71,29 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
-class TeacherStudentSigmoidLossGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class TeacherStudentSigmoidLossGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("teacher_student_sigmoid_loss_grad");
 
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -88,32 +103,60 @@ class TeacherStudentSigmoidLossGradientOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "teacher_student_sigmoid_loss_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "X",
+                   "teacher_student_sigmoid_loss_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                   "Y@Grad", "teacher_student_sigmoid_loss_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
+                   "X@Grad", "teacher_student_sigmoid_loss_grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2, "Input(Label)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(X)'s rank should be 2. But received Input(X)'s rank is [%d]",
+            x_dims.size()));
+    PADDLE_ENFORCE_EQ(dy_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Input(Y@Grad)'s rank should be 2. But received "
+                          "Input(Y@Grad)'s rank is [%d]",
+                          dy_dims.size()));
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Input(Label)'s rank should be 2. But received "
+                          "Input(Y@Grad)'s rank is [%d]",
+                          label_dims.size()));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0],
-                        "The 1st dimension of Input(X) and Input(Label) should "
-                        "be equal.");
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], label_dims[0],
+          platform::errors::InvalidArgument(
+              "The 1st dimension of Input(X) and Input(Label) should "
+              "be equal. The difference is [%d]: [%d]",
+              x_dims[0], label_dims[0]));
       PADDLE_ENFORCE_EQ(
           x_dims[0], dy_dims[0],
-          "The 1st dimension of Input(X) and Input(Y@Grad) should "
-          "be equal.");
-      PADDLE_ENFORCE_EQ(dy_dims[1], 1,
-                        "The 2nd dimension of Input(Y@Grad) should be 1.");
-      PADDLE_ENFORCE_EQ(label_dims[1], 1,
-                        "When Attr(soft_label) == false, the 2nd dimension of "
-                        "Input(Label) should be 1.");
+          platform::errors::InvalidArgument(
+              "The 1st dimension of Input(X) and Input(Y@Grad) should "
+              "be equal. The difference is [%d]: [%d]",
+              x_dims[0], dy_dims[0]));
+      PADDLE_ENFORCE_EQ(
+          dy_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The 2nd dimension of Input(Y@Grad) should be 1. "
+              "But received Input(Y@Grad)'s 2nd dimension is [%d]",
+              dy_dims[1]));
+      PADDLE_ENFORCE_EQ(
+          label_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "When Attr(soft_label) == false, the 2nd dimension of "
+              "Input(Label) should be 1. But received Input(Label)'s 2nd "
+              "dimemsion "
+              "is [%d]",
+              label_dims[1]));
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
@@ -125,8 +168,9 @@ class TeacherStudentSigmoidLossGradientOp
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -175,10 +219,11 @@ we add another label(z') to original.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(teacher_student_sigmoid_loss,
-                  ops::TeacherStudentSigmoidLossOp,
-                  ops::TeacherStudentSigmoidLossOpMaker,
-                  ops::TeacherStudentSigmoidLossGradOpDescMaker);
+REGISTER_OPERATOR(
+    teacher_student_sigmoid_loss, ops::TeacherStudentSigmoidLossOp,
+    ops::TeacherStudentSigmoidLossOpMaker,
+    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::framework::OpDesc>,
+    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);

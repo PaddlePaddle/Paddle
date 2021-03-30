@@ -16,16 +16,26 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
+from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel, CheckpointSaver
+
+import paddle
 
 import os
 import sys
 import six
+import json
+import re
+import shutil
 
 
 class LambConfig(object):
@@ -47,6 +57,8 @@ class Collective(Fleet):
         self._origin_program = None
         self._transpiled_program = None
         self.main_program = None
+        self._checkpoint_prefix = "__paddle_fleet_checkpoint__"
+        self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
         logging.warn(
@@ -80,12 +92,105 @@ class Collective(Fleet):
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for
+        inference, and then save it and all related parameters to given
+        `dirname` by the `executor`.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_inference_model(dirname, feeded_var_names, target_vars,
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
-        io.save_persistables(executor, dirname, main_program, None)
+    def save_persistables(self,
+                          executor,
+                          dirname,
+                          main_program=None,
+                          filename=None):
+        """
+        This function filters out all variables with `persistable==True` from
+        the give `main_program` and then saves these variables to the folder
+        `dirname` or file `filename`.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
+        io.save_persistables(executor, dirname, main_program, filename=filename)
+
+    def save_checkpoint(self,
+                        executor,
+                        path,
+                        trainer_id,
+                        train_status,
+                        fs,
+                        main_program=None,
+                        local_cache_path=".cache",
+                        remain_all_checkpoint=True):
+        """
+        This function save persistables and current epoch num to path.
+        """
+        if main_program == None:
+            main_program = self._transpiled_program
+
+        m = PaddleModel(executor, main_program)
+        t = train_status
+        c = CheckpointSaver(fs)
+        real_path, checkpoint_no = c.save_checkpoint(
+            path=path,
+            slists=[m, t],
+            trainer_id=trainer_id,
+            local_cache_path=local_cache_path)
+
+        if not remain_all_checkpoint:
+            c.clean_redundant_checkpoints(path)
+
+        return real_path, checkpoint_no
+
+    def load_checkpoint(self,
+                        executor,
+                        path,
+                        trainer_id,
+                        train_status,
+                        fs,
+                        main_program=None,
+                        local_cache_path=".cache",
+                        ignore_empty=True):
+        """
+        This function load persistables and current epoch num from path.
+        """
+
+        if main_program == None:
+            main_program = self._transpiled_program
+
+        m = PaddleModel(executor, main_program)
+        c = CheckpointSaver(fs)
+        return c.load_checkpoint(
+            path, [m, train_status],
+            trainer_id=trainer_id,
+            ignore_empty=ignore_empty,
+            local_cache_path=local_cache_path)
 
 
 fleet = Collective()
@@ -105,8 +210,10 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
-        self.forward_recompute = False
+        self.forward_recompute = False  # use RecomputeOptimizer
         self.recompute_checkpoints = []
+        self.use_amp = False  # use mixed precision optimizer
+        self.amp_loss_scaling = 2**15
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -151,12 +258,16 @@ class CollectiveOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
+        if strategy is None:
+            strategy = DistributedStrategy()
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
-        if strategy.forward_recompute:
-            self.forward_recompute = True
-            self.recompute_checkpoints = strategy.recompute_checkpoints
-        else:
-            self.forward_recompute = False
+        self._forward_recompute = strategy.forward_recompute
+        if (not isinstance(strategy.recompute_checkpoints, list)):
+            raise ValueError("DistStrategy.recompute_checkpoints should"
+                             "be a List")
+        self._recompute_checkpoints = strategy.recompute_checkpoints
+        self._use_amp = strategy.use_amp
+        self._amp_loss_scaling = strategy.amp_loss_scaling
         self.print_config = False
 
     def backward(self,
@@ -178,7 +289,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
-        Check the conflict condtions.
+        Check the conflict conditions.
         """
         if strategy.use_local_sgd:
             strategy.mode = "collective"
@@ -271,7 +382,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
-        self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
 
         if node_num <= 1:
@@ -295,6 +405,17 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "if you use use_hierarchical_allreduce or "
                     "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
+
+        # NOTE. open sync_batch_norm will hang when use multi num_threads
+        sync_batch_norm = self._strategy.sync_batch_norm
+        if sync_batch_norm is not None and sync_batch_norm is True:
+            self._strategy.nccl_comm_num = 1
+            self._strategy.use_hierarchical_allreduce = False
+            exec_strategy.num_threads = 1
+            logging.warn(
+                "use sync_batch_norm will hang when set num_threads > 1, so "
+                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
+            )
 
         if self.print_config:
             print("node_num:", node_num, "num_threads:",
@@ -323,6 +444,10 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         return self._compiled_program
 
+    def raiseOptimizeError(self, strategy_name, optimize_name):
+        raise ValueError("can not use {0} when you set DistStrategy.{1} "
+                         "as True".format(optimize_name, strategy_name))
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -340,10 +465,37 @@ class CollectiveOptimizer(DistributedOptimizer):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
+
+        # check optimizer conflicts
+        if self._forward_recompute:
+            if self._recompute_checkpoints == []:
+                raise ValueError("please set strategy.recompute_checkpoints"
+                                 "when set strategy.forward_recompute as True")
+            if self._optimizer.__class__.__name__ in [
+                    "RecomputeOptimizer", "OptimizerWithMixedPrecision"
+            ]:
+                self.raiseOptimizeError("forward_recompute",
+                                        self._optimizer.__class__.__name__)
+
+            self._optimizer = \
+                fluid.optimizer.RecomputeOptimizer(self._optimizer)
+            self._optimizer._set_checkpoints(self._recompute_checkpoints)
+
+        if self._use_amp:
+            if self._optimizer.__class__.__name__ in [
+                    "OptimizerWithMixedPrecision", "DGCMomentumOptimizer"
+            ]:
+                self.raiseOptimizeError("mixed_precision",
+                                        self._optimizer.__class__.__name__)
+            self._optimizer = fluid.contrib.mixed_precision.decorate(
+                self._optimizer,
+                init_loss_scaling=self._amp_loss_scaling,
+                use_dynamic_loss_scaling=True)
+
         main_program = loss.block.program
         if startup_program is None:
             startup_program = fluid.default_startup_program()
@@ -354,18 +506,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        if self.forward_recompute:
-            assert (isinstance(self.recompute_checkpoints, list) and
-                    len(self.recompute_checkpoints) > 0)
-            self._optimizer = \
-                fluid.optimizer.RecomputeOptimizer(self._optimizer)
-            self._optimizer._set_checkpoints(self.recompute_checkpoints)
-
         optimize_ops, param_grads = self._optimizer.minimize(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+            loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program

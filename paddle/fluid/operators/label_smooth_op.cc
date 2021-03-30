@@ -13,8 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/label_smooth_op.h"
-#include <memory>
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -28,18 +42,24 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LabelSmoothOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LabelSmoothOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of LabelSmoothOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "The output 'Out' of LabelSmoothOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = paddle::framework::product(noise_dims);
-      PADDLE_ENFORCE(
-          in_dims[1] == noise_numel,
-          "The number of elements in Input(PriorDist) must be equal to the "
-          "dimension of each label.");
+      PADDLE_ENFORCE_EQ(
+          in_dims[in_dims.size() - 1], noise_numel,
+          platform::errors::InvalidArgument(
+              "The number of elements in input 'PriorDist' must be equal to "
+              "the "
+              "dimension of each label. But received each label's "
+              "dimension=[%d], number of elements in input 'PriorDist' is [%d]",
+              in_dims[in_dims.size() - 1], noise_numel));
     }
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", in_dims);
@@ -111,18 +131,17 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class LabelSmoothGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("label_smooth_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -131,7 +150,8 @@ class LabelSmoothGradDescMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
-                  ops::LabelSmoothGradDescMaker);
+                  ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
+                  ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,

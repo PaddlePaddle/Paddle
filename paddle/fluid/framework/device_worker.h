@@ -19,12 +19,16 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
-#include <thread>  // NOLINT
+#include <thread>         // NOLINT
+#include <unordered_map>  // NOLINT
+#include <unordered_set>  // NOLINT
+#include <utility>        // NOLINT
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -36,21 +40,51 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class ProgramDesc;
+class Scope;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 
-#define SEC_LOG                                                              \
-  VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
-          << "]: "
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
+bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+
+class FleetWrapper;
+
+#ifdef PADDLE_WITH_PSLIB
+class HeterWrapper;
+#endif
 
 class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void AddStream(const gpuStream_t stream) { copy_streams_.push_back(stream); }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
+  void AddPlace(const paddle::platform::Place place) {
+    places_.push_back(place);
+  }
+
+  void AddThreadScope(Scope* scope) { thread_scopes_.push_back(scope); }
+#endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -58,6 +92,10 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  void CreatePinVar();
+  void MergeDenseParam();
+  int GetThreadIdByScope(const Scope* scope);
+  void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -65,13 +103,14 @@ class PullDenseWorker {
     return s_instance_;
   }
 
+  static std::shared_ptr<PullDenseWorker> s_instance_;
+
  private:
   PullDenseWorker() : root_scope_(NULL) {}
   void Run();
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
-  static std::shared_ptr<PullDenseWorker> s_instance_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
@@ -97,14 +136,25 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
+  std::unordered_map<const Scope*, int> scope_to_thread_id_;
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::vector<gpuStream_t> copy_streams_;
+#endif
+  std::vector<paddle::platform::Place> places_;
+  std::vector<Scope*> thread_scopes_;
 };
 
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() { use_cvm_ = false; }
+  DeviceWorker() {
+    no_cvm_ = true;
+    use_cvm_ = false;
+  }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
+  virtual void InitRandomDumpConfig(const TrainerDesc& desc);
   virtual void SetDeviceIndex(int tid) = 0;
   virtual void TrainFiles() = 0;
   virtual void PrintFetchVars() = 0;
@@ -114,8 +164,30 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
-  virtual void SetNeedDump(bool need_dump_field) {}
-  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
+  virtual void SetWorkerNum(int num) {}
+  virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void ProduceTasks() {}
+  virtual void GetXpuOpIndex() {}
+  virtual void Schedule(int taskid) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  virtual void SetStream(const gpuStream_t stream) {}
+  virtual void SetEvent(const gpuEvent_t event) {}
+#endif
+  virtual void SetNeedDumpField(bool need_dump_field) {
+    need_dump_field_ = need_dump_field;
+  }
+  virtual void SetNeedDumpParam(bool need_dump_param) {
+    need_dump_param_ = need_dump_param;
+  }
+  virtual void SetDumpFieldVector(const std::vector<std::string>& dump_fields) {
+    dump_fields_ = &dump_fields;
+  }
+  virtual void SetDumpParamVector(const std::vector<std::string>& dump_param) {
+    dump_param_ = &dump_param;
+  }
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {
+    writer_.Reset(queue);
+  }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -123,15 +195,31 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+  DataFeed* device_reader_ = nullptr;
 
  protected:
+  virtual void DumpParam(const Scope& scope, const int batch_id);
+  virtual void DumpField(const Scope& scope, int dump_mode,
+                         int dump_interval = 10000);
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
-  DataFeed* device_reader_ = nullptr;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
+  bool no_cvm_;
+  TrainerDesc trainer_desc_;
+
+  // dump params or grads for debug
+  bool need_dump_param_;
+  bool need_dump_field_;
+  const std::vector<std::string>* dump_param_;
+  const std::vector<std::string>* dump_fields_;
+  std::vector<std::string> all_param_;
+
+  int dump_mode_ = 0;
+  int dump_interval_ = 10000;
+  ChannelWriter<std::string> writer_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -169,8 +257,10 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
+
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
+  bool thread_barrier_;
   // Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
@@ -184,8 +274,6 @@ class DownpourWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
-  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
@@ -194,8 +282,124 @@ class DownpourWorker : public HogwildWorker {
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+  DownpourWorkerParameter param_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  // feasign
+  std::map<uint64_t, std::vector<uint64_t>> features_;
+  // feasign embedding
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  bool need_to_push_sparse_;
+  // feasign stats
+  std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  // feasign embedding gradient
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  bool dump_slot_;
+  bool need_to_push_dense_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  float scale_datanorm_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  // multitask
+  std::map<int32_t, uint64_t> cond2table_map_;
+  std::set<uint64_t> condvalue_set_;
+  bool flag_partial_push_;
 
  private:
+  // std::vector<std::string> dump_param_;
+  // just save the value in param_ for easy access
+  // std::map<uint64_t, std::string> label_var_name_;
+  // std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+
+  std::shared_ptr<PullDenseWorker> _pull_dense_worker;
+
+  std::vector<float> nid_show_;
+  // std::map<uint64_t, uint64_t> table_dependency_;
+  // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+};
+
+class DownpourWorkerOpt : public DownpourWorker {
+ public:
+  DownpourWorkerOpt() {}
+  virtual ~DownpourWorkerOpt() {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+
+ protected:
+  void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
+  std::vector<std::vector<OperatorBase*>> loss_ops_;
+  std::vector<std::vector<std::string>> loss_op_names_;
+  std::vector<std::string> loss_names_;
+  std::string async_wait_name_;
+  int async_index_ = -1;
+  uint64_t async_tid_ = 0;
+};
+
+#ifdef PADDLE_WITH_PSLIB
+class HeterCpuWorker : public HogwildWorker {
+ public:
+  HeterCpuWorker() {}
+  virtual ~HeterCpuWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void Schedule(int taskid);
+  virtual void JumpContext(std::shared_ptr<HeterTask> task);
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
+  }
+  virtual void GetXpuOpIndex();
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
+  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  int mpi_rank_;
+  int worker_num_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
+  HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
   bool need_dump_field_;
   bool dump_slot_;
@@ -211,59 +415,230 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
-  // feasign
-  std::map<uint64_t, std::vector<uint64_t>> features_;
-  // feasign stats
-  std::map<uint64_t, std::vector<float>> feature_labels_;
-  // feasign embedding
-  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
-  // feasign embedding gradient
-  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
   // skipped ops
   std::vector<std::string> skip_ops_;
 
-  std::shared_ptr<PullDenseWorker> _pull_dense_worker;
   std::vector<::std::future<int32_t>> push_sparse_status_;
   std::vector<::std::future<int32_t>> push_dense_status_;
 
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
   std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
+#endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
-
-class SyncFunctor {
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
+     defined PADDLE_WITH_XPU) &&                            \
+    (defined PADDLE_WITH_PSLIB)
+class HeterBoxWorker : public HogwildWorker {
  public:
-  SyncFunctor(int rank_id, int rank_num, int sync_steps);
-  virtual ~SyncFunctor() {}
-
-  void SetSyncParam(const std::vector<std::string>& sync_param) {
-    sync_param_ = &sync_param;
+  HeterBoxWorker() {}
+  virtual ~HeterBoxWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
   }
-  void SetNcclCtxMap(platform::NCCLContextMap* nccl_ctx_map) {
-    nccl_ctx_map_ = nccl_ctx_map;
-  }
-
-  int operator()(Scope* scope);
-  static std::vector<Scope*> pipeline_scopes_;
-  static uint64_t sync_flag_;
+  virtual void ProduceTasks() override;
+  virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
+  virtual void TrainFilesWithProfiler() {}
+  void ResetStat();
 
  protected:
-  const int rank_id_;
-  const int rank_num_;
-  const std::vector<std::string>* sync_param_ = nullptr;
-  platform::NCCLContextMap* nccl_ctx_map_ = nullptr;
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
+  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
 
-  uint64_t sync_signal_;
-  const int sync_steps_;
-  int counter_;
+ private:
+  int mpi_rank_;
+  std::mutex mutex_;
+  std::vector<std::string> send_var_list_;
+  int worker_num_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
-  void Synchronize();
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
+  gpuEvent_t event_;
+  gpuStream_t copy_stream_;
+  int batch_cnt_{0};
+  std::atomic<int> done_cnt_{0};
+
+  double total_time_;
+  double read_time_;
+  double pack_time_;
+  double pull_sparse_local_time_;
+  double op_all_time_;
+  double xpu_op_time_;
+  double xpu_wait_time_;
+  double cpu_op_time_;
+  double collect_label_time_;
+  double fill_sparse_time_;
+  double push_sparse_time_;
+  double gpu_2_cpu_time_;
+  double cpu_2_gpu_time_;
+  uint64_t total_inst_;
 };
+#endif
 
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
+class PSGPUWorker : public HogwildWorker {
+ public:
+  PSGPUWorker() {}
+  virtual ~PSGPUWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void CacheProgram(const ProgramDesc& main_program) {
+    new (&program_) ProgramDesc(main_program);
+  }
+  virtual void ProduceTasks() override;
+  virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
+  virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
+  void ResetStat();
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  void PushGradients();
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  int mpi_rank_;
+  std::mutex mutex_;
+  std::vector<std::string> send_var_list_;
+  int worker_num_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
+  paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
+  gpuEvent_t event_;
+  gpuStream_t copy_stream_;
+  int batch_cnt_{0};
+  std::atomic<int> done_cnt_{0};
+  platform::DeviceContext* dev_ctx_ = nullptr;
+
+  double total_time_;
+  double read_time_;
+  double pack_time_;
+  double pull_sparse_local_time_;
+  double op_all_time_;
+  double xpu_op_time_;
+  double xpu_wait_time_;
+  double cpu_op_time_;
+  double collect_label_time_;
+  double fill_sparse_time_;
+  double push_sparse_time_;
+  double gpu_2_cpu_time_;
+  double cpu_2_gpu_time_;
+  uint64_t total_inst_;
+};
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}
@@ -275,57 +650,38 @@ class SectionWorker : public DeviceWorker {
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
 
   void TrainFiles() override;
-  void TrainFilesWithProfiler() override;
+  void TrainFilesWithProfiler() override{};
 
   void PrintFetchVars() override {}
 
   const platform::Place& place() const { return place_; }
 
-  void SetSectionIndex(int section_id) { section_id_ = section_id; }
-  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetVarNames(const std::vector<std::string>& in_var_names,
-                   const std::vector<std::string>& out_var_names) {
-    in_var_names_ = &in_var_names;
-    out_var_names_ = &out_var_names;
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+    microbatch_scopes_ = scope;
   }
-  void SetScopeQueue(ScopeQueue* in_scope_queue, ScopeQueue* out_scope_queue) {
-    in_scope_queue_ = in_scope_queue;
-    out_scope_queue_ = out_scope_queue;
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetSkipVars(const std::vector<std::string>& skip_vars) {
+    skip_vars_ = skip_vars;
   }
-  void SetCountMutex(std::mutex* mutex) { worker_count_mutex_ = mutex; }
-  void SetWorkerCount(int* worker_count) { worker_count_ = worker_count; }
-  void SetSectionNum(int section_num) { section_num_ = section_num; }
-  void SetPipelineNum(int pipeline_num) { pipeline_num_ = pipeline_num; }
-  void SetNextSectionPlace(const paddle::platform::Place& place) {
-    next_section_place_ = place;
-  }
-  SyncFunctor* sync_func_ = nullptr;
-  void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
-
-  static std::atomic<int> cpu_id_;
 
  protected:
-  void AutoSetCPUAffinity(bool reuse);
   int section_id_;
-  int pipeline_id_;
-  int section_num_;
-  int pipeline_num_;
   int thread_id_;
-  // This worker will consume scope from in_scope_queue_
-  // and produce scope to out_scope_queue_
-  ScopeQueue* in_scope_queue_ = nullptr;
-  ScopeQueue* out_scope_queue_ = nullptr;
-  const std::vector<std::string>* in_var_names_ = nullptr;
-  const std::vector<std::string>* out_var_names_ = nullptr;
-  std::mutex* worker_count_mutex_ = nullptr;
-  int* worker_count_ = nullptr;
-  paddle::platform::Place next_section_place_;
+  int num_microbatches_;
+  std::vector<Scope*> microbatch_scopes_;
+  std::vector<std::string> skip_vars_;
+  const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::shared_ptr<framework::ProgramDesc> program_;
+  static uint64_t batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
 }  // namespace framework
 }  // namespace paddle

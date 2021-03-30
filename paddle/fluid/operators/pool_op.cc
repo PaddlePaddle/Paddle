@@ -13,9 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+
 #include <unordered_map>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
 #endif
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -38,18 +42,22 @@ int PoolOutputSize(int input_size, int filter_size, int padding_1,
   }
   PADDLE_ENFORCE_GT(
       output_size, 0,
-      "Due to the settings of padding(%d,%d), filter_size(%d) and "
-      "stride(%d), the output size is less than 0, please check "
-      "again. Input_size:%d",
-      padding_1, padding_2, filter_size, stride, input_size);
+      platform::errors::InvalidArgument(
+          "the output size must be greater than 0. But received: "
+          "output_size = %d due to the settings of input_size(%d), "
+          "padding(%d,%d), "
+          "k_size(%d) and stride(%d). Please check again!",
+          output_size, input_size, padding_1, padding_2, filter_size, stride));
   return output_size;
 }
 
 void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "X(Input) of Pooling should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                    "Out(Output) of Pooling should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("X"), true,
+      platform::errors::NotFound("Input(X) of Pool operator is not found."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("Out"), true,
+      platform::errors::NotFound("Output(Out) of Pool operator is not found."));
 
   std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
@@ -63,15 +71,39 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
       ctx->Attrs().Get<std::string>("padding_algorithm");
 
   auto in_x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
-                    "Pooling intput should be 4-D or 5-D tensor.");
+  PADDLE_ENFORCE_EQ(
+      in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
+      platform::errors::InvalidArgument(
+          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
+          "received: %u-D Tensor and it's shape is [%s].",
+          in_x_dims.size(), in_x_dims));
 
-  PADDLE_ENFORCE_EQ(in_x_dims.size() - ksize.size(), 2U,
-                    "Input size and pooling size should be consistent.");
-  PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
-                    "Strides size and pooling size should be the same.");
+  PADDLE_ENFORCE_EQ(
+      in_x_dims.size() - ksize.size(), 2U,
+      platform::errors::InvalidArgument(
+          "the dimension of input minus the size of "
+          "Attr(ksize) must be euqal to 2 in Op(pool). "
+          "But received: the dimension of input minus the size "
+          "of Attr(ksize) is %d, the "
+          "input's dimension is %d, the shape of input "
+          "is [%s], the Attr(ksize)'s size is %d, the Attr(ksize) is [%s].",
+          in_x_dims.size() - ksize.size(), in_x_dims.size(), in_x_dims,
+          ksize.size(), framework::make_ddim(ksize)));
 
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+  PADDLE_ENFORCE_EQ(
+      ksize.size(), strides.size(),
+      platform::errors::InvalidArgument(
+          "the size of Attr(ksize) and Attr(strides) in "
+          "Op(pool) must be equal. "
+          "But received: Attr(ksize)'s size is %d, Attr(strides)'s "
+          "size is %d, Attr(ksize) is [%s], Attr(strides)is [%s].",
+          ksize.size(), strides.size(), framework::make_ddim(ksize),
+          framework::make_ddim(strides)));
+
+  // MKL-DNN Kernels are using NCHW order of dims description
+  // so we ignore data_format consideration for MKL-DNN kernel
+  const bool channel_last = (this->IsMKLDNNType() == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
 
   // update paddings if "SAME" or global_pooling
   framework::DDim data_dims;
@@ -91,7 +123,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   if (adaptive) {
     output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
   } else {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       if ((!ctx->IsRuntime()) && (data_dims[i] < 0)) {
         output_shape.push_back(data_dims[i]);
       } else {
@@ -115,33 +147,87 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Out");
 }
 
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // (jczaja): oneDNN is supporting only unchangable in size pool window
+  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  if ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+      (src_tz[src_tz.size() - 2] % ksize[0] == 0))
+    return true;
+
+  // Exhustive check
+  auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
+  auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
+  auto OH = static_cast<double>(ksize[0]);
+  auto OW = static_cast<double>(ksize[1]);
+
+  auto SH = static_cast<int>(floor((IH * 2.0) / OH) - floor(IH / OH));
+  auto SW = static_cast<int>(floor((IW * 2.0) / OW) - floor(IW / OW));
+  auto KH = static_cast<int>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+  auto KW = static_cast<int>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+
+  auto PH = (SH * (static_cast<int>(OH) - 1) + KH - static_cast<int>(IH));
+  auto PW = (SW * (static_cast<int>(OW) - 1) + KW - static_cast<int>(IW));
+  // If there is additional padding needed then
+  // this is situation that oneDNN cannot comply with
+  // paddlepaddle reference implementation
+  return (PH == 0) && (PW == 0);
+}
+
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type) && CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+}
+
+framework::OpKernelType PoolOp::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) must not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    platform::errors::NotFound(
+                        "Input(X) of Pool Gradoperator is not found."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                    "Input(X@GRAD) should not be null.");
+                    platform::errors::NotFound(
+                        "Input(X@GRAD) of Pool Gradoperator is not found."));
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
@@ -150,27 +236,42 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      CanMKLDNNSupportPool(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
-  if (input_data_type == framework::proto::VarType::FP16) {
-    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
-                      "float16 can only be used when CUDNN is used");
-  }
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);
+}
+
+framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   framework::StringToDataLayout(data_format));
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void Pool2dOpMaker::Make() {
@@ -200,8 +301,9 @@ void Pool2dOpMaker::Make() {
   // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "global_pooling",
-      "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, kernel size and paddings will be ignored.")
+      "(bool) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored. "
+      "Default False.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
@@ -217,37 +319,43 @@ void Pool2dOpMaker::Make() {
       .SetDefault({0, 0});
   AddAttr<bool>(
       "exclusive",
-      "(bool, default True) When true, will exclude the zero-padding in the "
+      "(bool) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The default is True.")
+      "is only used when pooling_type is avg. The default is True. "
+      "Default True.")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool) When true, will perform adaptive pooling instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
-      "pooling in each grid area to get output pooling value.")
+      "pooling in each grid area to get output pooling value. "
+      "Default False.")
       .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn.")
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Whether to use the ceil function to calculate "
+      "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
-      "the floor function will be used.")
+      "the floor function will be used. Default False")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel.")
+                "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_quantizer",
-                "(bool, default false) "
-                "Set to true for operators that should be quantized and use "
-                "int8 kernel. "
-                "Only used on CPU.")
+  AddAttr<bool>(
+      "use_quantizer",
+      "(bool, default false) "
+      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -269,11 +377,11 @@ void Pool2dOpMaker::Make() {
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-The pooling2d operation calculates the output based on
-the input, pooling_type and ksize, strides, paddings parameters.
-Input(X) and output(Out) are in NCHW or NHWC format, where N is batch size, C is the
+This operation calculates the pooling output based on
+the input, pooling_type and pool_size, pool_stride, pool_padding parameters.
+Input(X) and Output(Out) are in NCHW or NHWC format, where N is batch size, C is the
 number of channels, H is the height of the feature, and W is the width of the feature.
-Parameters(ksize, strides, paddings) are two elements.
+Parameters(pool_size, pool_stride, pool_padding) hold two integer elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
@@ -358,9 +466,10 @@ Example:
 
 class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -393,8 +502,9 @@ void Pool3dOpMaker::Make() {
   // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "global_pooling",
-      "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, kernel size and paddings will be ignored.")
+      "(bool) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored. "
+      "Default False")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -413,30 +523,32 @@ void Pool3dOpMaker::Make() {
                                // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "exclusive",
-      "(bool, default True) When true, will exclude the zero-padding in the "
+      "(bool) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The default is True.")
+      "is only used when pooling_type is avg. The default is True. "
+      "Default True")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool) When true, will perform adaptive pooling instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
-      "pooling in each grid area to get output pooling value.")
+      "pooling in each grid area to get output pooling value. "
+      "Default False")
       .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn.")
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Whether to use the ceil function to calculate "
+      "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
-      "the floor function will be used.")
+      "the floor function will be used. Default False")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
+                "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -454,14 +566,12 @@ void Pool3dOpMaker::Make() {
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-Pool3d Operator.
-
-The pooling3d operation calculates the output based on
-the input, pooling_type, ksize, strides, and paddings parameters.
+This operation calculates the output based on
+the input, pooling_type, pool_size, pool_stride, and pool_padding parameters.
 Input(X) and output(Out) are in NCDHW or NDHWC format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
-width of the feature, respectively. Parameters(ksize, strides, paddings)
-are three elements. These three elements represent depth, height and
+width of the feature, respectively. Parameters(pool_size, pool_stride, pool_padding)
+hold three integer elements. These three elements represent depth, height and
 width, respectively. The input(X) size and output(Out) size may be different.
 
 Example:
@@ -566,9 +676,10 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
-                  ops::PoolOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -578,9 +689,10 @@ REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
-                  ops::PoolOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

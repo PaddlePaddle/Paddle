@@ -33,9 +33,6 @@ class TestSquareErrorCost(unittest.TestCase):
 
         input_var = layers.create_tensor(dtype="float32", name="input")
         label_var = layers.create_tensor(dtype="float32", name="label")
-
-        layers.assign(input=input_val, output=input_var)
-        layers.assign(input=label_val, output=label_var)
         output = layers.square_error_cost(input=input_var, label=label_var)
 
         for use_cuda in ([False, True]
@@ -44,11 +41,28 @@ class TestSquareErrorCost(unittest.TestCase):
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
             result = exe.run(fluid.default_main_program(),
-                             feed={"input": input_var,
-                                   "label": label_var},
+                             feed={"input": input_val,
+                                   "label": label_val},
                              fetch_list=[output])
 
             self.assertTrue(np.isclose(np_result, result).all())
+
+
+class TestSquareErrorInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_invalid_input():
+            input = [256, 3]
+            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
+            loss = fluid.layers.square_error_cost(input, label)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_label():
+            input = fluid.data(name='input2', shape=[None, 3], dtype='float32')
+            label = [256, 3]
+            loss = fluid.layers.square_error_cost(input, label)
+
+        self.assertRaises(TypeError, test_invalid_label)
 
 
 if __name__ == "__main__":

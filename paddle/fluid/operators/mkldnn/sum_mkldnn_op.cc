@@ -24,131 +24,197 @@
   See the License for the specific language governing permissions and
   limitations under the License. */
 
-#include "mkldnn.hpp"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/sum_op.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
-using mkldnn::stream;
-using mkldnn::sum;
-using paddle::framework::Tensor;
 using paddle::platform::CPUDeviceContext;
 using paddle::platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename T>
+class SumMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::sum> {
+ public:
+  SumMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                   platform::Place cpu_place,
+                   const std::vector<framework::Variable*>& in_vars,
+                   framework::LoDTensor* z, const std::string& uniq_name)
+
+      : platform::MKLDNNHandlerT<T, dnnl::sum>(
+            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(z->dims()),
+                                uniq_name)),
+        num_inputs_(0) {
+    for (size_t i = 0; i < in_vars.size(); i++) {
+      srcs_suffix_.push_back(std::string("-") + std::to_string(i));
+    }
+
+    if (!this->isCached()) {
+      auto dst_tz = framework::vectorize<int64_t>(z->dims());
+      auto src_tz = dst_tz;
+
+      std::vector<mkldnn::memory::desc> srcs_md;
+      for (size_t i = 0; i < in_vars.size(); i++) {
+        auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
+        if (input_it.numel() == 0) {
+          continue;
+        }
+        MKLDNNMemoryFormat input_format = input_it.format();
+        srcs_md.push_back(mkldnn::memory::desc(
+            src_tz, platform::MKLDNNGetDataType<T>(), input_format));
+        ++num_inputs_;
+      }
+      std::vector<float> scales(num_inputs_, 1.0);
+
+      auto dst_md = mkldnn::memory::desc(
+          dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+
+      this->AcquireForwardPrimitiveDescriptor(dst_md, scales, srcs_md);
+    }
+  }
+
+  // (jczaja) sum oneDNN prim is not having .desc attribute so
+  // we cannot use base AcquireForwardPrimitiveDescriptor
+  void AcquireForwardPrimitiveDescriptor(
+      const mkldnn::memory::desc& dst_md, const std::vector<float>& scales,
+      const std::vector<mkldnn::memory::desc>& srcs_md) {
+    // Sum op does not have backward so no passing from FWD to BWD is needed
+    const std::string key_pd = this->key_ + "@fwd_pd";
+    this->fwd_pd_ = std::static_pointer_cast<dnnl::sum::primitive_desc>(
+        this->dev_ctx_.GetBlob(key_pd));
+    if (this->fwd_pd_ == nullptr) {
+      this->fwd_pd_.reset(new dnnl::sum::primitive_desc(dst_md, scales, srcs_md,
+                                                        this->engine_));
+      this->dev_ctx_.SetBlob(key_pd, this->fwd_pd_);
+    }
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
+      const framework::Tensor& input, int i) {
+    const T* input_data = input.data<T>();
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src_desc(i),
+                                            to_void_cast<T>(input_data),
+                                            "@src_mem_p" + srcs_suffix_[i]);
+  }
+
+  using platform::MKLDNNHandlerT<T, dnnl::sum>::AcquireDstMemory;
+
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(void) {
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(),
+                                            "@dst_mem_p");
+  }
+
+  inline int GetNumInputs(void) { return num_inputs_; }
+
+ protected:
+  // isCached need to be overloaded as base one works on key_common
+  bool isCached() {
+    const std::string key_pd = this->key_ + "@fwd_pd";
+    this->fwd_pd_ = std::static_pointer_cast<dnnl::sum::primitive_desc>(
+        this->dev_ctx_.GetBlob(key_pd));
+
+    const std::string key_p = this->key_ + "@fwd_p";
+    return (this->dev_ctx_.GetBlob(key_p) != nullptr);
+  }
+
+ private:
+  int num_inputs_;
+  std::vector<std::string> srcs_suffix_;
+};
+
+template <typename T>
 class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL Sum must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
     auto in_vars = ctx.MultiInputVar("X");
 
-    const int N = in_vars.size();
-    auto out_var = ctx.OutputVar("Out");
-    bool in_place = out_var == in_vars[0];
+    PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
+                                                 "Input variable is empty."));
+    auto& input0 = in_vars[0]->Get<LoDTensor>();
+    LoDTensor* output = ctx.Output<LoDTensor>("Out");
 
-    if (out_var->IsType<framework::LoDTensor>()) {
-      LoDTensor* output = ctx.Output<LoDTensor>("Out");
-      T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    bool in_place = (input0.numel() > 0) && input0.IsSharedBufferWith(*output);
 
-      auto dst_tz = framework::vectorize<int>(output->dims());
-      auto src_tz = dst_tz;
-      MKLDNNMemoryFormat output_format{MKLDNNMemoryFormat::format_undef};
-      std::vector<float> scales;
-      std::vector<memory::primitive_desc> srcs_mpd;
-      std::vector<mkldnn::memory> srcs_mem;
+    SumMKLDNNHandler<T> handler(dev_ctx, ctx.GetPlace(), in_vars, output,
+                                ctx.OutputName("Out"));
 
-      PADDLE_ENFORCE_EQ(in_vars[0]->IsType<LoDTensor>(), true,
-                        "Input[0] must be LoDTensors");
-      auto& input0 = in_vars[0]->Get<LoDTensor>();
-      PADDLE_ENFORCE_EQ(input0.layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for inputs[0] tensor");
-      PADDLE_ENFORCE_NE(input0.format(), MKLDNNMemoryFormat::format_undef,
-                        "Wrong format set for inputs[0] tensor");
-
-      MKLDNNMemoryFormat input_format = input0.format();
-
-      for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE_EQ(in_vars[i]->IsType<LoDTensor>(), true,
-                          "all inputs must be all LoDTensors");
-        auto& input = in_vars[i]->Get<LoDTensor>();
-        PADDLE_ENFORCE_EQ(input.layout(), DataLayout::kMKLDNN,
-                          "Wrong layout set for inputs");
-        PADDLE_ENFORCE_NE(input.format(), MKLDNNMemoryFormat::format_undef,
-                          "Wrong format set for inputs");
-
-        if (input.numel() == 0) {
-          continue;
-        }
-
-        const T* input_data = input.data<T>();
-
-        auto src_md =
-            memory::desc(src_tz, memory::data_type::f32, input_format);
-        auto src_mpd = memory::primitive_desc(src_md, mkldnn_engine);
-        auto src_mem = memory(src_mpd, to_void_cast(input_data));
-        srcs_mpd.push_back(src_mpd);
-        srcs_mem.push_back(src_mem);
-        scales.push_back(1.0);
+    // Create list of SRC MEMs
+    std::vector<std::shared_ptr<mkldnn::memory>> srcs_mem;
+    srcs_mem.reserve(handler.GetNumInputs());
+    int input_index = 0;
+    for (size_t i = 0; i < in_vars.size(); i++) {
+      auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
+      if (input_it.numel() == 0) {
+        continue;
       }
-
-      auto dst_md =
-          memory::desc(dst_tz, memory::data_type::f32, MKLDNNMemoryFormat::any);
-
-      auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
-
-      std::shared_ptr<memory> dst_mem;
-      if (in_place) {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc()));
-      } else {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc(), output_data));
-      }
-      std::vector<mkldnn::primitive::at> inputs;
-      for (size_t i = 0; i < srcs_mem.size(); ++i) {
-        inputs.push_back(srcs_mem[i]);
-      }
-
-      auto sum_prim = mkldnn::sum(sum_pd, inputs, *dst_mem);
-      output_format = (MKLDNNMemoryFormat)platform::GetMKLDNNFormat(sum_pd);
-
-      primitive reorder_prim;
-      std::shared_ptr<memory> target_mem;
-      if (in_place) {
-        output_format = input_format;
-        target_mem.reset(new memory(
-            {{{src_tz}, memory::data_type::f32, output_format}, mkldnn_engine},
-            output_data));
-        reorder_prim = reorder(*dst_mem, *target_mem);
-      }
-
-      std::vector<primitive> pipeline;
-      pipeline.push_back(sum_prim);
-      if (in_place) pipeline.push_back(reorder_prim);
-      stream(stream::kind::eager).submit(pipeline).wait();
-
-      output->set_layout(DataLayout::kMKLDNN);
-      output->set_format(output_format);
-    } else {  // Fallback to naive version
-      SumKernel<CPUDeviceContext, T> reference_kernel;
-      reference_kernel.Compute(ctx);
+      srcs_mem.push_back(handler.AcquireSrcMemory(input_it, input_index));
+      ++input_index;
     }
+
+    auto dst_mem = in_place ? handler.AcquireDstMemory()
+                            : handler.AcquireDstMemory(output);
+
+    auto sum_p = handler.AcquireForwardPrimitive();
+
+    std::unordered_map<int, mkldnn::memory> args;
+    for (size_t i = 0; i < srcs_mem.size(); ++i) {
+      args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, *(srcs_mem[i])});
+    }
+    args.insert({MKLDNN_ARG_DST, *dst_mem});
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    sum_p->execute(astream, args);
+    astream.wait();
+
+    // For in-place execution which sum does not have we need to fake it
+    // so from oneDNN dst memory we reorder data into input
+    if (in_place) {
+      const std::string reorder_key =
+          platform::CreateKey(dev_ctx, framework::vectorize(output->dims()),
+                              ctx.OutputName("Out") + "-I");
+
+      auto& in_out = in_vars[0]->Get<framework::LoDTensor>();
+      auto output_tz = framework::vectorize<int64_t>(output->dims());
+      platform::ReorderMKLDNNHandler reorder_handler(
+          output_tz, output->type(), framework::ToMKLDNNDataType(in_out.type()),
+          dev_ctx, dev_ctx.GetEngine(), reorder_key);
+
+      auto target_mem = reorder_handler.AcquireDstMemory(
+          output, in_out.format(), ctx.GetPlace());
+
+      auto reorder_p = reorder_handler.AcquireReorder(target_mem, dst_mem);
+      {
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, *dst_mem, *target_mem);
+        astream.wait();
+      }
+    }
+    output->set_layout(framework::DataLayout::kMKLDNN);
+    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_KERNEL(sum, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::SumMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL(
+    sum, MKLDNN, ::paddle::platform::CPUPlace,
+    paddle::operators::SumMKLDNNOpKernel<paddle::platform::bfloat16>,
+    paddle::operators::SumMKLDNNOpKernel<float>);

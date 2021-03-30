@@ -18,10 +18,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
+
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -30,13 +36,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                    "Input(Input) of ConvOp should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                    "Input(Filter) of ConvOp should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                    "Output(Output) of ConvOp should not be null.");
+std::vector<int64_t> ConvOp::ComputeOutputShape(
+    framework::InferShapeContext* ctx) const {
+  OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv");
+  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "Conv");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -48,52 +51,61 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-  PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    "ShapeError: Conv input should be 4-D or 5-D tensor. But "
-                    "received: %u-D Tensor,"
-                    "the shape of Conv input is [%s]",
-                    in_dims.size(), in_dims);
+  // MKL-DNN Kernels are using NCHW order of dims description
+  // so we ignore data_format consideration for MKL-DNN kernel
+  const bool channel_last = (this->IsMKLDNNType() == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4 || in_dims.size() == 5, true,
+      platform::errors::InvalidArgument(
+          "The input of Op(Conv) should be a 4-D or 5-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(), in_dims));
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "ShapeError: Conv input dimension and filter dimension should be the "
-      "equal."
-      "But received: the shape of Conv input is [%s], input dimension of Conv "
-      "input is [%d],"
-      "the shape of filter is [%s],  the filter dimension of Conv is [%d]",
-      in_dims, in_dims.size(), filter_dims, filter_dims.size());
+      platform::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv) should be equal. But received: the input's shape is [%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims, in_dims.size(), filter_dims, filter_dims.size()));
 
   int in_sub_stride_size = in_dims.size() - strides.size();
-  PADDLE_ENFORCE_EQ(in_dims.size() - strides.size() == 2U, true,
-                    "ShapeError: the dimension of input minus the dimension of "
-                    "stride must be euqal to 2."
-                    "But received: the dimension of input minus the dimension "
-                    "of stride is [%d], the"
-                    "input dimension of Conv is [%d], the shape of Conv input "
-                    "is [%s], the stride"
-                    "dimension of Conv is [%d]",
-                    in_sub_stride_size, in_dims.size(), in_dims,
-                    strides.size());
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(), strides.size() + 2U,
+      platform::errors::InvalidArgument(
+          "The difference of input's dimension and Attr(strides)'s "
+          "length must be euqal to 2 for Op(Conv). "
+          "But received: input's dimension is %d, input's shape is [%s]; "
+          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
+          "difference of input's dimention and Attr(strides)'s length = %u.",
+          in_dims.size(), in_dims, strides.size(),
+          framework::make_ddim(strides), in_sub_stride_size));
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
 
   PADDLE_ENFORCE_EQ(
       input_channels, filter_dims[1] * groups,
-      "ShapeError: The number of input channels should be equal to filter "
-      "channels * groups. But received: the input channels is [%d], the shape"
-      "of input is [%s], the filter channel is [%d], the shape of filter is "
-      "[%s],"
-      "the groups is [%d]",
-      in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
+      platform::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv). But received: the input's channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+          "The error may come from wrong data_format setting.",
+          input_channels, in_dims, filter_dims[1], filter_dims, groups,
+          data_format));
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
-      "ShapeError: The number of output channels should be divided by groups."
-      "But received: the output channels is [%d], the shape of filter is [%s]"
-      "(the first dimension of filter is output channel), the groups is [%d]",
-      filter_dims[0], filter_dims, groups);
+      platform::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0], filter_dims, groups));
 
   framework::DDim in_data_dims;
   if (channel_last) {
@@ -101,8 +113,10 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   }
+
   framework::DDim filter_data_dims =
       framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
   std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
@@ -111,22 +125,21 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   if (!channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
-  for (size_t i = 0; i < in_data_dims.size(); ++i) {
+  for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!ctx->IsRuntime()) &&
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(ConvOutputSize(in_data_dims[i], filter_dims[i + 2],
-                                            dilations[i], paddings[2 * i],
-                                            paddings[2 * i + 1], strides[i]));
+      output_shape.push_back(
+          ConvOutputSize(in_data_dims[i], filter_data_dims[i], dilations[i],
+                         paddings[2 * i], paddings[2 * i + 1], strides[i]));
     }
   }
   if (channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
 
-  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Output");
+  return output_shape;
 }
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
@@ -135,19 +148,19 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  auto input_data_type = ctx.Input<Tensor>("Input")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   std::string data_format =
       "AnyLayout";  // todo enable data layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -159,30 +172,52 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 
   if (input_data_type != framework::proto::VarType::INT8 &&
-      input_data_type != framework::proto::VarType::UINT8) {
+      input_data_type != framework::proto::VarType::UINT8 &&
+      input_data_type != framework::proto::VarType::BF16) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
-    PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                      "input and filter data type should be consistent");
+    PADDLE_ENFORCE_EQ(
+        input_data_type, filter_data_type,
+        platform::errors::InvalidArgument(
+            "input and filter data type should be consistent, "
+            "but received input data type is %s and filter type "
+            "is %s",
+            paddle::framework::DataTypeToString(input_data_type),
+            paddle::framework::DataTypeToString(filter_data_type)));
   }
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
-                      "float16 can only be used when CUDNN is used");
+                      platform::errors::InvalidArgument(
+                          "float16 can only be used when CUDNN is used"));
   }
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-  // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
-  // to false. It should be fixed and then here should only create if library
-  // is kCUDNN.
-  if (configs.empty()) {
-    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
-        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-    configs.push_back(p);
+  return type;
+}
+
+framework::OpKernelType ConvOp::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "Input") &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for conv
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
   }
 #endif
-  return type;
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void Conv2DOpMaker::Make() {
@@ -256,12 +291,16 @@ void Conv2DOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("use_quantizer",
-                "(bool, default false) "
-                "Set to true for operators that should be quantized and use "
-                "int8 kernel. "
-                "Only used on CPU.")
+  AddAttr<bool>(
+      "use_quantizer",
+      "(bool, default false) "
+      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<bool>("fuse_brelu",
@@ -278,6 +317,11 @@ void Conv2DOpMaker::Make() {
       .SetDefault(0.0f);
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
       .SetDefault(0.0f);
+  AddAttr<bool>(
+      "use_addto",
+      "(bool, default false) If use addto strategy or not, only used in "
+      "cudnn kernel")
+      .SetDefault(false);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
@@ -318,7 +362,7 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -334,7 +378,7 @@ parameters is checked in the infer-shape.
 Input(Input) and Output(Output) are in NCHW or NHWC format. Where N is batch
 size, C is the number of channels, H is the height of the feature, and W is
 the width of the feature.
-Filters(Input) is MCHW format. Where M is the number of output image channels, C is
+Filters(Input) is MCHW format format. Where M is the number of output image channels, C is
 the number of input image channels, H is the height of the filter, and W
 is the width of the filter.
 Parameters(strides, paddings, dilations) are two elements. These two elements represent
@@ -423,6 +467,11 @@ void Conv3DOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>("fuse_activation",
@@ -433,6 +482,11 @@ void Conv3DOpMaker::Make() {
       .SetDefault(0.0f);
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
       .SetDefault(0.0f);
+  AddAttr<bool>(
+      "use_addto",
+      "(bool, default false) If use addto strategy or not, only used in "
+      "cudnn kernel")
+      .SetDefault(false);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
@@ -455,7 +509,7 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -512,84 +566,92 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
+      this->CanMKLDNNBeUsed(ctx, data_type)) {
+    const std::string data_format = ctx.Attr<std::string>("data_format");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
   }
 #endif
 
-  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                      ctx.GetPlace(), layout_, library_,
-                                      customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
+  auto type = framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
+                                      library_, customized_type_value);
   return type;
 }
 
-class Conv2DGradMaker : public framework::SingleGradOpDescMaker {
+framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "Input") ||
+       (var_name == framework::GradVarName("Output"))) &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
+template <typename T>
+class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("Bias", Input("Bias"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    op->SetAttrMap(Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
 
-    if (ForwardOp().Inputs().count("ResidualData") != 0) {
-      op->SetInput("ResidualData", Input("ResidualData"));
+    if (this->HasInput("ResidualData")) {
+      op->SetInput("ResidualData", this->Input("ResidualData"));
     }
 
-    op->SetAttrMap(Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -597,37 +659,37 @@ class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
  * Inputs:  I, W, dO, ddI, ddW
  * Outputs: ddO, dW, dI
  */
-class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("DOutput", Input(framework::GradVarName("Output")));
-    op->SetInput("DDInput", OutputGrad(framework::GradVarName("Input")));
-    op->SetInput("DDFilter", OutputGrad(framework::GradVarName("Filter")));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("DOutput", this->Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", this->OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter",
+                 this->OutputGrad(framework::GradVarName("Filter")));
 
     // ddO, dI, dW
     // Unlike grad op, double grad op does not use name@GRAD@GRAD
     // as key of ops' inputs and outputs.
-    auto ddx = OutputGrad(framework::GradVarName("Input"));
-    auto ddw = OutputGrad(framework::GradVarName("Filter"));
-    std::vector<std::string> empty_str = {};
+    auto ddx = this->OutputGrad(framework::GradVarName("Input"));
+    auto ddw = this->OutputGrad(framework::GradVarName("Filter"));
 
     op->SetOutput("DDOutput",
-                  (ddx.empty() && ddw.empty())
-                      ? empty_str
-                      : InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+                  ddx.empty()
+                      ? this->EmptyInputGrad()
+                      : this->InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
-    op->SetAttrMap(Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -635,34 +697,34 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
  * Inputs:  I, W, dO, ddI, ddW
  * Outputs: ddO, dW, dI
  */
-class Conv3DDoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("DOutput", Input(framework::GradVarName("Output")));
-    op->SetInput("DDInput", OutputGrad(framework::GradVarName("Input")));
-    op->SetInput("DDFilter", OutputGrad(framework::GradVarName("Filter")));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("DOutput", this->Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", this->OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter",
+                 this->OutputGrad(framework::GradVarName("Filter")));
 
-    auto ddx = OutputGrad(framework::GradVarName("Input"));
-    auto ddw = OutputGrad(framework::GradVarName("Filter"));
-    std::vector<std::string> empty_str = {};
+    auto ddx = this->OutputGrad(framework::GradVarName("Input"));
+    auto ddw = this->OutputGrad(framework::GradVarName("Filter"));
 
     op->SetOutput("DDOutput",
-                  (ddx.empty() && ddw.empty())
-                      ? empty_str
-                      : InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+                  ddx.empty()
+                      ? this->EmptyInputGrad()
+                      : this->InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
-    op->SetAttrMap(Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -691,41 +753,14 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
-  }
-#endif
-  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                      ctx.GetPlace(), layout_, library_,
-                                      customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
-          new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-      configs.push_back(p0);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p1);
-
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
+  auto type = framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_, customized_type_value);
   return type;
 }
 
@@ -734,18 +769,31 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
-REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad, ops::Conv2DDoubleGradMaker);
+                  ops::ConvOpInferVarType,
+                  ops::Conv2DGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(conv2d_grad, ops::ConvOpGrad,
+                  ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise convolution op
 REGISTER_OPERATOR(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv2DGradMaker);
-REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
+                  ops::ConvOpInferVarType,
+                  ops::Conv2DGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad,
+                  ops::Conv2DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv2DDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(depthwise_conv2d_grad_grad, ops::ConvOpDoubleGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
-                  ops::ConvOpInferVarType, ops::Conv3DGradMaker);
-REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad, ops::Conv3DDoubleGradMaker);
+                  ops::ConvOpInferVarType,
+                  ops::Conv3DGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv3DGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad,
+                  ops::Conv3DDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Conv3DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise conv kernel
@@ -783,3 +831,36 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_grad_grad,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(depthwise_conv2d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade depthwise_conv2d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));
+
+REGISTER_OP_VERSION(conv3d)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade conv3d, add a new attribute [use_addto].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "use_addto",
+            "In order to support new feature (inplace addto strategy) for "
+            "gradient accumulation.",
+            false));

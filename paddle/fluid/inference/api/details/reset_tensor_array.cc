@@ -14,6 +14,14 @@
 
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 
+#include "glog/logging.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
 namespace paddle {
 namespace details {
 

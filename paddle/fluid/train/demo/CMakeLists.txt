@@ -20,6 +20,8 @@ include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/threadpool")
+include_directories("${PADDLE_LIB}/third_party/dlpack")
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
@@ -67,7 +69,7 @@ endif(APPLE)
 target_link_libraries(demo_trainer
         ${MACOS_LD_FLAGS}
         ${ARCHIVE_START}
-        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so
+        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_inference.so
         ${ARCHIVE_END}
         ${MATH_LIB}
         ${MKLDNN_LIB}

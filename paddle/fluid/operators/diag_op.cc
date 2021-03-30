@@ -22,15 +22,16 @@ class DiagOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Diagonal"),
-                   "Input(Diagonal) of DiagOp should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of DiagOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Diagonal"), "Input", "Diagonal", "diag");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "diag");
 
     auto s_dims = ctx->GetInputDim("Diagonal");
-    PADDLE_ENFORCE(s_dims.size() == 1,
-                   "The rank of Input(Diagonal) should only be 1.");
+
+    PADDLE_ENFORCE_EQ(
+        s_dims.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The dimension of 'diagonal' must be 1, but now it is %d.",
+            s_dims.size()));
 
     ctx->SetOutputDim("Out", {s_dims[0], s_dims[0]});
   }
@@ -51,8 +52,10 @@ class DiagOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(diag, ops::DiagOp, ops::DiagOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    diag, ops::DiagOp, ops::DiagOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     diag, ops::DiagKernel<paddle::platform::CPUDeviceContext, int>,
     ops::DiagKernel<paddle::platform::CPUDeviceContext, float>,

@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
-#include <algorithm>
-#include <thread>  // NOLINT
-
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -47,7 +44,7 @@ TEST(HeartBeatMonitor, All) {
   std::thread t(run, monitor);
   t.detach();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(45 * 1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(15 * 1000));
 
   monitor->Stop();
 }

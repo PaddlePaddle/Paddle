@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
+@skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
     def setUp(self):
         pass
@@ -47,7 +48,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
         self.outputs = {'Out': self.out}
-        self.op_type = "elementwise_mul"
+        self.op_type = "mul"
         self.dtype = np.float32
         outs, fetch_list = self._calc_output(place, parallel=parallel)
         return outs

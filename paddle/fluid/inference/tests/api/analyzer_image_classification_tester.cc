@@ -27,7 +27,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -40,7 +40,7 @@ void SetOptimConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
 // Easy for profiling independently.
@@ -50,8 +50,10 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    if (!FLAGS_disable_mkldnn_fc)
+    if (!FLAGS_disable_mkldnn_fc) {
       cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+      cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    }
   }
   std::vector<std::vector<PaddleTensor>> outputs;
 
@@ -83,8 +85,10 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    if (!FLAGS_disable_mkldnn_fc)
+    if (!FLAGS_disable_mkldnn_fc) {
       cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
+      cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    }
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -112,7 +116,11 @@ TEST(Analyzer_resnet50, compare_determine) {
 TEST(Analyzer_resnet50, save_optim_model) {
   AnalysisConfig cfg;
   std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
+#ifdef _WIN32
+  _mkdir(optimModelPath.c_str());
+#else
   mkdir(optimModelPath.c_str(), 0777);
+#endif
   SetConfig(&cfg);
   SaveOptimModel(&cfg, optimModelPath);
 }

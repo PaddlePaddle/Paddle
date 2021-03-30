@@ -17,6 +17,7 @@ from . import core
 from . import framework
 from . import executor
 from . import compiler
+from .data_feeder import check_type
 import sys
 
 __all__ = ['ParallelExecutor']
@@ -27,7 +28,9 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    The ParallelExecutor is an upgraded version of :code:`fluid.Executor` that supports multi-node model
+	:api_attr: Static Graph
+
+    The ParallelExecutor is an upgraded version of :code:`paddle.static.Executor` that supports multi-node model
     training and testing based on the data-parallel mode. In data-parallel mode,
     ParallelExecutor will broadcast the parameters from Node0 to other nodes during
     construction and copy the input Program to other nodes from Node0 to make sure
@@ -47,12 +50,12 @@ class ParallelExecutor(object):
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
-        loss_name (str): This parameter is the name of the loss variable of the
+        loss_name (str): This parameter is the name of the loss Tensor of the
             model. **Note: If it is data-parallel model training, you must set loss_name,
             otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
             If this parameter is not provided, that parameter is None, the program will
-            be set to :code:`fluid.default_main_program()`. The default is None.
+            be set to :code:`paddle.static.default_main_program()`. The default is None.
         share_vars_from(ParallelExecutor): If share_vars_from is set, the current
             ParallelExecutor will share the parameters with the ParallelExecutor
             specified by share_vars_from. This parameter needs to be set when model testing
@@ -63,13 +66,13 @@ class ParallelExecutor(object):
             The default is None.
         exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
             be changed when running the current model, such as the thread pool size.
-            For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
+            For more information about exec_strategy, please refer to :code:`paddle.static.ExecutionStrategy`.
             The default is None.
         build_strategy(BuildStrategy): By configuring build_strategy, we can
             optimize the computational graph, such as operators' fusion in the
             computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
-            please refer to :code:`fluid.BuildStrategy`.  The default is None.
+            please refer to :code:`paddle.static.BuildStrategy`.  The default is None.
         num_trainers(int): This parameter needs to be set in GPU distributed training.
             If the parameter value is greater than 1, NCCL will be initialized by multi-level
             nodes. Each node should have the same number of GPUs. The default is 1.
@@ -78,7 +81,7 @@ class ParallelExecutor(object):
             Trainer_id indicates the "rank" of the current node. The trainer_id starts
             counting from 0. The default is 0.
         scope(Scope): Specifies the scope in which the program is executed.
-            The default is fluid.global_scope().
+            The default is paddle.static.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -98,15 +101,16 @@ class ParallelExecutor(object):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           import numpy
           import os
 
           use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          paddle.enable_static()
+          place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
           # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
+          # to specify the CPU_NUM, otherwise, PaddlePaddle will use
           # all the number of the logic core as the CPU_NUM,
           # in that case, the batch size of the input should be
           # greater than CPU_NUM, if not, the process will be
@@ -114,26 +118,26 @@ class ParallelExecutor(object):
           if not use_cuda:
               os.environ['CPU_NUM'] = str(2)
 
-          exe = fluid.Executor(place)
+          exe = paddle.static.Executor(place)
 
-          train_program = fluid.Program()
-          startup_program = fluid.Program()
-          with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-              hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
-              test_program = fluid.default_main_program().clone(for_test=True)
-              fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+          train_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(train_program, startup_program):
+              data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+              hidden = paddle.static.nn.fc(data, 10)
+              loss = paddle.mean(hidden)
+              test_program = paddle.static.default_main_program().clone(for_test=True)
+              paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-          startup_program.random_seed=1
           exe.run(startup_program)
 
-          train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                             main_program=train_program,
-                                             loss_name=loss.name)
-          test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                            main_program=test_program,
-                                            share_vars_from=train_exe)
+          train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                     main_program=train_program,
+                                                     loss_name=loss.name)
+          # Note: if share_vars_from is not set here, the test parameter is different to the train one
+          test_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                    main_program=test_program,
+                                                    share_vars_from=train_exe)
 
           x = numpy.random.random(size=(10, 1)).astype('float32')
           loss_data, = train_exe.run(feed={"X": x},
@@ -175,15 +179,6 @@ class ParallelExecutor(object):
         ) if use_cuda else framework.cpu_places()
         self._scope = scope if scope is not None else executor.global_scope()
 
-        if main_program is not None and main_program._enable_dgc:
-            assert build_strategy.num_trainers > 1, "dgc is not useful when num_trainers <= 1"
-            assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "dgc \
-                only used for allreduce"
-
-            assert build_strategy.num_trainers * len(
-                self._places) > 1, "dgc is not useful for single card training"
-            assert use_cuda, "dgc only used under cuda"
-
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
 
@@ -211,11 +206,11 @@ class ParallelExecutor(object):
         fetch_list.
 
         Args:
-            fetch_list(list): This parameter represents the variables that need to be returned
+            fetch_list(list): This parameter represents the Tensors that need to be returned
                 after the model runs. The default is None.
-            feed(list|dict): This parameter represents the input variables of the model.
+            feed(list|dict): This parameter represents the input Tensors of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
-                training, the parameter feed can be dict or list type variable. If the
+                training, the parameter feed can be dict or list of Tensor. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
                 sent to different devices, so you should make sure the number of samples of
@@ -225,8 +220,8 @@ class ParallelExecutor(object):
                 The default is None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
-            return_numpy(bool): This parameter indicates whether convert the fetched variables
-                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+            return_numpy(bool): This parameter indicates whether convert the fetched Tensors
+                (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
 
         Returns:
@@ -247,22 +242,23 @@ class ParallelExecutor(object):
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same variable values
-               (variables in fetch_list) on different devices.
+               results are spliced together in dimension 0 for the same Tensor values
+               (Tensors in fetch_list) on different devices.
 
 
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               import numpy
               import os
 
               use_cuda = True
-              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              paddle.enable_static()
+              place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
               # NOTE: If you use CPU to run the program, you need
-              # to specify the CPU_NUM, otherwise, fluid will use
+              # to specify the CPU_NUM, otherwise, PaddlePaddle will use
               # all the number of the logic core as the CPU_NUM,
               # in that case, the batch size of the input should be
               # greater than CPU_NUM, if not, the process will be
@@ -270,24 +266,24 @@ class ParallelExecutor(object):
               if not use_cuda:
                   os.environ['CPU_NUM'] = str(2)
 
-              exe = fluid.Executor(place)
+              exe = paddle.static.Executor(place)
 
-              train_program = fluid.Program()
-              startup_program = fluid.Program()
-              with fluid.program_guard(train_program, startup_program):
-                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-                  hidden = fluid.layers.fc(input=data, size=10)
-                  loss = fluid.layers.mean(hidden)
-                  fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+              train_program = paddle.static.Program()
+              startup_program = paddle.static.Program()
+              with paddle.static.program_guard(train_program, startup_program):
+                  data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                  hidden = paddle.static.nn.fc(data, 10)
+                  loss = paddle.mean(hidden)
+                  paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
               exe.run(startup_program)
 
-              train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                                 main_program=train_program,
-                                                 loss_name=loss.name)
+              train_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                         main_program=train_program,
+                                                         loss_name=loss.name)
 
               # If the feed is a dict:
-              # the image will be splitted into devices. If there is two devices
+              # the image will be split into devices. If there is two devices
               # each device will process an image with shape (5, 1)
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = train_exe.run(feed={"X": x},
@@ -320,7 +316,7 @@ class ParallelExecutor(object):
         application and release of temporary variables, the strategy adopted by
         ParallelExecutor is to drop the local execution scopes after several iterations.
         ParallelExecutor provides the num_iteration_per_drop_scope option in
-        :code:`fluid.ExecutionStrategy`, which indicates how many iterations are intervened to
+        :code:`paddle.static.ExecutionStrategy`, which indicates how many iterations are intervened to
         drop the local execution scopes. If the num_iteration_per_drop_scope value
         is 100, but you want to drop the local execution scopes after 50 iterations,
         you can call the interface manually.
@@ -331,13 +327,13 @@ class ParallelExecutor(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               import numpy
               import os
 
               use_cuda = True
               # NOTE: If you use CPU to run the program, you need
-              # to specify the CPU_NUM, otherwise, fluid will use
+              # to specify the CPU_NUM, otherwise, PaddlePaddle will use
               # all the number of the logic core as the CPU_NUM,
               # in that case, the batch size of the input should be
               # greater than CPU_NUM, if not, the process will be
@@ -345,35 +341,37 @@ class ParallelExecutor(object):
               if not use_cuda:
                   os.environ['CPU_NUM'] = str(2)
 
-              train_program = fluid.Program()
-              startup_program = fluid.Program()
-              with fluid.program_guard(train_program, startup_program):
-                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-                  hidden = fluid.layers.fc(input=data, size=10)
-                  loss = fluid.layers.mean(hidden)
+              paddle.enable_static()
+              train_program = paddle.static.Program()
+              startup_program = paddle.static.Program()
+              with paddle.static.program_guard(train_program, startup_program):
+                  data = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
+                  hidden = paddle.static.nn.fc(data, 10)
+                  loss = paddle.mean(hidden)
 
-              place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-              exe = fluid.Executor(place)
+              place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+              exe = paddle.static.Executor(place)
               exe.run(startup_program)
 
-              parallel_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                                 main_program=train_program,
-                                                 loss_name=loss.name)
+              parallel_exe = paddle.static.ParallelExecutor(use_cuda=use_cuda,
+                                                            main_program=train_program,
+                                                            loss_name=loss.name)
 
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = parallel_exe.run(feed={"X": x},
-                                         fetch_list=[loss.name])
+                                            fetch_list=[loss.name])
 
               parallel_exe.drop_local_exe_scopes()
+
         """
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor.drop_local_exe_scopes")
         self._compiled_program._executor.drop_local_exe_scopes()
 
     # This API is used to check whether DropLocalExeScopes can work.
     def _need_create_local_exe_scopes(self):
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor._need_create_local_exe_scopes")
         return self._compiled_program._executor._need_create_local_exe_scopes()

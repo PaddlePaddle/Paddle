@@ -21,10 +21,14 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
-                      "Inputs(Ids) of PullBoxSparseOp should not be empty.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of PullBoxSparseOp should not be empty.");
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("Ids").size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Inputs(Ids) of PullBoxSparseOp should not be empty."));
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Out").size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Outputs(Out) of PullBoxSparseOp should not be empty."));
     auto hidden_size = static_cast<int64_t>(ctx->Attrs().Get<int>("size"));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
@@ -34,9 +38,10 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
       PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
-                        "Shape error in %lu id, the last dimension of the "
-                        "'Ids' tensor must be 1.",
-                        i);
+                        platform::errors::InvalidArgument(
+                            "Shape error in %lu id, the last dimension of the "
+                            "'Ids' tensor must be 1.",
+                            i));
       auto out_dim = framework::vectorize(
           framework::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_dim.push_back(hidden_size);
@@ -59,12 +64,23 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
 class PullBoxSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("W",
+             "(Tensor) The input represents embedding tensors, "
+             "which is a learnable parameter.")
+        .AsDispensable();
     AddInput("Ids",
              "Input tensors with type int32 or int64 "
              "contains the ids to be looked up in BoxPS. "
              "The last dimension size must be 1.")
         .AsDuplicable();
     AddOutput("Out", "The lookup results tensors.").AsDuplicable();
+    AddAttr<bool>("is_sparse",
+                  "(boolean, default false) "
+                  "Sparse update.")
+        .SetDefault(false);
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
     AddAttr<int>("size", "(int, the embedding hidden size").SetDefault(1);
     AddComment(R"DOC(
 Pull Box Sparse Operator.
@@ -79,19 +95,18 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PushBoxSparseOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("push_box_sparse");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -104,10 +119,9 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"))[0]
-            ->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 }  // namespace operators
@@ -115,7 +129,9 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
-                  ops::PullBoxSparseOpMaker, ops::PushBoxSparseOpDescMaker);
+                  ops::PullBoxSparseOpMaker,
+                  ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
+                  ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
 REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
 REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)

@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -26,13 +27,29 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class PassBuilder;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {
 namespace framework {
 namespace details {
+using DeviceType = paddle::platform::DeviceType;
+namespace p = paddle::platform;
 
 struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and
@@ -86,7 +103,10 @@ struct BuildStrategy {
   // Operator fusion
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
+  bool fuse_bn_act_ops_{false};
+  bool fuse_bn_add_act_ops_{true};
   bool fuse_elewise_add_act_ops_{false};
+  bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
   boost::optional<bool> fuse_all_optimizer_ops_{false};
@@ -117,6 +137,9 @@ struct BuildStrategy {
   // Turn on inplace by default.
   bool enable_inplace_{true};
 
+  // Turn off inplace addto by default.
+  bool enable_addto_{false};
+
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
@@ -128,13 +151,14 @@ struct BuildStrategy {
 
   // NCCL config
   size_t nccl_comm_num_{1};
+  size_t bkcl_comm_num_{1};
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
-  // Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu
+  // Nccl ranks in a node when use hierarchical allreduce, it's set to gpu
   // cards' number in most cases.
   size_t hierarchical_allreduce_inter_nranks_{0};
-  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's set to
   // nodes number.
   size_t hierarchical_allreduce_exter_nranks_{0};
 
@@ -161,11 +185,14 @@ struct BuildStrategy {
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                   const bool use_cuda,
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+                   DeviceType use_device,
                    platform::NCCLCommunicator *nccl_ctxs) const;
+#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
+                   DeviceType use_device,
+                   platform::BKCLCommunicator *bkcl_ctxs) const;
 #else
-                   const bool use_cuda) const;
+                   DeviceType use_device) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -34,6 +35,7 @@ class SgdJitCode : public JitCode {
 
   DECLARE_JIT_CODE(SgdJitCode);
   void genCode() override;
+  void mainCode(int num_regs);
 
  private:
   int w_;

@@ -19,6 +19,8 @@ import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+import paddle
 
 
 class TestAdamOp1(OpTest):
@@ -57,7 +59,9 @@ class TestAdamOp1(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'ParamOut': param_out
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def test_check_output(self):
@@ -100,7 +104,9 @@ class TestAdamOp2(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'ParamOut': param_out
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def test_check_output(self):
@@ -121,11 +127,11 @@ class TestAdamOpMultipleSteps(OpTest):
         moment2 = np.random.random((102, 105)).astype("float32")
 
         learning_rate = 0.001
-        beta1 = 0.9
-        beta2 = 0.999
+        self.beta1 = 0.9
+        self.beta2 = 0.999
         epsilon = 1e-8
-        beta1_pow = beta1**10
-        beta2_pow = beta2**10
+        self.beta1_pow = self.beta1**10
+        self.beta2_pow = self.beta2**10
 
         self.inputs = {
             'Param': param,
@@ -133,21 +139,29 @@ class TestAdamOpMultipleSteps(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([self.beta2_pow]).astype("float32")
         }
 
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': self.beta1,
+            'beta2': self.beta2
+        }
 
     def test_check_output(self):
         for _ in range(self.num_steps):
             param_out, moment1_out, \
                 moment2_out = adam_step(self.inputs, self.attrs)
 
+            beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
+            beta2_pow_out = self.inputs['Beta2Pow'] * self.beta2
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
-                'ParamOut': param_out
+                'ParamOut': param_out,
+                'Beta1PowOut': beta1_pow_out,
+                'Beta2PowOut': beta2_pow_out
             }
 
             # Verify output for this step
@@ -159,8 +173,8 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Moment2'] = moment2_out
 
             # Update powers of Beta1 and Beta2 for next time step
-            self.inputs['Beta1Pow'] *= self.attrs['beta1']
-            self.inputs['Beta2Pow'] *= self.attrs['beta1']
+            self.inputs['Beta1Pow'] = beta1_pow_out
+            self.inputs['Beta2Pow'] = beta2_pow_out
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
@@ -183,9 +197,16 @@ def adam_step(inputs, attributes):
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
 
-    beta1 = attributes['beta1']
-    beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
+
+    if 'beta1' in attributes:
+        beta1 = attributes['beta1']
+    else:
+        beta1 = inputs['Beta1Tensor'][0]
+    if 'beta2' in attributes:
+        beta2 = attributes['beta2']
+    else:
+        beta2 = inputs['Beta2Tensor'][0]
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
@@ -246,6 +267,8 @@ class TestSparseAdamOp(unittest.TestCase):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
+        beta1_pow = np.array([beta1**10]).astype("float32")
+        beta2_pow = np.array([beta2**10]).astype("float32")
 
         height = 10
         rows = [0, 4, 7]
@@ -256,8 +279,8 @@ class TestSparseAdamOp(unittest.TestCase):
             "Param": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            'Beta1Pow': np.array([beta1**10]).astype("float32"),
-            'Beta2Pow': np.array([beta2**10]).astype("float32"),
+            'Beta1Pow': beta1_pow,
+            'Beta2Pow': beta2_pow,
             "LearningRate": np.full((1), 2.0).astype("float32")
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
@@ -286,7 +309,9 @@ class TestSparseAdamOp(unittest.TestCase):
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
-            "Moment2Out": mom2
+            "Moment2Out": mom2,
+            'Beta1PowOut': beta1_pow * beta1,
+            'Beta2PowOut': beta2_pow * beta2
         }
 
     def check_with_place(self, place, lazy_mode):
@@ -328,6 +353,182 @@ class TestSparseAdamOp(unittest.TestCase):
         for place in places:
             for lazy_mode in (True, False):
                 self.check_with_place(place, lazy_mode)
+
+
+class TestAdamOpBetaVariable(OpTest):
+    def setUp(self):
+        '''Test Adam Op with beta as Variable
+        '''
+        self.op_type = "adam"
+        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        # The second moment is positive
+        moment2 = np.random.random((102, 105)).astype("float32")
+        beta1 = 0.85
+        beta2 = 0.95
+
+        learning_rate = 0.001
+        epsilon = 1e-8
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Moment1': moment1,
+            'Moment2': moment2,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
+            "Beta1Tensor": np.array([beta1]).astype("float32"),
+            "Beta2Tensor": np.array([beta2]).astype("float32"),
+        }
+
+        attributes = {'epsilon': epsilon}
+
+        param_out, moment1_out, \
+            moment2_out = adam_step(self.inputs, attributes)
+
+        self.outputs = {
+            'Moment1Out': moment1_out,
+            'Moment2Out': moment2_out,
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAdamOpV2(unittest.TestCase):
+    def test_adam_op(self):
+        place = fluid.CPUPlace()
+        shape = [2, 3, 8, 8]
+        exe = fluid.Executor(place)
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            with fluid.unique_name.guard():
+                data = fluid.data(name="data", shape=shape)
+                conv = fluid.layers.conv2d(data, 8, 3)
+                loss = fluid.layers.reduce_mean(conv)
+
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True)
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.Adam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8)
+                opt.minimize(loss)
+
+        exe.run(startup)
+        data_np = np.random.random(shape).astype('float32')
+        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
+        assert rets[0] is not None
+
+    def test_adam_op_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
+
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=linear.parameters())
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adam_op_with_state_dict(self):
+
+        paddle.disable_static()
+        emb = paddle.nn.Embedding(10, 10)
+
+        adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        #learning_rate is LRScheduler
+        learning_rate = paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=0.1, T_max=10)
+        adam = paddle.optimizer.Adam(
+            learning_rate=learning_rate,
+            weight_decay=fluid.regularizer.L2Decay(0.001),
+            parameters=emb.parameters())
+        lr = adam.get_lr()
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        #leanrning_rate is Tensor
+        with self.assertRaises(TypeError):
+            learning_rate = np.array([0.01]).astype("float32")
+            learning_rate = paddle.to_tensor(learning_rate)
+            adam = paddle.optimizer.Adam(
+                learning_rate=learning_rate, parameters=emb.parameters())
+
+        params = adam.get_opti_var_name_list()
+        assert (params is not None)
+
+    def test_adam_with_grad_clip(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
+        clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        adam = paddle.optimizer.Adam(
+            0.1, parameters=linear.parameters(), grad_clip=clip)
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adam_op_with_set_lr(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+        lr = 0.01
+        adam.set_lr(lr)
+        cur_lr = adam.get_lr()
+        assert (lr == cur_lr)
+        with self.assertRaises(TypeError):
+            lr_var = paddle.fluid.layers.create_global_var(
+                shape=[1], value=lr, dtype='float32')
+            adam.set_lr(lr_var)
+
+    def test_adam_op_invalid_input(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, beta1=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, beta2=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adam(
+                0.1, epsilon=-1, parameters=linear.parameters())
+
+    def test_adam_op_with_sparse_input_and_weight_decay(self):
+
+        paddle.disable_static()
+        x_data = np.arange(0, 10).reshape((10, 1)).astype(np.int64)
+        x = paddle.to_tensor(x_data, stop_gradient=False)
+        emb = paddle.nn.Embedding(10, 10, sparse=True)
+        adam = paddle.optimizer.Adam(
+            0.001, parameters=emb.parameters(), weight_decay=0.01)
+
+        with self.assertRaises(RuntimeError):
+            out = emb(x)
+            out.backward()
+            adam.step()
 
 
 if __name__ == "__main__":

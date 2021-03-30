@@ -11,18 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include <nccl.h>
-#endif
-
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {
@@ -39,18 +37,21 @@ class CSyncCommStreamOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      "Sync stream op can run on gpu place only for now.");
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on gpu place only for now."));
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-    cudaError_t e_sync = cudaStreamSynchronize(stream);
-    if (e_sync != 0) {
-      LOG(FATAL) << "Fail to sync nccl stream: " << cudaGetErrorString(e_sync);
-    }
+#ifdef PADDLE_WITH_RCCL
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -58,8 +59,10 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of the variable need to sync");
-    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator

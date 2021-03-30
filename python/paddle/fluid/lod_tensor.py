@@ -114,6 +114,8 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
                                 high):
     """
+	:api_attr: Static Graph
+
     Create a LoDTensor containing random integers.
 
     The implementation is as follows:

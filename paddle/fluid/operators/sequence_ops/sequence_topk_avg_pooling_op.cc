@@ -24,24 +24,30 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ROW"), true,
-                      "Input(ROW) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("COLUMN"), true,
-                      "Input(COLUMN) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("pos"), true,
-                      "pos(out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("ROW"), "Input", "ROW",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasInput("COLUMN"), "Input", "COLUMN",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(ctx->HasOutput("pos"), "Output", "pos",
+                   "SequenceTopkAvgPooling");
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
+    PADDLE_ENFORCE_GT(
+        channel_num, 0,
+        platform::errors::InvalidArgument(
+            "Expected channel_num > 0, but received %d.", channel_num));
+
     auto topks = attr.Get<std::vector<int>>("topks");
+    auto num_k = topks.size();
+    PADDLE_ENFORCE_GT(
+        num_k, 0, platform::errors::InvalidArgument(
+                      "Expected topks.size() > 0, but received %zu.", num_k));
 
     auto row_dim = ctx->GetInputDim("ROW");
-
-    auto num_k = topks.size();
     auto row_shape_0 = row_dim[0];
 
     std::vector<int> vec_out_shape;
@@ -49,7 +55,7 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
     vec_out_shape.push_back(channel_num * num_k);
 
     ctx->SetOutputDim("Out", framework::make_ddim(vec_out_shape));
-    ctx->ShareLoD("X", "Out");
+    ctx->ShareLoD("ROW", "Out");
   }
 };
 
@@ -63,7 +69,7 @@ class SequenceTopkAvgPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Out",
         "(Tensor) The output of SequenceTopkPoolingOp does not contain LoD "
-        "infomation.");
+        "information.");
     AddOutput("pos", "(Tensor<int>) store the topk index ").AsIntermediate();
     AddAttr<std::vector<int>>("topks", "topks");
     AddAttr<int>("channel_num", "channel number");
@@ -78,10 +84,10 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Gradient of Out should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "The input X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SequenceTopkAvgPoolingGrad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "SequenceTopkAvgPoolingGrad");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
@@ -90,36 +96,38 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-class SequenceTopkAvgPoolGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceTopkAvgPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_topk_avg_pooling_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput("ROW", Input("ROW"));
-    op_desc_ptr->SetInput("COLUMN", Input("COLUMN"));
-    op_desc_ptr->SetInput("pos", Output("pos"));
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    op_desc_ptr->SetInput("ROW", this->Input("ROW"));
+    op_desc_ptr->SetInput("COLUMN", this->Input("COLUMN"));
+    op_desc_ptr->SetInput("pos", this->Output("pos"));
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_topk_avg_pooling, ops::SequenceTopkAvgPoolingOp,
-                  ops::SequenceTopkAvgPoolingOpMaker,
-                  ops::SequenceTopkAvgPoolGradOpMaker);
+REGISTER_OPERATOR(
+    sequence_topk_avg_pooling, ops::SequenceTopkAvgPoolingOp,
+    ops::SequenceTopkAvgPoolingOpMaker,
+    ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
 REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling,

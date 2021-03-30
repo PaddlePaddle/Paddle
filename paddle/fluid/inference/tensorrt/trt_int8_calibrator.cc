@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+
 #include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -37,7 +39,8 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     temp_tensor.Resize(data_shape);
     data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
-        static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)), num_ele);
+        static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
+        data_size);
     i += 1;
   }
 }
@@ -77,13 +80,13 @@ bool TRTInt8Calibrator::setBatch(
   for (const auto& it : data) {
     auto dataptr = data_buffers_.find(it.first);
     if (dataptr == data_buffers_.end()) {
-      LOG(FATAL) << "FATAL " << engine_name_ << " input name '" << it.first
-                 << "' does not match with the buffer names";
+      PADDLE_THROW(platform::errors::Fatal(
+          "%s input name '%s' does not match with the buffer names.",
+          engine_name_, it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE(
-        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice),
-        "Fail to cudaMemcpy %s for %s", engine_name_, it.first);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 
   data_is_set_ = true;
@@ -108,8 +111,10 @@ bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
   for (int i = 0; i < num_bindings; i++) {
     auto it = data_buffers_.find(names[i]);
     if (it == data_buffers_.end()) {
-      LOG(FATAL) << "Calibration engine asked for unknown tensor name '"
-                 << names[i] << "' at position " << i;
+      PADDLE_THROW(
+          platform::errors::Fatal("Calibration engine asked for unknown tensor "
+                                  "name '%s' at position %d.",
+                                  names[i], i));
     }
     bindings[i] = it->second.first;
   }

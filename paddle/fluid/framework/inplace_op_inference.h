@@ -32,34 +32,28 @@ class InplaceOpInference {
  public:
   virtual ~InplaceOpInference() {}
   virtual std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, bool use_cuda) const = 0;
-};
-
-/*
-  Inplace In and Out for operator only have an Input and an Output.
-  For example, activation op.
- */
-class SingleOpInplaceInToOut : public InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, bool use_cuda) const override {
-    PADDLE_ENFORCE_EQ(op_desc.InputNames().size(), 1,
-                      "Op inputs must be unique");
-    PADDLE_ENFORCE_EQ(op_desc.OutputNames().size(), 1,
-                      "Op outputs must be unique");
-    auto x_name = op_desc.InputNames().at(0);
-    auto out_name = op_desc.OutputNames().at(0);
-    return std::unordered_map<std::string, std::string>{{x_name, out_name}};
-  }
+      bool use_cuda) const = 0;
 };
 
 #define DECLARE_INPLACE_OP_INFERER(class_name, ...)                         \
   class class_name final : public ::paddle::framework::InplaceOpInference { \
    public:                                                                  \
     std::unordered_map<std::string, std::string> operator()(                \
-        const ::paddle::framework::OpDesc& op_desc,                         \
         bool use_cuda) const final {                                        \
       return {__VA_ARGS__};                                                 \
+    }                                                                       \
+  }
+
+#define DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(class_name, ...)               \
+  class class_name final : public ::paddle::framework::InplaceOpInference { \
+   public:                                                                  \
+    std::unordered_map<std::string, std::string> operator()(                \
+        bool use_cuda) const final {                                        \
+      if (use_cuda) {                                                       \
+        return {__VA_ARGS__};                                               \
+      } else {                                                              \
+        return {};                                                          \
+      }                                                                     \
     }                                                                       \
   }
 

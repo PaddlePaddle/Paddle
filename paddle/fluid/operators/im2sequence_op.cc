@@ -26,19 +26,31 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Im2SequenceOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Im2SequenceOp op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of Im2SequenceOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "The output 'Out' of Im2SequenceOp is not found."));
     auto in_dim = ctx->GetInputDim("X");
 
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4,
-                      "Input(X) format must be 4D tensor, eg., NCHW.");
+    PADDLE_ENFORCE_EQ(
+        in_dim.size(), 4,
+        platform::errors::InvalidArgument(
+            "The dimesions size of input 'X' in Im2SequenceOp should be 4. But "
+            "received dimesions size=[%d], dimesions=[%s].",
+            in_dim.size(), in_dim));
     auto img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    if (!ctx->IsRuntime()) {
+      // set lod level for compile-time
+      framework::VarDesc* out_desc =
+          BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
 
     ctx->SetOutputDim("Out",
                       {in_dim[0], img_channels * kernels[0] * kernels[1]});
@@ -140,26 +152,29 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of Im2SequenceGradOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::NotFound(
+                          "The input %s of Im2SequenceGradOp is not found.",
+                          framework::GradVarName("Out")));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 
-class Im2SequenceGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Im2SequenceGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("im2sequence_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -168,7 +183,8 @@ class Im2SequenceGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
-                  ops::Im2SequenceGradDescMaker);
+                  ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
+                  ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,

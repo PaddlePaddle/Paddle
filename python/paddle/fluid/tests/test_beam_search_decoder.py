@@ -29,6 +29,8 @@ from paddle.fluid.contrib.decoder.beam_search_decoder import *
 import unittest
 import os
 
+paddle.enable_static()
+
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
 src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)

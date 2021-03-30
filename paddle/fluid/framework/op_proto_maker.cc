@@ -12,9 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+
 #include <string>
-#include <unordered_set>
-#include <vector>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -43,7 +44,9 @@ OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
 void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
-    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+    PADDLE_ENFORCE_EQ(
+        names.count(name), 0,
+        platform::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
     names.insert(name);
   };
   for (auto& attr : proto_->attrs()) {
@@ -62,6 +65,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();
+  op_checker_->RecordExplicitCheckerNum();
 
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
@@ -86,7 +90,8 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
                                     "Callstack for Op Creatation.")
       .SetDefault({});
-
+  AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
+      .SetDefault("");
   Validate();
 }
 

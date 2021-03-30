@@ -24,17 +24,19 @@ class AdamaxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
     const auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Grad").front(),
-                   framework::ToTypeName(grad_var->Type()));
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Grad").front(),
+                          framework::ToTypeName(grad_var->Type())));
 
     auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
     auto moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");

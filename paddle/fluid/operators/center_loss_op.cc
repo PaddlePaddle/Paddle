@@ -27,29 +27,18 @@ class CenterLossOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CenterLoss");
     auto x_dims = ctx->GetInputDim("X");
 
-    PADDLE_ENFORCE(ctx->HasInput("CenterUpdateRate"),
-                   "Input(CenterUpdateRate) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasInput("Centers"),
-                   "Input(Centers) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(
-        ctx->HasOutput("SampleCenterDiff"),
-        "Output(SampleCenterDiff) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(
-        ctx->HasOutput("CentersOut"),
-        "Output(CentersOut) of CenterLoss shared data with Centers.");
+    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"), "Input",
+                   "CenterUpdateRate", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Centers"), "Input", "Centers", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"), "Output",
+                   "SampleCenterDiff", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("CentersOut"), "Output", "CentersOut",
+                   "CenterLoss");
 
     ctx->SetOutputDim("SampleCenterDiff",
                       {x_dims[0], product(x_dims) / x_dims[0]});
@@ -61,8 +50,9 @@ class CenterLossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -98,12 +88,12 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("SampleCenterDiff"),
-                   "Input(SampleCenterDiff) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"), "Input",
+                   "SampleCenterDiff", "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   framework::GradVarName("Loss"), "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "CenterLossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -117,27 +107,30 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<Tensor>("SampleCenterDiff")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
+        ctx.device_context());
   }
 };
 
-class CenterLossOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("center_loss_grad");
-    retv->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    retv->SetInput("SampleCenterDiff", Output("SampleCenterDiff"));
-    retv->SetInput("X", Input("X"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    retv->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    retv->SetInput("SampleCenterDiff", this->Output("SampleCenterDiff"));
+    retv->SetInput("X", this->Input("X"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -145,9 +138,11 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(center_loss, ops::CenterLossOp, ops::CenterLossOpMaker,
-                  ops::CenterLossOpGradMaker);
+                  ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp);
+REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
+                  ops::CenterLossGradNoNeedBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);

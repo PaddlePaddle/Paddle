@@ -38,30 +38,18 @@ the input dtype, but it's fine if you do so.
   }
 };
 
-class CastOpInferShape : public framework::InferShapeBase {
+template <typename T>
+class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "The input of cast op must be set");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "The output of cast op must be set");
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-};
-
-class CastOpGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad) const override {
     grad->SetType("cast");
-    grad->SetInput("X", OutputGrad("Out"));
-    grad->SetOutput("Out", InputGrad("X"));
-    grad->SetAttr("out_dtype", GetAttr("in_dtype"));
-    grad->SetAttr("in_dtype", GetAttr("out_dtype"));
-    return std::unique_ptr<framework::OpDesc>(grad);
+    grad->SetInput("X", this->OutputGrad("Out"));
+    grad->SetOutput("Out", this->InputGrad("X"));
+    grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
+    grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
   }
 };
 
@@ -70,12 +58,26 @@ class CastOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "cast");
+    context->SetOutputDim("Out", context->GetInputDim("X"));
+    context->ShareLoD("X", "Out");
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CastOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
-    return kt;
+    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The tensor of Input(X) is not initialized."));
+    auto &tensor_place = tensor->place();
+    // NOTE: cuda pinned tensor need to copy its data to target place
+    if (platform::is_cuda_pinned_place(tensor_place)) {
+      return framework::OpKernelType(tensor->type(), ctx.device_context());
+    }
+    return framework::OpKernelType(tensor->type(), tensor_place);
   }
 };
 
@@ -84,12 +86,16 @@ class CastOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(cast, ops::CastOp, ops::CastOpGradMaker,
-                  ops::CastOpInferShape, ops::CastOpProtoMaker);
+REGISTER_OPERATOR(cast, ops::CastOp,
+                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,
                        ops::CastOpKernel<CPU, int>,
                        ops::CastOpKernel<CPU, int64_t>,
                        ops::CastOpKernel<CPU, bool>,
                        ops::CastOpKernel<CPU, uint8_t>,
-                       ops::CastOpKernel<CPU, paddle::platform::float16>);
+                       ops::CastOpKernel<CPU, paddle::platform::float16>,
+                       ops::CastOpKernel<CPU, paddle::platform::complex64>,
+                       ops::CastOpKernel<CPU, paddle::platform::complex128>);

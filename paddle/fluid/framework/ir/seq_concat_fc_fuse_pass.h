@@ -22,6 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 class SeqConcatFcFusePass : public FusePassBase {
  public:
   virtual ~SeqConcatFcFusePass() {}

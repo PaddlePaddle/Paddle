@@ -25,23 +25,27 @@ class HuberLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) must be initialized.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      "Input(Y) must be initialized.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "HuberLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "HuberLoss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
-                      "The rank of Input(X) should be equal to "
-                      "the rank of Input(Y).");
+                      platform::errors::InvalidArgument(
+                          "Input(input) rank and Input(label) rank should be "
+                          "same, but received input rank(%d) != label rank(%d)",
+                          x_dims.size(), y_dims.size()));
+
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,
-          "The Input(X) and Input(Label) should have the same shape.");
+          platform::errors::InvalidArgument(
+              "The Input(input) and Input(label) should have the same "
+              "shape, but received input shape [%s] != label shape [%s]",
+              x_dims, y_dims));
     }
 
     auto out_dims = y_dims;
@@ -99,8 +103,8 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "HuberLossGrad");
 
     auto residual_dims = ctx->GetInputDim("Residual");
 
@@ -115,20 +119,19 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("huber_loss_grad");
-    op->SetInput("Residual", Output("Residual"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Residual", this->Output("Residual"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -137,7 +140,8 @@ class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
-                  ops::HuberLossGradOpDescMaker);
+                  ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,

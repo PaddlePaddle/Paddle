@@ -16,6 +16,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 
 namespace paddle {
 namespace operators {
@@ -70,45 +72,42 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_mul_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 
-class ElementwiseMulDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_mul_grad_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 
@@ -116,26 +115,38 @@ class ElementwiseMulDoubleGradDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
+REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseMulOpGradDescMaker);
-REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseMulDoubleGradDescMaker);
+                  ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
-                  ops::ElementwiseMulDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex64>,
+    ops::ElementwiseMulGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex128>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul_grad_grad,
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
@@ -145,4 +156,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int>,
     ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseMulDoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                        paddle::platform::complex128>);
+
+REGISTER_OP_VERSION(elementwise_mul)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_mul for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_mul.",
+            1.0f));

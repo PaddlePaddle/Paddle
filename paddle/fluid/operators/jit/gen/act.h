@@ -15,8 +15,10 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -249,7 +251,8 @@ class VActFunc : public JitCode {
         identity_jmm<JMM>(dst, src, 15);
         break;
       default:
-        LOG(FATAL) << "Do not support this operand type: " << type;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Do not support operand type code: %d.", type));
         break;
     }
   }
@@ -263,7 +266,8 @@ class VActJitCode : public VActFunc {
     if (!(type_ == operand_type::RELU || type_ == operand_type::EXP ||
           type_ == operand_type::SIGMOID || type_ == operand_type::TANH ||
           type_ == operand_type::IDENTITY || type_ == operand_type::SQUARE)) {
-      LOG(FATAL) << "Do not support this operand type: " << type_;
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Do not support operand type code: %d.", type));
     }
     this->genCode();
   }

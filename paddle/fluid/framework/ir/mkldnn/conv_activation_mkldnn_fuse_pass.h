@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -26,6 +27,8 @@ namespace ir {
 /*
  * Fuse Conv and Activation base class.
  */
+class Graph;
+
 class ConvActivationFusePass : public FusePassBase {
  public:
   virtual ~ConvActivationFusePass() {}
@@ -49,6 +52,20 @@ class Conv2DLeakyReLUFusePass : public ConvActivationFusePass {
 class Conv2DReLU6FusePass : public ConvActivationFusePass {
  public:
   std::string activation_type() const { return "relu6"; }
+};
+/*
+ * Fuse Conv and Swish class
+ */
+class Conv2DSwishFusePass : public ConvActivationFusePass {
+ public:
+  std::string activation_type() const { return "swish"; }
+};
+/*
+ * Fuse Conv and HardSwish class
+ */
+class Conv2DHardSwishFusePass : public ConvActivationFusePass {
+ public:
+  std::string activation_type() const { return "hard_swish"; }
 };
 }  // namespace ir
 }  // namespace framework

@@ -21,7 +21,7 @@ import numpy
 import unittest
 
 
-class TestFetchVar(op_test.OpTest):
+class TestFetchVar(unittest.TestCase):
     def set_input(self):
         self.val = numpy.array([1, 3, 5]).astype(numpy.int32)
 

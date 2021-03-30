@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -24,15 +25,27 @@ namespace platform {
 
 void CudaProfilerInit(std::string output_file, std::string output_mode,
                       std::string config_file) {
-  PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
+  PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
+                 platform::errors::InvalidArgument(
+                     "Unsupported cuda profiler output mode, expect `kvp` or "
+                     "`csv`, but received `%s`.",
+                     output_mode));
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
 }
 
-void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
+void CudaProfilerStart() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStart()); }
 
-void CudaProfilerStop() { PADDLE_ENFORCE(cudaProfilerStop()); }
+void CudaProfilerStop() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStop()); }
+
+#ifndef _WIN32
+void CudaNvtxRangePush(std::string name) {
+  dynload::nvtxRangePushA(name.c_str());
+}
+
+void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
+#endif
 
 }  // namespace platform
 }  // namespace paddle

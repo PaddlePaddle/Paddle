@@ -24,30 +24,41 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input W of FusedEmbeddingSeqPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input Ids of FusedEmbeddingSeqPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output of FusedEmbeddingSeqPoolOp should not be null.");
-
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FusedEmbeddingSeqPool");
+    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids",
+                   "FusedEmbeddingSeqPool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FusedEmbeddingSeqPool");
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     const std::string& combiner = ctx->Attrs().Get<std::string>("combiner");
 
-    PADDLE_ENFORCE_EQ(table_dims.size(), 2);
-    PADDLE_ENFORCE_GE(ids_dims.size(), 1,
-                      "The dim size of the 'Ids' tensor must greater than 1.");
-    PADDLE_ENFORCE_EQ(ids_dims[ids_dims.size() - 1], 1,
-                      "The last dimension of the 'Ids' tensor must be 1.");
+    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The dim size of the input tensor 'W' should be 2. "
+                          "But received W's size = %d.",
+                          table_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        ids_dims[ids_dims.size() - 1], 1,
+        platform::errors::InvalidArgument(
+            "The last dimension of the input tensor 'Ids' should be 1. "
+            "But received Ids's size in the last dimension = %d.",
+            ids_dims[ids_dims.size() - 1]));
     // we only support sum now
-    PADDLE_ENFORCE_EQ(combiner, "sum");
+    PADDLE_ENFORCE_EQ(combiner, "sum",
+                      platform::errors::Unimplemented(
+                          "The pooling type of sequence_pool only support sum "
+                          "now. So the 'combiner' must be 'sum'."));
 
     int64_t last_dim = FusedEmbeddingSeqPoolLastDim(table_dims, ids_dims);
     // in compile time, the lod level of ids must be 1
     framework::VarDesc* ids_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Ids")[0]);
-    PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(), 1);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
+    PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(), 1,
+                      platform::errors::InvalidArgument(
+                          "In compile time, the LoD Level of Ids should be 1. "
+                          "But received the LoD Level of Ids = %d.",
+                          ids_desc->GetLoDLevel()));
 
     // in compile time, the shape from Ids -> output
     // should be [-1, 1] -> [-1, embedding_size]
@@ -57,7 +68,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -126,7 +137,7 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -135,37 +146,37 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to SelectedRows";
-      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(out_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "fused_embedding_seq_pool_grad op "
               << framework::GradVarName("W") << " is set to LoDTensor";
-      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
+    ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }
 };
 
-class FusedEmbeddingSeqPoolGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class FusedEmbeddingSeqPoolGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("fused_embedding_seq_pool_grad");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput("W", Input("W"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -173,9 +184,12 @@ class FusedEmbeddingSeqPoolGradOpDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  ops::FusedEmbeddingSeqPoolGradOpDescMaker,
-                  ops::FusedEmbeddingSeqPoolOpMaker);
+
+REGISTER_OPERATOR(
+    fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::imperative::OpBase>,
+    ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);

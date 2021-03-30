@@ -47,7 +47,7 @@ class TestPSROIPoolOp(OpTest):
         self.pooled_height = 2
         self.pooled_width = 2
 
-        self.x = np.random.random(self.x_dim).astype('float32')
+        self.x = np.random.random(self.x_dim).astype('float64')
 
     def make_rois(self):
         rois = []
@@ -67,7 +67,7 @@ class TestPSROIPoolOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype('float32')
+        self.rois = np.array(rois).astype('float64')
 
     def calc_psroi_pool(self):
         output_shape = (self.rois_num, self.output_channels, self.pooled_height,
@@ -117,7 +117,7 @@ class TestPSROIPoolOp(OpTest):
                         bin_area = (hend - hstart) * (wend - wstart)
                         out_data[i, c, ph, pw] = 0. if is_empty else (
                             out_sum / float(bin_area))
-        self.outs = out_data.astype('float32')
+        self.outs = out_data.astype('float64')
 
     def setUp(self):
         self.op_type = 'psroi_pool'

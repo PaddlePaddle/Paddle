@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <functional>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,36 +38,43 @@ class NCCLTypeWrapper<double> {
   static const ncclDataType_t type = ncclDouble;
 };
 
+static ncclRedOp_t str_to_nccl_red_type(std::string reduction) {
+  static const std::unordered_map<std::string, ncclRedOp_t> str_to_type = {
+      {"ncclSum", ncclSum},
+      {"ncclMin", ncclMin},
+      {"ncclMax", ncclMax},
+      {"ncclProd", ncclProd},
+  };
+  auto it = str_to_type.find(reduction);
+  PADDLE_ENFORCE_EQ(it != str_to_type.end(), true,
+                    platform::errors::InvalidArgument(
+                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
+                        "ncclProd | ncclSum"));
+  return it->second;
+}
+
 template <typename T>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
-    if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
-    } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
-    } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
-    } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
-    } else {
-      PADDLE_THROW("Invalid reduction. default ncclSum.");
-    }
+    auto reduction_op_ = str_to_nccl_red_type(reduction);
+
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id =
+        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     VLOG(3) << "gpu : "
             << " invoke allreduce. send " << x->numel() << " recv "
             << out->numel();
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         x->data<T>(), out->mutable_data<T>(ctx.GetPlace()), out->numel(),
         NCCLTypeWrapper<T>::type, reduction_op_, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
@@ -80,28 +88,20 @@ template <typename T>
 class NCCLReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "This kernel only runs on GPU device."));
     auto x = ctx.Input<LoDTensor>("X");  // x0, x1, x2
     auto out = ctx.Output<LoDTensor>("Out");
     auto* comm = ctx.Input<Communicator>("Communicator");
     int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
-    if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
-    } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
-    } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
-    } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
-    } else {
-      PADDLE_THROW("Invalid reduction. default ncclSum.");
-    }
+    auto reduction_op_ = str_to_nccl_red_type(reduction);
+
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id =
+        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
@@ -111,7 +111,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
-    PADDLE_ENFORCE(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduce(
         x->data<T>(), recvbuffer, x->numel(), NCCLTypeWrapper<T>::type,
         reduction_op_, root, comm->comms().at(idx),
         ctx.cuda_device_context().stream()));
@@ -124,17 +124,19 @@ template <typename T>
 class NCCLBcastKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "This kernel only runs on GPU device."));
     int root = ctx.Attr<int>("root");
     auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id =
+        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
       auto* x = ctx.Input<LoDTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), x->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));
@@ -143,7 +145,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
       auto* out = ctx.Output<LoDTensor>("Out");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
               << framework::product(out->dims());
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           out->mutable_data<T>(ctx.GetPlace()), out->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));

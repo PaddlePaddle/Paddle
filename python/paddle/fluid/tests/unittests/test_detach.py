@@ -15,10 +15,10 @@
 from __future__ import print_function
 
 import numpy as np
-import paddle.fluid as fluid
 
-from paddle.fluid import FC
-from paddle.fluid.dygraph import FC
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 import unittest
@@ -33,37 +33,37 @@ class Test_Detach(unittest.TestCase):
     def no_detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
-            fc2_w_param_attrs = fluid.ParamAttr(
+            linear1 = Linear(
+                10,
+                1,
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
-            fc2_b_param_attrs = fluid.ParamAttr(
+            linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc2_w_param_attrs,
-                     bias_attr=fc2_b_param_attrs)
+            linear2 = Linear(
+                10,
+                1,
+                param_attr=linear2_w_param_attrs,
+                bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
-            x1 = fc1(x)
-            x2 = fc2(x)
+            x = linear(data)
+            x1 = linear1(x)
+            x2 = linear2(x)
             loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
@@ -72,27 +72,27 @@ class Test_Detach(unittest.TestCase):
     def no_detach_single(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
+            linear1 = Linear(
+                10,
+                1,
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
-            x1 = fc1(x)
+            x = linear(data)
+            x1 = linear1(x)
             loss = x1
             # print(loss, loss.shape)
             loss.backward()
@@ -101,38 +101,38 @@ class Test_Detach(unittest.TestCase):
     def detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
-            fc2_w_param_attrs = fluid.ParamAttr(
+            linear1 = Linear(
+                10,
+                1,
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
-            fc2_b_param_attrs = fluid.ParamAttr(
+            linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc2_w_param_attrs,
-                     bias_attr=fc2_b_param_attrs)
+            linear2 = Linear(
+                10,
+                1,
+                param_attr=linear2_w_param_attrs,
+                bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
+            x = linear(data)
             x_detach = x.detach()
-            x1 = fc1(x)
-            x2 = fc2(x_detach)
+            x1 = linear1(x)
+            x2 = linear2(x_detach)
             loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
@@ -157,9 +157,55 @@ class Test_Detach(unittest.TestCase):
         except Exception as e:
             # Here is to check
             assert type(e) == AssertionError
-            assert str(
-                e
-            ) == 'We Only support detach in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode'
+            assert str(e) == (
+                "'detach' should be called by imperative Varible "
+                "in imperative mode, please run it in dygraph mode. You can "
+                "turn off paddle.enable_static() if you are in static mode, "
+                "or turn off ProgramTranslator if you are using "
+                "@paddle.jit.to_static. If you have to run ProgramTranslator, "
+                "please use other API to replace 'detach'")
+
+
+class TestInplace(unittest.TestCase):
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+            self.assertEqual(var.inplace_version, 0)
+            detach_var_1 = var.detach()
+            self.assertEqual(detach_var_1.inplace_version, 0)
+
+            var[0] = 1.1
+            self.assertEqual(var.inplace_version, 1)
+
+            detach_var_2 = var.detach()
+            self.assertEqual(detach_var_2.inplace_version, 1)
+
+            var[0] = 3
+            self.assertEqual(detach_var_1.inplace_version, 2)
+            self.assertEqual(detach_var_2.inplace_version, 2)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            detach_var_b = var_b.detach()
+            detach_var_b[1:2] = 3.3  # var_b is modified inplace
+
+            var_d = var_b**2
+
+            loss = paddle.nn.functional.relu(var_c + var_d)
+            with self.assertRaisesRegexp(
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
+                loss.backward()
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdio.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -29,18 +30,22 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
     int64_t trainer_id = 0;
     auto* trainer_id_data = trainer_id_t->data<int64_t>();
     if (platform::is_gpu_place(context.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto stream = context.cuda_device_context().stream();
       memory::Copy<>(platform::CPUPlace(), &trainer_id,
-                     boost::get<platform::CUDAPlace>(context.GetPlace()),
+                     BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                      trainer_id_data, sizeof(int64_t), stream);
 #endif
     } else {
       trainer_id = *trainer_id_data;
     }
-    PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size());
+    PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size(),
+                      platform::errors::InvalidArgument(
+                          "X' size must >= TrainerId: [%s], but received [%s]",
+                          trainer_id, in_list.size()));
     out->mutable_data<T>(context.GetPlace());
-    out->ShareDataWith(*(in_list[trainer_id]));
+    framework::TensorCopy(*(in_list[trainer_id]), in_list[trainer_id]->place(),
+                          out);
   }
 };
 

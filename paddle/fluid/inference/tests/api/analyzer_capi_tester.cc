@@ -15,73 +15,68 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <fstream>
-#include <iostream>
 #include <string>
-#include <typeinfo>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-template <typename T>
 void zero_copy_run() {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  std::string model_dir = FLAGS_infer_model;
+  std::string prog_file = model_dir + "/model";
+  std::string params_file = model_dir + "/params";
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_SetModel(config, model_dir.c_str());  //, params_file1.c_str());
+  PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
-  CHECK(!use_feed_fetch) << "NO";
+  EXPECT_FALSE(use_feed_fetch);
   bool specify_input_names = PD_SpecifyInputName(config);
-  CHECK(specify_input_names) << "NO";
+  EXPECT_TRUE(specify_input_names);
 
   const int batch_size = 1;
   const int channels = 3;
-  const int height = 224;
-  const int width = 224;
-  T input[batch_size * channels * height * width] = {0};
+  const int height = 318;
+  const int width = 318;
+  float *input = new float[batch_size * channels * height * width]();
 
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
   int in_size = 1;
-  int *out_size;
+  int out_size;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
-  std::string nm = typeid(T).name();
-  if ("f" == nm) {
-    inputs->dtype = PD_FLOAT32;
-  } else if ("i" == nm) {
-    inputs->dtype = PD_INT32;
-  } else if ("x" == nm) {
-    inputs->dtype = PD_INT64;
-  } else if ("h" == nm) {
-    inputs->dtype = PD_UINT8;
-  } else {
-    CHECK(false) << "Unsupport dtype. ";
-  }
-  inputs->name = new char[2];
-  inputs->name[0] = 'x';
-  inputs->name[1] = '\0';
-  LOG(INFO) << inputs->name;
+  inputs->dtype = PD_FLOAT32;
+  inputs->name = new char[5];
+  inputs->name[0] = 'd';
+  inputs->name[1] = 'a';
+  inputs->name[2] = 't';
+  inputs->name[3] = 'a';
+  inputs->name[4] = '\0';
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 
-  PD_PredictorZeroCopyRun(config, inputs, in_size, outputs, &out_size);
+  PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
+
+  delete[] input;
+  delete[] inputs;
+  delete[] outputs;
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run<float>(); }
+TEST(PD_PredictorZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(PD_AnalysisConfig, profile_mkldnn) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  std::string model_dir = FLAGS_infer_model;
+  std::string prog_file = model_dir + "/model";
+  std::string params_file = model_dir + "/params";
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
@@ -90,15 +85,13 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SwitchIrDebug(config, true);
   PD_EnableMKLDNN(config);
   bool mkldnn_enable = PD_MkldnnEnabled(config);
-  CHECK(mkldnn_enable) << "NO";
+  EXPECT_TRUE(mkldnn_enable);
   PD_EnableMkldnnQuantizer(config);
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
-  CHECK(quantizer_enable) << "NO";
+  EXPECT_TRUE(quantizer_enable);
+  PD_EnableMkldnnBfloat16(config);
   PD_SetMkldnnCacheCapacity(config, 0);
-  PD_SetModel(config, model_dir.c_str());
-  PD_EnableAnakinEngine(config);
-  bool anakin_enable = PD_AnakinEngineEnabled(config);
-  LOG(INFO) << anakin_enable;
+  PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);
 }
 #endif

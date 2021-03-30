@@ -14,20 +14,27 @@
 
 INCLUDE(ExternalProject)
 
-SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc")
+SET(DGC_PREFIX_DIR  "${THIRD_PARTY_PATH}/dgc")
+SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc/src/extern_dgc")
 SET(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
 SET(DGC_INCLUDE_DIR "${DGC_INSTALL_DIR}/include" CACHE PATH "dgc include directory." FORCE)
-SET(DGC_LIBRARIES "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
+SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
+SET(DGC_URL         "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
+
+cache_third_party(extern_dgc
+        URL       ${DGC_URL}
+        DIR       DGC_SOURCES_DIR)
 
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL "http://fleet.bj.bcebos.com/collective.tgz"
-    URL_MD5  "015d565156c3de4e30fe25473f47e7a9"
-    SOURCE_DIR "${DGC_SOURCES_DIR}"
+    "${DGC_DOWNLOAD_CMD}"
+    URL_MD5         "94e6fa1bc97169d0e1aad44570fe3251"
+    PREFIX          "${DGC_PREFIX_DIR}"
+    SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND make -j
+    BUILD_COMMAND make -j $(nproc)
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
         && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
         && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/

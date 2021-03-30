@@ -25,7 +25,7 @@ from paddle.fluid import core
 
 from paddle.fluid.dygraph.base import to_variable
 
-from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
+from paddle.fluid.clip import GradientClipByValue, GradientClipByNorm, GradientClipByGlobalNorm
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
     def get_dygrap_global_norm_result(self):
         with fluid.dygraph.guard():
 
-            gloabl_norm_clip = GradClipByGlobalNorm(self.max_global_norm)
+            gloabl_norm_clip = GradientClipByGlobalNorm(self.max_global_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -135,7 +135,7 @@ class TestGradClipByNorm(unittest.TestCase):
     def get_dygrap_norm_result(self):
         with fluid.dygraph.guard():
 
-            norm_clip = GradClipByNorm(self.max_norm)
+            norm_clip = GradientClipByNorm(self.max_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -200,8 +200,8 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
-
-            value_clip = GradClipByValue(self.min_value, self.max_value)
+            value_clip = GradientClipByValue(
+                max=self.max_value, min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = to_variable(p)
@@ -225,7 +225,7 @@ class TestGradClipByValue(unittest.TestCase):
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
             self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
 
-    def test_clip_by_norm_2(self):
+    def test_clip_by_value_2(self):
         self.init_value()
 
         self.init_scale = 0.2
@@ -236,7 +236,7 @@ class TestGradClipByValue(unittest.TestCase):
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
             self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
 
-    def test_clip_by_norm_3(self):
+    def test_clip_by_value_3(self):
         self.init_value()
 
         self.init_scale = 0.5

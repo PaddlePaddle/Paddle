@@ -12,22 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_send.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class SendOp : public framework::OperatorBase {
  public:
@@ -40,19 +46,15 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
 
-    auto epmap = Attr<std::vector<std::string>>("epmap");
+    auto epmap = Attr<std::vector<std::string>>("endpoints");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
     auto height_sections = Attr<std::vector<int64_t>>("sections");
+    auto use_send_handler = Attr<bool>("use_send_handler");
 
     if (send_varnames.size() > 0) {
-      if (ins.size() > 1) {
-        distributed::Communicator::GetInstance()->Send(ins, send_varnames,
-                                                       scope);
-      } else {
-        distributed::Communicator::GetInstance()->Send(ins[0], scope);
-      }
+      distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -62,18 +64,34 @@ class SendOp : public framework::OperatorBase {
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
       std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < ins.size(); i++) {
-        if (NeedSend(scope, ins[i])) {
-          VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-          rets.push_back(
-              rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
-        } else {
-          VLOG(3) << "don't send no-initialied variable: " << ins[i];
+      if (use_send_handler) {
+        for (size_t i = 0; i < ins.size(); i++) {
+          if (NeedSend(scope, ins[i])) {
+            VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+            rets.push_back(
+                rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+          } else {
+            VLOG(3) << "don't send no-initialied variable: " << ins[i];
+          }
+        }
+      } else {
+        for (size_t i = 0; i < ins.size(); i++) {
+          for (size_t j = 0; j < epmap.size(); j++) {
+            if (NeedSend(scope, ins[i])) {
+              VLOG(3) << "sending " << ins[i] << " to " << epmap[j];
+              rets.push_back(rpc_client->AsyncDistributeNotify(epmap[j], ctx,
+                                                               scope, ins[i]));
+            } else {
+              VLOG(3) << "don't send no-initialied variable: " << ins[i];
+            }
+          }
         }
       }
       for (size_t i = 0; i < rets.size(); i++) {
         VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        PADDLE_ENFORCE_NE(
+            rets[i]->Wait(), 0U,
+            platform::errors::ExecutionTimeout("internal error in RPCClient"));
         VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
@@ -93,7 +111,7 @@ Send operator
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<std::string>>("epmap",
+    AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
@@ -106,13 +124,22 @@ This operator will send variables to listen_and_serve op at the parameter server
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
-        "the splited output varnames to send to pserver")
+        "the split output varnames to send to pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("num",
                  "(int, default 0)"
                  "Number of sub-tensors. This must evenly divide "
                  "Input.dims()[axis]")
         .SetDefault(0);
+    AddAttr<bool>("merge_add",
+                  "(bool, default 0)"
+                  "merge method, true represent add, false represent average")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "use_send_handler",
+        "(bool, default 1)"
+        "if it's true, use send handler, other wise, use notify handler")
+        .SetDefault(true);
   }
 };
 
@@ -126,5 +153,8 @@ class SendOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SendOpMaker, ops::SendOpShapeInference);
+REGISTER_OPERATOR(
+    send, ops::SendOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SendOpMaker, ops::SendOpShapeInference);

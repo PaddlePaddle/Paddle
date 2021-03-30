@@ -48,18 +48,17 @@ class Relu2GradOp : public framework::OperatorWithKernel {
   }
 };
 
-class Relu2GradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Relu2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("relu2_grad");
-    op->SetInput("Y", Output("Y"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("Y", this->Output("Y"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -102,7 +101,11 @@ class Relu2GradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(relu2, ops::Relu2Op, ops::Relu2OpMaker, ops::Relu2GradMaker);
+REGISTER_OPERATOR(relu2,
+                  ops::Relu2Op,
+                  ops::Relu2OpMaker,
+                  ops::Relu2GradMaker<paddle::framework::OpDesc>,
+                  ops::Relu2GradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(relu2_grad, ops::Relu2GradOp);
 REGISTER_OP_CPU_KERNEL(relu2,
                        ops::Relu2Kernel<CPU, float>,

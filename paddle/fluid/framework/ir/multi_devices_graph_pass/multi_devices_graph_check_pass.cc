@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -24,7 +22,10 @@ namespace ir {
 class SSAGraghBuilderWithChecker : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph));
+    PADDLE_ENFORCE_EQ(
+        IsValidGraph(graph), true,
+        platform::errors::InvalidArgument(
+            "In SSAGraghBuilderWithChecker, invalid Graph input."));
   }
 
   bool IsValidGraph(const ir::Graph *graph) const {

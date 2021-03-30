@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+
 #include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/details/fetch_op_handle.h"
+
+#include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -47,12 +50,14 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-  PADDLE_ENFORCE_GT(op_deps_.size(), 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(op_deps_.size(), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The graph doesn't have operators."));
   PrepareAtomicOpDeps();
 }
 
-FeedFetchList FastThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType FastThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
@@ -61,15 +66,19 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   PrepareAtomicOpDeps();
   size_t num_ops = op_deps->size();
 
-  paddle::framework::FeedFetchList fetches;
-  fetches.resize(fetch_tensors.size());
+  FetchResultType fetches;
+  if (return_merged) {
+    fetches = FetchList(fetch_tensors.size());
+  } else {
+    fetches = FetchUnmergedList(fetch_tensors.size());
+  }
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
   exception_.Clear();
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
-                 &fetch_ops, &ready_fetch_ops);
+                 &fetch_ops, &ready_fetch_ops, return_merged);
   event.reset(nullptr);
   if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
@@ -77,9 +86,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
     // run the recorded operators directly. This strategy could make the
     // execution faster.
     VLOG(3) << "Run the traced ops.";
-    RunTracedOps(traced_ops_);
-    RunTracedOps(fetch_ops);
-    if (exception_.IsCaught()) {
+    bool is_exception_free =
+        RunTracedOps(traced_ops_) && RunTracedOps(fetch_ops);
+    if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
@@ -116,15 +125,20 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
+
+  for (auto &place : places_) {
+    fetch_ctxs_.Get(place)->Wait();
+  }
+
   return fetches;
 }
 
 void FastThreadedSSAGraphExecutor::InsertFetchOps(
-    const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+    const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
-    std::vector<OpHandleBase *> *ready_fetch_ops) {
+    std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged) {
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
                                                    fetch_tensors.end());
   for (auto &fetch_var_name : fetch_tensor_set) {
@@ -139,17 +153,27 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors.at(i);
     auto fetched_var_it = fetched_vars->find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars->end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars->end(),
+        platform::errors::PreconditionNotMet(
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.\n"
+            "  3. Confirm that you have used the fetch `Variable` format "
+            "instead of the string literal('%s') in `fetch_list` parameter "
+            "when using `executor.run` method. In other words, the format of "
+            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
+            "is recommended.",
+            var_name, var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_);
+    auto *op = new FetchAsyncOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                      &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -158,6 +182,14 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     for (auto *var : vars) {
       op->AddInput(var);
+    }
+
+    for (auto *var : vars) {
+      auto *op = var->GeneratedOp();
+      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
+      if (compute_op) {
+        compute_op->SetLockAndRecordEventFree(false);
+      }
     }
 
     int dep = static_cast<int>(op->NotReadyInputSize());
@@ -199,6 +231,23 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
       OpHandleBase *op_to_run = op_queue.back();
       op_queue.pop_back();
 
+      // The Op involves data transfer of multiple devices may block other
+      // computations emit. For example:
+      // 1 step, queue=[Share, Allreduce], which Share is high priority
+      // 2 step, Share exec, pending_op=Grad, queue=[Allreduce, Grad]
+      // 3 step, Allreduce run with sync. Although Allreduce and Grad do not
+      // have topo dependency, but Grad must wait for Allreduce to complete
+      // before scheduling.
+      // In this scenario, calculation and communication may not overlap.
+      // Therefore, emit the op in the queue before running multi device op.
+      if (op_to_run->IsMultiDeviceTransfer()) {
+        while (!op_queue.empty()) {
+          OpHandleBase *post_op = op_queue.back();
+          op_queue.pop_back();
+          RunOpAsync(op_deps, post_op, complete_q);
+        }
+      }
+
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
       }
@@ -214,6 +263,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
             op_queue.push_back(pending_op);
+          } else if (pending_op->IsMultiDeviceTransfer()) {
+            // multi device ops should be scheduled prior to computing ops
+            op_queue.push_front(pending_op);
           } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
@@ -247,7 +299,7 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
 const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 
 void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
-  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchAsyncOpHandle *>(op)) {
     traced_ops_.emplace_back(op);
   }
 }
@@ -255,31 +307,36 @@ void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
 void FastThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
   VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
-  ClearFetchOp(graph_, fetch_ops);
+  // NOTE: If a new exception occurs in this ClearFetchOp operation, it will
+  // cause the loss of exception triggered firstly not thrown.
+  // Instead, the cleanup operation should only be performed when an EOF
+  // exception is caught. If other exceptions are triggered, the ClearFetchOp
+  // should not be continued.
+  if (exception_.Type() == "EOF") {
+    ClearFetchOp(graph_, fetch_ops);
+  }
   exception_.ReThrow();
 }
 
-void FastThreadedSSAGraphExecutor::RunTracedOps(
+bool FastThreadedSSAGraphExecutor::RunTracedOps(
     const std::vector<OpHandleBase *> &traced_ops) {
   for (auto &op : traced_ops) {
-    if (exception_.IsCaught()) {
-      return;
-    }
-    RunOpSync(op);
+    if (!RunOpSync(op)) return false;
   }
+  return true;
 }
 
-void FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-    }
+    VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_device_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
+    return true;
   } catch (...) {
     exception_.Catch(std::current_exception());
+    return false;
   }
 }
 

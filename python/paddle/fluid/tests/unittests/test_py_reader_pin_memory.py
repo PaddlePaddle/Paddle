@@ -73,8 +73,7 @@ class TestPyReader(unittest.TestCase):
             for _ in range(10):
                 sample = np.random.uniform(
                     low=0, high=1, size=[3, 2, 1]).astype("float32")
-                label = np.random.uniform(
-                    low=0, high=10, size=[1]).astype("int64")
+                label = np.random.randint(low=0, high=10, dtype="int64")
                 self.inputs.append((sample, label))
 
             self.input_tensors = []

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
 from .param_attr import ParamAttr
 from .initializer import Constant
@@ -30,23 +31,39 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
-    def __init__(self, name_scope):
-        super(SimpleLayer, self).__init__(name_scope)
-        self._fc1 = nn.FC(self.full_name(),
-                          3,
-                          param_attr=ParamAttr(initializer=Constant(value=0.1)))
+    def __init__(self, input_size):
+        super(SimpleLayer, self).__init__()
+        self._linear1 = nn.Linear(
+            input_size,
+            3,
+            param_attr=ParamAttr(initializer=Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
+        x = self._linear1(inputs)
         x = layers.reduce_sum(x)
         return x
 
 
 def run_check():
-    ''' intall check to verify if install is success
-
+    """To check whether install is successful
     This func should not be called only if you need to verify installation
-    '''
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            fluid.install_check.run_check()
+
+            # If installed successfully, output may be
+            # Running Verify Fluid Program ... 
+            # W0805 04:24:59.496919 35357 device_context.cc:268] Please NOTE: device: 0, CUDA Capability: 70, Driver API Version: 10.2, Runtime API Version: 10.1
+            # W0805 04:24:59.505594 35357 device_context.cc:276] device: 0, cuDNN Version: 7.6.
+            # Your Paddle Fluid works well on SINGLE GPU or CPU.
+            # Your Paddle Fluid works well on MUTIPLE GPU or CPU.
+            # Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now
+    """
+    paddle.enable_static()
+
     print("Running Verify Fluid Program ... ")
 
     device_list = []
@@ -78,9 +95,8 @@ def run_check():
                 with unique_name.guard():
                     build_strategy = compiler.BuildStrategy()
                     build_strategy.enable_inplace = True
-                    build_strategy.memory_optimize = True
                     inp = layers.data(name="inp", shape=[2, 2])
-                    simple_layer = SimpleLayer("simple_layer")
+                    simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)
                     exe = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
@@ -109,10 +125,11 @@ def run_check():
                 with unique_name.guard():
                     inp0 = layers.data(
                         name="inp", shape=[2, 2], append_batch_size=False)
-                    simple_layer0 = SimpleLayer("simple_layer")
+                    simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(
-                        out0, parameter_list=[simple_layer0._fc1._w.name])[0]
+                        out0,
+                        parameter_list=[simple_layer0._linear1.weight.name])[0]
                     exe0 = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
                         (core.get_cuda_device_count() > 0) else core.CPUPlace())
@@ -142,3 +159,5 @@ def run_check():
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now")
+
+    paddle.disable_static()

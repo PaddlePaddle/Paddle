@@ -24,14 +24,15 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceScatter");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "ReduceScatter");
     int nranks = ctx->Attrs().Get<int>("nranks");
     framework::DDim dim = ctx->GetInputDim("X");
     if (dim[0] > 0 || dim[0] < -1) {
-      PADDLE_ENFORCE(dim[0] % nranks == 0,
-                     "dim[0] (%d) is not divisible by nranks(%d)", dim[0],
-                     nranks);
+      PADDLE_ENFORCE_EQ(
+          dim[0] % nranks, 0,
+          platform::errors::InvalidArgument(
+              "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
       dim[0] /= nranks;
     }
     ctx->SetOutputDim("Out", dim);
@@ -60,18 +61,17 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-class CReduceScatterOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CReduceScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_allgather");
-    retv->SetInput("X", OutputGrad("Out"));
-    retv->SetOutput("Out", InputGrad("X"));
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 

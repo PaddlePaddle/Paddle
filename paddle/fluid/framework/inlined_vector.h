@@ -15,6 +15,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

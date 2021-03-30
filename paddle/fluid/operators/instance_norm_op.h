@@ -74,28 +74,59 @@ class InstanceNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
-class InstanceNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class InstanceNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override;
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("instance_norm_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("SavedMean", this->Output("SavedMean"));
+    op->SetInput("SavedVariance", this->Output("SavedVariance"));
+
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+  }
 };
 
-class InstanceNormDoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class InstanceNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override;
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("instance_norm_grad_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("SavedMean", this->Input("SavedMean"));
+    op->SetInput("SavedVariance", this->Input("SavedVariance"));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDScale", this->OutputGrad(framework::GradVarName("Scale")));
+    op->SetInput("DDBias", this->OutputGrad(framework::GradVarName("Bias")));
+    op->SetInput("DY", this->Input(framework::GradVarName("Y")));
+
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DScale", this->InputGrad("Scale"));
+    op->SetOutput("DDY", this->InputGrad(framework::GradVarName("Y")));
+  }
 };
 
 class InstanceNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string> &GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", "Y"}};
+    static std::unordered_map<std::string, std::string> m{{"X", "Y"}};
+    return m;
   }
 };
 

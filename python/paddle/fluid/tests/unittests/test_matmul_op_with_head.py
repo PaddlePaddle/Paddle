@@ -130,7 +130,7 @@ class GeneratorMulHead(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 
 def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
@@ -260,7 +260,7 @@ class GeneratorMulHead2(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 
 def inject_test_multiple_head2(dim_x, dim_y, trans_x, trans_y, head_number):

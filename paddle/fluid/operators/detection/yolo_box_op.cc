@@ -21,14 +21,10 @@ class YoloBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImgSize"),
-                   "Input(ImgSize) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Boxes"),
-                   "Output(Boxes) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Scores"),
-                   "Output(Scores) of YoloBoxOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasInput("ImgSize"), "Input", "ImgSize", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Boxes"), "Output", "Boxes", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Scores"), "Output", "Scores", "YoloBoxOp");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_imgsize = ctx->GetInputDim("ImgSize");
@@ -36,23 +32,49 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
+    PADDLE_ENFORCE_EQ(dim_x.size(), 4, platform::errors::InvalidArgument(
+                                           "Input(X) should be a 4-D tensor."
+                                           "But received X dimension(%s)",
+                                           dim_x.size()));
     PADDLE_ENFORCE_EQ(
         dim_x[1], anchor_num * (5 + class_num),
-        "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
-        "+ class_num)).");
+        platform::errors::InvalidArgument(
+            "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+            "+ class_num))."
+            "But received dim[1](%s) != (anchor_mask_number * "
+            "(5+class_num)(%s).",
+            dim_x[1], anchor_num * (5 + class_num)));
     PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
-                      "Input(ImgSize) should be a 2-D tensor.");
+                      platform::errors::InvalidArgument(
+                          "Input(ImgSize) should be a 2-D tensor."
+                          "But received Imgsize size(%s)",
+                          dim_imgsize.size()));
+    if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          dim_imgsize[0], dim_x[0],
+          platform::errors::InvalidArgument(
+              "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
+    }
     PADDLE_ENFORCE_EQ(
-        dim_imgsize[0], dim_x[0],
-        "Input(ImgSize) dim[0] and Input(X) dim[0] should be same.");
-    PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
+        dim_imgsize[1], 2,
+        platform::errors::InvalidArgument("Input(ImgSize) dim[1] should be 2."
+                                          "But received imgsize dim[1](%s).",
+                                          dim_imgsize[1]));
     PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      "Attr(anchors) length should be greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "Attr(anchors) length should be greater than 0."
+                          "But received anchors length(%s).",
+                          anchors.size()));
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
-                      "Attr(anchors) length should be even integer.");
+                      platform::errors::InvalidArgument(
+                          "Attr(anchors) length should be even integer."
+                          "But received anchors length (%s)",
+                          anchors.size()));
     PADDLE_ENFORCE_GT(class_num, 0,
-                      "Attr(class_num) should be an integer greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "Attr(class_num) should be an integer greater than 0."
+                          "But received class_num (%s)",
+                          class_num));
 
     int box_num = dim_x[2] * dim_x[3] * anchor_num;
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
@@ -65,8 +87,8 @@ class YoloBoxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -110,6 +132,14 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Boxes with confidence scores under threshold should "
                    "be ignored.")
         .SetDefault(0.01);
+    AddAttr<bool>("clip_bbox",
+                  "Whether clip output bonding box in Input(ImgSize) "
+                  "boundary. Default true.")
+        .SetDefault(true);
+    AddAttr<float>("scale_x_y",
+                   "Scale the center point of decoded bounding "
+                   "box. Default 1.0")
+        .SetDefault(1.);
     AddComment(R"DOC(
          This operator generates YOLO detection boxes from output of YOLOv3 network.
          
@@ -161,7 +191,9 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(yolo_box, ops::YoloBoxKernel<float>,
                        ops::YoloBoxKernel<double>);

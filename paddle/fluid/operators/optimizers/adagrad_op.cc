@@ -29,43 +29,42 @@ class AdagradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Moment"),
-                   "Input(Moment) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of AdagradOp should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of AdagradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
-                   "Output(MomentOut) of AdagradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "Adagrad");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "Adagrad");
+    OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment", "Adagrad");
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+                   "Adagrad");
+    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "Adagrad");
+    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"), "Output", "MomentOut",
+                   "Adagrad");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
-                      "Maybe the Input variable LearningRate has not "
-                      "been initialized. You may need to confirm "
-                      "if you put exe.run(startup_program) "
-                      "after optimizer.minimize function.");
+                      platform::errors::InvalidArgument(
+                          "Maybe the Input variable LearningRate has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function."));
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "LearningRate should have one element");
+                      platform::errors::InvalidArgument(
+                          "LearningRate should have one element"));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),
-        "Param and Grad input of AdagradOp should have the same dimension.");
+        platform::errors::InvalidArgument("Param and Grad input of AdagradOp "
+                                          "should have the same dimension."));
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment"),
-        "Param and Moment input of AdagradOp should have the same dimension.");
+        platform::errors::InvalidArgument("Param and Moment input of AdagradOp "
+                                          "should have the same dimension."));
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 

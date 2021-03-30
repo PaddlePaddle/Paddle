@@ -26,27 +26,41 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of TemporalShiftOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of TemporalShiftOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SpectralNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SpectralNorm");
 
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-                      "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
+                      platform::errors::InvalidArgument(
+                          "Input(X) rank should be 4 in shape of [N*T, C, H, "
+                          "W], but received X rank(%d)",
+                          dim_x.size()));
 
     int seg_num = ctx->Attrs().Get<int>("seg_num");
     float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
-    PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) should be greater than 0.");
-    PADDLE_ENFORCE_GT(shift_ratio, 0.,
-                      "Attr(shift_ratio) should be greater than 0");
-    PADDLE_ENFORCE_LT(shift_ratio, 0.5,
-                      "Attr(shift_ratio) should be less than 0.5");
+    PADDLE_ENFORCE_GT(
+        seg_num, 0,
+        platform::errors::InvalidArgument(
+            "Attr(seg_num) should be greater than 0, but received %d",
+            seg_num));
+    PADDLE_ENFORCE_GT(
+        shift_ratio, 0.,
+        platform::errors::InvalidArgument(
+            "Attr(shift_ratio) should be greater than 0, but received %d",
+            shift_ratio));
+    PADDLE_ENFORCE_LT(
+        shift_ratio, 0.5,
+        platform::errors::InvalidArgument(
+            "Attr(shift_ratio) should be less than 0.5, but received %d",
+            shift_ratio));
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(
-          dim_x[0] % seg_num, 0,
-          "Input(X) dims[0] should be divided exactly by Attr(seg_num).");
+      PADDLE_ENFORCE_EQ(dim_x[0] % seg_num, 0,
+                        platform::errors::InvalidArgument(
+                            "Input(X) dimension[0] should be divided exactly "
+                            "by Attr(seg_num), but received X dimension[0](%d) "
+                            "mod seg_num(%d) != 0",
+                            dim_x[0], seg_num));
     }
 
     ctx->SetOutputDim("Out", dim_x);
@@ -56,8 +70,8 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -69,7 +83,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 4-D tensor with shape of [N*T,  C, H, W]. "
              "While N is the batch size, T is the temporal segment "
              "number, C is the channel number, H is the height of "
-             "features and W is the width of features.");
+             "features and W is the width of features. "
+             "The data type is float32 and float64");
     AddOutput("Out",
               "The output tensor of temporal shift operator. "
               "This is a 4-D tensor in the same shape with Input(X).");
@@ -82,7 +97,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
         "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
         "and the second :attr:`shift_ratio` part of channels will be shifted "
-        "by 1 along the temporal dimension. Default 0.25.")
+        "by 1 along the temporal dimension. :attr:`shift_ratio` should be in "
+        "range [0, 0.5]. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(
@@ -137,24 +153,23 @@ class TemporalShiftOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
-class TemporalShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class TemporalShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("temporal_shift_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -163,7 +178,9 @@ class TemporalShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
-                  ops::TemporalShiftOpMaker, ops::TemporalShiftGradOpDescMaker);
+                  ops::TemporalShiftOpMaker,
+                  ops::TemporalShiftGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TemporalShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
 REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);

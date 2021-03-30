@@ -25,6 +25,11 @@ void* cuda_dso_handle = nullptr;
 
 CUDA_ROUTINE_EACH(DEFINE_WRAP);
 
+bool HasCUDADriver() {
+  std::call_once(cuda_dso_flag, []() { cuda_dso_handle = GetCUDADsoHandle(); });
+  return cuda_dso_handle != nullptr;
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

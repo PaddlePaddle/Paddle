@@ -17,12 +17,13 @@ import paddle.fluid as fluid
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
-from paddle.fluid.initializer import init_on_cpu
-from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
+from seresnext_test_base import DeviceType
 import math
 import os
 os.environ['CPU_NUM'] = str(4)
+os.environ['FLAGS_cudnn_deterministic'] = str(1)
 
 # FIXME(zcd): If the neural net has dropout_op, the output of ParallelExecutor
 # and Executor is different. Because, for ParallelExecutor, the dropout_op of
@@ -35,6 +36,8 @@ remove_dropout = False
 # FIXME(zcd): If the neural net has batch_norm, the output of ParallelExecutor
 # and Executor is different.
 remove_bn = False
+
+remove_cudnn_conv = True
 
 remove_dropout = True
 remove_bn = True
@@ -69,6 +72,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         padding=(filter_size - 1) // 2,
         groups=groups,
         act=None,
+        use_cudnn=(not remove_cudnn_conv),
         bias_attr=False)
     return conv if remove_bn else fluid.layers.batch_norm(
         input=conv, act=act, momentum=0.1)
@@ -154,20 +158,6 @@ def SE_ResNeXt50Small(use_feed):
     return loss
 
 
-def cosine_decay(learning_rate, step_each_epoch, epochs=120):
-    """
-    Applies cosine decay to the learning rate.
-    lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
-    """
-    global_step = _decay_step_counter()
-
-    with init_on_cpu():
-        epoch = ops.floor(global_step / step_each_epoch)
-        decayed_lr = learning_rate * \
-                     (ops.cos(epoch * (math.pi / epochs)) + 1)/2
-    return decayed_lr
-
-
 def optimizer(learning_rate=0.01):
     optimizer = fluid.optimizer.Momentum(
         learning_rate=cosine_decay(
@@ -180,25 +170,32 @@ def optimizer(learning_rate=0.01):
 model = SE_ResNeXt50Small
 
 
-def batch_size():
+def batch_size(use_device):
+    if use_device == DeviceType.CUDA:
+        # Paddle uses 8GB P4 GPU for unittest so we decreased the batch size.
+        return 8
     return 12
 
 
-def iter(use_cuda):
-    if use_cuda:
+def iter(use_device):
+    if use_device == DeviceType.CUDA:
         return 10
-    return 2
+    return 1
 
 
 gpu_img, gpu_label = init_data(
-    batch_size=batch_size(), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_device=DeviceType.CUDA),
+    img_shape=img_shape,
+    label_range=999)
 cpu_img, cpu_label = init_data(
-    batch_size=batch_size(), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_device=DeviceType.CPU),
+    img_shape=img_shape,
+    label_range=999)
 feed_dict_gpu = {"image": gpu_img, "label": gpu_label}
 feed_dict_cpu = {"image": cpu_img, "label": cpu_label}
 
 
-def feed_dict(use_cuda):
-    if use_cuda:
+def feed_dict(use_device):
+    if use_device == DeviceType.CUDA:
         return feed_dict_gpu
     return feed_dict_cpu

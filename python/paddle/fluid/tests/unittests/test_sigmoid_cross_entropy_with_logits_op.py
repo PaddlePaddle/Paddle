@@ -20,6 +20,8 @@ from scipy.special import logit
 from scipy.special import expit
 import paddle.fluid.core as core
 import unittest
+from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid as fluid
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
@@ -33,9 +35,9 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(0, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -65,9 +67,9 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, }
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -98,9 +100,9 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 1, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -127,9 +129,9 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
         sigmoid_X = expit(self.inputs['X'])
@@ -160,9 +162,9 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -189,9 +191,9 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
         sigmoid_X = expit(self.inputs['X'])
@@ -222,9 +224,9 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(0, 2, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -240,6 +242,32 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                # the input of sigmoid_cross_entropy_with_logits must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                lab1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.sigmoid_cross_entropy_with_logits(x1, lab1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of sigmoid_cross_entropy_with_logits must be float16 or float32 or float64
+                # float16 only can be set on GPU place
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                lab2 = fluid.layers.data(
+                    name='lab2', shape=[3, 4, 5, 6], dtype="int32")
+                fluid.layers.sigmoid_cross_entropy_with_logits(x2, lab2)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

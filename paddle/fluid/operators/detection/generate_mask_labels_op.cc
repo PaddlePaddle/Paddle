@@ -40,47 +40,66 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
-                   "Input(GtClasses) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(IsCrowd) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("GtSegms"),
-                   "Input(GtSegms) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Rois"), "Input(Rois) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LabelsInt32"),
-                   "Input(LabelsInt32) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ImInfo"), true,
+        platform::errors::InvalidArgument("Input(ImInfo) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(GtClasses) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("IsCrowd"), true,
+        platform::errors::InvalidArgument("Input(IsCrowd) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("GtSegms"), true,
+        platform::errors::InvalidArgument("Input(GtSegms) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Rois"), true,
+        platform::errors::InvalidArgument("Input(Rois) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(LabelsInt32) shouldn't be null."));
 
-    PADDLE_ENFORCE(
-        ctx->HasOutput("MaskRois"),
-        "Output(MaskRois) of GenerateMaskLabelsOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("RoiHasMaskInt32"),
-        "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp should not be null");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("MaskInt32"),
-        "Output(MaskInt32) of GenerateMaskLabelsOp should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("MaskRois"), true,
+        platform::errors::InvalidArgument(
+            "Output(MaskRois) of GenerateMaskLabelsOp should not be null"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp "
+                          "should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("MaskInt32"), true,
+        platform::errors::InvalidArgument(
+            "Output(MaskInt32) of GenerateMaskLabelsOp should not be null"));
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     auto gt_segms_dims = ctx->GetInputDim("GtSegms");
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
-                      "The rank of Input(ImInfo) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(ImInfo) must be 2."));
     PADDLE_ENFORCE_EQ(gt_segms_dims.size(), 2,
-                      "The rank of Input(GtSegms) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(GtSegms) must be 2."));
     PADDLE_ENFORCE_EQ(gt_segms_dims[1], 2,
-                      "The second dim of Input(GtSegms) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The second dim of Input(GtSegms) must be 2."));
     int num_classes = ctx->Attrs().Get<int>("num_classes");
     int resolution = ctx->Attrs().Get<int>("resolution");
 
     ctx->SetOutputDim("MaskRois", {-1, 4});
     ctx->SetOutputDim("RoiHasMaskInt32", {-1, 1});
     ctx->SetOutputDim("MaskInt32", {-1, num_classes * resolution * resolution});
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("MaskRois", ctx->GetLoDLevel("Rois"));
+      ctx->SetLoDLevel("RoiHasMaskInt32", ctx->GetLoDLevel("Rois"));
+      ctx->SetLoDLevel("MaskInt32", ctx->GetLoDLevel("Rois"));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Rois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
@@ -129,7 +148,11 @@ std::vector<Tensor> SampleMaskForOneImage(
   const int* gt_classes_data = gt_classes.data<int>();
   const int* is_crowd_data = is_crowd.data<int>();
   const int* label_int32_data = label_int32.data<int>();
-  PADDLE_ENFORCE_EQ(roi_size, label_int32.dims()[0]);
+  PADDLE_ENFORCE_EQ(roi_size, label_int32.dims()[0],
+                    platform::errors::InvalidArgument(
+                        "The first dim of label [%d] is the different from "
+                        "roi_size [%d], they should be same.",
+                        label_int32.dims()[0], roi_size));
 
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
@@ -150,7 +173,12 @@ std::vector<Tensor> SampleMaskForOneImage(
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
-        PADDLE_ENFORCE_NE(s, e);
+        PADDLE_ENFORCE_NE(s, e,
+                          platform::errors::InvalidArgument(
+                              "The start point and the end point in the poly "
+                              "segment [%d] should not be same, but received "
+                              "the start point [%d] and the end point [%d].",
+                              i, s, e));
         std::vector<T> plts(polys_data + s * 2, polys_data + e * 2);
         polys.push_back(plts);
       }
@@ -290,19 +318,34 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     int num_classes = ctx.Attr<int>("num_classes");
     int resolution = ctx.Attr<int>("resolution");
 
-    PADDLE_ENFORCE_EQ(gt_classes->lod().size(), 1UL,
-                      "GenerateMaskLabelsOp gt_classes needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
-                      "GenerateMaskLabelsOp is_crowd needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        gt_classes->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateMaskLabelsOp gt_classes needs 1 level of LoD"));
+    PADDLE_ENFORCE_EQ(
+        is_crowd->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateMaskLabelsOp is_crowd needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(rois->lod().size(), 1UL,
-                      "GenerateMaskLabelsOp rois needs 1 level of LoD");
-    PADDLE_ENFORCE_EQ(label_int32->lod().size(), 1UL,
-                      "GenerateMaskLabelsOp label_int32 needs 1 level of LoD");
+                      platform::errors::InvalidArgument(
+                          "GenerateMaskLabelsOp rois needs 1 level of LoD"));
+    PADDLE_ENFORCE_EQ(
+        label_int32->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "GenerateMaskLabelsOp label_int32 needs 1 level of LoD"));
 
-    PADDLE_ENFORCE_EQ(gt_segms->lod().size(), 3UL);
+    PADDLE_ENFORCE_EQ(
+        gt_segms->lod().size(), 3UL,
+        platform::errors::InvalidArgument(
+            "GenerateMaskLabelsOp gt_segms needs 3 level of LoD"));
 
     int64_t n = static_cast<int64_t>(gt_classes->lod().back().size() - 1);
-    PADDLE_ENFORCE_EQ(gt_segms->lod()[0].size() - 1, n);
+    PADDLE_ENFORCE_EQ(
+        gt_segms->lod()[0].size() - 1, n,
+        platform::errors::InvalidArgument(
+            "Batchsize of Input(gt_segms) and Input(gt_classes) should be "
+            "same, but received gt_segms[%d], gt_classes[%d].",
+            gt_segms->lod()[0].size() - 1, n));
 
     int mask_dim = num_classes * resolution * resolution;
     int roi_num = rois->lod().back()[n];
@@ -403,7 +446,7 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
              "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
-             "each element repersents a class label of a roi");
+             "each element represents a class label of a roi");
     AddOutput(
         "MaskRois",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
@@ -411,7 +454,7 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
-              "each element repersents the output mask rois index with regard "
+              "each element represents the output mask rois index with regard "
               "to input rois");
     AddOutput("MaskInt32",
               "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "
@@ -434,8 +477,10 @@ K classes. This mask targets are used to compute loss of mask branch.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_mask_labels, ops::GenerateMaskLabelsOp,
-                  ops::GenerateMaskLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_mask_labels, ops::GenerateMaskLabelsOp,
+    ops::GenerateMaskLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_mask_labels,
                        ops::GenerateMaskLabelsKernel<float>);

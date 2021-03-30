@@ -31,12 +31,15 @@ class NCCLInitOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kParallelScopes)),
-                            "Can not find variable '%s' in the scope.",
-                            kParallelScopes);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope.FindVar(Input(kParallelScopes)),
+        platform::errors::NotFound("Can not find variable '%s' in the scope.",
+                                   kParallelScopes));
     const auto &name = Output("Communicator");
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(name),
-                            "Can not find variable '%s' in the scope.", name);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope.FindVar(name),
+        platform::errors::NotFound(
+            "Output(%s) is needed for ncclInit operator.", name));
     // A parallel do may not use all the gpus. For example, the batch size is 7
     // in the last batch while we have 8 gpu. In this case, parallel_do will
     // create 7 parallel scopes, so should ncclInitOp create 7 gpu peers
@@ -46,11 +49,9 @@ class NCCLInitOp : public framework::OperatorBase {
     for (int i = 0; i < static_cast<int>(parallel_scopes.size()); ++i) {
       gpus[i] = i;
     }
-    PADDLE_ENFORCE(!gpus.empty(), "NCCL init with 0 gpus.");
-
-    if (scope.FindVar(name) == nullptr) {
-      PADDLE_THROW("Output(Communicator) is needed for ncclInit operator.");
-    }
+    PADDLE_ENFORCE_EQ(!gpus.empty(), true,
+                      platform::errors::PreconditionNotMet(
+                          "gpus is empty, NCCL must init with gpus"));
 
     platform::Communicator *comm =
         scope.FindVar(name)->GetMutable<platform::Communicator>();
@@ -61,8 +62,7 @@ class NCCLInitOp : public framework::OperatorBase {
 class NCCLInitOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Communicator").front();
-    ctx->SetType(out_var_name, framework::proto::VarType::RAW);
+    ctx->SetOutputType("Communicator", framework::proto::VarType::RAW);
   }
 };
 
@@ -93,17 +93,17 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of AllReduce op input should not be NULL");
-    PADDLE_ENFORCE(
-        ctx->HasInput("Communicator"),
-        " Input(Communicator) of AllReduce op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Output(Out) of AllReduce op output should not be NULL");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NCCLAllReduce");
+    OP_INOUT_CHECK(ctx->HasInput("Communicator"), "Input", "Communicator",
+                   "NCCLAllReduce");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NCCLAllReduce");
+
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
-    PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
-                    reduction == "ncclMin" || reduction == "ncclMax"),
-                   "invalid reduction.");
+    PADDLE_ENFORCE_EQ(
+        (reduction == "ncclSum" || reduction == "ncclProd" ||
+         reduction == "ncclMin" || reduction == "ncclMax"),
+        true, platform::errors::InvalidArgument("invalid nccl reduction."));
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
@@ -138,18 +138,17 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of Reduce op input should not be NULL");
-    PADDLE_ENFORCE(
-        ctx->HasInput("Communicator"),
-        " Input(Communicator) of Reduce op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Input(X) of Reduce op input should not be NULL");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NCCLReduce");
+    OP_INOUT_CHECK(ctx->HasInput("Communicator"), "Input", "Communicator",
+                   "NCCLReduce");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NCCLReduce");
 
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
-    PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
-                    reduction == "ncclMin" || reduction == "ncclMax"),
-                   "invalid reduction.");
+    PADDLE_ENFORCE_EQ(
+        (reduction == "ncclSum" || reduction == "ncclProd" ||
+         reduction == "ncclMin" || reduction == "ncclMax"),
+        true, platform::errors::InvalidArgument("invalid nccl reduction."));
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
@@ -189,15 +188,16 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of Bcast op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasInput("Communicator"),
-                   " Input(Communicator) of Bcast op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Output(Out) of Bcast op output should not be NULL");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NCCLBcast");
+    OP_INOUT_CHECK(ctx->HasInput("Communicator"), "Input", "Communicator",
+                   "NCCLBcast");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NCCLBcast");
 
     int root = ctx->Attrs().Get<int>("root");
-    PADDLE_ENFORCE(root != platform::kInvalidGPUId, "Bcast root must be set.");
+    PADDLE_ENFORCE_EQ(
+        root != platform::kInvalidGPUId, true,
+        platform::errors::InvalidArgument("Bcast root must be set."));
 
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
@@ -230,10 +230,12 @@ Bcast the tensors.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ncclInit, ops::NCCLInitOp,
-                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker,
-                  ops::NCCLInitOpVarTypeInference,
-                  ops::NCCLInitOpShapeInference);
+REGISTER_OPERATOR(
+    ncclInit, ops::NCCLInitOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::NCCLInitOpMaker, ops::NCCLInitOpVarTypeInference,
+    ops::NCCLInitOpShapeInference);
 
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);

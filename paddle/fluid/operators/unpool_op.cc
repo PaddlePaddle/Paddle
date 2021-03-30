@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unpool_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 namespace paddle {
@@ -74,21 +75,17 @@ class UnpoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UnpoolOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Indices"),
-                   "Input(Indices) of UnpoolOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UnpoolOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool");
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Unpool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Unpool");
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Indices");
     std::string unpooling_type =
@@ -96,9 +93,18 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE(in_x_dims.size() == 4,
-                   "Unpooling intput must be of 4-dimensional.");
-    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
+    PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
+                      platform::errors::InvalidArgument(
+                          "Unpool Intput(X) must be of 4-dimensional, but "
+                          "received Input(X)'s dimensions is %d.",
+                          in_x_dims.size()));
+    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(X) must equal to be"
+                          "the dimensions of Input(Indices), but received"
+                          "dimensions of Input(X) is [%d], received dimensions"
+                          "of Input(Indices) is [%d]",
+                          in_x_dims, in_y_dims));
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
@@ -113,20 +119,36 @@ class UnpoolOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class UnpoolOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Indices", this->Input("Indices"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 class UnpoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UnpoolGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "UnpoolGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -135,7 +157,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::UnpoolOpGradMaker<paddle::framework::OpDesc>,
+                  ops::UnpoolOpGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
     unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,

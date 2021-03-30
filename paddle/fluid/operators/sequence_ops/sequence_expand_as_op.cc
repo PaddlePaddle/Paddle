@@ -27,34 +27,40 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceExpandAsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of SequenceExpandAsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceExpandAsOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "SequenceExpandAs");
+    OP_INOUT_CHECK(ctx->HasInputs("Y"), "Input", "Y", "SequenceExpandAs");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceExpandAs");
 
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
 
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Dimension number of Input(X) should be at least 2.");
+                      platform::errors::InvalidArgument(
+                          "Dimension number of Input(X) should be at least 2. "
+                          "But received X's dimensions = %d, X's shape = [%s].",
+                          x_dims.size(), x_dims));
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_dim = x_var->Get<LoDTensor>().dims();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
       PADDLE_ENFORCE_EQ(y_lod.size(), 1,
-                        "Level number of Input(Y)'s lod should be 1.");
+                        platform::errors::InvalidArgument(
+                            "Level number of Input(Y)'s lod should be 1. But "
+                            "received Y's lod level = %d.",
+                            y_lod.size()));
 
       PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]), y_lod[0].size() - 1,
-                        "The first dimension of Input(X) should be equal "
-                        "to the size of Input(Y)'s 0 level lod.");
+                        platform::errors::InvalidArgument(
+                            "The first dimension of Input(X) should be one "
+                            "less than the size of Input(Y)'s 0 level lod. But "
+                            "received X's shape[0] = %d, Y's lod[0].size = %d.",
+                            x_dim[0], y_lod[0].size()));
 
       int64_t out_first_dim = 0;
       if (y_lod[0].size() <= 1) {
@@ -75,8 +81,8 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -138,9 +144,9 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "SequenceExpandAsGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "SequenceExpandAsGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -153,45 +159,44 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
-class SequenceExpandAsOpGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceExpandAsOpGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_expand_as_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequenceExpandAsOpNoNeedBufferVarsInference, "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequenceExpandAsGradOpNoNeedBufferVarsInference, "X", "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInferer,
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    SequenceExpandAsGradOpNoNeedBufferVarsInferer, "X", "Y");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_expand_as, ops::SequenceExpandAsOp,
-                  ops::SequenceExpandAsOpMaker,
-                  ops::SequenceExpandAsOpGradOpDescMaker,
-                  ops::SequenceExpandAsOpNoNeedBufferVarsInference);
+REGISTER_OPERATOR(
+    sequence_expand_as, ops::SequenceExpandAsOp, ops::SequenceExpandAsOpMaker,
+    ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
+    ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
+    ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad,
-                  ops::SequenceExpandAsGradOpNoNeedBufferVarsInference);
+                  ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand_as,
     ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,

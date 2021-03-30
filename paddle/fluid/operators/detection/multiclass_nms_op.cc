@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/poly_util.h"
+#include "paddle/fluid/operators/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -21,50 +21,73 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+inline std::vector<size_t> GetNmsLodFromRoisNum(const Tensor* rois_num) {
+  std::vector<size_t> rois_lod;
+  auto* rois_num_data = rois_num->data<int>();
+  rois_lod.push_back(static_cast<size_t>(0));
+  for (int i = 0; i < rois_num->numel(); ++i) {
+    rois_lod.push_back(rois_lod.back() + static_cast<size_t>(rois_num_data[i]));
+  }
+  return rois_lod;
+}
+
 class MultiClassNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("BBoxes"),
-                   "Input(BBoxes) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scores"),
-                   "Input(Scores) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MultiClassNMS should not be null.");
-
+    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MultiClassNMS");
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE(score_size == 2 || score_size == 3,
-                     "The rank of Input(Scores) must be 2 or 3");
+      PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3, true,
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(Scores) must be 2 or 3"
+                            ". But received rank = %d",
+                            score_size));
       PADDLE_ENFORCE_EQ(box_dims.size(), 3,
-                        "The rank of Input(BBoxes) must be 3");
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(BBoxes) must be 3"
+                            ". But received rank = %d",
+                            box_dims.size()));
       if (score_size == 3) {
-        PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 ||
-                           box_dims[2] == 16 || box_dims[2] == 24 ||
-                           box_dims[2] == 32,
-                       "The last dimension of Input(BBoxes) must be 4 or 8, "
-                       "represents the layout of coordinate "
-                       "[xmin, ymin, xmax, ymax] or "
-                       "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                       "8 points: [xi, yi] i= 1,2,...,8 or "
-                       "12 points: [xi, yi] i= 1,2,...,12 or "
-                       "16 points: [xi, yi] i= 1,2,...,16");
+        PADDLE_ENFORCE_EQ(
+            box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
+                box_dims[2] == 24 || box_dims[2] == 32,
+            true, platform::errors::InvalidArgument(
+                      "The last dimension of Input"
+                      "(BBoxes) must be 4 or 8, "
+                      "represents the layout of coordinate "
+                      "[xmin, ymin, xmax, ymax] or "
+                      "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                      "8 points: [xi, yi] i= 1,2,...,8 or "
+                      "12 points: [xi, yi] i= 1,2,...,12 or "
+                      "16 points: [xi, yi] i= 1,2,...,16"));
         PADDLE_ENFORCE_EQ(
             box_dims[1], score_dims[2],
-            "The 2nd dimension of Input(BBoxes) must be equal to "
-            "last dimension of Input(Scores), which represents the "
-            "predicted bboxes.");
+            platform::errors::InvalidArgument(
+                "The 2nd dimension of Input(BBoxes) must be equal to "
+                "last dimension of Input(Scores), which represents the "
+                "predicted bboxes."
+                "But received box_dims[1](%s) != socre_dims[2](%s)",
+                box_dims[1], score_dims[2]));
       } else {
-        PADDLE_ENFORCE(box_dims[2] == 4,
-                       "The last dimension of Input(BBoxes) must be 4");
-        PADDLE_ENFORCE_EQ(box_dims[1], score_dims[1],
-                          "The 2nd dimension of Input(BBoxes)"
-                          "must be equal to the 2nd dimension"
-                          " of Input(Scores)");
+        PADDLE_ENFORCE_EQ(box_dims[2], 4,
+                          platform::errors::InvalidArgument(
+                              "The last dimension of Input"
+                              "(BBoxes) must be 4. But received dimension = %d",
+                              box_dims[2]));
+        PADDLE_ENFORCE_EQ(
+            box_dims[1], score_dims[1],
+            platform::errors::InvalidArgument(
+                "The 2nd dimension of Input"
+                "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+                "But received box dimension = %d, score dimension = %d",
+                box_dims[1], score_dims[1]));
       }
     }
     // Here the box_dims[0] is not the real dimension of output.
@@ -74,94 +97,19 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     } else {
       ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Scores")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
 };
-
-template <class T>
-bool SortScorePairDescend(const std::pair<float, T>& pair1,
-                          const std::pair<float, T>& pair2) {
-  return pair1.first > pair2.first;
-}
-
-template <class T>
-static inline void GetMaxScoreIndex(
-    const std::vector<T>& scores, const T threshold, int top_k,
-    std::vector<std::pair<T, int>>* sorted_indices) {
-  for (size_t i = 0; i < scores.size(); ++i) {
-    if (scores[i] > threshold) {
-      sorted_indices->push_back(std::make_pair(scores[i], i));
-    }
-  }
-  // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
-                   SortScorePairDescend<int>);
-  // Keep top_k scores if needed.
-  if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
-    sorted_indices->resize(top_k);
-  }
-}
-
-template <class T>
-static inline T BBoxArea(const T* box, const bool normalized) {
-  if (box[2] < box[0] || box[3] < box[1]) {
-    // If coordinate values are is invalid
-    // (e.g. xmax < xmin or ymax < ymin), return 0.
-    return static_cast<T>(0.);
-  } else {
-    const T w = box[2] - box[0];
-    const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
-      // If coordinate values are not within range [0, 1].
-      return (w + 1) * (h + 1);
-    }
-  }
-}
-
-template <class T>
-static inline T JaccardOverlap(const T* box1, const T* box2,
-                               const bool normalized) {
-  if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
-      box2[3] < box1[1]) {
-    return static_cast<T>(0.);
-  } else {
-    const T inter_xmin = std::max(box1[0], box2[0]);
-    const T inter_ymin = std::max(box1[1], box2[1]);
-    const T inter_xmax = std::min(box1[2], box2[2]);
-    const T inter_ymax = std::min(box1[3], box2[3]);
-    T norm = normalized ? static_cast<T>(0.) : static_cast<T>(1.);
-    T inter_w = inter_xmax - inter_xmin + norm;
-    T inter_h = inter_ymax - inter_ymin + norm;
-    const T inter_area = inter_w * inter_h;
-    const T bbox1_area = BBoxArea<T>(box1, normalized);
-    const T bbox2_area = BBoxArea<T>(box2, normalized);
-    return inter_area / (bbox1_area + bbox2_area - inter_area);
-  }
-}
-
-template <class T>
-T PolyIoU(const T* box1, const T* box2, const size_t box_size,
-          const bool normalized) {
-  T bbox1_area = PolyArea<T>(box1, box_size, normalized);
-  T bbox2_area = PolyArea<T>(box2, box_size, normalized);
-  T inter_area = PolyOverlapArea<T>(box1, box2, box_size, normalized);
-  if (bbox1_area == 0 || bbox2_area == 0 || inter_area == 0) {
-    // If coordinate values are invalid
-    // if area size <= 0,  return 0.
-    return T(0.);
-  } else {
-    return inter_area / (bbox1_area + bbox2_area - inter_area);
-  }
-}
 
 template <class T>
 void SliceOneClass(const platform::DeviceContext& ctx,
@@ -352,6 +300,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       } else {
         sdata = scores_data + label * predict_dim;
       }
+
       for (size_t j = 0; j < indices.size(); ++j) {
         int idx = indices[j];
         odata[count * out_dim] = label;  // label
@@ -382,6 +331,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* outs = ctx.Output<LoDTensor>("Out");
     bool return_index = ctx.HasOutput("Index") ? true : false;
     auto index = ctx.Output<LoDTensor>("Index");
+    bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
+    auto rois_num = ctx.Input<Tensor>("RoisNum");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -393,19 +344,34 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
     Tensor boxes_slice, scores_slice;
-    int n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
+    int n = 0;
+    if (has_roisnum) {
+      n = score_size == 3 ? batch_size : rois_num->numel();
+    } else {
+      n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
+    }
     for (int i = 0; i < n; ++i) {
+      std::map<int, std::vector<int>> indices;
       if (score_size == 3) {
         scores_slice = scores->Slice(i, i + 1);
         scores_slice.Resize({score_dims[1], score_dims[2]});
         boxes_slice = boxes->Slice(i, i + 1);
         boxes_slice.Resize({score_dims[2], box_dim});
       } else {
-        auto boxes_lod = boxes->lod().back();
+        std::vector<size_t> boxes_lod;
+        if (has_roisnum) {
+          boxes_lod = GetNmsLodFromRoisNum(rois_num);
+        } else {
+          boxes_lod = boxes->lod().back();
+        }
+        if (boxes_lod[i] == boxes_lod[i + 1]) {
+          all_indices.push_back(indices);
+          batch_starts.push_back(batch_starts.back());
+          continue;
+        }
         scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
         boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
       }
-      std::map<int, std::vector<int>> indices;
       MultiClassNMS(ctx, scores_slice, boxes_slice, score_size, &indices,
                     &num_nmsed_out);
       all_indices.push_back(indices);
@@ -436,13 +402,20 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
             offset = i * score_dims[2];
           }
         } else {
-          auto boxes_lod = boxes->lod().back();
+          std::vector<size_t> boxes_lod;
+          if (has_roisnum) {
+            boxes_lod = GetNmsLodFromRoisNum(rois_num);
+          } else {
+            boxes_lod = boxes->lod().back();
+          }
+          if (boxes_lod[i] == boxes_lod[i + 1]) continue;
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
           if (return_index) {
             offset = boxes_lod[i] * score_dims[1];
           }
         }
+
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
@@ -456,6 +429,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
                            score_dims.size(), &out, oindices, offset);
         }
       }
+    }
+    if (ctx.HasOutput("NmsRoisNum")) {
+      auto* nms_rois_num = ctx.Output<Tensor>("NmsRoisNum");
+      nms_rois_num->mutable_data<int>({n}, ctx.GetPlace());
+      int* num_data = nms_rois_num->data<int>();
+      for (int i = 1; i <= n; i++) {
+        num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
+      }
+      nms_rois_num->Resize({n});
     }
 
     framework::LoD lod;
@@ -502,7 +484,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
-                 "confidences aftern the filtering detections based on "
+                 "confidences after the filtering detections based on "
                  "score_threshold");
     AddAttr<float>("nms_threshold",
                    "(float, default: 0.3) "
@@ -571,6 +553,9 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
     } else {
       ctx->SetOutputDim("Index", {-1, 1});
     }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+    }
   }
 };
 
@@ -586,17 +571,54 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   }
 };
 
+class MultiClassNMS3Op : public MultiClassNMS2Op {
+ public:
+  MultiClassNMS3Op(const std::string& type,
+                   const framework::VariableNameMap& inputs,
+                   const framework::VariableNameMap& outputs,
+                   const framework::AttributeMap& attrs)
+      : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    MultiClassNMS2Op::InferShape(ctx);
+
+    ctx->SetOutputDim("NmsRoisNum", {-1});
+  }
+};
+
+class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
+ public:
+  void Make() override {
+    MultiClassNMS2OpMaker::Make();
+    AddInput("RoisNum",
+             "(Tensor) The number of RoIs in shape (B),"
+             "B is the number of images")
+        .AsDispensable();
+    AddOutput("NmsRoisNum", "(Tensor), The number of NMS RoIs in each image")
+        .AsDispensable();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(multiclass_nms, ops::MultiClassNMSOp,
-                  ops::MultiClassNMSOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    multiclass_nms, ops::MultiClassNMSOp, ops::MultiClassNMSOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);
-REGISTER_OPERATOR(multiclass_nms2, ops::MultiClassNMS2Op,
-                  ops::MultiClassNMS2OpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    multiclass_nms2, ops::MultiClassNMS2Op, ops::MultiClassNMS2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);
+
+REGISTER_OPERATOR(
+    multiclass_nms3, ops::MultiClassNMS3Op, ops::MultiClassNMS3OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(multiclass_nms3, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);

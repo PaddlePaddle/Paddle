@@ -52,7 +52,7 @@ class DownpourServer(Server):
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_var):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -84,7 +84,7 @@ class DownpourServer(Server):
         table.accessor.downpour_accessor_param.delete_threshold = 0.8
 
     def add_dense_table(self, table_id, learning_rate, param_var, grad_var):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -135,7 +135,7 @@ class DownpourWorker(Worker):
 
     def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
                          slot_value_vars):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
@@ -153,7 +153,7 @@ class DownpourWorker(Worker):
             [var.name + "@GRAD" for var in slot_value_vars])
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars):
-        """
+        r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \

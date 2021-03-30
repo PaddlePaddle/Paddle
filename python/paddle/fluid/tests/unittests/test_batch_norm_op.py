@@ -14,15 +14,19 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+_set_use_system_allocator(True)
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
@@ -259,6 +263,21 @@ class TestBatchNormOpInference(unittest.TestCase):
 
         batch_norm_op.run(scope, place)
 
+        # When op is called without Executor then
+        # MKL-DNN Tensor is returned. For NHWC data layout
+        # dims will be in NCHW order as it is MKL-DNN way
+        # of memory descripting. So we need to convert NCHW
+        # dims into NHWC.
+        if data_layout == "NHWC" and self.use_mkldnn == True:
+            # Create executor to have MKL-DNN cache 
+            # cleared after NHWC unit test
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            dims = y_tensor.shape()
+            c = dims.pop(1)
+            dims.append(c)
+            y_tensor._set_dims(dims)
+
         # check inference result
         self.__assert_close(
             y_tensor,
@@ -310,6 +329,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
         self.momentum = 0.9
+        self.use_momentum_variable = False
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
@@ -367,6 +387,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_mean_variance(scale_shape, x, data_layout)
             y_grad = np.random.random_sample(shape).astype(np.float32)
+            momentum_var = np.array([momentum]).astype(np.float32)
 
             y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad = self.ref_forward_backward(
                 x, y_grad, scale, bias, mean, variance, epsilon, momentum,
@@ -380,7 +401,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
             var_names = [
                 'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
-                'saved_variance'
+                'saved_variance', 'momentum_var'
             ]
             ground_truth = {name: var_dict[name] for name in var_names}
 
@@ -392,31 +413,40 @@ class TestBatchNormOpTraining(unittest.TestCase):
                         name=name,
                         dtype='float32',
                         shape=ground_truth[name].shape)
+                inputs = {
+                    "X": block.var('x'),
+                    "Scale": block.var('scale'),
+                    "Bias": block.var('bias'),
+                    "Mean": block.var('mean'),
+                    "Variance": block.var('variance')
+                }
+                attrs = {
+                    "epsilon": epsilon,
+                    "is_test": False,
+                    "data_layout": data_layout,
+                    "use_mkldnn": self.use_mkldnn,
+                    "fuse_with_relu": self.fuse_with_relu,
+                    "use_global_stats": self.use_global_stats
+                }
+                if self.use_momentum_variable:
+                    inputs['MomentumTensor'] = block.var('momentum_var')
+                else:
+                    attrs['momentum'] = momentum
+
+                outputs = {
+                    "Y": block.var('y'),
+                    "MeanOut": block.var('mean'),  # share memory
+                    "VarianceOut": block.var('variance'),  # share memory
+                    "SavedMean": block.var('saved_mean'),
+                    "SavedVariance": block.var('saved_variance')
+                }
+                block.create_var(name="reserve_space", dtype='float32')
+                outputs["ReserveSpace"] = block.var('reserve_space')
                 bn_op = block.append_op(
                     type="batch_norm",
-                    inputs={
-                        "X": block.var('x'),
-                        "Scale": block.var('scale'),
-                        "Bias": block.var('bias'),
-                        "Mean": block.var('mean'),
-                        "Variance": block.var('variance')
-                    },
-                    outputs={
-                        "Y": block.var('y'),
-                        "MeanOut": block.var('mean'),  # share memory
-                        "VarianceOut": block.var('variance'),  # share memory
-                        "SavedMean": block.var('saved_mean'),
-                        "SavedVariance": block.var('saved_variance')
-                    },
-                    attrs={
-                        "momentum": momentum,
-                        "epsilon": epsilon,
-                        "is_test": False,
-                        "data_layout": data_layout,
-                        "use_mkldnn": self.use_mkldnn,
-                        "fuse_with_relu": self.fuse_with_relu,
-                        "use_global_stats": self.use_global_stats
-                    })
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs)
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
                 # generate backward op_desc
@@ -433,15 +463,18 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
+                program._sync_with_cpp()
+
                 exe = fluid.Executor(place)
-                out = exe.run(
-                    program,
-                    feed={
-                        name: var_dict[name]
-                        for name in
-                        ['x', 'scale', 'bias', 'mean', 'variance', 'y@GRAD']
-                    },
-                    fetch_list=self.fetch_list)
+                out = exe.run(program,
+                              feed={
+                                  name: var_dict[name]
+                                  for name in [
+                                      'x', 'scale', 'bias', 'mean', 'variance',
+                                      'y@GRAD', 'momentum_var'
+                                  ]
+                              },
+                              fetch_list=self.fetch_list)
 
             for id, name in enumerate(self.fetch_list):
                 if name == 'variance':
@@ -469,6 +502,28 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
         self.use_global_stats = False
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
+        os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
+
+
+class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_momentum_variable = True
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
@@ -532,7 +587,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-class TestBatchNormOpError(OpTest):
+class TestBatchNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
@@ -544,6 +599,82 @@ class TestBatchNormOpError(OpTest):
             # float16 only can be set on GPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.batch_norm, x2)
+
+
+class TestDygraphBatchNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            batch_norm = fluid.dygraph.BatchNorm(10)
+            # the input of BatchNorm must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, batch_norm, x1)
+
+            # the input dtype of BatchNorm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, batch_norm, x2)
+
+
+class TestDygraphBatchNormTrainableStats(unittest.TestCase):
+    def test_dygraph(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            shape = [4, 10, 4, 4]
+
+            def compute(x, is_test, trainable_statistics):
+                with fluid.dygraph.guard(p):
+                    bn = fluid.dygraph.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        trainable_statistics=trainable_statistics)
+                    y = bn(fluid.dygraph.to_variable(x))
+                return y.numpy()
+
+            x = np.random.randn(*shape).astype("float32")
+            y1 = compute(x, False, False)
+            y2 = compute(x, True, True)
+            self.assertTrue(np.allclose(y1, y2))
+
+    def test_static(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            exe = fluid.Executor(p)
+            shape = [4, 10, 16, 16]
+
+            def compute(x_np, is_test, trainable_statistics):
+                with program_guard(Program(), Program()):
+                    bn = fluid.dygraph.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        trainable_statistics=trainable_statistics)
+                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    y = bn(x)
+                    exe.run(fluid.default_startup_program())
+                    r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
+                return r
+
+            x = np.random.randn(*shape).astype("float32")
+            y1 = compute(x, False, False)
+            y2 = compute(x, True, True)
+            self.assertTrue(np.allclose(y1, y2))
+
+
+class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+    def test_reservespace(self):
+        with program_guard(Program(), Program()):
+            paddle.enable_static()
+            x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
+            x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
+            # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
+            batch_norm = fluid.dygraph.BatchNorm(7, data_layout="NHWC")
+            hidden1 = batch_norm(x)
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
 
 
 if __name__ == '__main__':

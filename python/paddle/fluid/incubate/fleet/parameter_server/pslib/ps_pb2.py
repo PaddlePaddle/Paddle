@@ -32,7 +32,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
     package='paddle',
     syntax='proto2',
     serialized_pb=_b(
-        '\n\x08ps.proto\x12\x06paddle\"\x9e\x02\n\x0bPSParameter\x12\x14\n\x0cworker_class\x18\x01 \x01(\t\x12\x14\n\x0cserver_class\x18\x02 \x01(\t\x12\x16\n\x0einstance_class\x18\x03 \x01(\t\x12-\n\x0cworker_param\x18\x65 \x01(\x0b\x32\x17.paddle.WorkerParameter\x12-\n\x0cserver_param\x18\x66 \x01(\x0b\x32\x17.paddle.ServerParameter\x12\x38\n\rtrainer_param\x18\xad\x02 \x01(\x0b\x32 .paddle.DownpourTrainerParameter\x12\x33\n\x0f\x66s_client_param\x18\xf5\x03 \x01(\x0b\x32\x19.paddle.FsClientParameter\"Q\n\x0fWorkerParameter\x12>\n\x15\x64ownpour_worker_param\x18\x01 \x01(\x0b\x32\x1f.paddle.DownpourWorkerParameter\"Q\n\x0fServerParameter\x12>\n\x15\x64ownpour_server_param\x18\x01 \x01(\x0b\x32\x1f.paddle.DownpourServerParameter\"O\n\x17\x44ownpourWorkerParameter\x12\x34\n\x14\x64ownpour_table_param\x18\x01 \x03(\x0b\x32\x16.paddle.TableParameter\"\xfd\x01\n\x18\x44ownpourTrainerParameter\x12\x30\n\x0b\x64\x65nse_table\x18\x01 \x03(\x0b\x32\x1b.paddle.DenseTableParameter\x12\x32\n\x0csparse_table\x18\x02 \x03(\x0b\x32\x1c.paddle.SparseTableParameter\x12\x1d\n\x15push_sparse_per_batch\x18\x03 \x01(\x05\x12\x1c\n\x14push_dense_per_batch\x18\x04 \x01(\x05\x12\x0f\n\x07skip_op\x18\x05 \x03(\t\x12-\n\x0eprogram_config\x18\x06 \x03(\x0b\x32\x15.paddle.ProgramConfig\"\x99\x01\n\rProgramConfig\x12\x12\n\nprogram_id\x18\x01 \x02(\t\x12\x1c\n\x14push_sparse_table_id\x18\x02 \x03(\x05\x12\x1b\n\x13push_dense_table_id\x18\x03 \x03(\x05\x12\x1c\n\x14pull_sparse_table_id\x18\x04 \x03(\x05\x12\x1b\n\x13pull_dense_table_id\x18\x05 \x03(\x05\"{\n\x13\x44\x65nseTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x05\x12\x1b\n\x13\x64\x65nse_variable_name\x18\x02 \x03(\t\x12$\n\x1c\x64\x65nse_gradient_variable_name\x18\x03 \x03(\t\x12\x0f\n\x07\x66\x65\x61_dim\x18\x04 \x01(\x05\"z\n\x14SparseTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x05\x12\x13\n\x0b\x66\x65\x61ture_dim\x18\x02 \x01(\x05\x12\x10\n\x08slot_key\x18\x03 \x03(\t\x12\x12\n\nslot_value\x18\x04 \x03(\t\x12\x15\n\rslot_gradient\x18\x05 \x03(\t\"\x86\x01\n\x17\x44ownpourServerParameter\x12\x34\n\x14\x64ownpour_table_param\x18\x01 \x03(\x0b\x32\x16.paddle.TableParameter\x12\x35\n\rservice_param\x18\x02 \x01(\x0b\x32\x1e.paddle.ServerServiceParameter\"\xd7\x01\n\x16ServerServiceParameter\x12*\n\x0cserver_class\x18\x01 \x01(\t:\x14\x44ownpourBrpcPsServer\x12*\n\x0c\x63lient_class\x18\x02 \x01(\t:\x14\x44ownpourBrpcPsClient\x12(\n\rservice_class\x18\x03 \x01(\t:\x11\x44ownpourPsService\x12\x1c\n\x11start_server_port\x18\x04 \x01(\r:\x01\x30\x12\x1d\n\x11server_thread_num\x18\x05 \x01(\r:\x02\x31\x32\"\xc0\x02\n\x0eTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x04\x12\x13\n\x0btable_class\x18\x02 \x01(\t\x12\x17\n\tshard_num\x18\x03 \x01(\x04:\x04\x31\x30\x30\x30\x12\x30\n\x08\x61\x63\x63\x65ssor\x18\x04 \x01(\x0b\x32\x1e.paddle.TableAccessorParameter\x12\x1f\n\x04type\x18\x05 \x01(\x0e\x32\x11.paddle.TableType\x12\x1f\n\x10\x63ompress_in_save\x18\x06 \x01(\x08:\x05\x66\x61lse\x12\'\n\x19\x65nable_sparse_table_cache\x18\x07 \x01(\x08:\x04true\x12(\n\x17sparse_table_cache_rate\x18\x08 \x01(\x01:\x07\x30.00055\x12\'\n\x1bsparse_table_cache_file_num\x18\t \x01(\r:\x02\x31\x36\"\xfc\x02\n\x16TableAccessorParameter\x12\x16\n\x0e\x61\x63\x63\x65ssor_class\x18\x01 \x01(\t\x12\x38\n\x10sparse_sgd_param\x18\x02 \x01(\x0b\x32\x1e.paddle.SparseSGDRuleParameter\x12\x36\n\x0f\x64\x65nse_sgd_param\x18\x03 \x01(\x0b\x32\x1d.paddle.DenseSGDRuleParameter\x12\x13\n\x07\x66\x65\x61_dim\x18\x04 \x01(\r:\x02\x31\x31\x12\x15\n\nembedx_dim\x18\x05 \x01(\r:\x01\x38\x12\x1c\n\x10\x65mbedx_threshold\x18\x06 \x01(\r:\x02\x31\x30\x12G\n\x17\x64ownpour_accessor_param\x18\x07 \x01(\x0b\x32&.paddle.DownpourTableAccessorParameter\x12\x45\n\x19table_accessor_save_param\x18\x08 \x03(\x0b\x32\".paddle.TableAccessorSaveParameter\"\x96\x02\n\x1e\x44ownpourTableAccessorParameter\x12\x19\n\x0cnonclk_coeff\x18\x01 \x01(\x02:\x03\x30.1\x12\x16\n\x0b\x63lick_coeff\x18\x02 \x01(\x02:\x01\x31\x12\x1b\n\x0e\x62\x61se_threshold\x18\x03 \x01(\x02:\x03\x31.5\x12\x1d\n\x0f\x64\x65lta_threshold\x18\x04 \x01(\x02:\x04\x30.25\x12\x1b\n\x0f\x64\x65lta_keep_days\x18\x05 \x01(\x02:\x02\x31\x36\x12#\n\x15show_click_decay_rate\x18\x06 \x01(\x02:\x04\x30.98\x12\x1d\n\x10\x64\x65lete_threshold\x18\x07 \x01(\x02:\x03\x30.8\x12$\n\x18\x64\x65lete_after_unseen_days\x18\x08 \x01(\x02:\x02\x33\x30\"S\n\x1aTableAccessorSaveParameter\x12\r\n\x05param\x18\x01 \x01(\r\x12\x11\n\tconverter\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65\x63onverter\x18\x03 \x01(\t\"e\n\x10PsRequestMessage\x12\x0e\n\x06\x63md_id\x18\x01 \x02(\r\x12\x10\n\x08table_id\x18\x02 \x01(\r\x12\x0e\n\x06params\x18\x03 \x03(\x0c\x12\x11\n\tclient_id\x18\x04 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\x0c\"\x85\x01\n\x16SparseSGDRuleParameter\x12\x1b\n\rlearning_rate\x18\x01 \x01(\x01:\x04\x30.05\x12\x18\n\rinitial_g2sum\x18\x02 \x01(\x01:\x01\x33\x12\x1d\n\rinitial_range\x18\x03 \x01(\x01:\x06\x30.0001\x12\x15\n\rweight_bounds\x18\x04 \x03(\x02\"\xe1\x01\n\x15\x44\x65nseSGDRuleParameter\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\x04\x61\x64\x61m\x18\x02 \x01(\x0b\x32\x18.paddle.AdamSGDParameter\x12(\n\x05naive\x18\x03 \x01(\x0b\x32\x19.paddle.NaiveSGDParameter\x12,\n\x07summary\x18\x04 \x01(\x0b\x32\x1b.paddle.SummarySGDParameter\x12:\n\x0emoving_average\x18\x05 \x01(\x0b\x32\".paddle.MovingAverageRuleParameter\"\xac\x01\n\x10\x41\x64\x61mSGDParameter\x12\x1c\n\rlearning_rate\x18\x01 \x01(\x01:\x05\x35\x65-06\x12 \n\x0e\x61vg_decay_rate\x18\x02 \x01(\x01:\x08\x30.999993\x12\x1e\n\x0e\x61\x64\x61_decay_rate\x18\x03 \x01(\x01:\x06\x30.9999\x12\x1a\n\x0b\x61\x64\x61_epsilon\x18\x04 \x01(\x01:\x05\x31\x65-08\x12\x1c\n\x0emom_decay_rate\x18\x05 \x01(\x01:\x04\x30.99\"J\n\x11NaiveSGDParameter\x12\x1d\n\rlearning_rate\x18\x01 \x01(\x01:\x06\x30.0002\x12\x16\n\x0e\x61vg_decay_rate\x18\x02 \x01(\x01\";\n\x13SummarySGDParameter\x12$\n\x12summary_decay_rate\x18\x01 \x01(\x01:\x08\x30.999999\".\n\x1aMovingAverageRuleParameter\x12\x10\n\x08momentum\x18\x01 \x01(\x01\"I\n\x11PsResponseMessage\x12\x13\n\x08\x65rr_code\x18\x01 \x02(\x05:\x01\x30\x12\x11\n\x07\x65rr_msg\x18\x02 \x02(\t:\x00\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\xd5\x01\n\x11\x46sClientParameter\x12:\n\x07\x66s_type\x18\x01 \x01(\x0e\x32#.paddle.FsClientParameter.FsApiType:\x04HDFS\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04user\x18\x03 \x01(\t\x12\x0e\n\x06passwd\x18\x04 \x01(\t\x12\x13\n\x0b\x62uffer_size\x18\x05 \x01(\x05\x12\x12\n\nhadoop_bin\x18\x33 \x01(\t\x12\x10\n\x08\x61\x66s_conf\x18\x65 \x01(\t\"\x1e\n\tFsApiType\x12\x08\n\x04HDFS\x10\x00\x12\x07\n\x03\x41\x46S\x10\x01*4\n\tTableType\x12\x13\n\x0fPS_SPARSE_TABLE\x10\x00\x12\x12\n\x0ePS_DENSE_TABLE\x10\x01*\x9c\x03\n\x07PsCmdID\x12\x17\n\x13PS_PULL_DENSE_TABLE\x10\x00\x12\x17\n\x13PS_PUSH_DENSE_TABLE\x10\x01\x12\x18\n\x14PS_PULL_SPARSE_TABLE\x10\x02\x12\x18\n\x14PS_PUSH_SPARSE_TABLE\x10\x03\x12\x13\n\x0fPS_SHRINK_TABLE\x10\x04\x12\x15\n\x11PS_SAVE_ONE_TABLE\x10\x05\x12\x15\n\x11PS_SAVE_ALL_TABLE\x10\x06\x12\x15\n\x11PS_LOAD_ONE_TABLE\x10\x07\x12\x15\n\x11PS_LOAD_ALL_TABLE\x10\x08\x12\x16\n\x12PS_CLEAR_ONE_TABLE\x10\t\x12\x16\n\x12PS_CLEAR_ALL_TABLE\x10\n\x12\x17\n\x13PS_PUSH_DENSE_PARAM\x10\x0b\x12\x12\n\x0ePS_STOP_SERVER\x10\x0c\x12\x1b\n\x17PS_SAVE_ONE_CACHE_TABLE\x10\r\x12\x1a\n\x16PS_GET_CACHE_THRESHOLD\x10\x0e\x12\x14\n\x10PS_CACHE_SHUFFLE\x10\x0f\x12\x0e\n\nPS_S2S_MSG\x10\x65\x32K\n\tPsService\x12>\n\x07service\x12\x18.paddle.PsRequestMessage\x1a\x19.paddle.PsResponseMessageB\x03\x80\x01\x01'
+        '\n\x08ps.proto\x12\x06paddle\"\xb5\x02\n\x0bPSParameter\x12\x14\n\x0cworker_class\x18\x01 \x01(\t\x12\x14\n\x0cserver_class\x18\x02 \x01(\t\x12\x16\n\x0einstance_class\x18\x03 \x01(\t\x12\x15\n\x0binit_gflags\x18\x04 \x01(\t:\x00\x12-\n\x0cworker_param\x18\x65 \x01(\x0b\x32\x17.paddle.WorkerParameter\x12-\n\x0cserver_param\x18\x66 \x01(\x0b\x32\x17.paddle.ServerParameter\x12\x38\n\rtrainer_param\x18\xad\x02 \x03(\x0b\x32 .paddle.DownpourTrainerParameter\x12\x33\n\x0f\x66s_client_param\x18\xf5\x03 \x01(\x0b\x32\x19.paddle.FsClientParameter\"Q\n\x0fWorkerParameter\x12>\n\x15\x64ownpour_worker_param\x18\x01 \x01(\x0b\x32\x1f.paddle.DownpourWorkerParameter\"Q\n\x0fServerParameter\x12>\n\x15\x64ownpour_server_param\x18\x01 \x01(\x0b\x32\x1f.paddle.DownpourServerParameter\"O\n\x17\x44ownpourWorkerParameter\x12\x34\n\x14\x64ownpour_table_param\x18\x01 \x03(\x0b\x32\x16.paddle.TableParameter\"\xfd\x01\n\x18\x44ownpourTrainerParameter\x12\x30\n\x0b\x64\x65nse_table\x18\x01 \x03(\x0b\x32\x1b.paddle.DenseTableParameter\x12\x32\n\x0csparse_table\x18\x02 \x03(\x0b\x32\x1c.paddle.SparseTableParameter\x12\x1d\n\x15push_sparse_per_batch\x18\x03 \x01(\x05\x12\x1c\n\x14push_dense_per_batch\x18\x04 \x01(\x05\x12\x0f\n\x07skip_op\x18\x05 \x03(\t\x12-\n\x0eprogram_config\x18\x06 \x03(\x0b\x32\x15.paddle.ProgramConfig\"\x99\x01\n\rProgramConfig\x12\x12\n\nprogram_id\x18\x01 \x02(\t\x12\x1c\n\x14push_sparse_table_id\x18\x02 \x03(\x05\x12\x1b\n\x13push_dense_table_id\x18\x03 \x03(\x05\x12\x1c\n\x14pull_sparse_table_id\x18\x04 \x03(\x05\x12\x1b\n\x13pull_dense_table_id\x18\x05 \x03(\x05\"{\n\x13\x44\x65nseTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x05\x12\x1b\n\x13\x64\x65nse_variable_name\x18\x02 \x03(\t\x12$\n\x1c\x64\x65nse_gradient_variable_name\x18\x03 \x03(\t\x12\x0f\n\x07\x66\x65\x61_dim\x18\x04 \x01(\x05\"z\n\x14SparseTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x05\x12\x13\n\x0b\x66\x65\x61ture_dim\x18\x02 \x01(\x05\x12\x10\n\x08slot_key\x18\x03 \x03(\t\x12\x12\n\nslot_value\x18\x04 \x03(\t\x12\x15\n\rslot_gradient\x18\x05 \x03(\t\"\x86\x01\n\x17\x44ownpourServerParameter\x12\x34\n\x14\x64ownpour_table_param\x18\x01 \x03(\x0b\x32\x16.paddle.TableParameter\x12\x35\n\rservice_param\x18\x02 \x01(\x0b\x32\x1e.paddle.ServerServiceParameter\"\xd7\x01\n\x16ServerServiceParameter\x12*\n\x0cserver_class\x18\x01 \x01(\t:\x14\x44ownpourBrpcPsServer\x12*\n\x0c\x63lient_class\x18\x02 \x01(\t:\x14\x44ownpourBrpcPsClient\x12(\n\rservice_class\x18\x03 \x01(\t:\x11\x44ownpourPsService\x12\x1c\n\x11start_server_port\x18\x04 \x01(\r:\x01\x30\x12\x1d\n\x11server_thread_num\x18\x05 \x01(\r:\x02\x31\x32\"\xc0\x02\n\x0eTableParameter\x12\x10\n\x08table_id\x18\x01 \x01(\x04\x12\x13\n\x0btable_class\x18\x02 \x01(\t\x12\x17\n\tshard_num\x18\x03 \x01(\x04:\x04\x31\x30\x30\x30\x12\x30\n\x08\x61\x63\x63\x65ssor\x18\x04 \x01(\x0b\x32\x1e.paddle.TableAccessorParameter\x12\x1f\n\x04type\x18\x05 \x01(\x0e\x32\x11.paddle.TableType\x12\x1f\n\x10\x63ompress_in_save\x18\x06 \x01(\x08:\x05\x66\x61lse\x12\'\n\x19\x65nable_sparse_table_cache\x18\x07 \x01(\x08:\x04true\x12(\n\x17sparse_table_cache_rate\x18\x08 \x01(\x01:\x07\x30.00055\x12\'\n\x1bsparse_table_cache_file_num\x18\t \x01(\r:\x02\x31\x36\"\xc1\x04\n\x16TableAccessorParameter\x12\x16\n\x0e\x61\x63\x63\x65ssor_class\x18\x01 \x01(\t\x12\x38\n\x10sparse_sgd_param\x18\x02 \x01(\x0b\x32\x1e.paddle.SparseSGDRuleParameter\x12\x36\n\x0f\x64\x65nse_sgd_param\x18\x03 \x01(\x0b\x32\x1d.paddle.DenseSGDRuleParameter\x12\x13\n\x07\x66\x65\x61_dim\x18\x04 \x01(\r:\x02\x31\x31\x12\x15\n\nembedx_dim\x18\x05 \x01(\r:\x01\x38\x12\x1c\n\x10\x65mbedx_threshold\x18\x06 \x01(\r:\x02\x31\x30\x12G\n\x17\x64ownpour_accessor_param\x18\x07 \x01(\x0b\x32&.paddle.DownpourTableAccessorParameter\x12\x45\n\x19table_accessor_save_param\x18\x08 \x03(\x0b\x32\".paddle.TableAccessorSaveParameter\x12\x44\n\x16sparse_commonsgd_param\x18\t \x01(\x0b\x32$.paddle.SparseCommonSGDRuleParameter\x12=\n\x0f\x65mbed_sgd_param\x18\n \x01(\x0b\x32$.paddle.SparseCommonSGDRuleParameter\x12>\n\x10\x65mbedx_sgd_param\x18\x0b \x01(\x0b\x32$.paddle.SparseCommonSGDRuleParameter\"\xba\x02\n\x1e\x44ownpourTableAccessorParameter\x12\x19\n\x0cnonclk_coeff\x18\x01 \x01(\x02:\x03\x30.1\x12\x16\n\x0b\x63lick_coeff\x18\x02 \x01(\x02:\x01\x31\x12\x1b\n\x0e\x62\x61se_threshold\x18\x03 \x01(\x02:\x03\x31.5\x12\x1d\n\x0f\x64\x65lta_threshold\x18\x04 \x01(\x02:\x04\x30.25\x12\x1b\n\x0f\x64\x65lta_keep_days\x18\x05 \x01(\x02:\x02\x31\x36\x12#\n\x15show_click_decay_rate\x18\x06 \x01(\x02:\x04\x30.98\x12\x1d\n\x10\x64\x65lete_threshold\x18\x07 \x01(\x02:\x03\x30.8\x12$\n\x18\x64\x65lete_after_unseen_days\x18\x08 \x01(\x02:\x02\x33\x30\x12\"\n\x17ssd_unseenday_threshold\x18\t \x01(\x05:\x01\x31\"S\n\x1aTableAccessorSaveParameter\x12\r\n\x05param\x18\x01 \x01(\r\x12\x11\n\tconverter\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65\x63onverter\x18\x03 \x01(\t\"e\n\x10PsRequestMessage\x12\x0e\n\x06\x63md_id\x18\x01 \x02(\r\x12\x10\n\x08table_id\x18\x02 \x01(\r\x12\x0e\n\x06params\x18\x03 \x03(\x0c\x12\x11\n\tclient_id\x18\x04 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\x0c\"\x85\x01\n\x16SparseSGDRuleParameter\x12\x1b\n\rlearning_rate\x18\x01 \x01(\x01:\x04\x30.05\x12\x18\n\rinitial_g2sum\x18\x02 \x01(\x01:\x01\x33\x12\x1d\n\rinitial_range\x18\x03 \x01(\x01:\x06\x30.0001\x12\x15\n\rweight_bounds\x18\x04 \x03(\x02\"\xc6\x01\n\x1cSparseCommonSGDRuleParameter\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x32\n\x05naive\x18\x02 \x01(\x0b\x32#.paddle.SparseNaiveSGDRuleParameter\x12\x36\n\x07\x61\x64\x61grad\x18\x03 \x01(\x0b\x32%.paddle.SparseAdagradSGDRuleParameter\x12,\n\x04\x61\x64\x61m\x18\x04 \x01(\x0b\x32\x1e.paddle.SparseAdamSGDParameter\"p\n\x1bSparseNaiveSGDRuleParameter\x12\x1b\n\rlearning_rate\x18\x01 \x01(\x01:\x04\x30.05\x12\x1d\n\rinitial_range\x18\x02 \x01(\x01:\x06\x30.0001\x12\x15\n\rweight_bounds\x18\x03 \x03(\x02\"\x8c\x01\n\x1dSparseAdagradSGDRuleParameter\x12\x1b\n\rlearning_rate\x18\x01 \x01(\x01:\x04\x30.05\x12\x18\n\rinitial_g2sum\x18\x02 \x01(\x01:\x01\x33\x12\x1d\n\rinitial_range\x18\x03 \x01(\x01:\x06\x30.0001\x12\x15\n\rweight_bounds\x18\x04 \x03(\x02\"\xc8\x01\n\x16SparseAdamSGDParameter\x12\x1c\n\rlearning_rate\x18\x01 \x01(\x01:\x05\x30.001\x12\x1d\n\rinitial_range\x18\x02 \x01(\x01:\x06\x30.0001\x12\x1d\n\x10\x62\x65ta1_decay_rate\x18\x03 \x01(\x01:\x03\x30.9\x12\x1f\n\x10\x62\x65ta2_decay_rate\x18\x04 \x01(\x01:\x05\x30.999\x12\x1a\n\x0b\x61\x64\x61_epsilon\x18\x05 \x01(\x01:\x05\x31\x65-08\x12\x15\n\rweight_bounds\x18\x06 \x03(\x02\"\xe1\x01\n\x15\x44\x65nseSGDRuleParameter\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\x04\x61\x64\x61m\x18\x02 \x01(\x0b\x32\x18.paddle.AdamSGDParameter\x12(\n\x05naive\x18\x03 \x01(\x0b\x32\x19.paddle.NaiveSGDParameter\x12,\n\x07summary\x18\x04 \x01(\x0b\x32\x1b.paddle.SummarySGDParameter\x12:\n\x0emoving_average\x18\x05 \x01(\x0b\x32\".paddle.MovingAverageRuleParameter\"\xac\x01\n\x10\x41\x64\x61mSGDParameter\x12\x1c\n\rlearning_rate\x18\x01 \x01(\x01:\x05\x35\x65-06\x12 \n\x0e\x61vg_decay_rate\x18\x02 \x01(\x01:\x08\x30.999993\x12\x1e\n\x0e\x61\x64\x61_decay_rate\x18\x03 \x01(\x01:\x06\x30.9999\x12\x1a\n\x0b\x61\x64\x61_epsilon\x18\x04 \x01(\x01:\x05\x31\x65-08\x12\x1c\n\x0emom_decay_rate\x18\x05 \x01(\x01:\x04\x30.99\"J\n\x11NaiveSGDParameter\x12\x1d\n\rlearning_rate\x18\x01 \x01(\x01:\x06\x30.0002\x12\x16\n\x0e\x61vg_decay_rate\x18\x02 \x01(\x01\";\n\x13SummarySGDParameter\x12$\n\x12summary_decay_rate\x18\x01 \x01(\x01:\x08\x30.999999\".\n\x1aMovingAverageRuleParameter\x12\x10\n\x08momentum\x18\x01 \x01(\x01\"I\n\x11PsResponseMessage\x12\x13\n\x08\x65rr_code\x18\x01 \x02(\x05:\x01\x30\x12\x11\n\x07\x65rr_msg\x18\x02 \x02(\t:\x00\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\xd5\x01\n\x11\x46sClientParameter\x12:\n\x07\x66s_type\x18\x01 \x01(\x0e\x32#.paddle.FsClientParameter.FsApiType:\x04HDFS\x12\x0b\n\x03uri\x18\x02 \x01(\t\x12\x0c\n\x04user\x18\x03 \x01(\t\x12\x0e\n\x06passwd\x18\x04 \x01(\t\x12\x13\n\x0b\x62uffer_size\x18\x05 \x01(\x05\x12\x12\n\nhadoop_bin\x18\x33 \x01(\t\x12\x10\n\x08\x61\x66s_conf\x18\x65 \x01(\t\"\x1e\n\tFsApiType\x12\x08\n\x04HDFS\x10\x00\x12\x07\n\x03\x41\x46S\x10\x01*4\n\tTableType\x12\x13\n\x0fPS_SPARSE_TABLE\x10\x00\x12\x12\n\x0ePS_DENSE_TABLE\x10\x01*\xba\x04\n\x07PsCmdID\x12\x17\n\x13PS_PULL_DENSE_TABLE\x10\x00\x12\x17\n\x13PS_PUSH_DENSE_TABLE\x10\x01\x12\x18\n\x14PS_PULL_SPARSE_TABLE\x10\x02\x12\x18\n\x14PS_PUSH_SPARSE_TABLE\x10\x03\x12\x13\n\x0fPS_SHRINK_TABLE\x10\x04\x12\x15\n\x11PS_SAVE_ONE_TABLE\x10\x05\x12\x15\n\x11PS_SAVE_ALL_TABLE\x10\x06\x12\x15\n\x11PS_LOAD_ONE_TABLE\x10\x07\x12\x15\n\x11PS_LOAD_ALL_TABLE\x10\x08\x12\x16\n\x12PS_CLEAR_ONE_TABLE\x10\t\x12\x16\n\x12PS_CLEAR_ALL_TABLE\x10\n\x12\x17\n\x13PS_PUSH_DENSE_PARAM\x10\x0b\x12\x12\n\x0ePS_STOP_SERVER\x10\x0c\x12\x1b\n\x17PS_SAVE_ONE_CACHE_TABLE\x10\r\x12\x1a\n\x16PS_GET_CACHE_THRESHOLD\x10\x0e\x12\x14\n\x10PS_CACHE_SHUFFLE\x10\x0f\x12\x11\n\rPS_COPY_TABLE\x10\x10\x12\x1c\n\x18PS_COPY_TABLE_BY_FEASIGN\x10\x11\x12(\n$PS_PULL_SPARSE_TABLE_WITH_DEPENDENCY\x10\x12\x12(\n$PS_PUSH_SPARSE_TABLE_WITH_DEPENDENCY\x10\x13\x12\x17\n\x13PS_PRINT_TABLE_STAT\x10\x14\x12\x0e\n\nPS_S2S_MSG\x10\x65\x32K\n\tPsService\x12>\n\x07service\x12\x18.paddle.PsRequestMessage\x1a\x19.paddle.PsResponseMessageB\x06\x80\x01\x01\xf8\x01\x01'
     ))
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -49,8 +49,8 @@ _TABLETYPE = _descriptor.EnumDescriptor(
     ],
     containing_type=None,
     options=None,
-    serialized_start=3762,
-    serialized_end=3814, )
+    serialized_start=4679,
+    serialized_end=4731, )
 _sym_db.RegisterEnumDescriptor(_TABLETYPE)
 
 TableType = enum_type_wrapper.EnumTypeWrapper(_TABLETYPE)
@@ -150,12 +150,38 @@ _PSCMDID = _descriptor.EnumDescriptor(
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_S2S_MSG', index=16, number=101, options=None, type=None),
+            name='PS_COPY_TABLE', index=16, number=16, options=None, type=None),
+        _descriptor.EnumValueDescriptor(
+            name='PS_COPY_TABLE_BY_FEASIGN',
+            index=17,
+            number=17,
+            options=None,
+            type=None),
+        _descriptor.EnumValueDescriptor(
+            name='PS_PULL_SPARSE_TABLE_WITH_DEPENDENCY',
+            index=18,
+            number=18,
+            options=None,
+            type=None),
+        _descriptor.EnumValueDescriptor(
+            name='PS_PUSH_SPARSE_TABLE_WITH_DEPENDENCY',
+            index=19,
+            number=19,
+            options=None,
+            type=None),
+        _descriptor.EnumValueDescriptor(
+            name='PS_PRINT_TABLE_STAT',
+            index=20,
+            number=20,
+            options=None,
+            type=None),
+        _descriptor.EnumValueDescriptor(
+            name='PS_S2S_MSG', index=21, number=101, options=None, type=None),
     ],
     containing_type=None,
     options=None,
-    serialized_start=3817,
-    serialized_end=4229, )
+    serialized_start=4734,
+    serialized_end=5304, )
 _sym_db.RegisterEnumDescriptor(_PSCMDID)
 
 PsCmdID = enum_type_wrapper.EnumTypeWrapper(_PSCMDID)
@@ -177,6 +203,11 @@ PS_STOP_SERVER = 12
 PS_SAVE_ONE_CACHE_TABLE = 13
 PS_GET_CACHE_THRESHOLD = 14
 PS_CACHE_SHUFFLE = 15
+PS_COPY_TABLE = 16
+PS_COPY_TABLE_BY_FEASIGN = 17
+PS_PULL_SPARSE_TABLE_WITH_DEPENDENCY = 18
+PS_PUSH_SPARSE_TABLE_WITH_DEPENDENCY = 19
+PS_PRINT_TABLE_STAT = 20
 PS_S2S_MSG = 101
 
 _FSCLIENTPARAMETER_FSAPITYPE = _descriptor.EnumDescriptor(
@@ -192,8 +223,8 @@ _FSCLIENTPARAMETER_FSAPITYPE = _descriptor.EnumDescriptor(
     ],
     containing_type=None,
     options=None,
-    serialized_start=3730,
-    serialized_end=3760, )
+    serialized_start=4647,
+    serialized_end=4677, )
 _sym_db.RegisterEnumDescriptor(_FSCLIENTPARAMETER_FSAPITYPE)
 
 _PSPARAMETER = _descriptor.Descriptor(
@@ -252,9 +283,25 @@ _PSPARAMETER = _descriptor.Descriptor(
             extension_scope=None,
             options=None),
         _descriptor.FieldDescriptor(
+            name='init_gflags',
+            full_name='paddle.PSParameter.init_gflags',
+            index=3,
+            number=4,
+            type=9,
+            cpp_type=9,
+            label=1,
+            has_default_value=True,
+            default_value=_b("").decode('utf-8'),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
             name='worker_param',
             full_name='paddle.PSParameter.worker_param',
-            index=3,
+            index=4,
             number=101,
             type=11,
             cpp_type=10,
@@ -270,7 +317,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='server_param',
             full_name='paddle.PSParameter.server_param',
-            index=4,
+            index=5,
             number=102,
             type=11,
             cpp_type=10,
@@ -286,13 +333,13 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='trainer_param',
             full_name='paddle.PSParameter.trainer_param',
-            index=5,
+            index=6,
             number=301,
             type=11,
             cpp_type=10,
-            label=1,
+            label=3,
             has_default_value=False,
-            default_value=None,
+            default_value=[],
             message_type=None,
             enum_type=None,
             containing_type=None,
@@ -302,7 +349,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='fs_client_param',
             full_name='paddle.PSParameter.fs_client_param',
-            index=6,
+            index=7,
             number=501,
             type=11,
             cpp_type=10,
@@ -325,7 +372,7 @@ _PSPARAMETER = _descriptor.Descriptor(
     extension_ranges=[],
     oneofs=[],
     serialized_start=21,
-    serialized_end=307, )
+    serialized_end=330, )
 
 _WORKERPARAMETER = _descriptor.Descriptor(
     name='WorkerParameter',
@@ -359,8 +406,8 @@ _WORKERPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=309,
-    serialized_end=390, )
+    serialized_start=332,
+    serialized_end=413, )
 
 _SERVERPARAMETER = _descriptor.Descriptor(
     name='ServerParameter',
@@ -394,8 +441,8 @@ _SERVERPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=392,
-    serialized_end=473, )
+    serialized_start=415,
+    serialized_end=496, )
 
 _DOWNPOURWORKERPARAMETER = _descriptor.Descriptor(
     name='DownpourWorkerParameter',
@@ -429,8 +476,8 @@ _DOWNPOURWORKERPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=475,
-    serialized_end=554, )
+    serialized_start=498,
+    serialized_end=577, )
 
 _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
     name='DownpourTrainerParameter',
@@ -544,8 +591,8 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=557,
-    serialized_end=810, )
+    serialized_start=580,
+    serialized_end=833, )
 
 _PROGRAMCONFIG = _descriptor.Descriptor(
     name='ProgramConfig',
@@ -643,8 +690,8 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=813,
-    serialized_end=966, )
+    serialized_start=836,
+    serialized_end=989, )
 
 _DENSETABLEPARAMETER = _descriptor.Descriptor(
     name='DenseTableParameter',
@@ -726,8 +773,8 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=968,
-    serialized_end=1091, )
+    serialized_start=991,
+    serialized_end=1114, )
 
 _SPARSETABLEPARAMETER = _descriptor.Descriptor(
     name='SparseTableParameter',
@@ -825,8 +872,8 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=1093,
-    serialized_end=1215, )
+    serialized_start=1116,
+    serialized_end=1238, )
 
 _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
     name='DownpourServerParameter',
@@ -876,8 +923,8 @@ _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=1218,
-    serialized_end=1352, )
+    serialized_start=1241,
+    serialized_end=1375, )
 
 _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
     name='ServerServiceParameter',
@@ -975,8 +1022,8 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=1355,
-    serialized_end=1570, )
+    serialized_start=1378,
+    serialized_end=1593, )
 
 _TABLEPARAMETER = _descriptor.Descriptor(
     name='TableParameter',
@@ -1138,8 +1185,8 @@ _TABLEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=1573,
-    serialized_end=1893, )
+    serialized_start=1596,
+    serialized_end=1916, )
 
 _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
     name='TableAccessorParameter',
@@ -1276,6 +1323,54 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
+        _descriptor.FieldDescriptor(
+            name='sparse_commonsgd_param',
+            full_name='paddle.TableAccessorParameter.sparse_commonsgd_param',
+            index=8,
+            number=9,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='embed_sgd_param',
+            full_name='paddle.TableAccessorParameter.embed_sgd_param',
+            index=9,
+            number=10,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='embedx_sgd_param',
+            full_name='paddle.TableAccessorParameter.embedx_sgd_param',
+            index=10,
+            number=11,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
     ],
     extensions=[],
     nested_types=[],
@@ -1285,8 +1380,8 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=1896,
-    serialized_end=2276, )
+    serialized_start=1919,
+    serialized_end=2496, )
 
 _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
     name='DownpourTableAccessorParameter',
@@ -1423,6 +1518,22 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
             is_extension=False,
             extension_scope=None,
             options=None),
+        _descriptor.FieldDescriptor(
+            name='ssd_unseenday_threshold',
+            full_name='paddle.DownpourTableAccessorParameter.ssd_unseenday_threshold',
+            index=8,
+            number=9,
+            type=5,
+            cpp_type=1,
+            label=1,
+            has_default_value=True,
+            default_value=1,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
     ],
     extensions=[],
     nested_types=[],
@@ -1432,8 +1543,8 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=2279,
-    serialized_end=2557, )
+    serialized_start=2499,
+    serialized_end=2813, )
 
 _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
     name='TableAccessorSaveParameter',
@@ -1499,8 +1610,8 @@ _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=2559,
-    serialized_end=2642, )
+    serialized_start=2815,
+    serialized_end=2898, )
 
 _PSREQUESTMESSAGE = _descriptor.Descriptor(
     name='PsRequestMessage',
@@ -1598,8 +1709,8 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=2644,
-    serialized_end=2745, )
+    serialized_start=2900,
+    serialized_end=3001, )
 
 _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
     name='SparseSGDRuleParameter',
@@ -1681,8 +1792,356 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=2748,
-    serialized_end=2881, )
+    serialized_start=3004,
+    serialized_end=3137, )
+
+_SPARSECOMMONSGDRULEPARAMETER = _descriptor.Descriptor(
+    name='SparseCommonSGDRuleParameter',
+    full_name='paddle.SparseCommonSGDRuleParameter',
+    filename=None,
+    file=DESCRIPTOR,
+    containing_type=None,
+    fields=[
+        _descriptor.FieldDescriptor(
+            name='name',
+            full_name='paddle.SparseCommonSGDRuleParameter.name',
+            index=0,
+            number=1,
+            type=9,
+            cpp_type=9,
+            label=1,
+            has_default_value=False,
+            default_value=_b("").decode('utf-8'),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='naive',
+            full_name='paddle.SparseCommonSGDRuleParameter.naive',
+            index=1,
+            number=2,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='adagrad',
+            full_name='paddle.SparseCommonSGDRuleParameter.adagrad',
+            index=2,
+            number=3,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='adam',
+            full_name='paddle.SparseCommonSGDRuleParameter.adam',
+            index=3,
+            number=4,
+            type=11,
+            cpp_type=10,
+            label=1,
+            has_default_value=False,
+            default_value=None,
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+    ],
+    extensions=[],
+    nested_types=[],
+    enum_types=[],
+    options=None,
+    is_extendable=False,
+    syntax='proto2',
+    extension_ranges=[],
+    oneofs=[],
+    serialized_start=3140,
+    serialized_end=3338, )
+
+_SPARSENAIVESGDRULEPARAMETER = _descriptor.Descriptor(
+    name='SparseNaiveSGDRuleParameter',
+    full_name='paddle.SparseNaiveSGDRuleParameter',
+    filename=None,
+    file=DESCRIPTOR,
+    containing_type=None,
+    fields=[
+        _descriptor.FieldDescriptor(
+            name='learning_rate',
+            full_name='paddle.SparseNaiveSGDRuleParameter.learning_rate',
+            index=0,
+            number=1,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.05),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='initial_range',
+            full_name='paddle.SparseNaiveSGDRuleParameter.initial_range',
+            index=1,
+            number=2,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.0001),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='weight_bounds',
+            full_name='paddle.SparseNaiveSGDRuleParameter.weight_bounds',
+            index=2,
+            number=3,
+            type=2,
+            cpp_type=6,
+            label=3,
+            has_default_value=False,
+            default_value=[],
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+    ],
+    extensions=[],
+    nested_types=[],
+    enum_types=[],
+    options=None,
+    is_extendable=False,
+    syntax='proto2',
+    extension_ranges=[],
+    oneofs=[],
+    serialized_start=3340,
+    serialized_end=3452, )
+
+_SPARSEADAGRADSGDRULEPARAMETER = _descriptor.Descriptor(
+    name='SparseAdagradSGDRuleParameter',
+    full_name='paddle.SparseAdagradSGDRuleParameter',
+    filename=None,
+    file=DESCRIPTOR,
+    containing_type=None,
+    fields=[
+        _descriptor.FieldDescriptor(
+            name='learning_rate',
+            full_name='paddle.SparseAdagradSGDRuleParameter.learning_rate',
+            index=0,
+            number=1,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.05),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='initial_g2sum',
+            full_name='paddle.SparseAdagradSGDRuleParameter.initial_g2sum',
+            index=1,
+            number=2,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(3),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='initial_range',
+            full_name='paddle.SparseAdagradSGDRuleParameter.initial_range',
+            index=2,
+            number=3,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.0001),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='weight_bounds',
+            full_name='paddle.SparseAdagradSGDRuleParameter.weight_bounds',
+            index=3,
+            number=4,
+            type=2,
+            cpp_type=6,
+            label=3,
+            has_default_value=False,
+            default_value=[],
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+    ],
+    extensions=[],
+    nested_types=[],
+    enum_types=[],
+    options=None,
+    is_extendable=False,
+    syntax='proto2',
+    extension_ranges=[],
+    oneofs=[],
+    serialized_start=3455,
+    serialized_end=3595, )
+
+_SPARSEADAMSGDPARAMETER = _descriptor.Descriptor(
+    name='SparseAdamSGDParameter',
+    full_name='paddle.SparseAdamSGDParameter',
+    filename=None,
+    file=DESCRIPTOR,
+    containing_type=None,
+    fields=[
+        _descriptor.FieldDescriptor(
+            name='learning_rate',
+            full_name='paddle.SparseAdamSGDParameter.learning_rate',
+            index=0,
+            number=1,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.001),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='initial_range',
+            full_name='paddle.SparseAdamSGDParameter.initial_range',
+            index=1,
+            number=2,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.0001),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='beta1_decay_rate',
+            full_name='paddle.SparseAdamSGDParameter.beta1_decay_rate',
+            index=2,
+            number=3,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.9),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='beta2_decay_rate',
+            full_name='paddle.SparseAdamSGDParameter.beta2_decay_rate',
+            index=3,
+            number=4,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(0.999),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='ada_epsilon',
+            full_name='paddle.SparseAdamSGDParameter.ada_epsilon',
+            index=4,
+            number=5,
+            type=1,
+            cpp_type=5,
+            label=1,
+            has_default_value=True,
+            default_value=float(1e-08),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+        _descriptor.FieldDescriptor(
+            name='weight_bounds',
+            full_name='paddle.SparseAdamSGDParameter.weight_bounds',
+            index=5,
+            number=6,
+            type=2,
+            cpp_type=6,
+            label=3,
+            has_default_value=False,
+            default_value=[],
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            options=None),
+    ],
+    extensions=[],
+    nested_types=[],
+    enum_types=[],
+    options=None,
+    is_extendable=False,
+    syntax='proto2',
+    extension_ranges=[],
+    oneofs=[],
+    serialized_start=3598,
+    serialized_end=3798, )
 
 _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
     name='DenseSGDRuleParameter',
@@ -1780,8 +2239,8 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=2884,
-    serialized_end=3109, )
+    serialized_start=3801,
+    serialized_end=4026, )
 
 _ADAMSGDPARAMETER = _descriptor.Descriptor(
     name='AdamSGDParameter',
@@ -1879,8 +2338,8 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3112,
-    serialized_end=3284, )
+    serialized_start=4029,
+    serialized_end=4201, )
 
 _NAIVESGDPARAMETER = _descriptor.Descriptor(
     name='NaiveSGDParameter',
@@ -1930,8 +2389,8 @@ _NAIVESGDPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3286,
-    serialized_end=3360, )
+    serialized_start=4203,
+    serialized_end=4277, )
 
 _SUMMARYSGDPARAMETER = _descriptor.Descriptor(
     name='SummarySGDParameter',
@@ -1965,8 +2424,8 @@ _SUMMARYSGDPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3362,
-    serialized_end=3421, )
+    serialized_start=4279,
+    serialized_end=4338, )
 
 _MOVINGAVERAGERULEPARAMETER = _descriptor.Descriptor(
     name='MovingAverageRuleParameter',
@@ -2000,8 +2459,8 @@ _MOVINGAVERAGERULEPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3423,
-    serialized_end=3469, )
+    serialized_start=4340,
+    serialized_end=4386, )
 
 _PSRESPONSEMESSAGE = _descriptor.Descriptor(
     name='PsResponseMessage',
@@ -2067,8 +2526,8 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3471,
-    serialized_end=3544, )
+    serialized_start=4388,
+    serialized_end=4461, )
 
 _FSCLIENTPARAMETER = _descriptor.Descriptor(
     name='FsClientParameter',
@@ -2198,8 +2657,8 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
     syntax='proto2',
     extension_ranges=[],
     oneofs=[],
-    serialized_start=3547,
-    serialized_end=3760, )
+    serialized_start=4464,
+    serialized_end=4677, )
 
 _PSPARAMETER.fields_by_name['worker_param'].message_type = _WORKERPARAMETER
 _PSPARAMETER.fields_by_name['server_param'].message_type = _SERVERPARAMETER
@@ -2233,6 +2692,18 @@ _TABLEACCESSORPARAMETER.fields_by_name[
     'downpour_accessor_param'].message_type = _DOWNPOURTABLEACCESSORPARAMETER
 _TABLEACCESSORPARAMETER.fields_by_name[
     'table_accessor_save_param'].message_type = _TABLEACCESSORSAVEPARAMETER
+_TABLEACCESSORPARAMETER.fields_by_name[
+    'sparse_commonsgd_param'].message_type = _SPARSECOMMONSGDRULEPARAMETER
+_TABLEACCESSORPARAMETER.fields_by_name[
+    'embed_sgd_param'].message_type = _SPARSECOMMONSGDRULEPARAMETER
+_TABLEACCESSORPARAMETER.fields_by_name[
+    'embedx_sgd_param'].message_type = _SPARSECOMMONSGDRULEPARAMETER
+_SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
+    'naive'].message_type = _SPARSENAIVESGDRULEPARAMETER
+_SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
+    'adagrad'].message_type = _SPARSEADAGRADSGDRULEPARAMETER
+_SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
+    'adam'].message_type = _SPARSEADAMSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name['adam'].message_type = _ADAMSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name['naive'].message_type = _NAIVESGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
@@ -2266,6 +2737,14 @@ DESCRIPTOR.message_types_by_name[
 DESCRIPTOR.message_types_by_name['PsRequestMessage'] = _PSREQUESTMESSAGE
 DESCRIPTOR.message_types_by_name[
     'SparseSGDRuleParameter'] = _SPARSESGDRULEPARAMETER
+DESCRIPTOR.message_types_by_name[
+    'SparseCommonSGDRuleParameter'] = _SPARSECOMMONSGDRULEPARAMETER
+DESCRIPTOR.message_types_by_name[
+    'SparseNaiveSGDRuleParameter'] = _SPARSENAIVESGDRULEPARAMETER
+DESCRIPTOR.message_types_by_name[
+    'SparseAdagradSGDRuleParameter'] = _SPARSEADAGRADSGDRULEPARAMETER
+DESCRIPTOR.message_types_by_name[
+    'SparseAdamSGDParameter'] = _SPARSEADAMSGDPARAMETER
 DESCRIPTOR.message_types_by_name[
     'DenseSGDRuleParameter'] = _DENSESGDRULEPARAMETER
 DESCRIPTOR.message_types_by_name['AdamSGDParameter'] = _ADAMSGDPARAMETER
@@ -2438,6 +2917,46 @@ SparseSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
     ))
 _sym_db.RegisterMessage(SparseSGDRuleParameter)
 
+SparseCommonSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
+    'SparseCommonSGDRuleParameter',
+    (_message.Message, ),
+    dict(
+        DESCRIPTOR=_SPARSECOMMONSGDRULEPARAMETER,
+        __module__='ps_pb2'
+        # @@protoc_insertion_point(class_scope:paddle.SparseCommonSGDRuleParameter)
+    ))
+_sym_db.RegisterMessage(SparseCommonSGDRuleParameter)
+
+SparseNaiveSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
+    'SparseNaiveSGDRuleParameter',
+    (_message.Message, ),
+    dict(
+        DESCRIPTOR=_SPARSENAIVESGDRULEPARAMETER,
+        __module__='ps_pb2'
+        # @@protoc_insertion_point(class_scope:paddle.SparseNaiveSGDRuleParameter)
+    ))
+_sym_db.RegisterMessage(SparseNaiveSGDRuleParameter)
+
+SparseAdagradSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
+    'SparseAdagradSGDRuleParameter',
+    (_message.Message, ),
+    dict(
+        DESCRIPTOR=_SPARSEADAGRADSGDRULEPARAMETER,
+        __module__='ps_pb2'
+        # @@protoc_insertion_point(class_scope:paddle.SparseAdagradSGDRuleParameter)
+    ))
+_sym_db.RegisterMessage(SparseAdagradSGDRuleParameter)
+
+SparseAdamSGDParameter = _reflection.GeneratedProtocolMessageType(
+    'SparseAdamSGDParameter',
+    (_message.Message, ),
+    dict(
+        DESCRIPTOR=_SPARSEADAMSGDPARAMETER,
+        __module__='ps_pb2'
+        # @@protoc_insertion_point(class_scope:paddle.SparseAdamSGDParameter)
+    ))
+_sym_db.RegisterMessage(SparseAdamSGDParameter)
+
 DenseSGDRuleParameter = _reflection.GeneratedProtocolMessageType(
     'DenseSGDRuleParameter',
     (_message.Message, ),
@@ -2510,5 +3029,5 @@ _sym_db.RegisterMessage(FsClientParameter)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(),
-                                                _b('\200\001\001'))
+                                                _b('\200\001\001\370\001\001'))
 # @@protoc_insertion_point(module_scope)

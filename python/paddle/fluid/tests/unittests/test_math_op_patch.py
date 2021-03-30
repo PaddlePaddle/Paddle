@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import unittest
 from decorator_helper import prog_scope
+import paddle
 import paddle.fluid as fluid
 import numpy
 
 
 class TestMathOpPatches(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     @prog_scope()
     def test_add_scalar(self):
         a = fluid.layers.data(name="a", shape=[1])
@@ -197,8 +201,74 @@ class TestMathOpPatches(unittest.TestCase):
                         feed={"a": a_np},
                         fetch_list=[b])
 
-        b_np_actual = (a_np / 7).astype('int64')
-        self.assertTrue(numpy.array_equal(b_np, b_np_actual))
+        b_np_actual = (a_np / 7).astype('float32')
+        self.assertTrue(numpy.allclose(b_np, b_np_actual))
+
+    @prog_scope()
+    def test_equal(self):
+        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
+        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+        c = (a == b)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float32')
+        b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float32')
+
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np,
+                              "b": b_np},
+                        fetch_list=[c])
+
+        self.assertTrue(numpy.array_equal(c_np, a_np == b_np))
+        self.assertEqual(c.dtype, fluid.core.VarDesc.VarType.BOOL)
+
+    @prog_scope()
+    def test_equal_and_cond(self):
+        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
+        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+
+        one = fluid.layers.ones(shape=[1], dtype='int32')
+        zero = fluid.layers.zeros(shape=[1], dtype='int32')
+        cond = (one == zero)
+        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float')
+        b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float')
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np,
+                              "b": b_np},
+                        fetch_list=[c])
+
+        self.assertTrue(numpy.array_equal(c_np, a_np - b_np))
+
+    @prog_scope()
+    def test_neg(self):
+        a = fluid.layers.data(name="a", shape=[10, 1])
+        b = -a
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.random.uniform(-1, 1, size=[10, 1]).astype('float32')
+
+        b_np = exe.run(fluid.default_main_program(),
+                       feed={"a": a_np},
+                       fetch_list=[b])
+        self.assertTrue(numpy.allclose(-a_np, b_np))
+
+    @prog_scope()
+    def test_astype(self):
+        a = fluid.layers.data(name="a", shape=[10, 1])
+        b = a.astype('float32')
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.random.uniform(-1, 1, size=[10, 1]).astype('float64')
+
+        b_np = exe.run(fluid.default_main_program(),
+                       feed={"a": a_np},
+                       fetch_list=[b])
+        self.assertTrue(numpy.allclose(a_np.astype('float32'), b_np))
 
 
 if __name__ == '__main__':

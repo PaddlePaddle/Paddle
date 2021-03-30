@@ -24,32 +24,42 @@ class ScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Updates"),
-                   "Input(Updates) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Ids) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Updates) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ScatterOp should not be null."));
 
     auto updates_dims = ctx->GetInputDim("Updates");
     auto ref_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Ids").size(), 1,
-                      "Update Ids should be 1-D.");
-    PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
-                      "Xerence and Updates should have the same shape size");
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Ids").size(), 1,
+        platform::errors::InvalidArgument("Update Ids should be 1-D."));
+    PADDLE_ENFORCE_EQ(
+        ref_dims.size(), updates_dims.size(),
+        platform::errors::InvalidArgument(
+            "Rerence and Updates should have the same shape size."));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same batch-size.");
+                      platform::errors::InvalidArgument(
+                          "Updates and Ids should have same batch-size."));
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -71,9 +81,9 @@ class ScatterGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -85,7 +95,7 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
     AddAttr<bool>("overwrite",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "The mode that updating the output when has same index,"
                   "If True, use the overwrite mode to update the output"
                   "of the same index, if False, use the accumulate mode to"
@@ -106,34 +116,43 @@ $$
   }
 };
 
-class ScatterGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("scatter_grad");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput("Updates", Input("Updates"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Updates"), InputGrad("Updates"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("Updates", this->Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"),
+                  this->InputGrad("Updates"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterGradNoNeedBufferVarsInference,
-                                      "Updates");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarsInferer,
+                                    "Updates");
+
+DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
-                  ops::ScatterGradDescMaker);
+                  ops::ScatterGradMaker<paddle::framework::OpDesc>,
+                  ops::ScatterGradMaker<paddle::imperative::OpBase>,
+                  ops::ScatterInplaceInferer);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInference);
-REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);
+                  ops::ScatterGradNoNeedBufferVarsInferer);
+REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
+                       ops::ScatterOpKernel<double>, ops::ScatterOpKernel<int>,
+                       ops::ScatterOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>,
+                       ops::ScatterGradientOpKernel<double>,
+                       ops::ScatterGradientOpKernel<int>,
+                       ops::ScatterGradientOpKernel<int64_t>);

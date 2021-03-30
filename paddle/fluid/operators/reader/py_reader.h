@@ -17,6 +17,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
@@ -24,9 +25,15 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
+class LoDTensorBlockingQueue;
+
 class PyReader : public framework::FileReader {
  public:
-  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue);
+  explicit PyReader(
+      const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+      const std::vector<framework::DDim>& dims,
+      const std::vector<framework::proto::VarType::Type>& var_types,
+      const std::vector<bool>& need_check_feed);
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
 

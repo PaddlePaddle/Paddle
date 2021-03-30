@@ -12,59 +12,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/assign_op.h"
+
+#include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Variable;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
-class AssignFunctor {
- public:
-  AssignFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx)
-      : out_(out), dev_ctx_(dev_ctx) {}
-
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
-    copy_tensor(lod_tensor, &out_tensor);
-  }
-
-  void operator()(const framework::LoDTensorArray &array) const {
-    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(array.size());
-    for (size_t i = 0; i < array.size(); ++i) {
-      copy_tensor(array[i], &out_array[i]);
-    }
-  }
-
-  void operator()(const framework::SelectedRows &rows) const {
-    framework::SelectedRows &out_rows =
-        *out_->GetMutable<framework::SelectedRows>();
-    out_rows.set_rows(rows.rows());
-    out_rows.set_height(rows.height());
-    auto &t = rows.value();
-    auto *m = out_rows.mutable_value();
-    framework::TensorCopy(t, t.place(), dev_ctx_, m);
-  }
-
-  template <typename T>
-  void operator()(const T &v) const {
-    PADDLE_THROW("Not support type for assign op %s", typeid(T).name());
-  }
-
- private:
-  void copy_tensor(const framework::LoDTensor &lod_tensor,
-                   framework::LoDTensor *out) const {
-    if (lod_tensor.numel() == 0) return;
-    auto &out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
-    out_tensor.set_lod(lod_tensor.lod());
-  }
-
-  framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
-};
 
 class AssignOp : public framework::OperatorWithKernel {
  public:
@@ -82,15 +50,49 @@ class AssignOp : public framework::OperatorWithKernel {
         if (type == framework::proto::VarType::LOD_TENSOR) {
           ctx->ShareLoD("X", /*->*/ "Out");
         }
+      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        if (ctx->IsRuntime()) {
+          // The runtime output shape is determined in kernel.
+          return;
+        } else {
+          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+        }
       }
     }
   }
 
  protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    const framework::Variable *var = ctx.InputVar("X");
+    if (var->IsType<framework::LoDTensorArray>()) {
+      auto t_arr = var->Get<framework::LoDTensorArray>();
+      // NOTE(liym27): Support an empty tensor array as Input.
+      // And set the kernel type is float.
+      if (t_arr.size() == 0) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
+      }
+    }
+
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+  }
+};
+
+class AssignInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -101,10 +103,10 @@ class AssignKernel {
     if (x == nullptr) {
       return;
     }
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
-    PADDLE_ENFORCE(
-        out != nullptr,
-        "The Output(Out) should not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
 
@@ -130,17 +132,16 @@ raise error if the type is not listed above.
   }
 };
 
-class AssignGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AssignGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("assign");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetOutput("Out", InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetOutput("Out", this->InputGrad("X"));
   }
 };
 
@@ -150,14 +151,23 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(assign, ops::AssignOp, ops::AssignGradMaker,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+namespace plat = paddle::platform;
+REGISTER_OPERATOR(assign, ops::AssignOp,
+                  ops::AssignGradMaker<paddle::framework::OpDesc>,
+                  ops::AssignGradMaker<paddle::imperative::OpBase>,
+                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,
-                               int64_t, ops::AssignKernel);
+                               int64_t, ops::AssignKernel, bool,
+                               ops::AssignKernel, plat::float16,
+                               ops::AssignKernel);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                 ops::AssignKernel, int, ops::AssignKernel,
-                                int64_t, ops::AssignKernel);
+                                int64_t, ops::AssignKernel, bool,
+                                ops::AssignKernel, plat::float16,
+                                ops::AssignKernel);
 #endif

@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
+
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <tuple>
+
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -73,7 +76,7 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 template <typename T>
 boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
-    return boost::get<T>(op.Op()->GetAttr(attr));
+    return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else
     return boost::none;
 }
@@ -332,7 +335,7 @@ void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
       FuseConvAsX(name_scope_,
                   FuseProjectionConv(name_scope_, std::make_pair(graph, 0))));
 
-  std::cout << "Fused graph " << fused_graph_with_stats.second << std::endl;
+  LOG(INFO) << "Fused graph " << fused_graph_with_stats.second << "\n";
   AddStatis(fused_graph_with_stats.second);
 }
 }  // namespace ir
@@ -341,3 +344,8 @@ void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
 REGISTER_PASS(conv_elementwise_add_mkldnn_fuse_pass,
               paddle::framework::ir::ResidualConnectionMKLDNNFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .LE("elementwise_add", 1));

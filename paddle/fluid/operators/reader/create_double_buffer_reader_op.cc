@@ -27,26 +27,40 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    if (out->Get() != nullptr) {
-      return;
-    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
+
+    if (out->Get() != nullptr) {
+      auto* decorated_reader =
+          dynamic_cast<framework::DecoratedReader*>(out->Get().get());
+      PADDLE_ENFORCE_NOT_NULL(
+          decorated_reader,
+          platform::errors::NotFound("The inited reader should be a "
+                                     "DecoratedReader when running "
+                                     "create_double_buffer_reader op."));
+      if (decorated_reader->UnderlyingReader() == underlying_reader.Get()) {
+        return;
+      }
+    }
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
     if (place_str == "AUTO") {
       place = dev_place;
-    } else if (place_str == "CPU") {
+    } else if (place_str == "CPUPLACE") {
       place = platform::CPUPlace();
     } else {
+      place_str = place_str.substr(0, place_str.length() - 1);
       std::istringstream sin(place_str);
-      sin.seekg(std::string("CUDA:").size(), std::ios::beg);
+      sin.seekg(std::string("CUDAPLACE(").size(), std::ios::beg);
       size_t num;
       sin >> num;
       place = platform::CUDAPlace(static_cast<int>(num));
     }
 
+    VLOG(10) << "Create new double buffer reader on " << place;
+
+    out->Clear();
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
                                                               place, 2));
   }
@@ -65,9 +79,9 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
     std::unordered_set<std::string> enum_range;
     constexpr size_t kMaxCUDADevs = 128;
     for (size_t i = 0; i < kMaxCUDADevs; ++i) {
-      enum_range.insert(string::Sprintf("CUDA:%d", i));
+      enum_range.insert(string::Sprintf("CUDAPLACE(%d)", i));
     }
-    enum_range.insert("CPU");
+    enum_range.insert("CPUPLACE");
     enum_range.insert("AUTO");
     AddAttr<std::string>("place", "The double buffer place")
         .SetDefault("AUTO")

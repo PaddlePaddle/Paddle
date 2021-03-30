@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
-#include <memory>
+
 #include <string>
-#include <unordered_set>
-#include <vector>
-#include "paddle/fluid/framework/ir/graph_helper.h"
+
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -25,7 +24,8 @@ namespace framework {
 namespace ir {
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_fuse", graph);
 
   int found_fc_count = 0;
@@ -89,6 +89,45 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     std::string activation_type = with_relu ? "relu" : "";
     desc.SetAttr("activation_type", activation_type);
 
+    // This is to add padding for dimension 128 on concern of MKL performance
+    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
+    bool use_fc_padding =
+        Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
+    const std::string& w_name = patterns::UniqueKey(w->Name());
+    VarDesc w_key(w_name);
+    w_key.SetPersistable(true);
+    auto* w_node = g->CreateVarNode(&w_key);
+    if (!use_gpu && use_fc_padding) {
+      auto* scope = param_scope();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight_data = weight->data<float>();
+      auto weight_dims = weight->dims();
+      int weight_num = product(weight_dims);
+      int w_h = weight_dims[0];
+      int w_w = weight_dims[1];
+      if (w_h % 128 == 0 && w_w % 128 == 0) {
+        auto* w_var = scope->Var(w_name);
+        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+
+        auto* weight_data_tmp = new float[weight_num];
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+                 w_w * sizeof(float));
+        }
+        w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+        auto* weight_data_new =
+            w_tensor->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+                 w_w * sizeof(float));
+        }
+        delete[] weight_data_tmp;
+        desc.SetInput("W", {w_name});
+        desc.SetAttr("padding_weights", true);
+        desc.Flush();
+      }
+    }
+
     // For anakin subgraph int8
     // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
     // fake_dequant" can be detected by the quant_dequant_fuse_pass. This pass
@@ -99,7 +138,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* mul_op_desc = mul->Op();
     if (mul_op_desc->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));
-      desc.SetAttr("input_scale", mul_op_desc->GetAttr("input_scale"));
+      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("X_scale"));
       desc.SetAttr("weight_scale", mul_op_desc->GetAttr("weight_scale"));
       if (mul_op_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", mul_op_desc->GetAttr("out_scale"));
@@ -107,6 +146,18 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       if (elementwise_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
+
+    auto* elementwise_add_op_desc = elementwise_add->Op();
+    // if we can find out_threshold in elementwise_add, then set it as the
+    // out_thrshold of fc
+    auto out_threshold_attr =
+        elementwise_add_op_desc->GetNullableAttr("out_threshold");
+    if (out_threshold_attr.which()) {
+      VLOG(4) << "setting out_threshold: "
+              << BOOST_GET_CONST(float, out_threshold_attr);
+      desc.SetAttr("out_threshold", out_threshold_attr);
+    }
+    desc.Flush();
 
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     if (with_relu) {
@@ -117,7 +168,12 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
 
     IR_NODE_LINK_TO(subgraph.at(x), fc_node);
-    IR_NODE_LINK_TO(w, fc_node);
+    if (desc.GetAttrIfExists<bool>("padding_weights")) {
+      IR_NODE_LINK_TO(w_node, fc_node);
+    } else {
+      GraphSafeRemoveNodes(g, {w_node});
+      IR_NODE_LINK_TO(w, fc_node);
+    }
     IR_NODE_LINK_TO(bias, fc_node);
     if (with_relu) {
       IR_NODE_LINK_TO(fc_node, relu_out);
@@ -135,4 +191,12 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass);
+REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass)
+    .RequirePassAttr("use_gpu");
+REGISTER_PASS_CAPABILITY(fc_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .LE("elementwise_add", 1)
+            .EQ("relu", 0)
+            .EQ("fc", 0));

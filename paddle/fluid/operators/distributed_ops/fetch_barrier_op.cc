@@ -12,18 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class FetchBarrierOp : public framework::OperatorBase {
  public:
@@ -36,6 +46,7 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
+
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
@@ -47,7 +58,9 @@ class FetchBarrierOp : public framework::OperatorBase {
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U,
+                        platform::errors::Unavailable(
+                            "Internal error occurred in RPCClient."));
     }
   }
 };
@@ -55,6 +68,9 @@ class FetchBarrierOp : public framework::OperatorBase {
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
@@ -82,6 +98,8 @@ class FetchBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
-                  ops::FetchBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    fetch_barrier, ops::FetchBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FetchBarrierOpMaker, ops::FetchBarrierOpShapeInference);

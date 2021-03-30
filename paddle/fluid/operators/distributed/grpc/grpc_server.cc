@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <unistd.h>
 #include <limits>
 #include <memory>
 #include <string>
@@ -19,13 +20,29 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
 
+namespace grpc {
+class ChannelArguments;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace operators {
+namespace distributed {
+class GRPCVariableResponse;
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle
+
 using ::grpc::ServerAsyncResponseWriter;
 
 DECLARE_bool(rpc_disable_reuse_port);
+DECLARE_int32(rpc_retry_bind_port);
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -40,7 +57,8 @@ class RequestBase {
         status_(PROCESS),
         request_handler_(request_handler),
         req_id_(req_id) {
-    PADDLE_ENFORCE(cq_);
+    PADDLE_ENFORCE_NOT_NULL(cq_, platform::errors::InvalidArgument(
+                                     "ServerCompletionQueue cq are empty"));
   }
   virtual ~RequestBase() {}
   virtual void Process() = 0;
@@ -89,8 +107,7 @@ class RequestSend final : public RequestBase {
                        RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx(),
-                                            !request_handler->sync_mode()));
+                                            request_handler->dev_ctx(), true));
     int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -101,11 +118,13 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestSend var_name:" << varname << " trainer: " << trainer_id;
+
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
@@ -330,8 +349,9 @@ class RequestPrefetch final : public RequestBase {
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
+
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name;
+            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
@@ -378,12 +398,13 @@ class RequestCheckpointNotify final : public RequestBase {
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
     int trainer_id = request_->GetTrainerId();
+    std::string table_name = request_->TableName();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             trainer_id, checkpoint_dir);
+                             trainer_id, checkpoint_dir, table_name);
     Finish(reply_, &responder_);
   }
 
@@ -391,6 +412,84 @@ class RequestCheckpointNotify final : public RequestBase {
   std::shared_ptr<GRPCVariableResponse> request_;
   sendrecv::VoidMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+};
+
+class RequestNotify final : public RequestBase {
+ public:
+  explicit RequestNotify(GrpcService::AsyncService* service,
+                         ::grpc::ServerCompletionQueue* cq,
+                         RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
+    int method_id = static_cast<int>(distributed::GrpcMethod::kRequestNotify);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+  virtual ~RequestNotify() {}
+  std::string GetReqName() override { return request_->Varname(); }
+
+  void Process() override {
+    std::string varname = GetReqName();
+    VLOG(4) << "RequestNotify var_name:" << varname;
+
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = request_->GetVar();
+    int trainer_id = request_->GetTrainerId();
+    framework::Variable* outvar = nullptr;
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  sendrecv::VoidMessage reply_;
+  std::shared_ptr<GRPCVariableResponse> request_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+};
+
+class RequestSendAndRecv final : public RequestBase {
+ public:
+  explicit RequestSendAndRecv(GrpcService::AsyncService* service,
+                              ::grpc::ServerCompletionQueue* cq,
+                              RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx(), true));
+
+    int method_id =
+        static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
+
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestSendAndRecv() {}
+  std::string GetReqName() override { return request_->Varname(); }
+
+  void Process() override {
+    std::string in_var_name = request_->Varname();
+    std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
+    int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestSendAndRecv, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = scope->FindVar(in_var_name);
+    framework::Variable* outvar = nullptr;
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name, table_name);
+    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
+                          &reply_);
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  std::shared_ptr<GRPCVariableResponse> request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
 void AsyncGRPCServer::WaitServerReady() {
@@ -415,25 +514,44 @@ class NoReusePortOption : public ::grpc::ServerBuilderOption {
 };
 
 void AsyncGRPCServer::StartServer() {
-  ::grpc::ServerBuilder builder;
-  builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
-                           &selected_port_);
+  for (int i = 0; i < FLAGS_rpc_retry_bind_port; i++) {
+    ::grpc::ServerBuilder builder;
+    std::unique_ptr<GrpcService::AsyncService> service(
+        new GrpcService::AsyncService());
+    builder.AddListeningPort(bind_address_, ::grpc::InsecureServerCredentials(),
+                             &selected_port_);
 
-  builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
-  builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
-  if (FLAGS_rpc_disable_reuse_port) {
-    builder.SetOption(
-        std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+    builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
+    builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+    if (FLAGS_rpc_disable_reuse_port) {
+      builder.SetOption(
+          std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+      LOG(INFO) << "set FLAGS_rpc_disable_reuse_port";
+    }
+    builder.RegisterService(service.get());
+
+    for (auto t : rpc_call_map_) {
+      rpc_cq_[t.first].reset(builder.AddCompletionQueue().release());
+    }
+
+    server_ = builder.BuildAndStart();
+    if (selected_port_ != 0) {
+      LOG(INFO) << "Server listening on " << bind_address_
+                << " successful, selected port: " << selected_port_;
+      service_.reset(service.release());
+      break;
+    }
+
+    LOG(WARNING) << "Server listening on " << bind_address_
+                 << " failed, selected port: " << selected_port_
+                 << ", retry after 3 seconds!";
+
+    sleep(3);
   }
-  builder.RegisterService(&service_);
 
-  for (auto t : rpc_call_map_) {
-    rpc_cq_[t.first].reset(builder.AddCompletionQueue().release());
-  }
-
-  server_ = builder.BuildAndStart();
-  LOG(INFO) << "Server listening on " << bind_address_
-            << " selected port: " << selected_port_;
+  PADDLE_ENFORCE_NE(
+      selected_port_, 0,
+      platform::errors::Unavailable("can't bind to address:%s", bind_address_));
 
   std::function<void(const std::string&, int)> f =
       std::bind(&AsyncGRPCServer::TryToRegisterNewOne, this,
@@ -510,24 +628,29 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
 
   RequestBase* b = nullptr;
   if (rpc_name == kRequestSend) {
-    b = new RequestSend(&service_, cq.get(), handler, req_id);
+    b = new RequestSend(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
-    b = new RequestGet(&service_, cq.get(), handler, req_id);
+    b = new RequestGet(service_.get(), cq.get(), handler, req_id);
 
   } else if (rpc_name == kRequestGetNoBarrier) {
-    b = new RequestGetNoBarrier(&service_, cq.get(), handler, req_id);
+    b = new RequestGetNoBarrier(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGetMonomerVariable) {
-    b = new RequestGetMonomerVariable(&service_, cq.get(), handler, req_id,
+    b = new RequestGetMonomerVariable(service_.get(), cq.get(), handler, req_id,
                                       this);
   } else if (rpc_name == kRequestGetMonomerBarrier) {
-    b = new RequestGetMonomerBarrier(&service_, cq.get(), handler, req_id,
+    b = new RequestGetMonomerBarrier(service_.get(), cq.get(), handler, req_id,
                                      this);
   } else if (rpc_name == kRequestPrefetch) {
-    b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
+    b = new RequestPrefetch(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
-    b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
+    b = new RequestCheckpointNotify(service_.get(), cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestNotify) {
+    b = new RequestNotify(service_.get(), cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestSendAndRecv) {
+    b = new RequestSendAndRecv(service_.get(), cq.get(), handler, req_id);
   } else {
-    PADDLE_ENFORCE(false, "not supported rpc");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("not supported rpc: %s", rpc_name));
   }
 
   reqs[req_id] = b;
@@ -544,7 +667,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(WARNING) << "CompletionQueue " << rpc_name << " shutdown!";
+      VLOG(4) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 
@@ -555,7 +678,10 @@ void AsyncGRPCServer::HandleRequest(
     auto& reqs = rpc_reqs_[rpc_name];
     RequestBase* base = nullptr;
     {
-      PADDLE_ENFORCE(req_id >= 0 && req_id < kRequestBufSize);
+      PADDLE_ENFORCE_EQ(
+          (req_id >= 0 && req_id < kRequestBufSize), true,
+          platform::errors::OutOfRange("request id: %s out of bounds: [0, %s)",
+                                       req_id, kRequestBufSize));
       std::unique_lock<std::mutex> lock(cq_mutex_);
       base = reqs[req_id];
     }

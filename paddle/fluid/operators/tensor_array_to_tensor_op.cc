@@ -96,7 +96,10 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
+                                "Input tensorarray size should > 0,"
+                                "but the received is %d",
+                                n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -120,11 +123,18 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     out.Resize(out_dims);
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);
-    // Invoke concat Op
-    auto concat_op = framework::OpRegistry::CreateOp(
-        "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
 
-    concat_op->Run(scope, place);
+    auto use_stack = Attr<bool>("use_stack");
+
+    // Invoke concat Op or stack Op
+    auto op =
+        use_stack
+            ? framework::OpRegistry::CreateOp("stack", {{"X", names}},
+                                              {{"Y", {Output("Out")}}}, attrs)
+            : framework::OpRegistry::CreateOp(
+                  "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
+
+    op->Run(scope, place);
   }
 };
 
@@ -139,17 +149,32 @@ class LoDTensorArray2TensorOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated.")
         .SetDefault(0);
+    AddAttr<bool>("use_stack",
+                  "Act as concat_op or stack_op. For stack mode, all tensors "
+                  "in the tensor array must have the same shape.")
+        .SetDefault(false);
     AddComment(R"DOC(
 tensor_array_to_tensor Operator.
 
-Concatenate the input LoDTensorArray along dimension axis to the output Tensor.
+If use concat mode, concatenate all tensors in the input LoDTensorArray along
+axis into the output Tensor.
+
+Examples:
+  Input = {[1,2], [3,4], [5,6]}
+  axis = 0
+  Output = [1,2,3,4,5,6]
+  OutputIndex = [2,2,2]
+
+If use stack mode, stack all tensors in the input LoDTensorArray along axis into
+the output Tensor.
+
 Examples:
   Input = {[1,2], [3,4], [5,6]}
   axis = 0
   Output = [[1,2],
             [3,4],
             [5,6]]
-  OutputIndex = [1,1,1]
+  OutputIndex = [2,2,2]
 
 )DOC");
   }
@@ -157,21 +182,43 @@ Examples:
 
 class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
+  void operator()(framework::InferShapeContext *ctx) const override {
+    // in runtime, shape is determined by RunImpl
+    if (ctx->IsRuntime()) return;
+    auto dims = ctx->GetInputDim("X");
+    // if the shape is empty
+    if (dims == framework::make_ddim({0UL})) return;
+    // otherwise, suppose the shape of array is the shape of tensor in the
+    // array, which is consistent with what tensor_array_read_write dose
+    auto axis = ctx->Attrs().Get<int>("axis");
+    auto use_stack = ctx->Attrs().Get<bool>("use_stack");
+    if (use_stack) {
+      auto dim_vec = framework::vectorize<int>(dims);
+      // use -1 for the stack dim size
+      dim_vec.insert(dim_vec.begin() + axis, -1);
+      dims = framework::make_ddim(dim_vec);
+    } else {
+      // use -1 for the concat dim size
+      dims[axis] = -1;
+    }
+    ctx->SetOutputDim("Out", dims);
+  }
 };
 
 class LoDTensorArray2TensorGradInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {}
+  void operator()(framework::InferShapeContext *ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
 };
 
 class LoDTensorArray2TensorGradInferVarType
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &out_var : ctx->Output(framework::GradVarName("X"))) {
-      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
-    }
+    ctx->SetOutputType(framework::GradVarName("X"),
+                       framework::proto::VarType::LOD_TENSOR_ARRAY,
+                       framework::ALL_ELEMENTS);
   }
 };
 
@@ -188,7 +235,10 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
+                                "Input tensorarray size should > 0, "
+                                "but the received is: %d. ",
+                                n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -204,11 +254,17 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     LodTensorVectorResizeFromLodTensorArray(scope, "grad_name", Input("X"),
                                             &grad_names);
 
-    auto concat_grad_op = framework::OpRegistry::CreateOp(
-        "concat_grad", {{"X", names}, {"Out@GRAD", {dout_name}}},
-        {{"X@GRAD", grad_names}}, attrs);
+    auto use_stack = Attr<bool>("use_stack");
 
-    concat_grad_op->Run(scope, place);
+    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
+                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs)
+                             : framework::OpRegistry::CreateOp(
+                                   "concat_grad",
+                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs);
+
+    grad_op->Run(scope, place);
 
     LodTensorArrayCreateFromLodTensorArray(scope, Input("X"), dx_name);
     auto &grad_inx =
@@ -222,15 +278,31 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
   }
 };
 
+template <typename T>
+class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tensor_array_to_tensor_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 USE_OP(concat);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
-                  ops::LoDTensorArray2TensorOpMaker,
-                  ops::LoDTensorArray2TensorOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
+    ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
+    ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
+    ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

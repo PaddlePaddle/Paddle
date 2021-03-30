@@ -90,7 +90,9 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* out_wt = ctx.Output<framework::Tensor>("OutWeight");
 
-    PADDLE_ENFORCE_EQ(x->lod().size(), 1UL);
+    PADDLE_ENFORCE_EQ(x->lod().size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "TargetAssignOp input(X) needs 1 level of LoD"));
     int mismatch_value = ctx.Attr<int>("mismatch_value");
 
     const T* x_data = x->data<T>();
@@ -105,7 +107,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t k = x->dims()[2];
 
     auto x_lod = x->lod().back();
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     size_t* x_lod_data = x_lod.MutableData(ctx.GetPlace());
 #else
     size_t* x_lod_data = x_lod.data();
@@ -121,10 +123,13 @@ class TargetAssignKernel : public framework::OpKernel<T> {
 
     auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
     if (neg_indices) {
-      PADDLE_ENFORCE_EQ(neg_indices->lod().size(), 1UL);
+      PADDLE_ENFORCE_EQ(
+          neg_indices->lod().size(), 1UL,
+          platform::errors::InvalidArgument(
+              "TargetAssignOp input(NegIndices) needs 1 level of LoD"));
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
 #else
       size_t* neg_lod_data = neg_lod.data();

@@ -176,7 +176,7 @@ class TestCRFModel(unittest.TestCase):
                     place=fluid.CPUPlace())
 
             data = train_data()
-            for i in range(10):
+            for i in range(4):
                 cur_batch = next(data)
                 print(exe.run(train_cp,
                               feed=feeder.feed(cur_batch),

@@ -13,13 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+
 #include <algorithm>
-#include <list>
-#include <map>
-#include <memory>
 #include <mutex>  // NOLINT
-#include <unordered_map>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+
+DEFINE_bool(free_idle_chunk, false,
+            "Whether to free idle chunk when each allocation is freed. "
+            "If false, all freed allocation would be cached to speed up next "
+            "allocation request. If true, no allocation would be cached. This "
+            "flag only works when FLAGS_allocator_strategy=auto_growth.");
+
+DEFINE_bool(free_when_no_cache_hit, false,
+            "Whether to free idle chunks when no cache hit. If true, idle "
+            "chunk would be freed when no cache hit; if false, idle "
+            "chunk would be freed when out of memory occurs. This flag "
+            "only works when FLAGS_allocator_strategy=auto_growth.");
 
 namespace paddle {
 namespace memory {
@@ -57,14 +66,16 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
       block_it->is_free_ = false;
     }
   } else {
-    FreeIdleChunks();
+    if (FLAGS_free_when_no_cache_hit) {
+      FreeIdleChunks();
+    }
     size_t realloc_size = std::max(size, chunk_size_);
 
     try {
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     } catch (BadAlloc &ex) {
-      if (size == realloc_size) throw ex;
-      realloc_size = size;
+      if (FLAGS_free_when_no_cache_hit) throw ex;
+      FreeIdleChunks();
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     }
 
@@ -118,20 +129,27 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
                        block_it);
 
   delete allocation;
+
+  if (FLAGS_free_idle_chunk) {
+    FreeIdleChunks();
+  }
 }
 
-void AutoGrowthBestFitAllocator::FreeIdleChunks() {
+uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
     if (blocks.size() == 1 && blocks.begin()->is_free_) {
       auto &block = *blocks.begin();
       VLOG(2) << "Free chunk with size " << block.size_;
+      bytes += block.size_;
       free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
       chunk_it = chunks_.erase(chunk_it);
     } else {
       ++chunk_it;
     }
   }
+  return bytes;
 }
 
 }  // namespace allocation

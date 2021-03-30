@@ -13,8 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mod_op.h"
+
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -22,6 +39,22 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mod"; }
   std::string GetEquation() const override { return "Out = X \\\\% Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Mod two tensors element-wise";
+  }
 };
 }  // namespace operators
 }  // namespace paddle
@@ -36,3 +69,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(elementwise_mod)
+    .AddCheckpoint(
+        R"ROC(Register elementwise_mod for adding the attribute of Scale_y)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "Scale_y",
+            "In order to support the function of scaling the input Y when "
+            "using the operator of elementwise_mod.",
+            1.0f));

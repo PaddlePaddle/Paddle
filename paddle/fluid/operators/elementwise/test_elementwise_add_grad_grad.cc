@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <cstdlib>
-#include <memory>
-#include <random>
-#include <string>
-#include <vector>
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 USE_OP(elementwise_add);
@@ -34,11 +24,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class TestElementwiseAddGradGradWithoutDout
+class TestElementwiseAddGradGradWithoutDDX
     : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseAddGradGradWithoutDout(const platform::Place &place,
-                                        const framework::DDim &dims)
+  TestElementwiseAddGradGradWithoutDDX(const platform::Place &place,
+                                       const framework::DDim &dims)
       : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad", place, dims,
                                      {"Y", "DOut", "DDY"}, {"DDOut"}) {}
 
@@ -67,14 +57,14 @@ class TestElementwiseAddGradGradWithoutDout
 TEST(test_elementwise_add_grad_grad_without_ddx, cpu_place) {
   framework::DDim dims({32, 64});
   platform::CPUPlace p;
-  TestElementwiseAddGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(test_elementwise_add_grad_grad_without_ddx, gpu_place) {
   framework::DDim dims({32, 64});
   platform::CUDAPlace p(0);
-  TestElementwiseAddGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 #endif

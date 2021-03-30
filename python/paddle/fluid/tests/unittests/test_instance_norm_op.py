@@ -19,6 +19,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 from op_test import OpTest
+from paddle.fluid import Program, program_guard
+from paddle.fluid.dygraph import to_variable
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -79,7 +81,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         self.init_test_case()
 
     def init_test_case(self):
-        self.use_global_stats = False
+        self.shape = [2, 3, 4, 5]
         self.no_grad_set = set()
         self.fetch_list = [
             'y', 'saved_mean', 'saved_variance', 'x@GRAD', 'scale@GRAD',
@@ -163,6 +165,8 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
+                program._sync_with_cpp()
+
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={
@@ -181,14 +185,92 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                 "instance_norm"):
             places.append(core.CUDAPlace(0))
         for place in places:
-            test_with_place(place, [2, 3, 4, 5])
+            test_with_place(place, self.shape)
 
 
 class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
     def init_test_case(self):
-        self.use_global_stats = False
+        self.shape = [2, 3, 4, 5]
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
+
+
+class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
+    def init_test_case(self):
+        self.shape = [20, 50, 4, 5]
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
+
+
+class TestInstanceNormOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of instance_norm must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.instance_norm, x1)
+
+            # the input dtype of instance_norm must be float32 or float64
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.instance_norm, x2)
+
+
+class TestElasticNormOp(unittest.TestCase):
+    def init_test_case(self):
+        self.epsilon = 1e-5
+        self.places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "instance_norm"):
+            self.places.append(core.CUDAPlace(0))
+
+    def test_norm(self):
+        self.init_test_case()
+        inputs = np.random.random((2, 3, 5, 5)).astype(np.float32)
+        shape = inputs.shape
+        n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+        scale_shape = [c]
+        mean_shape = [n * c]
+        scale = np.ones(scale_shape).astype(np.float32)
+        bias = np.zeros(scale_shape).astype(np.float32)
+        mean, variance = _cal_mean_variance(inputs, self.epsilon, mean_shape)
+        out_np, _, _ = _reference_instance_norm_naive(
+            inputs, scale, bias, self.epsilon, mean, variance)
+
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                instance_norm = fluid.dygraph.InstanceNorm(
+                    5, param_attr=False, bias_attr=False)
+                outputs = instance_norm(to_variable(inputs))
+                self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
+
+
+class TestElasticNormOpCase2(unittest.TestCase):
+    def init_test_case(self):
+        self.epsilon = 1e-5
+        self.places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "instance_norm"):
+            self.places.append(core.CUDAPlace(0))
+
+    def test_norm(self):
+        self.init_test_case()
+        inputs = np.random.random((2, 3, 5, 5)).astype(np.float32)
+        shape = inputs.shape
+        n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+        scale_shape = [c]
+        mean_shape = [n * c]
+        scale = np.ones(scale_shape).astype(np.float32)
+        bias = np.zeros(scale_shape).astype(np.float32)
+        mean, variance = _cal_mean_variance(inputs, self.epsilon, mean_shape)
+        out_np, _, _ = _reference_instance_norm_naive(
+            inputs, scale, bias, self.epsilon, mean, variance)
+
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                instance_norm = fluid.dygraph.InstanceNorm(
+                    3, param_attr=True, bias_attr=True)
+                outputs = instance_norm(to_variable(inputs))
+                self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
 
 
 if __name__ == '__main__':

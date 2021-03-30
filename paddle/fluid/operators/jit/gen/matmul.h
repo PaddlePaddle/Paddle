@@ -17,6 +17,7 @@
 #include <stdlib.h>  // for malloc and free
 #include <string>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,7 +33,10 @@ class MatMulJitCode : public JitCode {
                          size_t code_size = 256 * 1024,
                          void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr), m_(attr.m), n_(attr.n), k_(attr.k) {
-    PADDLE_ENFORCE_EQ(m_, 1, "Only support m==1 yet");
+    PADDLE_ENFORCE_EQ(m_, 1, platform::errors::Unimplemented(
+                                 "Jitcode of matmul only support m==1 (first "
+                                 "matrix's row) now. But m is %d.",
+                                 m_));
     this->genCode();
   }
 

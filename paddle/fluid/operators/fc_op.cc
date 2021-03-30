@@ -23,49 +23,84 @@ class FCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "X(Input) of Fully Connected should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Out(Output) of Fully Connected should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                      "W(Input) of Fully Connected should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "FC");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FC");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FC");
 
-    auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
+    bool padding_weights = ctx->Attrs().Get<bool>("padding_weights");
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The input Weight of fc is expected to be a 2-D tensor. "
+            "But received the number of Weight's dimensions is %d, "
+            "Weight's shape is %s.",
+            w_dims.size(), w_dims));
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
+      auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+
+      PADDLE_ENFORCE_LE(
+          bias_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
+              "received the number of Bias's dimensions is %d, "
+              "Bias's shape is %s.",
+              bias_dims.size(), bias_dims));
+
+      PADDLE_ENFORCE_EQ(
+          bias_dims[bias_dims.size() - 1], w_dims1,
+          platform::errors::InvalidArgument(
+              "The last dimension of input Bias is expected be equal "
+              "to the actual width of input Weight. But received the last "
+              "dimension of Bias is %d, Bias's shape is %s; "
+              "the actual width of Weight is %d, Weight's shape is %s.",
+              bias_dims[bias_dims.size() - 1], bias_dims, w_dims1, w_dims));
+
       if (bias_dims.size() == 2) {
-        PADDLE_ENFORCE_EQ(bias_dims[0], 1,
-                          "The shape of Bias must be [1, dim].");
-        PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
-                          "The shape of Bias must be [1, dim].");
-      } else if (bias_dims.size() == 1) {
-        PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
-                          "The shape of Bias must be [1, dim].");
+        PADDLE_ENFORCE_EQ(
+            bias_dims[0], 1,
+            platform::errors::InvalidArgument(
+                "The first dimension of input Bias is expected to be 1, "
+                "but received %d, Bias's shape is %s.",
+                bias_dims[0], bias_dims));
       }
     }
+
+    auto in_dims = ctx->GetInputDim("Input");
+    int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
+    PADDLE_ENFORCE_LT(
+        in_num_col_dims, in_dims.size(),
+        platform::errors::InvalidArgument(
+            "The attribute in_num_col_dims used to flatten Input to "
+            "a 2-D tensor, is expected to be less than the number of "
+            "Input's dimensions. But recieved in_num_col_dims is %d, "
+            "the number of Input's dimensions is %d, Input's shape is %s.",
+            in_num_col_dims, in_dims.size(), in_dims));
 
     auto& activation_type = ctx->Attrs().Get<std::string>("activation_type");
     if (!activation_type.empty()) {
       PADDLE_ENFORCE_EQ(activation_type, "relu",
-                        "Activation %s is not supportetd in fc now.",
-                        activation_type.c_str());
+                        platform::errors::InvalidArgument(
+                            "The attribute activation_type of fc is expected "
+                            "to be \"relu\", but received %s.",
+                            activation_type.c_str()));
     }
+
     if (ctx->Attrs().Get<bool>("use_mkldnn")) {
-      PADDLE_ENFORCE_EQ(in_dims.size() == 2 || in_dims.size() == 4, true,
-                        "Fully Connected input should be 2-D or 4-D tensor.");
+      PADDLE_ENFORCE_EQ(
+          in_dims.size() >= 2 && in_dims.size() <= 4, true,
+          platform::errors::Unimplemented(
+              "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
+              "use_mkldnn is set. But recieved the number of Input's "
+              "dimensions is %d, Input's shape is %s.",
+              in_dims.size(), in_dims));
     }
-    PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "Fully Connected input should be 2-D tensor.");
-    int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
-    PADDLE_ENFORCE_GT(
-        in_dims.size(), in_num_col_dims,
-        "The input tensor Input's rank of FCOp should be larger than "
-        "in_num_col_dims.");
 
     std::vector<int64_t> output_dims;
-    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims);
+    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims,
+                 padding_weights);
 
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("Input", "Out");
@@ -76,12 +111,21 @@ class FCOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
     if (ctx.Attr<bool>("use_mkldnn")) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
+      using framework::proto::VarType;
+      customized_type_value = (input_data_type == VarType::INT8 ||
+                               input_data_type == VarType::UINT8)
+                                  ? kFCMKLDNNINT8
+                                  : kFCMKLDNNFP32;
     }
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library, customized_type_value);
   }
 };
 
@@ -106,9 +150,39 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<bool>(
+        "padding_weights",
+        "(bool, default false) When padding weights in the fc fuse pass, "
+        "the 'padding_weights' attribute is set as true.")
+        .SetDefault(false);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
+    /* int8 parameters */
+    AddAttr<float>("Scale_in",
+                   "(float, default 1.0f), The quantize scale of input data")
+        .SetDefault(1.0f);
+    AddAttr<std::vector<float>>("Scale_weights",
+                                "(std::vector<float>, default {1.0f}), The "
+                                "quantize scale of weights data")
+        .SetDefault({1.0f});
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
     AddComment(R"DOC(
 Fully Connected Operator.
 
@@ -122,8 +196,11 @@ The size of each dimension of the parameters checked in the infer-shape.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fc, ops::FCOp, ops::FCOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OPERATOR(
+    fc, ops::FCOp, ops::FCOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fc, ops::FCOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FCOpKernel<paddle::platform::CPUDeviceContext, double>);

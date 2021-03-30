@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gflags/gflags.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #endif
 
@@ -45,7 +45,7 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDA related related FLAG
@@ -84,7 +84,7 @@ DEFINE_string(selected_gpus, "",
               "share-memory only.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDNN related FLAG
@@ -167,13 +167,13 @@ DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
             "batch_norm, default is False.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * NCCL related FLAG
- * Name: FLAGS_enable_cublas_tensor_op_math
- * Since Version:
- * Value Range:
+ * Name: FLAGS_sync_nccl_allreduce
+ * Since Version: 1.3
+ * Value Range: bool, default=true
  * Example:
  * Note: asynchronous nccl allreduce or synchronous issue:
  *       https://github.com/PaddlePaddle/Paddle/issues/15049
@@ -199,7 +199,9 @@ DEFINE_bool(
  */
 DEFINE_int32(communicator_max_merge_var_num, 20,
              "max var num to merge and send");
-
+DEFINE_bool(communicator_is_sgd_optimizer, true,
+            "gradient sent to the server is the sum of the gradients "
+            "calculated by each thread if optimizer is sgd");
 /**
  * Distributed related FLAG
  * Name: FLAGS_communicator_send_queue_size
@@ -301,17 +303,29 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_groth}, default=naive_best_fit
+ * Value Range: string, {naive_best_fit, auto_growth, thread_local},
+ * default=auto_growth
  * Example:
- * Note: Allocator policy for selecting Paddle Paddle.
- *       The allocator strategy is under development and the non-legacy
- *       allocator is not yet stable.
+ * Note: For selecting allocator policy of PaddlePaddle.
  */
-DEFINE_string(allocator_strategy, "naive_best_fit",
-              "The allocation strategy. naive_best_fit means the original best "
-              "fit allocator of Fluid. "
-              "auto_growth means the experimental auto-growth allocator. "
-              "Enum in [naive_best_fit, auto_growth].");
+#ifdef PADDLE_ON_INFERENCE
+static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
+#else
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+#endif
+DEFINE_string(
+    allocator_strategy, kDefaultAllocatorStrategy,
+    "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
+    "naive_best_fit means the original pre-allocated allocator of Paddle. "
+    "auto_growth means the auto-growth allocator. "
+    "These two strategies differ in GPU memory allocation. "
+    "naive_best_fit strategy would occupy almost all GPU memory by default, "
+    "which prevents users from starting several Paddle jobs on the same GPU "
+    "card but leads to less memory fragmentation (i.e., maximum batch "
+    "size of models may be larger). auto_growth strategy would allocate "
+    "GPU memory on demand, which allows users to start several Paddle jobs "
+    "on the same GPU card but may lead to more memory fragmentation "
+    "(i.e., maximum batch size of models may be smaller).");
 
 /**
  * Memory related FLAG
@@ -363,7 +377,7 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * Memory related FLAG
@@ -436,6 +450,14 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "size specified by this flag. Else Paddle will reallocate by "
               "FLAGS_fraction_of_gpu_memory_to_use");
 
+DEFINE_uint64(gpu_memory_limit_mb, 0UL,
+              "The maximum gpu memory limit that the process can allocate. "
+              "If it is equal to 0, there would be no limit and all gpu memory "
+              "would be available to the process. If it is larger than 0, "
+              "the process would raise out of memory error if the allocated "
+              "memory exceeds the limit even though there is available "
+              "memory on the gpu card. The unit is MB and default value is 0.");
+
 #endif
 
 /**
@@ -451,3 +473,94 @@ DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "each CUDAPlace. If you don't need to limit the memory, "
               "you should set FLAGS_local_exe_sub_scope_limit=-1. "
               "The default value is 256 MBytes.");
+
+/**
+ * MKLDNN related FLAG
+ * Name: use_mkldnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+
+/**
+ * Debug related FLAG
+ * Name: FLAGS_call_stack_level
+ * Since Version: 2.0.0
+ * Value Range: int, default=2
+ * Example:
+ * Note: Used to debug. Determine the call stack to print when error or
+ * exeception happens.
+ * If FLAGS_call_stack_level == 0, only the error message summary will be shown.
+ * If FLAGS_call_stack_level == 1, the python stack and  error message summary
+ * will be shown.
+ * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
+ * message summary will be shown.
+ */
+#ifdef PADDLE_ON_INFERENCE
+static const int32_t kDefaultCallStackLevel = 2;
+#else
+static const int32_t kDefaultCallStackLevel = 1;
+#endif
+
+DEFINE_int32(
+    call_stack_level, kDefaultCallStackLevel,
+    "Determine the call stack to print when error or exeception happens."
+    // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
+    // "If FLAGS_call_stack_level == 0, only the error message summary will be "
+    // "shown. "
+    "If FLAGS_call_stack_level == 1, the python stack and error message "
+    "summary will be shown."
+    "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
+    "error message summary will be shown.");
+
+/**
+ * Debug related FLAG
+ * Name: sort_sum_gradient
+ * Since Version: 2.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, gradients are summed by the reverse order of
+ * the forward execution sequence.
+ */
+DEFINE_bool(sort_sum_gradient, false,
+            "Sum gradients by the reverse order of "
+            "the forward execution sequence.");
+
+/**
+ * Performance related FLAG
+ * Name: max_inplace_grad_add
+ * Since Version: 2.0.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: The maximum number of inplace grad_add.
+ */
+DEFINE_int32(
+    max_inplace_grad_add, 0,
+    "The maximum number of inplace grad_add. When doing "
+    "gradient accumulation, if the number of gradients need to that "
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "instead of sum. Default is 0.");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_on
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be enabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_on, "",
+              "List of OneDNN operation types to be turned on");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_off
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be disabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_off, "",
+              "List of OneDNN operation types to be turned off");

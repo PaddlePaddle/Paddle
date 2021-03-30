@@ -67,7 +67,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "the number of groups which input channels are divided."
         "(eg.number of input channels is k1*k2*(C+1), which k1 and k2 "
         "are group width and height and C+1 is number of output "
-        "chanels. eg.(4, 6), which 4 is height of group and 6 is "
+        "channels. eg.(4, 6), which 4 is height of group and 6 is "
         "width of group");
     AddAttr<int>("pooled_height",
                  "(int), "
@@ -126,29 +126,33 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of DeformablePSROIPoolOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of DeformablePSROIPoolOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Trans"),
-                   "Input(Trans) of DeformablePSROIPoolOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of DeformablePSROIPoolOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("TopCount"),
-                   "Output(TopCount) of DeformablePSROIPoolOp "
-                   "should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
+                   "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs",
+                   "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasInput("Trans"), "Input", "Trans",
+                   "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
+                   "deformable_psroi_pooling");
+    OP_INOUT_CHECK(ctx->HasOutput("TopCount"), "Output", "TopCount",
+                   "deformable_psroi_pooling");
     auto input_dims = ctx->GetInputDim("Input");
     auto rois_dims = ctx->GetInputDim("ROIs");
     auto trans_dims = ctx->GetInputDim("Trans");
-    PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[ x1, y1, x2, y2], ...].");
-    PADDLE_ENFORCE(trans_dims.size() == 4,
-                   "The format of Input Trans is (N, 2, H, W).");
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(ROIs) should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [[ x1, y1, x2, y2], ...]. The rank of Input(ROIs) should "
+            "be 2, but received ROIs rank is:%d, ROIs shape is:[%s].",
+            rois_dims.size(), rois_dims));
+    PADDLE_ENFORCE_EQ(
+        trans_dims.size(), 4,
+        platform::errors::InvalidArgument("The rank of Input(Trans) should be "
+                                          "4 and the shape of Trans should be "
+                                          "(N, 2, H, W), but received Trans "
+                                          "rank is:%d and Trans shape is:[%s].",
+                                          trans_dims.size(), trans_dims));
     auto pooled_height = ctx->Attrs().Get<int>("pooled_height");
     auto pooled_width = ctx->Attrs().Get<int>("pooled_width");
     auto spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -161,32 +165,92 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     auto part_width = part_size[1];
     auto sample_per_part = ctx->Attrs().Get<int>("sample_per_part");
     auto trans_std = ctx->Attrs().Get<float>("trans_std");
-    PADDLE_ENFORCE(trans_std >= 0.0f, "trans_std must greater than 0.0");
-    PADDLE_ENFORCE(input_dims[1] >= output_channels,
-                   "input channels must greater than out_channels");
-    PADDLE_ENFORCE_GT(pooled_height, 0,
-                      "The pooled height must greater than 0");
-    PADDLE_ENFORCE_GT(pooled_width, 0, "The pooled width must greater than 0");
-    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0");
-    PADDLE_ENFORCE_EQ(group_size.size(), 2,
-                      "The size of group_size should be 2.");
-    PADDLE_ENFORCE_GT(group_height, 0,
-                      "The group_height in group_size must greater than 0");
-    PADDLE_ENFORCE_GT(group_width, 0,
-                      "The group_width in group_size must greater than 0");
-    PADDLE_ENFORCE_EQ(part_size.size(), 2,
-                      "The size of part_size should be 2.");
-    PADDLE_ENFORCE_GT(part_height, 0,
-                      "The part_height in part_size must greater than 0");
-    PADDLE_ENFORCE_GT(part_width, 0,
-                      "The part_width in part_size must greater than 0");
-    PADDLE_ENFORCE(part_height <= trans_dims[2],
-                   "The height of trans must greater than part_height");
-    PADDLE_ENFORCE(part_width <= trans_dims[3],
-                   "The width of trans must greater than part_width");
-    PADDLE_ENFORCE_GT(sample_per_part, 0,
-                      "The sample_per_part must greater than 0");
+    PADDLE_ENFORCE_GE(trans_std, 0., platform::errors::InvalidArgument(
+                                         "Input(trans_std) should not be lower "
+                                         "than 0.0, but received trans_std "
+                                         "is:%f",
+                                         trans_std));
+    PADDLE_ENFORCE_GE(
+        input_dims[1], output_channels,
+        platform::errors::InvalidArgument(
+            "The channel of Input(Input) should not be lower than "
+            "Input(output_dim), "
+            "but received Input channel is:%d and output_dim is:%d.",
+            input_dims[1], output_channels));
+    PADDLE_ENFORCE_GT(
+        pooled_height, 0,
+        platform::errors::InvalidArgument(
+            "Input(pooled_height) should be greater than 0, but received "
+            "pooled_height is:%d.",
+            pooled_height));
+    PADDLE_ENFORCE_GT(
+        pooled_width, 0,
+        platform::errors::InvalidArgument(
+            "Input(pooled_width) should be greater than 0, but received "
+            "pooled_width is:%d.",
+            pooled_width));
+    PADDLE_ENFORCE_GT(
+        spatial_scale, 0.,
+        platform::errors::InvalidArgument(
+            "Input(spatial_scale) should be greater than 0., but received "
+            "spatial_scale is:%f.",
+            spatial_scale));
+    PADDLE_ENFORCE_EQ(
+        group_size.size(), 2,
+        platform::errors::InvalidArgument(
+            "The length of Input(group_size) should be 2, but received "
+            "group_size length is:%d.",
+            group_size.size()));
+    PADDLE_ENFORCE_GT(
+        group_height, 0,
+        platform::errors::InvalidArgument(
+            "group_height in Input(group_size) should be greater than 0, "
+            "but received group_height is:%d.",
+            group_height));
+    PADDLE_ENFORCE_GT(
+        group_width, 0,
+        platform::errors::InvalidArgument(
+            "group_width in Input(group_size) should be greater than 0 "
+            "but received group_width is:%d.",
+            group_width));
+    PADDLE_ENFORCE_EQ(
+        part_size.size(), 2,
+        platform::errors::InvalidArgument(
+            "The length of Input(part_size) should be 2, but received "
+            "part_size length is:%d.",
+            part_size.size()));
+    PADDLE_ENFORCE_GT(
+        part_height, 0,
+        platform::errors::InvalidArgument(
+            "part_height in Input(part_size) should be greater than 0 "
+            "but received part_height is:%d.",
+            part_height));
+    PADDLE_ENFORCE_GT(
+        part_width, 0,
+        platform::errors::InvalidArgument(
+            "part_width in Input(part_size) should be greater than 0 "
+            "but received part_width is:%d.",
+            part_width));
+    PADDLE_ENFORCE_LE(
+        part_height, trans_dims[2],
+        platform::errors::InvalidArgument(
+            "part_height in Input(part_size) should not be greater than "
+            "the height of Input(Trans), but received part_height is:%d, "
+            "the height of Input(Trans) is:%d.",
+            part_height, trans_dims[2]));
+    PADDLE_ENFORCE_LE(
+        part_width, trans_dims[3],
+        platform::errors::InvalidArgument(
+            "part_width in Input(part_size) should not be greater than "
+            "the width of Input(Trans), but received part_width is:%d, "
+            "the width of Input(Trans) is:%d.",
+            part_width, trans_dims[3]));
+    PADDLE_ENFORCE_GT(
+        sample_per_part, 0,
+        platform::errors::InvalidArgument(
+            "Input(sample_per_part) should be greater than 0, but received "
+            "sample_per_part is:%d.",
+            sample_per_part));
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
     out_dims[1] = output_channels;
@@ -199,32 +263,30 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
-class DeformablePSROIPoolGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DeformablePSROIPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("deformable_psroi_pooling_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Trans", Input("Trans"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("TopCount", Output("TopCount"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Trans", this->Input("Trans"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("TopCount", this->Output("TopCount"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Trans"), InputGrad("Trans"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Trans"), this->InputGrad("Trans"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -232,8 +294,8 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Output")),
-                   "The gradient of Output should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
+                   "Output@GRAD", "deformable_psroi_pooling");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"),
                         ctx->GetInputDim("Input"));
@@ -247,8 +309,9 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Trans")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
+        ctx.device_context());
   }
 };
 
@@ -257,9 +320,11 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
-                  ops::DeformablePSROIPoolOpMaker,
-                  ops::DeformablePSROIPoolGradOpDescMaker);
+REGISTER_OPERATOR(
+    deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
+    ops::DeformablePSROIPoolOpMaker,
+    ops::DeformablePSROIPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::DeformablePSROIPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(deformable_psroi_pooling_grad,
                   ops::DeformablePSROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling,

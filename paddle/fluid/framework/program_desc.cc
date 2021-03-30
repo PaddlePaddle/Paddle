@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -39,8 +38,8 @@ proto::ProgramDesc *ProgramDesc::Proto() {
   return &desc_;
 }
 
-proto::OpCompatibleMap *ProgramDesc::OpCompatibleMap() {
-  return desc_.mutable_op_compatible_map();
+proto::OpVersionMap *ProgramDesc::OpVersionMap() {
+  return desc_.mutable_op_version_map();
 }
 
 int64_t ProgramDesc::Version() const { return desc_.version().version(); }
@@ -99,8 +98,9 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
-                 "Fail to parse program_desc from binary string.");
+  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
+                    platform::errors::InvalidArgument(
+                        "Failed to parse program_desc from binary string."));
   InitFromProto();
 }
 
@@ -134,7 +134,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
-      size_t col = boost::get<int>(op->GetAttr("col"));
+      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (col >= feed_target_names.size()) {
         feed_target_names.resize(col + 1);
       }
@@ -151,7 +151,7 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
-      size_t col = boost::get<int>(op->GetAttr("col"));
+      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (col >= fetch_target_names.size()) {
         fetch_target_names.resize(col + 1);
       }

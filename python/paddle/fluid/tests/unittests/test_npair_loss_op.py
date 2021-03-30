@@ -18,6 +18,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
+from paddle.fluid import Program, program_guard
 
 
 def npairloss(anchor, positive, labels, l2_reg=0.002):
@@ -59,6 +60,7 @@ class TestNpairLossOp(unittest.TestCase):
         place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+
         embeddings_anchor = np.random.rand(num_data,
                                            feat_dim).astype(np.float32)
         embeddings_positive = np.random.rand(num_data,
@@ -71,21 +73,29 @@ class TestNpairLossOp(unittest.TestCase):
             row_labels,
             l2_reg=reg_lambda)
 
-        anc = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='anc')
-        pos = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='pos')
-        lab = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='lab')
-        fluid.layers.assign(input=embeddings_anchor, output=anc)
-        fluid.layers.assign(input=embeddings_positive, output=pos)
-        fluid.layers.assign(input=row_labels, output=lab)
+        anc = fluid.layers.data(
+            dtype='float32',
+            name='anc',
+            shape=embeddings_anchor.shape,
+            append_batch_size=False)
+        pos = fluid.layers.data(
+            dtype='float32',
+            name='pos',
+            shape=embeddings_positive.shape,
+            append_batch_size=False)
+        lab = fluid.layers.data(
+            dtype='float32',
+            name='lab',
+            shape=row_labels.shape,
+            append_batch_size=False)
 
         npair_loss_op = fluid.layers.npair_loss(
             anchor=anc, positive=pos, labels=lab, l2_reg=reg_lambda)
-        out_tensor = exe.run(feed={'anc': anc,
-                                   'pos': pos,
-                                   'lab': lab},
+        out_tensor = exe.run(feed={
+            'anc': embeddings_anchor,
+            'pos': embeddings_positive,
+            'lab': row_labels
+        },
                              fetch_list=[npair_loss_op.name])
 
         self.__assert_close(
@@ -95,6 +105,75 @@ class TestNpairLossOp(unittest.TestCase):
             str(np.dtype('float32')) + str(np.array(out_tensor)) +
             str(out_loss),
             atol=1e-3)
+
+
+class TestNpairLossOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            anchor_np = np.random.random((2, 4)).astype("float32")
+            positive_np = np.random.random((2, 4)).astype("float32")
+            labels_np = np.random.random((2)).astype("float32")
+            anchor_data = fluid.data(
+                name='anchor', shape=[2, 4], dtype='float32')
+            positive_data = fluid.data(
+                name='positive', shape=[2, 4], dtype='float32')
+            labels_data = fluid.data(name='labels', shape=[2], dtype='float32')
+
+            def test_anchor_Variable():
+                # the anchor type must be Variable
+                fluid.layers.npair_loss(
+                    anchor=anchor_np,
+                    positive=positive_data,
+                    labels=labels_data)
+
+            def test_positive_Variable():
+                # the positive type must be Variable
+                fluid.layers.npair_loss(
+                    anchor=anchor_data,
+                    positive=positive_np,
+                    labels=labels_data)
+
+            def test_labels_Variable():
+                # the labels type must be Variable
+                fluid.layers.npair_loss(
+                    anchor=anchor_data,
+                    positive=positive_data,
+                    labels=labels_np)
+
+            self.assertRaises(TypeError, test_anchor_Variable)
+            self.assertRaises(TypeError, test_positive_Variable)
+            self.assertRaises(TypeError, test_labels_Variable)
+
+            def test_anchor_type():
+                # dtype must be float32 or float64
+                anchor_data1 = fluid.data(
+                    name='anchor1', shape=[2, 4], dtype='int32')
+                fluid.layers.npair_loss(
+                    anchor=anchor_data,
+                    positive=positive_data,
+                    labels=labels_np)
+
+            def test_positive_type():
+                # dtype must be float32 or float64
+                positive_data1 = fluid.data(
+                    name='positive1', shape=[2, 4], dtype='int32')
+                fluid.layers.npair_loss(
+                    anchor=anchor_data,
+                    positive=positive_data1,
+                    labels=labels_np)
+
+            def test_labels_type():
+                # dtype must be float32 or float64
+                labels_data1 = fluid.data(
+                    name='labels1', shape=[2], dtype='int32')
+                fluid.layers.npair_loss(
+                    anchor=anchor_data,
+                    positive=positive_data,
+                    labels=labels_data1)
+
+            self.assertRaises(TypeError, test_anchor_type)
+            self.assertRaises(TypeError, test_positive_type)
+            self.assertRaises(TypeError, test_labels_type)
 
 
 if __name__ == '__main__':

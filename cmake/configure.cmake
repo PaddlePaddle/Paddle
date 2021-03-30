@@ -16,10 +16,6 @@ if(NOT WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(NOT WITH_PYTHON)
 
-if(WITH_DSO)
-    add_definitions(-DPADDLE_USE_DSO)
-endif(WITH_DSO)
-
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
@@ -35,6 +31,11 @@ elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
 endif()
 
+if (SSE3_FOUND)
+    # TODO: Runtime detection should be used here.
+    add_definitions(-DPADDLE_WITH_SSE3)
+endif()
+
 if(WIN32)
   # windows header option for all targets.
   add_definitions(-D_XKEYCHECK_H)
@@ -48,22 +49,42 @@ if(WIN32)
   SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
   SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
-  # Specify the program to use when building static libraries
-  SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
-  SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
-
-  # set defination for the dll export
+  add_definitions(-DPADDLE_DLL_INFERENCE)
+  # set definition for the dll export
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
   endif(NOT MSVC)
 endif(WIN32)
 
+if(WITH_MUSL)
+    add_definitions(-DPADDLE_WITH_MUSL)
+
+    message(STATUS, "Set compile option WITH_MKL=OFF when WITH_MUSL=ON")
+    SET(WITH_MKL OFF)
+
+    message(STATUS, "Set compile option WITH_GPU=OFF when WITH_MUSL=ON")
+    SET(WITH_GPU OFF)
+endif()
+
 if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
 
+if(WITH_GLOO)
+    add_definitions(-DPADDLE_WITH_GLOO)
+endif()
+
 if(WITH_BOX_PS)
     add_definitions(-DPADDLE_WITH_BOX_PS)
+endif()
+
+if(WITH_ASCEND)
+    add_definitions(-DPADDLE_WITH_ASCEND)
+endif()
+
+if(WITH_XPU)
+    message(STATUS "Compile with XPU!")
+    add_definitions(-DPADDLE_WITH_XPU)
 endif()
 
 if(WITH_GPU)
@@ -72,7 +93,7 @@ if(WITH_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
@@ -85,7 +106,7 @@ if(WITH_GPU)
     else()
         message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
@@ -93,11 +114,11 @@ if(WITH_GPU)
 
     if(TENSORRT_FOUND)
         if(WIN32)
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 9)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 9)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 9.0 to compile on Windows")
             endif()
         else()
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 8)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
             endif()
             if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
@@ -109,20 +130,10 @@ if(WITH_GPU)
         endif()
         include_directories(${TENSORRT_INCLUDE_DIR})
     endif()
-    if(ANAKIN_FOUND)
-        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
-            message(WARNING "Anakin needs CUDA >= 8.0 to compile. Force ANAKIN_FOUND = OFF")
-            set(ANAKIN_FOUND OFF CACHE STRING "Anakin is valid only when CUDA >= 8.0." FORCE)
-        endif()
-        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-            message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force ANAKIN_FOUND = OFF")
-            set(ANAKIN_FOUND OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
-        endif()
-    endif()
-elseif(WITH_AMD_GPU)
+elseif(WITH_ROCM)
     add_definitions(-DPADDLE_WITH_HIP)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+    add_definitions(-DEIGEN_USE_GPU)
+    add_definitions(-DEIGEN_USE_HIP)
 else()
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
@@ -149,6 +160,11 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
+if(WITH_PSCORE)
+    add_definitions(-DPADDLE_WITH_PSCORE)
+endif()
+
+
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)
 endif(WITH_GRPC)
@@ -160,3 +176,7 @@ endif(WITH_BRPC_RDMA)
 if(ON_INFER)
     add_definitions(-DPADDLE_ON_INFERENCE)
 endif(ON_INFER)
+
+if(WITH_CRYPTO)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
+endif(WITH_CRYPTO)

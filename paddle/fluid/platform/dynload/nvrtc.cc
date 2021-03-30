@@ -25,6 +25,12 @@ void* nvrtc_dso_handle = nullptr;
 
 NVRTC_ROUTINE_EACH(DEFINE_WRAP);
 
+bool HasNVRTC() {
+  std::call_once(nvrtc_dso_flag,
+                 []() { nvrtc_dso_handle = GetNVRTCDsoHandle(); });
+  return nvrtc_dso_handle != nullptr;
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

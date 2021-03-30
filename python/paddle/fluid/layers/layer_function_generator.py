@@ -20,12 +20,12 @@ import string
 
 from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
+from ..data_feeder import check_variable_and_dtype
 
 __all__ = [
-    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
-    'templatedoc'
+    'generate_layer_fn', 'generate_activation_fn', 'autodoc', 'templatedoc'
 ]
 
 
@@ -55,10 +55,11 @@ _two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
 
 
 def escape_math(text):
-    return _two_bang_pattern_.sub(
-        r'$$\1$$',
-        _single_dollar_pattern_.sub(r':math:`\1`',
-                                    _two_dollar_pattern_.sub(r"!!\1!!", text)))
+    #return _two_bang_pattern_.sub(
+    #    r'$$\1$$',
+    #    _single_dollar_pattern_.sub(r':math:\n`\1`',
+    #                                _two_dollar_pattern_.sub(r"!!\1!!", text)))
+    return _two_dollar_pattern_.sub(r':math:`\1`', text)
 
 
 def _generate_doc_string_(op_proto,
@@ -81,8 +82,9 @@ def _generate_doc_string_(op_proto,
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
-        line_begin = '    {0}: '.format(_convert_(each_input.name))
+        line_begin = '    {0}'.format(_convert_(each_input.name))
         buf.write(line_begin)
+        buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
         if each_input.duplicable:
             buf.write("  Duplicatable.")
@@ -124,6 +126,8 @@ def _generate_doc_string_(op_proto,
         for each_opt in op_proto.outputs:
             if not each_opt.intermediate:
                 break
+        buf.write(_convert_(each_opt.name))
+        buf.write(' (Tensor): ')
         buf.write(escape_math(each_opt.comment))
 
     return buf.getvalue()
@@ -173,6 +177,8 @@ def generate_layer_fn(op_type):
             if not isinstance(val, list) and not isinstance(val, tuple):
                 val = [val]
             if len(val) == 0:
+                if len(args) == 0:
+                    continue
                 val = [args[0]]
                 args = args[1:]
 
@@ -249,44 +255,32 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
+        if in_dygraph_mode():
+            op = getattr(core.ops, op_type)
+            return op(x)
+
+        if op_type not in ["abs", "exp", "square"]:
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     op_type)
+        else:
+            # abs exp square ops support dtype(int32, int64, float16, float32, float64)
+            check_variable_and_dtype(
+                x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+                op_type)
+
         helper = LayerHelper(op_type, **locals())
+
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
-    func.__doc__ = func.__doc__ + """
-Examples:
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[32, 784])
-        result = fluid.layers.%s(data)
-""" % op_type
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
+        ])
     return func
-
-
-def deprecated(func_or_class):
-    """
-    Deprecated warning decorator. It will result a warning message.
-    Should be used before class or function, member function
-    """
-
-    @functools.wraps(func)
-    def func_wrapper(*args, **kwargs):
-        """
-        Wrap func with deprecated warning
-        """
-        warnings.simplefilter('always', DeprecationWarning)  # turn off filter
-        warnings.warn(
-            "Call to deprecated function {}.".format(func.__name__),
-            category=DeprecationWarning,
-            stacklevel=2)
-        warnings.simplefilter('default', DeprecationWarning)  # reset filter
-        return func(*args, **kwargs)
-
-    return func_wrapper
 
 
 def autodoc(comment=""):
@@ -354,3 +348,14 @@ def templatedoc(op_type=None):
         return func
 
     return __impl__
+
+
+def add_sample_code(func, sample_code):
+    """
+    Append sample code for dynamically generated functions. 
+
+    Args:
+       func: The function of the function to be append sample code to.
+       sample_code: sample code session in rst format.
+    """
+    func.__doc__ = func.__doc__ + sample_code

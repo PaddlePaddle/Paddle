@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -41,8 +43,9 @@ struct SameDimsElemwiseMul<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 gird_size = dim3(
-        (size / 2 + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
+                              PADDLE_CUDA_THREAD_SIZE,
+                          1);
     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
     const half* x2 =
         reinterpret_cast<const half*>(x->data<platform::float16>());
@@ -50,7 +53,7 @@ struct SameDimsElemwiseMul<platform::CUDADeviceContext, platform::float16> {
         reinterpret_cast<const half*>(y->data<platform::float16>());
     half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
     SameDimsElemwiseMulCUDAKernel<<<
-        gird_size, block_size, 0,
+        grid_size, block_size, 0,
         ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
         x2, y2, z2, size);
   }
@@ -72,6 +75,36 @@ static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
   }
 }
 
+template <>
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex64>(
+    const plat::complex64* x, const plat::complex64* y,
+    const plat::complex64* out, const plat::complex64* dout, int64_t size,
+    plat::complex64* dx, plat::complex64* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    plat::complex64 o = dout[col];
+    dx[col] = plat::complex64(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex64(x[col].real, -x[col].imag) * o;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
+template <>
+__global__ void SimpleElemwiseMulGradCUDAKernel<plat::complex128>(
+    const plat::complex128* x, const plat::complex128* y,
+    const plat::complex128* out, const plat::complex128* dout, int64_t size,
+    plat::complex128* dx, plat::complex128* dy) {
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while (col < size) {
+    plat::complex128 o = dout[col];
+    dx[col] = plat::complex128(y[col].real, -y[col].imag) * o;
+    dy[col] = plat::complex128(x[col].real, -x[col].imag) * o;
+    col += blockDim.x * gridDim.x;
+  }
+}
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
@@ -82,10 +115,10 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
                      framework::Tensor* dy) {
   dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
   auto size = x->numel();
-  dim3 gird_size =
+  dim3 grid_size =
       dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
   SimpleElemwiseMulGradCUDAKernel<
-      T><<<gird_size, block_size, 0,
+      T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
       x->data<T>(), y->data<T>(), out->data<T>(), dout->data<T>(), size,
       dx->mutable_data<T>(ctx.GetPlace()), dy->mutable_data<T>(ctx.GetPlace()));
@@ -99,19 +132,26 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex64>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex64>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad_grad,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
-                                        plat::float16>);
+                                        plat::complex64>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
+                                        plat::complex128>);

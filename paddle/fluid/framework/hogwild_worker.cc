@@ -14,9 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -29,6 +33,11 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   use_cvm_ = desc.use_cvm();
+  thread_barrier_ = desc.thread_barrier();
+
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -41,17 +50,22 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     ops_.push_back(local_op_ptr);
     continue;
   }
+  operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+      program, 0, ops_);
 }
 
 void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   auto &block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_, "root_scope should be set before creating thread scope");
+      root_scope_,
+      platform::errors::NotFound(
+          "Root scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
 
   for (auto &var : block.AllVars()) {
+    all_param_.push_back(var->Name());
     if (var->Persistable()) {
       auto *ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
@@ -141,6 +155,14 @@ void HogwildWorker::TrainFilesWithProfiler() {
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
+
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
+
     total_inst += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
@@ -158,6 +180,16 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
+
+#if defined PADDLE_WITH_PSCORE
+  if (thread_barrier_) {
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::TrainFiles() {
@@ -183,6 +215,11 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+#if defined PADDLE_WITH_PSCORE
+  if (thread_barrier_) {
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::PrintFetchVars() {

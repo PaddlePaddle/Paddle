@@ -15,4 +15,5 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    rmsprop, ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, float>);
+    rmsprop, ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::RmspropOpKernel<paddle::platform::CUDADeviceContext, double>);

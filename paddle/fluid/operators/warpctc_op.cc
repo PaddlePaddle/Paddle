@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <memory>
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
@@ -28,14 +31,11 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("WarpCTCGrad"),
-                   "Output(WarpCTCGrad) of WarpCTCOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of WarpCTCOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Logits"), "Input", "Logits", "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasOutput("WarpCTCGrad"), "Output", "WarpCTCGrad",
+                   "WarpCTC");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "WarpCTC");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     int blank = ctx->Attrs().Get<int>("blank");
@@ -47,12 +47,21 @@ class WarpCTCOp : public framework::OperatorWithKernel {
       sequence_width =
           static_cast<int>(framework::product(logits_dims) / logits_dims[0]);
     }
-    PADDLE_ENFORCE((blank >= 0) && (blank < sequence_width),
-                   "The value of Attr(blank) should be in interval [0, %d).",
-                   sequence_width);
+
+    PADDLE_ENFORCE_GE(
+        blank, 0, platform::errors::InvalidArgument(
+                      "The value of Attr(blank) should be in interval [0, %d), "
+                      "but received %d",
+                      blank));
+    PADDLE_ENFORCE_LT(
+        blank, sequence_width,
+        platform::errors::InvalidArgument(
+            "The value of Attr(blank) should be in interval [0, %d), "
+            "but received %d",
+            blank));
 
     // TODO(liuyiqun): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
+    ctx->SetOutputDim("Loss", {-1, 1});
   }
 
  protected:
@@ -60,8 +69,9 @@ class WarpCTCOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -96,13 +106,13 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
              "Target sequence length for Label when Label is a 2-D tensor.")
         .AsDispensable();
     AddOutput("WarpCTCGrad",
-              "(Tensor, default: Tensor<float>), a temporary "
+              "(Tensor), a temporary "
               "output Tensor to store the gradients of warp-ctc, which is "
               "computed with loss together in one call. It is a 3-D Tensor of "
               "the shape [max_sequence_length, batch_size, num_classes + 1].")
         .AsIntermediate();
     AddOutput("Loss",
-              "(Tensor, default: Tensor<float>), the Connectionist "
+              "(Tensor), the Connectionist "
               "Temporal Classification (CTC) loss, which is a 2-D Tensor of "
               "the shape [batch_size, 1]");
     AddAttr<int>("blank",
@@ -122,10 +132,10 @@ An operator integrating the open-source
 https://arxiv.org/pdf/1512.02595v1.pdf),
 to compute Connectionist Temporal Classification (CTC) loss.
 It can be aliased as softmax with ctc, since a native softmax activation is
-interated to the warp-ctc library, to to normlize values for each row of the
+interated to the warp-ctc library, to to normalize values for each row of the
 input tensor.
 
-More detail of CTC loss can be found by refering to
+More detail of CTC loss can be found by referring to
 [Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with
 Recurrent Neural Networks](
 http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
@@ -133,26 +143,24 @@ http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
   }
 };
 
-class WarpCTCGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WarpCTCGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("warpctc_grad");
 
-    op->SetInput("WarpCTCGrad", Output("WarpCTCGrad"));
-    op->SetInput("Logits", Input("Logits"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("WarpCTCGrad", this->Output("WarpCTCGrad"));
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
 
-    op->SetInput("LogitsLength", Input("LogitsLength"));
+    op->SetInput("LogitsLength", this->Input("LogitsLength"));
 
-    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -161,10 +169,10 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("WarpCTCGrad"),
-                   "Input(WarpCTCGrad) of WarpCTCGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Output(Logits@GRAD) of WarpCTCGradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("WarpCTCGrad"), "Input", "WarpCTCGrad",
+                   "WarpCTCGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
+                   framework::GradVarName("Logits"), "WarpCTCGrad");
     ctx->SetOutputDim(framework::GradVarName("Logits"),
                       ctx->GetInputDim("Logits"));
     ctx->ShareLoD("Logits", /*->*/ framework::GradVarName("Logits"));
@@ -173,20 +181,28 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.GetPlace());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
+                                    "Logits");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
-                  ops::WarpCTCGradOpDescMaker);
-REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
+                  ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
+                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
+                  ops::WarpCTCGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
+    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);

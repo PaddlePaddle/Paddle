@@ -43,8 +43,19 @@ __global__ void AccuracyCudaKernel(const int N, const int D,
   total[threadIdx.x] = count;
   __syncthreads();
 
-  // reduce the count with init value 0, and output accuracy.
+// reduce the count with init value 0, and output accuracy.
+#ifdef PADDLE_WITH_CUDA
   int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
+#else
+  // HIP thrust::reduce not support __device__
+  for (int s = BlockSize / 2; s > 0; s >>= 1) {
+    if (threadIdx.x < s) {
+      total[threadIdx.x] += total[threadIdx.x + s];
+    }
+    __syncthreads();
+  }
+  int result = total[0];
+#endif
   if (threadIdx.x == 0) {
     *correct_data = result;
     *accuracy = static_cast<float>(result) / static_cast<float>(N);
@@ -56,8 +67,6 @@ template <typename T>
 class AccuracyOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
     auto* inference = ctx.Input<Tensor>("Out");
     auto* indices = ctx.Input<Tensor>("Indices");
     auto* label = ctx.Input<Tensor>("Label");

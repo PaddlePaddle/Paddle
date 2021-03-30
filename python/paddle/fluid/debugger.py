@@ -338,7 +338,7 @@ def run_fast_nan_inf_debug(executor,
                            use_program_cache=False,
                            dump_core=True):
     """
-    Run a program by the given executor. Catch the exception of NAN and INF, and save persistbales into the dumped core.
+    Run a program by the given executor. Catch the exception of NAN and INF, and save persistables into the dumped core.
     """
 
     assert (executor is not None)

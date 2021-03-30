@@ -36,7 +36,8 @@ class TestConcatOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
 #--------------------test concat s8 in with axis 0--------------------
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -26,9 +27,12 @@ namespace ir {
 /*
  * Fuse the Conv and BatchNorm to a ConvBNMKLDNNOp.
  */
+class Graph;
+
 class ConvBNFusePass : public FusePassBase {
  public:
   virtual ~ConvBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -38,10 +42,31 @@ class ConvBNFusePass : public FusePassBase {
 class ConvEltwiseAddBNFusePass : public FusePassBase {
  public:
   virtual ~ConvEltwiseAddBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_bn_fuse"};
+};
+
+class ConvTransposeBNFusePass : public ConvBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
+};
+
+class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
+};
+
+class DepthwiseConvBNFusePass : public ConvBNFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
+};
+
+class DepthwiseConvEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
 };
 
 }  // namespace ir

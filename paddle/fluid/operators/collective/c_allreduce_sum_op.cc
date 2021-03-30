@@ -15,20 +15,32 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
-class CAllReduceSumOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_allreduce_sum");
-    retv->SetInput("X", OutputGrad("Out"));
-    retv->SetOutput("Out", InputGrad("X"));
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 
@@ -44,7 +56,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_allreduce_sum, ops::CAllReduceOp,
-                  ops::CAllReduceSumOpGradMaker, ops::CAllReduceSumOpMaker);
+                  ops::CAllReduceSumOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CAllReduceSumOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CAllReduceSumOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_sum,
                        ops::CAllReduceOpCPUKernel<ops::kRedSum, float>,

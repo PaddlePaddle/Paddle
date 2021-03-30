@@ -147,7 +147,7 @@ class QuantizeTranspiler(object):
         """Rewrites a training input program in place for simulated
         quantization. Insert fake quantization and de-quantization ops into
         program to simulate the error introduced by quantization. And change
-        the graident ops' input by using the faked quantization weights and
+        the gradient ops' input by using the faked quantization weights and
         activation. Since the program is transformed in place, the graph
         connection will change.
 

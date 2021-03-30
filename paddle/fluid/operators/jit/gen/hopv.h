@@ -15,8 +15,10 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +32,8 @@ class HOPVJitCode : public JitCode {
                        void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr), num_(d), type_(type) {
     if (!(type_ == operand_type::MAX || type_ == operand_type::ADD)) {
-      LOG(FATAL) << "Do not support this operand type: " << type_;
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Do not support operand type code: %d.", type));
     }
     this->genCode();
   }

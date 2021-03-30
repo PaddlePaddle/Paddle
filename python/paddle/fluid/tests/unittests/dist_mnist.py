@@ -31,6 +31,8 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 
+paddle.enable_static()
+
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
@@ -98,7 +100,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = fluid.optimizer.DGCMomentumOptimizer(
-                learning_rate=self.lr, momentum=0.9, rampup_begin_step=0)
+                learning_rate=self.lr, momentum=0.9, rampup_begin_step=2)
 
         # Reader
         train_reader = paddle.batch(

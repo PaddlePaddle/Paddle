@@ -13,12 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass_builder.h"
+
 #include <memory>
-#include <utility>
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Pass;
 
 std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
   VLOG(1) << "Append " << pass_type;
@@ -28,13 +33,19 @@ std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
 }
 
 void PassBuilder::RemovePass(size_t idx) {
-  PADDLE_ENFORCE(passes_.size() > idx);
+  PADDLE_ENFORCE_GT(
+      passes_.size(), idx,
+      platform::errors::InvalidArgument(
+          "Passes size is %d, %d is not a valid index.", passes_.size(), idx));
   passes_.erase(passes_.begin() + idx);
 }
 
 std::shared_ptr<Pass> PassBuilder::InsertPass(size_t idx,
                                               const std::string& pass_type) {
-  PADDLE_ENFORCE(passes_.size() >= idx);
+  PADDLE_ENFORCE_GE(
+      passes_.size(), idx,
+      platform::errors::InvalidArgument(
+          "Passes size is %d, %d is not a valid index.", passes_.size(), idx));
   std::shared_ptr<Pass> pass(
       ir::PassRegistry::Instance().Get(pass_type).release());
   passes_.insert(passes_.begin() + idx, std::move(pass));

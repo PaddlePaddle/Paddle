@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,31 +15,46 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
-
 #define PADDLE_CUDA_THREAD_SIZE 512
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
-#endif  // PADDLE_WITH_CUDA
-
 #ifdef PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
 #endif
+#endif  // PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 9000
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#ifdef PADDLE_CUDA_FP16
+#include <hip/hip_fp16.h>
+#endif
+#endif  // PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
 #define __h2div h2div
 #endif
 
+#define DIV_ERROR_INFO                                                     \
+  "InvalidArgumentError: Integer division by zero encountered in divide. " \
+  "Please check.\n"
 namespace paddle {
 namespace operators {
 
 #define DEFINE_SIMPLE_BINARY_FUNCTOR(Func, expr)                   \
-  template <typename T>                                            \
+  template <typename T, class Enable = void>                       \
   struct Func##Functor {                                           \
     inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
       return a expr b;                                             \
+    }                                                              \
+  };                                                               \
+  template <typename T, class Enable = void>                       \
+  struct Inverse##Func##Functor {                                  \
+    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
+      return b expr a;                                             \
     }                                                              \
   };
 
@@ -46,8 +64,18 @@ DEFINE_SIMPLE_BINARY_FUNCTOR(Mul, *)
 DEFINE_SIMPLE_BINARY_FUNCTOR(Div, /)
 #undef DEFINE_SIMPLE_BINARY_FUNCTOR
 
+// special div functor for int32/int64. check divison has a zero
+template <typename T>
+struct DivFunctor<T,
+                  typename std::enable_if<std::is_integral<T>::value>::type> {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return a / b;
+  }
+};
+
 #define DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Func, expr)                         \
-  template <typename T>                                                       \
+  template <typename T, class Enable = void>                                  \
   struct Func##RangeFunctor {                                                 \
     Func##RangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {} \
     inline HOSTDEVICE void operator()(size_t id) const {                      \
@@ -63,9 +91,23 @@ DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Mul, *)
 DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Div, /)
 #undef DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR
 
+// special div functor for int32/int64. check divison has a zero
+template <typename T>
+struct DivRangeFunctor<
+    T, typename std::enable_if<std::is_integral<T>::value>::type> {
+  DivRangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {}
+  inline HOSTDEVICE void operator()(size_t id) const {
+    PADDLE_ENFORCE(y_[id] != 0, DIV_ERROR_INFO);
+    z_[id] = x_[id] / y_[id];
+  }
+  const T* x_;
+  const T* y_;
+  T* z_;
+};
+
 #ifdef PADDLE_CUDA_FP16
 inline DEVICE half2 half2_add(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hadd2(a, b);
 #else
   float a1 = __low2float(a);
@@ -79,7 +121,7 @@ inline DEVICE half2 half2_add(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hsub2(a, b);
 #else
   float a1 = __low2float(a);
@@ -93,7 +135,7 @@ inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __hmul2(a, b);
 #else
   float a1 = __low2float(a);
@@ -107,7 +149,7 @@ inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
 }
 
 inline DEVICE half2 half2_div(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
   return __h2div(a, b);
 #else
   float a1 = __low2float(a);
