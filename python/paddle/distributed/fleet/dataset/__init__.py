@@ -11,4 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from .dataset import *
+from .dataset import DatasetBase  # noqa: F401
+from .dataset import InMemoryDataset  # noqa: F401
+from .dataset import QueueDataset  # noqa: F401
+from .dataset import FileInstantDataset  # noqa: F401
+from .dataset import BoxPSDataset  # noqa: F401

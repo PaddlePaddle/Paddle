@@ -27,8 +27,6 @@ from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 import logging
 from functools import reduce
 
-__all__ = ["ShardingOptimizer"]
-
 
 class ShardingOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

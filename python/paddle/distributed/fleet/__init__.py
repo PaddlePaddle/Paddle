@@ -13,13 +13,19 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
-from .base.role_maker import Role, UserDefinedRoleMaker, PaddleCloudRoleMaker
-from .base.distributed_strategy import DistributedStrategy
-from .base.fleet_base import Fleet
-from .base.util_factory import UtilBase
-from .dataset import *
-from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
-from . import metrics
+from .base.role_maker import Role  # noqa: F401
+from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
+from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
+from .base.distributed_strategy import DistributedStrategy  # noqa: F401
+from .base.fleet_base import Fleet  # noqa: F401
+from .base.util_factory import UtilBase  # noqa: F401
+from .dataset import DatasetBase  # noqa: F401
+from .dataset import InMemoryDataset  # noqa: F401
+from .dataset import QueueDataset  # noqa: F401
+from .dataset import FileInstantDataset  # noqa: F401
+from .dataset import BoxPSDataset  # noqa: F401
+from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
+from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa: F401
 
 __all__ = [
     "DistributedStrategy",
