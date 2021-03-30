@@ -225,7 +225,8 @@ set +e
 if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
     prec_list=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" "$precision_cases" )
     echo "$prec_list" | grep 'PRECISION_TEST'
-    UT_list_prec=$(echo "$prec_list" | grep -v 'PRECISION_TEST')
+    echo "$prec_list" | grep 'CASES_LENGTH'
+    UT_list_prec=$(echo "$prec_list" | grep -v 'PRECISION_TEST|CASES_LENGTH')
     UT_list=$UT_list_prec
 fi
 set -e

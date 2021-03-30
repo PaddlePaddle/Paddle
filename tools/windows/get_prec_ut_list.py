@@ -23,6 +23,8 @@ def get_prec_ut_list(all_test_cases,prec_test_cases):
 
     if len(prec_test_cases) == 0:
         return all_test_cases
+    print('ALL_CASES_LENGHT:{}'.format(len(all_test_cases_list)))
+    print('PREC_CASES_LENGTH:{}'.format(len(prec_test_cases_list)))
 
     case_to_run = ['test_prec_ut']
     for case in all_test_cases_list:
