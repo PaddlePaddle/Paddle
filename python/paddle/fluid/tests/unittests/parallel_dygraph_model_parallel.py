@@ -32,7 +32,7 @@ def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     paddle.seed(seed)
-    fleet.parallel_layer.model_parallel_random_seed(seed)
+    fleet.mpu.model_parallel_random_seed(seed)
 
 
 class IdentityLayer2D(fluid.dygraph.Layer):
@@ -97,7 +97,7 @@ class TestDistTraning(unittest.TestCase):
     #     batch_size = 7
 
     #     identity_layer = IdentityLayer2D(batch_size, input_size)
-    #     linear_layer = fleet.parallel_layer.ColumnParallelLinear(
+    #     linear_layer = fleet.mpu.ColumnParallelLinear(
     #                             in_features=input_size,
     #                             out_features=output_size,
     #                             weight_attr=None,
@@ -152,7 +152,7 @@ class TestDistTraning(unittest.TestCase):
 
         identity_layer = IdentityLayer2D(batch_size, input_size)
 
-        linear_layer = fleet.parallel_layer.RowParallelLinear(
+        linear_layer = fleet.mpu.RowParallelLinear(
             in_features=input_size,
             out_features=output_size,
             has_bias=True,
@@ -226,7 +226,7 @@ class TestDistTraning(unittest.TestCase):
             #     rank_id = dist.get_rank()
 
             #     # model_a
-            #     embedding_vocab_parallel = fleet.parallel_layer.VocabParallelEmbedding(
+            #     embedding_vocab_parallel = fleet.mpu.VocabParallelEmbedding(
             #                                  vocab_size, hidden_size)
             #     check_group = dist.new_group(list(range(self.model_parallel_size)))
 

@@ -168,3 +168,7 @@ class HybridCommunicateGroup(object):
 
     def get_model_parallel_group(self):
         return self._mp_comm_group
+
+    def get_model_parallel_group_src_rank(self):
+        return (self.global_rank //
+                self._num_model_parallel) * self._num_model_parallel

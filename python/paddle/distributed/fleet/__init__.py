@@ -21,8 +21,8 @@ from .dataset import *
 from .data_generator import MultiSlotDataGenerator, MultiSlotStringDataGenerator
 from . import metrics
 from .base.topology import CommunicateTopology
-from .parallel_layer import layers
-from .parallel_layer import random
+from .mpu import layers
+from .mpu import random
 
 __all__ = [
     "DistributedStrategy",

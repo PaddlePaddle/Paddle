@@ -12,8 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .layers import _get_model_parallel_messgae
+from paddle import framework
 import paddle
-import contextlib
+from paddle.fluid import core
+
+
+def broadcast_input_data(*inputs, **kwargs):
+    _, _, rank, src_rank = _get_model_parallel_messgae()
+
+    for input_ in inputs:
+        if isinstance(input_, (Variable, core.VarBase)):
+            with framework.no_grad():
+                paddle.distributed.broadcast(input_, src=src_rank)
+
+    for k, v in kwargs.items():
+        if isinstance(v, (Variable, core.VarBase)):
+            with framework.no_grad():
+                paddle.distributed.broadcast(v, src=src_rank)
+                kwargs[k] = v
+    return inputs, kwargs
+
 
 # __all__ = [
 #     'RNGStatesTracker', 'model_parallel_random_seed', 'get_rng_state_tracker'

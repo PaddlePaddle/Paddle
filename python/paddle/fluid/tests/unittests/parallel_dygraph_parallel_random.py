@@ -52,16 +52,16 @@ class TestDistTraning(unittest.TestCase):
 
         paddle.seed(seed_1)
 
-        fleet.parallel_layer.get_rng_state_tracker().add("test", seed_2)
+        fleet.mpu.get_rng_state_tracker().add("test", seed_2)
 
         result_11 = paddle.randn(size, "float32")
 
-        with fleet.parallel_layer.get_rng_state_tracker().rng_state("test"):
+        with fleet.mpu.get_rng_state_tracker().rng_state("test"):
             result_21 = paddle.randn(size, "float32")
 
         result_12 = paddle.randn(size, "float32")
 
-        with fleet.parallel_layer.get_rng_state_tracker().rng_state("test"):
+        with fleet.mpu.get_rng_state_tracker().rng_state("test"):
             result_22 = paddle.randn(size, "float32")
 
         np.testing.assert_allclose(result_11.numpy(), target_11.numpy())

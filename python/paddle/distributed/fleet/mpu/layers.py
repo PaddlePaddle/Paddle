@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.fluid.dygraph.layers import Layer
-from random import get_rng_state_tracker
+from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 
 __all__ = [
@@ -28,9 +28,10 @@ def _get_model_parallel_messgae():
     hcg = fleet.get_hybrid_communicate_group()
     model_parallel_group = hcg.get_model_parallel_group()
     world_size = hcg.get_model_parallel_world_size()
-    rank = hcg.get_model_parallel_rank()
+    local_rank = hcg.get_model_parallel_rank()
+    src_global_rank = hcg.get_model_parallel_group_src_rank()
 
-    return model_parallel_group, world_size, rank
+    return model_parallel_group, world_size, local_rank, src_global_rank
 
 
 class ColumnParallelLinear(Layer):
@@ -43,7 +44,7 @@ class ColumnParallelLinear(Layer):
                  name=None):
         super(ColumnParallelLinear, self).__init__()
 
-        self.model_parallel_group, self.world_size, _ = _get_model_parallel_messgae(
+        self.model_parallel_group, self.world_size, _, _ = _get_model_parallel_messgae(
         )
         self.name = name
         self.gather_output = gather_output
@@ -100,7 +101,7 @@ class RowParallelLinear(Layer):
         self._weight_attr = weight_attr
         self._dtype = self._helper.get_default_dtype()
         self.name = name
-        self.model_parallel_group, self.world_size, self.rank = _get_model_parallel_messgae(
+        self.model_parallel_group, self.world_size, self.rank, _ = _get_model_parallel_messgae(
         )
 
         assert in_features % self.world_size == 0, (
@@ -153,7 +154,7 @@ class ParallelLinear(Layer):
                  name=None):
         super(ParallelLinear, self).__init__()
 
-        self.model_parallel_group, self.world_size, _ = _get_model_parallel_messgae(
+        self.model_parallel_group, self.world_size, _, _ = _get_model_parallel_messgae(
         )
 
         assert num_partitions == self.world_size, \
@@ -210,7 +211,7 @@ class VocabParallelEmbedding(Layer):
                  weight_attr=None,
                  name=None):
         super(VocabParallelEmbedding, self).__init__()
-        self.model_parallel_group, self.world_size, self.rank = _get_model_parallel_messgae(
+        self.model_parallel_group, self.world_size, self.rank, _ = _get_model_parallel_messgae(
         )
         self.origin_num_embeddings = num_embeddings
 

@@ -27,7 +27,7 @@ from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from .topology import CommunicateTopology, HybridCommunicateGroup
-from ..parallel_layer.random import model_parallel_random_seed
+from ..mpu.random import model_parallel_random_seed
 from ..meta_parallel import ModelParallel
 
 
