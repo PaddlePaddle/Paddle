@@ -219,7 +219,6 @@ class PipelineOptimizer(MetaOptimizerBase):
         grad = None
         processed_param_name = set()
         first_optimize_op_idx = None
-        add_sync_calc_stream = False
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and not first_optimize_op_idx:
                 first_optimize_op_idx = idx + 1
@@ -243,15 +242,6 @@ class PipelineOptimizer(MetaOptimizerBase):
                     origin_param = origin_block.vars[op_role_var[i]]
                     if origin_param.is_distributed:
                         continue
-                    if not add_sync_calc_stream:
-                        add_sync_calc_stream = True
-                        block._insert_op(
-                            first_optimize_op_idx + offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
-                            attrs={OP_ROLE_KEY: OpRole.Optimize})
-                        offset += 1
 
                     block._insert_op(
                         first_optimize_op_idx + offset,
