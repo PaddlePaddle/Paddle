@@ -114,7 +114,6 @@ class Cluster(object):
             assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
                 ep)
             r.append(ep)
-
         return r
 
     def get_pod_by_id(self, pod_id):
