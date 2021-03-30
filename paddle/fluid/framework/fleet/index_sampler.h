@@ -54,7 +54,7 @@ class LayerWiseSampler : public IndexSampler {
  private:
   std::vector<int> layer_counts_;
   int64_t layer_counts_sum_{0};
-  TreeIndex* tree_{nullptr};
+  std::shared_ptr<TreeIndex> tree_{nullptr};
   int seed_{0};
   int start_sample_layer_{1};
 };
@@ -72,7 +72,7 @@ class BeamSearchSampler : public IndexSampler{
  
  private:
   int64_t k_;
-  TreeIndex* tree_{nullptr};
+  std::shared_ptr<TreeIndex> tree_{nullptr};
 };
 
 }  // end namespace framework

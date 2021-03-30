@@ -105,7 +105,7 @@ class TreeIndex : public Index {
     return max_id_;
   }
 
-  int load(std::string path);
+  int load(const std::string path);
   std::unordered_map<uint64_t, Node> data_;
   std::unordered_map<uint64_t, uint64_t> id_codes_map_;
   
@@ -123,12 +123,12 @@ class IndexWrapper {
 
   void clear_tree() { tree_map.clear(); }
 
-  TreeIndex* GetTreeIndex(const std::string name) { 
+  TreePtr GetTreeIndex(const std::string name) { 
     PADDLE_ENFORCE_NE(tree_map.find(name), tree_map.end(), "");
-    return tree_map[name].get();
+    return tree_map[name];
   }
 
-  void insert_tree_index(std::string name, std::string tree_path) {
+  void insert_tree_index(const std::string name, const std::string tree_path) {
     if (tree_map.find(name) != tree_map.end()) {
       return;
     }

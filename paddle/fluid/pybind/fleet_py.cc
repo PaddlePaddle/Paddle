@@ -167,8 +167,12 @@ void BindIndexNode(py::module* m) {
 }
 
 void BindTreeIndex(py::module* m) {
-  py::class_<TreeIndex>(*m, "TreeIndex")
-      .def(py::init<>())
+  py::class_<TreeIndex, std::shared_ptr<TreeIndex>>(*m, "TreeIndex")
+      .def(py::init([](const std::string name, const std::string path){
+          auto index_wrapper = IndexWrapper::GetInstancePtr();
+          index_wrapper->insert_tree_index(name, path);
+          return index_wrapper->GetTreeIndex(name);
+      }))
       .def("height", [](TreeIndex& self){ return self.height(); })
       .def("branch", [](TreeIndex& self){ return self.branch(); })
       .def("total_node_nums", [](TreeIndex& self) { return self.total_node_nums(); })

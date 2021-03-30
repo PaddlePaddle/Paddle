@@ -29,7 +29,7 @@ using paddle::distributed::Communicator;
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
-int TreeIndex::load(std::string filename) {
+int TreeIndex::load(const std::string filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (fp == NULL) {
     fprintf(stderr, "Can not open file: %s\n", filename.c_str());
