@@ -69,8 +69,6 @@ class TRTScaleShape2Test(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 if __name__ == "__main__":
