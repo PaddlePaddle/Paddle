@@ -216,7 +216,8 @@ class PtbModel(fluid.Layer):
         return loss, last_hidden, last_cell
 
 
-"""
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestSaveLoadBase(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -239,8 +240,6 @@ class TestSaveLoadBase(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -320,6 +319,8 @@ class TestSaveLoadBase(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestSaveLoadPartial(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -342,8 +343,6 @@ class TestSaveLoadPartial(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -432,6 +431,8 @@ class TestSaveLoadPartial(unittest.TestCase):
             fluid.load(test_program, "./test_1.pdmodel", None)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestSaveLoadSetStateDict(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -454,8 +455,6 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -535,6 +534,8 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestProgramStatePartial(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -557,8 +558,6 @@ class TestProgramStatePartial(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -719,6 +718,8 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestVariableInit(unittest.TestCase):
     def test_variable_init(self):
 
@@ -726,8 +727,6 @@ class TestVariableInit(unittest.TestCase):
         y = fluid.layers.fc(x, 10)
         z = fluid.layers.fc(y, 10)
 
-        # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-        # ) else fluid.CUDAPlace(0)
         place = fluid.CPUPlace() if not core.is_compiled_with_npu(
         ) else paddle.NPUPlace(0)
         exe = fluid.Executor(place)
@@ -748,8 +747,6 @@ class TestVariableInit(unittest.TestCase):
         program = fluid.default_main_program()
         new_scope = fluid.core.Scope()
 
-        # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-        # ) else fluid.CUDAPlace(0)
         place = fluid.CPUPlace() if not core.is_compiled_with_npu(
         ) else paddle.NPUPlace(0)
         exe = fluid.Executor(place)
@@ -800,7 +797,6 @@ class TestVariableInit(unittest.TestCase):
                 base_t = base_map[var.name]
 
                 self.assertTrue(np.array_equal(new_t, base_t))
-"""
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -834,8 +830,6 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -952,8 +946,6 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -1045,7 +1037,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
                         self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
 
-"""
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
     def test_load_from_old_interface(self):
         seed = 90
@@ -1068,8 +1061,6 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -1192,6 +1183,8 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                            all_var_list + [temp_var])
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestProgramStateOldSave(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -1214,8 +1207,6 @@ class TestProgramStateOldSave(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -1338,6 +1329,8 @@ class TestProgramStateOldSave(unittest.TestCase):
                 self.assertTrue(np.array_equal(new_t, base_t))
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestStaticSaveLoadLargeParameters(unittest.TestCase):
     def test_large_parameters_static_save(self):
         # enable static mode
@@ -1371,6 +1364,8 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                 np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_npu(),
+                 "core is not compiled with NPU")
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -1393,8 +1388,6 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            # place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            # ) else fluid.CUDAPlace(0)
             place = fluid.CPUPlace() if not core.is_compiled_with_npu(
             ) else paddle.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -1502,7 +1495,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                         main_program.global_block().create_var(
                             name="fake_var_name", persistable=True)
                     ])
-"""
+
 
 if __name__ == '__main__':
     paddle.enable_static()

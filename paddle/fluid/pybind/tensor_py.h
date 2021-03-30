@@ -746,8 +746,12 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
     size_t copy_bytes = sizeof_dtype * numel;
     auto p = BOOST_GET_CONST(platform::NPUPlace, tensor.place());
-    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
-                         tensor_buf_ptr, copy_bytes);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(tensor.place());
+    paddle::memory::Copy(
+        platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
+        copy_bytes,
+        reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
