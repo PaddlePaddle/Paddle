@@ -1,13 +1,26 @@
 from paddle.fluid.core import IndexWrapper, TreeIndex
-from builder import TreeIndexBuilder
+from builder import TreeIndexBuilder, GraphIndexBuilder
+
 
 class Index(object):
     def __init__(self, name):
         self._name = name
 
+
 class GraphIndex(Index):
     def __init__(self, name):
         super(GraphIndex, self).__init__(name)
+        self._graph = None
+        self._builder = GraphIndexBuilder(name)
+        self._wrapper = IndexWrapper()
+
+    def _init_by_random(self, input_filename, output_filename):
+        self._builder.graph_init_by_random(input_filename, output_filename)
+        self._init_graph(output_filename)
+
+    def _init_graph(self, filename):
+        self._graph = self._wrapper.insert_graph_index(self._name, filename)
+
 
 class TreeIndex(Index):
     def __init__(self, name):
@@ -16,7 +29,7 @@ class TreeIndex(Index):
         self._builder = TreeIndexBuilder(name)
         self._wrapper = IndexWrapper()
 
-    def _init_by_category(self,input_filename, output_filename):
+    def _init_by_category(self, input_filename, output_filename):
         self._builder.tree_init_by_category(input_filename, output_filename)
         self._init_tree(output_filename)
 
