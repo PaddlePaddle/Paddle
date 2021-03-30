@@ -63,7 +63,7 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
                 anchor = fluid.layers.transpose(anchor, [2, 3, 0, 1])
             out = fluid.layers.batch_norm(anchor, is_test=True)
 
-        self.fetch_list = [out, anchor, var]
+        self.fetch_list = [out, var]
 
     def run_test(self):
         self.build()
