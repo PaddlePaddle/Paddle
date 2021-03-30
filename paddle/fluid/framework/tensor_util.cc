@@ -823,6 +823,29 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
+    } else if (platform::is_npu_place(tensor.place())) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto& npu_dev_ctx =
+          static_cast<const platform::NPUDeviceContext&>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(),
+                     BOOST_GET_CONST(platform::NPUPlace, tensor.place()),
+                     reinterpret_cast<const void*>(data), size_to_write,
+                     npu_dev_ctx.stream());
+        npu_dev_ctx.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPlace is not supported when not compiled with NPU"));
+#endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
                static_cast<std::streamsize>(size));
@@ -877,8 +900,10 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     auto ctx = platform::CPUDeviceContext();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
-        platform::is_xpu_place(dev_ctx.GetPlace())) {
-#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+        platform::is_xpu_place(dev_ctx.GetPlace()) ||
+        platform::is_npu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU || \
+    defined PADDLE_WITH_ASCEND_CL
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(shape));
       framework::VisitDataType(
@@ -891,9 +916,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       if (platform::is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else {
+      } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "NPUPlace is not supported when not compiled with NPU"));
       }
 #endif
     } else {
