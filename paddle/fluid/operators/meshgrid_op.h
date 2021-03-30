@@ -60,7 +60,8 @@ class MeshgridKernel : public framework::OpKernel<T> {
       REP_MESHGRID_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Excepted Tensor numbers between 1 and 6, but only received d% .", rank));
+            "Excepted Tensor numbers between 1 and 6, but only received d% .",
+            rank));
     }
   }
 
@@ -71,7 +72,8 @@ class MeshgridKernel : public framework::OpKernel<T> {
     auto outs = context.MultiOutput<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(
         ins.size() > 1, true,
-        platform::errors::InvalidArgument("Expected at least 2 input tensors, but only received d%.", ins.size()));
+        platform::errors::InvalidArgument("Expected at least 2 input tensors, but only received d%.",
+        ins.size()));
 
     int64_t size = ins.size();
     std::vector<int64_t> shape(size);
@@ -131,7 +133,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
       REP_MESHGRID_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Excepted Tensor numbers between 1 and 6, but only received d% .", n));
+            "Excepted Tensor numbers between 1 and 6, but only received d% .",
+            n));
     }
   }
 
