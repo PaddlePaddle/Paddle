@@ -254,6 +254,7 @@ NPUDeviceContext::~NPUDeviceContext() {
 
 void NPUDeviceContext::Wait() const {
   NPUDeviceGuard guard(place_.device);
+  VLOG(4) << "NPU context Wait";
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
 }
 
