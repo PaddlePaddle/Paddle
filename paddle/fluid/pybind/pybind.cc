@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -137,6 +138,14 @@ bool IsCompiledWithCUDA() {
 
 bool IsCompiledWithROCM() {
 #ifndef PADDLE_WITH_HIP
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithAscend() {
+#ifndef PADDLE_WITH_ASCEND
   return false;
 #else
   return true;
@@ -1751,11 +1760,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("load_op_library", framework::LoadOpLib);
   m.def("load_op_meta_info_and_register_op",
         framework::LoadOpMetaInfoAndRegisterOp);
   m.def("init_devices", []() { framework::InitDevices(); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -2885,6 +2896,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);
+  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);

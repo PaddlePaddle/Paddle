@@ -16,6 +16,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#ifndef _WIN32
+#include <unistd.h>
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -23,6 +25,9 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
+#ifdef PADDLE_WITH_ASCEND
+#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
+#endif
 
 // NOTE(zhiqiu): Commonly, the inputs in auto-generated OP function are
 // determined by the OP`s proto automatically, i.e., all the inputs registered
@@ -559,6 +564,11 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
+#ifdef PADDLE_WITH_ASCEND
+  auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
+  ascend_ptr->InitGEForUT();
+#endif
+
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
@@ -588,5 +598,10 @@ int main(int argc, char* argv[]) {
       << "} // namespace paddle\n";
 
   out.close();
+
+#ifdef PADDLE_WITH_ASCEND
+  ge::GEFinalize();
+#endif
   return 0;
 }
+#endif
