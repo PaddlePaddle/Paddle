@@ -4269,11 +4269,7 @@ class PipelineOptimizer(object):
                         continue
                     prev_device = self._param_device_map[var_name]
 
-                prev_op = None
-                for gen_op, gen_idx in reversed(generate_ops):
-                    if gen_idx < index:
-                        prev_op = gen_op
-                        break
+                prev_op = self._find_prev_op(index, var_name)
 
                 if not prev_device:
                     prev_device = prev_op.attr(self._op_device_key) \
