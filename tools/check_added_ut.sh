@@ -43,7 +43,6 @@ echo $CURBRANCH
 if [ `git branch | grep 'prec_added_ut'` ];then
     git branch -D 'prec_added_ut'
 fi
-git stash
 git checkout -b prec_added_ut upstream/${BRANCH}
 git branch
 mkdir prec_build
@@ -51,8 +50,7 @@ cd prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     bash $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh cmake_gen_in_current_dir >prebuild.log 2>&1
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
-    cat $PADDLE_ROOT/get_added_ut.sh
-    bash $PADDLE_ROOT/get_added_ut.sh
+    bash $PADDLE_ROOT/win_cmake.sh
 fi
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | grep 'test' > $PADDLE_ROOT/br-ut
 cd $PADDLE_ROOT/build
@@ -78,7 +76,6 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/get_added_ut.sh
 fi
 git checkout -f $CURBRANCH
-git stash pop
 echo $CURBRANCH
 git branch -D prec_added_ut
 cd $CURDIR
