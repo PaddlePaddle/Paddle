@@ -1303,8 +1303,8 @@ void BindImperative(py::module *m_ptr) {
                                if (self.Var().IsType<framework::LoDTensor>()) {
                                  return framework::vectorize<int>(
                                      self.Var()
-                                        .Get<framework::LoDTensor>()
-                                        .dims());
+                                         .Get<framework::LoDTensor>()
+                                         .dims());
                                } else if (self.Var()
                                               .IsType<
                                                   framework::SelectedRows>()) {
