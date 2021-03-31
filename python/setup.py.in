@@ -511,10 +511,10 @@ else:
 
 # Log for PYPI
 if sys.version_info > (3,0):
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
         long_description = f.read()
 else:
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r")as f:
+    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
         long_description = unicode(f.read(), 'UTF-8')
 
 with redirect_stdout():
