@@ -56,12 +56,9 @@ class AvgPool1D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
-               `padding[0]` on every sides.
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
-               [pad_before, pad_after], ...].
-               Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         exclusive(bool, optional): Whether to exclude padding points in average pooling mode, default is `True`.
         ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
@@ -154,12 +151,9 @@ class AvgPool2D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
-               of each dimension.
-            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
-               pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
         exclusive(bool, optional): Whether to exclude padding points in average pooling
@@ -252,12 +246,9 @@ class AvgPool3D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the
-               padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top,
-               pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         exclusive(bool, optional): Whether to exclude padding points in average pooling mode, default is True.
@@ -357,12 +348,9 @@ class MaxPool1D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An integer, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
-               `padding[0]` on every sides.
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
             4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
-               [pad_before, pad_after], ...].
-               Note that, the batch dimension and channel dimension should be [0,0] or(0,0).
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or(0,0).
             The default value is 0.
         return_mask(bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode(bool, optional): Whether to use the ceil function to calculate output height and width.
@@ -459,12 +447,9 @@ class MaxPool2D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
-               of each dimension.
-            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
-               pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
@@ -556,12 +541,9 @@ class MaxPool3D(layers.Layer):
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the
-               padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top,
-               pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
