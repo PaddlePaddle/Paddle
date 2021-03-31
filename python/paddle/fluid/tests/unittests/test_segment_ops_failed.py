@@ -19,6 +19,8 @@ import numpy as np
 import sys
 from op_test import OpTest
 
+import paddle
+paddle.enable_static()
 
 def compute_segment_sum(x, segment_ids):
     length = segment_ids[-1] + 1
