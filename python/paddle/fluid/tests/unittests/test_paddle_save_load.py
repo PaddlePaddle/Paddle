@@ -405,11 +405,8 @@ class TestSaveLoad(unittest.TestCase):
 
     def check_load_state_dict(self, orig_dict, load_dict):
         for var_name, value in orig_dict.items():
-            numpy = getattr(load_dict[var_name], 'numpy', None)
-            if numpy is not None:
-                load_value = numpy()
-            else:
-                load_value = np.array(load_dict[var_name])
+            load_value = load_dict[var_name].numpy() if hasattr(
+                load_dict[var_name], 'numpy') else np.array(load_dict[var_name])
             self.assertTrue(np.array_equal(value.numpy(), load_value))
 
     def test_save_load(self):
