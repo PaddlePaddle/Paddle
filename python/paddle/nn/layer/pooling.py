@@ -83,7 +83,7 @@ class AvgPool1D(layers.Layer):
 
 
     Shape:
-        - inpuut: 3-D tensor.
+        - input: 3-D tensor.
         - output: 3-D tensor
 
     Examples:
@@ -665,6 +665,20 @@ class AdaptiveAvgPool1D(layers.Layer):
     Args:
         - output_size (int): The target output size. It must be an integer.
         - name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+
+    Args:
+        - output_size (int): The target output size. It must be an integer.
+        - name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        Usually name is no need to set and None by default.
+
+    Args:
+        output_size (int): The target output size. It must be an integer.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+
+    Args:
+        output_size ( int ): The target output size. It must be an integer.
+        name\(str, optional\): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 
     Returns:
@@ -914,7 +928,7 @@ class AdaptiveMaxPool1D(layers.Layer):
 
     Args:
         - output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-             it must contain one int.
+            it must contain one int.
         - return_mask (bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
         - name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
