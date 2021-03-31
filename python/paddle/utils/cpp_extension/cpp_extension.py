@@ -566,6 +566,8 @@ class BuildExtension(build_ext, object):
                 len(name_items))
             name_items.pop(-2)
             # custommed_extension.so
+            if OS_NAME.startswith('darwin'):
+                name_items[-1] = 'dylib'
             ext_name = split_str.join(name_items)
 
         return ext_name
