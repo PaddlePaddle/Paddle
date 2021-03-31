@@ -78,8 +78,8 @@ ge::Status ge_initialize(
   py::gil_scoped_release release;
   auto init_options = convert_map(options);
   ge::Status res = ge::GEInitialize(init_options);
-  PADDLE_ENFORCE_EQ(res, ge::SUCCESS,
-                    platform::errors::Fatal("ge init error:%d", res));
+  PADDLE_ENFORCE_EQ(res, ge::SUCCESS, platform::errors::Fatal(
+                                          "ge initialize not success:%d", res));
   py::gil_scoped_acquire acquire;
   return res;
 }
