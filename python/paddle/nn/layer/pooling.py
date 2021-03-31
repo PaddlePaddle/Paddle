@@ -41,7 +41,7 @@ class AvgPool1D(layers.Layer):
     The output tensor shape will be [N, C, output_size].
 
     The output value of the layer with input size (N, C, L),
-    output (N, C, L_{out}) and kernel_size k can be precisely described as
+    output (N, C, :math:`L_{out}`) and kernel_size k can be precisely described as
     For average pool1d:
 
     ..  math::
@@ -133,16 +133,17 @@ class AvgPool2D(layers.Layer):
 
     Example:
         Input:
-            X shape: $(N, C, H_{in}, W_{in})$
+            X shape: :math:`(N, C, :math:`H_{in}`, :math:`W_{in}`)`
         Attr:
             kernel_size: ksize
 
         Output:
-            Out shape: $(N, C, H_{out}, W_{out})$
-            $$
+            Out shape: :math:`(N, C, :math:`H_{out}`, :math:`W_{out}`)`
+
+        ..  math::
+
             out(N_i, C_j, h, w)  = \frac{1}{ksize[0] * ksize[1]} \sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
                 input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
-            $$
 
     Args:
        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -257,7 +258,7 @@ class AvgPool3D(layers.Layer):
         ceil_mode (bool, optional): ${ceil_mode_comment}
         exclusive (bool, optional): Whether to exclude padding points in average pooling
                           mode, default is True.
-        divisor_override (int|float, optional) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
+        divisor_override (int|float, optional): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -434,17 +435,17 @@ class MaxPool2D(layers.Layer):
 
     Example:
         Input:
-            X shape: $(N, C, H_{in}, W_{in})$
+            X shape: :math:`(N, C, H_{in}, W_{in})`
         Attr:
             kernel_size: ksize
 
         Output:
-            Out shape: $(N, C, H_{out}, W_{out})$
-            $$
-            out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1} \\
-                                    & \text{input}(N_i, C_j, \text{stride[0]} \times h + m,
-                                                   \text{stride[1]} \times w + n)
-            $$
+            Out shape: :math:`(N, C, H_{out}, W_{out})`
+
+        ..  math::
+
+            out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
+                & \text{input}(N_i, C_j, \text{stride[0]} \times h + m, \text{stride[1]} \times w + n)
 
     Args:
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -646,7 +647,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
         lend &= ceil((i + 1) * L_{in} / L_{out})
 
-        Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
+        Output(i) &= \frac{\sum(Input[lstart:lend])}{(lstart - lend)}
 
     Args:
         output_size (int): The target output size. It must be an integer.
@@ -719,7 +720,7 @@ class AdaptiveAvgPool2D(layers.Layer):
 
         wend &= ceil((j + 1) * W_{in} / W_{out})
 
-        Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+        Output(i ,j) &= \frac{\sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
 
     Parameters:
@@ -808,7 +809,7 @@ class AdaptiveAvgPool3D(layers.Layer):
 
         wend &= ceil((k + 1) * W_{in} / W_{out})
 
-        Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+        Output(i ,j, k) &= \frac{\sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
 
     Parameters:
