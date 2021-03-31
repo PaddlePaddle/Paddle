@@ -18,6 +18,7 @@
 #include <string>
 #ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -604,4 +605,3 @@ int main(int argc, char* argv[]) {
 #endif
   return 0;
 }
-#endif
