@@ -208,7 +208,6 @@ class TestSaveLoadAny(unittest.TestCase):
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
                     base_map[var.name] = t
-
             path = os.path.join("test_replace_static_save_load", "model")
             # paddle.save, legacy paddle.fluid.load
             self.replace_static_save(prog, path)
@@ -221,7 +220,6 @@ class TestSaveLoadAny(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, np.array(base_t)))
-
             # legacy paddle.fluid.save, paddle.load 
             paddle.fluid.io.save(prog, path)
             # set var to zero
@@ -277,7 +275,6 @@ class TestSaveLoadAny(unittest.TestCase):
         # legacy paddle.load, paddle.save
         paddle.save(state_dict, path)
         load_dict_np = paddle.framework.io._legacy_load(path)
-
         for k, v in state_dict.items():
             self.assertTrue(
                 np.array_equal(v.numpy(), load_dict_tensor[k].numpy()))
@@ -299,7 +296,6 @@ class TestSaveLoadAny(unittest.TestCase):
         self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
-
         paddle.enable_static()
         lod_static = paddle.load(path)
         np_static = paddle.load(path, return_numpy=True)
@@ -356,7 +352,6 @@ class TestSaveLoadAny(unittest.TestCase):
             layer = LinearNet()
             state_dict_dy = layer.state_dict()
             paddle.save(state_dict_dy, path)
-
         paddle.enable_static()
         with new_program_scope():
             layer = LinearNet()
