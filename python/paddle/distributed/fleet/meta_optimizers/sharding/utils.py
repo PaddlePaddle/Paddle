@@ -333,7 +333,12 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     return
 
 
-def insert_allreduce_ops(block, insert_idx, ring_id, allreduce_vars):
+def insert_allreduce_ops(block,
+                         insert_idx,
+                         ring_id,
+                         allreduce_vars,
+                         op_role=OpRole.Backward,
+                         use_calc_stream=False):
     """
     _add_allreduce_ops
     """
@@ -346,29 +351,13 @@ def insert_allreduce_ops(block, insert_idx, ring_id, allreduce_vars):
             type='c_allreduce_sum',
             inputs={'X': var},
             outputs={'Out': var},
-            attrs={'ring_id': ring_id,
-                   OP_ROLE_KEY: OpRole.Backward})
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role
+            })
 
     return
-
-
-def get_grad_device(grad_name, shard):
-    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
-        grad_name)
-    base_name = None
-    # mind the traversal order 
-    possible_suffixes = [
-        '.cast_fp16@GRAD@MERGED', '.cast_fp16@GRAD', '@GRAD@MERGED', '@GRAD'
-    ]
-    for suffix in possible_suffixes:
-        if suffix in grad_name:
-            base_name = re.sub(suffix, '', grad_name)
-            break
-
-    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(
-        base_name)
-
-    return shard.global_param2device[base_name]
 
 
 def insert_reduce_ops(block,
@@ -397,6 +386,25 @@ def insert_reduce_ops(block,
                 OP_ROLE_KEY: op_role
             })
     return
+
+
+def get_grad_device(grad_name, shard):
+    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
+        grad_name)
+    base_name = None
+    # mind the traversal order 
+    possible_suffixes = [
+        '.cast_fp16@GRAD@MERGED', '.cast_fp16@GRAD', '@GRAD@MERGED', '@GRAD'
+    ]
+    for suffix in possible_suffixes:
+        if suffix in grad_name:
+            base_name = re.sub(suffix, '', grad_name)
+            break
+
+    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(
+        base_name)
+
+    return shard.global_param2device[base_name]
 
 
 def get_first_check_finite_and_unscale_op_idx(block):
@@ -587,3 +595,25 @@ def save_persistables(exe, dirname, main_program, filename=None):
             filename=None)
 
     return
+
+
+def append_naive_sync(block, sync_var, ring_id):
+    # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
+    # sync within global 
+    block.append_op(
+        type="fill_constant",
+        outputs={"Out": sync_var},
+        attrs={
+            "shape": sync_var.shape,
+            "dtype": sync_var.dtype,
+            "value": int(1),
+        })
+    block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': sync_var},
+        outputs={'Out': sync_var},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            OP_ROLE_KEY: OpRole.Forward
+        })
