@@ -63,13 +63,13 @@ class ReluGPUFunctor : public BaseGPUFunctor<T> {
   __device__ __forceinline__ typename CudaVecType<T>::type Compute(
       const typename CudaVecType<T>::type in) {
     // relu forward : out = max(x, 0)
-    return (in) > zero_ ? (in) : zero_;
+    return in > zero_ ? in : zero_;
   }
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T in) {
     // relu forward : out = max(x, 0)
-    return (in) > zero_ ? (in) : zero_;
+    return in > zero_ ? in : zero_;
   }
 };
 
@@ -111,13 +111,13 @@ class ReluGradGPUFunctor : public BaseGPUFunctor<T> {
   __device__ __forceinline__ typename CudaVecType<T>::type Compute(
       const typename CudaVecType<T>::type out,
       const typename CudaVecType<T>::type dout) {
-    return (out) > zero_ ? (dout) : zero_;
+    return out > zero_ ? dout : zero_;
   }
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T out, const T dout) {
     // relu backward : dx = out > 0 ? dout : 0
-    return (out) > zero_ ? (dout) : zero_;
+    return out > zero_ ? dout : zero_;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -166,12 +166,12 @@ class LeakyReluGPUFunctor : public BaseGPUFunctor<T> {
   // leakyrelu forward : out = x > 0 ? x : x * alpha
   __device__ __forceinline__ typename CudaVecType<T>::type Compute(
       const typename CudaVecType<T>::type in) {
-    return (in) > zero_ ? (in) : static_cast<T>(alpha_) * (in);
+    return in > zero_ ? in : static_cast<T>(alpha_) * in;
   }
 
   __device__ __forceinline__ T ComputeRemainder(const T in) {
     // leakyrelu forward : out = x > 0 ? x : x * alpha
-    return (in) > zero_ ? (in) : static_cast<T>(alpha_) * (in);
+    return in > zero_ ? in : static_cast<T>(alpha_) * in;
   }
 };
 
@@ -215,13 +215,13 @@ class LeakyReluGradGPUFunctor : public BaseGPUFunctor<T> {
       const typename CudaVecType<T>::type in,
       const typename CudaVecType<T>::type dout) {
     // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-    return (in) > zero_ ? (dout) : static_cast<T>(alpha_) * (dout);
+    return in > zero_ ? dout : static_cast<T>(alpha_) * dout;
   }
 
   // when num % vecsize != 0 this func will be used
   __device__ __forceinline__ T ComputeRemainder(const T in, const T dout) {
     // leakyrelu backward : dx = x > 0 ? dout : alpha * dout
-    return (in) > zero_ ? (dout) : static_cast<T>(alpha_) * (dout);
+    return in > zero_ ? dout : static_cast<T>(alpha_) * dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
