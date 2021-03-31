@@ -44,8 +44,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // step1: inverse scale(RealDiv)
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(),
-                     &const_tensor);
+    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
 
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
 

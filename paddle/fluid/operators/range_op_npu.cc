@@ -16,19 +16,18 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/range_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/range_op.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
-
 
 template <typename DeviceContext, typename T>
 class RangeNPUKernel : public framework::OpKernel<T> {
@@ -60,6 +59,8 @@ class RangeNPUKernel : public framework::OpKernel<T> {
       value += step;
     }
 
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     framework::TensorFromVector(odata, context.device_context(), out);
   }
 };
@@ -70,8 +71,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    range,
-    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    range, ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, double>)
 

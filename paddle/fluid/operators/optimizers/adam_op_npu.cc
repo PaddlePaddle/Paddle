@@ -101,17 +101,14 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     // reshape
     Tensor beta1_tensor(framework::proto::VarType::FP32);
     beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{beta1}, ctx.device_context(),
-                     &beta1_tensor);
+    FillNpuTensorWithConstant<float>(&beta1_tensor, beta1);
     Tensor beta2_tensor(framework::proto::VarType::FP32);
     beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{beta2}, ctx.device_context(),
-                     &beta2_tensor);
+    FillNpuTensorWithConstant<float>(&beta2_tensor, beta2);
 
     Tensor epsilon_tensor(framework::proto::VarType::FP32);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{epsilon}, ctx.device_context(),
-                     &epsilon_tensor);
+    FillNpuTensorWithConstant<T>(&epsilon_tensor, epsilon);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

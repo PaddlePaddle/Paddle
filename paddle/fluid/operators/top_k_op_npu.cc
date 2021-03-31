@@ -12,14 +12,14 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/top_k_op.h"
 
 namespace paddle {
 namespace operators {
 
-void gen_assist_seq(framework::Tensor* assit_tensor,
-                     int64_t dim, const framework::ExecutionContext& ctx) {
+void gen_assist_seq(framework::Tensor* assit_tensor, int64_t dim,
+                    const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;
   std::vector<paddle::platform::float16> assit;
   assit.resize(2 * dimx2);
@@ -28,14 +28,14 @@ void gen_assist_seq(framework::Tensor* assit_tensor,
     assit[i] = static_cast<paddle::platform::float16>(i);
 
     // for i in range [dim, dimx2]
-    int64_t idx = static_cast<int64_t>(
-                        static_cast<paddle::platform::float16>(i));
+    int64_t idx =
+        static_cast<int64_t>(static_cast<paddle::platform::float16>(i));
     int64_t gap = i - idx;
     assit[i + dim] = static_cast<paddle::platform::float16>(gap);
   }
+  ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   framework::TensorFromVector(assit, ctx.device_context(), assit_tensor);
 }
-
 
 template <typename DeviceContext, typename T>
 class TopkNPUKernel : public framework::OpKernel<T> {
@@ -64,10 +64,8 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"largest", true}};
 
     // run ascend
-    auto runner = NpuOpRunner("TopKD",
-                              {*input, assist_seq_tensor},
-                              {*output, *indices},
-                              attr_input);
+    auto runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
+                              {*output, *indices}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -83,7 +81,6 @@ class TopkNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 // Ascend Op TopKD only support input float 16 dtype
-REGISTER_OP_NPU_KERNEL(
-    top_k,
-    ops::TopkNPUKernel<paddle::platform::NPUDeviceContext,
-                                  paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(top_k,
+                       ops::TopkNPUKernel<paddle::platform::NPUDeviceContext,
+                                          paddle::platform::float16>);
