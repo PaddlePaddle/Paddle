@@ -77,8 +77,10 @@ class AvgPool1D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        - input: 3-D tensor.
-        - output: 3-D tensor
+        - x(Tensor): The input tensor of avg pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of avg pool1d  operator, which is a 3-D tensor.
+          The data type is same as input x.
 
     Examples:
 
@@ -167,8 +169,10 @@ class AvgPool2D(layers.Layer):
             Usually name is no need to set and None by default.
 
     Shape:
-        - x: 4-D tensor.
-        - output: 4-D tensor
+        - x(Tensor): The input tensor of avg pool2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of avg pool2d  operator, which is a 4-D tensor.
+          The data type is same as input x.
 
     Returns:
         A callable object of AvgPool2D.
@@ -269,9 +273,10 @@ class AvgPool3D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        - x: 5-D tensor.
-        - out: 5-D tensor.
-
+        - x(Tensor): The input tensor of avg pool3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of avg pool3d  operator, which is a 5-D tensor.
+          The data type is same as input x.
     Examples:
         .. code-block:: python
 
@@ -369,8 +374,10 @@ class MaxPool1D(layers.Layer):
 
 
     Shape:
-        - x: 3-D tensor.
-        - out: 3-D tensor.
+        - x(Tensor): The input tensor of max pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of max pool1d  operator, which is a 3-D tensor.
+          The data type is same as input x.
 
     Examples:
 
@@ -467,8 +474,10 @@ class MaxPool2D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        - x: 4-D tensor.
-        - out: 4-D tensor.
+        - x(Tensor): The input tensor of max pool2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of max pool2d  operator, which is a 4-D tensor.
+          The data type is same as input x.
 
     Examples:
         .. code-block:: python
@@ -562,8 +571,10 @@ class MaxPool3D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        - x: 5-D tensor.
-        - out: 5-D tensor.
+        - x(Tensor): The input tensor of max pool3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of max pool3d  operator, which is a 5-D tensor.
+          The data type is same as input x.
 
     Examples:
         .. code-block:: python
