@@ -81,6 +81,25 @@ class TestLayerDict(unittest.TestCase):
         layers.clear()
         check_layer_dict()
 
+        list_format_layers = [
+            ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
+            ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
+        ]
+        layers = OrderedDict(list_format_layers)
+        layers_dicts.update(list_format_layers)
+        check_layer_dict()
+
+    def test_layer_dict_error_inputs(self):
+        layers = [
+            ('conv1d', paddle.nn.Conv1D(3, 2, 3), "conv1d"),
+            ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
+        ]
+
+        layers_dicts = paddle.nn.LayerDict()
+        self.assertRaises(ValueError, layers_dicts.update, layers)
+
+        self.assertRaises(AssertionError, layers_dicts.update, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

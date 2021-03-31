@@ -14,6 +14,7 @@
 
 from collections import OrderedDict
 from ...fluid.dygraph.layers import Layer
+from six.moves import collections_abc
 
 __all__ = ['LayerDict', ]
 
@@ -24,7 +25,7 @@ class LayerDict(Layer):
     Holded sublayers can be accessed like a regular ordered python dictionary. 
 
     Parameters:
-        sublayers (iterable of Layer, optional): sublayers to hold
+        sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
 
     Examplex:
         .. code-block:: python
@@ -66,7 +67,7 @@ class LayerDict(Layer):
     def __init__(self, sublayers=None):
         super(LayerDict, self).__init__()
         if sublayers is not None:
-            self._sub_layers.update(sublayers)
+            self.update(sublayers)
 
     def __getitem__(self, key):
         return self._sub_layers[key]
@@ -243,7 +244,7 @@ class LayerDict(Layer):
         Update the key/values pairs in sublayers to the LayerDict, overwriting the existing keys.
 
         Parameters:
-            sublayers (iterable of Layer): iterable of sublayers to update.
+            sublayers (LayerDict|OrderedDict|list[(key,Layer)...]): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
         
         Examples:
             .. code-block:: python
@@ -273,6 +274,21 @@ class LayerDict(Layer):
                 #relu : ReLU()
 
         """
-        for key, layer in sublayers.items():
-            self.add_sublayer(key, layer)
-        return self
+
+        assert isinstance(
+            sublayers, collections_abc.Iterable
+        ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
+            sublayers).__name__
+
+        if isinstance(sublayers,
+                      (OrderedDict, LayerDict, collections_abc.Mapping)):
+            for key, layer in sublayers.items():
+                self.add_sublayer(key, layer)
+        else:
+            # handle this format [(key1, layer1), (key2, layer2)...]
+            for i, kv in enumerate(sublayers):
+                if len(kv) != 2:
+                    raise ValueError("The length of the " + str(i) +
+                                     "'s element in sublayers is " + str(
+                                         len(kv)) + ", which must be 2.")
+                self.add_sublayer(kv[0], kv[1])
