@@ -27,6 +27,21 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#define PrepareParamsOnDevice()                                          \
+  constexpr int data_size = 4;                                           \
+  cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);   \
+  cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size); \
+  cudaMalloc(&stride_device_, stride_.size() * data_size);               \
+  cudaMalloc(&variances_device_, variances_.size() * data_size);         \
+  cudaMemcpy(anchor_sizes_device_, anchor_sizes_.data(),                 \
+             anchor_sizes_.size() * data_size, cudaMemcpyHostToDevice);  \
+  cudaMemcpy(aspect_ratios_device_, aspect_ratios_.data(),               \
+             aspect_ratios_.size() * data_size, cudaMemcpyHostToDevice); \
+  cudaMemcpy(stride_device_, stride_.data(), stride_.size() * data_size, \
+             cudaMemcpyHostToDevice);                                    \
+  cudaMemcpy(variances_device_, variances_.data(),                       \
+             variances_.size() * data_size, cudaMemcpyHostToDevice);
+
 AnchorGeneratorPlugin::AnchorGeneratorPlugin(
     const nvinfer1::DataType data_type, const std::vector<float>& anchor_sizes,
     const std::vector<float>& aspect_ratios, const std::vector<float>& stride,
@@ -67,19 +82,7 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(
                         "TRT anchor generator plugin only accepts box_num "
                         "greater than 0, but receive box_num = %d.",
                         box_num_));
-  constexpr int data_size = 4;
-  cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
-  cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size);
-  cudaMalloc(&stride_device_, stride_.size() * data_size);
-  cudaMalloc(&variances_device_, variances_.size() * data_size);
-  cudaMemcpy(anchor_sizes_device_, anchor_sizes_.data(),
-             anchor_sizes_.size() * data_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(aspect_ratios_device_, aspect_ratios_.data(),
-             aspect_ratios_.size() * data_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(stride_device_, stride.data(), stride_.size() * data_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(variances_device_, variances_.data(),
-             variances_.size() * data_size, cudaMemcpyHostToDevice);
+  PrepareParamsOnDevice();
 }
 
 AnchorGeneratorPlugin::~AnchorGeneratorPlugin() {
@@ -106,6 +109,7 @@ AnchorGeneratorPlugin::AnchorGeneratorPlugin(const void* data, size_t length) {
   DeserializeValue(&data, &length, &width_);
   DeserializeValue(&data, &length, &num_anchors_);
   DeserializeValue(&data, &length, &box_num_);
+  PrepareParamsOnDevice();
 }
 
 const char* AnchorGeneratorPlugin::getPluginType() const {
@@ -340,20 +344,7 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(
           "TRT anchor generator plugin only accepts number of anchors greater "
           "than 0, but receive number of anchors = %d.",
           num_anchors_));
-
-  const size_t data_size = 4;
-  cudaMalloc(&anchor_sizes_device_, anchor_sizes_.size() * data_size);
-  cudaMalloc(&aspect_ratios_device_, aspect_ratios_.size() * data_size);
-  cudaMalloc(&stride_device_, stride_.size() * data_size);
-  cudaMalloc(&variances_device_, variances_.size() * data_size);
-  cudaMemcpy(anchor_sizes_device_, anchor_sizes_.data(),
-             anchor_sizes_.size() * data_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(aspect_ratios_device_, aspect_ratios_.data(),
-             aspect_ratios_.size() * data_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(stride_device_, stride_.data(), stride_.size() * data_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(variances_device_, variances_.data(),
-             variances_.size() * data_size, cudaMemcpyHostToDevice);
+  PrepareParamsOnDevice();
 }
 
 AnchorGeneratorPluginDynamic::~AnchorGeneratorPluginDynamic() {
@@ -378,6 +369,7 @@ AnchorGeneratorPluginDynamic::AnchorGeneratorPluginDynamic(void const* data,
   DeserializeValue(&data, &length, &variances_);
   DeserializeValue(&data, &length, &offset_);
   DeserializeValue(&data, &length, &num_anchors_);
+  PrepareParamsOnDevice();
 }
 
 nvinfer1::IPluginV2DynamicExt* AnchorGeneratorPluginDynamic::clone() const {
