@@ -69,7 +69,7 @@ NpuEventResourcePool::NpuEventResourcePool() {
     };
 
     auto deleter = [dev_idx](aclrtEvent event) {
-      platform::SetDeviceId(dev_idx);
+      platform::SetNPUDeviceId(dev_idx);
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtDestroyEvent(event));
     };
 

@@ -76,6 +76,7 @@ BufferedReader::BufferedReader(
   is_same_place_ = false;
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
+  npu_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
 }
 
@@ -254,7 +255,6 @@ void BufferedReader::ReadAsync(size_t i) {
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_.get()));
     }
 #endif
-
     return i;
   }));
 }
@@ -286,9 +286,13 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     return;
   }
 
-  *out = std::move((platform::is_gpu_place(place_) && !is_same_place_)
-                       ? cuda_buffer_[i]
-                       : cpu_buffer_[i]);
+  if (platform::is_gpu_place(place_) && !is_same_place_) {
+    *out = cuda_buffer_[i];
+  } else if (platform::is_npu_place(place_) && !is_same_place_) {
+    *out = npu_buffer_[i];
+  } else {
+    *out = cpu_buffer_[i];
+  }
 
   // Do not push current position into ReadAsync. Push the previous position
   // Since all computation in fluid are async, change the data of
