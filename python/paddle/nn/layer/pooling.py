@@ -328,10 +328,11 @@ class AvgPool3D(layers.Layer):
 
 class MaxPool1D(layers.Layer):
     """
-    Applies a 1D max pooling over an input signal composed of several input planes based
-    on the input, output_size, return_mask parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
+    This operation applies 1D max pooling over input signal
+    composed of several input planes based on the input,
+    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
+    in NCL format, where N is batch size, C is the number of channels,
+    L is the length of the feature.
 
     The output value of the layer with input size (N, C, L),
     output (N, C, L_{out}) and kernel_size k can be precisely described as
@@ -339,28 +340,30 @@ class MaxPool1D(layers.Layer):
 
     ..  math::
 
-       Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
+      Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])
 
-    Args:
-       kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+    Parameters:
+        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+        stride (int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain an integer.
-        padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
+        padding (string|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An integer, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
-            4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
+                `padding[0]` on every sides.
+            4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
+                [pad_before, pad_after], ...].
+                Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+
             The default value is 0.
-        return_mask (bool): Whether return the max indices along with the outputs. default is `False`.
-        ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
+        return_mask (bool, optional): Whether return the max indices along with the outputs. default is `False`.
+        ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    Returns:
-        None.
 
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
