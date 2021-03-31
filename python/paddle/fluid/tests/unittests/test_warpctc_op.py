@@ -20,6 +20,7 @@ import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 import paddle
 import paddle.nn.functional as F
@@ -240,8 +241,18 @@ class TestWarpCTCOp(OpTest):
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.009,
+                check_dygraph=False)
+        else:
+            self.check_grad(
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.007,
+                check_dygraph=False)
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
@@ -335,8 +346,18 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.009,
+                check_dygraph=False)
+        else:
+            self.check_grad(
+                ["Logits"],
+                "Loss",
+                max_relative_error=0.007,
+                check_dygraph=False)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
