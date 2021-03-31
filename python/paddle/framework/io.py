@@ -202,7 +202,7 @@ def _parse_load_config(configs):
     inner_config.model_filename = configs.get('model_filename', None)
     inner_config.params_filename = configs.get('params_filename', None)
     inner_config.keep_name_table = configs.get('keep_name_table', None)
-    inner_config.return_numpy = configs.get('return_numpy', True)
+    inner_config.return_numpy = configs.get('return_numpy', False)
 
     return inner_config
 
@@ -555,8 +555,8 @@ def load(path, **configs):
             (2) params_filename (str): The persistable variables file name of the paddle 1.x 
             ``save_inference_model`` save format. No default file name, save variables separately 
             by default.            
-            (3) return_numpy(bool): If specified as False, return tensor as paddle.Tensor, otherwise return tensor as numpy.ndarray. 
-            Default True.
+            (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor. 
+            Default False.
 
     Returns:
         Object(Object): a target object can be used in paddle

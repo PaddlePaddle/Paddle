@@ -1186,37 +1186,6 @@ class Variable(object):
         pass
 
     @fake_interface_only
-    def set_value(self, value):
-        """
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
-
-        Set a new value for this Variable.
-
-        Args:
-            value (Variable|np.ndarray): the new value.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
-
-                data = np.ones([3, 1024], dtype='float32')
-                with fluid.dygraph.guard():
-                    linear = fluid.dygraph.Linear(1024, 4)
-                    t = to_variable(data)
-                    linear(t)  # call with default weight
-                    custom_weight = np.random.randn(1024, 4).astype("float32")
-                    linear.weight.set_value(custom_weight)  # change existing weight
-                    out = linear(t)  # call with different weight
-
-        """
-        pass
-
-    @fake_interface_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -2003,9 +1972,9 @@ class Variable(object):
 
         return self
 
-    def get_tensor(self, scope=None):
+    def get_value(self, scope=None):
         """
-        Get the tensor in given scope. 
+        Get the value of variable in given scope. 
 
         Args:
             scope(Scope, optional) : If `scope` is None, it will be set to global scope 
@@ -2013,7 +1982,7 @@ class Variable(object):
                 Default: None
 
         Returns:
-            Tensor: the tensor in given scope.
+            Tensor: the value in given scope.
 
         Examples:
             .. code-block:: python
@@ -2036,13 +2005,13 @@ class Variable(object):
                 path = 'temp/tensor_'
                 for var in prog.list_vars():
                     if var.persistable:
-                        t = var.get_tensor()
+                        t = var.get_value()
                         paddle.save(t, path+var.name+'.pdtensor')
 
                 for var in prog.list_vars():
                     if var.persistable:
                         t_load = paddle.load(path+var.name+'.pdtensor')
-                        var.set_tensor(t_load)
+                        var.set_value(t_load)
         """
         # The 'framework' is a low-level module, and 'executor' 
         # can not be imported at the begainning of this file. 
@@ -2062,7 +2031,7 @@ class Variable(object):
         t = var_temp.get_tensor()
         return t
 
-    def set_tensor(self, value, scope=None):
+    def set_value(self, value, scope=None):
         '''
         Set the value to the tensor in given scope. 
 
@@ -2096,13 +2065,13 @@ class Variable(object):
                 path = 'temp/tensor_'
                 for var in prog.list_vars():
                     if var.persistable:
-                        t = var.get_tensor()
+                        t = var.get_value()
                         paddle.save(t, path+var.name+'.pdtensor')
 
                 for var in prog.list_vars():
                     if var.persistable:
                         t_load = paddle.load(path+var.name+'.pdtensor')
-                        var.set_tensor(t_load)
+                        var.set_value(t_load)
         '''
 
         # The 'framework' is a low-level module, and 'executor'
@@ -5619,7 +5588,7 @@ class Program(object):
                     name = state_dict['StructuredToParameterName@@'][name]
             if name in vars_dict:
                 try:
-                    vars_dict[name].set_tensor(value, scope)
+                    vars_dict[name].set_value(value, scope)
                 except ValueError as err:
                     warnings.warn(
                         ("Skip loading for '{}'. ".format(name) + str(err)))

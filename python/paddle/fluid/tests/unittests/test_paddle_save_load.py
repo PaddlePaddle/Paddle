@@ -111,7 +111,8 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         dict_load = paddle.load(path)
         # compare results before and after saving
         for key, value in save_dict.items():
-            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+            self.assertTrue(
+                np.array_equal(dict_load[key].numpy(), value.numpy()))
 
 
 class TestSaveLoadPickle(unittest.TestCase):
@@ -142,7 +143,8 @@ class TestSaveLoadPickle(unittest.TestCase):
             dict_load = paddle.load(path)
             # compare results before and after saving
             for key, value in save_dict.items():
-                self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+                self.assertTrue(
+                    np.array_equal(dict_load[key].numpy(), value.numpy()))
 
 
 class TestSaveLoadAny(unittest.TestCase):
@@ -218,7 +220,7 @@ class TestSaveLoadAny(unittest.TestCase):
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
                     base_t = base_map[var.name]
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    self.assertTrue(np.array_equal(new_t, np.array(base_t)))
 
             # legacy paddle.fluid.save, paddle.load 
             paddle.fluid.io.save(prog, path)
@@ -235,28 +237,28 @@ class TestSaveLoadAny(unittest.TestCase):
             path_vars = 'test_replace_save_load_return_tensor_static/model'
             for var in prog.list_vars():
                 if var.persistable:
-                    tensor = var.get_tensor(fluid.global_scope())
+                    tensor = var.get_value(fluid.global_scope())
                     paddle.save(tensor, os.path.join(path_vars, var.name))
             with self.assertRaises(TypeError):
-                var.get_tensor('fluid.global_scope()')
+                var.get_value('fluid.global_scope()')
             with self.assertRaises(ValueError):
-                x.get_tensor()
+                x.get_value()
             with self.assertRaises(TypeError):
-                x.set_tensor('1')
+                x.set_value('1')
             fake_data = np.zeros([3, 2, 1, 2, 3])
             with self.assertRaises(TypeError):
-                x.set_tensor(fake_data, '1')
+                x.set_value(fake_data, '1')
             with self.assertRaises(ValueError):
-                x.set_tensor(fake_data)
+                x.set_value(fake_data)
             with self.assertRaises(ValueError):
-                var.set_tensor(fake_data)
+                var.set_value(fake_data)
             # set var to zero
             self.set_zero(prog, place)
             for var in prog.list_vars():
                 if var.persistable:
                     tensor = paddle.load(
                         os.path.join(path_vars, var.name), return_numpy=False)
-                    var.set_tensor(tensor)
+                    var.set_value(tensor)
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
                     base_t = base_map[var.name]
@@ -292,15 +294,15 @@ class TestSaveLoadAny(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(tensor, path, pickle_protocol=5)
         paddle.save(tensor, path)
-        np_dygraph = paddle.load(path)
-        t_dygraph = paddle.load(path, return_numpy=False)
+        t_dygraph = paddle.load(path)
+        np_dygraph = paddle.load(path, return_numpy=True)
         self.assertTrue(isinstance(t_dygraph, paddle.fluid.core.VarBase))
         self.assertTrue(np.array_equal(tensor.numpy(), np_dygraph))
         self.assertTrue(np.array_equal(tensor.numpy(), t_dygraph.numpy()))
 
         paddle.enable_static()
-        np_static = paddle.load(path)
-        lod_static = paddle.load(path, return_numpy=False)
+        lod_static = paddle.load(path)
+        np_static = paddle.load(path, return_numpy=True)
         self.assertTrue(isinstance(lod_static, paddle.fluid.core.LoDTensor))
         self.assertTrue(np.array_equal(tensor.numpy(), np_static))
         self.assertTrue(np.array_equal(tensor.numpy(), np.array(lod_static)))
@@ -322,7 +324,7 @@ class TestSaveLoadAny(unittest.TestCase):
             prog = paddle.static.default_main_program()
             for var in prog.list_vars():
                 if list(var.shape) == [IMAGE_SIZE, 128]:
-                    tensor = var.get_tensor()
+                    tensor = var.get_value()
                     break
             scope = fluid.global_scope()
         origin_tensor = np.array(tensor)
@@ -330,19 +332,19 @@ class TestSaveLoadAny(unittest.TestCase):
         paddle.save(tensor, path)
         self.set_zero(prog, place, scope)
         # static load
-        np_static = paddle.load(path)
-        lod_static = paddle.load(path, return_numpy=False)
+        lod_static = paddle.load(path)
+        np_static = paddle.load(path, return_numpy=True)
         # set_tensor(np.ndarray)
-        var.set_tensor(np_static, scope)
+        var.set_value(np_static, scope)
         self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
         # set_tensor(LoDTensor)
         self.set_zero(prog, place, scope)
-        var.set_tensor(lod_static, scope)
+        var.set_value(lod_static, scope)
         self.assertTrue(np.array_equal(origin_tensor, np.array(tensor)))
         # enable dygraph mode
         paddle.disable_static()
-        np_dygraph = paddle.load(path)
-        var_dygraph = paddle.load(path, return_numpy=False)
+        var_dygraph = paddle.load(path)
+        np_dygraph = paddle.load(path, return_numpy=True)
         self.assertTrue(np.array_equal(np.array(tensor), np_dygraph))
         self.assertTrue(np.array_equal(np.array(tensor), var_dygraph.numpy()))
 
@@ -372,8 +374,8 @@ class TestSaveLoadAny(unittest.TestCase):
             state_dict_param = program.state_dict("param")
             for name, tensor in state_dict_dy.items():
                 self.assertTrue(
-                    np.array_equal(tensor.numpy(), state_dict_param[
-                        tensor.name]))
+                    np.array_equal(tensor.numpy(),
+                                   np.array(state_dict_param[tensor.name])))
 
 
 class TestSaveLoad(unittest.TestCase):
@@ -403,7 +405,12 @@ class TestSaveLoad(unittest.TestCase):
 
     def check_load_state_dict(self, orig_dict, load_dict):
         for var_name, value in orig_dict.items():
-            self.assertTrue(np.array_equal(value.numpy(), load_dict[var_name]))
+            numpy = getattr(load_dict[var_name], 'numpy', None)
+            if numpy is not None:
+                load_value = numpy()
+            else:
+                load_value = np.array(load_dict[var_name])
+            self.assertTrue(np.array_equal(value.numpy(), load_value))
 
     def test_save_load(self):
         layer, opt = self.build_and_train_model()
