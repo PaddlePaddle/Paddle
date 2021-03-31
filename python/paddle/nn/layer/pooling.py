@@ -46,7 +46,7 @@ class AvgPool1D(layers.Layer):
 
     ..  math::
 
-        Output(N_i, C_i, l) &= \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
+        Output(N_i, C_i, l) = \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
 
 
     Args:
@@ -57,17 +57,19 @@ class AvgPool1D(layers.Layer):
         padding (str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of `padding[0]` on every sides.
-            4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-            The default value is 0.
-        exclusive (bool, optional): Whether to exclude padding points in average pooling
-                          mode, default is `True`.
+            3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
+                `padding[0]` on every sides.
+            4. A list[int] or tuple(int) whose length is \2. It has the form [pad_before, pad_after].
+            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
+                [pad_before, pad_after], ...].
+                Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+
+            The default value is \0.
+        exclusive (bool, optional): Whether to exclude padding points in average pooling mode, default is `True`.
         ceil_mode (bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
             If it is set to False, the floor function will be used. The default value is False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Returns:
         A callable object of AvgPool1D.
@@ -157,19 +159,19 @@ class AvgPool2D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-            The default value is 0.
-        ceil_mode (bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
+
+            The default value is \0.
+        ceil_mode (bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
         exclusive (bool, optional): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
-        divisor_override (float, optional): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
+            mode, default is `true`.
+        divisor_override (float, optional): If specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
         data_format (str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Shape:
         - x: 4-D tensor.
@@ -364,9 +366,8 @@ class MaxPool1D(layers.Layer):
         return_mask (bool, optional): Whether return the max indices along with the outputs. default is `False`.
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width. False is the default.
             If it is set to False, the floor function will be used. Default False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
     Returns:
         A callable object of MaxPool1D.
 
@@ -464,11 +465,10 @@ class MaxPool2D(layers.Layer):
         ceil_mode (bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool, optional): Whether to return the max indices along with the outputs.
         data_format (str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Returns:
         A callable object of MaxPool2D.
@@ -553,17 +553,17 @@ class MaxPool3D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+            4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-            The default value is 0.
+
+            The default value is \0.
         ceil_mode (bool, optional): ${ceil_mode_comment}
         return_mask (bool, optional): Whether to return the max indices along with the outputs.
         data_format (str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
-                        The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
 
     Returns:
@@ -651,9 +651,8 @@ class AdaptiveAvgPool1D(layers.Layer):
 
     Args:
         output_size (int): The target output size. It must be an integer.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Returns:
         A callable object of AdaptiveAvgPool1D.
@@ -730,9 +729,8 @@ class AdaptiveAvgPool2D(layers.Layer):
         data_format (str, optional): The data format of the input and output data. An optional string
             from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in
             the order of: [batch_size, input_channels, input_height, input_width].
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Shape:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor. The data type can be float32, float64.
@@ -819,9 +817,8 @@ class AdaptiveAvgPool3D(layers.Layer):
         data_format (str, optional): The data format of the input and output data. An optional string
             from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is stored in
             the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
     Shape:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float32, float64\.
         output (Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type is same as input x.
@@ -902,9 +899,8 @@ class AdaptiveMaxPool1D(layers.Layer):
              it must contain one int.
         return_mask (bool, optional): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
     Returns:
         A callable object of AdaptiveMaxPool1D.
 
@@ -983,9 +979,8 @@ class AdaptiveMaxPool2D(layers.Layer):
     Parameters:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
         return_mask (bool, optional): If true, the index of max pooling point will be returned along with outputs. It cannot be set in average pooling type. Default False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
     Shape:
         x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float32, float64.
         output (Tensor): The output tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type is same as input x.
@@ -1039,8 +1034,9 @@ class AdaptiveMaxPool2D(layers.Layer):
 
 class AdaptiveMaxPool3D(layers.Layer):
     """
-    This operation applies 3D adaptive max pooling on input tensor. The h and w dimensions
-    of the output tensor are determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus on the output size.
+    This operation applies 3D adaptive max pooling on input tensor. The h and w dimensions of the output tensor are
+    determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus
+    on the output size.
 
     For adaptive max pool3d:
 
@@ -1061,14 +1057,18 @@ class AdaptiveMaxPool3D(layers.Layer):
         Output(i ,j, k) &= max(Input[dstart:dend, hstart:hend, wstart:wend])
 
     Parameters:
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain
+            three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that
+            of the input.
         return_mask (bool, optional): If true, the index of max pooling point will be returned along with outputs. Default False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
     Shape:
-        x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
-        output (Tensor): The output tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type is same as input x.
+        x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor.
+            The data type can be float32, float64.
+        output (Tensor): The output tensor of adaptive max pool3d operator, which is a 5-D tensor.
+            The data type is same as input x.
+
     Returns:
         A callable object of AdaptiveMaxPool3D.
     Examples:
