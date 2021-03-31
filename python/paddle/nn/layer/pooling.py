@@ -50,18 +50,18 @@ class AvgPool1D(layers.Layer):
 
     Parameters:
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-        it must contain an integer.
+            it must contain an integer.
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
-        it must contain an integer.
+            it must contain an integer.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
-        1. A string in ['valid', 'same'].
-        2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-        3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
-           `padding[0]` on every sides.
-        4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
-        5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
-           [pad_before, pad_after], ...].
-           Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+                1. A string in ['valid', 'same'].
+                2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+                3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
+                    `padding[0]` on every sides.
+                4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
+                5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
+                    [pad_before, pad_after], ...].
+                    Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
         The default value is 0.
         exclusive(bool, optional): Whether to exclude padding points in average pooling mode, default is `True`.
         ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
@@ -80,8 +80,8 @@ class AvgPool1D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        input: 3-D tensor.
-        output: 3-D tensor
+        - input: 3-D tensor.
+        - output: 3-D tensor
 
     Examples:
 
@@ -152,14 +152,14 @@ class AvgPool2D(layers.Layer):
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
-            1. A string in ['valid', 'same'].
-            2. An int, which means the feature map is zero padded by size of `padding` on every sides.
-            3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
-               of each dimension.
-            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
-               pad_width_right] whose value means the padding size of each side.
-            5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+                1. A string in ['valid', 'same'].
+                2. An int, which means the feature map is zero padded by size of `padding` on every sides.
+                3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
+                   of each dimension.
+                4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
+                   pad_width_right] whose value means the padding size of each side.
+                5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
+                   ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode(bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
         exclusive(bool, optional): Whether to exclude padding points in average pooling
@@ -173,8 +173,8 @@ class AvgPool2D(layers.Layer):
             Usually name is no need to set and None by default.
 
     Shape:
-        x: 4-D tensor.
-        out: 2-D tensor
+        - x: 4-D tensor.
+        - output: 4-D tensor
 
     Returns:
         A callable object of AvgPool2D.
@@ -278,8 +278,8 @@ class AvgPool3D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        x: 5-D tensor.
-        out: 5-D tensor.
+        - x: 5-D tensor.
+        - out: 5-D tensor.
 
     Examples:
         .. code-block:: python
@@ -382,8 +382,8 @@ class MaxPool1D(layers.Layer):
 
 
     Shape:
-        x: 3-D tensor.
-        out: 3-D tensor.
+        - x: 3-D tensor.
+        - out: 3-D tensor.
 
     Examples:
 
@@ -437,12 +437,12 @@ class MaxPool2D(layers.Layer):
     H is the height of the feature, and W is the width of the feature.
 
     Example:
-        Input:
+        - Input:
             X shape: :math:`(N, C, H_{in}, W_{in})`
-        Attr:
+        - Attr:
             kernel_size: ksize
 
-        Output:
+        - Output:
             Out shape: :math:`(N, C, H_{out}, W_{out})`
 
         ..  math::
@@ -483,8 +483,8 @@ class MaxPool2D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        x: 4-D tensor.
-        out: 4-D tensor.
+        - x: 4-D tensor.
+        - out: 4-D tensor.
 
     Examples:
         .. code-block:: python
@@ -582,8 +582,8 @@ class MaxPool3D(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
-        x: 5-D tensor.
-        out: 5-D tensor.
+        - x: 5-D tensor.
+        - out: 5-D tensor.
 
     Examples:
         .. code-block:: python
@@ -669,10 +669,10 @@ class AdaptiveAvgPool1D(layers.Layer):
         ValueError: 'output_size' should be an integer.
 
     Shape:
-        x(Tensor): 3-D tensor. The input tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-            The data type can be float32, float64.
-        output(Tensor): 3-D tensor. The output tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-            The data type is same as input x.
+        - x(Tensor): 3-D tensor. The input tensor of adaptive avg pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): 3-D tensor. The output tensor of adaptive avg pool1d operator, which is a 3-D tensor.
+          The data type is same as input x.
 
     Examples:
         .. code-block:: python
@@ -743,10 +743,10 @@ class AdaptiveAvgPool2D(layers.Layer):
             Usually name is no need to set and None by default.
 
     Shape:
-        x(Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
-            The data type can be float32, float64.
-        output(Tensor): The output tensor of adaptive avg pool2d operator, which is a 4-D tensor.
-            The data type is same as input x.
+        - x(Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of adaptive avg pool2d operator, which is a 4-D tensor.
+          The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveAvgPool2D.
@@ -833,10 +833,10 @@ class AdaptiveAvgPool3D(layers.Layer):
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
-        x(Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-            The data type can be float32, float64\.
-        output(Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-            The data type is same as input x.
+        - x(Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
+          The data type can be float32, float64\.
+        - output(Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor.
+          The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveAvgPool3D.
@@ -923,10 +923,10 @@ class AdaptiveMaxPool1D(layers.Layer):
         ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
 
     Shape:
-        x(Tensor): The input tensor of adaptive max pool1d operator, which is a 3-D tensor.
-            The data type can be float32, float64.
-        output(Tensor): The output tensor of adaptive max pool1d operator, which is a 3-D tensor.
-            The data type is same as input x.
+        - x(Tensor): The input tensor of adaptive max pool1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of adaptive max pool1d operator, which is a 3-D tensor.
+          The data type is same as input x.
 
     Examples:
         .. code-block:: python
@@ -1003,10 +1003,10 @@ class AdaptiveMaxPool2D(layers.Layer):
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
-        x(Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor.
-            The data type can be float32, float64.
-        output(Tensor): The output tensor of adaptive max pool2d operator, which is a 4-D tensor.
-            The data type is same as input x.
+        - x(Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of adaptive max pool2d operator, which is a 4-D tensor.
+          The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveMaxPool2D.
@@ -1088,10 +1088,10 @@ class AdaptiveMaxPool3D(layers.Layer):
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
     Shape:
-        x(Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor.
-            The data type can be float32, float64.
-        output(Tensor): The output tensor of adaptive max pool3d operator, which is a 5-D tensor.
-            The data type is same as input x.
+        - x(Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of adaptive max pool3d operator, which is a 5-D tensor.
+          The data type is same as input x.
 
     Returns:
         A callable object of AdaptiveMaxPool3D.
