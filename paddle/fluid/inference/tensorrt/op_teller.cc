@@ -45,7 +45,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
-    teller_set.insert("anchor_generator");
 #endif
   }
 
@@ -117,6 +116,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "multiclass_nms",
       "nearest_interp",
+      "anchor_generator",
   };
 };
 
