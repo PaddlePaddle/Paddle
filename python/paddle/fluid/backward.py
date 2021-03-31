@@ -896,8 +896,8 @@ def _append_backward_ops_with_checkpoints_(
                         shape=ref_var.shape,
                         dtype=ref_var.dtype,
                         type=ref_var.type,
-                        persistable=ref_var.var(name).persistable,
-                        stop_gradient=ref_var.var(name).stop_gradient)
+                        persistable=ref_var.persistable,
+                        stop_gradient=ref_var.stop_gradient)
 
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,

@@ -180,6 +180,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._sharding_gradient_merge(main_block)
 
         # # check op dependecy
+        # FIXME (JZ-LIANG) enable checking in future.
         # check_broadcast(main_block)
         # check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
         #                     self.dp_ring_id)
