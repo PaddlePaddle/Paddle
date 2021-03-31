@@ -27,7 +27,6 @@ limitations under the License. */
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
@@ -384,7 +383,7 @@ class ExecutionContext {
     return device_context_;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true,
                       platform::errors::PreconditionNotMet(
@@ -490,6 +489,10 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_gpu_place(kern_pair.first.place_);
                        });
   }
+  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const = 0;
 
@@ -498,6 +501,10 @@ class OperatorWithKernel : public OperatorBase {
 
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
                                            const std::string& name) const;
+
+  proto::VarType::Type IndicateOrPromoteVarDataTypes(
+      const ExecutionContext& ctx, const std::string& name1,
+      const std::string& name2) const;
 
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
@@ -513,11 +520,6 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  private:
-  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
-                          proto::VarType::Type* type) const;
-  // indicate kernel DataType by input data. By default all input data must be
-  // same.
-  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;
@@ -540,6 +542,20 @@ class OperatorWithKernel : public OperatorBase {
 
   void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
                     const platform::Place& place) const;
+
+  void HandleComplexGradToRealGrad(const Scope& scope,
+                                   RuntimeContext* ctx) const;
+
+  /* Inner assist methods */
+  // indicate kernel DataType by input data.
+  // By default all input data must be same.
+  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
+  // used for IndicateDataType
+  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
+                          proto::VarType::Type* type) const;
+  // used for IndicateOrPromoteVarDataTypes
+  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                   const std::string& name) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

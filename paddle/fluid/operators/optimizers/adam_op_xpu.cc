@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/adam_op.h"
-#include <gflags/gflags.h>
+#include "gflags/gflags.h"
 
 namespace paddle {
 namespace operators {
@@ -74,7 +74,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                           "output size is 1, but received "
                           "value is:%d.",
                           beta2_pow_out->numel()));
-                          
+
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
@@ -109,7 +109,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           param_out.template mutable_data<T>(ctx.GetPlace()), param.numel());
 
-      //update in cpu and then copy to xpu
+      // update in cpu and then copy to xpu
       if (beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
         const T* beta1_pow_p = beta1_pow.template data<T>();
@@ -121,19 +121,25 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       } else {
         T cpu_beta1_pow_out_data;
         T cpu_beta2_pow_out_data;
-        xpu_memcpy(&cpu_beta1_pow_out_data, beta1_pow_ptr, sizeof(T),
-                   XPU_DEVICE_TO_HOST);
+        memory::Copy(platform::CPUPlace(), &cpu_beta1_pow_out_data,
+                     BOOST_GET_CONST(platform::XPUPlace, beta1_pow.place()),
+                     beta1_pow_ptr, sizeof(T));
+
         cpu_beta1_pow_out_data = cpu_beta1_pow_out_data * beta1;
-        xpu_memcpy(&cpu_beta2_pow_out_data, beta2_pow_ptr, sizeof(T),
-                   XPU_DEVICE_TO_HOST);
+        memory::Copy(platform::CPUPlace(), &cpu_beta2_pow_out_data,
+                     BOOST_GET_CONST(platform::XPUPlace, beta2_pow.place()),
+                     beta2_pow_ptr, sizeof(T));
+
         cpu_beta2_pow_out_data = cpu_beta2_pow_out_data * beta2;
 
         T* beta1_pow_out_p = beta1_pow_out->mutable_data<T>(ctx.GetPlace());
         T* beta2_pow_out_p = beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-        xpu_memcpy(beta1_pow_out_p, &cpu_beta1_pow_out_data, sizeof(T),
-                   XPU_HOST_TO_DEVICE);
-        xpu_memcpy(beta2_pow_out_p, &cpu_beta2_pow_out_data, sizeof(T),
-                   XPU_HOST_TO_DEVICE);
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                     beta1_pow_out_p, platform::CPUPlace(),
+                     &cpu_beta1_pow_out_data, sizeof(T));
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                     beta2_pow_out_p, platform::CPUPlace(),
+                     &cpu_beta2_pow_out_data, sizeof(T));
       }
 
       PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,

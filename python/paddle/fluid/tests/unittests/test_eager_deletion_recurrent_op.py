@@ -235,7 +235,7 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
 
 
 class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
-    '''
+    r'''
     Test RNNOp
     equation:
         h_t = \sigma (W x_t + U h_{t-1})

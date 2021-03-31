@@ -23,6 +23,7 @@ import os
 import re
 import traceback
 import six
+import copy
 
 import numpy as np
 import subprocess
@@ -46,13 +47,12 @@ __all__ = [
     'name_scope',
     'cuda_places',
     'cpu_places',
+    'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'ComplexVariable',
-    'load_op_library',
     'require_version',
     'device_guard',
     'set_flags',
@@ -229,7 +229,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -241,18 +241,21 @@ def _static_only_(func):
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
 # TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
-# same base class. 
+# same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
-            % func.__name__)
+            "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
+            "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
+            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
 
-# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict) 
-# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without 
+# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict)
+# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
@@ -317,7 +320,7 @@ def _set_expected_place(place):
 def _var_base_to_np(var_base):
     """	
     convert VarBase tp numpy	
-    	
+
     Args:	
         var_base(VarBase) : the VarBase to convert	
     Returns (np.ndarray): the np.ndarray contain the value of VarBase	
@@ -351,6 +354,15 @@ def _cuda_ids():
         device_ids = [int(s) for s in gpus_env.split(",")]
     else:
         device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
+
+
+def _xpu_ids():
+    xpus_env = os.getenv("FLAGS_selected_xpus")
+    if xpus_env:
+        device_ids = [int(s) for s in xpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_xpu_device_count())
     return device_ids
 
 
@@ -403,7 +415,7 @@ def cuda_places(device_ids=None):
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [paddle.CUDAPlace(0), paddle.CUDAPlace(1), paddle.CUDAPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of GPU device ids.
 
@@ -415,7 +427,7 @@ def cuda_places(device_ids=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
 
             cuda_places = static.cuda_places()
@@ -430,10 +442,48 @@ def cuda_places(device_ids=None):
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
 
 
+def xpu_places(device_ids=None):
+    """
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
+    This function creates a list of :code:`paddle.XPUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_xpus` would be checked first. For example, if
+    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    If :code:`FLAGS_selected_xpus` is not set, all visible
+    xpu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be 
+    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+    
+    Parameters:
+        device_ids (list or tuple of int, optional): list of XPU device ids.
+    Returns:
+        list of paddle.XPUPlace: Created XPU place list.
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            xpu_places = static.xpu_places()
+    """
+    assert core.is_compiled_with_xpu(), \
+        "Not compiled with XPU"
+    if device_ids is None:
+        device_ids = _xpu_ids()
+    elif not isinstance(device_ids, (list, tuple)):
+        device_ids = [device_ids]
+    return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
+
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`paddle.CPUPlace` objects, and returns the created list.
-    
+
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
@@ -452,7 +502,7 @@ def cpu_places(device_count=None):
 
             import paddle
             import paddle.static as static
-            
+
             paddle.enable_static()
 
             cpu_places = static.cpu_places()
@@ -643,6 +693,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
         return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -822,7 +876,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
+                temp_out = var.block.create_var(dtype='int64')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
@@ -1002,8 +1056,8 @@ class Variable(object):
         if is_new_var:
             self.desc.set_type(type)
         elif self.desc.type() != type:
-            raise ValueError("Variable {0} has been created before. The "
-                             "previous type is {1}; the new type is {2}. They"
+            raise ValueError("Variable '{0}' has been created before. The "
+                             "previous type is {1}, the new type is {2}. They"
                              " are not matched".format(self.name,
                                                        self.desc.type(), type))
 
@@ -1015,8 +1069,8 @@ class Variable(object):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable {0} has been created before. the previous "
-                        "shape is {1}; the new shape is {2}. They are not "
+                        "Variable '{0}' has been created before. The previous "
+                        "shape is {1}, the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
             if is_new_var:
@@ -1024,8 +1078,8 @@ class Variable(object):
             else:
                 old_dtype = self.dtype
                 if dtype != old_dtype:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous data type is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous data type is {1}, the new "
                                      "data type is {2}. They are not "
                                      "matched.".format(self.name, old_dtype,
                                                        dtype))
@@ -1035,8 +1089,8 @@ class Variable(object):
                 self.desc.set_lod_level(lod_level)
             else:
                 if lod_level != self.lod_level:
-                    raise ValueError("Variable {0} has been created before. "
-                                     "The previous lod_level is {1}; the new "
+                    raise ValueError("Variable '{0}' has been created before. "
+                                     "The previous lod_level is {1}, the new "
                                      "lod_level is {2}. They are not "
                                      "matched".format(self.name, self.lod_level,
                                                       lod_level))
@@ -1046,8 +1100,8 @@ class Variable(object):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable {0} has been created before."
-                        "The previous persistable is {1}; the new "
+                        "Variable '{0}' has been created before."
+                        "The previous persistable is {1}, the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
 
@@ -1297,21 +1351,28 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                cur_program = fluid.Program()
+                paddle.enable_static()
+
+                cur_program = static.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
                                                     dtype='float32')
                 print(new_variable._to_readable_code())
         """
+        # VarType.LOD_TENSOR -> LOD_TENSOR
+        type_str = str(self.type).split('.')[1]
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
-            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
-                format(i="{", e="}", name=self.name, type=self.type, shape=self.shape, dtype=self.dtype)
+            dtype_str = str(self.dtype).split('.')[1]
+            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
+                format(name=self.name, type=type_str, shape=self.shape,
+                       dtype=dtype_str, stop_gradient=self.stop_gradient)
         else:
-            var_str = "{name} : fluid.{type})".\
-                format(i="{", e="}", name=self.name, type=self.type)
+            var_str = "{name} : {type})".\
+                format(name=self.name, type=type_str)
 
         if type(self) == Parameter:
             if self.trainable:
@@ -1464,7 +1525,7 @@ class Variable(object):
         **Notes: This is a read-only property. It simply returns name of
           gradient Variable from a naming convention but doesn't guarantee
           the gradient exists.**
-       
+
         Examples:
           .. code-block:: python
 
@@ -1569,6 +1630,40 @@ class Variable(object):
             print("Type of current Var is: {}".format(new_variable.type))
         """
         return self.desc.type()
+
+    def clone(self):
+        """
+        Returns a new static Variable, which is the clone of the original static
+        Variable. It remains in the current graph, that is, the cloned Variable 
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            Variable: The cloned Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                paddle.enable_static()
+
+                # create a static Variable
+                x = paddle.static.data(name='x', shape=[3, 2, 1])
+                # create a cloned Variable
+                y = x.clone()
+
+        """
+        output = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + "_clone"),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=self.persistable,
+            stop_gradient=self.stop_gradient)
+
+        self.block.append_op(
+            type='assign', inputs={'X': [self]}, outputs={'Out': [output]})
+        return output
 
     def _set_error_clip(self, error_clip):
         """
@@ -1760,6 +1855,162 @@ class Variable(object):
     def __getitem__(self, item):
         return _getitem_impl_(self, item)
 
+    def __setitem__(self, item, value):
+        inputs = {'Input': self}
+
+        # 1. Parse item
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axes = []
+        axes = []
+        starts = []
+        ends = []
+        steps = []
+
+        max_integer = sys.maxsize
+
+        def replace_ellipsis(item):
+            # Use slice(None) to replace Ellipsis.
+            # For var, var.shape = [3,4,5,6]
+            #
+            #   var[..., 1:2] -> var[:, :, :, 1:2]
+            #   var[0, ...] -> var[0]
+            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
+
+            item = list(item)
+
+            # Remove Variable to skip bug when counting Ellipsis
+            item_remove_var = [
+                ele for ele in item if not isinstance(ele, Variable)
+            ]
+            ell_count = item_remove_var.count(Ellipsis)
+            if ell_count == 0:
+                return item
+            elif ell_count > 1:
+                raise IndexError(
+                    "An index can only have a single ellipsis ('...')")
+
+            ell_idx = item.index(Ellipsis)
+
+            if ell_idx == len(item) - 1:
+                return item[:-1]
+            else:
+                item[ell_idx:ell_idx + 1] = [slice(None)] * (
+                    len(self.shape) - len(item) + 1)
+
+            return item
+
+        item = replace_ellipsis(item)
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step
+
+                if start is None and end is None and step is None:
+                    continue
+
+                step = 1 if step is None else step
+
+                # TODO: support cases when step < 1
+                if not isinstance(step, Variable) and step == 0:
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, step can not be 0, "
+                        "but received step is {}.".format(step))
+
+                if isinstance(step, Variable) and (start is None or
+                                                   end is None):
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, it's not supported that "
+                        "the start or end is None when the type of step is paddle.Tensor."
+                    )
+
+                if start is None:
+                    start = 0 if step > 0 else max_integer
+
+                if end is None:
+                    end = max_integer if step > 0 else (0 - max_integer)
+            else:
+                decrease_axes.append(dim)
+                start = slice_item
+                end = slice_item + 1 if slice_item != -1 else max_integer
+                step = 1
+
+            axes.append(dim)
+            starts.append(start)
+            ends.append(end)
+            steps.append(step)
+
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes
+        }
+
+        from .layers import utils
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            del attrs['starts']
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            del attrs['ends']
+        if utils._contain_var(steps):
+            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+            del attrs['steps']
+
+        # 2. Parse value
+        dtype = self.dtype
+        attrs['dtype'] = dtype
+
+        from .data_feeder import convert_dtype
+        #  2.1 value is an integer of float
+        if isinstance(value, (int, float)):
+            value = np.array([value]).astype(convert_dtype(dtype))
+
+        #  2.2 value is a np.ndarray
+        if isinstance(value, np.ndarray):
+            shape = list(value.shape)
+            if dtype == core.VarDesc.VarType.BOOL:
+                value_name = "bool_values"
+                values = [bool(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP32:
+                value_name = "fp32_values"
+                values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.FP64:
+                value_name = "fp64_values"
+                values = [float(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT32:
+                value_name = "int32_values"
+                values = [int(v) for v in value.flat]
+            elif dtype == core.VarDesc.VarType.INT64:
+                value_name = "int64_values"
+                values = [int(v) for v in value.flat]
+            else:
+                raise TypeError(
+                    "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+                    "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
+                    "received %s." % convert_dtype(dtype))
+            attrs[value_name] = values
+            attrs["shape"] = shape
+
+        elif isinstance(value, Variable):
+            inputs["ValueTensor"] = value
+        else:
+            raise TypeError(
+                "Only support to assign an integer, float, numpy.ndarray or "
+                "paddle.Tensor to a paddle.Tensor, but received {}".format(
+                    type(value)))
+
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+
+        return self
+
 
 def get_all_op_protos():
     """
@@ -1774,97 +2025,6 @@ def get_all_op_protos():
         op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
         ret_values.append(op_proto)
     return ret_values
-
-
-class ComplexVariable(object):
-    """
-    The ComplexTensor defined on the complex number domain. It contains two common 
-    real number Tensor as its members, :attr:`real` and :attr:`imag` 
-    holding the real part and imaginary part of complex numbers respectively.
-    
-    **Notes**:
-        **The constructor of ComplexTensor should not be invoked directly.**
-
-    Args:
-        real (Tensor): The Tensor holding real-part data.
-        imag (Tensor): The Tensor holding imaginery-part data.
-    
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.to_tensor([1.0+2.0j, 0.2])
-            print(x.name, x.dtype, x.shape)
-            # ({'real': 'generated_tensor_0.real', 'imag': 'generated_tensor_0.imag'}, complex64, [2])
-            print(x)
-            # ComplexTensor[real](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [        1., 0.20000000])
-            # ComplexTensor[imag](shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #                     [2., 0.])
-            print(type(x))
-            # <class 'paddle.ComplexTensor'>
-    """
-
-    def __new__(cls, *arg, **kwargs):
-        cls.__module__ = "paddle"
-        cls.__name__ = "ComplexTensor"
-        return super(ComplexVariable, cls).__new__(cls)
-
-    def __init__(self, real, imag):
-        assert real.shape == imag.shape, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same shape!"
-        assert real.dtype == imag.dtype, "The real part and imaginary part " \
-            "of a ComplexVariable should have the same data type!"
-
-        self.real = real
-        self.imag = imag
-        if self.real.dtype in [
-                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
-        ]:
-            self._dtype = "complex64"
-        else:
-            self._dtype = "complex128"
-        self._shape = self.real.shape
-
-    def __getitem__(self, idx):
-        return ComplexVariable(self.real[idx], self.imag[idx])
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def name(self):
-        return {"real": self.real.name, "imag": self.imag.name}
-
-    @name.setter
-    def name(self, name):
-        # rename
-        if isinstance(name, str):
-            self.real.name = name + ".real"
-            self.imag.name = name + ".imag"
-        elif (isinstance(name, tuple) or isinstance(name,
-                                                    list)) and len(name) == 2:
-            self.real.name, self.imag.name = name[0], name[1]
-        else:
-            raise ValueError(
-                "An invalid name assigned to the ComplexVariable, "
-                "which must be a string, or a tuple or a list with length 2!")
-
-    def numpy(self):
-        return self.real.numpy() + 1j * self.imag.numpy()
-
-    def __str__(self):
-        from paddle.tensor.to_string import to_string
-        return "ComplexTensor containing:\n{real}\n{imag}".format(
-            real=to_string(self.real, "[real part]Tensor"),
-            imag=to_string(self.imag, "[imag part]Tensor"))
-
-    __repr__ = __str__
 
 
 class OpProtoHolder(object):
@@ -1902,9 +2062,13 @@ class OpProtoHolder(object):
 
     def update_op_proto(self):
         op_protos = get_all_op_protos()
+        custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
+                custom_op_names.append(proto.type)
+
+        return custom_op_names
 
     @staticmethod
     def generated_op_attr_names():
@@ -1964,8 +2128,10 @@ class Operator(object):
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
-        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
+        'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
+        'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
+        'c_wait_comm', 'c_wait_compute'
     }
 
     def __init__(self,
@@ -2236,7 +2402,8 @@ class Operator(object):
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
-                format(outputs = outputs_str, op_type=self.type, inputs=inputs_str, attrs=attrs_str)
+                format(outputs=outputs_str, op_type=self.type,
+                       inputs=inputs_str, attrs=attrs_str)
         else:
             op_str = "{op_type}(inputs={inputs}, {attrs})".\
                 format(op_type=self.type, inputs=inputs_str, attrs=attrs_str)
@@ -2252,7 +2419,7 @@ class Operator(object):
         return self.desc.type()
 
     def input(self, name):
-        """
+        r"""
         Get the input arguments according to the input parameter name.
 
         Args:
@@ -2303,7 +2470,7 @@ class Operator(object):
         return self.desc.output_arg_names()
 
     def output(self, name):
-        """
+        r"""
         Get output arguments by the output parameter name.
 
         Args:
@@ -2858,6 +3025,12 @@ class Block(object):
             param = ParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+            # NOTE: Why only set stop_gradient=False in static mode
+            # Because in dygraph mode, the `stop_gradient` and `trainable`
+            # are related, and `trainable` default vallue is `True` or
+            # it is specified by users, there is no need to set
+            # `stop_gradient` for ParamBase here.
+            param.stop_gradient = False
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2865,9 +3038,13 @@ class Block(object):
                 for op in block.ops:
                     if var.name in op.output_arg_names:
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
-                        # are treated as initialization ops that cause error. 
+                        # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
-                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                        # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
+                        if op.type in [
+                                "c_broadcast", "c_sync_comm_stream",
+                                "coalesce_tensor"
+                        ]:
                             continue
                         init_ops.append(op)
                 return init_ops
@@ -2884,7 +3061,6 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
-        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):
@@ -3779,7 +3955,7 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
-               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            self.graph.nodes() and op_node.node in self.graph.nodes(), \
             'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
@@ -3797,7 +3973,7 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
-               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            self.graph.nodes() and op_node.node in self.graph.nodes(), \
             'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
@@ -3914,8 +4090,9 @@ class IrGraph(object):
 
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
-            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                                          + ' -o ' + pdf_save_path, shell=True)
+            exited_code = subprocess.call(
+                'dot -Tpdf ' + dot_file_path + ' -o ' + pdf_save_path,
+                shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
@@ -4265,9 +4442,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            cur_program = fluid.Program()
+            paddle.enable_static()
+
+            cur_program = static.Program()
             cur_block = cur_program.current_block()
             new_var = cur_block.create_var(name="X",
                                            shape=[-1, 23, 48],
@@ -4465,7 +4645,7 @@ class Program(object):
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
                     # instead of using test startup program, while nothing is in test's startup program
 
-                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # In Paddle we will share weights by using the same Tensor name. In train and test program
                     # all parameters will have the same name and this can make train and test program sharing parameters,
                     # that's why we need to use startup program of train. And for startup program of test, it has nothing,
                     # since it is a new program.
@@ -4525,7 +4705,7 @@ class Program(object):
             The two code snippets above will generate and print same programs.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
@@ -4555,7 +4735,7 @@ class Program(object):
             if hasattr(self, 'lr_sheduler'):
                 p.lr_sheduler = self.lr_sheduler
 
-            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
 
@@ -4600,7 +4780,7 @@ class Program(object):
             Program:  A new, pruned program.
         """
 
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # NOTE(zhiqiu): we sync the original program first, since its program may diff with
         # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
         self._sync_with_cpp()
 
@@ -4643,7 +4823,7 @@ class Program(object):
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
-                        # Skip optimize op except for optimize op in targets, 
+                        # Skip optimize op except for optimize op in targets,
                         # since optimize op generates parameters.
                         if op._is_optimize_op() and op not in targets:
                             continue
@@ -4818,7 +4998,7 @@ class Program(object):
                 ## 0
                 ## the default random seed is 0
 
-                # Here we need to set random seed before we use fluid.layers.dropout
+                # Here we need to set random seed before we use paddle.nn.functional.dropout
                 prog.random_seed = 1
                 z_var = F.dropout(x_var, 0.7)
 
@@ -5092,9 +5272,9 @@ class Program(object):
                 label = static.data(name='label', shape=[None,1], dtype='int64')
                 for var in prog.list_vars():
                     print(var)
-                
-                # var img : fluid.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
-                # var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
+
+                # var img : paddle.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
+                # var label : paddle.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -5127,8 +5307,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
-                # persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
+                # persist trainable param fc_0.w_0 : paddle.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
+                # persist trainable param fc_0.b_0 : paddle.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific
@@ -5348,6 +5528,36 @@ class ParamBase(core.VarBase):
         return "Parameter containing:\n{tensor}".format(
             tensor=super(ParamBase, self).__str__())
 
+    def __deepcopy__(self, memo):
+        """
+        Deep copy parameter, it will always performs Tensor copy.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import copy
+                linear = paddle.nn.Linear(1, 3)
+                linear_copy = copy.deepcopy(linear)
+
+                print(linear.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+                print(linear_copy.weight)
+                # Parameter containing:
+                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
+                #     [[-0.30929261, -0.90929240, -1.07851017]])
+
+        """
+        state = copy.deepcopy(self.__dict__, memo)
+        state["name"] = self.name + unique_name.generate("_deepcopy")
+        new_param = ParamBase(self.shape, self.dtype, **state)
+        memo[id(self)] = new_param
+        new_param.copy_(self, True)
+        return new_param
+
     __repr__ = __str__
 
 
@@ -5362,7 +5572,7 @@ def default_startup_program():
 
     The :code:`paddle.nn` function will append the initialization operators into startup program.
     The :code:`startup_program` will initialize the parameters by the OPs. 
-  
+
     This method will return the default or the current startup program. Users can use
     :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
 
@@ -5377,15 +5587,10 @@ def default_startup_program():
             import paddle
 
             paddle.enable_static()
-            main_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
-                y = paddle.static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
-
-                print("main program is: {}".format(paddle.static.default_main_program()))
-                print("start up program is: {}".format(paddle.static.default_startup_program()))
+            x = paddle.static.data(name="x", shape=[-1, 784], dtype='float32')
+            out = paddle.static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            print("main program is: {}".format(paddle.static.default_main_program()))
+            print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
@@ -5394,8 +5599,8 @@ def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 
     descriptions of Ops and tensors.
-    
-    For example ``z = paddle.fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+
+    For example ``z = paddle.add(x, y)`` will create a new ``add`` 
     Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
     The ``default main program`` is the default value for ``Program`` parameter in 
@@ -5403,7 +5608,7 @@ def default_main_program():
     :code:`default_main_program` when the program is not specified.
 
     If you want to switch the ``default main program``, you can use :ref:`api_paddle_fluid_framework_program_guard` .
-    
+
     Returns:
         Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
@@ -5411,36 +5616,17 @@ def default_main_program():
         ..  code-block:: python
 
             import paddle
-            
+
             paddle.enable_static()
             # Sample Network:
-            data = paddle.static.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            
-            conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
-            bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
-            pool1 = paddle.fluid.layers.pool2d(bn1, 2, 'max', 2)
-            conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
-            bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
-            pool2 = paddle.fluid.layers.pool2d(bn2, 2, 'max', 2)
-            
-            fc1 = paddle.static.nn.fc(x=pool2, size=50, activation='relu')
-            fc2 = paddle.static.nn.fc(x=fc1, size=102, activation='softmax')
-            
-            loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
-            loss = paddle.mean(loss)
-            opt = paddle.optimizer.Momentum(
-                learning_rate=0.1,
-                momentum=0.9,
-                weight_decay=paddle.regularizer.L2Decay(1e-4))
-            opt.minimize(loss)
-            
+            x = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            y = paddle.static.data(name='x', shape=[100, 100], dtype='float32')
+            out = paddle.add(x, y)
+
             #print the number of blocks in the program, 1 in this case
-            print(paddle.static.default_main_program().num_blocks) #[1]
-
-            #print the description of variable 'image'
+            print(paddle.static.default_main_program().num_blocks) # 1
+            #print the default_main_program
             print(paddle.static.default_main_program())
-
     """
     return _main_program_
 
@@ -5494,7 +5680,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
        .. code-block:: python
-       
+
           import paddle
 
           paddle.enable_static()
@@ -5517,7 +5703,7 @@ def program_guard(main_program, startup_program=None):
           # does not care about startup program. Just pass a temporary value.
           with paddle.static.program_guard(main_program, paddle.static.Program()):
               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-    
+
     """
     from .data_feeder import check_type
     check_type(main_program, 'main_program', Program,
@@ -5558,15 +5744,15 @@ def _get_var(name, program=None):
 @signature_safe_contextmanager
 def _dygraph_guard(tracer):
     global _dygraph_tracer_
-    tmp_trace = _dygraph_tracer_
+    tmp_tracer = _dygraph_tracer_
     _dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        core._switch_tracer(tmp_trace)
-        _dygraph_tracer_ = tmp_trace
+        core._switch_tracer(tmp_tracer)
+        _dygraph_tracer_ = tmp_tracer
 
 
 @signature_safe_contextmanager
@@ -5575,34 +5761,13 @@ def _dygraph_place_guard(place):
     tmp_place = _global_expected_place_
     _global_expected_place_ = place
 
+    _set_dygraph_tracer_expected_place(place)
+
     try:
         yield
     finally:
         _global_expected_place_ = tmp_place
-
-
-def load_op_library(lib_filename):
-    """
-    :api_attr: Static Graph
-    
-    Load a dynamic library, including custom operators and kernels.
-    When library is loaded, ops and kernels registered in the library
-    will be available in PaddlePaddle main process.
-    Please note, the type of custom operators can't have the same type
-    with the existing operators in the framework.
-
-    Args:
-        lib_filename (str): name of dynamic library.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            #fluid.load_op_library('custom_op.so')
-
-    """
-    core.load_op_library(lib_filename)
-    OpProtoHolder.instance().update_op_proto()
+        _set_dygraph_tracer_expected_place(tmp_place)
 
 
 def switch_device(device):
@@ -5631,27 +5796,28 @@ def device_guard(device=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            support_gpu = fluid.is_compiled_with_cuda()
-            place = fluid.CPUPlace()
+            paddle.enable_static()
+            support_gpu = paddle.is_compiled_with_cuda()
+            place = paddle.CPUPlace()
             if support_gpu:
-                place = fluid.CUDAPlace(0)
+                place = paddle.CUDAPlace(0)
 
             # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
-            data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
-            data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
-            shape = fluid.layers.shape(data2)
+            data1 = paddle.full(shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')
+            data2 = paddle.full(shape=[1, 3, 64], fill_value=0.5, dtype='float32')
+            shape = paddle.shape(data2)
 
-            with fluid.device_guard("cpu"):
+            with paddle.static.device_guard("cpu"):
                 # Ops created here will be placed on CPUPlace
-                shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
-            with fluid.device_guard('gpu'):
+                shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
+            with paddle.static.device_guard('gpu'):
                 # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
-                out = fluid.layers.crop_tensor(data1, shape=shape)
+                out = paddle.reshape(data1, shape=shape)
 
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
             result = exe.run(fetch_list=[out])
     """
 
@@ -5738,3 +5904,64 @@ def get_flags(flags):
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
+
+
+def _get_paddle_place(place):
+    "convert the string to paddle Place"
+    if place is None:
+        return place
+    if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
+                          core.CUDAPinnedPlace, core.CUDAPlace)):
+        return place
+
+    if not isinstance(place, str):
+        raise ValueError(
+            "place only support string which is 'Place' and so on.")
+
+    place = place.lower()
+    if (place == "cpu"):
+        return core.CPUPlace()
+    if (place == "device"):
+        return core.Place()
+
+    avaliable_gpu_place = re.match(r'gpu:\d+', place)
+    if place == "gpu_pinned" or place == "gpu" or avaliable_gpu_place:
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_gpu_place))
+        if place == "gpu_pinned":
+            return core.CUDAPinnedPlace()
+        elif place == "gpu":
+            return core.CUDAPlace(0)
+        else:
+            place_info_list = place.split(':', 1)
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.CUDAPlace(device_id)
+    avaliable_xpu_place = re.match(r'xpu:\d+', place)
+    if avaliable_xpu_place:
+        if not core.is_compiled_with_xpu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with XPU".format(avaliable_xpu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.XPUPlace(device_id)
+    raise ValueError(
+        "paddle support CPUPlace, CUDAPlace,CUDAPinnedPlace and XPUPlace, Please check your Place Input"
+    )
+
+
+def _get_paddle_place_list(places):
+
+    if not isinstance(places, (list, tuple)):
+        raise TypeError("places must to be List or Tuple")
+
+    ret = []
+    for p in places:
+        p = _get_paddle_place(p)
+        ret.append(p)
+
+    return ret

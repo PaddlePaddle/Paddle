@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -302,7 +305,6 @@ class InterpolateOp : public framework::OperatorWithKernel {
         platform::errors::Unimplemented(
             "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
-
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
       Interpolate1DInferShapeCheck(ctx);
@@ -318,13 +320,41 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto interp_method = ctx.Attr<std::string>("interp_method");
+    // TODO(danqing): support other interp_method
+    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
+        (interp_method == "nearest" || interp_method == "bilinear")) {
+      layout = framework::DataLayout::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_layout");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
@@ -394,6 +424,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                  "can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , "
                  "can be \'1\' for src_idx = scale*dst_index .")
         .SetDefault(1);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"

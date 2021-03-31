@@ -67,7 +67,16 @@ class Sequential(Layer):
                 self.add_sublayer(str(idx), layer)
 
     def __getitem__(self, name):
-        return self._sub_layers[str(name)]
+        if isinstance(name, slice):
+            return self.__class__(*(list(self._sub_layers.values())[name]))
+        else:
+            if name >= len(self._sub_layers):
+                raise IndexError('index {} is out of range'.format(name))
+            elif name < 0 and name >= -len(self._sub_layers):
+                name += len(self._sub_layers)
+            elif name < -len(self._sub_layers):
+                raise IndexError('index {} is out of range'.format(name))
+            return self._sub_layers[str(name)]
 
     def __setitem__(self, name, layer):
         assert isinstance(layer, Layer)
@@ -204,13 +213,25 @@ class LayerList(Layer):
             for idx, layer in enumerate(sublayers):
                 self.add_sublayer(str(idx), layer)
 
+    def _get_abs_idx(self, idx):
+        if isinstance(idx, int):
+            if not (-len(self) <= idx < len(self)):
+                raise IndexError(
+                    'index {} is out of range, should be an integer in range [{}, {})'.
+                    format(idx, -len(self), len(self)))
+            if idx < 0:
+                idx += len(self)
+        return idx
+
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             return self.__class__(list(self._sub_layers.values())[idx])
         else:
+            idx = self._get_abs_idx(idx)
             return self._sub_layers[str(idx)]
 
     def __setitem__(self, idx, sublayer):
+        idx = self._get_abs_idx(idx)
         return setattr(self, str(idx), sublayer)
 
     def __delitem__(self, idx):
@@ -218,6 +239,7 @@ class LayerList(Layer):
             for k in range(len(self._sub_layers))[idx]:
                 delattr(self, str(k))
         else:
+            idx = self._get_abs_idx(idx)
             delattr(self, str(idx))
         str_indices = [str(i) for i in range(len(self._sub_layers))]
         self._sub_layers = OrderedDict(
@@ -266,10 +288,15 @@ class LayerList(Layer):
                 another = paddle.nn.Linear(10, 10)
                 linears.insert(3, another)
                 print(linears[3] is another)  # True
+                another = paddle.nn.Linear(10, 10)
+                linears.insert(-1, another)
+                print(linears[-2] is another) # True
         """
         assert isinstance(index, int) and \
-               0 <= index < len(self._sub_layers), \
-            "index should be an integer in range [0, len(self))"
+               -len(self._sub_layers) <= index < len(self._sub_layers), \
+            "index should be an integer in range [{}, {})".format(-len(self), len(self))
+
+        index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer

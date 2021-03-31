@@ -42,6 +42,11 @@ constexpr bool IsInt8() {
   return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
+template <typename T>
+constexpr bool IsBfloat16() {
+  return std::is_same<T, paddle::platform::bfloat16>::value;
+}
+
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
@@ -170,7 +175,9 @@ class MatMulFactory {
   void CorrectStridesWhenFloatOutputFused(const ExecutionContext& ctx,
                                           const memory::dim N, memory::dim b,
                                           memory::dims* out_strides) const {
-    if (!IsInt8<OT>() && IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
+    if (!IsInt8<OT>() && !IsBfloat16<OT>() && IsOutputFused(ctx)) {
+      *out_strides = {N, b * N, 1};
+    }
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -181,34 +188,34 @@ class MatMulFactory {
     memory::dims strides_y;
     std::tie(mat_dim_y, strides_y) = GetInputDimsAndStrides(ctx, "Y");
 
-    const auto x_bs = mat_dim_x.batch_size_;
-    const auto y_bs = mat_dim_y.batch_size_;
+    auto x_bs = mat_dim_x.batch_size_;
+    auto y_bs = mat_dim_y.batch_size_;
     PADDLE_ENFORCE_EQ(x_bs > 0 && y_bs > 0 && x_bs != y_bs, false,
                       platform::errors::InvalidArgument(
                           "If batch sizes of X and Y are positive,"
                           "they have to be equal."));
 
-    // Store 1 if both batches are zero, otherwise save the nonzero batch
-    const memory::dim BS = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
+    memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
     const memory::dim M = mat_dim_x.height_;
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
 
     batch_size_ = 1;
-    auto b = BS;
-    if (BS > 1 && (IsOutputFused(ctx) || IsInputFused(ctx))) {
+    if (out_bs > 1 && (IsOutputFused(ctx) || IsInputFused(ctx))) {
       auto& x_dims = ctx.Input<Tensor>("X")->dims();
       auto& y_dims = ctx.Input<Tensor>("Y")->dims();
       batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
-      b = BS / batch_size_;
+      x_bs /= batch_size_;
+      y_bs /= batch_size_;
+      out_bs /= batch_size_;
     }
-    memory::dims x_dims = {b, M, K};
-    memory::dims y_dims = {b, K, N};
-    memory::dims out_dims = {b, M, N};
+    memory::dims x_dims = {x_bs > 0 ? x_bs : 1, M, K};
+    memory::dims y_dims = {y_bs > 0 ? y_bs : 1, K, N};
+    memory::dims out_dims = {out_bs, M, N};
 
-    x_offset_ = b * M * K * sizeof(XT);
-    y_offset_ = b * K * N * sizeof(YT);
-    out_offset_ = b * M * N * sizeof(OT);
+    x_offset_ = x_bs * M * K * sizeof(XT);
+    y_offset_ = y_bs * K * N * sizeof(YT);
+    out_offset_ = out_bs * M * N * sizeof(OT);
 
     // Translate transA and transB
     if (strides_x.empty())
@@ -219,7 +226,7 @@ class MatMulFactory {
                                                  : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    CorrectStridesWhenFloatOutputFused(ctx, N, b, &out_strides);
+    CorrectStridesWhenFloatOutputFused(ctx, N, out_bs, &out_strides);
 
     return {x_dims, y_dims, out_dims, strides_x, strides_y, out_strides};
   }
@@ -329,9 +336,8 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   const auto& out_name = ctx.OutputName("Out");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   const auto batch_size = ctx.Input<Tensor>("X")->dims()[0];
-
-  const std::string key =
-      platform::CreateKey(platform::ThreadIDasStr(), batch_size, out_name);
+  std::string key = platform::CreateKey(dev_ctx, batch_size, out_name);
+  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
@@ -348,10 +354,14 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
 template <typename XT, typename YT>
 static void ExecuteMatMul(const ExecutionContext& ctx) {
   constexpr bool is_int8 = IsInt8<XT>();
+  constexpr bool is_bfloat16 = IsBfloat16<XT>();
   const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
   constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
-  if (!is_int8 || force_fp32_output) {
+  if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     GetPrimitiveFactory<XT, YT, float>(ctx)->CreateAndExecute(ctx);
+  } else if (is_bfloat16) {
+    GetPrimitiveFactory<XT, YT, paddle::platform::bfloat16>(ctx)
+        ->CreateAndExecute(ctx);
   } else if (fuse_relu) {
     GetPrimitiveFactory<XT, YT, uint8_t>(ctx)->CreateAndExecute(ctx);
   } else {
@@ -364,10 +374,14 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     if (ctx.HasAttr("head_number")) {
-      PADDLE_ENFORCE_EQ(ctx.Attr<int>("head_number"), 1,
-                        platform::errors::Unimplemented(
-                            "DNNL matmul doesn't support multiple heads."));
+      PADDLE_ENFORCE_EQ(
+          ctx.Attr<int>("head_number"), 1,
+          platform::errors::Unimplemented(
+              "DNNL matmul doesn't support multiple heads. Expected "
+              "head_number=1. But received `head_number` is %d",
+              ctx.Attr<int>("head_number")));
     }
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     ExecuteMatMul<T, T>(ctx);
   }
 };
@@ -376,5 +390,7 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::DNNLMatMulKernel<float>, ops::DNNLMatMulKernel<int8_t>,
+                   ops::DNNLMatMulKernel<float>,
+                   ops::DNNLMatMulKernel<paddle::platform::bfloat16>,
+                   ops::DNNLMatMulKernel<int8_t>,
                    ops::DNNLMatMulKernel<uint8_t>);

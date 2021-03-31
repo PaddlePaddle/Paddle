@@ -12,13 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-#include <vector>
-#include "io/fs.h"
-#include "paddle/fluid/framework/data_feed_factory.h"
-#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
@@ -33,6 +27,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
   RegisterHeterCallback();
@@ -67,9 +62,8 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 
 void DistMultiTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
-  fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
-    // workers_[worker]->Schedule(taskid);
-  });
+  fleet_ptr->RegisterHeterCallback(
+      [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
 
 void DistMultiTrainer::InitDumpEnv() {

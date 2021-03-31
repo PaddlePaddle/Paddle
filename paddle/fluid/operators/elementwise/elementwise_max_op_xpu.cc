@@ -20,18 +20,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct XPUMaxFunctor {
-  int operator()(xpu::Context* ctx, const T* x, const T* y, T* z, int len) {
-    return xpu::elementwise_max(ctx, x, y, z, len);
-  }
-};
-
 template <typename DeviceContext, typename T>
 class ElementwiseMaxXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    XPUElementwise<T, XPUMaxFunctor<T>>(ctx);
+    XPUElementwise<T>(ctx, xpu::max<T>);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseMaxGradXPUKernel : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    XPUElementwiseGrad<T>(ctx, xpu::max_grad<T>, true);
   }
 };
 
@@ -42,4 +44,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(elementwise_max_grad,
+                       ops::ElementwiseMaxGradXPUKernel<
+                           paddle::platform::XPUDeviceContext, float>);
 #endif

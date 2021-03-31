@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 namespace paddle {
@@ -131,6 +131,7 @@ struct RecordEvent {
   ~RecordEvent();
 
   bool is_enabled_{false};
+  bool is_pushed_{false};
   uint64_t start_ns_;
   // Event name
   std::string name_;
@@ -219,13 +220,16 @@ std::string OpName(const framework::VariableNameMap& name_map,
                    const std::string& type_name);
 void SetTracerOption(TracerOption option);
 platform::TracerOption GetTracerOption();
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void DummyKernelAndEvent();
 #endif
 
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+void NvprofEnableRecordEvent();
+void NvprofDisableRecordEvent();
 
 }  // namespace platform
 }  // namespace paddle

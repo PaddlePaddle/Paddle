@@ -30,10 +30,11 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                T num) {
   bool xpu_place = false;
 #ifdef PADDLE_WITH_XPU
-  if (context.GetPlace() == platform::XPUPlace()) {
+  if (platform::is_xpu_place(context.GetPlace())) {
     xpu_place = true;
-    framework::VisitDataType(tensor->type(),
-                             TensorSetConstantXPU<T>(tensor, num));
+    framework::VisitDataType(
+        tensor->type(),
+        TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
   }
 #endif
   if (!xpu_place) {

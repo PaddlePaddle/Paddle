@@ -112,6 +112,7 @@ class TestStaticDataLoader(unittest.TestCase):
                 places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
+                return_list=False,
                 drop_last=True)
             # assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
@@ -199,6 +200,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
                 places=places,
                 num_workers=num_workers,
                 batch_size=None,
+                return_list=False,
                 drop_last=True)
 
             exe = fluid.Executor(place=places[0])

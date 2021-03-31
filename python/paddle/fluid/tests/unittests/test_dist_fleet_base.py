@@ -13,6 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+from paddle.distributed.fleet.utils.ps_util import DistributedInfer
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+import paddle
 """
     high level unit test for distribute fleet.
 """
@@ -32,10 +38,7 @@ import tempfile
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+paddle.enable_static()
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -50,6 +53,9 @@ class FleetDistRunnerBase(object):
         net : implment by child class, the network of model
         do training : exe run program
     """
+
+    def __init__(self):
+        self._exe = None
 
     def build_role(self, args):
 
@@ -107,28 +113,32 @@ class FleetDistRunnerBase(object):
 
     def build_optimizer(self, avg_cost, strategy):
         use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
+        grad_clip = None
         if use_grad_clip:
             # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
             if use_grad_clip == 1:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByValue(2.0))
+                grad_clip = paddle.nn.ClipGradByValue(min=-5.0, max=5.0)
             elif use_grad_clip == 2:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByNorm(2.0))
+                grad_clip = paddle.nn.ClipGradByNorm(2.0)
             elif use_grad_clip == 3:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
+                grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
 
-        use_decay = int(os.getenv("DECAY", "0"))
+        use_decay = int(os.getenv("USE_DECAY", "0"))
         if use_decay:
+            scheduler = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
+            optimizer = fluid.optimizer.SGD(scheduler, grad_clip=grad_clip)
+            """
+            # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
                 learning_rate=fluid.layers.exponential_decay(
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
-                    staircase=True))
+                    staircase=True)) 
+            """
         else:
-            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+            optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -146,6 +156,16 @@ class FleetDistRunnerBase(object):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
+    def get_executor(self):
+        if self._exe is None:
+            device_env = os.getenv("DEVICE", 'cpu')
+            if device_env == 'cpu':
+                device = fluid.CPUPlace()
+            elif device_env == 'gpu':
+                device = fluid.CUDAPlace(0)
+            self._exe = fluid.Executor(device)
+        return self._exe
+
     def do_dataset_training(self, fleet):
         raise NotImplementedError(
             "do_dataset_training should be implemented by child classes.")
@@ -153,6 +173,10 @@ class FleetDistRunnerBase(object):
     def do_pyreader_training(self, fleet):
         raise NotImplementedError(
             "do_pyreader_training should be implemented by child classes.")
+
+    def do_distributed_testing(self, fleet):
+        raise NotImplementedError(
+            "do_distributed_testing should be implemented by child classes.")
 
 
 class TestFleetBase(unittest.TestCase):
@@ -175,6 +199,8 @@ class TestFleetBase(unittest.TestCase):
         self._reader = "pyreader"
         self._trainers = 2
         self._pservers = 2
+        self._need_test = 0
+        self._model_dir = ""
         self._port_set = set()
 
         global DIST_UT_PORT
@@ -262,15 +288,19 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path)
+            self._reader, gloo_path, self._need_test)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
             python_path, model, self._ps_endpoints, self._tr_endpoints,
             self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path)
+            self._reader, gloo_path, self._need_test)
+
+        if self._model_dir:
+            tr_cmd += " --model_dir {}".format(self._model_dir)
+            ps_cmd += " --model_dir {}".format(self._model_dir)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -362,14 +392,33 @@ def runtime_main(test_class):
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
     parser.add_argument('--reader', type=str, required=False, default='dataset')
+    parser.add_argument('--test', type=int, required=False, default=0)
+    parser.add_argument('--model_dir', type=str, required=False, default="")
     args = parser.parse_args()
 
     model = test_class()
     role = model.build_role(args)
+
+    if args.test and args.model_dir != "":
+        avg_cost = model.net(args, is_train=False)
+        dist_infer = DistributedInfer()
+        dist_infer.init_distributed_infer_env(
+            exe=model.get_executor(),
+            loss=model.avg_cost,
+            role_maker=role,
+            dirname=args.model_dir)
+        if fleet.is_worker():
+            with paddle.static.program_guard(
+                    main_program=dist_infer.get_dist_infer_program()):
+                model.do_distributed_testing(fleet)
+                fleet.stop_worker()
+                return
+
     fleet.init(role)
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
+
     if args.role == "pserver":
         model.run_pserver(args)
     else:
@@ -377,3 +426,19 @@ def runtime_main(test_class):
             model.run_dataset_trainer(args)
         else:
             model.run_pyreader_trainer(args)
+
+        if args.test:
+            test_origin_program = paddle.static.Program()
+            test_startup_program = paddle.static.Program()
+            with paddle.static.program_guard(
+                    main_program=test_origin_program,
+                    startup_program=test_startup_program):
+                with paddle.utils.unique_name.guard():
+                    avg_cost = model.net(args, is_train=False)
+            dist_infer = DistributedInfer(
+                main_program=test_origin_program,
+                startup_program=test_startup_program)
+            with paddle.static.program_guard(
+                    main_program=dist_infer.get_dist_infer_program()):
+                model.do_distributed_testing(fleet)
+        fleet.stop_worker()

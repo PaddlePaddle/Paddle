@@ -19,6 +19,8 @@ import time
 
 import os
 import paddle
+paddle.enable_static()
+
 import paddle.fluid as fluid
 
 import paddle.distributed.fleet.base.role_maker as role_maker
@@ -56,6 +58,7 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        os.environ["TEST_MODE"] = "1"
         fleet.init_worker()
         time.sleep(10)
         fleet.stop_worker()

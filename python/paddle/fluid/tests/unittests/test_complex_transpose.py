@@ -21,21 +21,23 @@ import paddle.fluid.dygraph as dg
 
 class TestComplexTransposeLayer(unittest.TestCase):
     def setUp(self):
-        self._places = [fluid.CPUPlace()]
+        self._dtypes = ["float32", "float64"]
+        self._places = [paddle.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+            self._places.append(paddle.CUDAPlace(0))
 
-    def test_identity(self):
-        data = np.random.random(
-            (2, 3, 4, 5)).astype("float32") + 1J * np.random.random(
-                (2, 3, 4, 5)).astype("float32")
-        perm = [3, 2, 0, 1]
-        np_trans = np.transpose(data, perm)
-        for place in self._places:
-            with dg.guard(place):
-                var = dg.to_variable(data)
-                trans = paddle.complex.transpose(var, perm=perm)
-        self.assertTrue(np.allclose(trans.numpy(), np_trans))
+    def test_transpose_by_complex_api(self):
+        for dtype in self._dtypes:
+            data = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+            perm = [3, 2, 0, 1]
+            np_trans = np.transpose(data, perm)
+            for place in self._places:
+                with dg.guard(place):
+                    var = dg.to_variable(data)
+                    trans = paddle.transpose(var, perm=perm)
+                self.assertTrue(np.allclose(trans.numpy(), np_trans))
 
 
 if __name__ == '__main__':

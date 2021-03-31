@@ -341,10 +341,12 @@ def summary_string(model, input_size, dtypes=None):
         total_params += summary[layer]["nb_params"]
 
         try:
-            total_output += np.prod(summary[layer]["output_shape"])
+            total_output += np.sum(
+                np.prod(
+                    summary[layer]["output_shape"], axis=-1))
         except:
             for output_shape in summary[layer]["output_shape"]:
-                total_output += np.prod(output_shape)
+                total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:

@@ -39,9 +39,13 @@ class RecomputeOptimizer(MetaOptimizerBase):
             return
 
         configs = self.user_defined_strategy.recompute_configs
-
         self.wrapped_opt = RO(self.inner_opt)
         self.wrapped_opt._set_checkpoints(list(configs["checkpoints"]))
+        if configs["enable_offload"]:
+            self.wrapped_opt._enable_offload()
+            # TODO(JZ-LIANG) might found a way to infer the checkpoint shape automatically
+            checkpoint_shapes = list(configs["checkpoint_shape"])
+            self.wrapped_opt.checkpoint_shape = checkpoint_shapes
 
     def _can_apply(self):
         if not self.role_maker._is_collective:

@@ -413,25 +413,29 @@ class Section(DeviceWorker):
         section_param = trainer_desc.section_param
         section_param.num_microbatches = pipeline_opt["num_microbatches"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
-        for i, program in enumerate(pipeline_opt["section_program_list"]):
-            cfg = section_param.section_config.add()
-            cfg.program_desc.ParseFromString(program["program"]._get_desc()
-                                             .serialize_to_string())
-            # TODO: why does not work
-            # cfg.program_desc.CopyFrom(program.program._get_desc())
-            place = pipeline_opt["place_list"][i]
-            place_id = pipeline_opt["place_id_list"][i]
-            if isinstance(place, core.CPUPlace):
-                cfg.place = cfg.CPUPlace
-            elif isinstance(place, core.CUDAPlace):
-                cfg.place = cfg.CUDAPlace
-            elif isinstance(place, core.CUDAPinnedPlace):
-                cfg.place = cfg.CUDAPinnedPlace
-            else:
-                raise NotImplementedError(
-                    "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
-                )
-            cfg.place_id = place_id
+        section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
+        section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
+        schedule_mode_str = pipeline_opt["schedule_mode"]
+        # F-then-B scheduler which runs Forward phase for all microbatches,
+        # then runs Backward phase for all microbatches.
+        # 1F1B scheduler, which runs forward phase and backward phase altertively
+        # after startup phase.
+        assert schedule_mode_str in ["F-then-B", "1F1B"], (
+            "The schedule mode "
+            "for pipeline must be one of F-then-B or 1F1B")
+        schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
+        section_param.schedule_mode = schedule_mode
+        cfg = section_param.section_config
+        program = pipeline_opt["section_program"]
+        cfg.program_desc.ParseFromString(program._get_desc()
+                                         .serialize_to_string())
+        # TODO: why does not work
+        # cfg.program_desc.CopyFrom(program.program._get_desc())
+        place = pipeline_opt["place"]
+        place_id = pipeline_opt["place_id"]
+        assert isinstance(place, core.CUDAPlace)
+        cfg.place = cfg.CUDAPlace
+        cfg.place_id = place_id
 
 
 class DeviceWorkerFactory(object):

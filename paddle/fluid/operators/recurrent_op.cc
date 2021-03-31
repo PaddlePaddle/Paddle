@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/recurrent_op.h"
-#include <algorithm>
 
 namespace paddle {
 namespace framework {
@@ -161,7 +160,9 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   }
   PADDLE_ENFORCE_GE(seq_len, 0,
                     platform::errors::InvalidArgument(
-                        "RecurrentOp gets invalid sequence length."));
+                        "RecurrentOp gets invalid sequence length. Expected "
+                        "seq_len >= 0. Received seq_len = %d",
+                        seq_len));
   return seq_len;
 }
 
@@ -209,9 +210,10 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
   auto *program = block->Program();
-  auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+  auto ctx = executor.Prepare(*program, block->ID(),
+                              Attr<std::vector<std::string>>(
+                                  kSkipEagerDeletionVars), /*skip_ref_cnt_vars*/
+                              true);
 
   static std::mutex mutex;
   std::lock_guard<std::mutex> lock(mutex);
@@ -254,16 +256,6 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
     // Link inside::output -> outside::output
     //   outside::output[seq_offset: seq_offset + 1] = inside::output
     executor.CreateVariables(ctx->prog_, &cur_scope, ctx->block_id_);
-    if (i > 0) {
-      LinkTensorWithCallback(scope, Outputs(kOutputs), cur_scope,
-                             Outputs(kOutputs),
-                             [&](const framework::LoDTensor &src_tensor,
-                                 framework::LoDTensor *dst_tensor) {
-                               framework::Tensor src_slice =
-                                   src_tensor.Slice(seq_offset, seq_offset + 1);
-                               dst_tensor->ShareDataWith(src_slice);
-                             });
-    }
 
     // Linked now, execute!
     executor.RunPreparedContext(ctx.get(), &cur_scope,
@@ -281,6 +273,14 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
+            framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
+          });
+    } else {
+      LinkTensorWithCallback(
+          cur_scope, Outputs(kOutputs), scope, Outputs(kOutputs),
+          [&](const framework::LoDTensor &src_tensor,
+              framework::LoDTensor *dst_tensor) {
+            auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
     }

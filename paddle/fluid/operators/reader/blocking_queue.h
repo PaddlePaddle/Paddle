@@ -45,7 +45,11 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
-    EnforceNotKilled();
+    if (killed_) {
+      VLOG(3)
+          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      return false;
+    }
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
@@ -54,7 +58,9 @@ class BlockingQueue {
     PADDLE_ENFORCE_LT(
         queue_.size(), capacity_,
         platform::errors::PermissionDenied(
-            "The queue size cannot exceed the set queue capacity."));
+            "The queue size cannot exceed the set queue capacity. Expected "
+            "queue size is less than %d. But received %d",
+            capacity_, queue_.size()));
     queue_.push_back(elem);
     receive_cv_.notify_one();
     return true;
@@ -64,7 +70,11 @@ class BlockingQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     send_cv_.wait(
         lock, [&] { return queue_.size() < capacity_ || closed_ || killed_; });
-    EnforceNotKilled();
+    if (killed_) {
+      VLOG(3)
+          << "WARNING:: Sending an element to a killed reader::BlokcingQueue";
+      return false;
+    }
     if (closed_) {
       VLOG(5)
           << "WARNING: Sending an element to a closed reader::BlokcingQueue.";
@@ -73,7 +83,9 @@ class BlockingQueue {
     PADDLE_ENFORCE_LT(
         queue_.size(), capacity_,
         platform::errors::PermissionDenied(
-            "The queue size cannot exceed the set queue capacity."));
+            "The queue size cannot exceed the set queue capacity. Expected "
+            "queue size is less than %d. But received %d",
+            capacity_, queue_.size()));
     queue_.emplace_back(std::move(elem));
     receive_cv_.notify_one();
     return true;

@@ -62,11 +62,11 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of input img, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
             'CHW'. Default: 'CHW'.
 
     Returns:
-        Tensor: Converted image. Data format is same as input img.
+        Tensor: Converted image. Data type is same as input img.
 
     Examples:
         .. code-block:: python
@@ -512,14 +512,19 @@ def adjust_hue(img, hue_factor):
         return F_cv2.adjust_hue(img, hue_factor)
 
 
-def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
+def rotate(img,
+           angle,
+           interpolation="nearest",
+           expand=False,
+           center=None,
+           fill=0):
     """Rotates the image by angle.
 
 
     Args:
         img (PIL.Image|np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        resample (int|str, optional): An optional resampling filter. If omitted, or if the 
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
             according the backend. when use pil backend, support method are as following: 
             - "nearest": Image.NEAREST, 
@@ -564,9 +569,9 @@ def rotate(img, angle, resample=False, expand=False, center=None, fill=0):
             format(type(img)))
 
     if _is_pil_image(img):
-        return F_pil.rotate(img, angle, resample, expand, center, fill)
+        return F_pil.rotate(img, angle, interpolation, expand, center, fill)
     else:
-        return F_cv2.rotate(img, angle, resample, expand, center, fill)
+        return F_cv2.rotate(img, angle, interpolation, expand, center, fill)
 
 
 def to_grayscale(img, num_output_channels=1):

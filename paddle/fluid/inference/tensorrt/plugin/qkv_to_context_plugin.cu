@@ -109,7 +109,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
   }
 }
 
-#ifdef SUPPORTS_CUDA_FP16
 inline void TransposeQKV(const int batch, const int seq_len,
                          const int head_size, const int head_num,
                          const half *input, half *output, cudaStream_t stream) {
@@ -148,7 +147,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
                                                          output);
   }
 }
-#endif
 
 int QkvToContextPluginDynamic::initialize() { return 0; }
 
@@ -171,12 +169,10 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
           "it has (%d) inputs",
           nb_inputs));
   nvinfer1::DimsExprs ret;
-  ret.nbDims = 5;
+  ret.nbDims = 3;
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
   ret.d[2] = expr_builder.constant(head_size_ * head_number_);
-  ret.d[3] = expr_builder.constant(1);
-  ret.d[4] = expr_builder.constant(1);
   return ret;
 }
 
@@ -195,19 +191,19 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORTS_CUDA_FP16
-    if (ban_fp16_) {
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
-             (in.format == nvinfer1::TensorFormat::kLINEAR);
-    } else {
+    if (with_fp16_) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
-    }
 #else
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
 #endif
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
 
@@ -247,6 +243,7 @@ int QkvToContextPluginDynamic::enqueue(
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
     auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
         platform::CUDAPlace(device_id));
     auto *qkptr = multihead_temp_data;
@@ -275,7 +272,8 @@ int QkvToContextPluginDynamic::enqueue(
                                                  head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORTS_CUDA_FP16
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));
@@ -305,7 +303,11 @@ int QkvToContextPluginDynamic::enqueue(
                                                 head_number_, head_size_);
 #else
     PADDLE_THROW(platform::errors::Fatal(
-        "The cuda archs you specific should greater than 600."));
+        "The Ernie(Bert) TensorRT Plugin should be "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+        "Please recomplie it or try to use fp32 by set "
+        "config.SetTRTDynamicShapeInfo(min_input_shape, "
+        "max_input_shape, opt_input_shape, true"));
 #endif
   } else {
     PADDLE_THROW(platform::errors::Fatal(

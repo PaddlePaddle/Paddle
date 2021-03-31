@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/flip_op.h"
-
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -154,3 +154,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(flip)
+    .AddCheckpoint(
+        R"ROC(Upgrade flip, add new attr [axis] and delete attr [dims].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("axis", "The added attr 'axis' doesn't set default value.",
+                     boost::none)
+            .DeleteAttr("dims", "The attr 'dims' is deleted."));

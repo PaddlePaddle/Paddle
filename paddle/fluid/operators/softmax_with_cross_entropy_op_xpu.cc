@@ -19,6 +19,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "xpu/refactor/math.h"
+#include "xpu/refactor/nn.h"
+
 namespace paddle {
 namespace operators {
 
@@ -41,11 +44,27 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     loss->mutable_data<T>(context.GetPlace());
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());
+    std::vector<int> logits_dims = framework::vectorize<int>(logits->dims());
+
     // softmax
     auto& dev_ctx =
         context.template device_context<platform::XPUDeviceContext>();
-    int r = xpu::softmax2d_forward(dev_ctx.x_context(), logits->data<float>(),
-                                   softmax->data<float>(), n, d);
+    int r = XPU_SUCCESS;
+    Tensor clip_logits;
+    int len = logits->numel();
+    T* clip_logits_data =
+        clip_logits.mutable_data<T>(context.GetPlace(), len * sizeof(T));
+    r = xpu::clip(dev_ctx.x_context(), logits->data<float>(), clip_logits_data,
+                  len, -1e30, 1e30);
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External("XPU kernel error. clip "
+                                   "execution not succeed, error code=%d",
+                                   r));
+
+    r = xpu::softmax(dev_ctx.x_context(), clip_logits_data,
+                     softmax->data<float>(), logits_dims, axis);
+
     PADDLE_ENFORCE_EQ(
         r, xpu::Error_t::SUCCESS,
         platform::errors::External("XPU kernel error. Softmax2d_forward "
@@ -55,44 +74,36 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     auto ignore_index = context.Attr<int>("ignore_index");
     const bool soft_label = context.Attr<bool>("soft_label");
     if (soft_label) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "XPU only support soft_label == false for now!"));
-    } else {
-      auto* p_labels = labels->data<int64_t>();
-      int64_t* labels_int64_host =
-          reinterpret_cast<int64_t*>(std::malloc(n * sizeof(int64_t)));
-      int* labels_int32_host =
-          reinterpret_cast<int*>(std::malloc(n * sizeof(int)));
-      int* labels_int32_device = NULL;
-      int ret = xpu_malloc(reinterpret_cast<void**>(&labels_int32_device),
-                           n * sizeof(int));
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU API return wrong value[%d], please check "
-                            "where Baidu Kunlun Card is properly installed.",
-                            ret));
-      dev_ctx.Wait();
-      memory::Copy(platform::CPUPlace(), labels_int64_host,
-                   BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
-                   p_labels, n * sizeof(int64_t));
-      for (int i = 0; i < n; ++i) {
-        labels_int32_host[i] = labels_int64_host[i];
-      }
-      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()),
-                   labels_int32_device, platform::CPUPlace(), labels_int32_host,
-                   n * sizeof(int));
-      int r = xpu::cross_entropy_forward(
-          dev_ctx.x_context(), n, d, softmax->data<float>(),
-          labels_int32_device, loss->data<float>(), nullptr, ignore_index);
+      r = xpu::soft_cross_entropy<float>(
+          dev_ctx.x_context(), softmax->data<float>(), labels->data<float>(),
+          loss->data<float>(), n, d);
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,
-          platform::errors::External("XPU kernel error. Cross_entropy_forward "
+          platform::errors::External("XPU kernel error. soft_cross_entropy "
                                      "execution not succeed, error code=%d",
                                      r));
-      dev_ctx.Wait();
-      std::free(labels_int32_host);
-      std::free(labels_int64_host);
-      xpu_free(labels_int32_device);
+    } else {
+      Tensor labels_int32;
+      labels_int32.mutable_data<int32_t>(context.GetPlace(),
+                                         labels->numel() * sizeof(int32_t));
+      r = xpu::cast_v2<int64_t, int32_t>(
+          dev_ctx.x_context(), labels->data<int64_t>(),
+          labels_int32.data<int32_t>(), labels->numel());
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External("XPU kernel error. cast_v2 "
+                                     "execution not succeed, error code=%d",
+                                     r));
+
+      r = xpu::hard_cross_entropy<float, int32_t>(
+          dev_ctx.x_context(), softmax->data<float>(),
+          labels_int32.data<int32_t>(), loss->data<float>(), nullptr, n, d,
+          ignore_index);
+      PADDLE_ENFORCE_EQ(
+          r, xpu::Error_t::SUCCESS,
+          platform::errors::External("XPU kernel error. hard_cross_entropy "
+                                     "execution not succeed, error code=%d",
+                                     r));
     }
   }
 };

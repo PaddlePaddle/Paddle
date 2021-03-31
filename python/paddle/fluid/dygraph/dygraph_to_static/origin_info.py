@@ -69,9 +69,10 @@ class OriginInfo(object):
             self.location, self.source_code, self.function_name)
 
     def formated_message(self):
-        return '    File "{}", line {}, in {}\n\t{}'.format(
+        flag_for_origin_info = "(* user code *)"
+        return '    File "{}", line {}, in {} {}\n\t{}'.format(
             self.location.filepath, self.location.lineno, self.function_name,
-            self.source_code.lstrip())
+            flag_for_origin_info, self.source_code.lstrip())
 
     def as_frame(self):
         return (self.location.filepath, self.location.lineno,

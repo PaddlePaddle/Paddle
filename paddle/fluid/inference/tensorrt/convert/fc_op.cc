@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 class Scope;
+
 namespace proto {
 class OpDesc;
 }  // namespace proto
@@ -67,10 +68,11 @@ class FcOpConverter : public OpConverter {
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
+    float in_scale = 0.;
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale =
+      in_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
@@ -131,7 +133,7 @@ class FcOpConverter : public OpConverter {
     float* bias_data = nullptr;
     int bias_num = 0;
     if (with_bias) {
-      auto* b_v = scope.FindVar(op_desc.Input("Bias").front());
+      auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias_data =
           engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t, false);
@@ -142,7 +144,69 @@ class FcOpConverter : public OpConverter {
                                 static_cast<size_t>(bias_num)};
 
     if (engine_->with_dynamic_shape()) {
-      regist_fc(X, n_output, weight, bias);
+      // not NCHW layout, but NLP layout with added 'x 1 x 1'
+      auto x_dim = X->getDimensions();
+      if (x_dim.nbDims == 3 || x_dim.nbDims == 2) {
+        auto output_name = op_desc.Output("Out").front();
+        // add shuffle before fc
+        nvinfer1::Dims reshape_before_fc_dim;
+        reshape_before_fc_dim.nbDims = x_dim.nbDims + 2;
+        for (int i = 0; i < x_dim.nbDims; i++) {
+          reshape_before_fc_dim.d[i] = 0;
+        }
+        reshape_before_fc_dim.d[x_dim.nbDims] = 1;
+        reshape_before_fc_dim.d[x_dim.nbDims + 1] = 1;
+        auto* reshape_before_fc_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+        reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
+        reshape_before_fc_layer->setName(
+            ("shuffle_before_fc(Output: " + output_name + ")").c_str());
+
+        // add fc layer
+        auto* fc_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
+            n_output, weight.get(), bias.get());
+        fc_layer->setName(("fc_layer(Output: " + output_name + ")").c_str());
+
+        // add shuffle after fc
+        nvinfer1::Dims reshape_after_fc_dim;
+        if (x_dim.nbDims == 3) {
+          if (x_num_col_dims == 2) {
+            reshape_after_fc_dim.nbDims = 3;
+            reshape_after_fc_dim.d[0] = 0;
+            reshape_after_fc_dim.d[1] = 0;
+            reshape_after_fc_dim.d[2] = 0;
+          } else {
+            reshape_after_fc_dim.nbDims = 2;
+            reshape_after_fc_dim.d[0] = 0;
+            auto dim = fc_layer->getOutput(0)->getDimensions();
+            reshape_after_fc_dim.d[1] = dim.d[1] * dim.d[2];
+          }
+          // x_dim.nbDims == 2
+        } else {
+          reshape_after_fc_dim.nbDims = 2;
+          reshape_after_fc_dim.d[0] = 0;
+          reshape_after_fc_dim.d[1] = 0;
+        }
+        auto* reshape_after_fc_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
+        reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+
+        if (activation_type == "relu") {
+          reshape_after_fc_layer->setName(
+              ("shuffle_after_fc(Output: " + output_name + ")").c_str());
+          nvinfer1::IActivationLayer* relu_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Activation, *(reshape_after_fc_layer->getOutput(0)),
+              nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer, "relu_after_fc_shuffle",
+                                   {output_name}, test_mode);
+        } else {
+          RreplenishLayerAndOutput(reshape_after_fc_layer, "shuffle_after_fc",
+                                   {output_name}, test_mode);
+        }
+      } else {
+        regist_fc(X, n_output, weight, bias);
+      }
       return;
     }
     // in order to handle situations in NLP models(input dims < 3,
@@ -152,12 +216,6 @@ class FcOpConverter : public OpConverter {
     auto input_d = X->getDimensions().d;
     int reshape_dim3[3] = {0};
     int reshape_dim4[4] = {0};
-    PADDLE_ENFORCE_EQ(
-        x_num_col_dims == 1 || x_num_col_dims == 2, true,
-        platform::errors::InvalidArgument(
-            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
-            "expects x_num_col_dims is either 1 or 2, but got %d",
-            x_num_col_dims));
     PADDLE_ENFORCE_LE(x_num_col_dims, input_dims,
                       platform::errors::InvalidArgument(
                           "Params and input dims mismatch. Paddle-TRT FC "
@@ -183,6 +241,9 @@ class FcOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
+      if (enable_int8) {
+        engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
+      }
     } else {
       PADDLE_ENFORCE_NE(input_dims, 1,
                         platform::errors::InvalidArgument(
@@ -200,6 +261,9 @@ class FcOpConverter : public OpConverter {
       auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
+      if (enable_int8) {
+        engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
+      }
     }
     regist_fc(reshape_itensor, n_output, weight, bias);
   }

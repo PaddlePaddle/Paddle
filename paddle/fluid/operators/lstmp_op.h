@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -81,18 +82,22 @@ class LSTMPKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
   void ActCompute(const math::detail::ActivationType act_type, const Device& d,
-                  X x, Y y) const {
-    if (act_type == math::detail::ActivationType::kIdentity)
+                  X x, Y y, platform::Place place) const {
+    if (act_type == math::detail::ActivationType::kIdentity) {
       y.device(d) = x;
-    else if (act_type == math::detail::ActivationType::kSigmoid)
+    } else if (act_type == math::detail::ActivationType::kSigmoid) {
       SigmoidFunctor<T>()(d, x, y);
-    else if (act_type == math::detail::ActivationType::kTanh)
+    } else if (act_type == math::detail::ActivationType::kTanh) {
       TanhFunctor<T>()(d, x, y);
-    else if (act_type == math::detail::ActivationType::kReLU)
-      ReluFunctor<T>()(d, x, y);
-    else
+    } else if (act_type == math::detail::ActivationType::kReLU) {
+      if (place == platform::CPUPlace())
+        ReluCPUFunctor<T>()(d, x, y);
+      else
+        ReluCUDAFunctor<T>()(d, x, y);
+    } else {
       PADDLE_THROW(
           platform::errors::InvalidArgument("unsupported activation type"));
+    }
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -225,7 +230,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
                   &proj_t, static_cast<T>(0.0));
       if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
-        ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
+        ActCompute(cell_act, place, proj_t_dev, proj_t_dev, ctx.GetPlace());
       }
       if (proj_clip && proj_clip > 0.0) {
         T* x_data = proj_t.data<T>();

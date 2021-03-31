@@ -44,8 +44,8 @@ REGISTER_OP_VERSION(arg_max)
                      false)
             .ModifyAttr(
                 "dtype",
-                "change the default value of dtype, the older version "
-                "is -1, means return the int64 indices."
-                "The new version is 3, return the int64 indices directly."
-                "And supporting the dtype of -1 in new version.",
+                "Change the default value of dtype from -1 to 3"
+                ", means return the int64 indices directly. The rearse why "
+                "changing the default value is that the int64 value in "
+                "VarType is 3 in the frameworke.proto.",
                 3));

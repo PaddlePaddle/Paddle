@@ -40,6 +40,14 @@ class RecvOpV2 : public framework::OperatorWithKernel {
                           "The size of the output shape must be greater than 0 "
                           "but the value given is %d.",
                           out_shape.size()));
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i], 1,
+                        platform::errors::InvalidArgument(
+                            "The shape attribute for recv_v2 must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1.",
+                            i, out_shape[i]));
+    }
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
   }
 

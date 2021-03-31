@@ -26,39 +26,40 @@ from .framework import Variable, default_main_program, _current_expected_place, 
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
+_PADDLE_DTYPE_2_NUMPY_DTYPE = {
+    core.VarDesc.VarType.BOOL: 'bool',
+    core.VarDesc.VarType.FP16: 'float16',
+    core.VarDesc.VarType.BF16: 'uint16',
+    core.VarDesc.VarType.FP32: 'float32',
+    core.VarDesc.VarType.FP64: 'float64',
+    core.VarDesc.VarType.INT8: 'int8',
+    core.VarDesc.VarType.INT16: 'int16',
+    core.VarDesc.VarType.INT32: 'int32',
+    core.VarDesc.VarType.INT64: 'int64',
+    core.VarDesc.VarType.UINT8: 'uint8',
+    core.VarDesc.VarType.COMPLEX64: 'complex64',
+    core.VarDesc.VarType.COMPLEX128: 'complex128',
+}
+
 
 def convert_dtype(dtype):
     if isinstance(dtype, core.VarDesc.VarType):
-        if dtype == core.VarDesc.VarType.BOOL:
-            return 'bool'
-        elif dtype == core.VarDesc.VarType.FP16:
-            return 'float16'
-        elif dtype == core.VarDesc.VarType.FP32:
-            return 'float32'
-        elif dtype == core.VarDesc.VarType.FP64:
-            return 'float64'
-        elif dtype == core.VarDesc.VarType.INT8:
-            return 'int8'
-        elif dtype == core.VarDesc.VarType.INT16:
-            return 'int16'
-        elif dtype == core.VarDesc.VarType.INT32:
-            return 'int32'
-        elif dtype == core.VarDesc.VarType.INT64:
-            return 'int64'
-        elif dtype == core.VarDesc.VarType.UINT8:
-            return 'uint8'
+        if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         if dtype in [
-                np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
-                np.int32, np.int64, np.uint8, np.complex64, np.complex128
+                np.bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
+                np.int16, np.int32, np.int64, np.uint8, np.complex64,
+                np.complex128
         ]:
             return dtype.__name__
     else:
         if dtype in [
-                'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
-                'int32', 'int64', 'uint8', 'complex64', 'complex128', u'bool',
-                u'float16', u'float32', u'float64', u'int8', u'int16', u'int32',
-                u'int64', u'uint8', u'complex64', u'complex128'
+                'bool', 'float16', 'uint16', 'float32', 'float64', 'int8',
+                'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128',
+                u'bool', u'float16', u'uint16', u'float32', u'float64', u'int8',
+                u'int16', u'int32', u'int64', u'uint8', u'complex64',
+                u'complex128'
         ]:
             # this code is a little bit dangerous, since error could happen
             # when casting no-ascii code to str in python2.
@@ -68,7 +69,7 @@ def convert_dtype(dtype):
             return str(dtype)
 
     raise TypeError(
-        "dtype must be any of [bool, float16, float32, float64, int8, int16, "
+        "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
         "int32, int64, uint8, complex64, complex128], but received %s" % dtype)
 
 
@@ -125,6 +126,12 @@ def check_dtype(input_dtype,
         warnings.warn(
             "The data type of '%s' in %s only support float16 in GPU now. %s" %
             (input_name, op_name, extra_message))
+    if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
+            'reshape', 'lookup_table', 'scale'
+    ]:
+        warnings.warn(
+            "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
+            % (input_name, op_name, extra_message))
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
             "The data type of '%s' in %s must be %s, but received %s. %s" %

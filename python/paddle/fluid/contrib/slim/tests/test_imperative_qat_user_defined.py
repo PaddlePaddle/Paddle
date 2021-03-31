@@ -26,7 +26,7 @@ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
 from paddle.fluid.dygraph import Conv2D
-from paddle.nn import Pool2D
+from paddle.fluid.dygraph import Pool2D
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.log_helper import get_logger
 

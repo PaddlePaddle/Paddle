@@ -44,5 +44,9 @@ def _init_parallel_ctx():
 
 def _broadcast_parameters(parameters):
     for param in parameters:
+        # In model parallel, some parameters are split into multiple devices,
+        # so we could not broadcast these parameters.
+        if param.is_distributed: continue
+
         if isinstance(param, Parameter) and param.trainable:
             collective._broadcast(param, 0, sync_mode=True)

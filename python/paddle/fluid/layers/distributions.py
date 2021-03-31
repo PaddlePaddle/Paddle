@@ -113,7 +113,7 @@ class Distribution(object):
 
 
 class Uniform(Distribution):
-    """Uniform distribution with `low` and `high` parameters.
+    r"""Uniform distribution with `low` and `high` parameters.
 
     Mathematical Details
 
@@ -258,7 +258,7 @@ class Uniform(Distribution):
 
 
 class Normal(Distribution):
-    """The Normal distribution with location `loc` and `scale` parameters.
+    r"""The Normal distribution with location `loc` and `scale` parameters.
 
     Mathematical details
 
@@ -423,7 +423,7 @@ class Normal(Distribution):
 
 
 class Categorical(Distribution):
-    """
+    r"""
     Categorical distribution is a discrete probability distribution that 
     describes the possible results of a random variable that can take on 
     one of K possible categories, with the probability of each category 
@@ -529,7 +529,7 @@ class Categorical(Distribution):
 
 
 class MultivariateNormalDiag(Distribution):
-    """
+    r"""
     A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
     and a covariance matrix.
 

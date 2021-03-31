@@ -21,7 +21,7 @@ __all__ = ["Adamax"]
 
 
 class Adamax(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -78,10 +78,10 @@ class Adamax(Optimizer):
 
     Examples:
         .. code-block:: python
+            
             import paddle
             import numpy as np
 
-            paddle.disable_static()
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
@@ -184,7 +184,7 @@ class Adamax(Optimizer):
         """
         assert isinstance(block, framework.Block)
         for param, grad in parameters_and_grads:
-            if grad is None or param.trainable is False:
+            if grad is None or param.stop_gradient is True:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope('adamax'):

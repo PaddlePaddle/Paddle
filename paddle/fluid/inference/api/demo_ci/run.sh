@@ -1,4 +1,19 @@
 #!/bin/bash
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 set -x
 PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
@@ -68,8 +83,12 @@ rm -rf *
 
 for WITH_STATIC_LIB in ON OFF; do
   if [ $(echo `uname` | grep "Win") != "" ]; then
+    # TODO(wilber, T8T9): Do we still need to support windows gpu static library
+    if [ $TEST_GPU_CPU == ON ] && [ $WITH_STATIC_LIB == ON ]; then
+      return 0
+    fi
     # -----simple_on_word2vec on windows-----
-    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
@@ -88,7 +107,7 @@ for WITH_STATIC_LIB in ON OFF; do
 
     # -----vis_demo on windows-----
     rm -rf *
-    cmake .. -G "Visual Studio 14 2015" -A x64 -DPADDLE_LIB=${inference_install_dir} \
+    cmake .. -G "Visual Studio 15 2017" -A x64 -T host=x64 -DPADDLE_LIB=${inference_install_dir} \
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \

@@ -22,7 +22,6 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -47,7 +46,7 @@ __all__ = ['Optimizer']
 
 
 class Optimizer(object):
-    """Optimizer Base class.
+    r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
     User should not use this class directly,
@@ -133,8 +132,12 @@ class Optimizer(object):
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
@@ -349,52 +352,61 @@ class Optimizer(object):
                 },
                 stop_gradient=True)
 
-    @framework.dygraph_only
     def get_lr(self):
         """
-        :api_attr: imperative
-        
-        Get current step learning rate. The return value is all the same When LRScheduler is not used,
-        otherwise return the current step learning rate.
-
+        Get current learning rate of optimizer. 
+        If 'LRScheduler' is not used, the return value is all the same.
+        If 'LRScheduler' is used, the return value is the current scheduled learing rete.
 
         Returns:
-            float: The learning rate of the current step.
+            float: The current learning rate of optimizer.
 
         Examples:
             .. code-block:: python
 
-                import numpy as np
+                # train on default dynamic graph mode
                 import paddle
-                # example1: LRScheduler is not used, return value is all the same
-                emb = paddle.nn.Embedding(10, 10)
-                adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
-                lr = adam.get_lr()
-                print(lr) # 0.001
+                import numpy as np
+                emb = paddle.nn.Embedding(10, 3)
 
-                # example2: PiecewiseDecay is used, return the scheduled learning rate
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                
-                bd = [2, 4, 6, 8]
-                value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                scheduler = paddle.optimizer.lr.PiecewiseDecay(bd, value, 0)
-                adam = paddle.optimizer.Adam(scheduler,
-                                       parameters=linear.parameters())
-
-                # first step: learning rate is 0.2
-                np.allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0) # True
-
-                # learning rate for different steps
-                ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
-                for i in range(12):
+                ## example1: LRScheduler is not used, return the same value is all the same
+                adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
+                for batch in range(10):
+                    input = paddle.randint(low=0, high=5, shape=[5])
+                    out = emb(input)
+                    out.backward()
+                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
                     adam.step()
-                    lr = adam.get_lr()
+
+                ## example2: StepDecay is used, return the scheduled learning rate
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
+                for batch in range(10):
+                    input = paddle.randint(low=0, high=5, shape=[5])
+                    out = emb(input)
+                    out.backward()
+                    print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
+                    adam.step()
                     scheduler.step()
-                    np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
+
+                # train on static graph mode
+                paddle.enable_static()
+                main_prog = paddle.static.Program()
+                start_prog = paddle.static.Program()
+                with paddle.static.program_guard(main_prog, start_prog):
+                    x = paddle.static.data(name='x', shape=[None, 10])
+                    z = paddle.static.nn.fc(x, 100)
+                    loss = paddle.mean(z)
+                    scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
+                    adam = paddle.optimizer.Adam(learning_rate=scheduler)
+                    adam.minimize(loss)
+
+                exe = paddle.static.Executor()
+                exe.run(start_prog)
+                for batch in range(10):
+                    print("Learning rate of step{}: {}", adam.get_lr())     # 0.5->0.05->0.005...
+                    out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
+                    scheduler.step()
 
         """
         if isinstance(self._learning_rate, float):
@@ -530,7 +542,7 @@ class Optimizer(object):
 
     def _update_param_device_map(self, parameters_and_grads, target_block):
         for param_and_grad in parameters_and_grads:
-            if param_and_grad[0].trainable is True:
+            if param_and_grad[0].stop_gradient is False:
                 param_name = param_and_grad[0].name
                 ops = target_block.ops
                 device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
@@ -586,14 +598,14 @@ class Optimizer(object):
         self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
-            [p[0] for p in parameters_and_grads if p[0].trainable])
+            [p[0] for p in parameters_and_grads if not p[0].stop_gradient])
         self._create_global_learning_rate()
 
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                if param_and_grad[0].trainable is True:
+                if param_and_grad[0].stop_gradient is False:
                     self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
@@ -601,7 +613,7 @@ class Optimizer(object):
                     continue
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
-                    if param_and_grad[0].trainable is True:
+                    if param_and_grad[0].stop_gradient is False:
                         device = self._get_device_for_param(param_and_grad[0]
                                                             .name)
                         with device_guard(device):
@@ -667,17 +679,17 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
             parameter_list = parameters if parameters \
                 else self._parameter_list
 
-            if paddle.distributed.get_world_size() > 1:
-                apply_collective_grads(parameter_list)
-
             params_grads = []
             for param in parameter_list:
-                if not param.trainable:
+                if param.stop_gradient:
                     continue
                 if param._grad_ivar() is not None:
                     # create gradient tensor
@@ -777,8 +789,9 @@ class Optimizer(object):
     def _get_no_grad_set(self, loss, no_grad_set=None):
         no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.trainable is False])
+        param_no_trainable = set([
+            param.name for param in parameters if param.stop_gradient is True
+        ])
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
@@ -788,6 +801,8 @@ class Optimizer(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -811,7 +826,7 @@ class Optimizer(object):
 
         """
         for p in self._parameter_list:
-            if p.trainable:
+            if not p.stop_gradient:
                 p.clear_gradient()
 
     @imperative_base.no_grad
@@ -878,6 +893,7 @@ class Optimizer(object):
 
         return optimize_ops, params_grads
 
+    @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         """
@@ -903,13 +919,9 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        if paddle.distributed.get_world_size() > 1:
-            apply_collective_grads(self._parameter_list)
-
-        self._dtype = None
         params_grads = []
         for param in self._parameter_list:
-            if not param.trainable:
+            if param.stop_gradient:
                 continue
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()

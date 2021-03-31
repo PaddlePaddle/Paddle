@@ -24,7 +24,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from simple_nets import init_data
-from parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
 
 batch_size = 12
 img_shape = [1, 28, 28]
@@ -68,7 +68,7 @@ def _optimizer(learning_rate=1e-6):
 
 
 class TestResnet(TestParallelExecutorBase):
-    def check_model(self, use_cuda):
+    def check_model(self, use_device):
         img, label = init_data(
             batch_size=batch_size, img_shape=img_shape, label_range=9)
         img = np.float16(img)
@@ -78,13 +78,13 @@ class TestResnet(TestParallelExecutorBase):
             conv_net,
             feed_dict=feed_dict,
             iter=10,
-            use_cuda=use_cuda,
+            use_device=use_device,
             fuse_all_reduce_ops=True,
             optimizer=_optimizer)
 
     def test_model(self):
         if core.is_compiled_with_cuda():
-            self.check_model(True)
+            self.check_model(DeviceType.CUDA)
 
 
 if __name__ == '__main__':

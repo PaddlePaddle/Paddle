@@ -35,7 +35,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
         self.outputs = {
-            'Out': [('out0', np.zeros_like(x))],
+            'Out': [('out0', x)],
             'LossScaling': self.prev_loss_scaling * self.incr_ratio,
             'OutGoodSteps': self.zero_steps,
             'OutBadSteps': self.zero_steps

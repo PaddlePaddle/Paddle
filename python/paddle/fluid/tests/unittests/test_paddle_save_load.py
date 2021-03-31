@@ -16,6 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import os
+import sys
+
 import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
@@ -27,6 +30,8 @@ SEED = 10
 
 IMAGE_SIZE = 784
 CLASS_NUM = 10
+
+LARGE_PARAM = 2**26
 
 
 def random_batch_reader():
@@ -57,6 +62,16 @@ class LinearNet(nn.Layer):
         return self._linear(x)
 
 
+class LayerWithLargeParameters(paddle.nn.Layer):
+    def __init__(self):
+        super(LayerWithLargeParameters, self).__init__()
+        self._l = paddle.nn.Linear(10, LARGE_PARAM)
+
+    def forward(self, x):
+        y = self._l(x)
+        return y
+
+
 def train(layer, loader, loss_fn, opt):
     for epoch_id in range(EPOCH_NUM):
         for batch_id, (image, label) in enumerate(loader()):
@@ -65,6 +80,55 @@ def train(layer, loader, loss_fn, opt):
             loss.backward()
             opt.step()
             opt.clear_grad()
+
+
+class TestSaveLoadLargeParameters(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_large_parameters_paddle_save(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        # create network
+        layer = LayerWithLargeParameters()
+        save_dict = layer.state_dict()
+
+        path = os.path.join("test_paddle_save_load_large_param_save",
+                            "layer.pdparams")
+        paddle.save(layer.state_dict(), path)
+        dict_load = paddle.load(path)
+        # compare results before and after saving
+        for key, value in save_dict.items():
+            self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
+
+
+class TestSaveLoadPickle(unittest.TestCase):
+    def test_pickle_protocol(self):
+        # create network
+        layer = LinearNet()
+        save_dict = layer.state_dict()
+
+        path = os.path.join("test_paddle_save_load_pickle_protocol",
+                            "layer.pdparams")
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 2.0)
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 1)
+
+        with self.assertRaises(ValueError):
+            paddle.save(save_dict, path, 5)
+
+        protocols = [2, ]
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
+            protocols += [3, 4]
+        for protocol in protocols:
+            paddle.save(save_dict, path, protocol)
+            dict_load = paddle.load(path)
+            # compare results before and after saving
+            for key, value in save_dict.items():
+                self.assertTrue(np.array_equal(dict_load[key], value.numpy()))
 
 
 class TestSaveLoad(unittest.TestCase):

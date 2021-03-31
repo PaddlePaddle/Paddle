@@ -16,6 +16,7 @@ limitations under the License. */
 #define GOOGLE_GLOG_DLL_DECL
 
 #include "paddle/fluid/platform/cudnn_helper.h"
+
 #include <gtest/gtest.h>
 
 TEST(CudnnHelper, ScopedTensorDescriptor) {

@@ -15,12 +15,8 @@
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
 
 #include <cmath>
-#include <vector>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -244,5 +240,5 @@ REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("affine_channel", 0));

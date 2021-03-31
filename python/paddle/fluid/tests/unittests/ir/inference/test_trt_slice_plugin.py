@@ -23,13 +23,25 @@ from paddle.fluid.core import AnalysisConfig
 
 
 #normal starts && ends
-class SlicePluginTRTTest1(InferencePassTest):
+class SlicePluginTRTTest(InferencePassTest):
+    def setUpSliceParams(self):
+        self.params_axes = [1, 3]
+        self.params_starts = [0, 1]
+        self.params_ends = [2, 3]
+
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+        self.enable_trt = True
+
     def setUp(self):
+        self.setUpSliceParams()
+        self.setUpTensorRTParams()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
-            axes = [1, 3]
-            starts = [0, 1]
-            ends = [2, 3]
+            axes = self.params_axes
+            starts = self.params_starts
+            ends = self.params_ends
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends)
             out = fluid.layers.batch_norm(slice_out, is_test=True)
@@ -37,12 +49,6 @@ class SlicePluginTRTTest1(InferencePassTest):
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
-        # Diff occurred between GPU and TRT. 
-        # In order to provide TRT CI ASAP, this test for trt part 
-        # is disabled temporarily. 
-        self.enable_trt = True
-        self.trt_parameters = SlicePluginTRTTest1.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -50,100 +56,34 @@ class SlicePluginTRTTest1(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu.append(True)
         for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+            atol = 1e-5
+            if self.trt_parameters.precision == AnalysisConfig.Precision.Half:
+                atol = 1e-3
+            self.check_output_with_option(use_gpu[i], atol)
 
 
 #negative starts && ends
-class SlicePluginTRTTest2(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
-            axes = [2, 3]
-            starts = [-3, -2]
-            ends = [-1, 3]
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends)
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
-
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
-        }
-        # Diff occurred between GPU and TRT. 
-        # In order to provide TRT CI ASAP, this test for trt part 
-        # is disabled temporarily. 
-        self.enable_trt = True
-        self.trt_parameters = SlicePluginTRTTest2.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [out]
-
-    def test_check_output(self):
-        use_gpu = [False]
-        if core.is_compiled_with_cuda():
-            use_gpu.append(True)
-        for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
+    def setUpSliceParams(self):
+        self.params_axes = [2, 3]
+        self.params_starts = [-3, -2]
+        self.params_ends = [-1, 3]
 
 
 #exceeded bound starts && ends
-class SlicePluginTRTTest3(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
-            axes = [2, 3]
-            starts = [-5, -2]
-            ends = [-1, 8]
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends)
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
-
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
-        }
-        # Diff occurred between GPU and TRT. 
-        # In order to provide TRT CI ASAP, this test for trt part 
-        # is disabled temporarily. 
-        self.enable_trt = True
-        self.trt_parameters = SlicePluginTRTTest3.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [out]
-
-    def test_check_output(self):
-        use_gpu = [False]
-        if core.is_compiled_with_cuda():
-            use_gpu.append(True)
-        for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
+    def setUpSliceParams(self):
+        self.params_axes = [2, 3]
+        self.params_starts = [-5, -2]
+        self.params_ends = [-1, 8]
 
 
 #fp16
-class SlicePluginTRTTest4(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
-            axes = [2, 3]
-            starts = [-5, -2]
-            ends = [-1, 8]
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends)
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
-
-        self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
-        }
-        # Diff occurred between GPU and TRT. 
-        # In order to provide TRT CI ASAP, this test for trt part 
-        # is disabled temporarily. 
-        self.enable_trt = True
-        self.trt_parameters = SlicePluginTRTTest3.TensorRTParam(
+class SlicePluginTRTTestFp16(SlicePluginTRTTest):
+    def setUpTensorRTParams(self):
+        self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
-        self.fetch_list = [out]
-
-    def test_check_output(self):
-        use_gpu = [False]
-        if core.is_compiled_with_cuda():
-            use_gpu.append(True)
-        for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i])
+        self.enable_trt = True
 
 
 if __name__ == "__main__":

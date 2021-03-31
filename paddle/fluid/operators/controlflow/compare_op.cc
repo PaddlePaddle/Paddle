@@ -133,9 +133,9 @@ class CompareOp : public framework::OperatorWithKernel {
   REGISTER_OP_VERSION(op_type)                                             \
       .AddCheckpoint(                                                      \
           R"ROC(Upgrade compare ops, add a new attribute [force_cpu])ROC", \
-          paddle::framework::compatible::OpVersionDesc().NewAttr(          \
+          paddle::framework::compatible::OpVersionDesc().ModifyAttr(       \
               "force_cpu",                                                 \
-              "In order to force fill output variable to cpu memory.",     \
+              "In order to force fill output variable to gpu memory.",     \
               false));
 
 #define REGISTER_COMPARE_OP(op_type, _equation)                           \

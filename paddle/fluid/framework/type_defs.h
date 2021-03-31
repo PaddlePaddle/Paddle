@@ -38,11 +38,10 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
-using Attribute =
-    boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                   std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>, std::vector<int64_t>>;
+using Attribute = boost::variant<
+    boost::blank, int, float, std::string, std::vector<int>, std::vector<float>,
+    std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
+    std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
@@ -60,7 +59,8 @@ using DygraphGradOpMakerFN =
         const std::string& /*op_type*/,
         const imperative::NameVarBaseMap& /*var_base_map_in*/,
         const imperative::NameVarBaseMap& /*var_base_map_out*/,
-        const framework::AttributeMap& /*attributes*/)>;
+        const framework::AttributeMap& /*attributes*/,
+        const std::map<std::string, std::string>& /*inplace_map*/)>;
 
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;

@@ -221,5 +221,5 @@ REGISTER_PASS_CAPABILITY(mkldnn_inplace_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("softmax", 0)
-            .EQ("elementwise_add", 0)
+            .LE("elementwise_add", 1)
             .EQ("tanh", 0));

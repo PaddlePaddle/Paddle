@@ -114,6 +114,16 @@ class ConvTransposeOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
+class ConvTransposeOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+};
+
 template <typename DeviceContext, typename T>
 class GemmConvTransposeKernel : public framework::OpKernel<T> {
  public:
@@ -672,9 +682,9 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
     if (input_grad) {
       math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
       depthwiseConv(
-          dev_ctx, *output_grad, filter, strides, paddings,
+          dev_ctx, *output_grad, filter, strides,
           std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
-          input_grad, data_layout);
+          dilations, input_grad, data_layout);
     }
 
     if (filter_grad) {

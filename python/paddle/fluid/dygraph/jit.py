@@ -25,9 +25,10 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import ConversionOptions, CONVERSION_OPTIONS
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import TranslatedLayer, INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -40,7 +41,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load'
+    'set_verbosity', 'save', 'load', 'not_to_static'
 ]
 
 
@@ -52,21 +53,21 @@ def create_program_from_desc(program_desc):
     return program
 
 
-def _extract_vars(inputs, result_list):
+def _extract_vars(inputs, result_list, err_tag='inputs'):
     if isinstance(inputs, Variable):
         result_list.append(inputs)
     elif isinstance(inputs, (list, tuple)):
         for var in inputs:
-            _extract_vars(var, result_list)
+            _extract_vars(var, result_list, err_tag)
     else:
         raise TypeError(
-            "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".
-            format(type(inputs)))
+            "The type of 'each element of {}' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received {}.".
+            format(err_tag, type(inputs)))
 
 
-def extract_vars(inputs):
+def extract_vars(inputs, err_tag='inputs'):
     result_list = []
-    _extract_vars(inputs, result_list)
+    _extract_vars(inputs, result_list, err_tag)
     return result_list
 
 
@@ -225,6 +226,46 @@ def declarative(function=None, input_spec=None):
     return decorated
 
 
+def not_to_static(func=None):
+    """
+    A Decorator to suppresses the convertion of a function.
+
+    Args:
+        func(callable): The function to decorate.
+
+    Returns:
+        callable: A function which won't be converted in Dynamic-to-Static.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            @paddle.jit.not_to_static
+            def func_not_to_static(x):
+                res = x - 1
+                return res
+
+            @paddle.jit.to_static
+            def func(x):
+                if paddle.mean(x) < 0:
+                    out = func_not_to_static(x)
+                else:
+                    out = x + 1
+                return out
+
+            x = paddle.ones([1, 2], dtype='float32')
+            out = func(x)
+            print(out) # [[2. 2.]]
+    """
+    if func is None:
+        return not_to_static
+
+    options = ConversionOptions(not_convert=True)
+    setattr(func, CONVERSION_OPTIONS, options)
+    return func
+
+
 class _SaveLoadConfig(object):
     def __init__(self):
         self._output_spec = None
@@ -237,8 +278,8 @@ class _SaveLoadConfig(object):
         # NOTE: Users rarely use following configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
 
-        # If True, programs are modified to only support direct inference deployment. 
-        # Otherwise,more information will be stored for flexible optimization and re-training. 
+        # If True, programs are modified to only support direct inference deployment.
+        # Otherwise,more information will be stored for flexible optimization and re-training.
         # Currently, only True is supported
         self._export_for_deployment = True
 
@@ -356,14 +397,16 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in " \
         "`to_static` decorated on the Layer.forward method."
     result_list = []
-    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    input_var_names = [
+        var.name for var in flatten(inputs) if isinstance(var, Variable)
+    ]
     if input_spec is None:
         # no prune
         result_list = input_var_names
     elif input_spec is not None and len(input_spec) == len(input_var_names):
         # no prune
         result_list = input_var_names
-        # if input spec name not in input_var_names, only raise warning 
+        # if input spec name not in input_var_names, only raise warning
         for spec in input_spec:
             if spec.name is None:
                 warnings.warn(name_none_error % spec)
@@ -579,6 +622,16 @@ def save(layer, path, input_spec=None, **configs):
             "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
+    # NOTE(chenweihang): If the input layer be wrapped by DataParallel,
+    # the args and kwargs of forward method will can't be parsed by
+    # function_spec, so here we save DataParallel._layers instead
+    # DataParallel it self
+    # NOTE(chenweihang): using inner_layer, do not change input layer
+    if isinstance(layer, paddle.DataParallel):
+        inner_layer = layer._layers
+    else:
+        inner_layer = layer
+
     # path check
     file_prefix = os.path.basename(path)
     if file_prefix == "":
@@ -594,8 +647,8 @@ def save(layer, path, input_spec=None, **configs):
     # avoid change user given input_spec
     inner_input_spec = None
     if input_spec is not None:
-        for attr_func in dir(layer):
-            static_func = getattr(layer, attr_func, None)
+        for attr_func in dir(inner_layer):
+            static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func,
                           StaticFunction) and 'forward' != attr_func:
                 raise ValueError(
@@ -606,7 +659,7 @@ def save(layer, path, input_spec=None, **configs):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         inner_input_spec = []
-        for var in input_spec:
+        for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, Variable)):
@@ -621,16 +674,22 @@ def save(layer, path, input_spec=None, **configs):
     configs = _parse_save_configs(configs)
     scope = core.Scope()
     extra_var_info = dict()
-    for attr_func in dir(layer):
-        static_func = getattr(layer, attr_func, None)
+    for attr_func in dir(inner_layer):
+        static_func = getattr(inner_layer, attr_func, None)
         if isinstance(static_func, StaticFunction):
-            concrete_program = static_func.concrete_program
+            concrete_program = static_func.concrete_program_specify_input_spec(
+                inner_input_spec)
         elif 'forward' == attr_func:
             # transform in jit.save, if input_spec is incomplete, declarative will throw error
+            # inner_input_spec is list[InputSpec], it should be packed with same sturcture
+            # as original input_spec here.
+            if inner_input_spec:
+                inner_input_spec = pack_sequence_as(input_spec,
+                                                    inner_input_spec)
             static_forward = declarative(
-                layer.forward, input_spec=inner_input_spec)
+                inner_layer.forward, input_spec=inner_input_spec)
             concrete_program = static_forward.concrete_program
-            # the input_spec has been used in declarative, which is equal to 
+            # the input_spec has been used in declarative, which is equal to
             # @declarative with input_spec and jit.save without input_spec,
             # avoid needless warning
             inner_input_spec = None
@@ -650,21 +709,21 @@ def save(layer, path, input_spec=None, **configs):
                                                inner_input_spec)
 
         # NOTE(chenweihang): [ Get output variables ]
-        # the rule is like [ Get input variables name ]. For output var, 
-        # we only support VarBase spec, and actually, we only need the 
+        # the rule is like [ Get input variables name ]. For output var,
+        # we only support VarBase spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
         output_vars = _get_output_vars(concrete_program.outputs,
                                        configs.output_spec)
 
         # NOTE(chenweihang): we maintain the mapping of variable name to
         # structured name, the buffer variable (non-persistable)
-        # saved to inference program may not need by dygraph Layer, 
+        # saved to inference program may not need by dygraph Layer,
         # we only record the state_dict variable's structured name
         state_names_dict = dict()
-        for structured_name, var in six.iteritems(layer.state_dict()):
+        for structured_name, var in six.iteritems(inner_layer.state_dict()):
             state_names_dict[var.name] = structured_name
 
-        # 4. share parameters from Layer to scope & record var info        
+        # 4. share parameters from Layer to scope & record var info
         for param_or_buffer in concrete_program.parameters:
             # share to scope
             param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor(
@@ -688,7 +747,7 @@ def save(layer, path, input_spec=None, **configs):
         # construct new save_inference_model arguments
         model_path = dirname
         # NOTE(chenweihang): because prefix contains model and params filename,
-        # so we don't support set model_filename & params_filename 
+        # so we don't support set model_filename & params_filename
         if 'forward' == attr_func:
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
@@ -715,12 +774,12 @@ def save(layer, path, input_spec=None, **configs):
     #   - Which persistent variable are parameter and which are not
     #   - Parameter.trainable information
     #
-    # The lost information cannot be recovered when it is loaded again, 
-    # so if we want to perform fine-tune after loading, we may need to 
+    # The lost information cannot be recovered when it is loaded again,
+    # so if we want to perform fine-tune after loading, we may need to
     # configure redundant information to proceed.
     #
-    # Due to compatibility issues, we cannot change the original storage structure, 
-    # but we can save these information in `jit.save` without changing the original 
+    # Due to compatibility issues, we cannot change the original storage structure,
+    # but we can save these information in `jit.save` without changing the original
     # storage to improve user experience. So we save extra information into
     # file `***.pdiparams.info`
     with scope_guard(scope):
@@ -978,7 +1037,7 @@ def _trace(layer,
             outputs = [original_outputs]
         else:
             outputs = original_outputs
-        out_vars = [var for var in outputs]
+        out_vars = extract_vars(outputs, err_tag='outputs')
 
         program_desc, feed_names, fetch_names, parameters = tracer.create_program_desc(
             var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix)

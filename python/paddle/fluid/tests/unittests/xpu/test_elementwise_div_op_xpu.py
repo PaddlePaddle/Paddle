@@ -17,121 +17,233 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
-from elementwise import TestXPUElementwiseOpBase
+from op_test_xpu import XPUOpTest
 paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUElementwiseDivOp(OpTest, TestXPUElementwiseOpBase):
+class ElementwiseDivOp(XPUOpTest):
     def setUp(self):
-        TestXPUElementwiseOpBase.setUp(self, "elementwise_div")
-        self.make_input()
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.dtype = np.float32
+        self.init_dtype()
+        self.use_xpu = True
+        """ Warning
+        CPU gradient check error!
+        'X': np.random.random((32,84)).astype("float32"),
+        'Y': np.random.random((32,84)).astype("float32")
+        """
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
-    def make_output(self, x_shape=None, y_shape=None):
-        x, y = self.reshape_input(x_shape, y_shape)
-        self.outputs = {'Out': np.divide(x, y)}
+    def test_check_output(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Y'], 'Out', max_relative_error=0.05)
+
+    def test_check_grad_ingore_x(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['Y'],
+                'Out',
+                max_relative_error=0.05,
+                no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                max_relative_error=0.05,
+                no_grad_set=set('Y'))
+
+    def init_dtype(self):
+        pass
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestElementwiseDivOp_scalar(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [20, 3, 4]).astype(np.float32),
+            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float32)
+        }
+        self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_scalar(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_Vector(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_scalar, self).setUp()
-        self.grad_implemented = False
-        self.make_input([20, 3, 4], [1])
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [100]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [100]).astype("float32")
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_Vector(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_Vector, self).setUp()
-        self.make_input([100, ], [100, ])
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [100, 3, 4]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [100]).astype("float32")
+        }
+
+        self.attrs = {'axis': 0}
+        self.outputs = {
+            'Out':
+            np.divide(self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_0(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_0, self).setUp()
-        self.attrs['axis'] = 0
-        self.make_input([100, 3, 4], [100, ])
-        self.make_output(y_shape=[100, 1, 1])
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 100, 4]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [100]).astype("float32")
+        }
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out':
+            np.divide(self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_1(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_1, self).setUp()
-        self.attrs['axis'] = 1
-        self.make_input([2, 100, 4], [100, ])
-        self.make_output(y_shape=[1, 100, 1])
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [100]).astype("float32")
+        }
+
+        self.outputs = {
+            'Out':
+            np.divide(self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_2(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_2, self).setUp()
-        self.make_input([2, 3, 100], [100, ])
-        self.make_output(y_shape=[1, 1, 100])
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 10, 12, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [10, 12]).astype("float32")
+        }
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out':
+            np.divide(self.inputs['X'], self.inputs['Y'].reshape(1, 10, 12, 1))
+        }
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_3(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_3, self).setUp()
-        self.attrs['axis'] = 1
-        self.make_input([2, 10, 12, 5], [10, 12])
-        self.make_output(y_shape=[1, 10, 12, 1])
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 50]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 1, 50]).astype("float32")
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_4(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_4, self).setUp()
-        self.is_common_broadcast = True
-        self.make_input([2, 3, 50], [2, 1, 50])
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 20]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 20]).astype("float32")
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_broadcast_5(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_broadcast_5, self).setUp()
-        self.is_common_broadcast = True
-        self.make_input([2, 3, 4, 20], [2, 3, 1, 20])
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [1, 1, 100]).astype("float32"),
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_commonuse_1(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_commonuse_1, self).setUp()
-        self.is_common_broadcast = True
-        self.make_input([2, 3, 100], [1, 1, 100])
-        self.make_output()
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [30, 3, 1, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [30, 1, 4, 1]).astype("float32"),
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestElementwiseDivOp_xsize_lessthan_ysize(TestXPUElementwiseDivOp):
+class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
     def setUp(self):
-        super(TestElementwiseDivOp_xsize_lessthan_ysize, self).setUp()
-        self.is_x_size_less_than_y = True
-        self.attrs['axis'] = 2
-        self.make_input([10, 12], [2, 3, 10, 12])
-        self.make_output(x_shape=[1, 1, 10, 12])
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 12]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 10, 12]).astype("float32"),
+        }
+
+        self.attrs = {'axis': 2}
+
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestElementwiseDivBroadcast(unittest.TestCase):
+    def test_shape_with_batch_sizes(self):
+        with fluid.program_guard(fluid.Program()):
+            x_var = fluid.data(
+                name='x', dtype='float32', shape=[None, 3, None, None])
+            one = 2.
+            out = one / x_var
+            exe = fluid.Executor(fluid.XPUPlace(0))
+            x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
+            out_result, = exe.run(feed={'x': x}, fetch_list=[out])
+            self.assertEqual((out_result == (2 / x)).all(), True)
 
 
 if __name__ == '__main__':
