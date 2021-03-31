@@ -28,7 +28,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 from .topology import CommunicateTopology, HybridCommunicateGroup
 from ..mpu.random import model_parallel_random_seed
-from ..meta_parallel import ModelParallel
+from ..meta_parallel import ModelParallel, DataParallel
 
 
 def _inited_runtime_handler_(func):
@@ -744,7 +744,7 @@ class Fleet(object):
         self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
 
         if self.mp_num == 1 and self.pp_num == 1:
-            self.model = paddle.DataParallel(
+            self.model = DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
                 fuse_grad_size_in_MB,

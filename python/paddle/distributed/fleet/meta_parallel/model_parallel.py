@@ -56,6 +56,7 @@ class ModelParallel(MetaParallelBase):
 
     def _post_backward(self, loss):
         if not self._loss_parameters:
-            fused_allreduce_gradients(list(self._layers.parameters()))
+            fused_allreduce_gradients(
+                list(self._layers.parameters()), self._hcg)
         else:
-            fused_allreduce_gradients(list(self._loss_parameters))
+            fused_allreduce_gradients(list(self._loss_parameters), self._hcg)

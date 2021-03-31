@@ -55,7 +55,7 @@ def _apply_collective_grads(parameters, comm_group, bucket_size):
     coalesced_grads_and_vars = _coalesce_tensors(grad_var_groups)
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
-        paddle.distributed.all_reduce_(coalesced_grad, group=comm_group)
+        paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
 

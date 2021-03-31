@@ -12,3 +12,4 @@
 # See the License for the specific language governing permissions and
 
 from .model_parallel import ModelParallel
+from .data_parallel import DataParallel

@@ -16,6 +16,7 @@ import paddle
 from paddle.fluid.dygraph.layers import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
+from paddle import framework
 
 __all__ = [
     'ParallelLinear', 'ColumnParallelLinear', 'RowParallelLinear',
@@ -148,8 +149,10 @@ class RowParallelLinear(Layer):
             input_parallel = input_list[self.rank]
 
         output_parallel = F.linear(input_parallel, self.weight, name=self.name)
-        output_ = paddle.distributed.all_reduce(
-            output_parallel, group=self.model_parallel_group)
+        # TODO(shenliang03): 
+        with framework.no_grad():
+            output_ = paddle.distributed.all_reduce(
+                output_parallel, group=self.model_parallel_group)
         output = output_ + self.bias if self.bias is not None else output_
         return output
 
@@ -257,6 +260,7 @@ class VocabParallelEmbedding(Layer):
         if len(origin_input_shape) == 2:
             x_shard = paddle.squeeze(x_shard, axis=-1)
         emb_out_ = self.embedding(x_shard)
-        emb_out = paddle.distributed.all_reduce(
-            emb_out_, group=self.model_parallel_group)
+        with framework.no_grad():
+            emb_out = paddle.distributed.all_reduce(
+                emb_out_, group=self.model_parallel_group)
         return emb_out
