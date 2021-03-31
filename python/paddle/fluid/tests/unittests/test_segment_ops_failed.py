@@ -110,5 +110,28 @@ class TestSegmentOps(OpTest):
         self.check_grad(["X"], "Out")
 
 
+
+class TestSegmentMax(TestSegmentOps):
+    def compute(self, x, segment_ids):
+        return compute_segment_min_max(x, segment_ids, pooltype="MAX")
+
+    def prepare(self):
+        super(TestSegmentMax, self).prepare()
+        self.shape = [40, 20]
+        self.attrs = {'pooltype': "MAX"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
+        result, self.gradient = self.compute(x, segment_ids)
+        self.inputs = {
+            'X': x.astype(self.dtype),
+            'SegmentIds': segment_ids.astype(np.int32)
+        }
+        self.outputs = {'Out': result.astype(self.dtype)}
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", user_defined_grads=[self.gradient])
+
 if __name__ == '__main__':
     unittest.main()
