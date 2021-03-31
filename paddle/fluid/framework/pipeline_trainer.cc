@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined WITH_ASCEND_CL)
 #include <map>
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -25,6 +25,9 @@ namespace framework {
 void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   const auto& section_params = trainer_desc.section_param();
+  const auto num_pipeline_stages_ = section_params.num_pipeline_stages();
+  const auto pipeline_stage_ = section_params.pipeline_stage();
+  const auto schedule_mode_ = section_params.schedule_mode();
   num_microbatches_ = section_params.num_microbatches();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   trainer_desc_ = trainer_desc;
@@ -32,7 +35,11 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
+#if (defined PADDLE_WITH_NCCL)
   place_ = platform::CUDAPlace(place_id);
+#elif (defined WITH_ASCEND_CL)
+  place_ = platform::NPUPlace(place_id);
+#endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(
       trainer_desc.device_worker_name());
   auto this_worker =
@@ -40,6 +47,9 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   this_worker->SetPlace(place_);
   this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
+  this_worker->SetPipelineStageNum(num_pipeline_stages_);
+  this_worker->SetPipelineStage(pipeline_stage_);
+  this_worker->SetScheduleMode(schedule_mode_);
 }
 
 void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -76,7 +86,10 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
   for (auto& var : global_block.AllVars()) {
     bool is_param_grad = false;
     size_t pos = 0;
-    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos) {
+    // A magic suffix to indicated the merged gradient.
+    std::string magicSuffix = "MERGED";
+    if ((pos = var->Name().find(kGradVarSuffix)) != std::string::npos &&
+        var->Name().find(magicSuffix) != std::string::npos) {
       auto prefix_name = var->Name().substr(0, pos);
       if (param_map.find(prefix_name) != param_map.end()) {
         is_param_grad = true;

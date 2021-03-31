@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
@@ -25,34 +26,22 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::Tensor>("X");
-    auto* shape = ctx.Attr<std::vector<int>>> ("shape");
     auto* out = ctx.Output<framework::Tensor>("Out");
-    auto org_shape = framework::vectorize(x->dims());
-    // reshape
-    int64_t shape_all = 1;
-    int64_t org_shape_all = 1;
-    int index = -1;
-    for (int i = 0; i < shape.size(); i++) {
-      if (shape[i] == 0) {
-        shape[i] = org_shape[i];
-      }
-      if (shape[i] == -1) {
-        index = i;
-      } else {
-        shape_all *= shape[i];
-      }
-      org_shape_all *= org_shape[i];
+    auto list_new_shape_tensor =
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    if (list_new_shape_tensor.size() > 0) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Input(ShapeTensor) is not supported on NPU."));
     }
-
-    if (index >= 0) {
-      shape[index] = org_shape_all / shape_all;
-    }
-    out.Resize(framework::make_ddim(shape));
+    PADDLE_ENFORCE_EQ(ctx.Input<framework::LoDTensor>("Shape"), nullptr,
+                      platform::errors::Unimplemented(
+                          "Input(Shape) is not supported on NPU."));
+    auto shape = out->dims();
     out->mutable_data(ctx.GetPlace(), x->type());
     framework::TensorCopy(
         *x, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), out);
-    out.Resize(framework::make_ddim(shape));
+    out->Resize(shape);
   }
 };
 
@@ -77,11 +66,21 @@ class Reshape2GradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    reshpe2, ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    reshape2, ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, bool>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::Reshape2NPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>);
 REGISTER_OP_NPU_KERNEL(
-    reshpe2_grad,
+    reshape2_grad,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, bool>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
     ops::Reshape2GradNPUKernel<paddle::platform::NPUDeviceContext,
                                paddle::platform::float16>);

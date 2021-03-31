@@ -42,7 +42,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    std::string tag = ctx.Attr<std::string>("tag");
+    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     int srcRank = ctx.Attr<int>("peer");
     int srTag = ctx.Attr<int>("srTag");
@@ -66,7 +66,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(recv_v2, 
+REGISTER_OP_NPU_KERNEL(recv_v2,
                         ops::CRecvOpASCENDKernel<int>,
                         ops::CRecvOpASCENDKernel<int8_t>,
                         ops::CRecvOpASCENDKernel<float>,

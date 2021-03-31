@@ -64,6 +64,14 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
   return iter->second;
 }
 
+aclrtStream GetCurrentNPUStream() {
+  int device_id = platform::GetCurrentNPUDeviceId();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
+      pool.Get(platform::NPUPlace(device_id)));
+  return dev_ctx->stream();
+}
+
 NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
   attr_ = aclopCreateAttr();
 }
@@ -185,6 +193,21 @@ NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
   return *this;
 }
 
+// NOTE(zhiqiu): For operators whose input is a list (such as concat, stack),
+// It is needed to set the name of each input tensor.
+NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(names.size(), input_descs_.size(),
+                    platform::errors::InvalidArgument(
+                        "The size of input names should be "
+                        "equal to the size of input descs, but got the size "
+                        "of input names is %d, the size of input descs is %d.",
+                        names.size(), input_descs_.size()));
+  for (size_t i = 0; i < names.size(); ++i) {
+    aclSetTensorDescName(input_descs_[i], names[i].c_str());
+  }
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
   for (auto tensor : tensors) {
     // create aclTensorDesc
@@ -234,19 +257,22 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
 
-  VLOG(4) << "dtype:" << dtype << " "
+  VLOG(4) << "NPU dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
   auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
+  PADDLE_ENFORCE_NPU_SUCCESS(
+      aclSetTensorStorageShape(desc, dims.size(), dims.data()));
   return desc;
 }
 
 aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   void *ptr = tensor.data<void>();
-  VLOG(4) << "ptr: " << ptr << ", size: " << tensor.memory_size();
+  VLOG(4) << "NPU ptr: " << ptr << ", size: " << tensor.memory_size();
   auto *buffer = aclCreateDataBuffer(ptr, tensor.memory_size());
   PADDLE_ENFORCE_NOT_NULL(
       buffer, platform::errors::External("Call aclCreateDataBuffer failed."));
@@ -254,11 +280,17 @@ aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
 }
 
 void NpuOpRunner::Run(aclrtStream stream) {
+  if (!stream) {
+    VLOG(4) << "Run with default current npu stream: " << stream;
+    stream = GetCurrentNPUStream();
+  }
+
   VLOG(4) << "op_type: " << op_type_;
   VLOG(4) << "input_desc.size: " << input_descs_.size();
   VLOG(4) << "output_desc.size: " << output_descs_.size();
-  VLOG(4) << "stream: " << stream;
   VLOG(4) << "attr: " << attr_;
+  VLOG(4) << "stream: " << stream;
+
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),
       input_buffers_.data(), output_descs_.size(), output_descs_.data(),

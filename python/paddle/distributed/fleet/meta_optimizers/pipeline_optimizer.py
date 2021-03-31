@@ -13,6 +13,7 @@
 
 from __future__ import print_function
 from __future__ import division
+import os
 
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
@@ -78,34 +79,50 @@ class PipelineHelper(object):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
-        if rank == 0 and wait_port:
-            wait_server_ready(other_endpoints)
-
         block = program.global_block()
-        nccl_id_var = block.create_var(
-            name=unique_name.generate('nccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': nccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints,
-                OP_ROLE_KEY: OpRole.Forward,
-            })
-        block.append_op(
-            type='c_comm_init',
-            inputs={'X': nccl_id_var},
-            outputs={},
-            attrs={
-                'nranks': nranks,
-                'rank': rank,
-                'ring_id': ring_id,
-                OP_ROLE_KEY: OpRole.Forward,
-            })
+        if core.is_compiled_with_cuda():
+            if rank == 0 and wait_port:
+                wait_server_ready(other_endpoints)
+            nccl_id_var = block.create_var(
+                name=unique_name.generate('nccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            block.append_op(
+                type='c_gen_nccl_id',
+                inputs={},
+                outputs={'Out': nccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    OP_ROLE_KEY: OpRole.Forward,
+                })
+            block.append_op(
+                type='c_comm_init',
+                inputs={'X': nccl_id_var},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    OP_ROLE_KEY: OpRole.Forward,
+                })
+        elif core.is_compiled_with_npu():
+            endpoint_to_index_map = {
+                e: idx for idx, e in enumerate(endpoints)
+            }
+            block.append_op(
+                type='c_comm_init_hcom',
+                inputs={},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    'device_id': int(os.getenv("FLAGS_selected_npus")),
+                    'rank_ids': [endpoint_to_index_map[e] for e in endpoints],
+                    OP_ROLE_KEY: OpRole.Forward
+                })
 
     def _broadcast_params(self, ring_id):
         block = self.startup_program.global_block()
@@ -137,8 +154,10 @@ class PipelineOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(PipelineOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
-        # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "RecomputeOptimizer",
+            "AMPOptimizer",
+        ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,

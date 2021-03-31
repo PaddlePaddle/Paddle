@@ -156,18 +156,21 @@ cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
-if (WITH_ASCEND_CL)
-    cc_test(lookup_table_v2_op_npu_test SRCS lookup_table_v2_op_npu_test.cc DEPS op_registry lookup_table_v2_op scope device_context enforce executor compare_op)
-endif()
 
 if (WITH_ASCEND_CL)
   cc_test(range_op_npu_test SRCS range_op_npu_test.cc DEPS op_registry range_op scope device_context enforce executor)
+  cc_test(lookup_table_v2_op_npu_test SRCS lookup_table_v2_op_npu_test.cc DEPS op_registry lookup_table_v2_op scope device_context enforce executor compare_op)
+  cc_test(expand_op_npu_test SRCS expand_op_npu_test.cc DEPS op_registry expand_op scope device_context enforce executor compare_op)
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
 cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
+if (WITH_ASCEND_CL)
+    cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
+endif()
+
 
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)

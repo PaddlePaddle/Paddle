@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -61,13 +60,13 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     auto stream =
-       ctx.template device_context<paddle::platform::NPUDeviceContext>()
-           .stream();
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
     Tensor y_power(y->type());
     y_power.mutable_data<T>(y->dims(), place);
-    auto y_power_runner = NpuOpRunner("Power", {*y},
-             {y_power}, {{"power", static_cast<float>(-1)}});
+    auto y_power_runner = NpuOpRunner("Power", {*y}, {y_power},
+                                      {{"power", static_cast<float>(-1)}});
     y_power_runner.Run(stream);
 
     if (dx) {
@@ -75,32 +74,33 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
 
       Tensor tensor_zeros(x->type());
       tensor_zeros.mutable_data<T>(x->dims(), place);
-      auto tensor_zeros_runner = NpuOpRunner("ZerosLike", {*x},
-               {tensor_zeros}, {});
+      auto tensor_zeros_runner =
+          NpuOpRunner("ZerosLike", {*x}, {tensor_zeros}, {});
       tensor_zeros_runner.Run(stream);
 
       Tensor x_zero(paddle::framework::proto::VarType::BOOL);
       x_zero.mutable_data<bool>(x->dims(), place);
-      auto x_zero_runner = NpuOpRunner("Equal", {*x, tensor_zeros},
-              {x_zero}, {});
+      auto x_zero_runner =
+          NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
       x_zero_runner.Run(stream);
 
       Tensor x_nozero(paddle::framework::proto::VarType::BOOL);
       x_nozero.mutable_data<bool>(x->dims(), place);
-      auto x_nozero_runner = NpuOpRunner("LogicalNot", {x_zero},
-              {x_nozero}, {});
+      auto x_nozero_runner =
+          NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});
       x_nozero_runner.Run(stream);
 
       Tensor x_nozero_f(x->type());
       x_nozero_f.mutable_data<T>(x->dims(), place);
-      auto x_nozero_f_runner = NpuOpRunner("Cast", {x_nozero},
-               {x_nozero_f}, {{"dst_type", static_cast<int32_t>(0)}});
+      auto x_nozero_f_runner =
+          NpuOpRunner("Cast", {x_nozero}, {x_nozero_f},
+                      {{"dst_type", static_cast<int32_t>(0)}});
       x_nozero_f_runner.Run(stream);
 
       Tensor x_grad_w(x->type());
       x_grad_w.mutable_data<T>(x->dims(), place);
-      auto x_grad_w_runner = NpuOpRunner("Mul", {x_nozero_f, y_power},
-               {x_grad_w}, {});
+      auto x_grad_w_runner =
+          NpuOpRunner("Mul", {x_nozero_f, y_power}, {x_grad_w}, {});
       x_grad_w_runner.Run(stream);
 
       auto x_grad_runner = NpuOpRunner("Mul", {x_grad_w, *dout}, {*dx}, {});
@@ -110,10 +110,14 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     if (dy) {
       dy->mutable_data<T>(place);
 
-      Tensor y_grad_w(x->type());
+      Tensor neg_out(y->type());
+      neg_out.mutable_data<T>(y->dims(), place);
+      auto neg_out_runner = NpuOpRunner("Neg", {*out}, {neg_out}, {});
+      neg_out_runner.Run(stream);
+
+      Tensor y_grad_w(y->type());
       y_grad_w.mutable_data<T>(y->dims(), place);
-      auto y_grad_w_runner = NpuOpRunner("Mul", {*out, y_power},
-              {y_grad_w}, {});
+      auto y_grad_w_runner = NpuOpRunner("Div", {neg_out, *y}, {y_grad_w}, {});
       y_grad_w_runner.Run(stream);
 
       auto y_grad_runner = NpuOpRunner("Mul", {y_grad_w, *dout}, {*dy}, {});
@@ -137,4 +141,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ElementwiseDivGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ElementwiseDivGradNPUKernel<paddle::platform::NPUDeviceContext,
                                      paddle::platform::float16>);
-#endif

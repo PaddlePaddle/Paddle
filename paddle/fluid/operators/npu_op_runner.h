@@ -53,6 +53,8 @@ class NpuOpRunner {
 
   NpuOpRunner &AddInputs(const std::vector<Tensor> &tensors);
 
+  NpuOpRunner &AddInputNames(const std::vector<std::string> &names);
+
   NpuOpRunner &AddOutputs(const std::vector<Tensor> &tensors);
 
   aclTensorDesc *GetInputDesc(size_t index);
@@ -67,7 +69,7 @@ class NpuOpRunner {
 
   std::vector<aclDataBuffer *> &GetOutputBuffers();
 
-  void Run(aclrtStream stream);
+  void Run(aclrtStream stream = nullptr);
 
  private:
   aclTensorDesc *CreateTensorDesc(Tensor tensor);
@@ -81,6 +83,8 @@ class NpuOpRunner {
   std::vector<aclTensorDesc *> output_descs_;
   aclopAttr *attr_{nullptr};
 };
+
+aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
 
 }  // namespace operators
 }  // namespace paddle

@@ -32,6 +32,7 @@ class TestReduceSum(OpTest):
     def setUp(self):
         np.random.seed(SEED)
         self.set_npu()
+        self.init_dtype()
         self.place = paddle.NPUPlace(0)
         self.init_op_type()
         self.initTestCase()
@@ -42,7 +43,7 @@ class TestReduceSum(OpTest):
             'keep_dim': self.keep_dim,
             'reduce_all': self.reduce_all
         }
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         if self.attrs['reduce_all']:
             self.outputs = {'Out': self.inputs['X'].sum()}
         else:
@@ -78,6 +79,11 @@ class TestReduceSum(OpTest):
     #
 
 
+class TestReduceSum2(OpTest):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestReduceSumNet(unittest.TestCase):
@@ -102,7 +108,9 @@ class TestReduceSumNet(unittest.TestCase):
             label = paddle.static.data(
                 name="label", shape=[2, 1], dtype='int64')
 
-            z = paddle.add(a, b)
+            a_1 = fluid.layers.fc(input=a, size=4, num_flatten_dims=2, act=None)
+            b_1 = fluid.layers.fc(input=b, size=4, num_flatten_dims=2, act=None)
+            z = paddle.add(a_1, b_1)
             z_1 = self.set_reduce_sum_function(z)
 
             prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')

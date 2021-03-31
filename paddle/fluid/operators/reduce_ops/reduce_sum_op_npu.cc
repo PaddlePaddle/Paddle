@@ -34,22 +34,57 @@ class ReduceSumNPUKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(ctx.GetPlace());
 
+    // special case
+    if (x->dims().size() == 1 && keep_dims == false) {
+      keep_dims = true;
+    }
+
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+
+    framework::Tensor cast_x;
+    framework::Tensor cast_out;
+    // NOTE: ReduceSumD only supports fp32 and fp16
+    if (x->type() != framework::proto::VarType::FP32 &&
+        x->type() != framework::proto::VarType::FP16) {
+      cast_x.Resize(x->dims());
+      cast_x.mutable_data<float>(ctx.GetPlace());
+      auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::FP32);
+      auto runner_cast = NpuOpRunner(
+          "Cast", {*x}, {cast_x}, {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast.Run(stream);
+
+      cast_out.Resize(out->dims());
+      cast_out.mutable_data<float>(ctx.GetPlace());
+    } else {
+      cast_x.ShareDataWith(*x);
+      cast_out.ShareDataWith(*out);
+    }
+
     if (reduce_all) {
       std::vector<int> dim_vec;
       for (int i = 0; i < x->dims().size(); i++) {
         dim_vec.push_back(i);
       }
-      auto runner = NpuOpRunner("ReduceSumD", {*x}, {*out},
+
+      auto runner = NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
                                 {{"axes", dim_vec}, {"keep_dims", keep_dims}});
       runner.Run(stream);
 
     } else {
-      auto runner = NpuOpRunner("ReduceSumD", {*x}, {*out},
+      auto runner = NpuOpRunner("ReduceSumD", {cast_x}, {cast_out},
                                 {{"axes", dims}, {"keep_dims", keep_dims}});
       runner.Run(stream);
+    }
+
+    if (x->type() != framework::proto::VarType::FP32 &&
+        x->type() != framework::proto::VarType::FP16) {
+      auto dst_dtype = ConvertToNpuDtype(out->type());
+      auto runner_cast =
+          NpuOpRunner("Cast", {cast_out}, {*out},
+                      {{"dst_type", static_cast<int>(dst_dtype)}});
+      runner_cast.Run(stream);
     }
   }
 };
@@ -83,6 +118,11 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       Tensor out_grad_tmp(out_grad->type());
       out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
+      framework::TensorCopy(
+          *out_grad, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &out_grad_tmp);
+      out_grad_tmp.Resize(out_dims);
 
       auto runner = NpuOpRunner("BroadcastToD", {out_grad_tmp}, {*x_grad},
                                 {{"shape", framework::vectorize(x->dims())}});

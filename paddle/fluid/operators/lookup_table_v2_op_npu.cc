@@ -51,17 +51,27 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
     auto *output_grad_t =
         ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *table_t = ctx.Input<framework::LoDTensor>("W");
     auto *table_grad_t =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
-    framework::NPUAttributeMap attr_input = {{"use_locking", true}};
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("ScatterAdd", {*table_t, *ids_t, *output_grad_t},
-                              {*table_grad_t}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    runner.Run(stream);
+
+    // step2: ZerosLike x in device
+    Tensor zeroslike_w(table_grad_t->type());
+    zeroslike_w.Resize(table_grad_t->dims());
+    auto p = zeroslike_w.mutable_data<T>(ctx.GetPlace());
+
+    platform::NPUMemsetAsync(static_cast<void *>(p), 0,
+                             zeroslike_w.numel() * sizeof(T), stream);
+
+    table_grad_t->mutable_data<T>(ctx.GetPlace());
+    auto runner_scatter =
+        NpuOpRunner("ScatterAdd", {zeroslike_w, *ids_t, *output_grad_t},
+                    {*table_grad_t}, {});
+    runner_scatter.Run(stream);
   }
 };
 }  // namespace operators
@@ -72,9 +82,11 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::LookupTableV2NPUKernel<paddle::platform::NPUDeviceContext,
                                 paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     lookup_table_v2_grad, ops::LookupTableV2GradNPUKernel<float>,
+    ops::LookupTableV2GradNPUKernel<int>,
     ops::LookupTableV2GradNPUKernel<paddle::platform::float16>);

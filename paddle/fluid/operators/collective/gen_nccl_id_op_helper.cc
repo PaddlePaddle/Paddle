@@ -31,7 +31,9 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
-namespace operators {
+namespace platform {
+
+std::once_flag SocketServer::init_flag_;
 
 constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
 
@@ -340,5 +342,34 @@ void RecvBroadCastNCCLID(int server_fd, std::string endpoint, int nccl_comm_num,
   CloseSocket(client);
 }
 
-}  // namespace operators
+SocketServer& SocketServer::GetInstance(const std::string& end_point) {
+  static SocketServer instance;
+  std::call_once(init_flag_, [&]() {
+    instance.server_fd_ = CreateListenSocket(end_point);
+    instance.end_point_ = end_point;
+  });
+  PADDLE_ENFORCE_NE(instance.server_fd_, -1,
+                    platform::errors::Unavailable(
+                        "listen socket failed with end_point=%s", end_point));
+  PADDLE_ENFORCE_EQ(instance.end_point_, end_point,
+                    platform::errors::InvalidArgument(
+                        "old end_point=%s must equal with new end_point=%s",
+                        instance.end_point_, end_point));
+  return instance;
+}
+
+/// template instantiation
+#define INSTANT_TEMPLATE(Type)                                              \
+  template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
+                                          std::vector<Type> * nccl_ids);    \
+  template void RecvBroadCastCommID<Type>(std::string endpoint,             \
+                                          std::vector<Type> * nccl_ids);
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+INSTANT_TEMPLATE(ncclUniqueId)
+#endif
+#ifdef PADDLE_WITH_XPU_BKCL
+INSTANT_TEMPLATE(BKCLUniqueId)
+#endif
+}  // namespace platform
 }  // namespace paddle
