@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-#ifdef PADDLE_WITH_NCCL
-#include "paddle/fluid/operators/collective/gen_nccl_id_op_helper.h"
-#endif
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
