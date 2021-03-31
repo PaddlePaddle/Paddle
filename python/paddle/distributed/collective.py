@@ -26,17 +26,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 __all__ = [
-    'wait',
-    'new_group',
-    'get_group',
-    'broadcast',
-    'all_reduce',
-    'reduce',
-    'all_gather',
-    'scatter',
-    'barrier',
-    'split',
-    'ReduceOp',
+    'wait', 'new_group', 'get_group', 'broadcast', 'all_reduce', 'reduce',
+    'all_gather', 'scatter', 'barrier', 'split', 'ReduceOp', 'all_reduce_'
 ]
 
 
@@ -332,6 +323,87 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         })
 
 
+# def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+#     """
+#     Reduce a tensor over all ranks so that all get the result.
+#     Args:
+#         tensor (Tensor): The input Tensor. It also works as the output Tensor. Its data type
+#             should be float16, float32, float64, int32 or int64.
+#         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used.
+#         group (Group): The group instance return by new_group or None for global default group.
+#         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False),
+#             default to True.
+#     Returns:
+#         None.
+#     Examples:
+#         .. code-block:: python
+#             import numpy as np
+#             import paddle
+#             from paddle.distributed import ReduceOp
+#             from paddle.distributed import init_parallel_env
+#             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+#             init_parallel_env()
+#             if paddle.distributed.ParallelEnv().local_rank == 0:
+#                 np_data = np.array([[4, 5, 6], [4, 5, 6]])
+#             else:
+#                 np_data = np.array([[1, 2, 3], [1, 2, 3]])
+#             data = paddle.to_tensor(np_data)
+#             paddle.distributed.all_reduce(data)
+#             out = data.numpy()
+#             # [[5, 7, 9], [5, 7, 9]]
+#     """
+#     if group is not None and not group.is_member():
+#         return
+
+#     ring_id = 0 if group is None else group.id
+
+#     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
+#         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
+#                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+#     if op == ReduceOp.SUM:
+#         op_type = 'c_allreduce_sum'
+#     elif op == ReduceOp.MAX:
+#         op_type = 'c_allreduce_max'
+#     elif op == ReduceOp.MIN:
+#         op_type = 'c_allreduce_min'
+#     elif op == ReduceOp.PROD:
+#         op_type = 'c_allreduce_prod'
+#     if not isinstance(ring_id, int):
+#         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
+
+#     helper = LayerHelper(op_type, **locals())
+#     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+#     if in_dygraph_mode():
+#         if op == ReduceOp.SUM:
+#             return core.ops.c_allreduce_sum(tensor, out, 'use_calc_stream',
+#                                             use_calc_stream, 'ring_id', ring_id)
+#         elif op == ReduceOp.MAX:
+#             return core.ops.c_allreduce_max(tensor, out, 'use_calc_stream',
+#                                             use_calc_stream, 'ring_id', ring_id)
+#         elif op == ReduceOp.MIN:
+#             return core.ops.c_allreduce_min(tensor, out, 'use_calc_stream',
+#                                             use_calc_stream, 'ring_id', ring_id)
+#         elif op == ReduceOp.PROD:
+#             return core.ops.c_allreduce_prod(tensor, out, 'use_calc_stream',
+#                                              use_calc_stream, 'ring_id',
+#                                              ring_id)
+#         else:
+#             raise ValueError("Unknown parameter: {}.".format(op))
+
+#     check_variable_and_dtype(
+#         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+#         'all_reduce')
+
+#     helper.append_op(
+#         type=op_type,
+#         inputs={'X': [tensor]},
+#         outputs={'Out': [out]},
+#         attrs={'ring_id': ring_id,
+#                'use_calc_stream': use_calc_stream})
+#     return out
+
+
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """
     Reduce a tensor over all ranks so that all get the result.
@@ -366,6 +438,26 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
     ring_id = 0 if group is None else group.id
 
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.MAX:
+            return core.ops.c_allreduce_max(tensor, tensor, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.MIN:
+            return core.ops.c_allreduce_min(tensor, tensor, 'use_calc_stream',
+                                            use_calc_stream, 'ring_id', ring_id)
+        elif op == ReduceOp.PROD:
+            return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
+                                             use_calc_stream, 'ring_id',
+                                             ring_id)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
+
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'all_reduce')
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
@@ -379,38 +471,13 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         op_type = 'c_allreduce_prod'
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
-
     helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    if in_dygraph_mode():
-        if op == ReduceOp.SUM:
-            return core.ops.c_allreduce_sum(tensor, out, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
-        elif op == ReduceOp.MAX:
-            return core.ops.c_allreduce_max(tensor, out, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
-        elif op == ReduceOp.MIN:
-            return core.ops.c_allreduce_min(tensor, out, 'use_calc_stream',
-                                            use_calc_stream, 'ring_id', ring_id)
-        elif op == ReduceOp.PROD:
-            return core.ops.c_allreduce_prod(tensor, out, 'use_calc_stream',
-                                             use_calc_stream, 'ring_id',
-                                             ring_id)
-        else:
-            raise ValueError("Unknown parameter: {}.".format(op))
-
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
-
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
-        outputs={'Out': [out]},
+        outputs={'Out': [tensor]},
         attrs={'ring_id': ring_id,
                'use_calc_stream': use_calc_stream})
-    return out
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):

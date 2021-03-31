@@ -14,7 +14,7 @@
 
 from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
-from ..mpu.data import broadcast_input_data, broadcast_mp_parameters, broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import *
 
 
 class ModelParallel(MetaParallelBase):
@@ -43,15 +43,19 @@ class ModelParallel(MetaParallelBase):
     def _post_forward(self, output):
         pass
 
-    def backward_impl(self, loss):
+    def _pre_backward(self, loss):
+        pass
+
+    def backward_impl(self, loss, parameters):
+        self._loss_parameters = parameters
         self._pre_backward(loss)
 
         loss.backward()
 
         self._post_backward(loss)
 
-    def _pre_backward(self, loss):
-        pass
-
     def _post_backward(self, loss):
-        pass
+        if not self._loss_parameters:
+            fused_allreduce_gradients(list(self._layers.parameters()))
+        else:
+            fused_allreduce_gradients(list(self._loss_parameters))

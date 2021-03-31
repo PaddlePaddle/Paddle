@@ -267,6 +267,10 @@ class Fleet(object):
         assert self._topology is not None
         return self._topology
 
+    @dygraph_only
+    def run_backward(self, loss, parameters=None):
+        self.model.backward_impl(loss, parameters)
+
     def is_first_worker(self):
         """
         Check whether the node is the first instance of worker.

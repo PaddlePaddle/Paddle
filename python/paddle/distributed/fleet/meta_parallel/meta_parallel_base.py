@@ -39,7 +39,7 @@ class MetaParallelBase(Layer):
     def _post_forward(self, output):
         pass
 
-    def backward_impl(self, loss):
+    def backward_impl(self, loss, parameters=None):
         self._pre_backward(loss)
 
         loss.backward()
