@@ -151,9 +151,7 @@ class GraphPyClient : public GraphPyService {
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
-  // void set_local_graph_service(GraphBrpcService *service){
-  //   worker_ptr->set_local_graph_service(service);
-  // }
+
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   int get_client_id() { return client_id; }

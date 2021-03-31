@@ -72,9 +72,6 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
     host_sign_list.push_back(ph_host.serialize_to_string());
     index++;
   }
-  // VLOG(0) << "IN set up rank = " << rank;
-  // start_client();
-  // start_server(server_list[rank], std::stoul(port_list[rank]));
 }
 void GraphPyClient::start_client() {
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
@@ -96,25 +93,22 @@ void GraphPyServer::start_server() {
   std::string ip = server_list[rank];
   uint32_t port = std::stoul(port_list[rank]);
   server_thread = new std::thread([this, &ip, &port]() {
-    std::function<void()> func = [this, &ip, &port]() {
-      ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
+    ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
 
-      auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-      _ps_env.set_ps_servers(&this->host_sign_list,
-                             this->host_sign_list.size());  // test
-      pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
-          (paddle::distributed::GraphBrpcServer*)
-              paddle::distributed::PSServerFactory::create(server_proto));
-      VLOG(0) << "pserver-ptr created ";
-      std::vector<framework::ProgramDesc> empty_vec;
-      framework::ProgramDesc empty_prog;
-      empty_vec.push_back(empty_prog);
-      pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
-      pserver_ptr->start(ip, port);
-    };
-    std::thread t1(func);
-    t1.join();
+    auto _ps_env = paddle::distributed::PaddlePSEnvironment();
+    _ps_env.set_ps_servers(&this->host_sign_list,
+                           this->host_sign_list.size());  // test
+    pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
+        (paddle::distributed::GraphBrpcServer*)
+            paddle::distributed::PSServerFactory::create(server_proto));
+    VLOG(0) << "pserver-ptr created ";
+    std::vector<framework::ProgramDesc> empty_vec;
+    framework::ProgramDesc empty_prog;
+    empty_vec.push_back(empty_prog);
+    pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
+    pserver_ptr->start(ip, port);
   });
+  server_thread->detach();
   sleep(3);
 }
 ::paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
