@@ -405,6 +405,6 @@ endif()
 
 if(APPLE)
   set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.dylib
       CACHE INTERNAL "Paddle custom op lib")
 endif()
