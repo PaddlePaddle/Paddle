@@ -30,6 +30,7 @@ from .extension_utils import clean_object_if_change_cflags
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
+from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
 from ...fluid import core
 
@@ -422,13 +423,23 @@ class BuildExtension(build_ext, object):
                 # cxx compile Cpp source
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
+                    # make sure to use clang to as compiler
+                    if OS_NAME.startswith("darwin"):
+                        compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
+                        linker_infos = ['clang'] + CLANG_LINK_FLAGS
+                        self.compiler.set_executables(
+                            compiler=compiler_infos,
+                            compiler_so=compiler_infos,
+                            compiler_cxx=['clang'],
+                            linker_exe=['clang'],
+                            linker_so=linker_infos, )
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=False)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
-                self.compiler.compiler_so = original_compiler
+                self.compiler.set_executable('compiler_so', original_compiler)
 
         def win_custom_single_compiler(sources,
                                        output_dir=None,

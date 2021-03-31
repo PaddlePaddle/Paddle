@@ -44,6 +44,13 @@ MSVC_COMPILE_FLAGS = [
     '/wd4190', '/EHsc', '/w', '/DGOOGLE_GLOG_DLL_DECL',
     '/DBOOST_HAS_STATIC_ASSERT', '/DNDEBUG', '/DPADDLE_USE_DSO'
 ]
+CLANG_COMPILE_FLAGS = [
+    '-fno-common', '-dynamic', '-DNDEBUG', '-g', '-fwrapv', '-O3', '-arch',
+    'x86_64'
+]
+CLANG_LINK_FLAGS = [
+    '-bundle', '-undefined', 'dynamic_lookup', '-arch', 'x86_64'
+]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
 
