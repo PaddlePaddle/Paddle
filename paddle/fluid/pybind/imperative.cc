@@ -494,6 +494,39 @@ void BindImperative(py::module *m_ptr) {
       },
       py::return_value_policy::take_ownership);
 
+  m.def("_array_to_share_memory_tensor",
+        [](py::object &obj) {
+          // 1. cast to python array
+          auto array = obj.cast<py::array>();
+          PADDLE_ENFORCE_NE(
+              string::Sprintf("%s", array.dtype()).compare("object"), 0,
+              platform::errors::InvalidArgument(
+                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Usually this means the input data contains nested "
+                  "lists with different lengths.\n  * Check the reader "
+                  "function passed to 'set_(sample/sample_list/batch)"
+                  "_generator' to locate the data causes this issue."));
+          // 2. construcct LoDTensor
+          framework::LoDTensor t;
+          SetTensorFromPyArray<platform::CPUPlace>(&t, array,
+                                                   platform::CPUPlace(), true);
+          // 3. allocate shared memory
+          void *data_ptr = t.data<void>();
+          size_t data_size = t.numel() * framework::SizeOfType(t.type());
+          auto shared_writer_holder =
+              memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+          // 4. maintain mmap fd set & backup ipc_name
+          const std::string &ipc_name = shared_writer_holder->ipc_name();
+          memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+          // 5. copy data & reset holder
+          memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                       platform::CPUPlace(), data_ptr, data_size);
+          t.ResetHolder(shared_writer_holder);
+
+          return t;
+        },
+        py::return_value_policy::take_ownership);
+
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
     for (size_t i = 0; i < tensor_list.size(); ++i) {
       auto t = tensor_list[i].cast<framework::LoDTensor>();
@@ -611,15 +644,17 @@ void BindImperative(py::module *m_ptr) {
              // TODO(liym27): Try not to call TensorToPyArray because it always
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
-               std::vector<int> axes, starts, ends, steps, decrease_axis,
+               std::vector<int> axes, starts, ends, steps, decrease_axes,
                    infer_flags;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                  &steps, &decrease_axis, &infer_flags);
+                                  &steps, &decrease_axes, &infer_flags);
 
-               framework::AttributeMap attrs = {{"axes", axes},
-                                                {"starts", starts},
-                                                {"ends", ends},
-                                                {"steps", steps}};
+               framework::AttributeMap attrs = {
+                   {"axes", axes},
+                   {"starts", starts},
+                   {"ends", ends},
+                   {"steps", steps},
+                   {"decrease_axes", decrease_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
@@ -1109,6 +1144,35 @@ void BindImperative(py::module *m_ptr) {
               y = x.cuda(1)
               print(y.place)        # CUDAPlace(1)
        )DOC")
+      .def("_share_memory",
+           [](const std::shared_ptr<imperative::VarBase> &self) {
+#ifndef _WIN32
+             PADDLE_ENFORCE_EQ(
+                 platform::is_cpu_place(self->Place()), true,
+                 platform::errors::InvalidArgument(
+                     "Sharing memory only support CPU Tensor currently"));
+             // 1. get LoDTensor
+             auto *t = self->MutableVar()->GetMutable<framework::LoDTensor>();
+             // 2. allocate shared memory
+             void *data_ptr = t->data<void>();
+             size_t data_size = t->numel() * framework::SizeOfType(t->type());
+             auto shared_writer_holder =
+                 memory::allocation::AllocateMemoryMapWriterAllocation(
+                     data_size);
+             // 3. maintain mmap fd set & backup ipc_name
+             const std::string &ipc_name = shared_writer_holder->ipc_name();
+             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+             // 4. copy data & reset holder
+             memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                          platform::CPUPlace(), data_ptr, data_size);
+             t->ResetHolder(shared_writer_holder);
+             return *t;
+#else
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Sharing memory in Windows OS is not supported currently"));
+#endif
+           },
+           py::return_value_policy::reference)
       .def("copy_", &imperative::VarBase::CopyFrom)
       .def("_copy_to",
            [](const std::shared_ptr<imperative::VarBase> &self,
