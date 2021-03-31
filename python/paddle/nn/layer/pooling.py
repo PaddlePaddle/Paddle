@@ -41,12 +41,12 @@ class AvgPool1D(layers.Layer):
     The output tensor shape will be [N, C, output_size].
 
     The output value of the layer with input size (N, C, L),
-    output (N, C, :math:`L_{out}`) and kernel_size k can be precisely described as
+    output (N, C, :math:`L_{out}`) and kernel_size ksize can be precisely described as
     For average pool1d:
 
     ..  math::
 
-        Output(N_i, C_i, l) &= mean(Input[N_i, C_i, stride \times l:stride \times l+k])
+        Output(N_i, C_i, l) &= \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
 
 
     Args:
@@ -142,8 +142,8 @@ class AvgPool2D(layers.Layer):
 
         ..  math::
 
-            out(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
-                input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
+            Output(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
+                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
 
     Args:
        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -444,8 +444,8 @@ class MaxPool2D(layers.Layer):
 
         ..  math::
 
-            out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
-                & \text{input}(N_i, C_j, \text{stride[0]} \times h + m, \text{stride[1]} \times w + n)
+            Output(N_i, C_j, h, w) = \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1}
+                Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
 
     Args:
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -647,7 +647,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
         lend &= ceil((i + 1) * L_{in} / L_{out})
 
-        Output(i) &= \frac{ \sum{Input[lstart:lend]}}{lend - lstart}
+        Output(i) &= \frac{ \sum Input[lstart:lend]}{lend - lstart}
 
     Args:
         output_size (int): The target output size. It must be an integer.
@@ -720,7 +720,7 @@ class AdaptiveAvgPool2D(layers.Layer):
 
         wend &= ceil((j + 1) * W_{in} / W_{out})
 
-        Output(i ,j) &= \frac{\sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+        Output(i ,j) &= \frac{\sum Input[hstart:hend, wstart:wend]}{(hend - hstart) * (wend - wstart)}
 
 
     Parameters:
@@ -809,7 +809,7 @@ class AdaptiveAvgPool3D(layers.Layer):
 
         wend &= ceil((k + 1) * W_{in} / W_{out})
 
-        Output(i ,j, k) &= \frac{\sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+        Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
 
     Parameters:
@@ -823,7 +823,7 @@ class AdaptiveAvgPool3D(layers.Layer):
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
     Shape:
-        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
+        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float32, float64\.
         output (Tensor): The output tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type is same as input x.
 
     Returns:
