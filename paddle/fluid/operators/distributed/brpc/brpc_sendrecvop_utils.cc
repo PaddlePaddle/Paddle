@@ -15,6 +15,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
+#ifdef PADDLE_WITH_RCCL
+#include <rccl.h>
+#endif
 #include <sys/time.h>
 #include <limits>
 #include <memory>
@@ -144,7 +147,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request->set_type(::sendrecv::SELECTED_ROWS);
     payload.reset(new TensorPayload(GetSelectedRowsPayload(var, ctx, request)));
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
     const ncclUniqueId& uid = var->Get<ncclUniqueId>();
@@ -172,7 +175,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
         static_cast<const char*>(payload->ptr()), payload->memory_size());
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       IOBufWriter::AppendZeroCopy(
           name, iobuf, ::sendrecv::VariableMessage::kSerializedFieldNumber,
           static_cast<const char*>(payload->ptr()), payload->memory_size(),

@@ -12,9 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/operators/group_norm_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -217,10 +225,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(
     d_bias_data += dval;
     d_scale_data += val * dval;
   }
-  CudaAtomicAddWithWarp(&d_mean[bid * groups + gid], d_mean_data);
-  CudaAtomicAddWithWarp(&d_var[bid * groups + gid], d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&d_scale[ccid], d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&d_bias[ccid], d_bias_data);
+  CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
+  CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
+  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 }
 
 template <typename T, int flags>

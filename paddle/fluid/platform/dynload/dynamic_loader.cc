@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 #include <string>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -337,7 +338,7 @@ void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprtc.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -347,7 +348,7 @@ void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhip_hcc.so", false);
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
@@ -416,9 +417,6 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 #if defined(__APPLE__) || defined(__OSX__)
   PADDLE_THROW(platform::errors::Unimplemented(
       "Create custom cpp op outside framework do not support Apple."));
-#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Create custom cpp op outside framework do not support Windows."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 #endif

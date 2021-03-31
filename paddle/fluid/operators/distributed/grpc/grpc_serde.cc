@@ -15,6 +15,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
+#ifdef PADDLE_WITH_RCCL
+#include <rccl.h>
+#endif
 #include <limits>
 #include <memory>
 #include "grpcpp/impl/codegen/byte_buffer.h"
@@ -75,7 +78,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request.set_type(::sendrecv::SELECTED_ROWS);
     payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
 #endif
@@ -91,7 +94,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteRawBytes(std::string(header.data(), header.size()));
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (var->IsType<ncclUniqueId>()) {
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                               NCCL_UNIQUE_ID_BYTES);

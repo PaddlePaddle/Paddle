@@ -287,6 +287,59 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
+class TensorRTSubgraphPassTransposeTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            transpose_out = self.append_transpose(data)
+            out = fluid.layers.batch_norm(transpose_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassTransposeTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_transpose(self, data):
+        return fluid.layers.transpose(data, [0, 3, 1, 2])
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
+class TensorRTSubgraphPassFlattenTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            flatten_out = self.append_flatten(data)
+            reshape_out = fluid.layers.reshape(flatten_out, [-1, 0, 1, 1])
+            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+        self.feeds = {
+            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassFlattenTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def append_flatten(self, data):
+        return fluid.layers.flatten(data, axis=1)
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+
+
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
     def setUp(self):
         self.set_params()
@@ -359,6 +412,58 @@ class TensorRTSubgraphPassElementwiseMulTest(
         TensorRTSubgraphPassElementwiseTest):
     def append_eltwise(self, data1, data2):
         return fluid.layers.elementwise_mul(x=data1, y=data2)
+
+
+class TensorRTSubgraphPassElementwiseSerializeTest(
+        TensorRTSubgraphPassElementwiseTest):
+    def setUp(self):
+        super(TensorRTSubgraphPassElementwiseSerializeTest, self).setUp()
+        self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+
+    def test_check_output(self):
+        if os.path.exists(self.path + "_opt_cache"):
+            shutil.rmtree(self.path + "_opt_cache")
+        super(TensorRTSubgraphPassElementwiseSerializeTest,
+              self).test_check_output()
+
+
+class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data1 = fluid.data(
+                name="data1", shape=[-1, 3, 64, 64], dtype="float32")
+            data2 = fluid.data(name="data2", shape=[64, 64], dtype="float32")
+            eltwise_out = self.append_eltwise(data1, data2)
+            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+        self.feeds = {
+            "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
+            "data2": np.random.random([64, 64]).astype("float32"),
+        }
+        self.enable_trt = True
+        self.trt_parameters = TensorRTSubgraphPassElementwiseBroadcastDynamicTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+        self.dynamic_shape_params = TensorRTSubgraphPassElementwiseBroadcastDynamicTest.DynamicShapeParam(
+            {
+                'data1': [1, 3, 8, 64],
+                'data2': [8, 64]
+            }, {'data1': [1, 3, 512, 64],
+                'data2':
+                [512, 64]}, {'data1': [1, 3, 256, 64],
+                             'data2': [256, 64]}, False)
+        self.fetch_list = [out]
+
+    def append_eltwise(self, data1, data2):
+        return fluid.layers.elementwise_add(x=data1, y=data2)
+
+    def test_check_output(self):
+        if os.path.exists(self.path + "_opt_cache"):
+            shutil.rmtree(self.path + "_opt_cache")
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):

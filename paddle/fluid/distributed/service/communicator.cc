@@ -39,7 +39,7 @@ inline double GetCurrentUS() {
 Communicator::Communicator() {}
 
 void Communicator::init_gflag(const std::string &gflags) {
-  VLOG(0) << "Init With Gflags:" << gflags;
+  VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
@@ -372,6 +372,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
+  platform::RecordEvent record_event("Communicator->SendGlobalStep");
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -775,6 +776,7 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
+  platform::RecordEvent record_event("GeoCommunicator->Send");
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1011,6 +1013,7 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {

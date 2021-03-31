@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -127,7 +126,7 @@ void TensorFromArray(const T* src, const size_t& array_size,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  src_place, src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(
         BOOST_GET_CONST(platform::CUDAPlace, dst_place), dst_ptr, src_place,
@@ -150,7 +149,7 @@ void TensorFromVector(const std::vector<T>& src,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  src_place, src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(
         BOOST_GET_CONST(platform::CUDAPlace, dst_place), dst_ptr, src_place,
@@ -187,7 +186,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
                  BOOST_GET_CONST(platform::CPUPlace, src.place()), src_ptr,
                  size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
         dst_place, dst_ptr, BOOST_GET_CONST(platform::CUDAPlace, src.place()),

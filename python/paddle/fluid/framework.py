@@ -53,7 +53,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'load_op_library',
     'require_version',
     'device_guard',
     'set_flags',
@@ -248,8 +247,9 @@ def _fake_interface_only_(func):
         raise AssertionError(
             "'%s' should be called by imperative Varible in imperative mode, please run it in dygraph "
             "mode. You can turn off paddle.enable_static() if you are in static mode, or turn off "
-            "ProgramTranslator if you are using @paddle.jit.to_static" %
-            func.__name__)
+            "ProgramTranslator if you are using @paddle.jit.to_static. If you have to run ProgramTranslator, "
+            "please use other API to replace '%s'" % (func.__name__,
+                                                      func.__name__))
 
     return __impl__
 
@@ -876,7 +876,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
+                temp_out = var.block.create_var(dtype='int64')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
@@ -1862,10 +1862,47 @@ class Variable(object):
         if not isinstance(item, tuple):
             item = [item]
 
+        decrease_axes = []
         axes = []
         starts = []
         ends = []
+        steps = []
+
         max_integer = sys.maxsize
+
+        def replace_ellipsis(item):
+            # Use slice(None) to replace Ellipsis.
+            # For var, var.shape = [3,4,5,6]
+            #
+            #   var[..., 1:2] -> var[:, :, :, 1:2]
+            #   var[0, ...] -> var[0]
+            #   var[0, ..., 1:2] -> var[0, :, :, 1:2]
+
+            item = list(item)
+
+            # Remove Variable to skip bug when counting Ellipsis
+            item_remove_var = [
+                ele for ele in item if not isinstance(ele, Variable)
+            ]
+            ell_count = item_remove_var.count(Ellipsis)
+            if ell_count == 0:
+                return item
+            elif ell_count > 1:
+                raise IndexError(
+                    "An index can only have a single ellipsis ('...')")
+
+            ell_idx = item.index(Ellipsis)
+
+            if ell_idx == len(item) - 1:
+                return item[:-1]
+            else:
+                item[ell_idx:ell_idx + 1] = [slice(None)] * (
+                    len(self.shape) - len(item) + 1)
+
+            return item
+
+        item = replace_ellipsis(item)
+
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -1875,23 +1912,55 @@ class Variable(object):
                 if start is None and end is None and step is None:
                     continue
 
-                start = 0 if start is None else start
                 step = 1 if step is None else step
 
-                # TODO: support cases when step != 1
-                if step != 1:
+                # TODO: support cases when step < 1
+                if not isinstance(step, Variable) and step == 0:
                     raise ValueError(
-                        "When assign a value to a paddle.Tensor, only support step is 1, "
+                        "When assign a value to a paddle.Tensor, step can not be 0, "
                         "but received step is {}.".format(step))
-                end = max_integer if end is None else end
+
+                if isinstance(step, Variable) and (start is None or
+                                                   end is None):
+                    raise ValueError(
+                        "When assign a value to a paddle.Tensor, it's not supported that "
+                        "the start or end is None when the type of step is paddle.Tensor."
+                    )
+
+                if start is None:
+                    start = 0 if step > 0 else max_integer
+
+                if end is None:
+                    end = max_integer if step > 0 else (0 - max_integer)
             else:
+                decrease_axes.append(dim)
                 start = slice_item
                 end = slice_item + 1 if slice_item != -1 else max_integer
+                step = 1
+
             axes.append(dim)
             starts.append(start)
             ends.append(end)
+            steps.append(step)
 
-        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes
+        }
+
+        from .layers import utils
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            del attrs['starts']
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            del attrs['ends']
+        if utils._contain_var(steps):
+            inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+            del attrs['steps']
 
         # 2. Parse value
         dtype = self.dtype
@@ -1936,8 +2005,10 @@ class Variable(object):
                 "paddle.Tensor to a paddle.Tensor, but received {}".format(
                     type(value)))
 
-        self.block.append_op(
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
             type="set_value", inputs=inputs, outputs={'Out': self}, attrs=attrs)
+
         return self
 
 
@@ -2059,7 +2130,8 @@ class Operator(object):
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_bkcl_id', 'c_gen_bkcl_id', 'gen_nccl_id', 'c_gen_nccl_id',
         'c_comm_init', 'c_sync_calc_stream', 'c_sync_comm_stream',
-        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv'
+        'queue_generator', 'dequeue', 'enqueue', 'heter_listen_and_serv',
+        'c_wait_comm', 'c_wait_compute'
     }
 
     def __init__(self,
@@ -2968,7 +3040,11 @@ class Block(object):
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
                         # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
-                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                        # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
+                        if op.type in [
+                                "c_broadcast", "c_sync_comm_stream",
+                                "coalesce_tensor"
+                        ]:
                             continue
                         init_ops.append(op)
                 return init_ops
@@ -5692,33 +5768,6 @@ def _dygraph_place_guard(place):
     finally:
         _global_expected_place_ = tmp_place
         _set_dygraph_tracer_expected_place(tmp_place)
-
-
-def load_op_library(lib_filename):
-    """
-    :api_attr: Static Graph
-
-    Load a dynamic library, including custom operators and kernels.
-    When library is loaded, ops and kernels registered in the library
-    will be available in PaddlePaddle main process.
-    Please note, the type of custom operators can't have the same type
-    with the existing operators in the framework.
-
-    Args:
-        lib_filename (str): name of dynamic library.
-    
-    Returns:
-        list[str]: new registered custom op names.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            #fluid.load_op_library('custom_op.so')
-
-    """
-    core.load_op_library(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
 
 
 def switch_device(device):

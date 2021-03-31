@@ -28,7 +28,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -145,6 +144,11 @@ struct PDNode {
   PDNode* assert_is_ops_nth_output(
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
+
+  PDNode* assert_is_only_input_of_ops(
+      const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_only_output_of_ops(
+      const std::unordered_set<std::string>& op_types);
 
   PDNode* assert_has_n_inputs(size_t n);
   PDNode* assert_has_n_outputs(size_t n);
@@ -1135,9 +1139,34 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
-
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
+};
+
+// Scale + Quantize
+struct ScaleQuant : public PatternBase {
+  ScaleQuant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "scale_quant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+};
+
+// Quantize + Conv2d
+struct QuantConv : public PatternBase {
+  QuantConv(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_conv") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(conv_in);
+  PATTERN_DECL_NODE(conv_op);
 };
 
 // Scale + Matmul
@@ -1338,7 +1367,6 @@ struct LastBfloat16Ops : public PatternBase {
 
   PATTERN_DECL_NODE(op);
   PATTERN_DECL_NODE(op_out);
-  PATTERN_DECL_NODE(next_op);
 };
 
 struct FirstBfloat16Ops : public PatternBase {
@@ -1346,7 +1374,6 @@ struct FirstBfloat16Ops : public PatternBase {
       : PatternBase(pattern, name_scope, "first_bfloat16_ops") {}
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(op_in);
   PATTERN_DECL_NODE(op);
 };
@@ -1358,17 +1385,6 @@ struct DuplicatedInputs : public PatternBase {
   PDNode* operator()();
 
   PATTERN_DECL_NODE(op);
-};
-
-struct UnnecessaryReorders : public PatternBase {
-  UnnecessaryReorders(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "unnecessary_reorders") {}
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(quant_in);
-  PATTERN_DECL_NODE(quant_op);
-  PATTERN_DECL_NODE(quant_out);
 };
 
 // Pattern used for enforcing inplace computation for in-place computation

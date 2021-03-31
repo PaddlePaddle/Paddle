@@ -81,10 +81,35 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         "TensorRT's tensor input requires at most 4 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
+  auto ShapeStr = [](const std::vector<T>& shape) {
+    std::ostringstream os;
+    os << "[";
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (i == shape.size() - 1) {
+        os << shape[i];
+      } else {
+        os << shape[i] << ",";
+      }
+    }
+    os << "]";
+    return os.str();
+  };
   if (!with_dynamic_shape) {
     if (shape.size() == 4UL) {
+      if (shape[2] == -1 || shape[3] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
       return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
     } else if (shape.size() == 3UL) {
+      if (shape[1] == -1 || shape[2] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
       return nvinfer1::Dims2(shape[1], shape[2]);
     }
     return nvinfer1::DimsCHW(shape[1], 1, 1);
@@ -280,8 +305,14 @@ class TensorRTEngine {
   }
 
   int GetDeviceId() { return device_id_; }
+
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
+
+  nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
+                                           int num_inputs,
+                                           plugin::PluginTensorRTV2Ext* plugin);
+
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
   }
@@ -389,6 +420,7 @@ class TensorRTEngine {
       itensor_map_;
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
+  std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;
 
   // TensorRT related internal members
   template <typename T>

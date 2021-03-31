@@ -37,9 +37,15 @@ TEST(selected_rows_functor, gpu_add) {
           {static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_EQ(hipDeviceSynchronize(), 0,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "The all synchronization on the cuda is error!"));
+#else
   PADDLE_ENFORCE_EQ(cudaDeviceSynchronize(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "The all synchronization on the cuda is error!"));
+#endif
 
   std::vector<int64_t> rows2{0, 5, 7, 9};
   std::unique_ptr<paddle::framework::SelectedRows> selected_rows2{

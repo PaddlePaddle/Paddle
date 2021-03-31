@@ -280,7 +280,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
                 if isinstance(devices_per_proc[i], (list, tuple)):
                     trainer.gpus.extend(devices_per_proc[i])
                 else:
-                    trainer.gpus.extend(devices_per_proc[i])
+                    trainer.gpus.append(devices_per_proc[i])
             trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1

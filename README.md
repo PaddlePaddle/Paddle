@@ -36,7 +36,7 @@ pip install paddlepaddle-gpu
 ```
 More infomation about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 12 hours to train models online per day. If you can insist on that for five consecutive days, then you will receive an extra 48 hours. [Click here to start](https://ai.baidu.com/support/news?action=detail&id=981).
+Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 10 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
 
 ## FOUR LEADING TECHNOLOGIES
 
