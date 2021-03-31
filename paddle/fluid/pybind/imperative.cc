@@ -611,15 +611,17 @@ void BindImperative(py::module *m_ptr) {
              // TODO(liym27): Try not to call TensorToPyArray because it always
              // copys data to cpu place, which reduces performance.
              if (parse_index && value_is_tensor) {
-               std::vector<int> axes, starts, ends, steps, decrease_axis,
+               std::vector<int> axes, starts, ends, steps, decrease_axes,
                    infer_flags;
                ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
-                                  &steps, &decrease_axis, &infer_flags);
+                                  &steps, &decrease_axes, &infer_flags);
 
-               framework::AttributeMap attrs = {{"axes", axes},
-                                                {"starts", starts},
-                                                {"ends", ends},
-                                                {"steps", steps}};
+               framework::AttributeMap attrs = {
+                   {"axes", axes},
+                   {"starts", starts},
+                   {"ends", ends},
+                   {"steps", steps},
+                   {"decrease_axes", decrease_axes}};
 
                imperative::NameVarBaseMap ins = {{"Input", {self}}};
                imperative::NameVarBaseMap outs = {{"Out", {self}}};
@@ -984,7 +986,7 @@ void BindImperative(py::module *m_ptr) {
                PADDLE_THROW(platform::errors::Unimplemented(
                    "Imperative allreduce is not supported when paddle is "
                    "not compiled with NCCL."));
-#endif  // PADDLE_WITH_NCCL
+#endif  // PADDLE_WITH_NCCL or PADDLE_WITH_RCCL
              }
            },
            py::call_guard<py::gil_scoped_release>())
@@ -1435,7 +1437,7 @@ void BindImperative(py::module *m_ptr) {
         py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<imperative::NCCLParallelContext, imperative::ParallelContext,
              std::shared_ptr<imperative::NCCLParallelContext>>(
       m, "NCCLParallelContext")

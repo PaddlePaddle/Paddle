@@ -29,12 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
-#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -1125,7 +1123,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_fetch_list",
            [](Variable &self) { return self.GetMutable<FetchList>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_NCCL))
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -1753,7 +1751,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
-  m.def("load_op_library", framework::LoadOpLib);
   m.def("load_op_meta_info_and_register_op",
         framework::LoadOpMetaInfoAndRegisterOp);
   m.def("init_devices", []() { framework::InitDevices(); });
@@ -2496,6 +2493,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.nccl_comm_num_; },
           [](BuildStrategy &self, int nccl_comm_num) {
             self.nccl_comm_num_ = nccl_comm_num;
+          })
+      .def_property(
+          "bkcl_comm_num",
+          [](const BuildStrategy &self) { return self.bkcl_comm_num_; },
+          [](BuildStrategy &self, int bkcl_comm_num) {
+            self.bkcl_comm_num_ = bkcl_comm_num;
           })
       .def_property("use_hierarchical_allreduce",
                     [](const BuildStrategy &self) {

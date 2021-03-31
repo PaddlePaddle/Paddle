@@ -1603,6 +1603,10 @@ def conv2d(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
+    if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+            "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+        use_cudnn = False
+
     helper.append_op(
         type=l_type,
         inputs={
@@ -6137,9 +6141,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64',
-                 'bool'], 'reshape')
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'uint16'
+    ], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
@@ -11354,9 +11358,11 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        y, 'y', ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -11428,8 +11434,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return dygraph_utils._append_activation_in_dygraph(out)
 
     check_variable_and_dtype(x, "x", [
-        'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64',
-        'uint8'
+        'float16', 'uint16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
     ], "scale")
     inputs = {'X': [x]}
     attrs = {
@@ -13334,7 +13340,7 @@ def shuffle_channel(x, group, name=None):
 
 
 @templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
+def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
@@ -13348,6 +13354,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCHW" or "NHWC". Default: "NCHW".
 
     Returns:
         out(Tensor): The temporal shifting result is a tensor with the
@@ -13365,6 +13373,13 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             input = paddle.randn([6, 4, 2, 2])
             out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
+                         "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio, 'data_format', data_format)
+
     helper = LayerHelper("temporal_shift", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
     check_type(seg_num, 'seg_num', int, 'temporal_shift')
@@ -13375,16 +13390,15 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
 
-    if in_dygraph_mode():
-        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
-                                       shift_ratio)
-
     helper.append_op(
         type="temporal_shift",
         inputs={"X": x},
         outputs={"Out": out},
-        attrs={"seg_num": seg_num,
-               "shift_ratio": shift_ratio})
+        attrs={
+            "seg_num": seg_num,
+            "shift_ratio": shift_ratio,
+            "data_format": data_format
+        })
     return out
 
 
