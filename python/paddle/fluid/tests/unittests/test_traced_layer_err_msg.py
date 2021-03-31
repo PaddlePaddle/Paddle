@@ -115,36 +115,36 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x])
 
-            dirname = './traced_layer_err_msg'
+            path = './traced_layer_err_msg'
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model([0])
             self.assertEqual(
-                "The type of 'dirname' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".
+                "The type of 'path' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [0], [None])
+                traced_layer.save_inference_model(path, [0], [None])
             self.assertEqual(
                 "The type of 'each element of fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [0], False)
+                traced_layer.save_inference_model(path, [0], False)
             self.assertEqual(
                 "The type of 'fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".
                 format(self.type_str, self.type_str, self.type_str),
                 str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, [None], [0])
+                traced_layer.save_inference_model(path, [None], [0])
             self.assertEqual(
                 "The type of 'each element of feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. ".
                 format(self.type_str, self.type_str), str(e.exception))
             with self.assertRaises(TypeError) as e:
-                traced_layer.save_inference_model(dirname, True, [0])
+                traced_layer.save_inference_model(path, True, [0])
             self.assertEqual(
                 "The type of 'feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".
                 format(self.type_str, self.type_str, self.type_str),
                 str(e.exception))
 
-            traced_layer.save_inference_model(dirname)
+            traced_layer.save_inference_model(path)
 
     def _train_simple_net(self):
         layer = None
