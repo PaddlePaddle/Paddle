@@ -22,6 +22,7 @@ import copy
 import weakref
 import warnings
 from copy import deepcopy
+import inspect
 
 from . import parallel_helper
 from .. import unique_name
@@ -1287,10 +1288,12 @@ class Layer(core.Layer):
             if state is None:
                 raise ValueError("{} is not found in the provided dict.".format(
                     key))
-            if list(state.shape) != list(param.shape):
+            state_shape = state.shape() if inspect.ismethod(
+                state.shape) else state.shape
+            if list(state_shape) != list(param.shape):
                 raise ValueError(
                     "{} receives a shape {}, but the expected shape is {}.".
-                    format(key, list(state.shape), list(param.shape)))
+                    format(key, list(state_shape), list(param.shape)))
             return param, state
 
         matched_param_state = []
