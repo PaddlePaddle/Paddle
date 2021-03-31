@@ -148,8 +148,6 @@ class FP16Utils(object):
                 OP_ROLE_KEY: OpRole.Optimize
             })
         # this allreduce communication should not overlap with calc
-        # insert_sync_calc_op(block, update_loss_scaling_op_idx + 1,
-        #                     [inf_var_int32])
         block._insert_op_without_sync(
             update_loss_scaling_op_idx + 1,
             type='c_allreduce_max',
@@ -160,10 +158,6 @@ class FP16Utils(object):
                 'use_calc_stream': True,
                 OP_ROLE_KEY: OpRole.Optimize
             })
-
-        # comm_op_num = insert_sync_comm_op(block, update_loss_scaling_op_idx + 3,
-        #                                   ring_id, [inf_var_int32])
-
         block._insert_op_without_sync(
             update_loss_scaling_op_idx + 2,
             type='cast',

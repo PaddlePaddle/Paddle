@@ -890,15 +890,14 @@ def _append_backward_ops_with_checkpoints_(
                     var_name_dict[name] = name + var_suffix
 
                     # we should create the rename var in subprog, otherwise its VarType will be BOOL
+                    ref_var = block.program.global_block().var(name)
                     block.create_var(
                         name=var_name_dict[name],
-                        shape=block.program.global_block().var(name).shape,
-                        dtype=block.program.global_block().var(name).dtype,
-                        type=block.program.global_block().var(name).type,
-                        persistable=block.program.global_block().var(
-                            name).persistable,
-                        stop_gradient=block.program.global_block().var(name)
-                        .stop_gradient)
+                        shape=ref_var.shape,
+                        dtype=ref_var.dtype,
+                        type=ref_var.type,
+                        persistable=ref_var.var(name).persistable,
+                        stop_gradient=ref_var.var(name).stop_gradient)
 
         # 3.a. add ops in current recompute_segment as forward recomputation ops
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,

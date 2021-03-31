@@ -58,9 +58,8 @@ class AMPOptimizer(MetaOptimizerBase):
         # computation by split the check_finite_and_unscale op.
         is_distributed = self.role_maker._worker_num() > 1
         if self.user_defined_strategy.sharding:
-            # if self.user_defined_strategy.sharding or self.user_defined_strategy.model_parallel:
             # FIXME(wangxi). sharding failed when split check_finite_and_unscale
-            # FIXME(JZ-LIANG). To support Sharding-Megatron-AMP, Megatron should follow Sharding's behavior
+            # FIXME(JZ-LIANG). To support Sharding-Megatron-AMP, Megatron should follow Sharding's behavior that to disable is_distributed.
             is_distributed = False
         self.wrapped_opt._set_distributed(is_distributed)
 

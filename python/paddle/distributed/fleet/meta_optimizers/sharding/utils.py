@@ -103,6 +103,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     idx_gradient_clip_allreduce = -1
 
     for idx, op in enumerate(block.ops):
+        # sharding use both allreduce and reduce to sync grad
         if op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
             if op.all_attrs()["use_calc_stream"] == False:
                 ring_id = op.desc.attr("ring_id")
@@ -136,7 +137,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 if var_name in dp_grads_status and dp_grads_status[
                         var_name] == 0:
                     dp_grads_status[var_name] = 1
-
+        # check sharding allreduce and  reduce but skip megatron allreduce
         elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
             if op.all_attrs()["use_calc_stream"] == False:
                 var_name = op.desc.input_arg_names()[0]
@@ -503,7 +504,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
     """
 
     def is_opt_vars(var):
-        # NOTE(liangjianzhong): The checks should be updated when add new compatible optimizer
+        # NOTE(JZ-LIANG): The checks should be updated when add new compatible optimizer
         # now only Momentum and adam are compatible with sharding
         checks = [
             "_moment1_0", "_moment2_0", "_beta1_pow_acc_0", "_beta2_pow_acc_0",
@@ -515,7 +516,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
         return False
 
     def is_gradient_merge_vars(var):
-        # NOTE(liangjianzhong): to revise save/load logic in framework instead of write this naive rule
+        # NOTE(JZ-LIANG): to revise save/load logic in framework instead of write this naive rule
 
         return var.name.endswith("@GradiantMerge")
 
