@@ -142,8 +142,8 @@ class AvgPool2D(layers.Layer):
 
         ..  math::
 
-            out(N_i, C_j, h, w)  = \frac{1}{ksize[0] * ksize[1]} \sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
-                input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
+            out(N_i, C_j, h, w)  = \frac{\sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
+                input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
 
     Args:
        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -647,7 +647,7 @@ class AdaptiveAvgPool1D(layers.Layer):
 
         lend &= ceil((i + 1) * L_{in} / L_{out})
 
-        Output(i) &= \frac{\sum(Input[lstart:lend])}{(lstart - lend)}
+        Output(i) &= \frac{ \sum{Input[lstart:lend]}}{lend - lstart}
 
     Args:
         output_size (int): The target output size. It must be an integer.
@@ -678,7 +678,7 @@ class AdaptiveAvgPool1D(layers.Layer):
             #     for i in range(m):
             #         lstart = floor(i * L / m)
             #         lend = ceil((i + 1) * L / m)
-            #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
+            #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lend - lstart)
             #
             import paddle
             import paddle.nn as nn
