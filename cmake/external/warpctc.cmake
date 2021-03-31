@@ -14,11 +14,15 @@
 
 INCLUDE(ExternalProject)
 
+IF(WITH_ROCM)
+    add_definitions(-DWARPCTC_WITH_HIP)
+ENDIF()
+
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         cd828e5b6c3b953b82af73f7f44cddc393a20efa)
+set(WARPCTC_TAG         c690fc5755abbdbdc98ef78d51ec10a6748a8cd1)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -57,6 +61,7 @@ ExternalProject_Add(
                     -DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
                     -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                     -DWITH_GPU=${WITH_GPU}
+                    -DWITH_ROCM=${WITH_ROCM}
                     -DWITH_OMP=${USE_OMP}
                     -DWITH_TORCH=OFF
                     -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
