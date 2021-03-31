@@ -48,7 +48,6 @@ class AvgPool1D(layers.Layer):
 
         Output(N_i, C_i, l) = \frac{Input[N_i, C_i, stride \times l:stride \times l+k]}{ksize}
 
-
     Parameters:
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
@@ -58,18 +57,17 @@ class AvgPool1D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
-                `padding[0]` on every sides.
-            4. A list[int] or tuple(int) whose length is \2. It has the form [pad_before, pad_after].
+               `padding[0]` on every sides.
+            4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
-                [pad_before, pad_after], ...].
-                Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-
-            The default value is \0.
+               [pad_before, pad_after], ...].
+               Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode, default is `True`.
         ceil_mode (bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
             and width. If it is set to False, the floor function will be used. The default value is False.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
-            Usually name is no need to set and None by default.
+        name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no nset and None by default.
 
     Returns:
         A callable object of AvgPool1D.
@@ -80,7 +78,6 @@ class AvgPool1D(layers.Layer):
         ValueError: If `padding` is a list or tuple but its length greater than 1.
         ShapeError: If the input is not a 3-D tensor.
         ShapeError: If the output's shape calculated is not greater than 0.
-
 
     Shape:
         input: 3-D tensor.
@@ -148,10 +145,10 @@ class AvgPool2D(layers.Layer):
                 Input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)}{ksize[0] * ksize[1]}
 
     Parameters:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+        kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        stride (int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
 
@@ -159,13 +156,12 @@ class AvgPool2D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
-                of each dimension.
-            4. A list[int] or tuple(int) whose length is \4. [pad_height_top, pad_height_bottom, pad_width_left,
-                pad_width_right] whose value means the padding size of each side.
+               of each dimension.
+            4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
+               pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-                ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
-
-            The default value is \0.
+               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+            The default value is 0.
         ceil_mode (bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
         exclusive (bool, optional): Whether to exclude padding points in average pooling
             mode, default is `true`.
@@ -258,11 +254,11 @@ class AvgPool3D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the
-                padding size of each dimension.
+               padding size of each dimension.
             4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top,
-                pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+               pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-                ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool, optional): ${ceil_mode_comment}
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode, default is True.
@@ -272,8 +268,8 @@ class AvgPool3D(layers.Layer):
              `"NDHWC"`. The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
              `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+             to :ref:`api_guide_Name`. Usually name is no need to set and
+             None by default.
 
     Returns:
         A callable object of AvgPool3D.
@@ -363,11 +359,11 @@ class MaxPool1D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An integer, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 1, which means the feature map is zero padded by the size of
-                `padding[0]` on every sides.
+               `padding[0]` on every sides.
             4. A list[int] or tuple(int) whose length is 2, It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after],
-                [pad_before, pad_after], ...].
-                Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+               [pad_before, pad_after], ...].
+               Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
 
             The default value is 0.
         return_mask (bool, optional): Whether return the max indices along with the outputs. default is `False`.
@@ -466,11 +462,11 @@ class MaxPool2D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 2, [pad_height, pad_weight] whose value means the padding size
-                of each dimension.
+               of each dimension.
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left,
-                pad_width_right] whose value means the padding size of each side.
+               pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-                ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask (bool, optional): Whether to return the max indices along with the outputs.
@@ -563,13 +559,13 @@ class MaxPool3D(layers.Layer):
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the
-                padding size of each dimension.
-            4. A list[int] or tuple(int) whose length is \6. [pad_depth_front, pad_depth_back, pad_height_top,
-                pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
+               padding size of each dimension.
+            4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top,
+               pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after],
-                ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+               ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
 
-            The default value is \0.
+            The default value is 0.
         ceil_mode (bool, optional): ${ceil_mode_comment}
         return_mask (bool, optional): Whether to return the max indices along with the outputs.
         data_format (str, optional): The data format of the input and output data. An optional string from: `"NCDHW"`,
@@ -674,8 +670,10 @@ class AdaptiveAvgPool1D(layers.Layer):
         ValueError: 'output_size' should be an integer.
 
     Shape:
-        x: 3-D tensor.
-        out: 3-D tensor.
+        x (Tensor): 3-D tensor. The input tensor of adaptive avg pool1d operator, which is a 3-D tensor.
+            The data type can be float32, float64.
+        output (Tensor): 3-D tensor. The output tensor of adaptive avg pool1d operator, which is a 3-D tensor.
+            The data type is same as input x.
 
     Examples:
         .. code-block:: python
