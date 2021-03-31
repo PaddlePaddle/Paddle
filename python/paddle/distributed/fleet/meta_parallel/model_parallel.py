@@ -14,24 +14,25 @@
 
 from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
-from ..mpu.data import broadcast_input_data
+from ..mpu.data import broadcast_input_data, broadcast_mp_parameters, broadcast_dp_parameters
 
 
 class ModelParallel(MetaParallelBase):
+    def _prepare_for_model(self):
+        broadcast_mp_parameters(self._layers, self._hcg)
+        broadcast_dp_parameters(self._layers, self._hcg)
+
     def __init__(self, layers, hcg):
         super(ModelParallel, self).__init__(layers)
         self._layers = layers
-        self.prepare_for_model()
-
-    def prepare_for_model(self):
-        # need to broadcast parameters
-        pass
+        self._hcg = hcg
+        self._prepare_for_model()
 
     def _pre_forward(self, *inputs, **kwargs):
-        return broadcast_input_data(inputs, kwargs)
+        return broadcast_input_data(self._hcg, *inputs, **kwargs)
 
     def forward(self, *inputs, **kwargs):
-        self._pre_forward(inputs, kwargs)
+        inputs, kwargs = self._pre_forward(*inputs, **kwargs)
 
         output = self._layers(*inputs, **kwargs)
 

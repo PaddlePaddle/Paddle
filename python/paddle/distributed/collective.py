@@ -97,6 +97,10 @@ class Group():
         else:
             return -1
 
+    def get_gloabl_rank(self, group_rank):
+        assert group_rank < len(self.ranks)
+        return self.ranks[group_rank]
+
 
 _global_env = None
 

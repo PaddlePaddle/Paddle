@@ -34,6 +34,17 @@ def _get_model_parallel_messgae():
     return model_parallel_group, world_size, local_rank, src_global_rank
 
 
+def _get_data_parallel_messgae():
+    import paddle.distributed.fleet as fleet
+    hcg = fleet.get_hybrid_communicate_group()
+    model_parallel_group = hcg.get_data_parallel_group()
+    world_size = hcg.get_data_parallel_world_size()
+    local_rank = hcg.get_data_parallel_rank()
+    src_global_rank = hcg.get_data_parallel_group_src_rank()
+
+    return model_parallel_group, world_size, local_rank, src_global_rank
+
+
 class ColumnParallelLinear(Layer):
     def __init__(self,
                  in_features,

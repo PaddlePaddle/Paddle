@@ -11,85 +11,108 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import six
+import numpy as np
+import warnings
 
-from .layers import _get_model_parallel_messgae
+# from .layers import _get_model_parallel_messgae
 from paddle import framework
 import paddle
 from paddle.fluid import core
+from paddle.fluid.dygraph.parallel import _split_tensors, _coalesce_tensors
+from collections import OrderedDict
 
 
-def broadcast_input_data(*inputs, **kwargs):
-    _, _, rank, src_rank = _get_model_parallel_messgae()
+def broadcast_input_data(hcg, *inputs, **kwargs):
+    model_parallel_group = hcg.get_model_parallel_group()
+    src_rank = hcg.get_model_parallel_group_src_rank()
 
     for input_ in inputs:
-        if isinstance(input_, (Variable, core.VarBase)):
+        if isinstance(input_, core.VarBase):
             with framework.no_grad():
-                paddle.distributed.broadcast(input_, src=src_rank)
+                paddle.distributed.broadcast(
+                    input_,
+                    src=src_rank,
+                    group=model_parallel_group,
+                    use_calc_stream=True)
+        else:
+            print("it doesn't support data type {}".format(type(input_)))
 
     for k, v in kwargs.items():
-        if isinstance(v, (Variable, core.VarBase)):
+        if isinstance(v, core.VarBase):
             with framework.no_grad():
-                paddle.distributed.broadcast(v, src=src_rank)
-                kwargs[k] = v
+                paddle.distributed.broadcast(
+                    v,
+                    src=src_rank,
+                    group=model_parallel_group,
+                    use_calc_stream=True)
+            kwargs[k] = v
+        else:
+            print("it doesn't support data type {}".format(type(v)))
     return inputs, kwargs
 
 
-# __all__ = [
-#     'RNGStatesTracker', 'model_parallel_random_seed', 'get_rng_state_tracker'
-# ]
+# it is same as Reducer
+def _sync_params_buffers(model, comm_group, src_rank, is_model_parallel):
+    model_vars = []
+    for _, param in model.state_dict().items():
+        if not isinstance(param, core.VarBase):
+            raise TypeError("The data type of '%s' must be Varbase" %
+                            param.name)
+        # is_distributed param not need to sync 
+        if is_model_parallel and param.is_distributed:
+            continue
+        model_vars.append(param.detach())
 
-# MODEL_PARALLEL_RNG = 'model_parallel_rng'
+    if len(model_vars) == 0:
+        return
 
-# class RNGStatesTracker:
-#     """
-#     Tracker the RNG states.
-#     """
+    mega_bytes = 128 * 1024 * 1024
+    group_idx = 0
+    memory_counter = 0
+    var_groups = OrderedDict()
+    dtype = model_vars[0].dtype
 
-#     def __init__(self):
-#         # Map from name to the rng state.
-#         self.states_ = {}
-#         self.seeds_ = set()
+    for var in model_vars:
+        bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+        if memory_counter < mega_bytes and dtype == var.dtype:
+            memory_counter += bytes
+        else:
+            memory_counter = 0
+            dtype = var.dtype
+            group_idx += 1
+        var_groups.setdefault(group_idx, []).append(var)
 
-#     def reset(self):
-#         self.states_ = {}
-#         self.seeds_ = set()
+    coalesced_vars = _coalesce_tensors(var_groups)
 
-#     def add(self, name, seed):
-#         if seed in self.seeds_:
-#             raise ValueError('seed {} already exists'.format(seed))
-#         self.seeds_.add(seed)
-#         if name in self.states_:
-#             raise ValueError('state {} already exists'.format(name))
-#         orig_rng_state = paddle.get_cuda_rng_state()
-#         paddle.seed(seed)
-#         self.states_[name] = paddle.get_cuda_rng_state()
-#         paddle.set_cuda_rng_state(orig_rng_state)
+    for coalesced_var, _, _ in coalesced_vars:
+        with framework.no_grad():
+            paddle.distributed.broadcast(
+                coalesced_var,
+                src=src_rank,
+                group=comm_group,
+                use_calc_stream=True)
 
-#     @contextlib.contextmanager
-#     def rng_state(self, name=MODEL_PARALLEL_RNG):
-#         if name not in self.states_:
-#             raise ValueError('state {} does not exist'.format(name))
-#         orig_cuda_rng_state = paddle.get_cuda_rng_state()
-#         paddle.set_cuda_rng_state(self.states_[name])
-#         try:
-#             yield
-#         finally:
-#             self.states_[name] = paddle.get_cuda_rng_state()
-#             paddle.set_cuda_rng_state(orig_cuda_rng_state)
+    for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+        var_len = [np.prod(v_shape) for v_shape in var_shapes]
+        paddle.fluid.framework._dygraph_tracer().trace_op(
+            type='split',
+            inputs={'X': coalesced_var},
+            outputs={'Out': origin_vars},
+            attrs={'sections': var_len,
+                   'axis': 0})
 
-# RNG_STATE_TRACKER = RNGStatesTracker()
 
-# def get_rng_state_tracker():
-#     return RNG_STATE_TRACKER
+def broadcast_mp_parameters(model, hcg):
+    model_parallel_group = hcg.get_model_parallel_group()
+    src_rank = hcg.get_model_parallel_group_src_rank()
+    _sync_params_buffers(
+        model, model_parallel_group, src_rank, is_model_parallel=True)
 
-# def model_parallel_random_seed(seed=2048):
-#     import paddle.distributed.fleet as fleet
-#     hcg = fleet.get_hybrid_communicate_group()
-#     rank = hcg.get_model_parallel_rank()
 
-#     local_seed = seed + 1024 + rank
-#     global_seed = seed
-
-#     RNG_STATE_TRACKER.reset()
-#     paddle.seed(global_seed)
-#     RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)
+def broadcast_dp_parameters(model, hcg):
+    data_parallel_group = hcg.get_data_parallel_group()
+    src_rank = hcg.get_data_parallel_group_src_rank()
+    _sync_params_buffers(
+        model, data_parallel_group, src_rank, is_model_parallel=False)

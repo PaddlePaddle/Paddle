@@ -17,7 +17,7 @@ import collections
 import numpy as np
 from itertools import product
 from functools import reduce
-__all__ = ['CommunicateTopology']
+__all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 
 class CommunicateTopology(object):
@@ -156,7 +156,13 @@ class HybridCommunicateGroup(object):
     def get_data_parallel_group(self):
         return self._dp_comm_group
 
+    def get_data_parallel_group_src_rank(self):
+        return self._dp_comm_group.ranks[0]
+        # return (self.global_rank //
+        #         self._num_data_parallel) * self._num_data_parallel
+
     # model parallel message:
+
     def _get_model_parallel_id(self):
         return self._topo.get_coord(self.global_rank).model
 
@@ -170,5 +176,6 @@ class HybridCommunicateGroup(object):
         return self._mp_comm_group
 
     def get_model_parallel_group_src_rank(self):
-        return (self.global_rank //
-                self._num_model_parallel) * self._num_model_parallel
+        return self._mp_comm_group.ranks[0]
+        # return (self.global_rank //
+        #         self._num_model_parallel) * self._num_model_parallel
