@@ -231,7 +231,7 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
         mdoel (str): model name
         source (str): `github` | `local`, default is `github`
         force_reload (bool, optional), default is `False`
-        *args, **kwargs: model parameters
+        *args, **kwargs: parameters using for model
     Return:
         paddle model
     Example:
