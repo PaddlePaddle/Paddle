@@ -122,49 +122,6 @@ CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnConvolutionBackwardFilter);
 CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
-// APIs available after R3:
-#if CUDNN_VERSION >= 3000
-#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3(__macro)           \
-  __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize); \
-  __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
-// APIs available after R3:
-#if CUDNN_VERSION >= 3000 && CUDNN_VERSION < 8000
-#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
-  __macro(cudnnGetConvolutionForwardAlgorithm);          \
-  __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
-  __macro(cudnnSetRNNDescriptor);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
-// APIs available after R4:
-#if CUDNN_VERSION >= 4007
-#define CUDNN_DNN_ROUTINE_EACH_AFTER_R4(__macro)    \
-  __macro(cudnnBatchNormalizationForwardTraining);  \
-  __macro(cudnnBatchNormalizationForwardInference); \
-  __macro(cudnnBatchNormalizationBackward);
-CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
-// APIs in R5
-#if CUDNN_VERSION >= 5000
-#define CUDNN_DNN_ROUTINE_EACH_R5(__macro)  \
-  __macro(cudnnCreateActivationDescriptor); \
-  __macro(cudnnSetActivationDescriptor);    \
-  __macro(cudnnGetActivationDescriptor);    \
-  __macro(cudnnDestroyActivationDescriptor);
-CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
-// APIs in R6
-#if CUDNN_VERSION >= 6000
-#define CUDNN_DNN_ROUTINE_EACH_R6(__macro) __macro(cudnnSetRNNDescriptor_v6);
-CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
-#endif
-
 #if CUDNN_VERSION >= 7001
 #define CUDNN_DNN_ROUTINE_EACH_R7(__macro)                \
   __macro(cudnnSetConvolutionGroupCount);                 \

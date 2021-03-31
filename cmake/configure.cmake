@@ -97,6 +97,10 @@ if(WITH_GPU)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
+    if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle needs CUDNN >= 7.0 to compile")
+    endif()
+
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
