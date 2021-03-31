@@ -88,8 +88,8 @@ class TestDatasetWithStat(unittest.TestCase):
                     exe.train_from_dataset(
                         fluid.default_main_program(),
                         dataset,
-                        fetch_list=[embs[0]],
-                        fetch_info=["emb"],
+                        fetch_list=[embs[0], embs[1]],
+                        fetch_info=["emb0", "emb1"],
                         print_period=1)
 
                 except Exception as e:
