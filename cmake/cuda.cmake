@@ -74,7 +74,7 @@ endfunction()
 #   select_nvcc_arch_flags(out_variable)
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
-  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
+  set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "Ampere" "All" "Manual")
   set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
@@ -108,6 +108,8 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "70")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
     set(cuda_arch_bin "75")
+  elseif(${CUDA_ARCH_NAME} STREQUAL "Ampere")
+    set(cuda_arch_bin "80")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
@@ -206,14 +208,11 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
-# Set C++11 support
+# Set C++14 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-if (NOT WIN32) # windows msvc2015 support c++11 natively.
-    # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_STANDARD 11)
-endif(NOT WIN32)
+set(CMAKE_CUDA_STANDARD 14)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
 # So replace /W[1-4] with /W0

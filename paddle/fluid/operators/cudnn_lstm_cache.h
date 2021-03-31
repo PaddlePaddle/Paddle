@@ -85,20 +85,12 @@ class ScopedRNNBase {
     dropout_desc_.descriptor(handle, place, initialized_, dropout_prob_,
                              dropout_state, seed_, state_size);
 
-// ------------------- cudnn rnn descriptors ---------------------
-#if CUDNN_VERSION >= 6000
+    // ------------------- cudnn rnn descriptors ---------------------
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,
         dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD, cudnn_type));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
-        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
-        CUDNN_LINEAR_INPUT,
-        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-        cudnn_type));
-#endif
 
 #if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
