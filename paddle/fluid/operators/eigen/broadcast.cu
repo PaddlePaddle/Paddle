@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -58,6 +60,8 @@ INSTANTIATION(EigenBroadcast, float);
 INSTANTIATION(EigenBroadcast, double);
 INSTANTIATION(EigenBroadcast, int);
 INSTANTIATION(EigenBroadcast, int64_t);
+INSTANTIATION(EigenBroadcast, platform::complex64);
+INSTANTIATION(EigenBroadcast, platform::complex128);
 INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
 INSTANTIATION(EigenBroadcastGrad, platform::float16);

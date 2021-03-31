@@ -69,7 +69,7 @@ void ReduceFunctor(const DeviceContext& context, const framework::Tensor& input,
   }
 }
 
-template <typename DeviceContext, typename T, size_t D, typename Functor>
+template <typename DeviceContext, typename T, int D, typename Functor>
 void ReduceGradFunctor(const DeviceContext& context,
                        const framework::Tensor& input0,
                        const framework::Tensor& input1,
@@ -82,7 +82,7 @@ void ReduceGradFunctor(const DeviceContext& context,
   auto x_dims = input0.dims();
   auto reduced_dims_v = framework::vectorize(x_dims);
   std::vector<int> dims_ref = dims;
-  Eigen::array<int, D> broadcast_dim;
+  Eigen::DSizes<Eigen::DenseIndex, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
 
   int broad_cats_times = 1;

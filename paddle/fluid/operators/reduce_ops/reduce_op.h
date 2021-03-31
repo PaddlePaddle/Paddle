@@ -356,7 +356,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
       auto broadcast_dim =
-          Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
+          Eigen::DSizes<Eigen::DenseIndex, 1>({input0->numel()});
       Functor functor;
       functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
               broadcast_dim[0]);

@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
@@ -44,7 +45,8 @@ struct FrobeniusNormGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    dx->device(place) = y->broadcast(dim);
+    EigenBroadcast<DeviceContext, typename DX::Scalar, DX::NumIndices>::Eval(
+        place, *dx, *y, dim);
     dx->device(place) = *dx + dx->constant(1e-12f);
     dx->device(place) = (*x / *dx) * (dy->broadcast(dim));
   }

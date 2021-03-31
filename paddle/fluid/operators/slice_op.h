@@ -432,7 +432,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
       start = std::max(start, static_cast<int64_t>(0));
       offsets[axes[i]] = start;
     }
-    std::array<std::pair<int64_t, int64_t>, D> paddings;
+    std::array<std::pair<Eigen::DenseIndex, Eigen::DenseIndex>, D> paddings;
     for (size_t i = 0; i < paddings.size(); ++i) {
       paddings[i].first = offsets[i];
       paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
