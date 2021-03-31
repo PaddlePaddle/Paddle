@@ -241,6 +241,7 @@ class StaticGraphAdapter(object):
         self._executor = None
         self._progs = {}
         self._compiled_progs = {}
+
         self._merge_count = {
             'eval_total': 0,
             'test_total': 0,
@@ -682,6 +683,8 @@ class DynamicGraphAdapter(object):
         self._input_info = _update_input_info(inputs)
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
+
+        scaler = paddle.amp.GradScaler(**self._amp_configs)
         with paddle.amp.auto_cast(
                 enable=False if self._amp_level == 'O0' else True,
                 **self._amp_custom_lists):
@@ -697,10 +700,10 @@ class DynamicGraphAdapter(object):
             final_loss = fluid.layers.sum(losses)
 
         if self._amp_level != "O0":
-            scaler = paddle.amp.GradScaler(**self._amp_configs)
             scaled = scaler.scale(final_loss)
             scaled.backward()
             scaler.minimize(self.model._optimizer, scaled)
+            self.model.network.clear_gradients()
         else:
             final_loss.backward()
             self.model._optimizer.minimize(final_loss)
@@ -905,7 +908,7 @@ class Model(object):
           optim = paddle.optimizer.SGD(learning_rate=1e-3,
               parameters=model.parameters())
 
-          amp_configs['level'] = 'O0'
+          amp_configs = {'level': 'O0'}
           model.prepare(optim,
                         paddle.nn.CrossEntropyLoss(),
                         paddle.metric.Accuracy(),
@@ -1363,6 +1366,7 @@ class Model(object):
         Returns:
             None
         """
+
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             global _parallel_context_initialized
