@@ -72,7 +72,7 @@ class AscendInstance {
     LOG(INFO) << "Begin ascend InitGlobalResouces";
     session_.reset(new ge::Session(_GetDefaultInitSessionOptions()));
     if (session_ == nullptr) {
-      LOG(FATAL) << "new session error:" << session_;
+      PADDLE_THROW(platform::errors::Fatal("new session error: nullptr"));
     }
     LOG(INFO) << "End ascend InitGlobalResouces";
   }
