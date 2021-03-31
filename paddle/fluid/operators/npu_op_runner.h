@@ -86,6 +86,9 @@ class NpuOpRunner {
 
 aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
 
+template <typename T>
+void FillNpuTensorWithConstant(Tensor *tensor, T val);
+
 }  // namespace operators
 }  // namespace paddle
 #endif

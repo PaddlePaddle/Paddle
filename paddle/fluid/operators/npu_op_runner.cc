@@ -64,8 +64,10 @@ aclFormat ConvertToNpuFormat(DataLayout layout) {
   return iter->second;
 }
 
-aclrtStream GetCurrentNPUStream() {
-  int device_id = platform::GetCurrentNPUDeviceId();
+aclrtStream GetCurrentNPUStream(int device_id = -1) {
+  if (device_id == -1) {
+    device_id = platform::GetCurrentNPUDeviceId();
+  }
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx = static_cast<platform::NPUDeviceContext *>(
       pool.Get(platform::NPUPlace(device_id)));
@@ -299,5 +301,39 @@ void NpuOpRunner::Run(aclrtStream stream) {
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }
+
+template <typename T>
+void FillNpuTensorWithConstant(Tensor *tensor, T val) {
+  PADDLE_ENFORCE_EQ(
+      tensor->IsInitialized(), true,
+      platform::errors::InvalidArgument("The tensor should be initialized."));
+  PADDLE_ENFORCE_EQ(
+      platform::is_npu_place(tensor->place()), true,
+      platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
+  // do async for better performance
+  if (typeid(float) == typeid(T) || typeid(platform::float16) == typeid(T)) {
+    Tensor tmp(tensor->type());
+    tmp.Resize(tensor->dims());
+    tmp.mutable_data<T>(place);
+
+    platform::NPUMemsetAsync(tmp.data<void>(), 0, tmp.numel() * sizeof(T),
+                             GetCurrentNPUStream(tmp.device));
+    NpuOpRunner("Power", {tmp}, {*tensor},
+                {{"power", static_cast<float>(1)},
+                 {"scale", static_cast<float>(0)},
+                 {"shift", static_cast<float>(val)}});
+  } else {
+    T *array = new T[tensor->numel()];
+    for (unsigned int i = 0; i < tensor->numel(); ++i) {
+      array[i] = static_cast<T>(val);
+    }
+    std::vector<T> vec(tensor->numel(), static_cast<T>(val));
+    // do sync copy
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
+                 tmp.data<void>(), platform::CPUPlace(), array, size, nullptr);
+    delete[] array;
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle
