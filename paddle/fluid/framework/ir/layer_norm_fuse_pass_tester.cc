@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/layer_norm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_test_util.h"
 #include "paddle/fluid/framework/naive_executor.h"
