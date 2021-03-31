@@ -127,5 +127,35 @@ class TestSegmentSum2(TestSegmentOps):
         self.outputs = {'Out': result.astype(self.dtype)}
 
 
+class TestSegmentMean(TestSegmentOps):
+    def compute(self, x, segment_ids):
+        return compute_segment_mean(x, segment_ids)
+
+    def prepare(self):
+        super(TestSegmentMean, self).prepare()
+        self.shape = [40, 20]
+        self.attrs = {'pooltype': "MEAN"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
+        result = self.compute(x, segment_ids)
+        self.inputs = {'X': x, 'SegmentIds': segment_ids}
+        self.outputs = {
+            'Out': result,
+            'SummedIds': compute_segment_sum(
+                np.ones([len(x), 1]).astype(self.dtype), segment_ids)
+        }
+
+
+class TestSegmentMean2(TestSegmentMean):
+    def prepare(self):
+        super(TestSegmentMean2, self).prepare()
+        self.dtype = np.float32
+        self.shape = [30, 20]
+        self.attrs = {'pooltype': "MEAN"}
+
+
+
 if __name__ == '__main__':
     unittest.main()
