@@ -1107,6 +1107,18 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
+
+        def print_file(outfilename):
+            print("######" * 5)
+            with open(outfilename, 'r') as outfile:
+                lines = outfile.readlines()
+                for line in lines:
+                    print(line)
+            print("######" * 5)
+
+        print_file("./_tr0_err.log")
+        print_file("./_tr1_err.log")
+
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):
