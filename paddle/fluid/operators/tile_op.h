@@ -176,10 +176,11 @@ class TileKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      To32BitIndex(y).device(place) = To32BitIndex(x).broadcast(bcast_dims);
+      EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
+          place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<typename std::remove_reference<decltype(place)>::type, T,
-                     Rank>::Eval(place, y, x, bcast_dims);
+      EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
+          place, y, x, bcast_dims);
     }
   }
 };
@@ -269,9 +270,8 @@ class TileGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<typename std::remove_reference<decltype(place)>::type, T,
-                       Dims>::Eval(place, x_grad, out_grad, reduce_dims,
-                                   reshape_dims);
+    EigenBroadcastGrad<std::remove_reference_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

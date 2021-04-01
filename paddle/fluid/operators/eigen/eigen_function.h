@@ -22,9 +22,18 @@ struct EigenBroadcast {
   using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
   using OutType = Eigen::TensorMap<
       Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(EigenDevice dev, OutType out, InType in, const Array& bcast);
+  using OutType32BitIndex =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+                       Eigen::Aligned>;
+  static void Eval(const EigenDevice& dev, OutType out, InType in,
+                   const Array& bcast);
+  static void Eval(const EigenDevice& dev, OutType32BitIndex out,
+                   InType32BitIndex in, const Array& bcast);
 };
 
 template <typename EigenDevice, typename T, int Rank>
@@ -35,7 +44,7 @@ struct EigenBroadcastGrad {
       Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
   using OutType =
       Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(EigenDevice dev, OutType out, InType in,
+  static void Eval(const EigenDevice& dev, OutType out, InType in,
                    const Array& reduce_dims, const Array2& reshape_dims);
 };
 
