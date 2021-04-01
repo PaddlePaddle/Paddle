@@ -31,6 +31,7 @@ from .fluid.dygraph import monkey_patch_math_varbase
 monkey_patch_variable()
 monkey_patch_math_varbase()
 import paddle.framework
+from paddle.framework.dtype import *
 from .framework import VarBase as Tensor
 import paddle.compat
 import paddle.distributed
