@@ -65,6 +65,8 @@ class NCCLParallelContext : public ParallelContext {
 
   void WaitComm(int ring_id) override;
 
+  void SynchronizeCompute() override;
+
  private:
   // used for comm wait compute, compute_stream-->event-->comm_stream[ring_id]
   std::vector<std::shared_ptr<platform::CudaEventObject>> compute_events_;
