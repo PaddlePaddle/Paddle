@@ -19,6 +19,20 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
+#ifdef __HIPCC__
+#define KERNEL_PRINT(__FORMAT, ...)                                           \
+  printf("%03d: [tid.x=<%lu> tid.y=<%lu> bid.x=<%lu> bid.y=<%lu>]: " __FORMAT \
+         "\n",                                                                \
+         __LINE__, hipThreadIdx_x, hipThreadIdx_y, hipBlockIdx_x,             \
+         hipBlockIdx_y, ##__VA_ARGS__);
+#else
+#define KERNEL_PRINT(__FORMAT, ...)                                       \
+  printf("%03d: [tid.x=<%d> tid.y=<%d> bid.x=<%d> bid.y=<%d>]: " __FORMAT \
+         "\n",                                                            \
+         __LINE__, threadIdx.x, threadIdx.y, blockIdx.x, blockIdx.y,      \
+         ##__VA_ARGS__);
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -96,6 +110,8 @@ __global__ void SegmentMeanCustomKernel(
 template <typename T, typename Index, typename Helper, typename Pool>
 __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
                                  T* output, Helper h, Pool pool) {
+  KERNEL_PRINT("SegmentOpsKernel Begin");
+
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
@@ -145,6 +161,8 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
         last_segment_id * inner_dim_size + segment_offset;
     pool.atomic(output + output_index, minmax);
   }
+
+  KERNEL_PRINT("SegmentOpsKernel End");
 }
 
 template <typename T, typename Index, typename Helper>
