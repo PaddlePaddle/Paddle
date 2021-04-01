@@ -249,6 +249,18 @@ void FusionLSTMOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<float>("Scale_data",
+                 "Scale to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Shift_data",
+                 "Shift to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(0.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN INT8.")
+      .SetDefault({1.0f});
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Force INT8 kernel output FP32, only "
                 "used in MKL-DNN INT8")

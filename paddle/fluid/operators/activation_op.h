@@ -400,7 +400,7 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out) const {
     auto temp1 = x < static_cast<T>(threshold * -1.f);
     auto temp2 = x > static_cast<T>(threshold);
-    out.device(d) = x * (temp1 + temp2 > 0).template cast<T>();
+    out.device(d) = x * (temp1 + temp2).template cast<T>();
   }
 };
 
@@ -417,7 +417,7 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto temp1 = x < static_cast<T>(threshold * -1.f);
     auto temp2 = x > static_cast<T>(threshold);
-    dx.device(d) = dout * (temp1 + temp2 > 0).template cast<T>();
+    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
