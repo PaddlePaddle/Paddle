@@ -201,33 +201,56 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # global
         self._collective_helper._init_communicator(
-            self._startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, False)
+            self._startup_program,
+            self.current_endpoint,
+            self.global_endpoints,
+            self.global_rank,
+            self.global_ring_id,
+            False,
+            global_ring_id=self.global_ring_id,
+            sync=False)
         append_naive_sync(startup_block, self.startup_prog_sync_var,
                           self.global_ring_id)
 
         # mp
         if self.mp_degree > 1:
             self._collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint,
-                self.mp_group_endpoints, self.mp_rank, self.mp_ring_id, False)
+                self._startup_program,
+                self.current_endpoint,
+                self.mp_group_endpoints,
+                self.mp_rank,
+                self.mp_ring_id,
+                False,
+                global_ring_id=self.global_ring_id,
+                sync=False)
             append_naive_sync(startup_block, self.startup_prog_sync_var,
                               self.global_ring_id)
 
         # sharding
         if self.sharding_degree > 1:
             self._collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint,
-                self.sharding_group_endpoints, self.sharding_rank,
-                self.sharding_ring_id, False)
+                self._startup_program,
+                self.current_endpoint,
+                self.sharding_group_endpoints,
+                self.sharding_rank,
+                self.sharding_ring_id,
+                False,
+                global_ring_id=self.global_ring_id,
+                sync=False)
             append_naive_sync(startup_block, self.startup_prog_sync_var,
                               self.global_ring_id)
 
         # dp
         if self.dp_degree > 1:
             self._collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint,
-                self.dp_group_endpoints, self.dp_rank, self.dp_ring_id, False)
+                self._startup_program,
+                self.current_endpoint,
+                self.dp_group_endpoints,
+                self.dp_rank,
+                self.dp_ring_id,
+                False,
+                global_ring_id=self.global_ring_id,
+                sync=False)
             append_naive_sync(startup_block, self.startup_prog_sync_var,
                               self.global_ring_id)
 
