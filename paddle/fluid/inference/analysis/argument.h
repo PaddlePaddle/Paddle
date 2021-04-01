@@ -205,6 +205,11 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
+  DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune, XpuAutotune, bool);
+  DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
+  DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

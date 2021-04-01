@@ -462,6 +462,12 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
     argument_.SetUseXpu(config_.use_xpu_);
     argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+    argument_.SetXpuLocked(config_.xpu_locked_);
+    argument_.SetXpuAutotune(config_.xpu_autotune_);
+    argument_.SetXpuAutotune(config_.xpu_autotune_);
+    argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
+    argument_.SetXpuPrecision(config_.xpu_precision_);
+    argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 

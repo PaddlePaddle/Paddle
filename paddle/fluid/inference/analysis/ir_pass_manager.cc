@@ -153,6 +153,12 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->xpu_l3_workspace_size()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
+      pass->Set("locked", new bool(argument->xpu_locked()));
+      pass->Set("autotune", new bool(argument->xpu_autotune()));
+      pass->Set("autotune_file",
+                new std::string(argument->xpu_autotune_file()));
+      pass->Set("precision", new std::string(argument->xpu_precision()));
+      pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
