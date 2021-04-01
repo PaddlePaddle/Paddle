@@ -33,9 +33,10 @@ class TestCommunicateTopology(unittest.TestCase):
         np.testing.assert_array_equal(mp_comm_list, topo.get_comm_list("mp"))
         np.testing.assert_array_equal(pp_comm_list, topo.get_comm_list("pp"))
 
-        # test get_parallel_names
+        # test get_hybrid_group_names
         parallel_names = ["dp", "mp", "pp"]
-        np.testing.assert_array_equal(parallel_names, topo.get_parallel_names())
+        np.testing.assert_array_equal(parallel_names,
+                                      topo.get_hybrid_group_names())
 
         # test get_dims
         np.testing.assert_array_equal(2, topo.get_dim("dp"))
@@ -73,10 +74,10 @@ class TestCommunicateTopology(unittest.TestCase):
         self.assertEqual(topo.get_axis_list("pp", 0), [0, 2, 4, 6])
         self.assertEqual(topo.get_axis_list("pp", 1), [1, 3, 5, 7])
 
-        # test get_dim_num
-        self.assertEqual(topo.get_dim_num("dp"), 2)
-        self.assertEqual(topo.get_dim_num("mp"), 2)
-        self.assertEqual(topo.get_dim_num("pp"), 2)
+        # test get_dim_size
+        self.assertEqual(topo.get_dim_size("dp"), 2)
+        self.assertEqual(topo.get_dim_size("mp"), 2)
+        self.assertEqual(topo.get_dim_size("pp"), 2)
 
 
 if __name__ == '__main__':

@@ -21,8 +21,8 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 
 class CommunicateTopology(object):
-    def __init__(self, hybrid_names, dims):
-        self._parallel_names = hybrid_names
+    def __init__(self, hybrid_group_names, dims):
+        self._parallel_names = hybrid_group_names
         self._dims = dims
         self.coordinate = collections.namedtuple('Coordinate',
                                                  self._parallel_names)
@@ -35,7 +35,7 @@ class CommunicateTopology(object):
         self._rank2coord = dict(
             zip(self._coord2rank.values(), self._coord2rank.keys()))
 
-    def get_parallel_names(self):
+    def get_hybrid_group_names(self):
         return self._parallel_names
 
     def get_dim(self, axis_name):
@@ -64,7 +64,7 @@ class CommunicateTopology(object):
         ranks.sort()
         return ranks
 
-    def get_dim_num(self, axis_name):
+    def get_dim_size(self, axis_name):
         assert axis_name in self._parallel_names
         return self._dims[self._parallel_names.index(axis_name)]
 
@@ -76,7 +76,7 @@ class CommunicateTopology(object):
 
         ranges = []
         for name in other_axis_names:
-            dim_num = self.get_dim_num(name)
+            dim_num = self.get_dim_size(name)
             ranges.append(range(dim_num))
 
         all_result = []
@@ -86,7 +86,7 @@ class CommunicateTopology(object):
                 key_coord[other_name] = x[other_axis_names.index(other_name)]
 
             result = []
-            for i in range(0, self.get_dim_num(axis_name)):
+            for i in range(0, self.get_dim_size(axis_name)):
                 key_coord[axis_name] = i
                 result.append(self._coord2rank[self.coordinate(**key_coord)])
             all_result.append(result)
