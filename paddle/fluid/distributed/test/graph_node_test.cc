@@ -531,9 +531,6 @@ void RunBrpcPushSparse() {
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
   worker_ptr_->finalize_worker();
-
-  // server_thread.join();
-  // server_thread2.join();
   testFeatureNodeSerializeInt();
   testFeatureNodeSerializeInt64();
   testFeatureNodeSerializeFloat32();

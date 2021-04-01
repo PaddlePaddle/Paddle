@@ -110,10 +110,6 @@ void GraphPyServer::start_server(bool block) {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_->wait(lock);
   }
-
-  // });
-  // server_thread->detach();
-  // sleep(3);
 }
 ::paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
   // Generate server proto desc

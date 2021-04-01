@@ -69,7 +69,6 @@ uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
     return 0;
   }
   _environment->registe_ps_server(ip, port, _rank);
-  // cv_.wait(lock, [&] { return stoped_; });
   return 0;
 }
 
