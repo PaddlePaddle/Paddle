@@ -76,8 +76,8 @@ class TestTreeIndex(unittest.TestCase):
                           parent_path_codes)
 
         children = tree.get_children_given_ancestor_and_level(
-            parent_path_codes[1], height - 1)
-        print(children)
+            parent_path_codes[1], height - 1, False)
+        self.assertIn(all_items[0], children)
 
 
 class TestIndexSampler(unittest.TestCase):

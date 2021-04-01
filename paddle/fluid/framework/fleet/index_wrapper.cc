@@ -117,6 +117,10 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
   res.reserve(ids.size());
   int cur_level;
   for (size_t i = 0; i < ids.size(); i++) {
+    if (ids[i] == 0 || id_codes_map_.find(ids[i]) == id_codes_map_.end()) {
+      res.push_back(0);
+      continue;
+    }
     auto code = id_codes_map_[ids[i]];
     cur_level = meta_.height() - 1;
     while (cur_level > level) {

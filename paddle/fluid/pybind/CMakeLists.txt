@@ -35,6 +35,7 @@ if(WITH_PYTHON)
 endif()
 
 set(PYBIND_SRCS
+  index_dataset_py.cc
   pybind.cc
   exception.cc
   protobuf.cc

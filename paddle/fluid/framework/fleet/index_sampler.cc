@@ -91,12 +91,5 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
   return outputs;
 }
 
-std::vector<std::vector<uint64_t>> BeamSearchSampler::sample(
-    const std::vector<std::vector<uint64_t>>& user_inputs,
-    const std::vector<uint64_t>& target_ids, bool with_hierarchy) {
-  std::vector<std::vector<uint64_t>> outputs;
-  return outputs;
-}
-
 }  // end namespace framework
 }  // end namespace paddle

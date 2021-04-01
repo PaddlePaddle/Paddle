@@ -16,6 +16,7 @@ import paddle.distributed.fleet as fleet
 import os
 import sys
 import platform
+from paddle.dataset.common import download, DATA_HOME
 
 
 class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
@@ -187,6 +188,54 @@ class TestMultiSlotDataGeneratorZip(unittest.TestCase):
         my_ms_dg = MyMultiSlotDataGenerator_zip()
         my_ms_dg.set_batch(1)
         my_ms_dg.run_from_memory()
+
+
+class DemoTreeIndexDataset(fleet.MultiSlotDataGenerator):
+    def init(self):
+        self.item_nums = 69
+
+    def line_process(self, line):
+        result = [[0]] * (self.item_nums + 2)
+        features = line.strip().split("\t")
+        item_id = int(features[1])
+        for item in features[2:]:
+            slot, feasign = item.split(":")
+            slot_id = int(slot.split("_")[1])
+            result[slot_id - 1] = [int(feasign)]
+        result[-2] = [item_id]
+        result[-1] = [1]
+        return result
+
+    def generate_sample(self, line):
+        "Dataset Generator"
+
+        def reader():
+            demo_line = "1000186_8\t949301\tslot_55:1571034\tslot_56:4780300\tslot_57:1744498\tslot_58:3597221\tslot_59:2906708\tslot_60:901439\tslot_61:2793602\tslot_62:1652215\tslot_63:4682748\tslot_64:823068\tslot_65:3395014\tslot_66:369520\tslot_67:3395014\tslot_68:4498543\tslot_69:4048294"
+            output_list = self.line_process(demo_line)
+            feature_name = []
+            for i in range(self.item_nums):
+                feature_name.append("item_" + str(i + 1))
+            feature_name.append("unit_id")
+            feature_name.append("label")
+            yield zip(feature_name, output_list)
+
+        return reader
+
+
+class TestTreeIndexDataGenerator(unittest.TestCase):
+    def test_TreeIndexDataGenerator(self):
+        dataset = DemoTreeIndexDataset()
+        dataset.init()
+
+        path = download(
+            "https://paddlerec.bj.bcebos.com/tree-based/data/demo_tree.pb",
+            "tree_index_unittest", "cadec20089f5a8a44d320e117d9f9f1a")
+
+        tree = fleet.data_generator.TreeIndex("demo", path)
+        dataset.set_tree_layerwise_sampler(
+            "demo", [1] * 14, range(69), 69, 70, with_hierarchy=True)
+        dataset.set_batch(1)
+        dataset.run_from_memory()
 
 
 if __name__ == '__main__':

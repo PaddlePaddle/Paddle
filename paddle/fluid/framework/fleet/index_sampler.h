@@ -90,25 +90,5 @@ class LayerWiseSampler : public IndexSampler {
   int start_sample_layer_{1};
 };
 
-class BeamSearchSampler : public IndexSampler {
- public:
-  virtual ~BeamSearchSampler() {}
-  explicit BeamSearchSampler(const std::string& name) {
-    tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);
-  }
-
-  void init_beamsearch_conf(const int64_t k) override {
-    k_ = k;
-    return;
-  }
-  std::vector<std::vector<uint64_t>> sample(
-      const std::vector<std::vector<uint64_t>>& user_inputs,
-      const std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
-
- private:
-  int64_t k_;
-  std::shared_ptr<TreeIndex> tree_{nullptr};
-};
-
 }  // end namespace framework
 }  // end namespace paddle

@@ -146,11 +146,15 @@ class DataGenerator(object):
                 continue
             batch_samples.append(user_parsed_line)
             if len(batch_samples) == self.batch_size_:
+                if self._tree_sampler:
+                    batch_samples = self.tree_sample(batch_samples)
                 batch_iter = self.generate_batch(batch_samples)
                 for sample in batch_iter():
                     sys.stdout.write(self._gen_str(sample))
                 batch_samples = []
         if len(batch_samples) > 0:
+            if self._tree_sampler:
+                batch_samples = self.tree_sample(batch_samples)
             batch_iter = self.generate_batch(batch_samples)
             for sample in batch_iter():
                 sys.stdout.write(self._gen_str(sample))
@@ -188,6 +192,8 @@ class DataGenerator(object):
                     continue
                 batch_samples.append(user_parsed_line)
                 if len(batch_samples) == self.batch_size_:
+                    if self._tree_sampler:
+                        batch_samples = self.tree_sample(batch_samples)
                     batch_iter = self.generate_batch(batch_samples)
                     for sample in batch_iter():
                         sys.stdout.write(self._gen_str(sample))
