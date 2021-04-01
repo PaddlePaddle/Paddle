@@ -106,7 +106,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   }
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task unique11111 cost " << timeline.ElapsedSec()
+  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
   gpu_task->UniqueKeys();
@@ -146,19 +146,24 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
   timeline.Pause();
   VLOG(1) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
           << " seconds.";
-  auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
-
-  if (!gloo_wrapper->IsInitialized()) {
-    VLOG(0) << "GLOO is not inited";
-    gloo_wrapper->Init();
+  
+  if (multi_node_) {
+    auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+    if (!gloo_wrapper->IsInitialized()) {
+      VLOG(0) << "GLOO is not inited";
+      gloo_wrapper->Init();
+    }
+    gloo_wrapper->Barrier();
   }
-  gloo_wrapper->Barrier();
 
   timeline.Start();
   std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
   uint16_t pass_id = 0;
 
-  auto record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(table_id, pass_id, pass_values);
+  bool record_status = false;
+  if (multi_node_) {
+    record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(table_id, pass_id, pass_values);
+  }
 
   auto build_func = [device_num, record_status, &pass_values, &local_keys, &local_ptr, &device_keys,
                      &device_vals, &device_mutex](int i) {
@@ -171,7 +176,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task,
       task_keys[shard].push_back(local_keys[i][j]);
       task_ptrs[shard].push_back(local_ptr[i][j]);
     }
- 
+
     if (record_status) {
       size_t local_keys_size = local_keys.size();
       size_t pass_values_size = pass_values.size();
@@ -257,7 +262,7 @@ void PSGPUWrapper::BuildGPUPS(uint64_t table_id, int feature_dim) {
   HeterPs_ = HeterPsBase::get_instance(size_max, resource_);
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    std::cout << "building table: " << i << std::endl;
+    VLOG(1) << "building table: " << i;
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], 500000, 2);
