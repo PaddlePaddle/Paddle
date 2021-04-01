@@ -62,8 +62,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
-  ctx.Wait();
-
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
@@ -74,7 +72,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
                                     {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
-  ctx.Wait();
 
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -122,8 +119,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   TensorFromVector(init_dout, ctx, tensor_dout);
   tensor_dout->Resize({2, 3, 5});
 
-  ctx.Wait();
-
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
@@ -132,7 +127,6 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
-  ctx.Wait();
 
   std::vector<T> dx_vec;
   TensorToVector(*tensor_dx, ctx, &dx_vec);

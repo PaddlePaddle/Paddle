@@ -159,11 +159,15 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(zhiqiu): Becareful that aclrtMemcpyAsync is different from
+  // cudaMemcpyAsync.
+  // cudaMemcpyAsync is actually "sync" between cpu <-> gpu.
+  // aclrtMemcpyAsync is really "async" between cpu <-> npu.
+  // Since vector is on cpu, I think this function should be a "sync" operation,
+  // so pass nullptr as stream to  memory::Copy().
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 src_place, src_ptr, size, nullptr);
   }
 #endif
 }
@@ -202,10 +206,8 @@ inline void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(
-        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr, src_place,
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+                 src_place, src_ptr, size, nullptr);
   }
 #endif
   delete[] array;
@@ -265,10 +267,9 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, BOOST_GET_CONST(platform::NPUPlace, src.place()),
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
+                 size, nullptr);
   }
 #endif
 }
@@ -301,10 +302,9 @@ inline void TensorToVector(const Tensor& src,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place, dst_ptr, BOOST_GET_CONST(platform::NPUPlace, src.place()),
-        src_ptr, size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+    memory::Copy(dst_place, dst_ptr,
+                 BOOST_GET_CONST(platform::NPUPlace, src.place()), src_ptr,
+                 size, nullptr);
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {
