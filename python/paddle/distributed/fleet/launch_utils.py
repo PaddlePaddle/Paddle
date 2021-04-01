@@ -104,7 +104,8 @@ class Cluster(object):
         r = []
         for pod in self.pods:
             for t in pod.trainers:
-                r.append(t.accelerators)
+                str_accelerators = [str(acc) for acc in t.accelerators]
+                r.append(str_.accelerators)
         return r
 
     def pods_endpoints(self):
