@@ -564,3 +564,15 @@ DEFINE_string(tracer_mkldnn_ops_on, "",
  */
 DEFINE_string(tracer_mkldnn_ops_off, "",
               "List of OneDNN operation types to be turned off");
+
+/**
+ * CUDNN related FLAG
+ * Name: conv2d_disable_cudnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Disable cudnn in conv2d.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DEFINE_bool(conv2d_disable_cudnn, false, "Disable cudnn in conv2d");
+#endif

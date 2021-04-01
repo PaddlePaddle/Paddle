@@ -233,6 +233,7 @@ def for_iter_var_idx(x_array):
     return z
 
 
+# 17. for a,b,c in z: (a, b, c) is a tuple
 @paddle.jit.to_static
 def for_tuple_as_iter_var(x_array):
     x = paddle.to_tensor(x_array)
@@ -250,6 +251,7 @@ def for_tuple_as_iter_var(x_array):
     return a_result, b_result, c_result
 
 
+# 18. for t in enumerate(collection): t is tuple of (idx, element)
 @paddle.jit.to_static
 def for_tuple_as_enumerate_iter(x_array):
     x = paddle.to_tensor(x_array)
@@ -263,6 +265,7 @@ def for_tuple_as_enumerate_iter(x_array):
     return a_result
 
 
+# 19. for i, (a, b, c, d, e) in enumerate(collection): (a, b, c, d, e) is a tuple
 @paddle.jit.to_static
 def for_tuple_as_enumerate_value(x_array):
     x = paddle.to_tensor(x_array)
@@ -282,6 +285,23 @@ def for_tuple_as_enumerate_value(x_array):
         e_result += e
 
     return a_result
+
+
+# 20. test for function in a class
+class ForwardContainsForLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(ForwardContainsForLayer, self).__init__()
+        self.high = 5
+        self.low = 3
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        # just for test case, x is useless in this method
+        y = paddle.zeros([10, 2, 3])
+        z = []
+        for i in range(self.high - self.low):
+            z.append(y[i].clone())
+        return z
 
 
 class TestTransformBase(unittest.TestCase):
@@ -313,11 +333,11 @@ class TestTransformBase(unittest.TestCase):
 class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
-        if not isinstance(dy_outs, tuple):
+        if not isinstance(dy_outs, (tuple, list)):
             dy_outs = (dy_outs, )
 
         st_outs = self.get_static_output()
-        if not isinstance(st_outs, tuple):
+        if not isinstance(st_outs, (tuple, list)):
             st_outs = (st_outs, )
 
         for x, y in zip(dy_outs, st_outs):
@@ -444,6 +464,11 @@ class TestForTupleAsEnumerateIter(TestForIterVarNumpy):
 class TestForTupleAsEnumerateValue(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_tuple_as_enumerate_value
+
+
+class TestForwardContainsForLayer(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = ForwardContainsForLayer()
 
 
 if __name__ == '__main__':

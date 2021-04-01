@@ -121,19 +121,25 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
       } else {
         T cpu_beta1_pow_out_data;
         T cpu_beta2_pow_out_data;
-        xpu_memcpy(&cpu_beta1_pow_out_data, beta1_pow_ptr, sizeof(T),
-                   XPU_DEVICE_TO_HOST);
+        memory::Copy(platform::CPUPlace(), &cpu_beta1_pow_out_data,
+                     BOOST_GET_CONST(platform::XPUPlace, beta1_pow.place()),
+                     beta1_pow_ptr, sizeof(T));
+
         cpu_beta1_pow_out_data = cpu_beta1_pow_out_data * beta1;
-        xpu_memcpy(&cpu_beta2_pow_out_data, beta2_pow_ptr, sizeof(T),
-                   XPU_DEVICE_TO_HOST);
+        memory::Copy(platform::CPUPlace(), &cpu_beta2_pow_out_data,
+                     BOOST_GET_CONST(platform::XPUPlace, beta2_pow.place()),
+                     beta2_pow_ptr, sizeof(T));
+
         cpu_beta2_pow_out_data = cpu_beta2_pow_out_data * beta2;
 
         T* beta1_pow_out_p = beta1_pow_out->mutable_data<T>(ctx.GetPlace());
         T* beta2_pow_out_p = beta2_pow_out->mutable_data<T>(ctx.GetPlace());
-        xpu_memcpy(beta1_pow_out_p, &cpu_beta1_pow_out_data, sizeof(T),
-                   XPU_HOST_TO_DEVICE);
-        xpu_memcpy(beta2_pow_out_p, &cpu_beta2_pow_out_data, sizeof(T),
-                   XPU_HOST_TO_DEVICE);
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                     beta1_pow_out_p, platform::CPUPlace(),
+                     &cpu_beta1_pow_out_data, sizeof(T));
+        memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()),
+                     beta2_pow_out_p, platform::CPUPlace(),
+                     &cpu_beta2_pow_out_data, sizeof(T));
       }
 
       PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,

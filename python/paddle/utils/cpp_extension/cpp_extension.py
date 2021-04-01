@@ -26,7 +26,7 @@ from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import use_new_custom_op_load_method, clean_object_if_change_cflags
+from .extension_utils import clean_object_if_change_cflags
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -400,14 +400,14 @@ class BuildExtension(build_ext, object):
                 # ncvv compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert ROCM_HOME is not None
+                        assert ROCM_HOME is not None, "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
                         hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                         self.compiler.set_executable('compiler_so', hipcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
                     else:
-                        assert CUDA_HOME is not None
+                        assert CUDA_HOME is not None, "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
                         nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                         self.compiler.set_executable('compiler_so', nvcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
@@ -470,7 +470,7 @@ class BuildExtension(build_ext, object):
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert CUDA_HOME is not None
+                    assert CUDA_HOME is not None, "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                     if isinstance(self.cflags, dict):
                         cflags = self.cflags['nvcc']

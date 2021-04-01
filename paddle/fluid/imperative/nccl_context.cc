@@ -79,6 +79,30 @@ void NCCLParallelContext::Init() {
   }
 }
 
+void NCCLParallelContext::InitWithRingID(int ring_id) {
+  std::vector<ncclUniqueId> nccl_ids;
+  nccl_ids.resize(1);
+
+  if (strategy_.local_rank_ == 0) {
+    // generate the unique ncclid on the root worker
+    platform::dynload::ncclGetUniqueId(&nccl_ids[0]);
+  }
+  BcastNCCLId(nccl_ids, 0);
+
+  int gpu_id = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+  VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
+          << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
+          << " ring id: " << ring_id;
+  // it will assign nccl_comm in CUDADeviceContext within ring_id
+  platform::NCCLCommContext::Instance().CreateNCCLComm(
+      &nccl_ids[0], strategy_.nranks_, strategy_.local_rank_, gpu_id, ring_id);
+
+  compute_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+  comm_events_.emplace_back(platform::CudaEventResourcePool::Instance().New(
+      BOOST_GET_CONST(platform::CUDAPlace, place_).device));
+}
+
 void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
                                             int ring_id, bool use_calc_stream) {

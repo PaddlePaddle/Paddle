@@ -82,6 +82,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
+    LIST(REMOVE_ITEM TEST_OPS test_new_group_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_wait)
@@ -177,6 +178,7 @@ endif()
 
 if ((NOT WITH_NCCL) AND (NOT WITH_RCCL))
     list(REMOVE_ITEM TEST_OPS test_imperative_group)
+    LIST(REMOVE_ITEM TEST_OPS test_new_group_api)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -450,6 +452,7 @@ py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_stat
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
     FLAGS_cudnn_deterministic=1)
+set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -517,6 +520,7 @@ if(WITH_DISTRIBUTE)
         if(WITH_GPU OR WITH_ROCM)
             bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
             py_test_modules(test_launch_coverage MODULES test_launch_coverage)
+            bash_test_modules(test_new_group START_BASH test_new_group.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         endif()
 
         bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -830,6 +834,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     if(WITH_DISTRIBUTE)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
     endif()
@@ -852,6 +857,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         test_collective_barrier_api
         test_collective_reduce_api
         test_collective_allreduce_api
+        test_new_group_api
         test_collective_broadcast_api
         test_collective_allgather_api
         PROPERTIES LABELS "RUN_TYPE=DIST")

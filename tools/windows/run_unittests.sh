@@ -244,12 +244,10 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
     set -e
 
     output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-    eight_parallel_job=$(echo $output | cut -d ";" -f 1)
-    tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
-    non_parallel_job=$(echo $output | cut -d ";" -f 3)
-
-    non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
-    non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
+    cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+    tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+    two_parallel_job=$(echo $output | cut -d ";" -f 3)
+    non_parallel_job=$(echo $output | cut -d ";" -f 4)
 fi
 
 failed_test_lists=''
@@ -279,10 +277,11 @@ function run_unittest_cpu() {
 function run_unittest_gpu() {
     test_case=$1
     parallel_job=$2
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if [ "$2" == "" ]; then
-        parallel_job=1
+        parallel_job=$parallel_level_base
     else
-        parallel_job=$2
+        parallel_job=`expr $2 \* $parallel_level_base`
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
@@ -362,7 +361,7 @@ function show_ut_retry_result() {
             echo "========================================"
             echo "There are failed tests, which have been successful after re-run:"
             echo "========================================"
-            echo "The following tests have been re-ran:"
+            echo "The following tests have been re-run:"
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"|"$1}} END{print all_str}')
@@ -378,6 +377,7 @@ function show_ut_retry_result() {
 }
 
 set +e
+
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
     run_unittest_gpu $eight_parallel_job 8
     run_unittest_gpu $tetrad_parallel_jog 4
