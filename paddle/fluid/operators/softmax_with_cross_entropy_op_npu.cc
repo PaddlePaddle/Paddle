@@ -143,7 +143,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     FillNpuTensorWithConstant<int>(&on_tensor, static_cast<int>(1));
     Tensor off_tensor(framework::proto::VarType::INT32);
     off_tensor.mutable_data<int>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<int>(&on_tensor, static_cast<int>(0));
+    FillNpuTensorWithConstant<int>(&off_tensor, static_cast<int>(0));
 
     // one_hot
     Tensor tmp_onehot(on_tensor.type());

@@ -26,7 +26,7 @@ from paddle.fluid import core
 paddle.enable_static()
 SEED = 2021
 
-NPUPlace = 5
+NPUPlace = 0
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -38,7 +38,10 @@ class TestIncrement(OpTest):
         self.op_type = "increment"
         self.init_dtype()
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+        }
 
         self.attrs = {"Step": 1}
         self.outputs = {'Out': np.array([2])}
@@ -63,7 +66,10 @@ class TestIncrementFP16(OpTest):
         self.op_type = "increment"
         self.init_dtype()
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)), }
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+        }
         self.pre_input_id = id(self.inputs['X'])
 
         self.attrs = {"Step": 1}
@@ -100,10 +106,7 @@ class TestIncrementInplace(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
-        b_value = exe.run(
-            main_prog,
-            feed={"a": a_np,},
-            fetch_list=[b])
+        b_value = exe.run(main_prog, feed={"a": a_np, }, fetch_list=[b])
 
         print('input a id is : {}'.format(id(a)))
         print('input b id is : {}'.format(id(b)))
