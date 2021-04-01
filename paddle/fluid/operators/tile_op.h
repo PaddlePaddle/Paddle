@@ -37,8 +37,8 @@ limitations under the License. */
 #define REP_TILE_TEMPLATE(n) BOOST_PP_REPEAT(n, TILE_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 #define TILE_GRAD_CASE(n)                                        \
-  case n: {                                                      \
-    TileBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
+  case n + 1: {                                                      \
+    TileBackward<n + 1>(context, reshape_dims_vec, reduce_dims_vec); \
     break;                                                       \
   }
 #define TILE_GRAD_TEMPLATE(z, n, data) BOOST_PP_IF(COND(n), TILE_GRAD_CASE(n), )

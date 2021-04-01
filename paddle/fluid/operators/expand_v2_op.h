@@ -37,8 +37,8 @@ limitations under the License. */
 #define REP_EXPAND_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 #define EXPAND_GRAD_CASE(n)                                        \
-  case n: {                                                        \
-    ExpandBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
+  case n + 1: {                                                        \
+    ExpandBackward<n + 1>(context, reshape_dims_vec, reduce_dims_vec); \
     break;                                                         \
   }
 #define EXPAND_GRAD_TEMPLATE(z, n, data) \

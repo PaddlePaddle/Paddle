@@ -38,8 +38,8 @@
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 
 #define MESHGRID_GRAD_CASE(n)     \
-  case n: {                       \
-    MeshgridBackward<n>(context); \
+  case n + 1: {                       \
+    MeshgridBackward<n + 1>(context); \
     break;                        \
   }
 #define MESHGRID_GRAD_TEMPLATE(z, n, data) \
