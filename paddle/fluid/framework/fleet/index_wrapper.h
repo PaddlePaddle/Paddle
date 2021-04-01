@@ -70,8 +70,8 @@ class TreeIndex : public Index {
     return pi_new;
   }
 
-  std::vector<uint64_t> get_children_given_ancestor_and_level(uint64_t ancestor,
-                                                              int level) {
+  std::vector<uint64_t> get_children_given_ancestor_and_level(
+      uint64_t ancestor, int level, bool ret_code = true) {
     auto level_code_num =
         static_cast<uint64_t>(std::pow(meta_.branch(), level));
     auto code_min = level_code_num - 1;
@@ -94,7 +94,13 @@ class TreeIndex : public Index {
       }
     }
 
-    return std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
+    auto res = std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
+    if (ret_code == false) {
+      for (size_t i = 0; i < res.size(); i++) {
+        res[i] = data_[res[i]].id();
+      }
+    }
+    return res;
   }
 
   std::vector<uint64_t> get_travel_path(uint64_t child, uint64_t ancestor) {
