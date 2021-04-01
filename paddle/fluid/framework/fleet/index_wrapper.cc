@@ -19,13 +19,10 @@ limitations under the License. */
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/framework/fleet/index_wrapper.h"
 
 namespace paddle {
 namespace framework {
-
-using paddle::distributed::Communicator;
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
