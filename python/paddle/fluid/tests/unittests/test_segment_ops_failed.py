@@ -110,7 +110,6 @@ class TestSegmentOps(OpTest):
         self.check_grad(["X"], "Out")
 
 
-
 class TestSegmentMax(TestSegmentOps):
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MAX")
@@ -132,6 +131,7 @@ class TestSegmentMax(TestSegmentOps):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", user_defined_grads=[self.gradient])
+
 
 if __name__ == '__main__':
     unittest.main()
