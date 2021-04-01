@@ -37,10 +37,10 @@
 #define REP_MESHGRID_TEMPLATE(n) BOOST_PP_REPEAT(n, MESHGRID_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 
-#define MESHGRID_GRAD_CASE(n)     \
+#define MESHGRID_GRAD_CASE(n)         \
   case n + 1: {                       \
     MeshgridBackward<n + 1>(context); \
-    break;                        \
+    break;                            \
   }
 #define MESHGRID_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), MESHGRID_GRAD_CASE(n), )
