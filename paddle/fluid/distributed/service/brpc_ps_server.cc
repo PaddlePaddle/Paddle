@@ -57,7 +57,8 @@ uint64_t BrpcPsServer::start(const std::string &ip, uint32_t port) {
   std::unique_lock<std::mutex> lock(mutex_);
 
   std::string ip_port = ip + ":" + std::to_string(port);
-  VLOG(3) << "server of rank " << _rank << " starts at " << ip_port;
+  VLOG(0) << "running server with rank id: " << _rank
+          << ", endpoint: " << ip_port;
   brpc::ServerOptions options;
 
   int num_threads = std::thread::hardware_concurrency();
@@ -535,7 +536,7 @@ int32_t BrpcPsService::stop_server(Table *table,
   auto *p_server = _server;
   std::thread t_stop([p_server]() {
     p_server->stop();
-    LOG(INFO) << "Server Stoped";
+    VLOG(3) << "Server Stoped";
   });
   t_stop.detach();
   return 0;
