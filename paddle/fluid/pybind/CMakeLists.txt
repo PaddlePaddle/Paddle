@@ -1,3 +1,7 @@
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
@@ -101,7 +105,7 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
-      if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
     else()
       set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
@@ -113,7 +117,7 @@ if(WITH_PYTHON)
     "${op_function_generator_path}/op_function_generator ${impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 100 (\n"
+    "    if %build_times% GTR 5 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"

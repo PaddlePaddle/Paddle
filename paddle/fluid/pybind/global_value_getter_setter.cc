@@ -72,6 +72,7 @@ DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 DECLARE_bool(cudnn_deterministic);
 DECLARE_bool(cudnn_exhaustive_search);
+DECLARE_bool(conv2d_disable_cudnn);
 // data processing
 DECLARE_bool(enable_cublas_tensor_op_math);
 // device management
@@ -367,7 +368,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_fraction_of_cuda_pinned_memory_to_use,
       FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
       FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
-      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
+      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce,
+      FLAGS_conv2d_disable_cudnn);
 #endif
 #ifdef PADDLE_WITH_XPU
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);

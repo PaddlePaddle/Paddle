@@ -346,57 +346,25 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+
 cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
 cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
-
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
-# Old custom op extension mechanism related, will be removed in 2.1.0
-cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
-    DEPS ${FLUID_FRAMEWORK_MODULES})
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
-target_link_libraries(paddle_framework_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.so
-      CACHE INTERNAL "Fluid framework lib")
-endif()
-
-if (WIN32)
-  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-    set(paddle_framework_lib_path ${CMAKE_CURRENT_BINARY_DIR})
-  else()
-    set(paddle_framework_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
-  endif()
-  set(FLUID_FRAMEWORK_IMPORT_LIB
-      ${paddle_framework_lib_path}/paddle_framework.lib
-      CACHE INTERNAL "Fluid framework lib")
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${paddle_framework_lib_path}/paddle_framework.dll
-      CACHE INTERNAL "Fluid framework dll")
-endif()
-
-if(APPLE)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
-      CACHE INTERNAL "Fluid framework lib")
-endif()
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
 
-# New custom op extension mechanism related
+##### 2.0 New custom op extension mechanism related #####
 
 # if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
 set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)

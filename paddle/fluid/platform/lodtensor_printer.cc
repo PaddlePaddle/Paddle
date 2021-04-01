@@ -27,24 +27,38 @@ namespace paddle {
 namespace platform {
 
 void PrintVar(framework::Scope* scope, const std::string& var_name,
-              const std::string& print_info) {
+              const std::string& print_info, std::stringstream* sstream) {
   framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
-    VLOG(1) << "Variable Name " << var_name << " does not exist in your scope";
+    VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";
     return;
   }
   framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
   if (tensor == nullptr) {
-    VLOG(1) << "tensor of variable " << var_name
+    VLOG(0) << "tensor of variable " << var_name
             << " does not exist in your scope";
     return;
   }
 
-  std::ostringstream sstream;
-  sstream << print_info << "\t";
-  sstream << var_name << "\t";
-  sstream << *tensor << "\t";
-  std::cout << sstream.str() << std::endl;
+  *sstream << print_info << ": ";
+
+#define PrintTensorCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (tensor->type() == proto_type) {           \
+      *sstream << "[";                            \
+      auto* data = tensor->data<cpp_type>();      \
+      auto element_num = tensor->numel();         \
+      if (element_num > 0) {                      \
+        *sstream << data[0];                      \
+        for (int j = 1; j < element_num; ++j) {   \
+          *sstream << " " << data[j];             \
+        }                                         \
+      }                                           \
+      *sstream << "]";                            \
+    }                                             \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
 }
 
 }  // end namespace platform

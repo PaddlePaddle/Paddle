@@ -28,7 +28,6 @@ import subprocess
 from contextlib import contextmanager
 from setuptools.command import bdist_egg
 
-from .. import load_op_library
 from ...fluid import core
 from ...fluid.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
@@ -86,7 +85,6 @@ information
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
-USING_NEW_CUSTOM_OP_LOAD_METHOD = True
 
 DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpRoleAttrName(),
@@ -95,18 +93,6 @@ DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
     core.op_proto_and_checker_maker.kOpDeviceAttrName()
 ]
-
-
-# NOTE(chenweihang): In order to be compatible with
-# the two custom op define method, after removing
-# old method, we can remove them together
-def use_new_custom_op_load_method(*args):
-    global USING_NEW_CUSTOM_OP_LOAD_METHOD
-    if len(args) == 0:
-        return USING_NEW_CUSTOM_OP_LOAD_METHOD
-    else:
-        assert len(args) == 1 and isinstance(args[0], bool)
-        USING_NEW_CUSTOM_OP_LOAD_METHOD = args[0]
 
 
 @contextmanager
@@ -122,10 +108,7 @@ def bootstrap_context():
 
 
 def load_op_meta_info_and_register_op(lib_filename):
-    if USING_NEW_CUSTOM_OP_LOAD_METHOD:
-        core.load_op_meta_info_and_register_op(lib_filename)
-    else:
-        core.load_op_library(lib_filename)
+    core.load_op_meta_info_and_register_op(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
 
@@ -406,10 +389,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
-        if use_new_custom_op_load_method():
-            extra_link_args.append('-lpaddle_custom_op')
-        else:
-            extra_link_args.append('-lpaddle_framework')
+        extra_link_args.append('-lpaddle_custom_op')
         if use_cuda:
             extra_link_args.append('-lcudart')
 
@@ -442,7 +422,8 @@ def find_cuda_home():
                     [which_cmd, 'nvcc'], stderr=devnull)
                 if six.PY3:
                     nvcc_path = nvcc_path.decode()
-                nvcc_path = nvcc_path.rstrip('\r\n')
+                # Multi CUDA, select the first
+                nvcc_path = nvcc_path.split('\r\n')[0]
 
                 # for example: /usr/local/cuda/bin/nvcc
                 cuda_home = os.path.dirname(os.path.dirname(nvcc_path))
@@ -460,9 +441,6 @@ def find_cuda_home():
     if cuda_home and not os.path.exists(
             cuda_home) and core.is_compiled_with_cuda():
         cuda_home = None
-        warnings.warn(
-            "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specific it."
-        )
 
     return cuda_home
 
@@ -493,9 +471,6 @@ def find_rocm_home():
     if rocm_home and not os.path.exists(
             rocm_home) and core.is_compiled_with_rocm():
         rocm_home = None
-        warnings.warn(
-            "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specific it."
-        )
 
     return rocm_home
 
@@ -816,9 +791,7 @@ def _write_setup_file(name,
     import os
     from paddle.utils.cpp_extension import CppExtension, CUDAExtension, BuildExtension, setup
     from paddle.utils.cpp_extension import get_build_directory
-    from paddle.utils.cpp_extension.extension_utils import use_new_custom_op_load_method
 
-    use_new_custom_op_load_method({use_new_method})
 
     setup(
         name='{name}',
@@ -846,8 +819,7 @@ def _write_setup_file(name,
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),
-        build_dir=build_dir,
-        use_new_method=use_new_custom_op_load_method())
+        build_dir=build_dir)
 
     log_v('write setup.py into {}'.format(file_path), verbose)
     with open(file_path, 'w') as f:
@@ -903,11 +875,7 @@ def parse_op_name_from(sources):
     """
 
     def regex(content):
-        if USING_NEW_CUSTOM_OP_LOAD_METHOD:
-            pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
-        else:
-            pattern = re.compile(r'REGISTER_OPERATOR\(([^,]+),')
-
+        pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
         op_name = set([re.sub('_grad', '', name) for name in op_name])

@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/one_hot_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {

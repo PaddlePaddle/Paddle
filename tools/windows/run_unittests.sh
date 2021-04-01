@@ -222,10 +222,8 @@ echo "Windows 1 card TestCases count is $num"
 if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
     python ${PADDLE_ROOT}/tools/get_pr_ut.py
     if [[ -f "ut_list" ]]; then
-        set +x
         echo "PREC length: "`wc -l ut_list`
         precision_cases=`cat ut_list`
-        set -x
     fi
 fi
 
@@ -250,12 +248,11 @@ fi
 set -e
 
 output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-eight_parallel_job=$(echo $output | cut -d ";" -f 1)
-tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
-non_parallel_job=$(echo $output | cut -d ";" -f 3)
+cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+two_parallel_job=$(echo $output | cut -d ";" -f 3)
+non_parallel_job=$(echo $output | cut -d ";" -f 4)
 
-non_parallel_job_1=$(echo $non_parallel_job | cut -d "," -f 1)
-non_parallel_job_2=$(echo $non_parallel_job | cut -d "," -f 2)
 
 failed_test_lists=''
 tmp_dir=`mktemp -d`
@@ -278,10 +275,11 @@ function collect_failed_tests() {
 function run_unittest() {
     test_case=$1
     parallel_job=$2
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
     if [ "$2" == "" ]; then
-        parallel_job=1
+        parallel_job=$parallel_level_base
     else
-        parallel_job=$2
+        parallel_job=`expr $2 \* $parallel_level_base`
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
@@ -313,6 +311,12 @@ function unittests_retry(){
                         cur_order='first'
                     elif ( [[ "$exec_times" == "1" ]] );then
                         cur_order='second'
+                        if [[ "$failed_test_lists" == "" ]]; then
+                            break
+                        else
+                            retry_unittests=$(echo "${failed_test_lists}" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            retry_unittests_regular=$(echo "$retry_unittests" |awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+                        fi
                     elif ( [[ "$exec_times" == "2" ]] );then
                         cur_order='third'
                     fi
@@ -338,7 +342,7 @@ function unittests_retry(){
 
 function show_ut_retry_result() {
     if [[ "$is_retry_execuate" != "0" ]];then
-        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+        failed_test_lists_ult=`echo "${failed_test_lists}" | grep -o '[^ ].*$'`
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
@@ -351,7 +355,7 @@ function show_ut_retry_result() {
             echo "========================================"
             echo "There are failed tests, which have been successful after re-run:"
             echo "========================================"
-            echo "The following tests have been re-ran:"
+            echo "The following tests have been re-run:"
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"|"$1}} END{print all_str}')
@@ -367,6 +371,7 @@ function show_ut_retry_result() {
 }
 
 set +e
+
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
@@ -377,10 +382,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
 fi
-run_unittest $eight_parallel_job 8
-run_unittest $tetrad_parallel_jog 4
-run_unittest $non_parallel_job_1
-run_unittest $non_parallel_job_2
+run_unittest $cpu_parallel_job 12
+run_unittest $tetrad_parallel_job 4
+run_unittest $two_parallel_job 2
+run_unittest $non_parallel_job
 collect_failed_tests
 set -e
 rm -f $tmp_dir/*
