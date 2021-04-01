@@ -16,7 +16,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +29,7 @@ template <typename DeviceContext, typename T, size_t D>
 void PadFunction(const framework::ExecutionContext& context,
                  const std::vector<int>& pads, const framework::Tensor& src,
                  T pad_value, framework::Tensor* out) {
-  std::array<std::pair<Eigen::DenseIndex, Eigen::DenseIndex>, D> paddings;
+  Eigen::array<std::pair<int, int>, D> paddings;
 
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = pads[i * 2];
@@ -42,15 +41,14 @@ void PadFunction(const framework::ExecutionContext& context,
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  EigenPad<typename std::remove_reference<decltype(place)>::type, T, D>::Eval(
-      place, out_tensor, src_tensor, paddings, pad_value);
+  out_tensor.device(place) = src_tensor.pad(paddings, pad_value);
 }
 
 template <typename DeviceContext, typename T, size_t D>
 void PadGradFunction(const framework::ExecutionContext& context,
                      const std::vector<int>& pads, const framework::Tensor& src,
                      framework::Tensor* d_out) {
-  std::array<std::pair<Eigen::DenseIndex, Eigen::DenseIndex>, D> paddings;
+  Eigen::array<std::pair<int, int>, D> paddings;
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
     paddings[i].second = -pads[i * 2 + 1];
@@ -60,8 +58,7 @@ void PadGradFunction(const framework::ExecutionContext& context,
   auto src_tensor = EigenTensor<T, D>::From(src);
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  EigenPad<typename std::remove_reference<decltype(place)>::type, T, D>::Eval(
-      place, d_out_tensor, src_tensor, paddings, static_cast<T>(0));
+  d_out_tensor.device(place) = src_tensor.pad(paddings, static_cast<T>(0));
 }
 
 template <typename DeviceContext, typename T>

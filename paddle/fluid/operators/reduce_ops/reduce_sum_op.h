@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
@@ -112,8 +111,7 @@ struct SumGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    EigenBroadcast<DeviceContext, typename DX::Scalar, DX::NumIndices>::Eval(
-        place, *dx, *dy, dim);
+    dx->device(place) = dy->broadcast(dim);
   }
 };
 

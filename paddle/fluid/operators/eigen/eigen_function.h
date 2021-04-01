@@ -39,28 +39,5 @@ struct EigenBroadcastGrad {
                    const Array& reduce_dims, const Array2& reshape_dims);
 };
 
-template <typename EigenDevice, typename T, int Rank>
-struct EigenSlice {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(EigenDevice dev, OutType out, InType in,
-                   const Array& offsets, const Array& extents);
-};
-
-template <typename EigenDevice, typename T, int Rank>
-struct EigenPad {
-  using Array =
-      std::array<std::pair<Eigen::DenseIndex, Eigen::DenseIndex>, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(EigenDevice dev, OutType out, InType in,
-                   const Array& padding, T padding_value);
-};
-
 }  // namespace operators
 }  // namespace paddle
