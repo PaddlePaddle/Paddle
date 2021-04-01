@@ -22,8 +22,11 @@ import unittest
 import multiprocessing
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, BatchSampler, DataLoader
+
+paddle.enable_static()
 
 EPOCH_NUM = 3
 BATCH_SIZE = 8
@@ -84,24 +87,31 @@ def simple_fc_net_static():
     return startup_prog, main_prog, image, label, loss
 
 
-def prepare_places(with_data_parallel, with_cpu=False, with_gpu=True):
+def prepare_places(with_data_parallel,
+                   with_cpu=False,
+                   with_gpu=False,
+                   with_npu=False):
     places = []
     if with_cpu:
         places.append([fluid.CPUPlace()])
         if with_data_parallel:
             places.append([fluid.CPUPlace()] * 2)
 
-    if with_gpu and fluid.core.is_compiled_with_cuda():
+    elif with_gpu and fluid.core.is_compiled_with_cuda():
         tmp = fluid.cuda_places()[:2]
         assert len(tmp) > 0, "no gpu detected"
         if with_data_parallel:
             places.append(tmp)
         places.append([tmp[0]])
+
+    elif with_npu and paddle.is_compiled_with_npu():
+        places.append([paddle.NPUPlace(0)])
+
     return places
 
 
 class TestStaticDataLoader(unittest.TestCase):
-    def run_main(self, num_workers, places):
+    def run_main(self, num_workers, places, use_pe=True):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
@@ -120,10 +130,13 @@ class TestStaticDataLoader(unittest.TestCase):
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
-            if len(places) > 1:
-                prog = prog.with_data_parallel(
-                    loss_name=loss.name, places=places)
+            if use_pe:
+                prog = fluid.CompiledProgram(main_prog)
+                if len(places) > 1:
+                    prog = prog.with_data_parallel(
+                        loss_name=loss.name, places=places)
+            else:
+                prog = main_prog
 
             step_list = []
             loss_list = []
@@ -157,18 +170,29 @@ class TestStaticDataLoader(unittest.TestCase):
         print("time cost", ret['time'], 'step_list', ret['step'])
         return ret
 
-    def test_main(self):
-        for p in prepare_places(True):
-            results = []
+    def _check_with_place(self, with_cpu=False, with_gpu=False, with_npu=False):
+        results = []
+        for place in prepare_places(
+                with_data_parallel=True,
+                with_cpu=with_cpu,
+                with_gpu=with_gpu,
+                with_npu=with_npu):
             for num_workers in [0, 2]:
-                print(self.__class__.__name__, p, num_workers)
+                print(self.__class__.__name__, place, num_workers)
                 sys.stdout.flush()
-                ret = self.run_main(num_workers=num_workers, places=p)
+                ret = self.run_main(
+                    num_workers=num_workers, places=place, use_pe=not with_npu)
+
                 results.append(ret)
             diff = np.max(
                 np.abs(results[0]['loss'] - results[1]['loss']) /
                 np.abs(results[0]['loss']))
             self.assertLess(diff, 1e-2)
+
+    def test_main(self):
+        self._check_with_place(with_cpu=True)
+        self._check_with_place(with_gpu=True)
+        self._check_with_place(with_npu=True)
 
 
 class TestStaticDataLoaderReturnList(unittest.TestCase):
