@@ -1465,5 +1465,41 @@ class TestConv2DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_7)
 
 
+# --------- test environment variable ------
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or core.is_compiled_with_rocm()),
+    "core is not compiled with CUDA or ROCM")
+class TestConv2DEnviron(unittest.TestCase):
+    def run_conv2d_api(self):
+        inputs = fluid.layers.data(
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            name="inputs",
+            dtype="float32")
+        fluid.layers.conv2d(
+            input=inputs,
+            num_filters=4,
+            filter_size=[3, 3],
+            stride=[1, 1],
+            padding=0,
+            dilation=[1, 1],
+            groups=1,
+            data_format="NCHW")
+
+        x_var = paddle.uniform((2, 3, 5, 5), dtype="float32", min=-1., max=1.)
+        conv = paddle.nn.Conv2D(
+            in_channels=3,
+            out_channels=4,
+            kernel_size=(3, 3),
+            data_format="NCHW")
+        y_var = conv(x_var)
+
+    def test_environ(self):
+        fluid.set_flags({'FLAGS_conv2d_disable_cudnn': False})
+        self.run_conv2d_api()
+        fluid.set_flags({'FLAGS_conv2d_disable_cudnn': True})
+        self.run_conv2d_api()
+
+
 if __name__ == '__main__':
     unittest.main()
