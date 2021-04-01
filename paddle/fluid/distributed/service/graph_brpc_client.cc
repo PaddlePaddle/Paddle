@@ -26,7 +26,6 @@
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
 namespace distributed {
-int GraphPsService_Stub::thread_num = 3;
 
 void GraphPsService_Stub::service(
     ::google::protobuf::RpcController *controller,
