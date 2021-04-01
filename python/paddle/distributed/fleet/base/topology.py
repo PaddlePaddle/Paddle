@@ -26,7 +26,7 @@ class CommunicateTopology(object):
         self._dims = dims
         self.coordinate = collections.namedtuple('Coordinate',
                                                  self._parallel_names)
-        self._word_size = reduce(lambda x, y: x * y, self._dims)
+        self._world_size = reduce(lambda x, y: x * y, self._dims)
 
         ranges = [range(d) for d in self._dims]
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
@@ -41,8 +41,8 @@ class CommunicateTopology(object):
     def get_dim(self, axis_name):
         return self._dims[self._parallel_names.index(axis_name)]
 
-    def word_size(self):
-        return self._word_size
+    def world_size(self):
+        return self._world_size
 
     def get_rank(self, **args):
         assert len(args) == len(self._dims)
@@ -51,7 +51,7 @@ class CommunicateTopology(object):
         return self._coord2rank[key]
 
     def get_coord(self, rank):
-        assert rank < self._word_size
+        assert rank < self._world_size
         assert rank in self._rank2coord.keys()
         return self._rank2coord[rank]
 

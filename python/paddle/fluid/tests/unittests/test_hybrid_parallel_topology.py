@@ -42,8 +42,8 @@ class TestCommunicateTopology(unittest.TestCase):
         np.testing.assert_array_equal(2, topo.get_dim("mp"))
         np.testing.assert_array_equal(2, topo.get_dim("pp"))
 
-        # test word size
-        self.assertEqual(topo.word_size(), 8)
+        # test world size
+        self.assertEqual(topo.world_size(), 8)
 
         # test get_rank
         self.assertEqual(topo.get_rank(dp=0, mp=0, pp=0), 0)
