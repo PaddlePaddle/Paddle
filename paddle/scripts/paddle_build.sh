@@ -1732,19 +1732,6 @@ EOF
     build_size "paddle_inference"
 }
 
-function tar_fluid_lib() {
-    cat <<EOF
-    ========================================
-    Taring fluid library for train and inference ...
-    ========================================
-EOF
-    cd ${PADDLE_ROOT}/build
-    cp -r paddle_install_dir fluid
-    tar -czf fluid.tgz fluid
-    cp -r paddle_inference_install_dir paddle_inference
-    tar -czf paddle_inference.tgz paddle_inference
-}
-
 
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
@@ -1874,11 +1861,6 @@ function main() {
         ;;
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
-        ;;
-      fluid_inference_lib)
-        cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib ${parallel_number}
-        tar_fluid_lib
         ;;
       build_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
