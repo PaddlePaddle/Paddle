@@ -15,6 +15,8 @@
 import os
 import sys
 
+from paddle.fluid.core import IndexSampler
+
 
 class DataGenerator(object):
     """
@@ -27,6 +29,68 @@ class DataGenerator(object):
     def __init__(self):
         self._proto_info = None
         self.batch_size_ = 32
+        self._tree_sampler = None
+
+    def set_tree_layerwise_sampler(self,
+                                   name,
+                                   layer_sample_counts,
+                                   user_slot_positions,
+                                   item_position,
+                                   label_position,
+                                   start_sample_layer=1,
+                                   seed=0,
+                                   with_hierarchy=False):
+        self._tree_sampler = IndexSampler("by_layerwise", name)
+        self._tree_sampler.init_layerwise_conf(layer_sample_counts,
+                                               start_sample_layer, seed)
+        assert isinstance(item_position, int) and isinstance(label_position,
+                                                             int)
+        self._tree_sampler_config = {
+            'user_slot_positions': user_slot_positions,
+            'item_position': item_position,
+            'label_position': label_position,
+            'with_hierarchy': with_hierarchy
+        }
+
+    def tree_sample(self, batch_samples):
+        user_history_ids = []
+        items = []
+        for sample in batch_samples:
+            users = []
+            for i in range(
+                    len(self._tree_sampler_config['user_slot_positions'])):
+                slot = self._tree_sampler_config['user_slot_positions'][i]
+                feasigns = sample[slot][1]
+                assert len(feasigns) == 1
+                users.append(feasigns[0])
+            user_history_ids.append(users)
+            item_feasigns = sample[self._tree_sampler_config['item_position']][
+                1]
+            assert len(item_feasigns) == 1
+            items.append(item_feasigns[0])
+
+        res = self._tree_sampler.sample(
+            user_history_ids, items,
+            self._tree_sampler_config['with_hierarchy'])
+        each_sample_num = len(res) / len(batch_samples)
+
+        result = []
+        for i in range(len(batch_samples)):
+            for j in range(each_sample_num):
+                sample = list(batch_samples[i])
+                for k in range(
+                        len(self._tree_sampler_config['user_slot_positions'])):
+                    u_slot = self._tree_sampler_config['user_slot_positions'][k]
+                    sample[u_slot] = (sample[u_slot][0],
+                                      [res[i * each_sample_num + j][k]])
+                item_slot = self._tree_sampler_config['item_position']
+                label_slot = self._tree_sampler_config['label_position']
+                sample[item_slot] = (sample[item_slot][0],
+                                     [res[i * each_sample_num + j][-2]])
+                sample[label_slot] = (sample[label_slot][0],
+                                      [res[i * each_sample_num + j][-1]])
+                result.append(sample)
+        return result
 
     def set_batch(self, batch_size):
         '''
@@ -129,6 +193,8 @@ class DataGenerator(object):
                         sys.stdout.write(self._gen_str(sample))
                     batch_samples = []
         if len(batch_samples) > 0:
+            if self._tree_sampler:
+                batch_samples = self.tree_sample(batch_samples)
             batch_iter = self.generate_batch(batch_samples)
             for sample in batch_iter():
                 sys.stdout.write(self._gen_str(sample))

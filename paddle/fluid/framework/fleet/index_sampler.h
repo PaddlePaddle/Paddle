@@ -1,3 +1,18 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
 #include <vector>
 #include "paddle/fluid/framework/fleet/index_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -18,39 +33,55 @@ class IndexSampler {
     return instance;
   }
 
-  virtual void init_layerwise_conf(const std::vector<int64_t> &layer_sample_counts, int start_sample_layer=1, int seed=0) {};
-  virtual void init_beamsearch_conf(const int64_t k) {};
-  virtual std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& input_targets, bool with_hierarchy=false) = 0;
+  virtual void init_layerwise_conf(const std::vector<int>& layer_sample_counts,
+                                   int start_sample_layer = 1, int seed = 0) {}
+  virtual void init_beamsearch_conf(const int64_t k) {}
+  virtual std::vector<std::vector<uint64_t>> sample(
+      const std::vector<std::vector<uint64_t>>& user_inputs,
+      const std::vector<uint64_t>& input_targets,
+      bool with_hierarchy = false) = 0;
 };
 
 class LayerWiseSampler : public IndexSampler {
  public:
   virtual ~LayerWiseSampler() {}
-  LayerWiseSampler(const std::string& name) {tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);}
-
-  void init_layerwise_conf(const std::vector<int64_t> &layer_sample_counts, int start_sample_layer, int seed) override {
-      seed_ = seed;
-      start_sample_layer_ = start_sample_layer;
-
-      PADDLE_ENFORCE_GT(start_sample_layer_, 0, "start sampler layer should greater than 0");
-      PADDLE_ENFORCE_LT(start_sample_layer_, tree_->height(), "start sampler layer should less than max_layer");
-    
-      size_t i = 0;
-      layer_counts_sum_ = 0;
-      layer_counts_.clear();
-      int cur_layer = start_sample_layer_;
-      while (cur_layer < tree_->height()) {
-          layer_counts_sum_ += layer_sample_counts[i] + 1;
-          layer_counts_.push_back(layer_sample_counts[i]);
-          VLOG(0) << "[INFO] level " << cur_layer << " sample_layer_counts.push_back: " << layer_sample_counts[i];
-          cur_layer += 1;
-          i += 1;
-      }
-      reverse(layer_counts_.begin(), layer_counts_.end());
-      VLOG(0) << "sample counts sum: " << layer_counts_sum_;
+  explicit LayerWiseSampler(const std::string& name) {
+    tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);
   }
-  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
- 
+
+  void init_layerwise_conf(const std::vector<int>& layer_sample_counts,
+                           int start_sample_layer, int seed) override {
+    seed_ = seed;
+    start_sample_layer_ = start_sample_layer;
+
+    PADDLE_ENFORCE_GT(start_sample_layer_, 0,
+                      "start sampler layer should greater than 0");
+    PADDLE_ENFORCE_LT(start_sample_layer_, tree_->height(),
+                      "start sampler layer should less than max_layer");
+
+    size_t i = 0;
+    layer_counts_sum_ = 0;
+    layer_counts_.clear();
+    int cur_layer = start_sample_layer_;
+    while (cur_layer < tree_->height()) {
+      int layer_sample_num = 1;
+      if (i < layer_sample_counts.size()) {
+        layer_sample_num = layer_sample_counts[i];
+      }
+      layer_counts_sum_ += layer_sample_num + 1;
+      layer_counts_.push_back(layer_sample_num);
+      VLOG(1) << "[INFO] level " << cur_layer
+              << " sample_layer_counts.push_back: " << layer_sample_num;
+      cur_layer += 1;
+      i += 1;
+    }
+    reverse(layer_counts_.begin(), layer_counts_.end());
+    VLOG(1) << "sample counts sum: " << layer_counts_sum_;
+  }
+  std::vector<std::vector<uint64_t>> sample(
+      const std::vector<std::vector<uint64_t>>& user_inputs,
+      const std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
+
  private:
   std::vector<int> layer_counts_;
   int64_t layer_counts_sum_{0};
@@ -59,17 +90,21 @@ class LayerWiseSampler : public IndexSampler {
   int start_sample_layer_{1};
 };
 
-class BeamSearchSampler : public IndexSampler{
+class BeamSearchSampler : public IndexSampler {
  public:
   virtual ~BeamSearchSampler() {}
-  BeamSearchSampler(const std::string& name) {tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);}
+  explicit BeamSearchSampler(const std::string& name) {
+    tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);
+  }
 
   void init_beamsearch_conf(const int64_t k) override {
     k_ = k;
     return;
   }
-  std::vector<std::vector<uint64_t>> sample(std::vector<std::vector<uint64_t>>& user_inputs, std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
- 
+  std::vector<std::vector<uint64_t>> sample(
+      const std::vector<std::vector<uint64_t>>& user_inputs,
+      const std::vector<uint64_t>& target_ids, bool with_hierarchy) override;
+
  private:
   int64_t k_;
   std::shared_ptr<TreeIndex> tree_{nullptr};
