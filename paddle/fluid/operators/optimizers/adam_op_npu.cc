@@ -61,16 +61,16 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     mom1_out->mutable_data<T>(ctx.GetPlace());
     mom2_out->mutable_data<T>(ctx.GetPlace());
+    beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+    beta2_pow_out->mutable_data<T>(ctx.GetPlace());
 
     // NOTE(zhiqiu): beta1_pow and beta2_pow may on CPU and not transform place.
     if (beta1_pow->place() == platform::CPUPlace()) {
-      float beta1 = *beta1_pow->data<float>();
-      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
+      T beta1 = *beta1_pow->data<T>();
       FillNpuTensorWithConstant<T>(beta1_pow_out, beta1);
     }
     if (beta2_pow->place() == platform::CPUPlace()) {
-      float beta2 = *beta2_pow->data<float>();
-      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
+      T beta2 = *beta2_pow->data<T>();
       FillNpuTensorWithConstant<T>(beta2_pow_out, beta2);
     }
 
@@ -110,11 +110,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     // reshape
     Tensor beta1_tensor(framework::proto::VarType::FP32);
-    beta1_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<float>(&beta1_tensor, beta1);
+    beta1_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<T>(&beta1_tensor, beta1);
     Tensor beta2_tensor(framework::proto::VarType::FP32);
-    beta2_tensor.mutable_data<float>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<float>(&beta2_tensor, beta2);
+    beta2_tensor.mutable_data<T>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<T>(&beta2_tensor, beta2);
 
     Tensor epsilon_tensor(framework::proto::VarType::FP32);
     epsilon_tensor.mutable_data<T>({1}, ctx.GetPlace());
