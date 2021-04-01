@@ -120,10 +120,8 @@ class GraphPyServer : public GraphPyService {
   }
   int get_rank() { return rank; }
   void set_rank(int rank) { this->rank = rank; }
-  // paddle::distributed::GraphBrpcService * get_service(){
-  //   return pserver_ptr->get_service();
-  // }
-  void start_server();
+
+  void start_server(bool block = true);
   ::paddle::distributed::PSParameter GetServerProto();
   std::shared_ptr<paddle::distributed::GraphBrpcServer> get_ps_server() {
     return pserver_ptr;
@@ -151,7 +149,8 @@ class GraphPyClient : public GraphPyService {
         (paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
-
+  void stop_server();
+  void finalize_worker();
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   int get_client_id() { return client_id; }
@@ -169,9 +168,11 @@ class GraphPyClient : public GraphPyService {
   ::paddle::distributed::PSParameter GetWorkerProto();
 
  protected:
+  mutable std::mutex mutex_;
   int client_id;
   std::shared_ptr<paddle::distributed::GraphBrpcClient> worker_ptr;
   std::thread* client_thread;
+  bool stoped_ = false;
 };
 }
 }

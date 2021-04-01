@@ -49,8 +49,6 @@ void GraphPyService::set_up(std::string ips_str, int shard_num,
                             std::vector<std::string> edge_types) {
   set_shard_num(shard_num);
   set_num_node_types(node_types.size());
-  // set_client_Id(client_id);
-  // set_rank(rank);
 
   for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
     this->table_id_map[node_types[table_id]] = this->table_id_map.size();
@@ -89,27 +87,33 @@ void GraphPyClient::start_client() {
   worker_ptr->configure(worker_proto, dense_regions, _ps_env, client_id);
   worker_ptr->set_shard_num(get_shard_num());
 }
-void GraphPyServer::start_server() {
+void GraphPyServer::start_server(bool block) {
   std::string ip = server_list[rank];
   uint32_t port = std::stoul(port_list[rank]);
-  server_thread = new std::thread([this, &ip, &port]() {
-    ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
+  ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
 
-    auto _ps_env = paddle::distributed::PaddlePSEnvironment();
-    _ps_env.set_ps_servers(&this->host_sign_list,
-                           this->host_sign_list.size());  // test
-    pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
-        (paddle::distributed::GraphBrpcServer*)
-            paddle::distributed::PSServerFactory::create(server_proto));
-    VLOG(0) << "pserver-ptr created ";
-    std::vector<framework::ProgramDesc> empty_vec;
-    framework::ProgramDesc empty_prog;
-    empty_vec.push_back(empty_prog);
-    pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
-    pserver_ptr->start(ip, port);
-  });
-  server_thread->detach();
-  sleep(3);
+  auto _ps_env = paddle::distributed::PaddlePSEnvironment();
+  _ps_env.set_ps_servers(&this->host_sign_list,
+                         this->host_sign_list.size());  // test
+  pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
+      (paddle::distributed::GraphBrpcServer*)
+          paddle::distributed::PSServerFactory::create(server_proto));
+  VLOG(0) << "pserver-ptr created ";
+  std::vector<framework::ProgramDesc> empty_vec;
+  framework::ProgramDesc empty_prog;
+  empty_vec.push_back(empty_prog);
+  pserver_ptr->configure(server_proto, _ps_env, rank, empty_vec);
+  pserver_ptr->start(ip, port);
+  std::condition_variable* cv_ = pserver_ptr->export_cv();
+  if (block) {
+    std::mutex mutex_;
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_->wait(lock);
+  }
+
+  // });
+  // server_thread->detach();
+  // sleep(3);
 }
 ::paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
   // Generate server proto desc
@@ -312,5 +316,14 @@ std::vector<FeatureNode> GraphPyClient::pull_graph_list(std::string name,
   }
   return res;
 }
+
+void GraphPyClient::stop_server() {
+  VLOG(0) << "going to stop server";
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (stoped_) return;
+  auto status = this->worker_ptr->stop_server();
+  if (status.get() == 0) stoped_ = true;
+}
+void GraphPyClient::finalize_worker() { this->worker_ptr->finalize_worker(); }
 }
 }

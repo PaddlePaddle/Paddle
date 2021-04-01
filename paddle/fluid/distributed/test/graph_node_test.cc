@@ -356,8 +356,8 @@ void RunBrpcPushSparse() {
   host_sign_list_.push_back(ph_host2.serialize_to_string());
   // test-end
   // Srart Server
-  std::thread server_thread(RunServer);
-  std::thread server_thread2(RunServer2);
+  std::thread* server_thread = new std::thread(RunServer);
+  std::thread* server_thread2 = new std::thread(RunServer2);
   sleep(1);
 
   std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
@@ -433,9 +433,9 @@ void RunBrpcPushSparse() {
   client2.add_table_feat_conf("user", "d", "string", 1);
   client2.add_table_feat_conf("item", "a", "float32", 1);
 
-  server1.start_server();
+  server1.start_server(false);
   std::cout << "first server done" << std::endl;
-  server2.start_server();
+  server2.start_server(false);
   std::cout << "second server done" << std::endl;
   client1.start_client();
   std::cout << "first client done" << std::endl;
@@ -451,8 +451,6 @@ void RunBrpcPushSparse() {
   client1.load_node_file(std::string("item"), std::string(node_file_name));
   client1.load_edge_file(std::string("user2item"), std::string(edge_file_name),
                          0);
-  // client2.load_edge_file(std::string("user2item"), std::string(file_name),
-  // 0);
   nodes.clear();
 
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
@@ -505,10 +503,10 @@ void RunBrpcPushSparse() {
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
   ASSERT_EQ(node_feat.size(), 2);
   ASSERT_EQ(node_feat[0].size(), 2);
-  std::cout << "get_node_feat: " << node_feat[0][0] << std::endl;
-  std::cout << "get_node_feat: " << node_feat[0][1] << std::endl;
-  std::cout << "get_node_feat: " << node_feat[1][0] << std::endl;
-  std::cout << "get_node_feat: " << node_feat[1][1] << std::endl;
+  VLOG(0) << "get_node_feat: " << node_feat[0][0];
+  VLOG(0) << "get_node_feat: " << node_feat[0][1];
+  VLOG(0) << "get_node_feat: " << node_feat[1][0];
+  VLOG(0) << "get_node_feat: " << node_feat[1][1];
 
   // Test string
   node_ids.clear();
@@ -522,10 +520,10 @@ void RunBrpcPushSparse() {
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
   ASSERT_EQ(node_feat.size(), 2);
   ASSERT_EQ(node_feat[0].size(), 2);
-  std::cout << "get_node_feat: " << node_feat[0][0].size() << std::endl;
-  std::cout << "get_node_feat: " << node_feat[0][1].size() << std::endl;
-  std::cout << "get_node_feat: " << node_feat[1][0].size() << std::endl;
-  std::cout << "get_node_feat: " << node_feat[1][1].size() << std::endl;
+  VLOG(0) << "get_node_feat: " << node_feat[0][0].size();
+  VLOG(0) << "get_node_feat: " << node_feat[0][1].size();
+  VLOG(0) << "get_node_feat: " << node_feat[1][0].size();
+  VLOG(0) << "get_node_feat: " << node_feat[1][1].size();
 
   std::remove(edge_file_name);
   std::remove(node_file_name);
@@ -533,13 +531,15 @@ void RunBrpcPushSparse() {
   worker_ptr_->stop_server();
   LOG(INFO) << "Run finalize_worker";
   worker_ptr_->finalize_worker();
-  server_thread.join();
-  server_thread2.join();
+
+  // server_thread.join();
+  // server_thread2.join();
   testFeatureNodeSerializeInt();
   testFeatureNodeSerializeInt64();
   testFeatureNodeSerializeFloat32();
   testFeatureNodeSerializeFloat64();
   testGraphToBuffer();
+  client1.stop_server();
 }
 
 void testGraphToBuffer() {

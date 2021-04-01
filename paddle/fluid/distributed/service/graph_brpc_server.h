@@ -33,14 +33,16 @@ class GraphBrpcServer : public PSServer {
   virtual uint64_t start(const std::string &ip, uint32_t port);
   virtual int32_t stop() {
     std::unique_lock<std::mutex> lock(mutex_);
+    if (stoped_) return 0;
     stoped_ = true;
-    cv_.notify_all();
-
+    // cv_.notify_all();
     _server.Stop(1000);
     _server.Join();
     return 0;
   }
   virtual int32_t port();
+
+  std::condition_variable *export_cv() { return &cv_; }
 
  private:
   virtual int32_t initialize();
@@ -104,7 +106,7 @@ class GraphBrpcService : public PsBaseService {
   std::mutex _initialize_shard_mutex;
   std::unordered_map<int32_t, serviceHandlerFunc> _msg_handler_map;
   std::vector<float> _ori_values;
-  const int sample_nodes_ranges = 3;
+  const int sample_nodes_ranges = 23;
 };
 
 }  // namespace distributed

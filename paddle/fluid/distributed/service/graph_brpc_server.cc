@@ -68,17 +68,9 @@ uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
     LOG(ERROR) << "GraphBrpcServer start failed, ip_port=" << ip_port;
     return 0;
   }
-  VLOG(0) << "GraphBrpcServer::start registe_ps_server";
   _environment->registe_ps_server(ip, port, _rank);
-  VLOG(0) << "GraphBrpcServer::start wait";
-  cv_.wait(lock, [&] { return stoped_; });
-
-  PSHost host;
-  host.ip = ip;
-  host.port = port;
-  host.rank = _rank;
-  VLOG(0) << "GraphBrpcServer::start return host.rank";
-  return host.rank;
+  // cv_.wait(lock, [&] { return stoped_; });
+  return 0;
 }
 
 int32_t GraphBrpcServer::port() { return _server.listen_address().port; }
@@ -232,11 +224,12 @@ int32_t GraphBrpcService::stop_server(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
-  auto *p_server = _server;
+  GraphBrpcServer *p_server = (GraphBrpcServer *)_server;
   std::thread t_stop([p_server]() {
     p_server->stop();
     LOG(INFO) << "Server Stoped";
   });
+  p_server->export_cv()->notify_all();
   t_stop.detach();
   return 0;
 }

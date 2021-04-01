@@ -194,6 +194,7 @@ void BindGraphPyClient(py::module* m) {
       .def("start_client", &GraphPyClient::start_client)
       .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
+      .def("stop_server", &GraphPyClient::stop_server)
       .def("get_node_feat",
            [](GraphPyClient& self, std::string node_type,
               std::vector<uint64_t> node_ids,
