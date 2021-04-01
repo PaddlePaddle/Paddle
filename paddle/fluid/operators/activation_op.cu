@@ -278,8 +278,8 @@ __global__ void ActivationGradKernelVec(const T* forward_data, const T* dout,
 
   while (idx == loop && tail) {
 #ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    in_data = __ldg(&forward_data[num - tail]);
-    dout_data = __ldg(&dout[num - tail]);
+    in_data = __ldg(forward_data + (num - tail));
+    dout_data = __ldg(dout + (num - tail));
 #else
     in_data = forward_data[num - tail];
     dout_data = dout[num - tail];
@@ -313,7 +313,7 @@ __global__ void ActivationkernelVec(const T* src, T* dst, int num,
 
   while (idx == loop && tail) {
 #ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    x = __ldg(&src[num - tail]);
+    x = __ldg(src + (num - tail));
 #else
     x = src[num - tail];
 #endif
