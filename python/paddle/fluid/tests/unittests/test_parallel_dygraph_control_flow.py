@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,12 +21,11 @@ import unittest
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
-from parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
 
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphUnusedVar(TestDistBase):
+class TestDygraphControlFlowSame(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -35,13 +34,13 @@ class TestParallelDygraphUnusedVar(TestDistBase):
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "parallel_dygraph_unused_variables.py",
+                "parallel_dygraph_control_flow_same.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
 
-class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
+class TestFleetDygraphControlFlowSame(TestDygraphControlFlowSame):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -49,14 +48,15 @@ class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
         self._use_fleet_api = True
 
 
-class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
-    def test_mnist_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-            self.check_dist_result_with_spawn(
-                test_class=TestSparseEmbeddingUnusedVars, delta=1e-5)
+class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._accumulate_gradient = True
 
 
-class TestParallelDygraphNoVar(TestDistBase):
+class TestDygraphControlFlowDiff(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -65,25 +65,26 @@ class TestParallelDygraphNoVar(TestDistBase):
     def test_net(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "parallel_dygraph_none_var.py",
+                "parallel_dygraph_control_flow_different.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
 
-class TestParallelDygraphSharedUnusedVariables(TestDistBase):
+class TestFleetDygraphControlFlowDiff(TestDygraphControlFlowDiff):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
+        self._use_fleet_api = True
 
-    def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_shared_unused_var.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name)
+
+class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._accumulate_gradient = True
 
 
 if __name__ == "__main__":

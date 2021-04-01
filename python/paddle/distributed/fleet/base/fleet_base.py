@@ -706,7 +706,9 @@ class Fleet(object):
             model,
             comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
             last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
+            last_comm_group_size_MB,
+            find_unused_parameters=self._user_defined_strategy.
+            find_unused_parameters)
         return self.model
 
     @dygraph_only
