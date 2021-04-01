@@ -289,8 +289,6 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
     if (closure->check_response(0, PS_PULL_GRAPH_LIST) != 0) {
       ret = -1;
     } else {
-      // VLOG(0) << "check sample response: "
-      //         << " " << closure->check_response(0, PS_PULL_GRAPH_LIST);
       auto &res_io_buffer = closure->cntl(0)->response_attachment();
       butil::IOBufBytesIterator io_buffer_itr(res_io_buffer);
       size_t bytes_size = io_buffer_itr.bytes_left();
@@ -309,7 +307,6 @@ std::future<int32_t> GraphBrpcClient::pull_graph_list(
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
-  ;
   closure->request(0)->set_cmd_id(PS_PULL_GRAPH_LIST);
   closure->request(0)->set_table_id(table_id);
   closure->request(0)->set_client_id(_client_id);

@@ -12,5 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -exu
-build/demo_trainer --flagfile="train.cfg"
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+
+from . import backward_mode
+from .backward_mode import backward
+
+__all__ = ['grad']
+
+__all__ += backward_mode.__all__

@@ -263,7 +263,7 @@ function summary_problems {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (GaoWei8(Recommend), Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
     exit $exit_code
   fi
 }

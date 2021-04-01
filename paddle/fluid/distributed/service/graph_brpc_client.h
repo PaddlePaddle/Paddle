@@ -37,10 +37,9 @@ namespace distributed {
 
 class GraphPsService_Stub : public PsService_Stub {
  public:
-  static int thread_num;
   GraphPsService_Stub(::google::protobuf::RpcChannel* channel,
                       ::google::protobuf::RpcChannel* local_channel = NULL,
-                      GraphBrpcService* service = NULL)
+                      GraphBrpcService* service = NULL, int thread_num = 1)
       : PsService_Stub(channel) {
     this->local_channel = local_channel;
     this->graph_service = service;
@@ -89,8 +88,10 @@ class GraphBrpcClient : public BrpcPsClient {
   void set_local_graph_service(GraphBrpcService* graph_service) {
     this->graph_service = graph_service;
   }
-  GraphPsService_Stub getServiceStub(::google::protobuf::RpcChannel* channel) {
-    return GraphPsService_Stub(channel, local_channel, graph_service);
+  GraphPsService_Stub getServiceStub(::google::protobuf::RpcChannel* channel,
+                                     int thread_num = 1) {
+    return GraphPsService_Stub(channel, local_channel, graph_service,
+                               thread_num);
   }
 
  private:
