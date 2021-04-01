@@ -1039,11 +1039,11 @@ function card_test() {
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
 
-    # get the CUDA device count, XPU device count is one
+    # get the CUDA or ROCM device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
+        CUDA_DEVICE_COUNT=$(rocm-smi --showmemuse  | grep "memory use" | wc -l)
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
@@ -1166,8 +1166,11 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
-
+        if [ ${WITH_ROCM:-OFF} == "ON" ] ; then
+            disable_ut_quickly=${ROCM_SKIPPED_UT_LIST:-""}    # indicate whether the case was in quickly disable list on ROCM platform
+        else
+            get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        fi
         UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
         cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
