@@ -287,11 +287,11 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
   }
 
   if (platform::is_gpu_place(place_) && !is_same_place_) {
-    *out = cuda_buffer_[i];
+    *out = std::move(cuda_buffer_[i]);
   } else if (platform::is_npu_place(place_) && !is_same_place_) {
-    *out = npu_buffer_[i];
+    *out = std::move(npu_buffer_[i]);
   } else {
-    *out = cpu_buffer_[i];
+    *out = std::move(cpu_buffer_[i]);
   }
 
   // Do not push current position into ReadAsync. Push the previous position
