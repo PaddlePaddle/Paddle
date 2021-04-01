@@ -52,7 +52,7 @@ class AvgPool1D(layers.Layer):
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
-            it must contain an integer.
+            it must contain an integer. The default value is None, then the stride will be equal to kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
@@ -150,6 +150,7 @@ class AvgPool2D(layers.Layer):
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
+            The default value is None, then the stride will be equal to kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
@@ -247,6 +248,7 @@ class AvgPool3D(layers.Layer):
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain three integers, [stride_Depth, stride_Height, stride_Width).
             Otherwise, the pool stride size will be a cube of an int.
+            Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
@@ -349,7 +351,7 @@ class MaxPool1D(layers.Layer):
         kernel_size(int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
-            it must contain an integer.
+            it must contain an integer. Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An integer, which means the feature map is zero padded by size of `padding` on every sides.
@@ -451,6 +453,7 @@ class MaxPool2D(layers.Layer):
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
+            Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
@@ -547,6 +550,7 @@ class MaxPool3D(layers.Layer):
         stride(int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain three integers, [stride_Depth, stride_Height, stride_Width).
             Otherwise, the pool stride size will be a cube of an int.
+            Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
