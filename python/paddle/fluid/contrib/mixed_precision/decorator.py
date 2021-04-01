@@ -382,22 +382,22 @@ class OptimizerWithMixedPrecision(object):
                 opt._create_global_learning_rate()
                 lr_var = opt._global_learning_rate()
             assert lr_var is not None, "Not find any learning rate var."
+            with self._train_program._optimized_guard([]):
+                zero_var = layers.fill_constant(
+                    shape=lr_var.shape, dtype=lr_var.dtype, value=0.0)
+                keeped_lr = layers.fill_constant(
+                    shape=lr_var.shape, dtype=lr_var.dtype, value=0.0)
+                with layers.Switch() as switch:
+                    with switch.case(lr_var == zero_var):
+                        pass
+                    with switch.default():
+                        layers.assign(lr_var, keeped_lr)
 
-            zero_var = layers.fill_constant(
-                shape=lr_var.shape, dtype=lr_var.dtype, value=0.0)
-            keeped_lr = layers.fill_constant(
-                shape=lr_var.shape, dtype=lr_var.dtype, value=0.0)
-            with layers.Switch() as switch:
-                with switch.case(lr_var == zero_var):
-                    pass
-                with switch.default():
-                    layers.assign(lr_var, keeped_lr)
-
-            with layers.Switch() as switch:
-                with switch.case(found_inf):
-                    layers.assign(zero_var, lr_var)
-                with switch.default():
-                    layers.assign(keeped_lr, lr_var)
+                with layers.Switch() as switch:
+                    with switch.case(found_inf):
+                        layers.assign(zero_var, lr_var)
+                    with switch.default():
+                        layers.assign(keeped_lr, lr_var)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
