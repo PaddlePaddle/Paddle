@@ -211,7 +211,6 @@ class TestSaveLoadAny(unittest.TestCase):
             path = os.path.join("test_replace_static_save_load", "model")
             # paddle.save, legacy paddle.fluid.load
             self.replace_static_save(prog, path)
-            # set var to zero
             self.set_zero(prog, place)
             paddle.fluid.io.load(prog, path)
             for var in prog.list_vars():
@@ -222,7 +221,6 @@ class TestSaveLoadAny(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, np.array(base_t)))
             # legacy paddle.fluid.save, paddle.load 
             paddle.fluid.io.save(prog, path)
-            # set var to zero
             self.set_zero(prog, place)
             self.replace_static_load(prog, path)
             for var in prog.list_vars():
