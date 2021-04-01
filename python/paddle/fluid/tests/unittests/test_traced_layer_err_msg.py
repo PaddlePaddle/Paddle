@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import six
 import unittest
 import paddle.nn as nn
+import os
 
 
 class SimpleFCLayer(nn.Layer):
@@ -143,6 +144,11 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                 "The type of 'feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. ".
                 format(self.type_str, self.type_str, self.type_str),
                 str(e.exception))
+            with self.assertRaises(ValueError) as e:
+                traced_layer.save_inference_model("")
+            self.assertEqual(
+                "The input path MUST be format of dirname/file_prefix [dirname\\file_prefix in Windows system], "
+                "but received file_prefix is empty string.", str(e.exception))
 
             traced_layer.save_inference_model(path)
 
@@ -172,6 +178,26 @@ class TestOutVarWithNoneErrMsg(unittest.TestCase):
         with self.assertRaises(TypeError):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(model,
                                                                         [in_x])
+
+
+class TestTracedLayerSaveInferenceModel(unittest.TestCase):
+    """test save_inference_model will automaticlly create non-exist dir"""
+
+    def setUp(self):
+        self.save_path = "./nonexist_dir/fc"
+        import shutil
+        if os.path.exists(os.path.dirname(self.save_path)):
+            shutil.rmtree(os.path.dirname(self.save_path))
+
+    def test_mkdir_when_input_path_non_exist(self):
+        fc_layer = SimpleFCLayer(3, 4, 2)
+        input_var = paddle.to_tensor(np.random.random([4, 3]).astype('float32'))
+        with fluid.dygraph.guard():
+            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                fc_layer, inputs=[input_var])
+            self.assertFalse(os.path.exists(os.path.dirname(self.save_path)))
+            traced_layer.save_inference_model(self.save_path)
+            self.assertTrue(os.path.exists(os.path.dirname(self.save_path)))
 
 
 if __name__ == '__main__':
