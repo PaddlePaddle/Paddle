@@ -45,24 +45,25 @@ class TestTreeIndex(unittest.TestCase):
         self.assertEqual(sum(all_items), sum(layer_node_ids[-1]))
 
         # get_parent_path
-        parent_path_ids = tree.get_parent_path([2006845])[0]
-        parent_path_codes = tree.get_parent_path([2006845], ret_code=True)[0]
+        parent_path_ids = tree.get_parent_path([all_items[0]])[0]
+        parent_path_codes = tree.get_parent_path(
+            [all_items[0]], ret_code=True)[0]
         for i in range(height):
             self.assertIn(parent_path_ids[i], layer_node_ids[height - 1 - i])
             self.assertIn(parent_path_codes[i],
                           layer_node_codes[height - 1 - i])
 
         # get_ancestor_given_level
-        ancestor_ids = tree.get_ancestor_given_level([2006845], height - 2,
+        ancestor_ids = tree.get_ancestor_given_level([all_items[0]], height - 2,
                                                      False)
-        ancestor_codes = tree.get_ancestor_given_level([2006845], height - 2,
-                                                       True)
+        ancestor_codes = tree.get_ancestor_given_level([all_items[0]],
+                                                       height - 2, True)
         self.assertEqual(ancestor_ids[0], parent_path_ids[1])
         self.assertEqual(ancestor_codes[0], parent_path_codes[1])
 
         # get_pi_relation
-        pi_relation = tree.get_pi_relation([2006845], height - 2)
-        self.assertEqual(pi_relation[2006845], ancestor_codes[0])
+        pi_relation = tree.get_pi_relation([all_items[0]], height - 2)
+        self.assertEqual(pi_relation[all_items[0]], ancestor_codes[0])
 
         # get_travel_path
         travel_path_ids = tree.get_travel_path(parent_path_codes[0],

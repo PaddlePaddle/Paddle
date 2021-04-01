@@ -94,7 +94,7 @@ class TreeIndex : public Index {
       }
     }
 
-    auto res = std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
+    res = std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
     if (ret_code == false) {
       for (size_t i = 0; i < res.size(); i++) {
         res[i] = data_[res[i]].id();
