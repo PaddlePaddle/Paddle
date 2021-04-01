@@ -68,12 +68,16 @@ class AdamNPUKernel : public framework::OpKernel<T> {
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
       TensorFromVector(std::vector<float>{beta1}, ctx.device_context(),
                        beta1_pow_out);
+    } else {
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace());
     }
     if (beta2_pow->place() == platform::CPUPlace()) {
       float beta2 = *beta2_pow->data<float>();
       beta2_pow_out->mutable_data<T>(ctx.GetPlace());
       TensorFromVector(std::vector<float>{beta2}, ctx.device_context(),
                        beta2_pow_out);
+    } else {
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace());
     }
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
