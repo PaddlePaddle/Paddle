@@ -113,11 +113,15 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
   KERNEL_PRINT("SegmentOpsKernel Begin");
 
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
+    KERNEL_PRINT("")
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
     h.calculate(stripe_index, &segment_offset, &dim_index_base, &actual_height);
 
+    KERNEL_PRINT("")
     T minmax = pool.initial();
+    KERNEL_PRINT("")
+
     Index first_segment_id = segment_ids[dim_index_base];
     // -1 is for the start value when interval_id = 0
     Index last_segment_id = -1;
@@ -125,6 +129,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
       last_segment_id = segment_ids[dim_index_base - 1];
     }
 
+    KERNEL_PRINT("")
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
       // ensure the segment_ids is sorted.
@@ -134,6 +139,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
                      dim_index_base + j - 1, dim_index_base + j,
                      last_segment_id, current_segment_id);
 
+      KERNEL_PRINT("")
       if (current_segment_id > last_segment_id) {
         // reset the interval value which do not have corresponding ids.
         for (Index interval_id = last_segment_id + 1;
@@ -145,21 +151,30 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
           const Index output_index =
               last_segment_id * inner_dim_size + segment_offset;
           if (last_segment_id == first_segment_id) {
+            KERNEL_PRINT("")
             pool.atomic(output + output_index, minmax);
+            KERNEL_PRINT("")
           } else {
             *(output + output_index) = minmax;
           }
+          KERNEL_PRINT("")
           minmax = pool.initial();
+          KERNEL_PRINT("")
         }
       }
+      KERNEL_PRINT("")
       pool.compute(
           input[(dim_index_base + j) * inner_dim_size + segment_offset],
           &minmax);
+      KERNEL_PRINT("")
       last_segment_id = current_segment_id;
     }
+    KERNEL_PRINT("")
     const Index output_index =
         last_segment_id * inner_dim_size + segment_offset;
+    KERNEL_PRINT("")
     pool.atomic(output + output_index, minmax);
+    KERNEL_PRINT("")
   }
 
   KERNEL_PRINT("SegmentOpsKernel End");
