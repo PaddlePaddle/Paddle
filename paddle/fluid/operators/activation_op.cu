@@ -277,13 +277,8 @@ __global__ void ActivationGradKernelVec(const T* forward_data, const T* dout,
   }
 
   while (idx == loop && tail) {
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    in_data = __ldg(forward_data + (num - tail));
-    dout_data = __ldg(dout + (num - tail));
-#else
     in_data = forward_data[num - tail];
     dout_data = dout[num - tail];
-#endif
     dx[num - tail] = functor.ComputeRemainder(in_data, dout_data);
     --tail;
   }
@@ -301,7 +296,6 @@ __global__ void ActivationkernelVec(const T* src, T* dst, int num,
   const VecType* in = reinterpret_cast<const VecType*>(src);
   VecType* out = reinterpret_cast<VecType*>(dst);
   VecType x_vec;
-  T x;
   for (int i = idx; i < loop; i += stride) {
 #ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
     x_vec = __ldg(in + i);
@@ -312,12 +306,7 @@ __global__ void ActivationkernelVec(const T* src, T* dst, int num,
   }
 
   while (idx == loop && tail) {
-#ifdef __HIPCC__ || __CUDA_ARCH__ >= 350
-    x = __ldg(src + (num - tail));
-#else
-    x = src[num - tail];
-#endif
-    dst[num - tail] = functor.ComputeRemainder(x);
+    dst[num - tail] = functor.ComputeRemainder(src[num - tail]);
     --tail;
   }
 }
