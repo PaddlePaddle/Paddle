@@ -29,7 +29,7 @@ struct PullSparseValue {
         dim_(dim),
         is_training_(true),
         feasigns_(nullptr),
-        frequencies_(nullptr){};
+        frequencies_(nullptr) {}
 
   explicit PullSparseValue(std::vector<uint64_t> feasigns,
                            std::vector<uint32_t> frequencies, int dim) {
@@ -57,7 +57,7 @@ struct PullSparseValue {
                std::vector<int>* offset_shard) const {
     offset_shard->reserve(numel_ / shard_num + 1);
     for (int x = 0; x < numel_; ++x) {
-      if (x % shard_num == shard_id) {
+      if (feasigns_[x] % shard_num == shard_id) {
         offset_shard->push_back(x);
       }
     }
