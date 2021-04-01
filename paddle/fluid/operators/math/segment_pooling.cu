@@ -121,7 +121,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
 
     KERNEL_PRINT("segment_offset: %d, dim_index_base: %d, actual_height: %d", segment_offset, dim_index_base, actual_height)
     T minmax = pool.initial();
-    KERNEL_PRINT("minmax: %d", minmax)
+    KERNEL_PRINT("minmax: %lf", minmax)
 
     Index first_segment_id = segment_ids[dim_index_base];
     // -1 is for the start value when interval_id = 0
@@ -130,9 +130,10 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
       last_segment_id = segment_ids[dim_index_base - 1];
     }
 
-    KERNEL_PRINT("")
+    KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d", dim_index_base, last_segment_id)
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
+      KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
       // ensure the segment_ids is sorted.
       PADDLE_ENFORCE(current_segment_id >= last_segment_id,
                      "The segment ids should be sorted, but got "
@@ -140,42 +141,50 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
                      dim_index_base + j - 1, dim_index_base + j,
                      last_segment_id, current_segment_id);
 
-      KERNEL_PRINT("")
+      KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
       if (current_segment_id > last_segment_id) {
+        KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
+        
         // reset the interval value which do not have corresponding ids.
         for (Index interval_id = last_segment_id + 1;
              interval_id < current_segment_id; ++interval_id) {
+          KERNEL_PRINT("output[x]:%d", *(output + interval_id * inner_dim_size + segment_offset))
           *(output + interval_id * inner_dim_size + segment_offset) = 0;
+          KERNEL_PRINT("output[x]:%d", *(output + interval_id * inner_dim_size + segment_offset))
         }
         // don't update result when j=0
         if (j > 0) {
+          KERNEL_PRINT("")
           const Index output_index =
               last_segment_id * inner_dim_size + segment_offset;
+          KERNEL_PRINT("output_index: %d", output_index)
           if (last_segment_id == first_segment_id) {
-            KERNEL_PRINT("")
+            KERNEL_PRINT("last_segment_id: %d, first_segment_id: %d", last_segment_id, first_segment_id)
             pool.atomic(output + output_index, minmax);
-            KERNEL_PRINT("")
+            KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
           } else {
             *(output + output_index) = minmax;
+            KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
           }
-          KERNEL_PRINT("")
+          KERNEL_PRINT("minmax: %lf", minmax)
           minmax = pool.initial();
-          KERNEL_PRINT("")
+          KERNEL_PRINT("minmax: %lf", minmax)
         }
       }
       KERNEL_PRINT("")
       pool.compute(
           input[(dim_index_base + j) * inner_dim_size + segment_offset],
           &minmax);
-      KERNEL_PRINT("")
+      KERNEL_PRINT("input[%d, %d, %d, %d]: %lf", dim_index_base, j, inner_dim_size, segment_offset, input[(dim_index_base + j) * inner_dim_size + segment_offset])
       last_segment_id = current_segment_id;
+      KERNEL_PRINT("last_segment_id: %d, current_segment_id: %d", last_segment_id, current_segment_id)
     }
     KERNEL_PRINT("")
     const Index output_index =
         last_segment_id * inner_dim_size + segment_offset;
-    KERNEL_PRINT("")
+    KERNEL_PRINT("output_index: %d, last_segment_id: %d, inner_dim_size: %d, segment_offset: %d", output_index, last_segment_id, inner_dim_size, segment_offset)
     pool.atomic(output + output_index, minmax);
-    KERNEL_PRINT("")
+    KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
   }
 
   KERNEL_PRINT("SegmentOpsKernel End")
