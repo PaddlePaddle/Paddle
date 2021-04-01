@@ -2858,6 +2858,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+
 #ifdef PADDLE_WITH_PSLIB
   BindHeterWrapper(&m);
 #endif
