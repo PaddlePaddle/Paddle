@@ -67,7 +67,7 @@ if /i "%use_gpu%"=="Y" (
 
 rem set_path_vs_command_prompt 
 :set_vcvarsall_dir
-SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat   =======>"
+SET /P vcvarsall_dir="Please input the path of visual studio command Prompt, such as C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat   =======>"
 set tmp_var=!vcvarsall_dir!
 call:remove_space
 set vcvarsall_dir=!tmp_var!   
@@ -177,16 +177,16 @@ if /i "%use_mkl%"=="N" (
 
 if /i "%gpu_inference%"=="Y" (
     if  "%demo_name%"=="trt_mobilenet_demo" (
-      cmake .. -G "Visual Studio 14 2015 Win64"  -T host=x64 -DWITH_GPU=ON ^
+      cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=ON ^
       -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
       -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%" -DUSE_TENSORRT=ON
     ) else (
-      cmake .. -G "Visual Studio 14 2015 Win64"  -T host=x64 -DWITH_GPU=ON ^
+      cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=ON ^
       -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
       -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON -DCUDA_LIB="%cuda_lib_dir%"
     )
 ) else (
-    cmake .. -G "Visual Studio 14 2015 Win64"  -T host=x64 -DWITH_GPU=OFF ^
+    cmake .. -G "Visual Studio 15 2017 Win64"  -T host=x64 -DWITH_GPU=OFF ^
     -DWITH_MKL=%use_mkl% -DWITH_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Release -DDEMO_NAME=%demo_name% ^
     -DPADDLE_LIB="%paddle_infernece_lib%" -DMSVC_STATIC_CRT=ON
 )

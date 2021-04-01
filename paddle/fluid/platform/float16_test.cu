@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/eigen_ext.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
@@ -196,8 +197,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_HIP) || \
-    (defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000)
+#if defined(PADDLE_WITH_HIP)
 ARITHMETIC_KERNEL(Add, +)
 ARITHMETIC_KERNEL(Sub, -)
 ARITHMETIC_KERNEL(Mul, *)

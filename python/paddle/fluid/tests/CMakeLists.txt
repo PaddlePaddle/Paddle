@@ -9,7 +9,8 @@ endforeach()
 add_subdirectory(unittests)
 add_subdirectory(book)
 
-# TODO: support New Custom OP on Mac
+# 2.0 New custom OP can support Windows/Linux now
+# TODO: support 2.0 New Custom OP on Mac
 if(NOT APPLE)
   add_subdirectory(custom_op)
 endif()

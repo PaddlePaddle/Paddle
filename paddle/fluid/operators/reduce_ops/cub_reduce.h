@@ -161,7 +161,11 @@ static inline std::vector<int> GetStrides(const std::vector<int>& dims,
   return strides;
 }
 
+#ifdef __HIPCC__
+constexpr int kMaxBlockDim = 256;
+#else
 constexpr int kMaxBlockDim = 512;
+#endif
 
 static inline int GetDesiredBlockDim(int block_dim) {
   return block_dim >= kMaxBlockDim

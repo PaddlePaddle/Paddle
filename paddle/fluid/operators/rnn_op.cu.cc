@@ -117,10 +117,11 @@ class RNNDescriptors {
 
 // ------------------- cudnn rnn descriptors ---------------------
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor(
-        rnn_desc_.desc(), hidden_size_, num_layers_, miopenRNNlinear,
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
+        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
+        miopenRNNlinear,
         is_bidirec_ ? miopenRNNbidirection : miopenRNNunidirection, mode_,
-        miopenRNNNoBias, miopenRNNdefault, cudnn_type));
+        miopenRNNwithBias, miopenRNNdefault, cudnn_type));
 #elif CUDNN_VERSION >= 6000
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_.desc(), hidden_size_, num_layers_,

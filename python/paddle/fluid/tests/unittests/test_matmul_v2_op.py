@@ -67,7 +67,7 @@ class TestMatMulV2Op(OpTest):
         self.trans_y = False
 
     def init_kernel_type(self):
-        self.dtype = "float64"
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
 
     def setUp(self):
         self.init_kernel_type()
@@ -91,7 +91,10 @@ class TestMatMulV2Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        if core.is_compiled_with_rocm():
+            self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
+        else:
+            self.check_grad(['X', 'Y'], 'Out')
 
 
 class TestMatMuklOp2(TestMatMulV2Op):
