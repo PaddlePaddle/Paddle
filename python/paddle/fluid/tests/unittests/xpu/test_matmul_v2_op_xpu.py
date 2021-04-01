@@ -45,7 +45,6 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
-
     Out = np.matmul(X, Y)
     if not Out.shape:
         # We do not support 0-dimensional Tensors (scalars). So where
@@ -98,16 +97,16 @@ class TestMatMulV2Op(XPUOpTest):
         self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
-# class TestMatMuklOp2(TestMatMulV2Op):
-#     """
-#     case 2
-#     """
+class TestMatMuklOp2(TestMatMulV2Op):
+    """
+    case 2
+    """
 
-#     def config(self):
-#         self.x_shape = (100, )
-#         self.y_shape = (1, 3, 2, 100)
-#         self.trans_x = False
-#         self.trans_y = True
+    def config(self):
+        self.x_shape = (100)
+        self.y_shape = (100, 3)
+        self.trans_x = False
+        self.trans_y = False
 
 
 class TestMatMuklOp3(TestMatMulV2Op):
@@ -122,16 +121,16 @@ class TestMatMuklOp3(TestMatMulV2Op):
         self.trans_y = False
 
 
-# class TestMatMuklOp4(TestMatMulV2Op):
-#     """
-#     case 4
-#     """
+class TestMatMuklOp4(TestMatMulV2Op):
+    """
+    case 4
+    """
 
-#     def config(self):
-#         self.x_shape = (100, )
-#         self.y_shape = (1, 2, 100, 2)
-#         self.trans_x = False
-#         self.trans_y = False
+    def config(self):
+        self.x_shape = (1, 1, 100, 1)
+        self.y_shape = (1, 100)
+        self.trans_x = False
+        self.trans_y = False
 
 
 class TestMatMuklOp5(TestMatMulV2Op):
@@ -146,27 +145,28 @@ class TestMatMuklOp5(TestMatMulV2Op):
         self.trans_y = False
 
 
-# class TestMatMuklOp6(TestMatMulV2Op):
-#     """
-#     case 6
-#     """
+class TestMatMuklOp6(TestMatMulV2Op):
+    """
+    case 6
+    """
 
-#     def config(self):
-#         self.x_shape = (1, 2, 102, 1)
-#         self.y_shape = (102, )
-#         self.trans_x = True
-#         self.trans_y = False
+    def config(self):
+        self.x_shape = (1, 2, 102, 10)
+        self.y_shape = (2, 10, 111)
+        self.trans_x = False
+        self.trans_y = False
 
-# class TestMatMuklOp7(TestMatMulV2Op):
-#     """
-#     case 7
-#     """
 
-#     def config(self):
-#         self.x_shape = (1, 2, 1, 100)
-#         self.y_shape = (100, )
-#         self.trans_x = False
-#         self.trans_y = False
+class TestMatMuklOp7(TestMatMulV2Op):
+    """
+    case 7
+    """
+
+    def config(self):
+        self.x_shape = (1, 2, 100, 1)
+        self.y_shape = (2, 100, 12)
+        self.trans_x = True
+        self.trans_y = False
 
 
 class TestMatMuklOp8(TestMatMulV2Op):
@@ -181,49 +181,52 @@ class TestMatMuklOp8(TestMatMulV2Op):
         self.trans_y = False
 
 
-# class TestMatMuklOp9(TestMatMulV2Op):
-#     """
-#     case 9
-#     """
+class TestMatMuklOp9(TestMatMulV2Op):
+    """
+    case 9
+    """
 
-#     def config(self):
-#         self.x_shape = (1, 1, 1, 100)
-#         self.y_shape = (2, 1, 2, 100)
-#         self.trans_x = False
-#         self.trans_y = True
+    def config(self):
+        self.x_shape = (100, 20, 100)
+        self.y_shape = (100, 100, 100)
+        self.trans_x = False
+        self.trans_y = True
 
-# class TestMatMuklOp10(TestMatMulV2Op):
-#     """
-#     case 10
-#     """
 
-#     def config(self):
-#         self.x_shape = (1, 1, 25, 4)
-#         self.y_shape = (1, 2, 4, 25)
-#         self.trans_x = False
-#         self.trans_y = False
+class TestMatMuklOp10(TestMatMulV2Op):
+    """
+    case 10
+    """
 
-# class TestMatMuklOp11(TestMatMulV2Op):
-#     """
-#     case 11
-#     """
+    def config(self):
+        self.x_shape = (100, 20, 100)
+        self.y_shape = (100, 20, 100)
+        self.trans_x = True
+        self.trans_y = False
 
-#     def config(self):
-#         self.x_shape = (2, 1, 2, 100)
-#         self.y_shape = (1, 1, 100, 2)
-#         self.trans_x = False
-#         self.trans_y = False
 
-# class TestMatMuklOp12(TestMatMulV2Op):
-#     """
-#     case 12
-#     """
+class TestMatMuklOp11(TestMatMulV2Op):
+    """
+    case 11
+    """
 
-#     def config(self):
-#         self.x_shape = (2, 1, 4, 25)
-#         self.y_shape = (1, 1, 4, 25)
-#         self.trans_x = True
-#         self.trans_y = False
+    def config(self):
+        self.x_shape = (2, 20, 100)
+        self.y_shape = (100, 30)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp12(TestMatMulV2Op):
+    """
+    case 12
+    """
+
+    def config(self):
+        self.x_shape = (1, 20, 100)
+        self.y_shape = (100, )
+        self.trans_x = False
+        self.trans_y = False
 
 
 class TestMatMuklOp13(TestMatMulV2Op):
@@ -238,38 +241,40 @@ class TestMatMuklOp13(TestMatMulV2Op):
         self.trans_y = False
 
 
-# class TestMatMuklOp14(TestMatMulV2Op):
-#     """
-#     case 14_1
-#     """
+class TestMatMuklOp14(TestMatMulV2Op):
+    """
+    case 14_1
+    """
 
-#     def config(self):
-#         self.x_shape = (3, 1, 6, 6)
-#         self.y_shape = (1, 2, 6, 9)
-#         self.trans_x = True
-#         self.trans_y = False
+    def config(self):
+        self.x_shape = (100, 2, 100, 10)
+        self.y_shape = (100, 2, 10, 90)
+        self.trans_x = False
+        self.trans_y = False
 
-# class TestMatMuklOp15(TestMatMulV2Op):
-#     """
-#     case 14_2
-#     """
 
-#     def config(self):
-#         self.x_shape = (3, 1, 6, 6)
-#         self.y_shape = (1, 2, 6, 9)
-#         self.trans_x = False
-#         self.trans_y = False
+class TestMatMuklOp15(TestMatMulV2Op):
+    """
+    case 14_2
+    """
 
-# class TestMatMuklOp16(TestMatMulV2Op):
-#     """
-#     case 16 : to check the gradient for special case
-#     """
+    def config(self):
+        self.x_shape = (100, 2, 100, 10)
+        self.y_shape = (100, 2, 100, 10)
+        self.trans_x = False
+        self.trans_y = True
 
-#     def config(self):
-#         self.x_shape = (100)
-#         self.y_shape = (1, 2, 2, 100, 2)
-#         self.trans_x = False
-#         self.trans_y = False
+
+class TestMatMuklOp16(TestMatMulV2Op):
+    """
+    case 16 : to check the big data
+    """
+
+    def config(self):
+        self.x_shape = (1000, 2, 100, 100)
+        self.y_shape = (1000, 2, 100, 900)
+        self.trans_x = False
+        self.trans_y = False
 
 
 class TestMatMuklOp17(TestMatMulV2Op):

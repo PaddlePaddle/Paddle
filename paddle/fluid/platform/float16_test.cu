@@ -197,8 +197,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_HIP) || \
-    (defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000)
+#if defined(PADDLE_WITH_HIP)
 ARITHMETIC_KERNEL(Add, +)
 ARITHMETIC_KERNEL(Sub, -)
 ARITHMETIC_KERNEL(Mul, *)
