@@ -24,6 +24,7 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
+from ..layers import collective
 import warnings
 import paddle
 import itertools
@@ -348,6 +349,18 @@ class DataParallel(layers.Layer):
         last_comm_buffer_size(float, optional): It limits memory size(MB) of last buffer in communication
                                          calling. Making the last communication buffer size small is useful to 
                                          improve performance. Default: 1.
+        find_unused_parameters(bool, optional): Whether to traverse the entire backward graph from the
+                                                all tensors in the return value of the wrapped model's 
+                                                forward function. For parameters not involved in loss 
+                                                calculation, their gradients will be marked as ready in 
+                                                advance to prepare reduce. Please note that all forward 
+                                                outputs derived from the wrapped model parameters must 
+                                                participate in the calculation of loss and subsequent 
+                                                gradient calculations. If not, serious error will occur.
+                                                Note that setting the find_unused_parameters to True 
+                                                will affect computing performance. Therefore, if all parameters
+                                                are sure to participate in the loss calculation and the 
+                                                autograd graph construction, please set it False. Default: True.
             
     Returns:
         Layer: The data paralleled module.
@@ -403,11 +416,13 @@ class DataParallel(layers.Layer):
                  layers,
                  strategy=None,
                  comm_buffer_size=25,
-                 last_comm_buffer_size=1):
+                 last_comm_buffer_size=1,
+                 find_unused_parameters=True):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
+        self.find_unused_parameters = find_unused_parameters
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -419,6 +434,17 @@ class DataParallel(layers.Layer):
             self._strategy = _build_default_parallel_strategy()
 
         if self._strategy.nranks > 1:
+            # check the environment
+            assert parallel_helper.__parallel_ctx__clz__ is not None, \
+            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
+            "constructing the DataParallel."
+
+            # sync buffer and params
+            # TODO(liuyuhui) Currently not support xpu. xpu is 
+            # still broadcasting parameters when calling layer
+            if not paddle.is_compiled_with_xpu():
+                self._sync_params_buffers()
+
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control 
             # the size of the group, Default: 1MB. The role of this small group is: 
@@ -449,6 +475,10 @@ class DataParallel(layers.Layer):
 
         trainable_parameters = [param for _, param in layers_param]
 
+        assert len(trainable_parameters) > 0, \
+            "This model does not have any parameters to train, and " \
+            "does not need to use DataParallel"
+
         # NOTE(shenliang03): Here we can only use the attributes to judge whether
         # parameter is sparse(or SelectedRows). The reason is that the sparse message
         # can't be obtained when bp hasn't happened yet. So if layer supports sparse parameter,
@@ -470,19 +500,12 @@ class DataParallel(layers.Layer):
             trainable_parameters, is_sparse_gradient,
             [self.last_comm_buffer_size, self.comm_buffer_size])
 
-        assert parallel_helper.__parallel_ctx__clz__ is not None, \
-            "ParallelContext must be initialized before. You should use init_parallel_env() before" \
-            "constructing the DataParallel."
-
-        # TODO(shenliang03) "find_unused_vars" interface will be exposed in the future 
-        # to handle control flow to process unused parameters
-        find_unused_vars = True
         self._reducer = core.Reducer(
             trainable_parameters,
             list(reversed(self.group_indices)), is_sparse_gradient,
             parallel_helper.__parallel_ctx__clz__,
             [self.last_comm_buffer_size, self.comm_buffer_size],
-            find_unused_vars)
+            self.find_unused_parameters)
 
     def _find_varbase(self, obj):
         if isinstance(obj, core.VarBase):
@@ -493,11 +516,54 @@ class DataParallel(layers.Layer):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
 
+    def _sync_params_buffers(self):
+        model_vars = []
+        for _, param in self._layers.state_dict().items():
+            if not isinstance(param, core.VarBase):
+                raise TypeError("The data type of '%s' must be Varbase" %
+                                param.name)
+            model_vars.append(param.detach())
+        if len(model_vars) == 0:
+            return
+
+        mega_bytes = 128 * 1024 * 1024
+        group_idx = 0
+        memory_counter = 0
+        var_groups = OrderedDict()
+        dtype = model_vars[0].dtype
+
+        for var in model_vars:
+            bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+            if memory_counter < mega_bytes and dtype == var.dtype:
+                memory_counter += bytes
+            else:
+                memory_counter = 0
+                dtype = var.dtype
+                group_idx += 1
+            var_groups.setdefault(group_idx, []).append(var)
+
+        coalesced_vars = _coalesce_tensors(var_groups)
+
+        for coalesced_var, _, _ in coalesced_vars:
+            collective._broadcast(coalesced_var, root=0, sync_mode=True)
+
+        for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_var},
+                outputs={'Out': origin_vars},
+                attrs={'sections': var_len,
+                       'axis': 0})
+
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if self._strategy.nranks > 1:
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs)))
+        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
+            if self.find_unused_parameters:
+                self._reducer.prepare_for_backward(
+                    list(self._find_varbase(outputs)))
+            else:
+                self._reducer.prepare_for_backward(list(self._find_varbase([])))
 
         return outputs
 
