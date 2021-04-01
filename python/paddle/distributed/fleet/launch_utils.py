@@ -348,6 +348,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
 def find_free_ports(num):
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind(('', 0))
             return s.getsockname()[1]
 

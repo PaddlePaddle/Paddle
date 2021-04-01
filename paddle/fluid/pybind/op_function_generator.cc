@@ -119,6 +119,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"fill_constant", {"Out"}},
     {"matmul", {"Out"}},
     {"c_broadcast", {"Out"}},
+    {"c_sync_calc_stream", {"Out"}},
+    {"c_sync_comm_stream", {"Out"}},
     {"c_allreduce_sum", {"Out"}},
     {"c_allreduce_max", {"Out"}},
     {"c_allreduce_min", {"Out"}},

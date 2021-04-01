@@ -49,9 +49,12 @@ class NCCLParallelContext : public ParallelContext {
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root);  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
+                   int server_fd);
 
   void Init() override;
+
+  void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
                          framework::Variable* dst, int ring_id,

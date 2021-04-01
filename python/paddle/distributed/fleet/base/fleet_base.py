@@ -26,6 +26,9 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from .topology import CommunicateTopology, HybridCommunicateGroup
+from ..mpu.random import model_parallel_random_seed
+from ..meta_parallel import ModelParallel, DataParallel
 
 
 def _inited_runtime_handler_(func):
@@ -233,6 +236,40 @@ class Fleet(object):
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num)
                 paddle.distributed.init_parallel_env()
+
+            # init hybrid parallel environment in dygraph
+            self._init_hybrid_parallel_env()
+
+    def _init_hybrid_parallel_env(self):
+        """initialize the hybrid environment
+        """
+        self.hybrid_configs = self._user_defined_strategy.hybrid_configs
+        self.dp_num = self.hybrid_configs["num_data_parallel"]
+        self.mp_num = self.hybrid_configs["num_model_parallel"]
+        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
+
+        self._topology = CommunicateTopology(
+            hybrid_names=["data", "model", "pipe"],
+            dims=[self.dp_num, self.mp_num, self.pp_num])
+        self._hcg = HybridCommunicateGroup(self._topology)
+
+        if self.mp_num > 1:
+            # initialize the seed
+            model_parallel_configs = self._user_defined_strategy.model_parallel_configs
+            global_seed = model_parallel_configs["global_seed"]
+            model_parallel_random_seed(global_seed)
+
+    def get_hybrid_communicate_group(self):
+        assert self._hcg is not None
+        return self._hcg
+
+    def get_hybrid_parallel_topology(self):
+        assert self._topology is not None
+        return self._topology
+
+    @dygraph_only
+    def run_backward(self, loss, parameters=None):
+        self.model.backward_impl(loss, parameters)
 
     def is_first_worker(self):
         """
@@ -701,11 +738,23 @@ class Fleet(object):
 
         """
         assert model is not None
-        self.model = paddle.DataParallel(
-            model,
-            comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
+        # add rule to select MetaParallel
+        self.dp_num = self.hybrid_configs["num_data_parallel"]
+        self.mp_num = self.hybrid_configs["num_model_parallel"]
+        self.pp_num = self.hybrid_configs["num_pipeline_parallel"]
+
+        if self.mp_num == 1 and self.pp_num == 1:
+            self.model = DataParallel(
+                model,
+                comm_buffer_size=self._user_defined_strategy.
+                fuse_grad_size_in_MB,
+                last_comm_buffer_size=self._user_defined_strategy.
+                last_comm_group_size_MB)
+        elif self.mp_num > 1 and self.pp_num == 1:
+            self.model = ModelParallel(model, self._hcg)
+        else:
+            print("Now it doesn't support the parallel")
+
         return self.model
 
     @dygraph_only
