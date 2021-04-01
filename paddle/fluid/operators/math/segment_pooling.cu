@@ -110,17 +110,18 @@ __global__ void SegmentMeanCustomKernel(
 template <typename T, typename Index, typename Helper, typename Pool>
 __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
                                  T* output, Helper h, Pool pool) {
-  KERNEL_PRINT("SegmentOpsKernel Begin");
+  // KERNEL_PRINT("SegmentOpsKernel Begin")
+  KERNEL_PRINT("segment_ids: %p, input: %p, output: %p, h: %p, pool: %p", segment_ids, input, output, &h, &pool)
 
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
-    KERNEL_PRINT("")
+    KERNEL_PRINT("stripe_index: %d, h.total_stripe_count: %d", stripe_index, h.total_stripe_count);
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
     h.calculate(stripe_index, &segment_offset, &dim_index_base, &actual_height);
 
-    KERNEL_PRINT("")
+    KERNEL_PRINT("segment_offset: %d, dim_index_base: %d, actual_height: %d", segment_offset, dim_index_base, actual_height)
     T minmax = pool.initial();
-    KERNEL_PRINT("")
+    KERNEL_PRINT("minmax: %d", minmax)
 
     Index first_segment_id = segment_ids[dim_index_base];
     // -1 is for the start value when interval_id = 0
@@ -177,7 +178,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
     KERNEL_PRINT("")
   }
 
-  KERNEL_PRINT("SegmentOpsKernel End");
+  KERNEL_PRINT("SegmentOpsKernel End")
 }
 
 template <typename T, typename Index, typename Helper>
