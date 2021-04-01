@@ -141,17 +141,6 @@ void BasicEngine::PrepareGradAccumulators(
                 << var.get()
                 << ") that don't have grad node  with reference count "
                 << accumulator->RefCnt();
-
-        if (var->HasLeafHooks()) {
-          VLOG(3) << "Grad variable wrapper (" << var->Name()
-                  << ") has leaf grad hooks.";
-          PADDLE_ENFORCE_NE(
-              var->HasGradNode(), true,
-              platform::errors::PermissionDenied(
-                  "Only leaf Tensor's gradient can append hook to "
-                  "Gradientaccumulator."));
-          accumulator->SetPostHooks(var->GetLeafHooks());
-        }
       } else {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
@@ -262,6 +251,30 @@ void BasicEngine::PrepareDeps() {
   }
 }
 
+static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
+    const NameVarMap<VariableWrapper>& bwd_ins, const std::string& op_type) {
+  std::shared_ptr<NameVarMap<VariableWrapper>> tmp_ins_ptr = nullptr;
+  for (const auto& pair : bwd_ins) {
+    for (size_t i = 0; i < pair.second.size(); ++i) {
+      auto& var = pair.second[i];
+      if (var->HasHook()) {
+        if (tmp_ins_ptr == nullptr) {
+          tmp_ins_ptr = std::make_shared<NameVarMap<VariableWrapper>>(bwd_ins);
+        }
+        VLOG(3) << "Call " << var->GetHooks().size() << " hooks of " << op_type
+                << "'s input `" << pair.first << "`'s var `" << var->Name()
+                << "`.";
+        auto tmp_var = var;
+        for (const auto& hook_pair : var->GetHooks()) {
+          tmp_var = (*hook_pair.second)(tmp_var);
+        }
+        (*tmp_ins_ptr)[pair.first][i] = tmp_var;
+      }
+    }
+  }
+  return tmp_ins_ptr;
+}
+
 void BasicEngine::Execute() {
   if (init_node_ == nullptr) {
     return;
@@ -292,10 +305,15 @@ void BasicEngine::Execute() {
       auto& bwd_ins = cur_op.GetInsMap();
       auto& bwd_outs = cur_op.GetOutsMap();
 
+      /**
+       * [ Why need temporary outputs here? ]
+       *
+       * - construct the temp output map, avoid to disrupt graph
+       * - replace the element in the map by temp var, because a
+       *   var may be coresponding to several grad var in one op
+       */
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
-      // 1. construct the temp output map, avoid to disrupt graph
-      // 2. replace the element in the map by temp var, because a
-      // var may be coresponding to several grad var in one op
+
       for (auto& pair : tmp_outs) {
         if (!pair.second.IsGrad()) {
           continue;
@@ -408,10 +426,28 @@ void BasicEngine::Execute() {
         }
       }
 
+      /**
+       * [ Why need temporary inputs here? ]
+       *
+       * - Hook execution should not change original input tensor.
+       *   User can register hook for Tensor's gradient, It is expected
+       *   that the hook only affects the gradient of the backward
+       *   propagation, and does not affect the gradient value input
+       *   as the hook.
+       * - use `tmp_ins_ptr`, only copy bwd_ins when the var in bwd_ins
+       *   hold hooks
+       */
+      auto tmp_ins_ptr = CallGradientHooks(bwd_ins, cur_op.Type());
+
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
-        OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
-                    cur_op.place());
+        if (tmp_ins_ptr == nullptr) {
+          OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
+                      cur_op.place());
+        } else {
+          OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs, cur_op.Attrs(),
+                      cur_op.place());
+        }
       }
 
       for (auto& pair : inplace_output_grad_var_list_) {
@@ -428,15 +464,14 @@ void BasicEngine::Execute() {
         if (!accumulator->SumGradCompleted()) {
           continue;
         }
-        // 1. Call Hooks for **inner_var_**
+        // 1. Call Hooks for `inner_var_`
+        accumulator->CallGradientHooks();
 
-        // 2. Sum Gradient with Previous Graph
+        // 2. Sum Gradient `inner_var_` to `var_` of Current or Previous Graph
         accumulator->AccumulateGrad();
 
-        // 3. Call backward Hooks for **var_**
-        if (accumulator->HasPostHooks()) {
-          accumulator->CallBackwardPostHooks();
-        }
+        // 3. Call backward Hooks for `var_`
+        accumulator->CallReduceHooks();
       }
 
       need_accu_var_list_.clear();
