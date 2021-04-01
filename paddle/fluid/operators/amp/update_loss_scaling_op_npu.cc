@@ -47,6 +47,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     runner_p2.Run(stream);
 
     std::vector<int> bad_out_data;
+    ctx.Wait();
     TensorToVector(*bad_out_tensor, ctx, &bad_out_data);
     ctx.Wait();
     if (bad_out_data[0] == decr_every_n_nan_or_inf) {
@@ -59,6 +60,7 @@ void Update(const platform::NPUDeviceContext& ctx,
       runner_p3.Run(stream);
 
       std::vector<T> new_loss_scaling;
+      ctx.Wait();
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
       ctx.Wait();
       if (new_loss_scaling[0] < static_cast<T>(1)) {
@@ -92,6 +94,7 @@ void Update(const platform::NPUDeviceContext& ctx,
     runner_p2.Run(stream);
 
     std::vector<int> good_out_data;
+    ctx.Wait();
     TensorToVector(*good_out_tensor, ctx, &good_out_data);
     ctx.Wait();
 
@@ -104,6 +107,7 @@ void Update(const platform::NPUDeviceContext& ctx,
       runner_p3.Run(stream);
 
       std::vector<T> new_loss_scaling;
+      ctx.Wait();
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
       ctx.Wait();
       if (!std::isfinite(new_loss_scaling[0])) {
@@ -180,6 +184,7 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
                           "FoundInfinite must has only one element."));
 
     std::vector<bool> found_inf_vec;
+    dev_ctx.Wait();
     TensorToVector(*found_inf, ctx.device_context(), &found_inf_vec);
     dev_ctx.Wait();
 
