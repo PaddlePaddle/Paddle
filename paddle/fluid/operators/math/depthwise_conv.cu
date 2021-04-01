@@ -904,6 +904,9 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
       threads = dim3(std::min(output_width, thread), blocks, 1);
       grid = dim3(output_channels, batch_size, 1);
     } else {
+#ifdef __HIPCC__
+      thread = std::min(thread, 256);
+#endif
       blocks = std::min(
           std::max(thread / output_channels, 1),
           ((output_width + dilate_width - 1) / dilate_width) * dilate_width);
@@ -930,7 +933,7 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
            c_filter == -1)) {                                                  \
     if (c_filter == -1) {                                                      \
       threads.x = block_size;                                                  \
-      grid.x = (nums_output + block_size - 1) / block_size;                    \
+      grid.x = grid_size;                                                      \
       threads.y = threads.z = grid.y = grid.z = 1;                             \
     }                                                                          \
     if (data_layout != DataLayout::kNHWC) {                                    \
