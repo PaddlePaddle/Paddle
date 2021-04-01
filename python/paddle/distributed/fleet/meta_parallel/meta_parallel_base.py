@@ -13,13 +13,18 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.layers import Layer
+import logging
 
 
 class MetaParallelBase(Layer):
-    def __init__(self, layers):
+    def __init__(self, layers, **kwargs):
         super(MetaParallelBase,
               self).__init__(layers.full_name() + "_meta_parallel_base")
         self._layers = layers
+        self.strategy = kwargs.get('strategy', None)
+        assert self.strategy is not None
+
+        self.use_amp = self.strategy.amp
 
     def prepare_for_model(self):
         pass
@@ -51,3 +56,13 @@ class MetaParallelBase(Layer):
 
     def _post_backward(self, loss):
         pass
+
+    def __call__(self, *inputs, **kwargs):
+        if self.use_amp:
+            print("start running amp.")
+            # logging.info("start running amp.")
+            with paddle.amp.auto_cast():
+                return super(MetaParallelBase, self).__call__(*inputs, **kwargs)
+        else:
+            print("not use amp")
+            return super(MetaParallelBase, self).__call__(*inputs, **kwargs)

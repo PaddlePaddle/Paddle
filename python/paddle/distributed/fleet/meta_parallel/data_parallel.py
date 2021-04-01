@@ -24,10 +24,15 @@ class DataParallel(MetaParallelBase):
         # broadcast_mp_parameters(self._layers, self._hcg)
         #broadcast_dp_parameters(self._layers, self._hcg)
 
-    def __init__(self, layers, **args):
-        super(DataParallel, self).__init__(layers)
-        self._layers = paddle.DataParallel(layers, **args)
-        # self._hcg = hcg
+    def __init__(self, layers, **kwargs):
+        super(DataParallel, self).__init__(layers, **kwargs)
+        self.strategy = kwargs.get('strategy', None)
+        assert self.strategy is not None
+
+        self._layers = paddle.DataParallel(
+            layers,
+            comm_buffer_size=self.strategy.fuse_grad_size_in_MB,
+            last_comm_buffer_size=self.strategy.last_comm_group_size_MB)
         self._prepare_for_model()
 
     def _pre_forward(self, *inputs, **kwargs):

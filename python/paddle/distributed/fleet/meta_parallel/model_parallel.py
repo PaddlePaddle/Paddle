@@ -22,8 +22,8 @@ class ModelParallel(MetaParallelBase):
         broadcast_mp_parameters(self._layers, self._hcg)
         broadcast_dp_parameters(self._layers, self._hcg)
 
-    def __init__(self, layers, hcg):
-        super(ModelParallel, self).__init__(layers)
+    def __init__(self, layers, hcg, **kwargs):
+        super(ModelParallel, self).__init__(layers, **kwargs)
         self._layers = layers
         self._hcg = hcg
         self._prepare_for_model()
@@ -52,7 +52,7 @@ class ModelParallel(MetaParallelBase):
 
         loss.backward()
 
-        self._post_backward(loss)
+        # self._post_backward(loss)
 
     def _post_backward(self, loss):
         if not self._loss_parameters:

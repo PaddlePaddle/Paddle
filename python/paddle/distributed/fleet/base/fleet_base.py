@@ -677,8 +677,8 @@ class Fleet(object):
 
         # TODO(shenliang03): This is a temporary solution to support amp. In the case of a dynamic graph, 
         # the optimizer is returned directly. This problem will be fixed in the future.
-        if paddle.fluid.framework.in_dygraph_mode():
-            return optimizer
+        # if paddle.fluid.framework.in_dygraph_mode():
+        #     return optimizer
         return self
 
     @dygraph_only
@@ -745,13 +745,14 @@ class Fleet(object):
 
         if self.mp_num == 1 and self.pp_num == 1:
             self.model = DataParallel(
-                model,
-                comm_buffer_size=self._user_defined_strategy.
-                fuse_grad_size_in_MB,
-                last_comm_buffer_size=self._user_defined_strategy.
-                last_comm_group_size_MB)
+                model, strategy=self._user_defined_strategy)
+            # comm_buffer_size=self._user_defined_strategy.
+            # fuse_grad_size_in_MB,
+            # last_comm_buffer_size=self._user_defined_strategy.
+            # last_comm_group_size_MB)
         elif self.mp_num > 1 and self.pp_num == 1:
-            self.model = ModelParallel(model, self._hcg)
+            self.model = ModelParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
         else:
             print("Now it doesn't support the parallel")
 
