@@ -805,6 +805,7 @@ void BindImperative(py::module *m_ptr) {
          Bump the version whenever the Tensor is modified through an inplace operation.
             )DOC")
       .def("numpy",
+
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
                  self.MutableVar()->Get<framework::LoDTensor>();
@@ -1003,18 +1004,6 @@ void BindImperative(py::module *m_ptr) {
               print(x.stop_gradient) # True
               print(x.grad)          # None
        )DOC")
-      .def("_run_backward",
-           [](imperative::VarBase &self, const imperative::Tracer &tracer,
-              bool retain_graph) {
-             // TODO(jiabin): when we impl more backward execution we can
-             // select them
-             auto *engine = tracer.GetEngine();
-             engine->Init(&self, retain_graph);
-             VLOG(3) << "Start backward";
-             engine->Execute();
-             VLOG(3) << "Finish backward";
-           },
-           py::call_guard<py::gil_scoped_release>())
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
            [](imperative::VarBase &self) {
@@ -1546,6 +1535,19 @@ void BindImperative(py::module *m_ptr) {
             create_graph, retain_graph, allow_unused, only_inputs);
         engine.Execute();
         return engine.GetResult();
+      },
+      py::call_guard<py::gil_scoped_release>());
+
+  m.def(
+      "dygraph_run_backward",
+      [](const std::vector<std::shared_ptr<imperative::VarBase>> &tensors,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &grad_tensors,
+         bool retain_graph, const imperative::Tracer &tracer) {
+        auto *engine = tracer.GetEngine();
+        engine->Init(tensors, grad_tensors, retain_graph);
+        VLOG(3) << "Start backward";
+        engine->Execute();
+        VLOG(3) << "Finish backward";
       },
       py::call_guard<py::gil_scoped_release>());
 

@@ -92,8 +92,10 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   ASSERT_EQ(out->GradVarBase()->GradOpNum(), 1UL);
 
   // 3. backward
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   BasicEngine engine;
-  engine.Init(out.get());
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   framework::LoDTensor x_grad;
@@ -191,8 +193,10 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ASSERT_EQ(out->GradVarBase()->GradOpNum(), 1UL);
 
   // 3. backward
+  std::vector<std::shared_ptr<imperative::VarBase>> tensors{out};
+  std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};
   BasicEngine engine;
-  engine.Init(out.get());
+  engine.Init(tensors, grad_tensors);
   engine.Execute();
 
   framework::LoDTensor x_grad;
