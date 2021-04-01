@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
+#include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
@@ -61,6 +62,65 @@ class Layer : public imperative::Layer {
     PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
                       Forward, inputs);  // NOLINT
   }
+};
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s", typeid(T).name()));
+  }
+}
+
+class PyVariableWrapperHook : public imperative::VariableWrapperHook {
+ public:
+  explicit PyVariableWrapperHook(PyObject *func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyVariableWrapperHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  std::shared_ptr<imperative::VariableWrapper> operator()(
+      const std::shared_ptr<imperative::VariableWrapper> &var) override {
+    py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyVariableWrapperHook for var " << var->Name();
+
+    // 1. unpack temp VarBase from VariableWrapper
+    std::shared_ptr<imperative::VarBase> tmp_varbase =
+        std::make_shared<imperative::VarBase>(var);
+
+    // 2. call hook and return
+    PyObject *res = nullptr;
+    try {
+      res = PyObject_CallFunctionObjArgs(py_func_, py::cast(tmp_varbase).ptr(),
+                                         nullptr);
+    } catch (platform::EnforceNotMet &e) {
+      throw std::move(e);
+    } catch (std::exception &e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            platform::errors::Unavailable(
+                                "Hook function of Tensor return a nullptr."));
+    if (res == Py_None) {
+      return var;
+    }
+
+    return PyObjectCast<std::shared_ptr<imperative::VarBase>>(res)->SharedVar();
+  }
+
+ private:
+  PyObject *py_func_;
 };
 
 static const platform::Place PyObjectToPlace(const py::object &place_obj) {
@@ -212,16 +272,6 @@ static std::string GetTypeName(const imperative::VarBase &var) {
 }
 
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s", typeid(T).name()));
-  }
-}
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
 // Unlike py::object, py::handle does not change reference count of PyObject *.
@@ -1023,6 +1073,23 @@ void BindImperative(py::module *m_ptr) {
              }
            },
            py::call_guard<py::gil_scoped_release>())
+      .def("_register_grad_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             PADDLE_ENFORCE_EQ(
+                 self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot register hook on a tensor without gradient."));
+             return self.GradVarBase()->AddHook(
+                 std::make_shared<PyVariableWrapperHook>(hook.ptr()));
+           })
+      .def("_remove_grad_hook",
+           [](imperative::VarBase &self, int64_t hook_id) {
+             PADDLE_ENFORCE_EQ(
+                 self.HasGradVar(), true,
+                 platform::errors::InvalidArgument(
+                     "Cannot remove hook on a tensor without gradient."));
+             return self.GradVarBase()->RemoveHook(hook_id);
+           })
       .def("cpu",
            [](const std::shared_ptr<imperative::VarBase> &self) {
              if (platform::is_cpu_place(self->Place())) {
@@ -1231,22 +1298,28 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly(
-          "shape",
-          [](imperative::VarBase &self) {
-            if (self.Var().IsType<framework::LoDTensor>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::LoDTensor>().dims());
-            } else if (self.Var().IsType<framework::SelectedRows>()) {
-              return framework::vectorize<int>(
-                  self.Var().Get<framework::SelectedRows>().value().dims());
-            } else {
-              VLOG(2) << "It is meaningless to get shape of "
-                         "variable type "
-                      << GetTypeName(self);
-              return std::vector<int>();
-            }
-          })
+      .def_property_readonly("shape",
+                             [](imperative::VarBase &self) {
+                               if (self.Var().IsType<framework::LoDTensor>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::LoDTensor>()
+                                         .dims());
+                               } else if (self.Var()
+                                              .IsType<
+                                                  framework::SelectedRows>()) {
+                                 return framework::vectorize<int>(
+                                     self.Var()
+                                         .Get<framework::SelectedRows>()
+                                         .value()
+                                         .dims());
+                               } else {
+                                 VLOG(2) << "It is meaningless to get shape of "
+                                            "variable type "
+                                         << GetTypeName(self);
+                                 return std::vector<int>();
+                               }
+                             })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
