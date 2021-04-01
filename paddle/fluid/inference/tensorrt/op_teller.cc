@@ -116,6 +116,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "multiclass_nms",
       "nearest_interp",
+      "anchor_generator",
   };
 };
 
