@@ -244,10 +244,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             self._main_program.global_block())
 
     def _wait(self, ):
-        # only the first parallelsm group that init nccl need to be wait. 
-        endpoints = self.sharding_group_endpoints[:]
-        current_endpoint = endpoints[self.sharding_rank]
-        if self.sharding_rank == 0:
+        endpoints = self.global_endpoints[:]
+        current_endpoint = endpoints[self.global_rank]
+        if self.global_rank == 0:
             self._collective_helper._wait(current_endpoint, endpoints)
 
     def collect_segment(self, segment, op_idx, block):
