@@ -9,13 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdio.h>
 #include <memory>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <thread>
-#include <stdio.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -41,8 +41,8 @@ int TreeIndex::load(const std::string filename) {
   size_t ret = fread(&num, sizeof(num), 1, fp);
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
-    if (fread(const_cast<char*>(content.data()), 1, num, fp)
-        != static_cast<size_t>(num)) {
+    if (fread(const_cast<char*>(content.data()), 1, num, fp) !=
+        static_cast<size_t>(num)) {
       fprintf(stderr, "Read from file: %s failed, invalid format.\n",
               filename.c_str());
       break;
@@ -73,7 +73,8 @@ int TreeIndex::load(const std::string filename) {
   return 0;
 }
 
-std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level, bool ret_code) {
+std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level,
+                                                       bool ret_code) {
   uint64_t level_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   uint64_t level_offset = level_num - 1;
 
@@ -89,11 +90,12 @@ std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level, bool ret_code)
       }
     }
   }
-  
+
   return res;
 }
 
-std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(std::vector<uint64_t>& ids, int start_level, bool ret_code) {
+std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(
+    const std::vector<uint64_t>& ids, int start_level, bool ret_code) {
   std::vector<std::vector<uint64_t>> res(ids.size(), std::vector<uint64_t>());
   for (size_t i = 0; i < ids.size(); i++) {
     auto code = id_codes_map_[ids[i]];
@@ -106,13 +108,14 @@ std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(std::vector<uint64
         res[i].push_back(data_[code].id());
       }
       code = (code - 1) / meta_.branch();
-      level --;
+      level--;
     }
   }
   return res;
 }
 
-std::vector<uint64_t> TreeIndex::get_ancestor_given_level(std::vector<uint64_t>& ids, int level, bool ret_code) {
+std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
+    const std::vector<uint64_t>& ids, int level, bool ret_code) {
   std::vector<uint64_t> res;
   res.reserve(ids.size());
   int cur_level;
@@ -121,7 +124,7 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(std::vector<uint64_t>&
     cur_level = meta_.height() - 1;
     while (cur_level > level) {
       code = (code - 1) / meta_.branch();
-      cur_level --;
+      cur_level--;
     }
     if (ret_code) {
       res.push_back(code);
