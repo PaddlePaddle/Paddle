@@ -137,16 +137,19 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     // NOTE(zhiqiu): ApplyAdamD updates params inplace, so
     // if param and param_out is not same, we need to do copy.
     if (param_out->data<T>() != param->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*param, ctx.GetPlace(), param_out);
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
     }
     if (mom1_out->data<T>() != mom1->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*mom1, ctx.GetPlace(), mom1_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
     }
     if (mom2_out->data<T>() != mom2->data<T>()) {
-      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-      framework::TensorCopySync(*mom2, ctx.GetPlace(), mom2_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
     }
     auto runner_m1 =
         NpuOpRunner("Mul", {*beta1_pow, beta1_tensor}, {*beta1_pow_out}, {});

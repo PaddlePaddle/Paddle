@@ -102,7 +102,9 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", true}});
         runner.Run(stream);
       } else {
-        framework::TensorCopySync(*tmp_dout, ctx.GetPlace(), dx);
+        framework::TensorCopy(
+            *tmp_dout, ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(), dx);
       }
     }
     if (dy) {

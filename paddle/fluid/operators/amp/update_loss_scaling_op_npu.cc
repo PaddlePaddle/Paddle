@@ -49,7 +49,6 @@ void Update(const platform::NPUDeviceContext& ctx,
     std::vector<int> bad_out_data;
     ctx.Wait();
     TensorToVector(*bad_out_tensor, ctx, &bad_out_data);
-    ctx.Wait();
     if (bad_out_data[0] == decr_every_n_nan_or_inf) {
       auto runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
                                    {*updated_loss_scaling_tensor},
@@ -62,7 +61,6 @@ void Update(const platform::NPUDeviceContext& ctx,
       std::vector<T> new_loss_scaling;
       ctx.Wait();
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
-      ctx.Wait();
       if (new_loss_scaling[0] < static_cast<T>(1)) {
         // updated_loss_scaling_data = 1
         auto runner_p4 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
@@ -96,7 +94,6 @@ void Update(const platform::NPUDeviceContext& ctx,
     std::vector<int> good_out_data;
     ctx.Wait();
     TensorToVector(*good_out_tensor, ctx, &good_out_data);
-    ctx.Wait();
 
     if (good_out_data[0] == incr_every_n_steps) {
       auto runner_p3 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
@@ -109,7 +106,6 @@ void Update(const platform::NPUDeviceContext& ctx,
       std::vector<T> new_loss_scaling;
       ctx.Wait();
       TensorToVector(*updated_loss_scaling_tensor, ctx, &new_loss_scaling);
-      ctx.Wait();
       if (!std::isfinite(new_loss_scaling[0])) {
         // updated_loss_scaling_data = pre_loss_scaling_data
         auto runner_p4 = NpuOpRunner("Power", {*pre_loss_scaling_tensor},
@@ -186,7 +182,6 @@ class UpdateLossScalingNPUKernel : public framework::OpKernel<T> {
     std::vector<bool> found_inf_vec;
     dev_ctx.Wait();
     TensorToVector(*found_inf, ctx.device_context(), &found_inf_vec);
-    dev_ctx.Wait();
 
     LazyZerosNPU<T>{}(dev_ctx, found_inf_vec, xs, outs);
     const bool stop_update = ctx.Attr<bool>("stop_update");
