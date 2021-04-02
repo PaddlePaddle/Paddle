@@ -29,9 +29,14 @@ message RecomputeConfig {
 }
 
 message ShardingConfig {
-  optional float fuse_broadcast_MB = 1 [ default = 32.0 ];
+  optional float segment_broadcast_MB = 1 [ default = 32.0 ];
   optional bool hybrid_dp = 2 [ default = false ];
-  optional int32 sharding_group_size = 3 [ default = 8 ];
+  optional int32 sharding_degree = 3 [ default = 8 ];
+  optional int32 mp_degree = 4 [ default = 1 ];
+  optional string sharding_segment_strategy = 5
+      [ default = 'segment_broadcast_MB' ];
+  repeated string segment_anchors = 6;
+  optional int32 gradient_merge_acc_step = 7 [ default = 1 ];
 }
 
 message AMPConfig {
