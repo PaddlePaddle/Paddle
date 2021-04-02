@@ -133,7 +133,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
     KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d", dim_index_base, last_segment_id)
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
-      KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
+      KERNEL_PRINT("j: %d, dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", j, dim_index_base, last_segment_id, current_segment_id)
       // ensure the segment_ids is sorted.
       PADDLE_ENFORCE(current_segment_id >= last_segment_id,
                      "The segment ids should be sorted, but got "
@@ -154,7 +154,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
         }
         // don't update result when j=0
         if (j > 0) {
-          KERNEL_PRINT("")
+          KERNEL_PRINT("j: %d", j)
           const Index output_index =
               last_segment_id * inner_dim_size + segment_offset;
           KERNEL_PRINT("output_index: %d", output_index)
