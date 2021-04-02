@@ -105,8 +105,8 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
     PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
                       platform::errors::InvalidArgument(
                           "src's shape and dst's shape should match."
-                          "But received src_dims[%d]'s value = %d,"
-                          "dst_dims[%d]'s value = %d.",
+                          "but received src %d dim is:%d not equal to"
+                          " dst %d dim:%d.",
                           i, src_dims[i], i, dst_dims[i]));
 
   // slice size
@@ -151,9 +151,9 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   for (int i = 1; i < src_dims.size(); i++)
     PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
                       platform::errors::InvalidArgument(
-                          "src's shape and dst's shape should match."
-                          "But received src_dims[%d]'s value = %d,"
-                          "dst_dims[%d]'s value = %d.",
+                          "src's shape and dst's shape should match,"
+                          "but received src %d dim is:%d not equal to"
+                          " dst %d dim:%d.",
                           i, src_dims[i], i, dst_dims[i]));
 
   // slice size
