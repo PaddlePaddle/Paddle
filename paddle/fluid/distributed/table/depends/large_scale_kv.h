@@ -28,6 +28,7 @@
 
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/depends/initializers.h"
+#include "paddle/fluid/distributed/table/depends/round_robin.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
@@ -54,23 +55,53 @@ struct VALUE {
         unseen_days_(0),
         need_save_(false),
         is_entry_(false) {
-    data_.resize(length);
-    memset(data_.data(), 0, sizeof(float) * length);
+    data_ = new float[length];
+    memset(data_, 0, sizeof(float) * length);
+  }
+
+  VALUE(const VALUE &value) {
+    length_ = value.length_;
+    count_ = value.count_;
+    unseen_days_ = value.unseen_days_;
+    need_save_ = value.need_save_;
+    is_entry_ = value.is_entry_;
+    data_ = new float[length_];
+    memcpy(data_, value.data_, sizeof(float) * length_);
+  }
+
+  VALUE &operator=(const VALUE &value) {
+    if (this != &value) {
+      delete[] data_;
+      length_ = value.length_;
+      count_ = value.count_;
+      unseen_days_ = value.unseen_days_;
+      need_save_ = value.need_save_;
+      is_entry_ = value.is_entry_;
+
+      data_ = new float[length_];
+      memcpy(data_, value.data_, sizeof(float) * length_);
+    }
+    return *this;
+  }
+
+  ~VALUE() {
+    delete[] data_;
+    data_ = nullptr;
   }
 
   size_t length_;
-  std::vector<float> data_;
   int count_;
   int unseen_days_;  // use to check knock-out
   bool need_save_;   // whether need to save
   bool is_entry_;    // whether knock-in
+  float *data_;
 };
 
-inline bool count_entry(std::shared_ptr<VALUE> value, int threshold) {
+inline bool count_entry(VALUE* value, int threshold) {
   return value->count_ >= threshold;
 }
 
-inline bool probility_entry(std::shared_ptr<VALUE> value, float threshold) {
+inline bool probility_entry(VALUE* value, float threshold) {
   UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
@@ -148,7 +179,7 @@ class ValueBlock {
       PADDLE_ENFORCE_EQ(
           value_dims[i], value_dims_[i],
           platform::errors::InvalidArgument("value dims is not match"));
-      pts.push_back(values->data_.data() +
+      pts.push_back(values->data_ +
                     value_offsets_.at(value_idx_.at(value_names[i])));
     }
     return pts;
@@ -157,19 +188,19 @@ class ValueBlock {
   // pull
   float *Init(const uint64_t &id, const bool with_update = true) {
     if (!Has(id)) {
-      values_[id] = std::make_shared<VALUE>(value_length_);
+      values_[id] = VALUE(value_length_);
     }
 
     auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(value);
+      AttrUpdate(&value);
     }
 
-    return value->data_.data();
+    return value.data_;
   }
 
-  void AttrUpdate(std::shared_ptr<VALUE> value) {
+  void AttrUpdate(VALUE* value) {
     // update state
     value->unseen_days_ = 0;
     ++value->count_;
@@ -179,7 +210,7 @@ class ValueBlock {
       if (value->is_entry_) {
         // initialize
         for (int x = 0; x < value_names_.size(); ++x) {
-          initializers_[x]->GetValue(value->data_.data() + value_offsets_[x],
+          initializers_[x]->GetValue(value->data_ + value_offsets_[x],
                                      value_dims_[x]);
         }
         value->need_save_ = true;
@@ -194,27 +225,27 @@ class ValueBlock {
   // dont jude if (has(id))
   float *Get(const uint64_t &id) {
     auto &value = values_.at(id);
-    return value->data_.data();
+    return value.data_;
   }
 
   // for load, to reset count, unseen_days
-  std::shared_ptr<VALUE> GetValue(const uint64_t &id) { return values_.at(id); }
+  VALUE* GetValue(const uint64_t &id) { return &values_.at(id); }
 
   bool GetEntry(const uint64_t &id) {
     auto &value = values_.at(id);
-    return value->is_entry_;
+    return value.is_entry_;
   }
 
   void SetEntry(const uint64_t &id, const bool state) {
     auto &value = values_.at(id);
-    value->is_entry_ = state;
+    value.is_entry_ = state;
   }
 
   void Shrink(const int threshold) {
     for (auto iter = values_.begin(); iter != values_.end();) {
       auto &value = iter->second;
-      value->unseen_days_++;
-      if (value->unseen_days_ >= threshold) {
+      value.unseen_days_++;
+      if (value.unseen_days_ >= threshold) {
         iter = values_.erase(iter);
       } else {
         ++iter;
@@ -234,7 +265,7 @@ class ValueBlock {
   }
 
  public:
-  std::unordered_map<uint64_t, std::shared_ptr<VALUE>> values_;
+  robin_hood::unordered_map<uint64_t, VALUE> values_;
   size_t value_length_ = 0;
 
  private:
@@ -243,7 +274,7 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
-  std::function<bool(std::shared_ptr<VALUE>)> entry_func_;
+  std::function<bool(VALUE*)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
 };
 
