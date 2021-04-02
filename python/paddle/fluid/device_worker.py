@@ -427,7 +427,7 @@ class Section(DeviceWorker):
         section_param.schedule_mode = schedule_mode
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
-        cfg.program_desc.ParseFromString(program["program"]._get_desc()
+        cfg.program_desc.ParseFromString(program._get_desc()
                                          .serialize_to_string())
         # TODO: why does not work
         # cfg.program_desc.CopyFrom(program.program._get_desc())

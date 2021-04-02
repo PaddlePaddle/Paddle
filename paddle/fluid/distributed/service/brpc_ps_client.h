@@ -171,8 +171,21 @@ class BrpcPsClient : public PSClient {
   virtual int32_t recv_and_save_table(const uint64_t table_id,
                                       const std::string &path);
 
- private:
+ protected:
+  virtual size_t get_server_nums() { return _server_channels.size(); }
+  inline brpc::Channel *get_sparse_channel(size_t server_id) {
+    return _server_channels[server_id][0].get();
+  }
+  inline brpc::Channel *get_dense_channel(size_t server_id) {
+    return _server_channels[server_id][1].get();
+  }
+  inline brpc::Channel *get_cmd_channel(size_t server_id) {
+    return _server_channels[server_id][2].get();
+  }
   virtual int32_t initialize() override;
+
+ private:
+  // virtual int32_t initialize() override;
 
   inline uint32_t dense_dim_per_shard(uint32_t dense_dim_total,
                                       uint32_t shard_num) {
@@ -184,16 +197,6 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> send_save_cmd(uint32_t table_id, int cmd_id,
                                      const std::vector<std::string> &param);
-
-  inline brpc::Channel *get_sparse_channel(size_t server_id) {
-    return _server_channels[server_id][0].get();
-  }
-  inline brpc::Channel *get_dense_channel(size_t server_id) {
-    return _server_channels[server_id][1].get();
-  }
-  inline brpc::Channel *get_cmd_channel(size_t server_id) {
-    return _server_channels[server_id][2].get();
-  }
 
   bool _running = false;
   bool _flushing = false;
@@ -220,8 +223,6 @@ class BrpcPsClient : public PSClient {
                                                  const float **update_values,
                                                  size_t num,
                                                  void *done) override;
-
-  virtual size_t get_server_nums() { return _server_channels.size(); }
 
  private:
   int32_t start_client_service();

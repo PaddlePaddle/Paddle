@@ -51,10 +51,10 @@ class TestCastOp2(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float32')}
+        self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP16)
         }
         self.op_type = 'cast'
 
@@ -68,10 +68,10 @@ class TestCastOp2(op_test.OpTest):
 class TestCastOp3(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
+        self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
+            'in_dtype': int(core.VarDesc.VarType.FP16),
             'out_dtype': int(core.VarDesc.VarType.FP32)
         }
         self.op_type = 'cast'

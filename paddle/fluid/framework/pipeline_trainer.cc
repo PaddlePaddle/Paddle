@@ -71,37 +71,16 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
                                      const ProgramDesc& program,
                                      const platform::Place& place) {
   auto& global_block = program.Block(0);
-  std::map<std::string, int> param_map;
-  for (auto& var : global_block.AllVars()) {
-    if (var->Persistable()) {
-      param_map[var->Name()] = 1;
-    }
-  }
 
   for (auto& var : global_block.AllVars()) {
-    bool is_param_grad = false;
-    size_t pos = 0;
-    // A magic suffix to indicate the merged gradient
-    std::string magicSuffix = std::string(kGradVarSuffix) + "@MERGED";
-    if ((pos = var->Name().find(magicSuffix)) != std::string::npos) {
-      auto prefix_name = var->Name().substr(0, pos);
-      if (param_map.find(prefix_name) != param_map.end()) {
-        is_param_grad = true;
-      }
-    }
     if (var->Persistable() && microbatch_id == 0) {
       auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create persistable var: " << var->Name()
+      VLOG(5) << "Create persistable var: " << var->Name()
               << ", which pointer is " << ptr;
-    } else if (is_param_grad && microbatch_id == 0) {
-      auto* ptr = minibatch_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create grad for persistable var: " << var->Name()
-              << ", which pointer is " << ptr;
-    } else if (!var->Persistable() && !is_param_grad) {
+    } else if (!var->Persistable()) {
       auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
-      VLOG(3) << "Create variable " << var->Name() << " for microbatch "
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
               << microbatch_id << ", which pointer is " << ptr;
       InitializeVariable(ptr, var->GetType());
     }

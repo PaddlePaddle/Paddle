@@ -26,6 +26,6 @@ class Scope;
 namespace paddle {
 namespace platform {
 void PrintVar(framework::Scope* scope, const std::string& var_name,
-              const std::string& print_info);
+              const std::string& print_info, std::stringstream* out);
 }  // end namespace platform
 }  // end namespace paddle

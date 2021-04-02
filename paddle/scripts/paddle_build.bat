@@ -30,10 +30,6 @@ taskkill /f /im op_function_generator.exe
 wmic process where name="op_function_generator.exe" call terminate
 taskkill /f /im python.exe  2>NUL
 
-:: TODO: Temporarily，REMOVE after VS2017 is stable.
-set WITH_TPCACHE=OFF
-rmdir %cache_dir%\third_party_GPU /s/q
-rmdir %cache_dir%\third_party /s/q
 
 rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -85,7 +81,7 @@ git show-ref --verify --quiet refs/heads/last_pr
 if %ERRORLEVEL% EQU 0 (
     git diff HEAD last_pr --stat --name-only
     git diff HEAD last_pr --stat --name-only | findstr "setup.py.in"
-    if %ERRORLEVEL% EQU 0 (
+    if !ERRORLEVEL! EQU 0 (
         rmdir build /s/q
     )
     git branch -D last_pr
@@ -363,9 +359,9 @@ if %GENERATOR% == "Ninja" (
     ninja -j %PARALLEL_PROJECT_COUNT%
 ) else (
     if "%WITH_CLCACHE%"=="OFF" (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     ) else (
-        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% paddle.sln
+        MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
     )
 )
 
@@ -503,6 +499,7 @@ setlocal enabledelayedexpansion
 :: if %errorlevel% NEQ 0 exit /b 8
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
+set FLAGS_fraction_of_gpu_memory_to_use=0.92
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST%
 
