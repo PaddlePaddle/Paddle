@@ -93,9 +93,9 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     output->mutable_data<T>(context.GetPlace());
     T init_value = 0;
     if (pooltype == "MAX") {
-      init_value = static_cast<T>(-FLT_MAX);
+      init_value = static_cast<T>(-1.0);
     } else if (pooltype == "MIN") {
-      init_value = static_cast<T>(FLT_MAX);
+      init_value = static_cast<T>(1.0);
     }
     math::SetConstant<DeviceContext, T> setconst;
     auto& dev_ctx = context.template device_context<DeviceContext>();
