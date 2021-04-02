@@ -120,7 +120,7 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
     Index inner_dim_size = h.inner_dim_size;
     h.calculate(stripe_index, &segment_offset, &dim_index_base, &actual_height);
 
-    KERNEL_PRINT("segment_offset: %d, dim_index_base: %d, actual_height: %d", segment_offset, dim_index_base, actual_height)
+    KERNEL_PRINT("stripe_index: %d, segment_offset: %d, dim_index_base: %d, actual_height: %d, inner_dim_size: %d", stripe_index, segment_offset, dim_index_base, actual_height, inner_dim_size)
     T minmax = pool.initial();
     KERNEL_PRINT("minmax: %lf", minmax)
 
@@ -130,62 +130,64 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
     if (dim_index_base > 0) {
       last_segment_id = segment_ids[dim_index_base - 1];
     }
-
-    KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d", dim_index_base, last_segment_id)
+    KERNEL_PRINT("stripe_index: %d, first_segment_id: %d, last_segment_id: %d, dim_index_base: %d", stripe_index, first_segment_id, last_segment_id, dim_index_base)
+    
     for (Index j = 0; j < actual_height; j++) {
+      KERNEL_PRINT("stripe_index: %d, j: %d, actual_height: %d", stripe_index, j, actual_height)
       Index current_segment_id = segment_ids[dim_index_base + j];
-      KERNEL_PRINT("j: %d, dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", j, dim_index_base, last_segment_id, current_segment_id)
+      KERNEL_PRINT("stripe_index: %d, j: %d, actual_height: %d, current_segment_id: %d, last_segment_id: %d, dim_index_base: %d", stripe_index, j, actual_height, current_segment_id, last_segment_id, dim_index_base)
       // ensure the segment_ids is sorted.
       PADDLE_ENFORCE(current_segment_id >= last_segment_id,
                      "The segment ids should be sorted, but got "
                      "segment_ids[%d]:%d > segment_ids[%d]:%d.",
                      dim_index_base + j - 1, dim_index_base + j,
                      last_segment_id, current_segment_id);
-
-      KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
+      KERNEL_PRINT("stripe_index: %d, j: %d, actual_height: %d, current_segment_id: %d, last_segment_id: %d, dim_index_base: %d", stripe_index, j, actual_height, current_segment_id, last_segment_id, dim_index_base)
       if (current_segment_id > last_segment_id) {
-        KERNEL_PRINT("dim_index_base: %d, last_segment_id: %d, current_segment_id: %d", dim_index_base, last_segment_id, current_segment_id)
+        KERNEL_PRINT("stripe_index: %d, j: %d, actual_height: %d, current_segment_id: %d, last_segment_id: %d, dim_index_base: %d", stripe_index, j, actual_height, current_segment_id, last_segment_id, dim_index_base)
         
         // reset the interval value which do not have corresponding ids.
         for (Index interval_id = last_segment_id + 1;
              interval_id < current_segment_id; ++interval_id) {
-          KERNEL_PRINT("interval_id: %d, output[x]:%d", interval_id, *(output + interval_id * inner_dim_size + segment_offset))
+          KERNEL_PRINT("stripe_index: %d, j: %d, interval_id: %d, output[%d, %d, %d]:%lf", stripe_index, j, interval_id, interval_id, inner_dim_size, segment_offset, *(output + interval_id * inner_dim_size + segment_offset))
           *(output + interval_id * inner_dim_size + segment_offset) = 0;
-          KERNEL_PRINT("interval_id: %d, output[x]:%d", interval_id, *(output + interval_id * inner_dim_size + segment_offset))
+          KERNEL_PRINT("stripe_index: %d, j: %d, interval_id: %d, output[%d, %d, %d]:%lf", stripe_index, j, interval_id, interval_id, inner_dim_size, segment_offset, *(output + interval_id * inner_dim_size + segment_offset))
         }
         // don't update result when j=0
         if (j > 0) {
-          KERNEL_PRINT("j: %d", j)
+          KERNEL_PRINT("stripe_index: %d, j: %d", stripe_index, j)
           const Index output_index =
               last_segment_id * inner_dim_size + segment_offset;
-          KERNEL_PRINT("output_index: %d", output_index)
+          KERNEL_PRINT("stripe_index: %d, j: %d, output_index: %d, last_segment_id: %d, inner_dim_size: %d, segment_offset: %d, first_segment_id: %d", stripe_index, j, output_index, last_segment_id, inner_dim_size, segment_offset, first_segment_id)
           if (last_segment_id == first_segment_id) {
-            KERNEL_PRINT("last_segment_id: %d, first_segment_id: %d", last_segment_id, first_segment_id)
+            // KERNEL_PRINT("stripe_index: %d, j: %d, last_segment_id: %d, first_segment_id: %d", stripe_index, j, last_segment_id, first_segment_id)
+            KERNEL_PRINT("stripe_index: %d, j: %d, output[%d]: %lf, minmax: %lf", stripe_index, j, output_index, output[output_index], minmax)
             pool.atomic(output + output_index, minmax);
-            KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
+            KERNEL_PRINT("stripe_index: %d, j: %d, output[%d]: %lf, minmax: %lf", stripe_index, j, output_index, output[output_index], minmax)
           } else {
+            KERNEL_PRINT("stripe_index: %d, j: %d, output[%d]: %lf, minmax: %lf", stripe_index, j, output_index, output[output_index], minmax)
             *(output + output_index) = minmax;
-            KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
+            KERNEL_PRINT("stripe_index: %d, j: %d, output[%d]: %lf, minmax: %lf", stripe_index, j, output_index, output[output_index], minmax)
           }
-          KERNEL_PRINT("minmax: %lf", minmax)
+          KERNEL_PRINT("stripe_index: %d, j: %d, minmax: %lf", stripe_index, j, minmax)
           minmax = pool.initial();
-          KERNEL_PRINT("minmax: %lf", minmax)
+          KERNEL_PRINT("stripe_index: %d, j: %d, minmax: %lf", stripe_index, j, minmax)
         }
       }
-      KERNEL_PRINT("")
+      KERNEL_PRINT("stripe_index: %d, j: %d, input[%d, %d, %d, %d]: %lf, minmax: %lf", stripe_index, j, dim_index_base, j, inner_dim_size, segment_offset, input[(dim_index_base + j) * inner_dim_size + segment_offset], minmax)
       pool.compute(
           input[(dim_index_base + j) * inner_dim_size + segment_offset],
           &minmax);
-      KERNEL_PRINT("input[%d, %d, %d, %d]: %lf", dim_index_base, j, inner_dim_size, segment_offset, input[(dim_index_base + j) * inner_dim_size + segment_offset])
+      KERNEL_PRINT("stripe_index: %d, j: %d, input[%d, %d, %d, %d]: %lf, minmax: %lf, last_segment_id: %d, current_segment_id: %d", stripe_index, j, dim_index_base, j, inner_dim_size, segment_offset, input[(dim_index_base + j) * inner_dim_size + segment_offset], minmax, last_segment_id, current_segment_id)
       last_segment_id = current_segment_id;
-      KERNEL_PRINT("last_segment_id: %d, current_segment_id: %d", last_segment_id, current_segment_id)
+      KERNEL_PRINT("stripe_index: %d, j: %d, last_segment_id: %d, current_segment_id: %d", stripe_index, j, last_segment_id, current_segment_id)
     }
-    KERNEL_PRINT("")
+    KERNEL_PRINT("stripe_index: %d", stripe_index)
     const Index output_index =
         last_segment_id * inner_dim_size + segment_offset;
-    KERNEL_PRINT("output_index: %d, last_segment_id: %d, inner_dim_size: %d, segment_offset: %d", output_index, last_segment_id, inner_dim_size, segment_offset)
+    KERNEL_PRINT("stripe_index: %d, output[%d]: %lf, minmax: %lf, output_index: %d, last_segment_id: %d, inner_dim_size: %d, segment_offset: %d", stripe_index, output_index, output[output_index], minmax, output_index, last_segment_id, inner_dim_size, segment_offset)
     pool.atomic(output + output_index, minmax);
-    KERNEL_PRINT("output[%d]: %lf", output_index, output[output_index])
+    KERNEL_PRINT("stripe_index: %d, output[%d]: %lf, minmax: %lf", stripe_index, output_index, output[output_index], minmax)
   }
 
   KERNEL_PRINT("SegmentOpsKernel End")
