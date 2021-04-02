@@ -83,6 +83,8 @@ class TestAffineGridOpCase1(TestAffineGridOp):
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
         self.use_cudnn = True
+        if paddle.fluid.core.is_compiled_with_rocm():
+            self.use_cudnn = False  # Current cudnn is not supported in this op while with rocm
         self.align_corners = True
 
 
