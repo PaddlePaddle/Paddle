@@ -475,7 +475,8 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_RANK_IN_NODE": str(idx),
-            "PADDLE_LOCAL_DEVICE_IDS": ",".join(t.accelerators),
+            "PADDLE_LOCAL_DEVICE_IDS":
+            ",".join([str(acc) for acc in t.accelerators]),
             "PADDLE_WORLD_DEVICE_IDS": ",".join(res),
         }
 
