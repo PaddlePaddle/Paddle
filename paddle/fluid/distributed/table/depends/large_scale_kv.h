@@ -97,11 +97,11 @@ struct VALUE {
   float *data_;
 };
 
-inline bool count_entry(VALUE* value, int threshold) {
+inline bool count_entry(VALUE *value, int threshold) {
   return value->count_ >= threshold;
 }
 
-inline bool probility_entry(VALUE* value, float threshold) {
+inline bool probility_entry(VALUE *value, float threshold) {
   UniformInitializer uniform = UniformInitializer({"uniform", "0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
@@ -200,7 +200,7 @@ class ValueBlock {
     return value.data_;
   }
 
-  void AttrUpdate(VALUE* value) {
+  void AttrUpdate(VALUE *value) {
     // update state
     value->unseen_days_ = 0;
     ++value->count_;
@@ -229,7 +229,7 @@ class ValueBlock {
   }
 
   // for load, to reset count, unseen_days
-  VALUE* GetValue(const uint64_t &id) { return &values_.at(id); }
+  VALUE *GetValue(const uint64_t &id) { return &values_.at(id); }
 
   bool GetEntry(const uint64_t &id) {
     auto &value = values_.at(id);
@@ -274,7 +274,7 @@ class ValueBlock {
   const std::vector<int> &value_offsets_;
   const std::unordered_map<std::string, int> &value_idx_;
 
-  std::function<bool(VALUE*)> entry_func_;
+  std::function<bool(VALUE *)> entry_func_;
   std::vector<std::shared_ptr<Initializer>> initializers_;
 };
 
