@@ -315,9 +315,21 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
                   framework::Tensor* output,
                   framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM") {
+    LOG(WARNING) << "ctx: " << ctx;
+    LOG(WARNING) << "input: " << input;
+    LOG(WARNING) << "segment_ids: " << segment_ids;
+    LOG(WARNING) << "output: " << output;
+    LOG(WARNING) << "output: " << *output;
+    LOG(WARNING) << "summed_ids: " << summed_ids;
+    LOG(WARNING) << "pooltype: " << pooltype;
+    
     auto h = ArrangeHelper<IndexT>(input.numel(), segment_ids.dims()[0],
                                    output->dims()[0]);
     auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
+
+    LOG(WARNING) << "h: " << h;
+    LOG(WARNING) << "config: " << config;
+    
     if (pooltype == "MEAN") {
       SegmentMeanCustomKernel<
           T, IndexT, IndexT(8)><<<config.block_per_grid.x,
