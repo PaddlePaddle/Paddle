@@ -56,7 +56,7 @@ RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-a
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
     tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/python3.7.0 --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
 # Install Python3.8
@@ -84,6 +84,7 @@ RUN python3.8 setup.py install && \
     python3.6 setup.py install
 
 # Install Go and glide
+WORKDIR /home
 RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
