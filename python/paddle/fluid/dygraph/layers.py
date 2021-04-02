@@ -33,6 +33,7 @@ from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid import dygraph
 import paddle.utils.deprecated as deprecated
 
 __all__ = ['Layer']
@@ -1338,7 +1339,11 @@ class Layer(core.Layer):
 
         for key, param in self._parameters.items():
             if param is not None:
-                self._parameters[key] = func(param, place, dtype, blocking)
+                with dygraph.no_grad():
+                    param_applied = func(param, place, dtype, blocking)
+                    assert param.is_leaf
+                    param_applied.stop_gradient = param.stop_gradient
+                    self._parameters[key] = param_applied
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, place, dtype, blocking)
