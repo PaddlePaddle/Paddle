@@ -61,7 +61,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     size_t x_size = xs.size();
     for (size_t i = 0; i < x_size; ++i) {
-      found_inf_data = true;
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
@@ -77,6 +76,8 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
             NpuOpRunner("CheckNumerics", {*x}, {check_xout},
                         {{"message", std::string("check_nan_and_inf")}});
         runner_checknumerics.Run(stream);
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .Wait();
       } catch (platform::EnforceNotMet& exception) {
         LOG(WARNING) << "[check_nan_and_inf] detected contains NaN or INF!!!";
         found_inf_data = true;
