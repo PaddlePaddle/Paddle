@@ -1717,6 +1717,7 @@ EOF
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
+    make -j ${parallel_number} fluid_lib_dist;build_error=$?
     make -j ${parallel_number} inference_lib_dist;build_error=$?
 
     # ci will collect ccache hit rate
@@ -1730,6 +1731,38 @@ EOF
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
 
     build_size "paddle_inference"
+}
+
+function tar_fluid_lib() {
+    cat <<EOF
+    ========================================
+    Taring fluid library for train and inference ...
+    ========================================
+EOF
+    cd ${PADDLE_ROOT}/build
+    cp -r paddle_inference_install_dir paddle_inference
+    tar -czf paddle_inference.tgz paddle_inference
+}
+
+function test_fluid_lib() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for inference ...
+    ========================================
+EOF
+    fluid_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
+             ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    EXIT_CODE=$?
+    fluid_endTime_s=`date +%s`
+    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
+    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
+    ./clean.sh
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
 }
 
 
@@ -1862,6 +1895,12 @@ function main() {
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
+      fluid_inference_lib)
+        cmake_gen ${PYTHON_ABI:-""}
+        gen_fluid_lib ${parallel_number}
+        tar_fluid_lib
+        test_fluid_lib
+        ;;
       build_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
@@ -1897,6 +1936,7 @@ function main() {
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         gen_fluid_lib ${parallel_number}
+        test_fluid_lib
         ;;
       assert_api_approvals)
         assert_api_spec_approvals
@@ -1943,6 +1983,9 @@ function main() {
         ;;
       gen_fluid_lib)
         gen_fluid_lib ${parallel_number}
+        ;;
+      test_fluid_lib)
+        test_fluid_lib
         ;;
       document)
         cmake_gen ${PYTHON_ABI:-""}
