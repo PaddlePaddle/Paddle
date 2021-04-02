@@ -72,7 +72,7 @@ class TreeIndex(Index):
             res = []
             while (child > ancestor):
                 res.append(child)
-                child = (child - 1) / self._branch
+                child = int((child - 1) / self._branch)
 
             return res
 

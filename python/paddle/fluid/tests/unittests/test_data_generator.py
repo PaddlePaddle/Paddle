@@ -217,7 +217,7 @@ class DemoTreeIndexDataset(fleet.MultiSlotDataGenerator):
                 feature_name.append("item_" + str(i + 1))
             feature_name.append("unit_id")
             feature_name.append("label")
-            yield zip(feature_name, output_list)
+            yield list(zip(feature_name, output_list))
 
         return reader
 

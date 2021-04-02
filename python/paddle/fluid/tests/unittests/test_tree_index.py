@@ -98,8 +98,8 @@ class TestIndexSampler(unittest.TestCase):
         seed = 0
         sample_layers = tree.height() - start_sample_layer
         sample_num = sample_num[:sample_layers]
-        layer_sample_counts = sample_num + [1] * (sample_layers -
-                                                  len(sample_num))
+        layer_sample_counts = list(sample_num) + [1] * (sample_layers -
+                                                        len(sample_num))
         total_sample_num = sum(layer_sample_counts) + len(layer_sample_counts)
         sampler.init_layerwise_conf(sample_num, start_sample_layer, seed)
 

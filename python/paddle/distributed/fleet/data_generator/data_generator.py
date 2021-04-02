@@ -72,7 +72,7 @@ class DataGenerator(object):
         res = self._tree_sampler.sample(
             user_history_ids, items,
             self._tree_sampler_config['with_hierarchy'])
-        each_sample_num = len(res) / len(batch_samples)
+        each_sample_num = int(len(res) / len(batch_samples))
 
         result = []
         for i in range(len(batch_samples)):
