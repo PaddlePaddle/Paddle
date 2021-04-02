@@ -1344,6 +1344,14 @@ class Layer(core.Layer):
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
                     self._parameters[key] = param_applied
+                
+                if param.grad is not None:
+                    with dygraph.no_grad():
+                        grad_applied = func(param.grad, place, dtype, blocking)
+
+                        assert param.grad.is_leaf
+                        grad_applied.stop_gradient = param.grad.stop_gradient
+                        self._parameters[key].grad = grad_applied
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, place, dtype, blocking)
