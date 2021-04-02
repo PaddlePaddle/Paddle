@@ -256,13 +256,6 @@ void NPUDeviceContext::Wait() const {
   platform::RecordEvent record_event("NPUDeviceContext/wait");
   NPUDeviceGuard guard(place_.device);
   VLOG(4) << "NPU context Wait";
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
-}
-
-void NPUDeviceContext::StreamWait() const {
-  platform::RecordEvent record_event("NPUStream/wait");
-  NPUDeviceGuard guard(place_.device);
-  VLOG(4) << "NPU stream Wait";
   stream_->Wait();
 }
 

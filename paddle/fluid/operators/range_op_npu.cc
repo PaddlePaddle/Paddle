@@ -43,19 +43,19 @@ class RangeNPUKernel : public framework::OpKernel<T> {
         *start_t, platform::CPUPlace(),
         context.template device_context<platform::DeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
-        .StreamWait();
+        .Wait();
     T start = n.data<T>()[0];
     framework::TensorCopy(
         *end_t, platform::CPUPlace(),
         context.template device_context<platform::DeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
-        .StreamWait();
+        .Wait();
     T end = n.data<T>()[0];
     framework::TensorCopy(
         *step_t, platform::CPUPlace(),
         context.template device_context<platform::DeviceContext>(), &n);
     context.template device_context<paddle::platform::NPUDeviceContext>()
-        .StreamWait();
+        .Wait();
     T step = n.data<T>()[0];
 
     int64_t size = 0;
@@ -72,7 +72,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     }
 
     context.template device_context<paddle::platform::NPUDeviceContext>()
-        .StreamWait();
+        .Wait();
     framework::TensorFromVector(odata, context.device_context(), out);
   }
 };

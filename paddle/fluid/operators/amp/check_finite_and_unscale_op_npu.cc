@@ -101,9 +101,11 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       bool* is_found_inf =
           found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
       *is_found_inf = true;
-      ctx.template device_context<paddle::platform::NPUDeviceContext>()
-          .StreamWait();
-      framework::TensorCopySync(found_inf_tensor, ctx.GetPlace(), found_inf);
+
+      framework::TensorCopy(
+          found_inf_tensor, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), found_inf);
+      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
     }
   }
 };

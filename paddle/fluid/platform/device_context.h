@@ -175,9 +175,6 @@ class NPUDeviceContext : public DeviceContext {
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
-  /*! \brief  Wait for all operations completion only in current stream. */
-  void StreamWait() const;
-
   /*! \brief  Return npu stream in the device context. */
   aclrtStream stream() const;
 

@@ -33,8 +33,7 @@ void gen_assist_seq(framework::Tensor* assit_tensor, int64_t dim,
     int64_t gap = i - idx;
     assit[i + dim] = static_cast<paddle::platform::float16>(gap);
   }
-  ctx.template device_context<paddle::platform::NPUDeviceContext>()
-      .StreamWait();
+  ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   framework::TensorFromVector(assit, ctx.device_context(), assit_tensor);
 }
 
