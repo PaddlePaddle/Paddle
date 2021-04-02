@@ -80,8 +80,7 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
   }
 
   TableManager::instance().initialize();
-  LOG(INFO) << "Create PSClient[" << service_param.client_class()
-            << "] success";
+  VLOG(3) << "Create PSClient[" << service_param.client_class() << "] success";
   return client;
 }
 }  // namespace distributed
