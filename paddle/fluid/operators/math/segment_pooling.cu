@@ -148,9 +148,9 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
         // reset the interval value which do not have corresponding ids.
         for (Index interval_id = last_segment_id + 1;
              interval_id < current_segment_id; ++interval_id) {
-          KERNEL_PRINT("output[x]:%d", *(output + interval_id * inner_dim_size + segment_offset))
+          KERNEL_PRINT("interval_id: %d, output[x]:%d", interval_id, *(output + interval_id * inner_dim_size + segment_offset))
           *(output + interval_id * inner_dim_size + segment_offset) = 0;
-          KERNEL_PRINT("output[x]:%d", *(output + interval_id * inner_dim_size + segment_offset))
+          KERNEL_PRINT("interval_id: %d, output[x]:%d", interval_id, *(output + interval_id * inner_dim_size + segment_offset))
         }
         // don't update result when j=0
         if (j > 0) {
