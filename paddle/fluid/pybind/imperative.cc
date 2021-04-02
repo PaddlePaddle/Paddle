@@ -1158,6 +1158,16 @@ void BindImperative(py::module *m_ptr) {
              return new_var;
            },
            py::return_value_policy::copy)
+      .def("_copy_to",
+           [](const std::shared_ptr<imperative::VarBase> &self,
+              const platform::Place &place, bool blocking) {
+             auto new_var = self->NewVarBase(place, blocking);
+             if (!blocking) {
+               IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
+             }
+             return new_var;
+           },
+           py::return_value_policy::copy)
       .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,

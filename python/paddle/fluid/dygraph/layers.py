@@ -1332,6 +1332,38 @@ class Layer(core.Layer):
             for param, state in matched_param_state:
                 _set_var(param, state)
 
+    def _apply(self, func, place, dtype, blocking):
+        for layer in self.children():
+            layer._apply(func, place, dtype, blocking)
+
+        for key, param in self._parameters.items():
+            if param is not None:
+                self._parameters[key] = func(param, place, dtype, blocking)
+
+        for key, buf in self._buffers.items():
+            self._buffers[key] = func(buf, place, dtype, blocking)
+
+    def to(self, place=None, dtype=None, blocking=None):
+        if place is None and dtype is None and blocking is None:
+            return
+
+        if blocking is None:
+            blocking = True
+
+        def transform(t, place, dtype, blocking):
+            if place is None:
+                place = t.place
+            if dtype is None:
+                dtype = t.dtype
+
+            new_t = t._copy_to(place, blocking)
+            if dtype is not None and dtype != t.dtype:
+                new_t = new_t.cast(dtype=dtype)
+
+            return new_t
+
+        self._apply(transform, place, dtype, blocking)
+
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
     load_dict = set_state_dict

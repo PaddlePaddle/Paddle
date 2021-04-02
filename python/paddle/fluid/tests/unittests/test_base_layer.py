@@ -331,5 +331,31 @@ class TestModifiedBuffer(unittest.TestCase):
                 np.array_equal(dy_outs[i].numpy(), st_outs[i].numpy()))
 
 
+class TestLayerTo(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.linear = paddle.nn.Linear(2, 2)
+        buffer = paddle.to_tensor([0.0], dtype='float32')
+        self.linear.register_buffer("buf_name", buffer, persistable=True)
+
+    def test_to_api(self):
+        self.linear.to(dtype='double')
+        self.assertEqual(self.linear.weight.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(self.linear.buf_name.dtype,
+                         paddle.fluid.core.VarDesc.VarType.FP64)
+
+        if paddle.fluid.is_compiled_with_cuda():
+            self.linear.to(place=paddle.CUDAPlace(1))
+            self.assertTrue(self.linear.weight.place.is_gpu_place())
+            self.assertEqual(self.linear.weight.place.gpu_device_id(), 1)
+            self.assertTrue(self.linear.buf_name.place.is_gpu_place())
+            self.assertEqual(self.linear.buf_name.place.gpu_device_id(), 1)
+
+        self.linear.to(place=paddle.CPUPlace())
+        self.assertTrue(self.linear.weight.place.is_cpu_place())
+        self.assertTrue(self.linear.buf_name.place.is_cpu_place())
+
+
 if __name__ == '__main__':
     unittest.main()
