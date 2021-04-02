@@ -377,7 +377,7 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
     ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
-        echo "Added UT should not exceed 15 seconds"
+        echo "Added UT should pass three additional executions"
         echo "========================================"
         exit 8;
     fi
