@@ -378,9 +378,9 @@ class TensorRTEngine {
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
 #if IS_TRT_VERSION_GE(6000)
-  nvinfer1::IPluginV2Layer* AddPluginV2(nvinfer1::ITensor* const* inputs,
-                                        int num_inputs,
-                                        plugin::DynamicPluginTensorRT* plugin) {
+  nvinfer1::IPluginV2Layer* AddDynamicPlugin(
+      nvinfer1::ITensor* const* inputs, int num_inputs,
+      plugin::DynamicPluginTensorRT* plugin) {
     owned_pluginv2_.emplace_back(plugin);
     return network()->addPluginV2(inputs, num_inputs, *plugin);
   }

@@ -65,7 +65,7 @@ class PReluOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
       plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
           alpha_data, alpha_tensor_temp->numel(), mode);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "
