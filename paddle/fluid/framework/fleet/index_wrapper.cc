@@ -29,7 +29,9 @@ std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 int TreeIndex::load(const std::string filename) {
   FILE* fp = fopen(filename.c_str(), "rb");
   if (fp == NULL) {
-    fprintf(stderr, "Can not open file: %s\n", filename.c_str());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Can not open file: %s. Please check whether the file exists.",
+        filename));
     return -1;
   }
 
@@ -38,17 +40,23 @@ int TreeIndex::load(const std::string filename) {
   size_t ret = fread(&num, sizeof(num), 1, fp);
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
-    if (fread(const_cast<char*>(content.data()), 1, num, fp) !=
-        static_cast<size_t>(num)) {
-      fprintf(stderr, "Read from file: %s failed, invalid format.\n",
-              filename.c_str());
-      break;
-    }
+    size_t read_num = fread(const_cast<char*>(content.data()), 1, num, fp);
+    PADDLE_ENFORCE_EQ(
+        read_num, static_cast<size_t>(num),
+        platform::errors::InvalidArgument(
+            "Read from file: %s failed. Valid Format is "
+            "an integer representing the length of the following string, "
+            "and the string itself.We got an iteger[% d], "
+            "but the following string's length is [%d].",
+            filename, num, read_num));
+
     KVItem item;
-    if (!item.ParseFromString(content)) {
-      fprintf(stderr, "Parse from file: %s failed.\n", filename.c_str());
-      break;
-    }
+    PADDLE_ENFORCE_EQ(
+        item.ParseFromString(content), true,
+        platform::errors::InvalidArgument("Parse from file: %s failed. It's "
+                                          "content can't be parsed by KVItem.",
+                                          filename));
+
     if (item.key() == ".tree_meta") {
       meta_.ParseFromString(item.value());
     } else {

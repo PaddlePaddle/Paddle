@@ -37,13 +37,6 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
   size_t idx = 0;
   while (layer_index >= start_sample_layer_) {
     layer_ids[idx] = tree_->get_nodes_given_level(layer_index);
-    std::stringstream ss;
-    ss << idx << " " << layer_ids[idx].size() << ";";
-    for (size_t i = 0; i < layer_ids[idx].size(); i++) {
-      ss << layer_ids[idx][i] << " ";
-    }
-    ss << "\n";
-    VLOG(1) << ss.str();
     sampler_vec[idx] = new paddle::operators::math::UniformSampler(
         layer_ids[idx].size() - 1, seed_);
     layer_index--;
@@ -80,8 +73,6 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
         do {
           sample_res = sampler_vec[j]->Sample();
         } while (layer_ids[j][sample_res] == ancestors[i][j]);
-        VLOG(1) << sample_res << " " << layer_ids[j][sample_res] << " "
-                << ancestors[i][j];
         outputs[idx + idx_offset][user_feature_num] = layer_ids[j][sample_res];
         outputs[idx + idx_offset][user_feature_num + 1] = 0;
       }

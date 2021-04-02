@@ -133,7 +133,11 @@ class IndexWrapper {
   void clear_tree() { tree_map.clear(); }
 
   TreePtr GetTreeIndex(const std::string name) {
-    PADDLE_ENFORCE_NE(tree_map.find(name), tree_map.end(), "");
+    PADDLE_ENFORCE_NE(tree_map.find(name), tree_map.end(),
+                      paddle::platform::errors::InvalidArgument(
+                          "tree [%s] doesn't exist. Please insert it firstly "
+                          "by API[\' insert_tree_index \'].",
+                          name));
     return tree_map[name];
   }
 
