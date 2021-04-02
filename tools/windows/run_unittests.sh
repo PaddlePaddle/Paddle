@@ -225,6 +225,7 @@ if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
     echo "$prec_list" | grep 'PRECISION_TEST'
     UT_list_prec=$(echo "$prec_list" | grep -v 'PRECISION_TEST')
     UT_list=$UT_list_prec
+    echo "${UT_list}"
 fi
 set -e
 
