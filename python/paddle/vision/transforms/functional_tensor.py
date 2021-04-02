@@ -16,7 +16,6 @@ from __future__ import division
 
 import math
 import numbers
-from typing import Sequence
 
 import paddle
 from paddle.nn.functional import affine_grid, grid_sample
@@ -445,7 +444,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
     if not isinstance(padding_mode, str):
         raise TypeError('Got inappropriate padding_mode arg')
 
-    if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
+    if isinstance(padding, (list, tuple)) and len(padding) not in [2, 4]:
         raise ValueError(
             "Padding must be an int or a 2, or 4 element tuple, not a " +
             "{} element tuple".format(len(padding)))
