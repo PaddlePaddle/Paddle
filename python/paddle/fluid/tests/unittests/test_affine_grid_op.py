@@ -84,7 +84,7 @@ class TestAffineGridOpCase1(TestAffineGridOp):
         self.dynamic_shape = True
         self.use_cudnn = True
         if paddle.fluid.core.is_compiled_with_rocm():
-            self.use_cudnn = False  # Current cudnn is not supported in this op with rocm
+            self.use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
         self.align_corners = True
 
 
