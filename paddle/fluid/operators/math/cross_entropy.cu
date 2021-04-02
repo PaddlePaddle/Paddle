@@ -66,18 +66,23 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
 
     int batch_size = prob->dims()[0];
     int class_num = prob->dims()[1];
+#ifdef __HIPCC__
+    constexpr int kMaxBlockDim = 256;
+#else
+    constexpr int kMaxBlockDim = 512;
+#endif
 
     if (softLabel) {
       const T* label_data = labels->data<T>();
-      int block = class_num > 512
-                      ? 512
+      int block = class_num > kMaxBlockDim
+                      ? kMaxBlockDim
                       : pow(2, static_cast<int>(std::log2(class_num)));
 
       SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
-      int block = 512;
+      int block = kMaxBlockDim;
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<grid, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, batch_size, class_num,
