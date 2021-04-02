@@ -123,8 +123,8 @@ class ExpandAsV2Kernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0, out_dims);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
-        place, y, x, bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                 bcast_dims);
   }
 };
 
@@ -204,7 +204,7 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::remove_reference_t<decltype(place)>, T, Dims>::Eval(
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
         place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };

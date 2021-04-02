@@ -161,11 +161,11 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
-          place, y, x, bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -255,7 +255,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::remove_reference_t<decltype(place)>, T, Dims>::Eval(
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
         place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };

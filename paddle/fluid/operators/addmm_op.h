@@ -106,7 +106,7 @@ class AddMMKernel : public framework::OpKernel<T> {
     auto eigen_out = EigenTensor<T, 2>::From(*out);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcast<std::remove_reference_t<decltype(place)>, T, 2>::Eval(
+    EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
         place, eigen_out, eigen_input, bcast_dims);
 
     blas.GEMM(false, false, x_dims[0], y_dims[1], x_dims[1], alpha,

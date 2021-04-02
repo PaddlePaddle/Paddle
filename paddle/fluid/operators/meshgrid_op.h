@@ -120,8 +120,8 @@ class MeshgridKernel : public framework::OpKernel<T> {
       auto y = framework::EigenTensor<T, Rank>::From(*outs[i]);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      EigenBroadcast<std::remove_reference_t<decltype(place)>, T, Rank>::Eval(
-          place, y, x, bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -184,9 +184,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
 
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      EigenBroadcastGrad<std::remove_reference_t<decltype(place)>, T,
-                         Rank>::Eval(place, in_grad, out_grad_tmp, reduce_dims,
-                                     reshape_dims);
+      EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, in_grad, out_grad_tmp, reduce_dims, reshape_dims);
     }
   }
 };
