@@ -39,7 +39,6 @@ __all__ = [
     'switch_case',
     'while_loop',
     'sparse_embedding',
-    'distributed_embedding',
 ]
 
 from .common import fc  #DEFINE_ALIAS
@@ -70,4 +69,3 @@ from ...fluid.layers import while_loop  #DEFINE_ALIAS
 
 from ...fluid.input import embedding  #DEFINE_ALIAS
 from ...fluid.contrib.layers import sparse_embedding  #DEFINE_ALIAS
-from ...fluid.contrib.layers import distributed_embedding  #DEFINE_ALIAS
