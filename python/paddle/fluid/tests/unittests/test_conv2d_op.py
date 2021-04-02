@@ -1470,35 +1470,59 @@ class TestConv2DAPI_Error(unittest.TestCase):
     not (core.is_compiled_with_cuda() or core.is_compiled_with_rocm()),
     "core is not compiled with CUDA or ROCM")
 class TestConv2DEnviron(unittest.TestCase):
-    def run_conv2d_api(self):
-        inputs = fluid.layers.data(
-            shape=[2, 3, 5, 5],
-            append_batch_size=False,
-            name="inputs",
-            dtype="float32")
-        fluid.layers.conv2d(
-            input=inputs,
-            num_filters=4,
-            filter_size=[3, 3],
-            stride=[1, 1],
-            padding=0,
-            dilation=[1, 1],
-            groups=1,
-            data_format="NCHW")
+    def run1(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            inputs = fluid.layers.data(
+                shape=[2, 3, 5, 5],
+                append_batch_size=False,
+                name="inputs",
+                dtype="float32")
+            result = fluid.layers.conv2d(
+                input=inputs,
+                num_filters=4,
+                filter_size=[3, 3],
+                stride=[1, 1],
+                padding=0,
+                dilation=[1, 1],
+                groups=1,
+                data_format="NCHW")
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"inputs": self.input_np},
+                              fetch_list=[result])
 
-        x_var = paddle.uniform((2, 3, 5, 5), dtype="float32", min=-1., max=1.)
-        conv = paddle.nn.Conv2D(
-            in_channels=3,
-            out_channels=4,
-            kernel_size=(3, 3),
-            data_format="NCHW")
-        y_var = conv(x_var)
+    def run2(self, place):
+        with fluid.dygraph.guard(place):
+            inputs = fluid.dygraph.to_variable(self.input_np)
+            conv = paddle.nn.Conv2D(
+                in_channels=3,
+                out_channels=4,
+                kernel_size=(3, 3),
+                data_format="NCHW")
+            result = conv(inputs)
+
+    def run3(self, place):
+        with fluid.dygraph.guard(place):
+            inputs = fluid.dygraph.to_variable(self.input_np)
+            conv = paddle.fluid.dygraph.nn.Conv2D(
+                num_channels=3,
+                num_filters=4,
+                filter_size=(3, 3), )
+            result = conv(inputs)
+
+    def run_all(self, place):
+        self.run1(place)
+        self.run2(place)
+        self.run3(place)
 
     def test_environ(self):
-        fluid.set_flags({'FLAGS_conv2d_disable_cudnn': False})
-        self.run_conv2d_api()
-        fluid.set_flags({'FLAGS_conv2d_disable_cudnn': True})
-        self.run_conv2d_api()
+        self.input_np = np.random.random([2, 3, 5, 5]).astype("float32")
+        for place in [paddle.CPUPlace(), paddle.CUDAPlace(0)]:
+            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': False})
+            self.run_all(place)
+            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': True})
+            self.run_all(place)
 
 
 if __name__ == '__main__':
