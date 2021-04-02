@@ -90,7 +90,7 @@ class SkipLayerNormOpConverter : public OpConverter {
         plugin::SkipLayerNormPluginDynamic* plugin =
             new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
                                                    scale_size, eps, with_fp16);
-        layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
+        layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
       }
     } else {
       PADDLE_THROW(platform::errors::Fatal(

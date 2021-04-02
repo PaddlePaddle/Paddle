@@ -187,12 +187,6 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
           x_d, N, H * W * D, C, stats);
     }
 
-    Tensor c_g_st;
-    auto *c_g_st_d = c_g_st.mutable_data<BatchNormParamType<T>>(
-        {2 * C + 1}, platform::CPUPlace());
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-    memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *comm = dev_ctx.nccl_comm();
     if (comm) {
