@@ -127,8 +127,6 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
                                   {{"axes", axes}, {"keep_dims", false}});
         runner.Run(stream);
         tmp_dout = &reduced_dout;
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .Wait();
       }
 
       // stage 2

@@ -31,7 +31,8 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     Tensor shape_tensor(framework::proto::VarType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
-    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+    ctx.template device_context<paddle::platform::NPUDeviceContext>()
+        .StreamWait();
     TensorFromVector(shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(framework::proto::VarType::FP32);
@@ -97,7 +98,7 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
         cpu_tensor, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
-        .Wait();
+        .StreamWait();
   }
 };
 

@@ -259,6 +259,8 @@ void NPUDeviceContext::Wait() const {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
 }
 
+void NPUDeviceContext::StreamWait() const { stream_->Wait(); }
+
 aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
 Place NPUDeviceContext::GetPlace() const { return place_; }
