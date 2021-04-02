@@ -150,7 +150,8 @@ class CommonAccessor:
         oop = None
 
         for op in optimizer_ops:
-            if op.input("Param")[0] == param_name:
+            if ("Param" in op.input_names) and (
+                    op.input("Param")[0] == param_name):
                 oop = op
                 break
 

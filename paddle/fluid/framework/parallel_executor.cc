@@ -1121,8 +1121,6 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event(
-      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
