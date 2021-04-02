@@ -43,9 +43,6 @@ void NPUStream::Destroy() {
 }
 
 void NPUStream::Wait() const {
-  platform::RecordEvent record_event("NPUStream/wait");
-  NPUDeviceGuard guard(place_.device);
-  VLOG(4) << "NPU stream Wait";
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
 }
 
