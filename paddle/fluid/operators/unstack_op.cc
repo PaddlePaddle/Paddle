@@ -112,7 +112,7 @@ class UnStackGradOp : public framework::OperatorWithKernel {
               "The dimensions of all Inputs(Y@Grad) must be the same,"
               "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
               "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
-              i, input_dims[i], i-1, input_dims[0]));
+              i, input_dims[i], i - 1, input_dims[0]));
     }
 
     int axis = ctx->Attrs().Get<int>("axis");
