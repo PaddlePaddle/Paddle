@@ -116,7 +116,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnAddTensor);                                \
   __macro(cudnnConvolutionBackwardData);                  \
   __macro(cudnnConvolutionBackwardFilter);                \
-  __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize);\
+  __macro(cudnnGetConvolutionBackwardFilterWorkspaceSize); \
   __macro(cudnnGetConvolutionBackwardDataWorkspaceSize);  \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm);    \
   __macro(cudnnGetConvolutionForwardAlgorithm);           \
