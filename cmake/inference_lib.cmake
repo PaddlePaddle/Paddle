@@ -220,18 +220,6 @@ copy(inference_lib_dist
 
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
-set(module "inference")
-if(WIN32)
-        copy(fluid_lib_dist
-                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
-                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
-                )
-        else()
-        copy(fluid_lib_dist
-                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
-                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
-                )
-endif()
 
 set(module "platform")
 set(platform_lib_deps profiler_proto error_codes_proto)
