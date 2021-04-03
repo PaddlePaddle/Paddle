@@ -226,18 +226,26 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
   if (*address >= val) {
     return *address;
   }
+  
+  KERNEL_PRINT("address: %lf, val: %lf", *address, val)
 
   unsigned long long int *const address_as_ull =            // NOLINT
       reinterpret_cast<unsigned long long int *>(address);  // NOLINT
   unsigned long long int old = *address_as_ull, assumed;    // NOLINT
 
   do {
+    KERNEL_PRINT("address: %lf, val: %lf, address_as_ull: %lld, old: %lld", *address, val, address_as_ull, old)
+
     assumed = old;
+    KERNEL_PRINT("address: %lf, val: %lf, address_as_ull: %lld, old: %lld, assumed: %lld", *address, val, address_as_ull, old, assumed)
     if (__longlong_as_double(assumed) >= val) {
+      KERNEL_PRINT("address: %lf, val: %lf, address_as_ull: %lld, old: %lld, assumed: %lld", *address, val, address_as_ull, old, assumed)
       break;
     }
 
+    KERNEL_PRINT("address: %lf, val: %lf, address_as_ull: %lld, old: %lld, assumed: %lld", *address, val, address_as_ull, old, assumed)
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
+    KERNEL_PRINT("address: %lf, val: %lf, address_as_ull: %lld, old: %lld, assumed: %lld", *address, val, address_as_ull, old, assumed)
   } while (assumed != old);
 }
 
