@@ -63,6 +63,12 @@ class OpBase {
                                      "OpBase::SetType() is called"));
     return *op_;
   }
+  framework::OperatorBase* MutableInnerOp() const {
+    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
+                                     "OpBase::InnerOp() should be called after "
+                                     "OpBase::SetType() is called"));
+    return op_.get();
+  }
 
   void ClearBackwardTrace();
 
