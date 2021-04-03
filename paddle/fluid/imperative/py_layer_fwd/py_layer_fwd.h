@@ -14,16 +14,7 @@
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <list>
-// #include <map>
-#include <memory>
-// #include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -128,8 +119,8 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object CusPyFunc_apply(const platform::Place& place, const py::object& cls,
-                           const py::args args, const py::kwargs kwargs) {
+py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
+                         const py::args args, const py::kwargs kwargs) {
   // TODO(weixin): to support saving for backward
 
   auto bk_function = cls.attr("_backward_function");

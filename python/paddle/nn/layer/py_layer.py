@@ -31,7 +31,7 @@ class CFunction(object):
     def apply(cls, *args, **kwargs):
         place = paddle.fluid.framework._current_expected_place()
         with paddle.fluid.dygraph.no_grad():
-            return core.CusPyFunc_apply(place, cls, *args, **kwargs)
+            return core.PyLayer_apply(place, cls, *args, **kwargs)
 
 
 class BackwardFunction(object):

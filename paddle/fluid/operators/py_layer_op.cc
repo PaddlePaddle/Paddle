@@ -31,20 +31,15 @@ void RunPyObject(py::object *py_object,
 
   auto py_function = py_object->attr("backward");
 
-  if (PyCallable_Check(py_function.ptr())) {
-    // throw error mmsg,  'py_function' is not Callable
-  }
-
   py::tuple inputs(ins.size());
   for (size_t i = 0; i < ins.size(); i++) {
     auto in_var = ins[i];
     if (in_var == nullptr) {
       continue;
     }
-    // auto
 
     char name[50] = {};
-    // can be same name?
+    // same name
     snprintf(name, sizeof(name), "generator_custom_py_layer%d@@grad \n",
              static_cast<int>(i));
 
@@ -130,7 +125,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(py_layer, ops::PyLayerOp, ops::PyLayerOpMaker,
                   ops::PyLayerGradOpMaker<paddle::imperative::OpBase>,
                   ops::PyLayerGradOpMaker<paddle::framework::OpDesc>);
-//
 
 REGISTER_OP_CPU_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, float>,

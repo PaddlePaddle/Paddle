@@ -1453,33 +1453,28 @@ void BindImperative(py::module *m_ptr) {
                     const platform::XPUPlace &>())
       .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); });
 #endif
-
-  // m.def("CusPyFunc_apply", &imperative::CusPyFunc_apply);
-  // py::object CusPyFunc_apply(const platform::Place& place,const py::object&
-  // cls, const py::args args,
-  //                            const py::kwargs kwargs)
-  m.def("CusPyFunc_apply",
+  m.def("PyLayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::CusPyFunc_apply(place, cls, args, kwargs);
+          return imperative::PyLayer_apply(place, cls, args, kwargs);
         });
 
-  m.def("CusPyFunc_apply",
+  m.def("PyLayer_apply",
         [](const platform::CUDAPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::CusPyFunc_apply(place, cls, args, kwargs);
+          return imperative::PyLayer_apply(place, cls, args, kwargs);
         });
 
-  m.def("CusPyFunc_apply",
+  m.def("PyLayer_apply",
         [](const platform::XPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::CusPyFunc_apply(place, cls, args, kwargs);
+          return imperative::PyLayer_apply(place, cls, args, kwargs);
         });
 
-  m.def("CusPyFunc_apply",
+  m.def("PyLayer_apply",
         [](const platform::CUDAPinnedPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
-          return imperative::CusPyFunc_apply(place, cls, args, kwargs);
+          return imperative::PyLayer_apply(place, cls, args, kwargs);
         });
 }
 

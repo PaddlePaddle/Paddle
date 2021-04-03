@@ -280,37 +280,6 @@ class TracedGradOp {
   void SetType(const std::string& type) { op_->SetType(type); }
   framework::OperatorBase* MutableInnerOp() { return op_->MutableInnerOp(); }
 
-  // template<typename T>
-  // void  SetOpBase(){
-  //   auto insmap=op_->GetInsMap();
-  //   auto outsmap=op_->GetOutsMap();
-  //   auto attrs=op_->Attrs();
-  //   auto place=op_->place();
-  //   auto id=op_->id();
-  //   node_->pop_back();
-  //   op_=&(node_->emplace_back((T())));
-
-  //   for (auto input:insmap){
-  //     op_->SetInput(input.first,input.second,false);
-  //   }
-  //   for (auto output:outsmap){
-  //     op_->SetOutput(output.first,output.second,false);
-  //   }
-
-  //   op_->SetAttrMap(attrs);
-  //   op_->SetId(id);
-  //   op_->SetPlace(place);
-  //   auto temp_ =dynamic_cast<T*> (op_);
-  //   if (temp_){
-  //     std::cout<<"\n--------> cast suc\n";
-  //   }else{
-  //     std::cout<<"\n--------> cast fail\n";
-  //   }
-  //   // node_->pop_back();
-  //   // (*node_)[node_->size()-1]=op;
-
-  // }
-
   void SetAttrMap(const framework::AttributeMap& attrs) {
     return op_->SetAttrMap(attrs);
   }
