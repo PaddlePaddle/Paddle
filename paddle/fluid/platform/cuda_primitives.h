@@ -24,6 +24,20 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
+#ifdef __HIPCC__
+#define KERNEL_PRINT(__FORMAT, ...)                                           \
+  printf("%03d: [tid.x=<%lu> tid.y=<%lu> bid.x=<%lu> bid.y=<%lu>]: " __FORMAT \
+         "\n",                                                                \
+         __LINE__, hipThreadIdx_x, hipThreadIdx_y, hipBlockIdx_x,             \
+         hipBlockIdx_y, ##__VA_ARGS__);
+#else
+#define KERNEL_PRINT(__FORMAT, ...)                                       \
+  printf("%03d: [tid.x=<%d> tid.y=<%d> bid.x=<%d> bid.y=<%d>]: " __FORMAT \
+         "\n",                                                            \
+         __LINE__, threadIdx.x, threadIdx.y, blockIdx.x, blockIdx.y,      \
+         ##__VA_ARGS__);
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -31,7 +45,7 @@ namespace platform {
   __device__ __forceinline__ T CudaAtomic##op(T *address, const T val)
 
 #define USE_CUDA_ATOMIC(op, T) \
-  CUDA_ATOMIC_WRAPPER(op, T) { return atomic##op(address, val); }
+  CUDA_ATOMIC_WRAPPER(op, T) { KERNEL_PRINT("address: %lf, val: %lf", address, val) return atomic##op(address, val); }
 
 // Default thread count per block(or block size).
 // TODO(typhoonzero): need to benchmark against setting this value
@@ -59,6 +73,8 @@ CUDA_ATOMIC_WRAPPER(Add, int64_t) {
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {
+  KERNEL_PRINT("address: %lf, val: %lf", *address, val)
+
   unsigned long long int *address_as_ull =                  // NOLINT
       reinterpret_cast<unsigned long long int *>(address);  // NOLINT
   unsigned long long int old = *address_as_ull, assumed;    // NOLINT
@@ -185,6 +201,8 @@ CUDA_ATOMIC_WRAPPER(Max, int64_t) {
 }
 
 CUDA_ATOMIC_WRAPPER(Max, float) {
+  KERNEL_PRINT("address: %lf, val: %lf", *address, val)
+
   if (*address >= val) {
     return *address;
   }
@@ -203,6 +221,8 @@ CUDA_ATOMIC_WRAPPER(Max, float) {
 }
 
 CUDA_ATOMIC_WRAPPER(Max, double) {
+  KERNEL_PRINT("address: %lf, val: %lf", *address, val)
+
   if (*address >= val) {
     return *address;
   }
@@ -275,6 +295,8 @@ CUDA_ATOMIC_WRAPPER(Min, float) {
 }
 
 CUDA_ATOMIC_WRAPPER(Min, double) {
+  KERNEL_PRINT("address: %lf, val: %lf", *address, val)
+
   if (*address <= val) {
     return *address;
   }
