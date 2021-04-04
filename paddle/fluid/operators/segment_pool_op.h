@@ -111,6 +111,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
 #endif
 
   SegmentPoolFunctor<DeviceContext, T, IndexT> pool;
+  LOG(WARNING) << "pool: " << pool << ", pooltype: " << pooltype;
 
   pool(context.template device_context<DeviceContext>(), *input, *segment,
        output, summed_ids, pooltype);
@@ -123,8 +124,10 @@ class SegmentPoolKernel : public framework::OpKernel<T> {
     auto* segment = context.Input<Tensor>("SegmentIds");
     auto index_type = segment->type();
     if (index_type == framework::proto::VarType::INT32) {
+      LOG(WARNING) << "index_type is framework::proto::VarType::INT32";
       SegmentKernelLaunchHelper<DeviceContext, T, int>(context);
     } else if (index_type == framework::proto::VarType::INT64) {
+      LOG(WARNING) << "index_type is framework::proto::VarType::INT64";
       SegmentKernelLaunchHelper<DeviceContext, T, int64_t>(context);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

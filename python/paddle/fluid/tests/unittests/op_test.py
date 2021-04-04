@@ -1279,7 +1279,8 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [fluid.CPUPlace()]
+        # places = [fluid.CPUPlace()]
+        places = []
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
            and not cpu_only:
