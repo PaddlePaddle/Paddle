@@ -20,20 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
-#ifdef __HIPCC__
-#define KERNEL_PRINT(__FORMAT, ...)                                           \
-  printf("%s (%03d): [tid.x=<%lu> tid.y=<%lu> bid.x=<%lu> bid.y=<%lu>]: " __FORMAT \
-         "\n",                                                                \
-         __FUNCTION__, __LINE__, hipThreadIdx_x, hipThreadIdx_y, hipBlockIdx_x,             \
-         hipBlockIdx_y, ##__VA_ARGS__);
-#else
-#define KERNEL_PRINT(__FORMAT, ...)                                       \
-  printf("%s (%03d): [tid.x=<%d> tid.y=<%d> bid.x=<%d> bid.y=<%d>]: " __FORMAT \
-         "\n",                                                            \
-         __FUNCTION__, __LINE__, threadIdx.x, threadIdx.y, blockIdx.x, blockIdx.y,      \
-         ##__VA_ARGS__);
-#endif
-
 namespace paddle {
 namespace operators {
 
