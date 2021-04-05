@@ -1039,11 +1039,11 @@ function card_test() {
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
 
-    # get the CUDA device count, XPU device count is one
+    # get the CUDA or ROCM device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
+        CUDA_DEVICE_COUNT=$(rocm-smi --showmemuse  | grep "memory use" | wc -l)
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
@@ -1095,6 +1095,89 @@ function card_test() {
         fi
     done
     wait; # wait for all subshells to finish
+    ut_endTime_s=`date +%s`
+    if (( $2 == -1 )); then
+        echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+    else
+        echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+    fi
+    set +m
+}
+
+function card_test_orderly() {
+    set -m
+    case_count $1 $2
+    ut_startTime_s=`date +%s`
+
+    testcases=$1
+    cardnumber=$2
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
+
+    # get the CUDA or ROCM device count, XPU device count is one
+    if [ "${WITH_XPU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=1
+    elif [ "${WITH_ROCM}" == "ON" ];then
+        CUDA_DEVICE_COUNT=$(rocm-smi --showmemuse  | grep "memory use" | wc -l)
+    else
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    fi
+
+    if (( $cardnumber == -1 ));then
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if (( $# > 2 )); then
+        parallel_job=`expr $3 \* $parallel_level_base`
+    else
+        parallel_job=$parallel_level_base
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    trap 'caught_error' CHLD
+    tmpfile_rand=`date +%s%N`
+    NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    echo "****************************************************************"
+    echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
+    echo "****************************************************************"
+    tmp_file_list=""
+    for (( i = 0; i < $NUM_PROC; i++ )); do
+        # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+        # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+        cuda_list=()
+        for (( j = 0; j < cardnumber; j++ )); do
+            if [ $j -eq 0 ]; then
+                    cuda_list=("$[i*cardnumber]")
+                else
+                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+            fi
+        done
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i"_j"$parallel_job"_cardnumber"$cardnumber
+        tmp_file_list="$tmp_file_list $tmpfile"
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job > $tmpfile 2>&1; test ${PIPESTATUS[0]} -eq 0) &
+            else
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job > $tmpfile 2>&1; test ${PIPESTATUS[0]} -eq 0) &
+            fi
+        else
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 ${CTEST_FLAG:---output-on-failure}  -j $parallel_job > $tmpfile 2>&1; test ${PIPESTATUS[0]} -eq 0) &
+            else
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 ${CTEST_FLAG:---output-on-failure}  -j $parallel_job > $tmpfile 2>&1; test ${PIPESTATUS[0]} -eq 0) &
+            fi
+        fi
+    done
+    wait; # wait for all subshells to finish
+
+    for testfile in $(echo $tmp_file_list | sed 's/ /\n/g' | sed '/^$/d'); do
+        cat $testfile;
+    done
+
     ut_endTime_s=`date +%s`
     if (( $2 == -1 )); then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
@@ -1166,7 +1249,11 @@ set +x
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
-        get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        if [ ${WITH_ROCM:-OFF} == "ON" ] ; then
+            disable_ut_quickly=${ROCM_SKIPPED_UT_LIST:-""}    # indicate whether the case was in quickly disable list on ROCM platform
+        else
+            get_quickly_disable_ut||disable_ut_quickly=''    # indicate whether the case was in quickly disable list
+        fi
 
         UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
@@ -1243,13 +1330,13 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
-        card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
-        card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
-        card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
-        card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
-        card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
-        card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test_orderly "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
+        card_test_orderly "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
+        card_test_orderly "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
+        card_test_orderly "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
+        card_test_orderly "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
+        card_test_orderly "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test_orderly "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
