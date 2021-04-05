@@ -39,6 +39,8 @@ __all__ = ["ShardingOptimizer"]
 
 
 class ShardingOptimizer(MetaOptimizerBase):
+    """Sharding Optimizer."""
+
     def __init__(self, optimizer):
         super(ShardingOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -48,6 +50,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
             "ModelParallelOptimizer",
+            "PipelineOptimizer",
         ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
         self._main_program = None
@@ -89,26 +92,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._nrings_sharding = 1
         self._nrings_dp = 1
 
-        # parallelism
-        self.sharding_degree = int(self.user_defined_strategy.sharding_configs[
-            "sharding_degree"])
-        assert self.sharding_degree > 1, "sharding degree must be larger than zero"
-        self.mp_degree = int(self.user_defined_strategy.sharding_configs[
-            "mp_degree"])
-        self.hybrid_dp = self.user_defined_strategy.sharding_configs[
-            "hybrid_dp"]
-
-        self.pp_degree = 1
-
-        # dp here is the pure dp as the outest parallelism
-        self.dp_degree = int(self.role_maker._worker_num() // self.mp_degree //
-                             self.sharding_degree)
-        assert self.role_maker._worker_num(
-        ) == self.dp_degree * self.mp_degree * self.sharding_degree * self.pp_degree
-        if self.hybrid_dp:
-            assert self.dp_degree > 1, "hybrid dp is on, but dp degree is [{}]".format(
-                self.dp_degree)
-
         # segment
         self._sharding_segment_strategy = str(
             self.user_defined_strategy.sharding_configs[
@@ -129,28 +112,120 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "the sharding segment strategy [{}] is not implemented".format(
                     str(self._sharding_segment_strategy)))
 
+        # parallelism
+        self.sharding_degree = int(self.user_defined_strategy.sharding_configs[
+            "sharding_degree"])
+        assert self.sharding_degree > 1, "sharding degree must be larger than zero"
+        self.mp_degree = int(self.user_defined_strategy.sharding_configs[
+            "mp_degree"])
+        self.hybrid_dp = self.user_defined_strategy.sharding_configs[
+            "hybrid_dp"]
+
+        # pipeline setting
+        # TODO (JZ-LIANG) should revise here for support mix parallelism with pipeline
+        self.pp_degree = int(self.user_defined_strategy.sharding_configs[
+            "pp_degree"])
+        if self.pp_degree > 1:
+            assert self.user_defined_strategy.pipeline == True
+        self.dp_degree = int(self.user_defined_strategy.sharding_configs[
+            'dp_degree'])
+        assert self.role_maker._worker_num(
+        ) == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree
+
+        # NOTE (JZ-LIANG) 
+        # there 2 kind of modes for gradient-merge and hybrid-dp in mixed parallism [sharding] and [pipeline].
+        # we distinguish this two modes since the gm/hybrid-dp related allreduce should be insert in different place according different mode to have best performance:
+        # sharding: communication within node, and therefore should insert within backward segment to overlap with bw calc, conduct every micro step 
+        # pipeline: communication accross nodes, and therefore should insert in update segemnt, conduct just once per global step        
+        self.hybrid_dp_mode = None
+        # dp here is the pure dp as the outest parallelism
+        if self.hybrid_dp:
+            assert self.dp_degree > 1, "hybrid dp is on, but dp degree is [{}]".format(
+                self.dp_degree)
+            if self.pp_degree > 1:
+                self.hybrid_dp_mode = "pp_hybrid_dp"
+            else:
+                assert self.sharding_degree > 1, "by now we only support five kind of hybrid dp: sharding_hybrid_dp, mp_sharding_hybrid_dp, pp_hybrid_dp, mp_sharding_pp_hybrid_dp, sharding_pp_hybrid_dp."
+                self.hybrid_dp_mode = "sharding_hybrid_dp"
+
         # gradient merge
         self._gradient_merge_acc_step = int(
             self.user_defined_strategy.sharding_configs[
                 "gradient_merge_acc_step"])
-        self._grad2merged_grad = dict()
+        self.gradient_merge_mode = None
+        if self.pp_degree <= 1:
+            self.gradient_merge_mode = "sharding_gm"
+            self._grad2merged_grad = dict()
+        else:
+            self.gradient_merge_mode = "pp_gm"
+            self._gradient_merge_acc_step = self.user_defined_strategy.pipeline_configs[
+                'accumulate_steps']
+        if self._gradient_merge_acc_step > 1:
+            logging.info("Gradient merge in [{}], acc step = [{}]".format(
+                self.gradient_merge_mode, self._gradient_merge_acc_step))
 
         # optimize offload
         self.optimize_offload = self.user_defined_strategy.sharding_configs[
             "optimize_offload"]
 
+        # this feature is design for ascend, and should NOT be used in GPU training
+        self.pp_allreduce_in_optimize = self.user_defined_strategy.sharding_configs[
+            "pp_allreduce_in_optimize"]
+
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
-        optimize_ops, params_grads = self.inner_opt.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+
+        if self.pp_degree > 1:
+            pp_optimizer = fluid.optimizer.PipelineOptimizer(self.inner_opt,
+                                                             self.acc_steps)
+            main_program = loss.block.program
+            main_program._pipeline_opt = dict()
+            main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
+            main_program._pipeline_opt['pp_bz'] = self.pp_bz
+            pp_rank = self.role_maker._worker_index() // (
+                self.user_defined_strategy.sharding_configs['sharding_degree'] *
+                self.mp_degree) % self.pp_degree
+            main_program._pipeline_opt['local_rank'] = pp_rank
+            main_program._pipeline_opt[
+                'global_rank'] = self.role_maker._worker_index()
+            main_program._pipeline_opt['use_sharding'] = True
+            main_program._pipeline_opt['ring_id'] = 20
+            optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
+            self.pp_degree = len(program_list)
+        else:
+            optimize_ops, params_grads = self.inner_opt.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:
             startup_program = default_startup_program()
-        main_block = loss.block
+
+        if self.pp_degree > 1:
+            startup_program = startup_program._pipeline_opt['startup_program']
+            #main_program = main_program._pipeline_opt['section_program']['program']
+            print("pp_rank:", pp_rank)
+            main_program = program_list[pp_rank]['program']
+            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+                f.writelines(str(main_program))
+            main_block = main_program.global_block()
+            new_params_grads = []
+            for param, grad in params_grads:
+                if main_block.has_var(param.name):
+                    new_params_grads.append((param, grad))
+            params_grads = new_params_grads
+
+        else:
+            main_block = loss.block
+
         startup_block = startup_program.global_block()
         self._main_program = main_block.program
         self._startup_program = startup_program
+
+        if self.pp_degree > 1:
+            pp_optimizer._rename_gradient_var_name(main_block)
+            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+                f.writelines(str(main_program))
 
         # step0: _init_comm
         self._init_comm()
@@ -180,8 +255,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.hybrid_dp:
             self._initialization_broadcast(startup_program)
 
-        # step6: optional gradient merge
-        if self._gradient_merge_acc_step > 1:
+        # step6: (optional) sharding gradient merge
+        if self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
             self._sharding_gradient_merge(main_block)
 
         # TODO(wangxi): add optimize offload
@@ -535,14 +610,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self._segments[-1]._allreduce_vars:
             shard_allredue_vars = self._shard.filter_grads(self._segments[-1]
                                                            ._allreduce_vars)
-            if self._gradient_merge_acc_step <= 1:
+            if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and len(shard_allredue_vars) >= 1:
                     insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
                     insert_allreduce_ops(block, self._segments[-1]._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
             # gradient merge 
-            else:
+            elif self.gradient_merge_mode == "sharding" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
                     block,
                     self._startup_program.global_block(),
@@ -595,7 +670,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # step2: add Sync ops
             shard_allredue_vars = self._shard.filter_grads(allreduce_vars)
 
-            if self._gradient_merge_acc_step <= 1:
+            if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and len(shard_allredue_vars) >= 1:
                     insert_sync_comm_ops(block, segment._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
@@ -614,7 +689,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                                              self.sharding_ring_id,
                                              comm_dep_vars)
             # gradient merge
-            else:
+            elif self.gradient_merge_mode == "sharding" and self._gradient_merge_acc_step > 1:
                 broad_cast_vars = [x[0] for x in broadcast_vars]
                 if len(broad_cast_vars) > 0:
                     insert_sync_comm_ops(block, segment._end_idx,
@@ -637,7 +712,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step5: add broadcast ops
             # gradient merge
-            if self._gradient_merge_acc_step > 1:
+            if self.gradient_merge_mode == "sharding" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
                     block,
                     self._startup_program.global_block(), segment._start_idx,
@@ -648,14 +723,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             # step6: add all_reduce ops
             # dp
-            if self._gradient_merge_acc_step <= 1:
+            if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and len(shard_allredue_vars) >= 1:
                     insert_allreduce_ops(block, segment._start_idx,
                                          self.dp_ring_id, shard_allredue_vars)
                     insert_sync_comm_ops(block, segment._start_idx,
                                          self.sharding_ring_id, allreduce_vars)
             # gradient merge
-            else:
+            elif self.gradient_merge_mode == "sharding" and self._gradient_merge_acc_step > 1:
                 insert_sync_comm_ops(block, segment._start_idx,
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
