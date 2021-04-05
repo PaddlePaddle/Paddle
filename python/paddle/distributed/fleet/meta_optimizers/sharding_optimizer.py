@@ -135,6 +135,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "gradient_merge_acc_step"])
         self._grad2merged_grad = dict()
 
+        # optimize offload
+        self.optimize_offload = self.user_defined_strategy.sharding_configs[
+            "optimize_offload"]
+
         if self.inner_opt is None:
             raise ValueError(
                 "self.inner_opt of ShardingOptimizer should not be None.")
@@ -179,6 +183,21 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step6: optional gradient merge
         if self._gradient_merge_acc_step > 1:
             self._sharding_gradient_merge(main_block)
+
+        # TODO(wangxi): add optimize offload
+        # opt offload should be enable while gradient merge is enable && acc_step is quite large (e.g. >> 100) 
+        # sync its memcpy could not be overlap with calc, otherwise it will slower down training severely. 
+        if self.optimize_offload:
+            logging.info("Sharding with optimize offload !")
+            offload_helper = OffloadHelper()
+            offload_helper.offload(main_block, startup_block)
+
+        with open("start_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(startup_block.program))
+        with open("main_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
 
         # # check op dependecy
         # FIXME (JZ-LIANG) enable checking in future.
