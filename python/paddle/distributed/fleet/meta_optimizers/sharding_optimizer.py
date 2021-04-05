@@ -26,7 +26,6 @@ from .sharding.offload_helper import OffloadHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-
 from paddle.fluid import layers
 
 import logging
@@ -49,8 +48,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             "AMPOptimizer",
             "LarsOptimizer",
             "LambOptimizer",
-            "ModelParallelOptimizer",
-            "PipelineOptimizer",
+            # "ModelParallelOptimizer",
+            # "PipelineOptimizer",
         ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
         self._main_program = None
@@ -118,20 +117,20 @@ class ShardingOptimizer(MetaOptimizerBase):
         assert self.sharding_degree > 1, "sharding degree must be larger than zero"
         self.mp_degree = int(self.user_defined_strategy.sharding_configs[
             "mp_degree"])
-        self.hybrid_dp = self.user_defined_strategy.sharding_configs[
-            "hybrid_dp"]
-
         # pipeline setting
         # TODO (JZ-LIANG) should revise here for support mix parallelism with pipeline
         self.pp_degree = int(self.user_defined_strategy.sharding_configs[
             "pp_degree"])
         if self.pp_degree > 1:
-            assert self.user_defined_strategy.pipeline == True
+            assert self.user_defined_strategy.pipeline == False
+
         self.dp_degree = int(self.user_defined_strategy.sharding_configs[
             'dp_degree'])
         assert self.role_maker._worker_num(
         ) == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree
 
+        self.hybrid_dp = self.user_defined_strategy.sharding_configs[
+            "hybrid_dp"]
         # NOTE (JZ-LIANG) 
         # there 2 kind of modes for gradient-merge and hybrid-dp in mixed parallism [sharding] and [pipeline].
         # we distinguish this two modes since the gm/hybrid-dp related allreduce should be insert in different place according different mode to have best performance:
@@ -177,20 +176,26 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "self.inner_opt of ShardingOptimizer should not be None.")
 
         if self.pp_degree > 1:
-            pp_optimizer = fluid.optimizer.PipelineOptimizer(self.inner_opt,
-                                                             self.acc_steps)
+            pp_optimizer = fluid.optimizer.PipelineOptimizer(
+                self.inner_opt, self._gradient_merge_acc_step)
             main_program = loss.block.program
             main_program._pipeline_opt = dict()
-            main_program._pipeline_opt['schedule_mode'] = self.schedule_mode
-            main_program._pipeline_opt['pp_bz'] = self.pp_bz
+            main_program._pipeline_opt[
+                'schedule_mode'] = self.user_defined_strategy.pipeline_configs[
+                    'schedule_mode']
+            main_program._pipeline_opt[
+                'micro_batch_size'] = self.user_defined_strategy.pipeline_configs[
+                    'micro_batch_size']
             pp_rank = self.role_maker._worker_index() // (
-                self.user_defined_strategy.sharding_configs['sharding_degree'] *
-                self.mp_degree) % self.pp_degree
+                self.sharding_degree * self.mp_degree) % self.pp_degree
             main_program._pipeline_opt['local_rank'] = pp_rank
             main_program._pipeline_opt[
                 'global_rank'] = self.role_maker._worker_index()
             main_program._pipeline_opt['use_sharding'] = True
+            # TODO (JZ-LIANG) should revise here for support mix parallelism with pipeline
             main_program._pipeline_opt['ring_id'] = 20
+            main_program._pipeline_opt['global_ring_id'] = 3
+
             optimize_ops, params_grads, program_list, self.pipeline_pair, self.pp_ring_map = pp_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
             self.pp_degree = len(program_list)
@@ -230,34 +235,90 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step0: _init_comm
         self._init_comm()
 
-        # step1: _build_shard
-        self._build_shard(params_grads)
+        if self.sharding_degree > 1:
 
-        # step2: split_program
-        self._split_program(main_block)
+            # step1: build shard
+            self._build_shard(params_grads)
 
-        # step3: add broadcast and reduce ops
-        self._add_broadcast_allreduce(main_block)
+            # step2: split_program
+            self._split_program(main_block)
+
+            # step3: add broadcast and reduce ops
+            self._add_broadcast_allreduce(main_block)
+            main_block._sync_with_cpp()
+            startup_block._sync_with_cpp()
+
+            main_block._sync_with_cpp()
+
+            # step4: remove unneeded ops and vars from block
+            self._prune_main_program(main_block)
+            self._prune_startup_program(startup_block)
+
+        if self.pp_degree > 1:
+            # sharding-pp related logic
+            # pp_optimizer._rename_gradient_var_name(main_block)
+            # crop ops
+            if self.sharding_degree > 1:
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if is_update_op(op):
+                        op_role_var = op.attr('op_role_var')
+                        param_name = op_role_var[0]
+                        if not self._shard.has_param(param_name):
+                            main_block._remove_op(idx)
+
+                for idx, op in reversed(list(enumerate(main_block.ops))):
+                    if op.type != 'cast': continue
+                    in_name = op.input_arg_names[0]
+                    if in_name not in self._params: continue
+                    #if self._shard.has_param(param_name): continue
+                    if in_name not in main_block.vars:
+                        main_block._remove_op(idx)
+
+            accumulated_grad_names = pp_optimizer._accumulate_gradients(
+                main_block)
+            # accumulated_grad_names = sorted(accumulated_grad_names)
+            if self.pp_allreduce_in_optimize:
+                print("persistable FP32 grad: ")
+                print(accumulated_grad_names)
+                first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
+                    main_block)
+                insert_reduce_ops(
+                    main_block,
+                    first_optimize_op_index,
+                    self.sharding_ring_id,
+                    accumulated_grad_names,
+                    self._shard,
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
+                    use_calc_stream=True)
+            if self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
+                first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
+                    main_block)
+                insert_allreduce_ops(
+                    main_block,
+                    first_optimize_op_index,
+                    self.dp_ring_id,
+                    accumulated_grad_names,
+                    core.op_proto_and_checker_maker.OpRole.Optimize,
+                    use_calc_stream=True)
+
+        # if not use sharding, adapt amp/clip, for remain parallelism.
+        # cast --> amp --> clip --> opt
+        if self.sharding_degree <= 1:
+            # amp
+            FP16Utils.sync_amp_check_nan_inf(main_block, self.global_ring_id)
+
+            # clip
+            gradientclip_helper = GradientClipHelper(self.global_ring_id)
+            gradientclip_helper.sync_global_norm(
+                main_block, self.global_ring_id, self.dp_degree)
+
+        # step6: loss div dp_degree 
+        global_dp_degree = self.sharding_degree * self.dp_degree
+        assert int(global_dp_degree) == global_dp_degree
+        if global_dp_degree > 1:
+            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+
         main_block._sync_with_cpp()
-        startup_block._sync_with_cpp()
-
-        # step4: scale the loss by the num of dp degree
-        # sharding is also a senario of dp
-        scale_ = self.dp_degree * self.sharding_degree
-        if scale_ > 1:
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / scale_)
-
-        main_block._sync_with_cpp()
-
-        # step5: remove unneeded ops and vars from block
-        self._prune_main_program(main_block)
-        self._prune_startup_program(startup_block)
-        if self.hybrid_dp:
-            self._initialization_broadcast(startup_program)
-
-        # step6: (optional) sharding gradient merge
-        if self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
-            self._sharding_gradient_merge(main_block)
 
         # TODO(wangxi): add optimize offload
         # opt offload should be enable while gradient merge is enable && acc_step is quite large (e.g. >> 100) 
@@ -267,6 +328,10 @@ class ShardingOptimizer(MetaOptimizerBase):
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
             offload_helper.offload_fp32param(main_block, startup_block)
+
+        # step6: (optional) sharding gradient merge
+        if self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
+            self._sharding_gradient_merge(main_block)
 
         with open("start_sharding_%d" % self.role_maker._worker_index(),
                   'w') as f:
@@ -280,14 +345,22 @@ class ShardingOptimizer(MetaOptimizerBase):
         # check_broadcast(main_block)
         # check_allreduce_sum(main_block, self._shard, self.sharding_ring_id,
         #                     self.dp_ring_id)
+
+        if self.hybrid_dp:
+            # NOTE(JZ-LIANG) ensure in both sharding_hybrid_dp & pp_hybrid_dp 
+            # init param broadcast should be called after startup pruning             
+            self._initialization_broadcast(startup_program)
+
         self._wait()
 
         return optimize_ops, params_grads
 
     def _init_comm(self):
-        # config sharding & dp groups
-        self._build_group()
 
+        # config sharding & dp groups
+        self._build_groups()
+
+        # sync var
         startup_block = self._startup_program.global_block()
         self.startup_prog_sync_var = startup_block.create_var(
             name="startup_prog_sync_var",
@@ -295,7 +368,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             dtype=core.VarDesc.VarType.INT32,
             persistable=False)
 
-        # global
+        # global ring
         self._collective_helper._init_communicator(
             self._startup_program,
             self.current_endpoint,
@@ -308,7 +381,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         append_naive_sync(startup_block, self.startup_prog_sync_var,
                           self.global_ring_id)
 
-        # mp
+        # mp ring
         if self.mp_degree > 1:
             self._collective_helper._init_communicator(
                 self._startup_program,
@@ -322,7 +395,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             append_naive_sync(startup_block, self.startup_prog_sync_var,
                               self.global_ring_id)
 
-        # sharding
+        # sharding ring
         if self.sharding_degree > 1:
             self._collective_helper._init_communicator(
                 self._startup_program,
@@ -336,7 +409,47 @@ class ShardingOptimizer(MetaOptimizerBase):
             append_naive_sync(startup_block, self.startup_prog_sync_var,
                               self.global_ring_id)
 
-        # dp
+        # pp ring
+        if self.pp_degree > 1:
+            if self.schedule_mode == 0:  # GPipe
+                self._collective_helper._init_communicator(
+                    self._startup_program, self.current_endpoint,
+                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id,
+                    False)
+                # append_naive_sync(startup_block, self.startup_prog_sync_var,
+                #                   self.global_ring_id)
+                self._collective_helper._init_communicator(
+                    self._startup_program, self.current_endpoint,
+                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id + 2,
+                    False)
+                # append_naive_sync(startup_block, self.startup_prog_sync_var,
+                #                   self.global_ring_id)
+            else:
+                for pair in self.pipeline_pair:
+                    pair_key = pair[0] * 1000 + pair[1]
+                    ring_id = self.pp_ring_map[pair_key]
+                    print("pp pair:{}, ring_id: {}".format(pair, ring_id))
+                    if self.pp_rank not in pair: continue
+                    pp_group_endpoints = [
+                        self.pp_group_endpoints[pair[0]],
+                        self.pp_group_endpoints[pair[1]],
+                    ]
+                    if pair[0] < pair[1]:
+                        start_ring_id = self.pp_ring_id + pair[1] - pair[0] - 1
+                    else:
+                        start_ring_id = self.pp_ring_id + 2 + pair[0] - pair[
+                            1] - 1
+                    pp_rank = 0 if self.pp_rank == pair[0] else 1
+                    self._collective_helper._init_communicator(
+                        self._startup_program, self.current_endpoint,
+                        pp_group_endpoints, pp_rank, ring_id, False, False)
+                    # append_naive_sync(startup_block, self.startup_prog_sync_var,
+                    #                   self.global_ring_id)
+
+                # TODO (JZ-LIANG) to unify this shit 
+            assert pp_rank == self.pp_rank
+
+        # pure dp ring
         if self.dp_degree > 1:
             self._collective_helper._init_communicator(
                 self._startup_program,
@@ -456,17 +569,22 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._main_program.global_block().var(input_name))
 
             # find reduce vars
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
-                if len(op_role_var) != 0:
-                    assert len(op_role_var) % 2 == 0
-                    for i in range(0, len(op_role_var), 2):
-                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
-                        segment._allreduce_vars.append(reduced_grad)
-                        assert (
-                            reduced_grad not in self._reduced_grads_to_param)
-                        self._reduced_grads_to_param[reduced_grad] = param
+            if self.pp_degree > 1 and self.pp_allreduce_in_optimize:
+                # place pipeline gradient allreduce in optimize
+                pass
+            else:
+                if is_backward_op(op) and \
+                        OP_ROLE_VAR_KEY in op.attr_names:
+                    op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
+                    if len(op_role_var) != 0:
+                        assert len(op_role_var) % 2 == 0
+                        for i in range(0, len(op_role_var), 2):
+                            param, reduced_grad = op_role_var[i], op_role_var[
+                                i + 1]
+                            segment._allreduce_vars.append(reduced_grad)
+                            assert (reduced_grad not in
+                                    self._reduced_grads_to_param)
+                            self._reduced_grads_to_param[reduced_grad] = param
 
             # find cast op
             if FP16Utils.is_fp16_cast_op(block, op, self._params):
@@ -558,8 +676,13 @@ class ShardingOptimizer(MetaOptimizerBase):
         # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
-                    "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
+                    "c_allreduce_sum",
+                    "c_sync_comm_stream",
+                    "c_calc_comm_stream",
+                    "c_gen_nccl_id",
+                    "c_comm_init",
+                    'send_v2',
+                    'recv_v2',
             ]:
                 pass
             elif op.type == "conditional_block":
@@ -596,6 +719,16 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if program_deps.should_remove_op(idx):
                     program_deps.remove_op(idx)
 
+        # NOTE (JZ-LIANG) revise and unify logic here
+        # sharding support fp16_allreduce logic            
+        block._sync_with_cpp()
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == 'concat' and is_optimizer_op(op):
+                # remove inputs that not on this card
+                reserved_x = []
+                for var_name in op.desc.input("X"):
+                    if block.has_var(var_name): reserved_x.append(var_name)
+                op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
         return
 
@@ -603,15 +736,35 @@ class ShardingOptimizer(MetaOptimizerBase):
         """
         add broadcast allreduce op
         if enable gradient_merge, insert related ops
+
+        if combined with pipeline(grad accumulate), 
+        the grad allreduce should be done in optimize role
         """
         if len(self._segments) < 1:
             return
         # sharding
+        if self.pp_degree > 1 and self.pp_allreduce_in_optimize:
+            for idx in range(len(self._segments)):
+                assert len(self._segments[idx]._allreduce_vars) == 0
+
+        # NOTE (JZ-LIANG) revise and unify logic here
+        # fix the _end_idx for segments[-1] if pp is used.
+        new_end_idx = self._segments[-1]._end_idx
+        for idx in range(self._segments[-1]._end_idx - 1,
+                         self._segments[-1]._start_idx - 1, -1):
+            op = block.ops[idx]
+            if op.type == "fill_constant" or op.type == "sum":
+                if "MERGED" in op.output_arg_names[0]: new_end_idx = idx + 1
+            elif op.type == "cast":
+                if "@TMP" in op.output_arg_names[0]: new_end_idx = idx + 1
+        self._segments[-1]._end_idx = new_end_idx
+
         if self._segments[-1]._allreduce_vars:
             shard_allredue_vars = self._shard.filter_grads(self._segments[-1]
                                                            ._allreduce_vars)
             if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
-                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
+                        shard_allredue_vars) >= 1:
                     insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
                     insert_allreduce_ops(block, self._segments[-1]._end_idx,
@@ -628,9 +781,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
             # allreduce --> reduce 
-            insert_reduce_ops(block, self._segments[-1]._end_idx,
-                              self.sharding_ring_id,
-                              self._segments[-1]._allreduce_vars, self._shard)
+            insert_reduce_ops(
+                block,
+                self._segments[-1]._end_idx,
+                self.sharding_ring_id,
+                self._segments[-1]._allreduce_vars,
+                self._shard,
+                op_role=OpRole.Backward,
+                use_calc_stream=False)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -671,7 +829,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             shard_allredue_vars = self._shard.filter_grads(allreduce_vars)
 
             if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
-                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
+                        shard_allredue_vars) >= 1:
                     insert_sync_comm_ops(block, segment._end_idx,
                                          self.dp_ring_id, shard_allredue_vars)
 
@@ -724,7 +883,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             # step6: add all_reduce ops
             # dp
             if self.gradient_merge_mode != "sharding" or self._gradient_merge_acc_step <= 1:
-                if self.hybrid_dp and len(shard_allredue_vars) >= 1:
+                if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
+                        shard_allredue_vars) >= 1:
                     insert_allreduce_ops(block, segment._start_idx,
                                          self.dp_ring_id, shard_allredue_vars)
                     insert_sync_comm_ops(block, segment._start_idx,
@@ -735,8 +895,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
             # allreduce --> reduce 
-            insert_reduce_ops(block, segment._start_idx, self.sharding_ring_id,
-                              allreduce_vars, self._shard)
+            insert_reduce_ops(
+                block,
+                segment._start_idx,
+                self.sharding_ring_id,
+                allreduce_vars,
+                self._shard,
+                op_role=OpRole.Backward,
+                use_calc_stream=False)
 
             block._sync_with_cpp()
 
@@ -787,14 +953,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
 
-    def _build_group(self):
+    def _build_groups(self):
         """
         pre-assign ring ids
-        mp: 0
-        sharding: 1
-        pure-dp: 2
-        global: 3
-        pp: >= 20
+            mp: 0
+            sharding: 1
+            pure-dp: 2
+            global: 3
+            pp: >= 20
         if one parallelism is not enable: -1
         and only support parallelism hierarchy: mp --> sharding --> pp --> dp        
         """
@@ -864,6 +1030,30 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.sharding_group_id = -1
             self.sharding_group_endpoints = []
 
+        # pp
+        if self.pp_degree > 1:
+            self.pp_ring_id = 20
+            self.pp_rank = self.global_rank // (self.sharding_degree *
+                                                self.mp_degree) % self.pp_degree
+            # (NOTE): Already adjust for (outter-pure) dp
+            self.pp_group_id = self.global_rank // (
+                self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_first_stage_idx = self.global_rank % (
+                self.sharding_degree * self.mp_degree) + self.pp_group_id * (
+                    self.mp_degree * self.sharding_degree * self.pp_degree)
+            pp_stage_offset = self.sharding_degree * self.mp_degree
+            self.pp_group_endpoints = []
+            for i in range(self.pp_degree):
+                self.pp_group_endpoints.append(self.global_endpoints[
+                    pp_first_stage_idx + pp_stage_offset * i])
+            assert self.current_endpoint in self.pp_group_endpoints
+        else:
+            self.pp_degree = 1
+            self.pp_ring_id = -1
+            self.pp_rank = -1
+            self.pp_group_id = -1
+            self.pp_group_endpoints = []
+
         # outter-pure-dp group
         # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
         # e.g. mp-sharding-pp-dp
@@ -871,6 +1061,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
             self.mp_degree, self.sharding_degree, self.pp_degree,
             self.dp_degree, self.global_word_size)
+
         if self.dp_degree > 1:
             self.dp_ring_id = 2
             self.dp_rank = self.global_rank // (self.sharding_degree *
@@ -890,6 +1081,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.dp_group_endpoints = []
 
         # global group
+        # use for gen_nccl_comm_sync, amp check nan inf, clip by global norm
+        # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be devided by dp_degree
         self.global_ring_id = 3
 
         logging.info("global word size: {}".format(self.global_word_size))
@@ -913,11 +1106,18 @@ class ShardingOptimizer(MetaOptimizerBase):
         logging.info("sharding ring id: {}".format(self.sharding_ring_id))
         logging.info("#####" * 6)
 
-        logging.info("outter pure dp group size: {}".format(self.dp_degree))
-        logging.info("outter pure dp rank: {}".format(self.dp_rank))
-        logging.info("outter pure dp group endpoints: {}".format(
+        logging.info("pp group size: {}".format(self.pp_degree))
+        logging.info("pp rank: {}".format(self.pp_rank))
+        logging.info("pp group id: {}".format(self.pp_group_id))
+        logging.info("pp group endpoints: {}".format(self.pp_group_endpoints))
+        logging.info("pp ring id: {}".format(self.pp_ring_id))
+        logging.info("#####" * 6)
+
+        logging.info("pure dp group size: {}".format(self.dp_degree))
+        logging.info("pure dp rank: {}".format(self.dp_rank))
+        logging.info("pure dp group endpoints: {}".format(
             self.dp_group_endpoints))
-        logging.info("outter pure dp ring id: {}".format(self.dp_ring_id))
+        logging.info("pure dp ring id: {}".format(self.dp_ring_id))
         logging.info("#####" * 6)
 
         return
@@ -946,7 +1146,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             outputs={'Out': params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
-
         # sync within global group
         append_naive_sync(block, self.startup_prog_sync_var,
                           self.global_ring_id)

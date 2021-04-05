@@ -274,6 +274,10 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for vars
     """
+    # NOTE (JZ-LIANG) to be check, may result undefined case 
+    if len(comm_dep_vars) == 0:
+        return 0
+
     op_role = get_valid_op_role(block, insert_idx)
     block._insert_op_without_sync(
         insert_idx,
@@ -324,27 +328,45 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     return
 
 
-def insert_allreduce_ops(block, insert_idx, ring_id, allreduce_vars):
+def insert_allreduce_ops(block,
+                         insert_idx,
+                         ring_id,
+                         allreduce_vars,
+                         op_role=OpRole.Backward,
+                         use_calc_stream=False):
     """
     _add_allreduce_ops
     """
+    if len(allreduce_vars) == 0:
+        return
+
     for var in allreduce_vars:
         block._insert_op_without_sync(
             insert_idx,
             type='c_allreduce_sum',
             inputs={'X': var},
             outputs={'Out': var},
-            attrs={'ring_id': ring_id,
-                   OP_ROLE_KEY: OpRole.Backward})
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role
+            })
 
     return
 
 
-def insert_reduce_ops(block, insert_idx, ring_id, reduce_vars, shard):
+def insert_reduce_ops(block,
+                      insert_idx,
+                      ring_id,
+                      reduce_vars,
+                      shard,
+                      op_role=OpRole.Backward,
+                      use_calc_stream=False):
     """
     _add_allreduce_ops
     """
     for var in reduce_vars:
+
         root_id = get_grad_device(var, shard)
         assert root_id >= 0, "root id should be a positive int".format(var)
         block._insert_op_without_sync(
@@ -355,10 +377,38 @@ def insert_reduce_ops(block, insert_idx, ring_id, reduce_vars, shard):
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                OP_ROLE_KEY: OpRole.Backward
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role
             })
-
     return
+
+
+def get_grad_device(grad_name, shard):
+    assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
+        grad_name)
+    base_name = None
+    # mind the traversal order 
+    possible_suffixes = [
+        '.cast_fp16@GRAD@MERGED', '.cast_fp16@GRAD', '@GRAD@MERGED', '@GRAD'
+    ]
+    for suffix in possible_suffixes:
+        if suffix in grad_name:
+            base_name = re.sub(suffix, '', grad_name)
+            break
+
+    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(
+        base_name)
+
+    return shard.global_param2device[base_name]
+
+
+def get_first_check_finite_and_unscale_op_idx(block):
+
+    for idx, op in enumerate(block.ops):
+        if op.type == "check_finite_and_unscale":
+            return idx
+
+    raise ValueError("check_finite_and_unscale does not exist in block")
 
 
 def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
@@ -502,6 +552,9 @@ def save_persistables(exe, dirname, main_program, filename=None):
     and part of persistable vars are duplicated and exist in all the ranks with different values.
     This function handles the model saving for sharding training.
     """
+    # TODO (JZ-LIANG) revise this for uniform mixed parallelism
+    if main_program._pipeline_opt:
+        main_program = main_program._pipeline_opt['section_program']['program']
 
     def is_opt_vars(var):
         # NOTE(JZ-LIANG): The checks should be updated when add new compatible optimizer
