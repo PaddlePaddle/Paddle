@@ -16,12 +16,13 @@ import paddle
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
+from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op, is_update_op
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 from paddle.distributed.fleet.meta_optimizers.sharding.shard import Shard, ProgramSegment
 from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import FP16Utils
 from paddle.distributed.fleet.meta_optimizers.sharding.weight_decay_helper import WeightDecayHelper
 from paddle.distributed.fleet.meta_optimizers.sharding.gradient_clip_helper import GradientClipHelper
+
 from paddle.distributed.fleet.meta_optimizers.sharding.prune import ProgramDeps
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
