@@ -111,7 +111,12 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
 #endif
 
   SegmentPoolFunctor<DeviceContext, T, IndexT> pool;
-  LOG(WARNING) << "pool: " << pool << ", pooltype: " << pooltype;
+
+  LOG(WARNING) << "input: " << input;
+  LOG(WARNING) << "segment: " << segment;
+  LOG(WARNING) << "output: " << output;
+  LOG(WARNING) << "summed_ids: " << summed_ids;
+  LOG(WARNING) << "pooltype: " << pooltype;
 
   pool(context.template device_context<DeviceContext>(), *input, *segment,
        output, summed_ids, pooltype);

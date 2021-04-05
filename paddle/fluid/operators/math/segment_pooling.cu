@@ -305,7 +305,9 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
                   framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM") {
     // LOG(WARNING) << "ctx: " << ctx;
+    LOG(WARNING) << "input: " << &input;
     LOG(WARNING) << "input: " << input;
+    LOG(WARNING) << "segment_ids: " << &segment_ids;
     LOG(WARNING) << "segment_ids: " << segment_ids;
     LOG(WARNING) << "output: " << output;
     LOG(WARNING) << "output: " << *output;

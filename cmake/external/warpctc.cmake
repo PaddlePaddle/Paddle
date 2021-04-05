@@ -21,8 +21,8 @@ ENDIF()
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-set(WARPCTC_REPOSITORY  ${GIT_URL}/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         c690fc5755abbdbdc98ef78d51ec10a6748a8cd1)
+set(WARPCTC_REPOSITORY  ${GIT_URL}/windstamp/warp-ctc.git)
+set(WARPCTC_TAG         98b54996f653981f93ea4bd8b4702af9296997e9)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
