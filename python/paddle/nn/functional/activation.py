@@ -23,6 +23,8 @@ from ...tensor.math import tanh  #DEFINE_ALIAS
 from ...tensor.math import tanh_  #DEFINE_ALIAS
 
 from ...tensor.manipulation import _print_warning_in_static_mode
+from ...tensor.manipulation import chunk
+from ...tensor.math import multiply
 
 __all__ = [
     'brelu',
@@ -53,6 +55,7 @@ __all__ = [
     'tanhshrink',
     'thresholded_relu',
     'log_softmax',
+    'glu',
 ]
 
 import warnings
@@ -1275,4 +1278,50 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis})
 
+    return out
+
+
+def glu(x, axis=-1, name=None):
+    r"""
+    The gated linear unit. The input is evenly splited into 2 parts along a 
+    given axis. The first part is used as the content, and the second part is
+    passed through a sigmoid function then used as the gate. The output is a
+    elementwise multiplication of the content and the gate.
+
+    .. math::
+
+        \mathrm{GLU}(a, b) = a \otimes \sigma(b)
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int, optional): The axis along which split the input tensor. It 
+            should be in range [-D, D), where D is the dimensions of ``x`` . 
+            If ``axis`` < 0, it works the same way as :math:`axis + D` . 
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type as x. The size of the given aixs is 
+        halved.
+    
+    Examples:
+        .. code-block:: python
+        
+        import paddle
+        from paddle.nn import functional as F
+
+        x = paddle.to_tensor(
+            [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
+             [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+        )
+        print(F.glu(x).numpy())
+        # array([[-0.15216254, -0.9004892 ],
+        #        [-1.0577879 , -0.46985325]], dtype=float32)
+    """
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             "glu")
+    a, b = chunk(x, 2, axis=axis, name=name)
+    gate = sigmoid(b, name=name)
+    out = paddle.multiply(a, gate, name=name)
     return out
