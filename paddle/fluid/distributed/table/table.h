@@ -21,7 +21,7 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/table/accessor.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"

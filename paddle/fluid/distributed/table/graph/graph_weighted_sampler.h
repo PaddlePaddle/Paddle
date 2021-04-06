@@ -16,7 +16,7 @@
 #include <ctime>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/distributed/table/graph_edge.h"
+#include "paddle/fluid/distributed/table/graph/graph_edge.h"
 namespace paddle {
 namespace distributed {
 

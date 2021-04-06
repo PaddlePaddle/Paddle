@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/table/graph_edge.h"
+#include "paddle/fluid/distributed/table/graph/graph_edge.h"
 #include <cstring>
 namespace paddle {
 namespace distributed {

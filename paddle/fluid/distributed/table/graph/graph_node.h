@@ -17,7 +17,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include "paddle/fluid/distributed/table/graph_weighted_sampler.h"
+#include "paddle/fluid/distributed/table/graph/graph_weighted_sampler.h"
 namespace paddle {
 namespace distributed {
 
