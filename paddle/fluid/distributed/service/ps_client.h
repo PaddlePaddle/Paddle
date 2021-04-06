@@ -114,8 +114,8 @@ class PSClient {
   // 返回结果后，遍历buffer并对values赋值
   virtual std::future<int32_t> pull_sparse(float **select_values,
                                            size_t table_id,
-                                           const uint64_t *keys,
-                                           size_t num) = 0;
+                                           const uint64_t *keys, size_t num,
+                                           bool is_training) = 0;
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id) = 0;
 

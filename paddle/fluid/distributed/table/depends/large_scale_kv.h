@@ -186,7 +186,8 @@ class ValueBlock {
   }
 
   // pull
-  float *Init(const uint64_t &id, const bool with_update = true) {
+  float *Init(const uint64_t &id, const bool with_update = true,
+              const int counter = 1) {
     if (!Has(id)) {
       values_.emplace(std::make_pair(id, VALUE(value_length_)));
     }
@@ -194,16 +195,16 @@ class ValueBlock {
     auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(&value);
+      AttrUpdate(value, counter);
     }
 
     return value.data_;
   }
 
-  void AttrUpdate(VALUE *value) {
+  void AttrUpdate(VALUE *value, const int counter) {
     // update state
     value->unseen_days_ = 0;
-    ++value->count_;
+    value->count_ += counter;
 
     if (!value->is_entry_) {
       value->is_entry_ = entry_func_(value);
