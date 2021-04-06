@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 #from nets import mlp
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -33,11 +34,7 @@ def mlp(input_x, input_y):
     return sum_cost
 
 
-def mlp(img, label):
-    hidden = fluid.layers.fc(input=img, size=200, act='tanh')
-    hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
-    return loss_net(hidden, label)
-
+paddle.enable_static()
 
 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
