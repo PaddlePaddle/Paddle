@@ -16,7 +16,6 @@ import paddle.distributed.fleet as fleet
 import os
 import sys
 import platform
-from paddle.dataset.common import download, DATA_HOME
 
 
 class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
