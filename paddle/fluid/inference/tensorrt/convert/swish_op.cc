@@ -63,6 +63,7 @@ class SwishOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      with_fp16 = true;
       plugin::SwishPluginDynamic* plugin =
           new plugin::SwishPluginDynamic(beta, with_fp16);
       layer = engine_->AddPluginV2(&input, input_num, plugin);

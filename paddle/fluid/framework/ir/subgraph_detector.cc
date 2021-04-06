@@ -40,6 +40,9 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     for (auto *in : node->inputs) {
       // The Value that is written by nodes inside a sub-graph shouldn't be the
       // input of the sub-graph.
+      if (in->IsVar()) {
+        VLOG(3) << node->Name() << " meet input var: " << in->Name() << "; nodes.count(in): " << nodes.count(in) << "; inlink_in_subgraph(in): " << inlink_in_subgraph(in);
+      }
       if (!nodes.count(in) && in->IsVar() && !inlink_in_subgraph(in)) {
         inputs.insert(in);
       }

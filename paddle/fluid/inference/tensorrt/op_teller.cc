@@ -28,13 +28,21 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
+  VLOG(3) << "----------------create SimpleOpTypeSetTeller--------------";
 #if IS_TRT_VERSION_GE(5130)
+    LOG(ERROR) << "------------- IS_TRT_VERSION_GE 5130 --------------";
     teller_set.insert("relu6");
     teller_set.insert("hard_sigmoid");
     teller_set.insert("clip");
     int8_teller_set.insert("relu6");
     int8_teller_set.insert("hard_sigmoid");
     int8_teller_set.insert("clip");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
+    int8_teller_set.insert("matmul");
+    int8_teller_set.insert("stack");
+    int8_teller_set.insert("slice");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
@@ -43,7 +51,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("slice");
 #endif
 #if IS_TRT_VERSION_GE(7130)
+    LOG(ERROR) << "------------- IS_TRT_VERSION_GE 7130 --------------";
     teller_set.insert("group_norm");
+    int8_teller_set.insert("multihead_matmul");
+    int8_teller_set.insert("skip_layernorm");
+    int8_teller_set.insert("fused_embedding_eltwise_layernorm");
 #endif
   }
 
@@ -66,6 +78,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "depthwise_conv2d",
                                                   "softmax",
                                                   "sigmoid",
+                                                  "tanh",
                                                   "batch_norm",
                                                   "elementwise_add",
                                                   "leaky_relu",

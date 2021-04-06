@@ -67,6 +67,7 @@ _out_scale_op_list = [
     "concat",
     "elementwise_mul",
     "scale",
+    "slice",
     "hard_swish",
     "hard_sigmoid",
     "conv2d_transpose",

@@ -29,6 +29,7 @@ class SkipLayerNormOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);
@@ -55,10 +56,12 @@ class SkipLayerNormOpConverter : public OpConverter {
       if (engine_->use_oss()) {
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomSkipLayerNormPluginDynamic", "2");
+            //"CustomSkipLayerNormPluginDynamic", "3");
         assert(creator != nullptr);
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
+        type = 2;
         int ld = input1->getDimensions().d[2];  // hidden dimension
         assert(ld > 0);
 
@@ -83,6 +86,16 @@ class SkipLayerNormOpConverter : public OpConverter {
 
         assert(plugin_layer != nullptr);
         layer = plugin_layer;
+        //auto output_name = op_desc.Output("Out")[0];
+        //engine_->SetTensorDynamicRange(layer->getInput(0), 1.0);
+        //engine_->SetTensorDynamicRange(layer->getInput(1), 1.0);
+
+        //layer->getOutput(0)->setName(output_name.c_str());
+        //layer->setName(
+        //("skip_layernorm (Output: " + output_name + ")").c_str());
+        //LOG(ERROR) << "skip_layernorm trt layer name: " << layer->getName() << "; nbDims: " << layer->getOutput(0)->getDimensions().nbDims;
+
+        //engine_->SetTensorDynamicRange(layer->getOutput(0), 1.0);
       } else {
         float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
         bool with_fp16 =

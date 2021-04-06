@@ -31,7 +31,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
 #if IS_TRT_VERSION_GE(6000)
-    VLOG(4) << "convert fluid swish op to tensorrt layer";
+    VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto id_names = op_desc.Input("Ids");
@@ -90,9 +90,12 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     int64_t scale_size = framework::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
 
+    LOG(ERROR) << "dynamic shape: " << engine_->with_dynamic_shape() << " with oss: " << engine_->use_oss();
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
-        int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        //int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        int output_fp16 = 1;
+        int mha_type_id = 2;
         PADDLE_ENFORCE_EQ(
             output_fp16, 1,
             platform::errors::InvalidArgument(
@@ -116,6 +119,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
              nvinfer1::PluginFieldType::kFLOAT32,
              static_cast<int32_t>(emb_sizes[1])},
             {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
+            {"mha_type_id", &mha_type_id, nvinfer1::PluginFieldType::kINT32, 1},
         };
 
         // remember to free
@@ -136,6 +140,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         plugin_inputs.emplace_back(engine_->GetITensor(
             engine_->network()->getInput(2)->getName()));  // cu_seqlens,
                                                            // eval_placeholder_2
+        VLOG(3) << "engine_->network() number of inputs: " << engine_->network()->getNbInputs();
         auto max_seqlen_tensor =
             engine_->GetITensor(engine_->network()->getInput(3)->getName());
         auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
@@ -161,6 +166,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
+        VLOG(4) << "emb_eltwise_layernorm trt layer name: " << layer->getName() << "; nbDims: " << layer->getOutput(0)->getDimensions().nbDims;
       } else {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

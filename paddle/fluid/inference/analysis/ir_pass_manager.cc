@@ -153,9 +153,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
+      LOG(ERROR) << "max input shape: " << argument->max_input_shape().size();
+      LOG(ERROR) << "min input shape: " << argument->min_input_shape().size();
+      LOG(ERROR) << "opt input shape: " << argument->optim_input_shape().size();
       bool with_dynamic_shape = argument->max_input_shape().size() > 0 &&
                                 argument->min_input_shape().size() > 0 &&
                                 argument->optim_input_shape().size() > 0;
+      LOG(ERROR) << "with_dynamic_shape: " << with_dynamic_shape;
       pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
                                         argument->tensorrt_disabled_ops()));

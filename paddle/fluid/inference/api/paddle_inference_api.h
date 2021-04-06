@@ -46,6 +46,9 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 
+void DisableProfiler();
+void ResetProfiler();
+
 ///
 /// \class Predictor
 ///

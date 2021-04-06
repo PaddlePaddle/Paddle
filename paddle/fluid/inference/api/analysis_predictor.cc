@@ -1073,7 +1073,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #endif
   if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./profile.log");
+                              "./timeline");
   }
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
@@ -1195,6 +1195,17 @@ USE_TRT_CONVERTER(gather);
 #endif
 
 namespace paddle_infer {
+
+void DisableProfiler() {
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+                              "./profile.log");
+}
+
+void ResetProfiler() {
+  auto tracking_device = paddle::platform::ProfilerState::kAll;
+  paddle::platform::EnableProfiler(tracking_device);
+  paddle::platform::ResetProfiler();
+}
 
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);

@@ -71,6 +71,7 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
     }
     num_vars++;
 
+    VLOG(3) << "var is persistable: " << var->Name() ;
     if (persistable == var->Persistable()) {
       if (persistable) {
         if (!anc->FindVar(var->Name())) {

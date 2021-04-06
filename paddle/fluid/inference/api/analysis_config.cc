@@ -318,6 +318,7 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   max_input_shape_ = max_input_shape;
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
+  LOG(ERROR) << "disable_trt_plugin_fp16_: " << disable_trt_plugin_fp16_;
 }
 
 void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
@@ -330,7 +331,11 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
+void AnalysisConfig::EnableTensorRtOSS() { 
+  //LOG(ERROR) << "EnableTensorRtOSS: " << trt_use_oss_;
+  trt_use_oss_ = true; 
+  //LOG(ERROR) << "EnableTensorRtOSS: " << trt_use_oss_;
+}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {

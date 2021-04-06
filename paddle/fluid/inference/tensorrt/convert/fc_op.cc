@@ -74,6 +74,7 @@ class FcOpConverter : public OpConverter {
       CHECK(op_desc.HasAttr(i_name + "_scale"));
       in_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale")) * 127;
+      LOG(ERROR) << "scale in fc: " << in_scale;
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
@@ -106,10 +107,17 @@ class FcOpConverter : public OpConverter {
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
-      auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs,
+      nvinfer1::ILayer* fc_layer = nullptr;
+      if (enable_int8) {
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output, nv_ksize, weight.get(), bias.get());
+      } else {
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs,
                                             n_output, weight.get(), bias.get());
+      }
 
       auto output_name = op_desc.Output("Out").front();
+      VLOG(4) << "activation output name: " << output_name << "; activation_type" << activation_type;
       if (activation_type == "relu") {
         nvinfer1::IActivationLayer* relu_layer =
             TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
