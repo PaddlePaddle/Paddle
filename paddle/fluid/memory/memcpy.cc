@@ -243,7 +243,7 @@ void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
     platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    static_cast<platform::NPUDeviceContext*>(pool.Get(dst_place))->Wait();
+    static_cast<platform::NPUDeviceContext*>(pool.Get(src_place))->Wait();
 
     platform::RecordEvent record_event("GpuMemcpySync:NPU->CPU");
     platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST);
