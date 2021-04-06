@@ -22,8 +22,8 @@ from paddle.fluid.layer_helper import LayerHelper
 
 
 def check():
-    print("check: fluid.core.globals()['FLAGS_use_mkldnn']=",
-          fluid.core.globals()["FLAGS_use_mkldnn"])
+    print("check: fluid.PADDLE_FLAGS['FLAGS_use_mkldnn']=",
+          fluid.PADDLE_FLAGS["FLAGS_use_mkldnn"])
     print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
           fluid.get_flags(['FLAGS_use_mkldnn']))
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])

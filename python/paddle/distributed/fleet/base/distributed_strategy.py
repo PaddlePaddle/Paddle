@@ -121,18 +121,18 @@ class DistributedStrategy(object):
 
         # Set the default values of the following flags to the ones set by users
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
-        if core.globals().is_public(key):
+        if PADDLE_FLAGS.is_public(key):
             self.strategy.cudnn_batchnorm_spatial_persistent = bool(
-                core.globals()[key])
+                PADDLE_FLAGS[key])
         key = 'FLAGS_conv_workspace_size_limit'
-        if core.globals().is_public(key):
-            self.strategy.conv_workspace_size_limit = int(core.globals()[key])
+        if PADDLE_FLAGS.is_public(key):
+            self.strategy.conv_workspace_size_limit = int(PADDLE_FLAGS[key])
         key = 'FLAGS_cudnn_exhaustive_search'
-        if core.globals().is_public(key):
-            self.strategy.cudnn_exhaustive_search = bool(core.globals()[key])
+        if PADDLE_FLAGS.is_public(key):
+            self.strategy.cudnn_exhaustive_search = bool(PADDLE_FLAGS[key])
         key = 'FLAGS_sync_nccl_allreduce'
-        if core.globals().is_public(key):
-            self.strategy.sync_nccl_allreduce = bool(core.globals()[key])
+        if PADDLE_FLAGS.is_public(key):
+            self.strategy.sync_nccl_allreduce = bool(PADDLE_FLAGS[key])
 
         self.__lock_attr = True
 
@@ -1422,8 +1422,8 @@ class DistributedStrategy(object):
         ]
 
         for i, key in enumerate(keys):
-            if core.globals().is_public(key):
-                core.globals()[key] = values[i]
+            if PADDLE_FLAGS.is_public(key):
+                PADDLE_FLAGS[key] = values[i]
 
     def _is_strict_auto(self):
         global non_auto_func_called

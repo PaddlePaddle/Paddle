@@ -71,6 +71,8 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 
+PADDLE_FLAGS = core.globals()
+
 
 def require_version(min_version, max_version=None):
     """
@@ -6145,8 +6147,8 @@ def set_flags(flags):
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
-        if core.globals().is_public(key):
-            core.globals()[key] = value
+        if PADDLE_FLAGS.is_public(key):
+            PADDLE_FLAGS[key] = value
         else:
             raise ValueError(
                 "Flag %s cannot set its value through this function." % (key))
@@ -6175,8 +6177,8 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            if (core.globals().is_public(key)):
-                value = core.globals()[key]
+            if (PADDLE_FLAGS.is_public(key)):
+                value = PADDLE_FLAGS[key]
                 temp = {key: value}
                 flags_value.update(temp)
             else:
@@ -6184,8 +6186,8 @@ def get_flags(flags):
                     'Flag %s cannot get its value through this function.' %
                     (key))
     elif isinstance(flags, str):
-        if (core.globals().is_public(flags)):
-            value = core.globals()[flags]
+        if (PADDLE_FLAGS.is_public(flags)):
+            value = PADDLE_FLAGS[flags]
             temp = {flags: value}
             flags_value.update(temp)
         else:

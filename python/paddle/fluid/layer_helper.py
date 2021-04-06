@@ -148,7 +148,7 @@ class LayerHelper(LayerHelperBase):
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
         use_mkldnn = self.kwargs.get(
-            'use_mkldnn', core.globals().get("FLAGS_use_mkldnn", False))
+            'use_mkldnn', PADDLE_FLAGS.get("FLAGS_use_mkldnn", False))
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')

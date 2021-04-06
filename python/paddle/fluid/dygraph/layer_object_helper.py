@@ -158,7 +158,7 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+        use_mkldnn = PADDLE_FLAGS["FLAGS_use_mkldnn"]
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
