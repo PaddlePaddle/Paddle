@@ -1125,6 +1125,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
+
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):
