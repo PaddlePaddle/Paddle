@@ -1861,22 +1861,24 @@ function summary_check_problems() {
 }
 
 function print_build_summary() {
-    func_list="ipipe_log_param_Paddle_Inference_Size \
-                ipipe_log_param_Build_Size \
-                ipipe_log_param_PR_whl_Size \
-                ipipe_log_param_Ccache_Hit_Rate \
-                ipipe_log_param_Build_Time \
-                ipipe_log_param_Exclusive_TestCases_Count \
-                ipipe_log_param_Exclusive_TestCases_Total_Time \
-                ipipe_log_param_${2}_Cards_TestCases_Count \
-                ipipe_log_param_${2}_Cards_TestCases_Total_Time \
-                ipipe_log_param_Mac_TestCases_Time \
-                ipipe_log_param_TestCases_Total_Time \
-                ipipe_log_param_Test_Fluid_Lib_Total_Time \
-                ipipe_log_param_Test_Fluid_Lib_Train_Total_Time"
-    for func in $func_list;do
-        if [[ -n ${$func} ]];then
-            echo ${$func}
+    func_list="$ipipe_log_param_Paddle_Inference_Size \
+                $ipipe_log_param_Build_Size \
+                $ipipe_log_param_PR_whl_Size \
+                $ipipe_log_param_Ccache_Hit_Rate \
+                $ipipe_log_param_Build_Time \
+                $ipipe_log_param_Exclusive_TestCases_Count \
+                $ipipe_log_param_Exclusive_TestCases_Total_Time \
+                ${ipipe_log_param_${2}_Cards_TestCases_Count} \
+                ${ipipe_log_param_${2}_Cards_TestCases_Total_Time} \
+                $ipipe_log_param_Mac_TestCases_Time \
+                $ipipe_log_param_TestCases_Total_Time \
+                $ipipe_log_param_Test_Fluid_Lib_Total_Time \
+                $ipipe_log_param_Test_Fluid_Lib_Train_Total_Time"
+    for func in `env`;do
+        key=`echo $i | awk -F"=" '{print $1}'`
+        val=`echo $i | awk -F"=" '{print $2}'`
+        if [[ -n $val && $key == ^'ipipe_log_param_'* ]];then
+            echo "$key: $val}"
         fi
     done
     # if [ "$1" == "paddle_inference" ]; then
