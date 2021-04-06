@@ -4271,11 +4271,19 @@ class PipelineOptimizer(object):
         Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        extra_index_info = {'index': 0}
-
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
         input_var_to_device = dict()
+        # bugfix hybrid parallelism
+        first_optimize_index = None
+        for index, op in enumerate(list(block.ops)):
+            if self._is_optimize_op(op):
+                first_optimize_index = index
+                break
+        extra_index_info = {
+            'index': 0,
+            'first_optimize_index': first_optimize_index
+        }
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
@@ -4393,17 +4401,26 @@ class PipelineOptimizer(object):
                                 'peer': 1,
                             })
                         extra_index_info['index'] += 1
+                        insert_index = None
+                        if int(op_role) == int(self._op_role.Backward):
+                            insert_index = extra_index_info[
+                                'first_optimize_index']
+                            new_op_role = self._op_role.Optimize
+                        else:
+                            insert_index = index
+                            new_op_role = self._op_role.Backward
                         block._insert_op(
-                            index=index + extra_index_info['index'],
+                            index=insert_index + extra_index_info['index'],
                             type='c_sync_comm_stream',
                             inputs={'X': [var]},
                             outputs={'Out': [var]},
                             attrs={
                                 self._op_device_key: prev_dev,
-                                self._op_role_key: self._op_role.Backward,
+                                self._op_role_key: new_op_role,
                                 'ring_id': ring_id,
                             })
-                        extra_index_info['index'] += 1
+                        if int(op_role) == int(self._op_role.Forward):
+                            extra_index_info['index'] += 1
                         var_shape = list(var.shape)
                         var_shape[0] = self.micro_batch_size if var_shape[
                             0] < 0 else var_shape[0]
