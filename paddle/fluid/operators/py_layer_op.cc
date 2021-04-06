@@ -36,7 +36,6 @@ void RunPyObject(py::object *py_object,
 
     if (in_var != nullptr) {
       char name[50] = {};
-      // same name
       snprintf(name, sizeof(name), "generator_custom_py_layer%d@@grad \n",
                static_cast<int>(i));
 
@@ -102,9 +101,7 @@ void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
         "PyLayerGradOpMaker can only be matched with PyLayer."));
   }
 
-  // All forward inputs
   auto fwd_ins = this->Input("X");
-  // All forward outputs
   auto fwd_outs = this->Output("Out");
 
   auto fwd_out_grads = this->OutputGrad("Out");

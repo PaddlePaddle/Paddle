@@ -67,8 +67,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
 
 py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
                          const py::args args, const py::kwargs kwargs) {
-  // TODO(weixin): to support saving for backward
-
   auto bk_function = cls.attr("_backward_function");
   auto contex = bk_function();
   auto forward = cls.attr("forward");
@@ -85,7 +83,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       try {
         if (Py_None != ptr->ptr()) {
           auto a = ptr->cast<std::shared_ptr<VarBase>>();
-          // only push varbase
           input_vars.push_back(a);
         }
       } catch (py::cast_error& err) {
@@ -101,11 +98,9 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       try {
         if (Py_None != ptr->second.ptr()) {
           auto a = ptr->second.cast<std::shared_ptr<VarBase>>();
-          // only push varbase
           input_vars.push_back(a);
         }
       } catch (py::cast_error&) {
-        // error msg
       } catch (...) {
         PADDLE_THROW(platform::errors::Fatal(
             "PyLayer raises an unknown exception in rumtime."));
@@ -114,9 +109,7 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
   }
   NameVarBaseMap ins = {{"X", input_vars}};
 
-  // process outputs:result_forward
   std::vector<std::shared_ptr<imperative::VarBase>> output_vars;
-  // if tuple/list
   if (PyTuple_Check(result_forward.ptr()) ||
       PyList_Check(result_forward.ptr())) {
     auto tuple_result = result_forward.cast<py::tuple>();
@@ -139,7 +132,7 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
             "The output of forward can not be `None`."));
       }
     }
-  } else {  // varbase
+  } else {
     if (Py_None != result_forward.ptr()) {
       try {
         auto temp_out =

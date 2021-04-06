@@ -24,15 +24,12 @@
 
 namespace paddle {
 namespace operators {
-// class PyLayerOp;
 using CtxPtr = std::shared_ptr<imperative::PyLayerContext>;
 
 class PyLayerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    // todo:check
-  }
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
