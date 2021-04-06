@@ -48,8 +48,15 @@ class Table {
 
   virtual int32_t pull_sparse(float *values, const uint64_t *keys,
                               size_t num) = 0;
+  virtual int32_t pull_sparse_ptr(char **pull_values, const uint64_t *keys,
+                                  size_t num) {
+    VLOG(0) << "NOT IMPLEMENT";
+    return 0;
+  }
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
+  virtual int32_t push_sparse(const uint64_t *keys, const float **values,
+                              size_t num){};
   virtual int32_t push_sparse_param(const uint64_t *keys, const float *values,
                                     size_t num) {
     return 0;

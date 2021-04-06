@@ -121,6 +121,16 @@ class PSClient {
                                            size_t table_id,
                                            const uint64_t *keys,
                                            size_t num) = 0;
+  virtual ::std::future<int32_t> pull_sparse_ptr(char **select_values,
+                                                 size_t table_id,
+                                                 const uint64_t *keys,
+                                                 size_t num) {
+    LOG(FATAL) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id) = 0;
 

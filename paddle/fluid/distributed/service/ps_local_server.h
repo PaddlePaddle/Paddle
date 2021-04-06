@@ -1,11 +1,11 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-//
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//
+// 
 //     http://www.apache.org/licenses/LICENSE-2.0
-//
+// 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,16 +14,24 @@
 
 #pragma once
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
+#include <memory>
+#include <vector>
+#include "paddle/fluid/distributed/service/server.h"
 
 namespace paddle {
-namespace pybind {
+namespace distributed {
 
-#ifdef PADDLE_WITH_HETERPS
-void BindPSGPUWrapper(py::module* m);
-#endif
-}  // namespace pybind
-}  // namespace paddle
+class PsLocalServer : public PSServer {
+ public:
+  PsLocalServer() {}
+  virtual ~PsLocalServer() {}
+  virtual uint64_t start() { return 0; }
+  virtual uint64_t start(const std::string& ip, uint32_t port) { return 0; }
+  virtual int32_t stop() { return 0; }
+  virtual int32_t port() { return 0; }
+
+ private:
+  virtual int32_t initialize() { return 0; }
+};
+}
+}

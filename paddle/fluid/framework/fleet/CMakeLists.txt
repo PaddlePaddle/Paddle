@@ -1,5 +1,10 @@
 if(WITH_PSLIB)
     cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope pslib_brpc pslib)
+else()
+    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope)
+endif(WITH_PSLIB)
+
+if(WITH_HETERPS)
     if(WITH_NCCL)
         nv_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
         DEPS heter_ps)
@@ -11,10 +16,7 @@ if(WITH_PSLIB)
     else()
         cc_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cc)
     endif(WITH_NCCL)
-else()
-    cc_library(fleet_wrapper SRCS fleet_wrapper.cc DEPS framework_proto variable_helper scope)
-    cc_library(ps_gpu_wrapper SRCS ps_gpu_wrapper.cc)
-endif(WITH_PSLIB)
+endif(WITH_HETERPS)
 
 if(WITH_NCCL OR WITH_RCCL)
     cc_library(nccl_wrapper SRCS nccl_wrapper.cc DEPS framework_proto variable_helper scope)

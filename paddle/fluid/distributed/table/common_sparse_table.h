@@ -64,7 +64,13 @@ class CommonSparseTable : public SparseTable {
   virtual int32_t pull_sparse(float* pull_values, const uint64_t* keys,
                               size_t num);
 
+  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
+                                  size_t num);
+
   virtual int32_t push_sparse(const uint64_t* keys, const float* values,
+                              size_t num);
+
+  virtual int32_t push_sparse(const uint64_t* keys, const float** values,
                               size_t num);
 
   // only for sparse geo table
@@ -80,6 +86,8 @@ class CommonSparseTable : public SparseTable {
 
  protected:
   virtual int32_t _push_sparse(const uint64_t* keys, const float* values,
+                               size_t num);
+  virtual int32_t _push_sparse(const uint64_t* keys, const float** values,
                                size_t num);
 
  private:
