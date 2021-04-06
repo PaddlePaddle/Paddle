@@ -49,7 +49,7 @@ CLANG_COMPILE_FLAGS = [
     'x86_64'
 ]
 CLANG_LINK_FLAGS = [
-    '-bundle', '-undefined', 'dynamic_lookup', '-arch', 'x86_64'
+    '-dynamiclib', '-undefined', 'dynamic_lookup', '-arch', 'x86_64'
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64', 'paddle_custom_op.lib']
@@ -355,6 +355,54 @@ def get_cuda_arch_flags(cflags):
     return []
 
 
+def _get_fluid_path():
+    """
+    Return installed fluid dir path.
+    """
+    import paddle
+    return os.path.join(os.path.dirname(paddle.__file__), 'fluid')
+
+
+def _get_core_name():
+    """
+    Return pybind DSO module name.
+    """
+    import paddle
+    if paddle.fluid.core.avx_supported():
+        return 'core_avx.so'
+    else:
+        return 'core_noavx.so'
+
+
+def _get_lib_core_path():
+    """
+    Return real path of libcore_(no)avx.dylib on MacOS.
+    """
+    raw_core_name = _get_core_name()
+    lib_core_name = "lib{}.dylib".format(raw_core_name[:-3])
+    return os.path.join(_get_fluid_path(), lib_core_name)
+
+
+def _reset_so_rpath(so_path):
+    """
+    NOTE(Aurelius84): Runtime path of core_(no)avx.so is modified into `@loader_path/../libs`
+    in setup.py.in. While loading custom op, `@loader_path` is the dirname of custom op
+    instead of `paddle/fluid`. So we modify `@loader_path` from custom dylib into `@rpath`
+    to ensure dynamic loader find it correctly.
+
+    Moreover, we will add `-rpath site-packages/paddle/fluid` while linking the dylib so
+    that we don't need to set `LD_LIBRARY_PATH` any more.
+    """
+    assert os.path.exists(so_path)
+    if OS_NAME.startswith("darwin"):
+        origin_runtime_path = "@loader_path/../libs/"
+        rpath = "@rpath/{}".format(_get_core_name())
+        cmd = 'install_name_tool -change {} {} {}'.format(origin_runtime_path,
+                                                          rpath, so_path)
+
+        run_cmd(cmd)
+
+
 def normalize_extension_kwargs(kwargs, use_cuda=False):
     """
     Normalize include_dirs, library_dir and other attributes in kwargs.
@@ -388,15 +436,28 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
     else:
+        ########################### Linux Platform ###########################
+        extra_link_args = kwargs.get('extra_link_args', [])
+        # On Linux, GCC support '-l:xxx.so' to specify the library name
+        # without `lib` prefix.
+        if OS_NAME.startswith('linux'):
+            extra_link_args.append('-l:{}'.format(_get_core_name()))
+        ########################### MacOS Platform ###########################
+        else:
+            # See _reset_so_rpath for details.
+            extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
+            # On MacOS, ld don't support `-l:xx`, so we create a
+            # libcore_avx.dylib symbol link.
+            lib_core_name = create_sym_link_if_not_exist()
+            extra_link_args.append('-l{}'.format(lib_core_name))
+        ###########################   -- END --    ###########################
+
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
         # Note(Aurelius84): This marco will impact memory layout of `Tensor`.
         # We align it automatically with pre-installed Paddle.
         if core.is_compiled_with_mkldnn():
             add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_MKLDNN'])
 
-        # append link flags
-        extra_link_args = kwargs.get('extra_link_args', [])
-        extra_link_args.append('-lpaddle_custom_op')
         if use_cuda:
             extra_link_args.append('-lcudart')
 
@@ -411,6 +472,30 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
 
     kwargs['language'] = 'c++'
     return kwargs
+
+
+def create_sym_link_if_not_exist():
+    """
+    Create soft symbol link of `core_avx.so` or `core_noavx.so`
+    """
+    assert OS_NAME.startswith('darwin')
+
+    raw_core_name = _get_core_name()
+    core_path = os.path.join(_get_fluid_path(), raw_core_name)
+    new_lib_core_path = _get_lib_core_path()
+
+    # create symbol link
+    if not os.path.exists(new_lib_core_path):
+        try:
+            os.symlink(core_path, new_lib_core_path)
+            assert os.path.exists(new_lib_core_path)
+        except Exception:
+            raise RuntimeError(
+                "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".
+                format(raw_core_name, core_path, new_lib_core_path))
+
+    # core_avx or core_noavx without suffix
+    return raw_core_name[:-3]
 
 
 def find_cuda_home():
@@ -573,6 +658,9 @@ def find_paddle_libraries(use_cuda=False):
         else:
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
+
+    # add `paddle/fluid` to search `core_avx.so` or `core_noavx.so`
+    paddle_lib_dirs.append(_get_fluid_path())
 
     return paddle_lib_dirs
 

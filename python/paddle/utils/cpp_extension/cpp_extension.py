@@ -22,11 +22,11 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag
+from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag, run_cmd
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags
+from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -432,7 +432,7 @@ class BuildExtension(build_ext, object):
                             compiler_so=compiler_infos,
                             compiler_cxx=['clang'],
                             linker_exe=['clang'],
-                            linker_so=linker_infos, )
+                            linker_so=linker_infos)
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=False)
@@ -565,6 +565,10 @@ class BuildExtension(build_ext, object):
         print("Compiling user custom op, it will cost a few seconds.....")
         build_ext.build_extensions(self)
 
+        # Reset runtime library path on MacOS platform
+        so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
+        _reset_so_rpath(so_path)
+
     def get_ext_filename(self, fullname):
         # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super(BuildExtension, self).get_ext_filename(fullname)
@@ -646,6 +650,8 @@ class EasyInstallCommand(easy_install, object):
             filename, ext = os.path.splitext(egg_file)
             will_rename = False
             if OS_NAME.startswith('linux') and ext == '.so':
+                will_rename = True
+            elif OS_NAME.startswith('darwin') and ext == '.dylib':
                 will_rename = True
             elif IS_WINDOWS and ext == '.pyd':
                 will_rename = True
