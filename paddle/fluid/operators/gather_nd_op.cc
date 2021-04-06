@@ -45,7 +45,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
         index_dims[index_dims_size - 1], x_dims_size,
         platform::errors::InvalidArgument(
             "Input(Index).shape[-1] should be no greater than Input(X).rank"));
-    PADDLE_ENFORCE_GE(index_dims_size, 2UL,
+    PADDLE_ENFORCE_GE(index_dims_size, 1UL,
                       platform::errors::InvalidArgument(
                           "The rank of Input(Index) should be greater than 1"));
 

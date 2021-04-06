@@ -32,6 +32,18 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
+class TRTCalibratorEngine;
+class TRTCalibratorEngineManager;
+class TRTInt8Calibrator;
+}  // namespace tensorrt
+template <typename T>
+struct Singleton;
+}  // namespace inference
+}  // namespace paddle
+
+namespace paddle {
 
 namespace operators {
 
@@ -77,6 +89,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
+  std::string calibration_engine_key_;
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
@@ -97,6 +110,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
+    calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
 
     auto params = Attr<std::vector<std::string>>("parameters");
@@ -160,9 +174,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "Paddle TRT int8...";
 
     int runtime_batch = 1;
-    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
+    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(
+            calibration_engine_key_)) {
       TRTCalibratorEngine *calib_res =
-          Singleton<TRTCalibratorEngineManager>::Global().Create(engine_key_);
+          Singleton<TRTCalibratorEngineManager>::Global().Create(
+              calibration_engine_key_);
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
@@ -173,7 +189,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
-          calib_buffers, runtime_batch, engine_key_, dev_place));
+          calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
@@ -186,7 +202,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     TRTInt8Calibrator *temp_calibrator =
         Singleton<TRTCalibratorEngineManager>::Global()
-            .Get(engine_key_)
+            .Get(calibration_engine_key_)
             ->calib_.get();
     std::unordered_map<std::string, void *> calib_data;
 
@@ -208,8 +224,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    PADDLE_ENFORCE_EQ(input_names_.empty(), false,
-                      "should pass at least one input");
+    PADDLE_ENFORCE_EQ(
+        input_names_.empty(), false,
+        platform::errors::PreconditionNotMet(
+            "TensorRT engine needs at least one input, but no input is found. "
+            "Please check if you set the input correctly."));
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -263,14 +282,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else if (type == framework::proto::VarType::INT32) {
+        buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else {
         PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float and int64_t input."));
+            "The TRT Engine OP only support float/int32_t/int64_t input."));
       }
     }
 
     // Bind output tensor to TRT.
     int output_index = 0;
+    std::vector<int> origin_output_dims =
+        Attr<std::vector<int>>("origin_output_dims");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
@@ -289,18 +312,28 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
-          if (dims.d[nb_dims - 1] != 1) break;
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_dims[output_index])
+            break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
-      PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
+      PADDLE_ENFORCE_NOT_NULL(
+          fluid_v,
+          platform::errors::NotFound(
+              "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+      PADDLE_ENFORCE_LT(bind_index, num_bindings,
+                        platform::errors::InvalidArgument(
+                            "The binding index in TRT engine should be less "
+                            "than the number of bindings, but got binding "
+                            "index = %d, number of bindings = %d.",
+                            bind_index, num_bindings));
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
           BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
 

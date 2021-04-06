@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
@@ -218,8 +218,8 @@ def train(place):
     batch_num = 200
 
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
             hidden_size=hidden_size,
             vocab_size=vocab_size,
@@ -279,7 +279,7 @@ def train(place):
                                speed))
                         avg_batch_time = time.time()
 
-            return out_loss, last_hidden.numpy(), last_cell.numpy()
+        return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
 def train_dygraph(place):

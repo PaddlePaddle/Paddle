@@ -32,7 +32,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class Executor;
+class ProgramDesc;
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCServer;
+class RequestHandler;
+}  // namespace distributed
 
 constexpr char kOptimizeBlocks[] = "optimize_blocks";
 

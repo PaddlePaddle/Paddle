@@ -21,41 +21,105 @@ import paddle.fluid.dygraph as dg
 
 class TestComplexMatMulLayer(unittest.TestCase):
     def setUp(self):
+        self._dtypes = ["float32", "float64"]
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             self._places.append(fluid.CUDAPlace(0))
 
-    def compare(self, x, y):
+    def compare_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
                 x_var = dg.to_variable(x)
                 y_var = dg.to_variable(y)
-                result = paddle.complex.matmul(x_var, y_var)
-        np_result = np.matmul(x, y)
-        self.assertTrue(np.allclose(result.numpy(), np_result))
+                result = paddle.matmul(x_var, y_var)
+                pd_result = result.numpy()
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
+
+    def compare_op_by_basic_api(self, x, y, np_result):
+        for place in self._places:
+            with dg.guard(place):
+                x_var = dg.to_variable(x)
+                y_var = dg.to_variable(y)
+                result = x_var.matmul(y_var)
+                pd_result = result.numpy()
+                self.assertTrue(
+                    np.allclose(pd_result, np_result),
+                    "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+                    format(place, pd_result[~np.isclose(pd_result, np_result)],
+                           np_result[~np.isclose(pd_result, np_result)]))
 
     def test_complex_xy(self):
-        x = np.random.random(
-            (2, 3, 4, 5)).astype("float32") + 1J * np.random.random(
-                (2, 3, 4, 5)).astype("float32")
-        y = np.random.random(
-            (2, 3, 5, 4)).astype("float32") + 1J * np.random.random(
-                (2, 3, 5, 4)).astype("float32")
-        self.compare(x, y)
+        for dtype in self._dtypes:
+            x = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+            y = np.random.random(
+                (2, 3, 5, 4)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 5, 4)).astype(dtype)
 
-    def test_complex_x(self):
-        x = np.random.random(
-            (2, 3, 4, 5)).astype("float32") + 1J * np.random.random(
-                (2, 3, 4, 5)).astype("float32")
-        y = np.random.random((2, 3, 5, 4)).astype("float32")
-        self.compare(x, y)
+            np_result = np.matmul(x, y)
 
-    def test_complex_y(self):
-        x = np.random.random((2, 3, 4, 5)).astype("float32")
-        y = np.random.random(
-            (2, 3, 5, 4)).astype("float32") + 1J * np.random.random(
-                (2, 3, 5, 4)).astype("float32")
-        self.compare(x, y)
+            self.compare_by_basic_api(x, y, np_result)
+            self.compare_op_by_basic_api(x, y, np_result)
+
+    def test_complex_x_real_y(self):
+        for dtype in self._dtypes:
+            x = np.random.random(
+                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 4, 5)).astype(dtype)
+            y = np.random.random((2, 3, 5, 4)).astype(dtype)
+
+            np_result = np.matmul(x, y)
+
+            # float -> complex type promotion
+            self.compare_by_basic_api(x, y, np_result)
+            self.compare_op_by_basic_api(x, y, np_result)
+
+    def test_real_x_complex_y(self):
+        for dtype in self._dtypes:
+            x = np.random.random((2, 3, 4, 5)).astype(dtype)
+            y = np.random.random(
+                (2, 3, 5, 4)).astype(dtype) + 1J * np.random.random(
+                    (2, 3, 5, 4)).astype(dtype)
+
+            np_result = np.matmul(x, y)
+
+            # float -> complex type promotion
+            self.compare_by_basic_api(x, y, np_result)
+            self.compare_op_by_basic_api(x, y, np_result)
+
+    # for coverage
+    def test_complex_xy_gemv(self):
+        for dtype in self._dtypes:
+            x = np.random.random(
+                (2, 1, 100)).astype(dtype) + 1J * np.random.random(
+                    (2, 1, 100)).astype(dtype)
+            y = np.random.random((100)).astype(dtype) + 1J * np.random.random(
+                (100)).astype(dtype)
+
+            np_result = np.matmul(x, y)
+
+            self.compare_by_basic_api(x, y, np_result)
+            self.compare_op_by_basic_api(x, y, np_result)
+
+    # for coverage
+    def test_complex_xy_gemm(self):
+        for dtype in self._dtypes:
+            x = np.random.random(
+                (1, 2, 50)).astype(dtype) + 1J * np.random.random(
+                    (1, 2, 50)).astype(dtype)
+            y = np.random.random(
+                (1, 50, 2)).astype(dtype) + 1J * np.random.random(
+                    (1, 50, 2)).astype(dtype)
+
+            np_result = np.matmul(x, y)
+
+            self.compare_by_basic_api(x, y, np_result)
+            self.compare_op_by_basic_api(x, y, np_result)
 
 
 if __name__ == '__main__':

@@ -12,22 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>  // NOLINT
-#include <ostream>
-
-#include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/parameter_send.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
+
+namespace distributed {
+class RPCClient;
+}  // namespace distributed
 
 class SendOp : public framework::OperatorBase {
  public:
@@ -40,7 +46,7 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
 
-    auto epmap = Attr<std::vector<std::string>>("epmap");
+    auto epmap = Attr<std::vector<std::string>>("endpoints");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
@@ -105,7 +111,7 @@ Send operator
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<std::string>>("epmap",
+    AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
                                       "variables for mapping")

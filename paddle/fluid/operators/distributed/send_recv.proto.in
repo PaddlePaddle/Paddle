@@ -29,7 +29,7 @@ service SendRecvService {
 
   rpc CheckpointNotify(VariableMessage) returns (VoidMessage) {}
   rpc DistributeNotify(VariableMessage) returns (VoidMessage) {}
-
+  rpc SendAndRecvVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetMonomerVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetMonomerBarrier(VariableMessage) returns (VoidMessage) {}
 }

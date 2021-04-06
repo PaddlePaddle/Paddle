@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
+namespace paddle {
+namespace platform {
+struct float16;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
@@ -85,29 +91,6 @@ enum class ActivationMode {
   kBandPass,
 };
 
-#if CUDNN_VERSION < 6000
-#pragma message "CUDNN version under 6.0 is supported at best effort."
-#pragma message "We strongly encourage you to move to 6.0 and above."
-#pragma message "This message is intended to annoy you enough to update."
-#pragma message \
-    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
-
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
-  switch (mode) {
-    case PoolingMode::kMaximumDeterministic:
-      return CUDNN_POOLING_MAX;
-    case PoolingMode::kAverageExclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-    case PoolingMode::kAverageInclusive:
-      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
-    case PoolingMode::kMaximum:
-      return CUDNN_POOLING_MAX;
-    default:
-      PADDLE_THROW("Unexpected pooling mode.");
-  }
-}
-#else
-
 inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
@@ -119,10 +102,10 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
-      PADDLE_THROW("Unexpected pooling mode.");
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
-#endif  // CUDNN_VERSION < 6000
 
 inline ActivationMode StringToActivationMode(const std::string& str) {
   if (str == "identity") {
@@ -140,7 +123,8 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW("Unknown activation string: %s", str);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unknown CUDNN activation string: %s.", str));
   }
 }
 
@@ -208,7 +192,8 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
     case DataLayout::kNDHWC:
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
-      PADDLE_THROW("Unknown cudnn equivalent for order");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDNN has no equivalent dataLayout for input order."));
   }
   return CUDNN_TENSOR_NCHW;
 }
@@ -269,9 +254,127 @@ class ScopedTensorDescriptor {
                       groups);
   }
 
+  inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t cudnn_type,
+                                            const std::vector<int>& dim,
+                                            const std::vector<int>& stride) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+        desc_, cudnn_type, dim.size(), dim.data(), stride.data()));
+    return desc_;
+  }
+
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const std::vector<int>& dim,
+                                            const std::vector<int>& stride) {
+    return descriptor(CudnnDataType<T>::type, dim, stride);
+  }
+
+  inline cudnnTensorDescriptor_t desc() { return desc_; }
+
  private:
   cudnnTensorDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
+};
+
+#if CUDNN_VERSION >= 7201
+class ScopedRNNTensorDescriptor {
+ public:
+  ScopedRNNTensorDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateRNNDataDescriptor(&desc_));
+  }
+
+  ~ScopedRNNTensorDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDataDescriptor(desc_));
+  }
+
+  inline cudnnRNNDataDescriptor_t descriptor(
+      const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
+      int input_size, bool time_major, const std::vector<int>& seq_length) {
+    static double padding_fill = 0.0f;
+    cudnnRNNDataLayout_t layout;
+
+    if (time_major) {
+      layout = CUDNN_RNN_DATA_LAYOUT_SEQ_MAJOR_UNPACKED;
+    } else {
+      layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
+    }
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetRNNDataDescriptor(
+        desc_, cudnn_type, layout, max_seq_length, batch_size, input_size,
+        seq_length.data(), static_cast<void*>(&padding_fill)));
+
+    return desc_;
+  }
+
+  template <typename T>
+  inline cudnnRNNDataDescriptor_t descriptor(
+      int max_length, int batch_size, int input_size, bool time_major,
+      const std::vector<int>& seq_length) {
+    return descriptor(CudnnDataType<T>::type, max_length, batch_size,
+                      input_size, time_major, seq_length);
+  }
+
+  inline cudnnRNNDataDescriptor_t desc() { return desc_; }
+
+ private:
+  cudnnRNNDataDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
+};
+#endif
+
+class ScopedDropoutDescriptor {
+ public:
+  ScopedDropoutDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateDropoutDescriptor(&desc_));
+  }
+  ~ScopedDropoutDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyDropoutDescriptor(desc_));
+  }
+
+  inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
+                                             const platform::Place& place,
+                                             bool initialized,
+                                             float dropout_prob_,
+                                             framework::Tensor* dropout_state_,
+                                             int seed, size_t state_size) {
+    if (dropout_state_ == nullptr) {  // for no dropout or test
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+          desc_, handle, 0 /* dropout */, nullptr, 0 /* state_size */,
+          0 /* seed */));
+      return desc_;
+    }
+    auto* dropout_state_data = dropout_state_->data<uint8_t>();
+    if (!initialized) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
+          desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
+    } else {
+      auto dropout_state_dims = dropout_state_->dims();
+      state_size = dropout_state_dims[0];
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
+          desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));
+    }
+    return desc_;
+  }
+  inline cudnnDropoutDescriptor_t desc() { return desc_; }
+
+ private:
+  cudnnDropoutDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedDropoutDescriptor);
+};
+
+class ScopedRNNDescriptor {
+ public:
+  ScopedRNNDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateRNNDescriptor(&desc_));
+  }
+  ~ScopedRNNDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDescriptor(desc_));
+  }
+
+  inline cudnnRNNDescriptor_t desc() { return desc_; }
+
+ private:
+  cudnnRNNDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedRNNDescriptor);
 };
 
 class ScopedFilterDescriptor {
@@ -310,6 +413,8 @@ class ScopedFilterDescriptor {
                       kernel, groups);
   }
 
+  inline cudnnFilterDescriptor_t desc() { return desc_; }
+
  private:
   cudnnFilterDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedFilterDescriptor);
@@ -329,20 +434,17 @@ class ScopedConvolutionDescriptor {
   inline cudnnConvolutionDescriptor_t descriptor(
       cudnnDataType_t type, const std::vector<int>& pads,
       const std::vector<int>& strides, const std::vector<int>& dilations) {
-    PADDLE_ENFORCE_EQ(pads.size(), strides.size());
-    PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
-
-#if !CUDNN_VERSION_MIN(6, 0, 0)
-    // cudnn v5 does not support dilation conv, the argument is called upscale
-    // instead of dilations and it is must be one.
-    for (size_t i = 0; i < dilations.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          dilations[i], 1,
-          "Dilations conv is not supported in this cuDNN version(%d.%d.%d).",
-          CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
-          CUDNN_VERSION % 100);
-    }
-#endif
+    PADDLE_ENFORCE_EQ(pads.size(), strides.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of pads and strides should be equal. But "
+                          "received size of pads is %d, size of strides is %d.",
+                          pads.size(), strides.size()));
+    PADDLE_ENFORCE_EQ(
+        pads.size(), dilations.size(),
+        platform::errors::InvalidArgument(
+            "The size of pads and dilations should be equal. But received size "
+            "of pads is %d, size of dilations is %d.",
+            pads.size(), dilations.size()));
 
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
@@ -377,8 +479,17 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& kernel,
                                              const std::vector<int>& pads,
                                              const std::vector<int>& strides) {
-    PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
-    PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
+    PADDLE_ENFORCE_EQ(kernel.size(), pads.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of kernel and pads should be equal. But "
+                          "received size of kernel is %d, size of pads is %d.",
+                          kernel.size(), pads.size()));
+    PADDLE_ENFORCE_EQ(
+        kernel.size(), strides.size(),
+        platform::errors::InvalidArgument(
+            "The size of kernel and strides should be equal. But "
+            "received size of kernel is %d, size of strides is %d.",
+            kernel.size(), strides.size()));
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
         desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
@@ -456,8 +567,9 @@ class ScopedActivationDescriptor {
         mode = CUDNN_ACTIVATION_TANH;
         break;
       default:
-        PADDLE_THROW("unrecognized activation mode: %d .",
-                     static_cast<int>(activation_mode));
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unrecognized CUDNN activation mode: %d.",
+            static_cast<int>(activation_mode)));
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));

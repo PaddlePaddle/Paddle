@@ -19,8 +19,8 @@ set(XBYAK_PREFIX_DIR    ${THIRD_PARTY_PATH}/xbyak)
 SET(XBYAK_SOURCE_DIR     ${THIRD_PARTY_PATH}/xbyak/src/extern_xbyak)
 set(XBYAK_INSTALL_ROOT  ${THIRD_PARTY_PATH}/install/xbyak)
 set(XBYAK_INC_DIR       ${XBYAK_INSTALL_ROOT}/include)
-set(XBYAK_REPOSITORY    https://github.com/herumi/xbyak.git)
-set(XBYAK_TAG           v5.661) # Jul 26th
+set(XBYAK_REPOSITORY    ${GIT_URL}/herumi/xbyak.git)
+set(XBYAK_TAG           v5.81) # Dec 19, 2019
 
 include_directories(${XBYAK_INC_DIR})
 include_directories(${XBYAK_INC_DIR}/xbyak)
@@ -44,17 +44,11 @@ ExternalProject_Add(
     DEPENDS             ""
     PREFIX              ${XBYAK_PREFIX_DIR}
     SOURCE_DIR          ${XBYAK_SOURCE_DIR}
-    UPDATE_COMMAND      ""
+    # UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${XBYAK_INSTALL_ROOT}
 )
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/xbyak_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_xbyak = \"${dummyfile}\";")
-    add_library(xbyak STATIC ${dummyfile})
-else()
-    add_library(xbyak INTERFACE)
-endif()
+add_library(xbyak INTERFACE)
 
 add_dependencies(xbyak ${XBYAK_PROJECT})

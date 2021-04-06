@@ -9,8 +9,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/memory/allocation/allocator.h>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -40,8 +47,7 @@ static inline int NumBlocks(const int N) {
 
 static __global__ void GetLengthLoD(const int nthreads, const int* batch_ids,
                                     int* length_lod) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (nthreads);
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, nthreads) {
     platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
@@ -81,14 +87,27 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int lod_size;
     auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
+    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];
-      auto roi_lod = roi_in->lod().back();
-      lod_size = roi_lod.size() - 1;
-      for (size_t n = 0; n < lod_size; ++n) {
-        for (size_t j = roi_lod[n]; j < roi_lod[n + 1]; ++j) {
-          roi_batch_id_data[index++] = n;
+      if (multi_rois_num.size() > 0) {
+        framework::Tensor temp;
+        TensorCopySync(*multi_rois_num[i], platform::CPUPlace(), &temp);
+        const int* length_in = temp.data<int>();
+        lod_size = multi_rois_num[i]->numel();
+        for (size_t n = 0; n < lod_size; ++n) {
+          for (size_t j = 0; j < length_in[n]; ++j) {
+            roi_batch_id_data[index++] = n;
+          }
+        }
+      } else {
+        auto length_in = roi_in->lod().back();
+        lod_size = length_in.size() - 1;
+        for (size_t n = 0; n < lod_size; ++n) {
+          for (size_t j = length_in[n]; j < length_in[n + 1]; ++j) {
+            roi_batch_id_data[index++] = n;
+          }
         }
       }
 
@@ -125,7 +144,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     size_t temp_storage_bytes = 0;
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         nullptr, temp_storage_bytes, concat_scores.data<T>(), keys_out, idx_in,
-        idx_out, total_roi_num);
+        idx_out, total_roi_num, 0, sizeof(T) * 8, dev_ctx.stream());
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
@@ -133,7 +152,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     // sort score to get corresponding index
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
-        keys_out, idx_in, idx_out, total_roi_num);
+        keys_out, idx_in, idx_out, total_roi_num, 0, sizeof(T) * 8,
+        dev_ctx.stream());
     index_out_t.Resize({real_post_num});
     Tensor sorted_rois;
     sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
@@ -157,7 +177,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     temp_storage_bytes = 0;
     cub::DeviceRadixSort::SortPairs<int, int>(
         nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
-        batch_idx_in, index_out_t.data<int>(), real_post_num);
+        batch_idx_in, index_out_t.data<int>(), real_post_num, 0,
+        sizeof(int) * 8, dev_ctx.stream());
     // Allocate temporary storage
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
@@ -165,7 +186,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     // sort batch_id to get corresponding index
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
-        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num);
+        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num, 0,
+        sizeof(int) * 8, dev_ctx.stream());
 
     GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
 
@@ -179,8 +201,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
 
     // get length-based lod by batch ids
-    GetLengthLoD<<<blocks, threads>>>(real_post_num, out_id_data,
-                                      length_lod_data);
+    GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
+        real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
     memory::Copy(platform::CPUPlace(), length_lod_cpu.data(), place,
                  length_lod_data, sizeof(int) * lod_size, dev_ctx.stream());
@@ -189,6 +211,13 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     std::vector<size_t> offset(1, 0);
     for (int i = 0; i < lod_size; ++i) {
       offset.emplace_back(offset.back() + length_lod_cpu[i]);
+    }
+
+    if (ctx.HasOutput("RoisNum")) {
+      auto* rois_num = ctx.Output<Tensor>("RoisNum");
+      int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
+      memory::Copy(place, rois_num_data, place, length_lod_data,
+                   lod_size * sizeof(int), dev_ctx.stream());
     }
 
     framework::LoD lod;

@@ -14,7 +14,7 @@
 
 import copy
 
-__all__ = ["AutoMixedPrecisionLists"]
+__all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 
 class AutoMixedPrecisionLists(object):
@@ -27,6 +27,7 @@ class AutoMixedPrecisionLists(object):
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
+        custom_black_varnames (set): Users' custom black varibles' names.
     """
 
     def __init__(self,
@@ -38,6 +39,7 @@ class AutoMixedPrecisionLists(object):
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.unsupported_list = copy.copy(unsupported_fp16_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -64,9 +66,10 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all  
+# The three sets listed below are changed dynamiclly. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -74,6 +77,7 @@ class AutoMixedPrecisionLists(object):
 white_list = {
     'conv2d',
     'matmul',
+    'matmul_v2',
     'mul',
 }
 
@@ -91,6 +95,9 @@ black_list = {
     'sigmoid_cross_entropy_with_logits',
     'cross_entropy',
     'cross_entropy2',
+    # fp16 is slower than fp32, though fp16 is supported.
+    'lookup_table',
+    'lookup_table_v2',
 }
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
@@ -108,9 +115,9 @@ gray_list = {
     'elementwise_mod',
     'elementwise_floordiv',
     'batch_norm',
+    'layer_norm',
     'tanh',
     'sigmoid',
-    'lookup_table',
     'top_k',
     'pool2d',
     'pool3d',
@@ -122,6 +129,7 @@ gray_list = {
     'flatten2',
     'stack',
     'unstack',
+    'uniform_random',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
@@ -135,11 +143,12 @@ gray_list = {
     'get_tensor_from_selected_rows',
     'sign',
     'cast',
+    'fused_bn_add_activation',
 }
-'''
+
 # The set of ops that don't support fp16 calculation
 unsupported_fp16_list = {
-	# from python/paddle/fluid/layers/io.py
+    # from python/paddle/fluid/layers/io.py
     'send',
     'send_barrier',
     'recv',
@@ -148,8 +157,8 @@ unsupported_fp16_list = {
     'create_double_buffer_reader',
     'read',
     'load',
-    
-   	# from python/paddle/fluid/control_flow.py
+
+    # from python/paddle/fluid/control_flow.py
     'increment',
     'less_than',
     'less_equal',
@@ -169,7 +178,6 @@ unsupported_fp16_list = {
     'while',
     'ifelse',
     'is_empty',
-
     'lstm',
     'cudnn_lstm',
     'lstmp',
@@ -190,7 +198,6 @@ unsupported_fp16_list = {
     'sequence_concat',
     'sequence_slice',
     'data_norm',
-    'layer_norm',
     'group_norm',
     'spectral_norm',
     'depthwise_conv2d_transpose',
@@ -271,7 +278,6 @@ unsupported_fp16_list = {
     'pixel_shuffle',
     'fsp',
     'cvm',
-
     'affine_channel',
     'roi_pool',
     'roi_align',
@@ -279,6 +285,9 @@ unsupported_fp16_list = {
     'generate_proposals',
     'generate_proposal_labels',
     'generate_mask_labels',
-		
+    # fp16 is slower than fp32, though fp16 is supported.
+    'lookup_table',
+    'lookup_table_v2',
 }
-'''
+
+CustomOpLists = AutoMixedPrecisionLists

@@ -145,7 +145,7 @@ framework::Tensor Diagonal(const framework::ExecutionContext& context,
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> diag_vec(vectorize(dig_stride));
     const int64_t* diag_arr = thrust::raw_pointer_cast(diag_vec.data());
     thrust::device_vector<int64_t> ret_vec(ret_strides);
@@ -174,8 +174,8 @@ class TraceKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     const int64_t offset = context.Attr<int>("offset");
-    const int64_t dim1 = context.Attr<int>("dim1");
-    const int64_t dim2 = context.Attr<int>("dim2");
+    const int64_t dim1 = context.Attr<int>("axis1");
+    const int64_t dim2 = context.Attr<int>("axis2");
 
     auto output_dims = out->dims();
 
@@ -205,8 +205,8 @@ class TraceGradKernel : public framework::OpKernel<T> {
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
     int64_t offset = context.Attr<int>("offset");
-    int64_t dim1 = context.Attr<int>("dim1");
-    int64_t dim2 = context.Attr<int>("dim2");
+    int64_t dim1 = context.Attr<int>("axis1");
+    int64_t dim2 = context.Attr<int>("axis2");
 
     auto input_dims = d_x->dims();
     auto input_stride = framework::stride(input_dims);
@@ -238,7 +238,7 @@ class TraceGradKernel : public framework::OpKernel<T> {
     int64_t diag_size = len2 < len1 ? len2 : len1;
     int64_t pos = std::abs(offset) * offset_stride;
     if (diag_size > 0) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       thrust::device_vector<int64_t> output_vec(vectorize(output_stride));
       const int64_t* output_arr = thrust::raw_pointer_cast(output_vec.data());
       thrust::device_vector<int64_t> input_vec(vectorize(input_stride));

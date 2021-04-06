@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 
@@ -26,6 +27,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace fusion_group {
+
+class SubGraph;
 
 class CodeGenerator {
  public:
@@ -61,7 +64,7 @@ class CodeGenerator {
       const std::unordered_map<int, std::string>& dtypes) const;
 
   // Encode all var nodes in the subgraph with an unique number.
-  std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);
+  std::unordered_map<Node*, int> EncodeVarNodes(SubGraph* subgraph);
 
  private:
   std::vector<CodeTemplate> code_templates_;

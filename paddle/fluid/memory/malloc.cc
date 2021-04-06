@@ -13,10 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
-#include <string>
-#include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -29,6 +27,10 @@ std::shared_ptr<Allocation> AllocShared(const platform::Place &place,
 
 AllocationPtr Alloc(const platform::Place &place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
+}
+
+uint64_t Release(const platform::Place &place) {
+  return allocation::AllocatorFacade::Instance().Release(place);
 }
 
 }  // namespace memory

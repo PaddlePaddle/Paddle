@@ -16,10 +16,6 @@ if(NOT WITH_PYTHON)
     add_definitions(-DPADDLE_NO_PYTHON)
 endif(NOT WITH_PYTHON)
 
-if(WITH_DSO)
-    add_definitions(-DPADDLE_USE_DSO)
-endif(WITH_DSO)
-
 if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
@@ -33,6 +29,11 @@ if(WITH_AVX AND AVX_FOUND)
     add_definitions(-DPADDLE_WITH_AVX)
 elseif(SSE3_FOUND)
     set(SIMD_FLAG ${SSE3_FLAG})
+endif()
+
+if (SSE3_FOUND)
+    # TODO: Runtime detection should be used here.
+    add_definitions(-DPADDLE_WITH_SSE3)
 endif()
 
 if(WIN32)
@@ -55,6 +56,16 @@ if(WIN32)
   endif(NOT MSVC)
 endif(WIN32)
 
+if(WITH_MUSL)
+    add_definitions(-DPADDLE_WITH_MUSL)
+
+    message(STATUS, "Set compile option WITH_MKL=OFF when WITH_MUSL=ON")
+    SET(WITH_MKL OFF)
+
+    message(STATUS, "Set compile option WITH_GPU=OFF when WITH_MUSL=ON")
+    SET(WITH_GPU OFF)
+endif()
+
 if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
@@ -67,18 +78,23 @@ if(WITH_BOX_PS)
     add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
 
+if(WITH_ASCEND)
+    add_definitions(-DPADDLE_WITH_ASCEND)
+endif()
+
+if(WITH_XPU)
+    message(STATUS "Compile with XPU!")
+    add_definitions(-DPADDLE_WITH_XPU)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
-    # The compiler fully support const expressions since c++14,
-    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
-    # use following definition to set EIGEN_HAS_CONSTEXPR=0 to avoid compilation error in c++11
-    add_definitions(-DEIGEN_MAX_CPP_VER=11)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
-        message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 10.1)
+        message(FATAL_ERROR "Paddle needs CUDA >= 10.1 to compile")
     endif()
 
     if(NOT CUDNN_FOUND)
@@ -114,10 +130,10 @@ if(WITH_GPU)
         endif()
         include_directories(${TENSORRT_INCLUDE_DIR})
     endif()
-elseif(WITH_AMD_GPU)
+elseif(WITH_ROCM)
     add_definitions(-DPADDLE_WITH_HIP)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+    add_definitions(-DEIGEN_USE_GPU)
+    add_definitions(-DEIGEN_USE_HIP)
 else()
     add_definitions(-DHPPL_STUB_FUNC)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
@@ -143,6 +159,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SIMD_FLAG}")
 if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
+
+if(WITH_PSCORE)
+    add_definitions(-DPADDLE_WITH_PSCORE)
+endif()
+
 
 if(WITH_GRPC)
     add_definitions(-DPADDLE_WITH_GRPC)

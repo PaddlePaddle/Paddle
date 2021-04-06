@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -56,6 +57,12 @@ inline std::vector<int> get_expand_times(
       TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
       expand_data = cpu_expand_tensor.data<int>();
     }
+#ifdef PADDLE_WITH_XPU
+    if (platform::is_xpu_place(expand_tensor->place())) {
+      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      expand_data = cpu_expand_tensor.data<int>();
+    }
+#endif
     auto vec_epxand_times =
         std::vector<int>(expand_data, expand_data + expand_tensor->numel());
     return vec_epxand_times;
@@ -72,7 +79,15 @@ inline std::vector<int> get_expand_times(
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_epxand_times.push_back(*temp.data<int32_t>());
-      } else {
+      }
+#ifdef PADDLE_WITH_XPU
+      else if (platform::is_xpu_place(tensor->place())) {  // NOLINT
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_times.push_back(*temp.data<int32_t>());
+      }
+#endif
+      else {  // NOLINT
         vec_epxand_times.push_back(*tensor->data<int32_t>());
       }
     }
@@ -127,7 +142,7 @@ class ExpandKernel : public framework::OpKernel<T> {
             "of dimensions (%d) of the input.",
             expand_times.size(), static_cast<size_t>(in_dims.size())));
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
     }
@@ -146,9 +161,11 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      To32BitIndex(y).device(place) = To32BitIndex(x).broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+          place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      y.device(place) = x.broadcast(bcast_dims);
+      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                   bcast_dims);
     }
   }
 };
@@ -227,20 +244,19 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

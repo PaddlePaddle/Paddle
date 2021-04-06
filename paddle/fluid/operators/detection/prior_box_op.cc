@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
+#include <string>
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -96,7 +98,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_input_type)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();
@@ -218,12 +220,16 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.

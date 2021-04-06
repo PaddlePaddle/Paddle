@@ -52,6 +52,23 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
 
+  for (int i = 0; i < index_size; i++) {
+    PADDLE_ENFORCE_GE(
+        index_vec[i], 0,
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_dim[dim], index_vec[i]));
+    PADDLE_ENFORCE_LT(
+        index_vec[i], input_dim[dim],
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_dim[dim], index_vec[i]));
+  }
+
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width

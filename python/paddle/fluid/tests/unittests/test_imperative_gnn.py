@@ -61,12 +61,10 @@ class GCN(fluid.Layer):
 
 class TestDygraphGNN(unittest.TestCase):
     def test_gnn_float32(self):
-        seed = 90
-
+        paddle.seed(90)
+        paddle.framework.random._manual_program_seed(90)
         startup = fluid.Program()
-        startup.random_seed = seed
         main = fluid.Program()
-        main.random_seed = seed
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
@@ -114,8 +112,8 @@ class TestDygraphGNN(unittest.TestCase):
                 scope.find_var(model.gc.weight.name).get_tensor())
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(90)
+            paddle.framework.random._manual_program_seed(90)
 
             features = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.
@@ -140,8 +138,8 @@ class TestDygraphGNN(unittest.TestCase):
             model_gc_weight_value = model.gc.weight.numpy()
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(90)
+            paddle.framework.random._manual_program_seed(90)
 
             features2 = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.

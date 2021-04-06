@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -41,10 +42,20 @@ void AddTensorToBlockDesc(framework::proto::BlockDesc* block,
   desc.SetPersistable(persistable);
   *var = *desc.Proto();
 }
+
+void AddFetchListToBlockDesc(framework::proto::BlockDesc* block,
+                             const std::string& name) {
+  using framework::proto::VarType;
+  auto* var = block->add_vars();
+  framework::VarDesc desc(name);
+  desc.SetType(VarType::FETCH_LIST);
+  *var = *desc.Proto();
+}
+
 void serialize_params(std::string* str, framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
@@ -95,10 +106,10 @@ void CreateTensor(framework::Scope* scope, const std::string& name,
   tensor->Resize(dims);
   platform::Place place;
   if (in_cuda) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     place = platform::CUDAPlace(0);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNetMet(
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
         "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
 #endif
   } else {

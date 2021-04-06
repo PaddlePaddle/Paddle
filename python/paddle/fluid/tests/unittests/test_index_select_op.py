@@ -83,7 +83,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1, 4])
             index = fluid.layers.data(
                 name='index', shape=[3], dtype='int32', append_batch_size=False)
-            z = paddle.index_select(x, index, dim=1)
+            z = paddle.index_select(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={'x': self.data_x,
                                  'index': self.data_index},
@@ -124,7 +124,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
             index = fluid.dygraph.to_variable(self.data_index)
-            z = paddle.index_select(x, index, dim=1)
+            z = paddle.index_select(x, index, axis=1)
             np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]])

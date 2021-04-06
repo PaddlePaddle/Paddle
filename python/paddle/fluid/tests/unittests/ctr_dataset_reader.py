@@ -17,11 +17,12 @@ from __future__ import print_function
 import os
 import logging
 import tarfile
-
+import tempfile
 import random
+import warnings
 
 import paddle
-import paddle.fluid.incubate.data_generator as data_generator
+import paddle.distributed.fleet as fleet
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")
@@ -57,7 +58,7 @@ def load_dnn_input_record(sent):
 def load_lr_input_record(sent):
     res = []
     for _ in [x.split(':') for x in sent.split()]:
-        res.append(int(_[0]))
+        res.append(int(_[0]) % 10000)
     return res
 
 
@@ -66,20 +67,24 @@ class CtrReader(object):
         pass
 
     def _reader_creator(self, filelist):
+        def get_rand(low=0.0, high=1.0):
+            return random.random()
+
         def reader():
             for file in filelist:
                 with open(file, 'r') as f:
                     for line in f:
-                        fs = line.strip().split('\t')
-                        dnn_input = load_dnn_input_record(fs[0])
-                        lr_input = load_lr_input_record(fs[1])
-                        click = [int(fs[2])]
-                        yield [dnn_input] + [lr_input] + [click]
+                        if get_rand() < 0.05:
+                            fs = line.strip().split('\t')
+                            dnn_input = load_dnn_input_record(fs[0])
+                            lr_input = load_lr_input_record(fs[1])
+                            click = [int(fs[2])]
+                            yield [dnn_input] + [lr_input] + [click]
 
         return reader
 
 
-class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
+class DatasetCtrReader(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
         def get_rand(low=0.0, high=1.0):
             return random.random()
@@ -116,7 +121,87 @@ def prepare_data():
     lr_input_dim = res[1]
     logger.info('dnn input dim: %d' % dnn_input_dim)
     logger.info('lr input dim: %d' % lr_input_dim)
+
     return dnn_input_dim, lr_input_dim, train_file_path
+
+
+def gen_fake_line(dnn_data_num=7,
+                  dnn_data_range=1e5,
+                  lr_data_num=5,
+                  lr_data_range=1e5):
+    line = ""
+
+    # for deep data
+    for index in range(dnn_data_num):
+        data = str(random.randint(0, dnn_data_range - 1))
+        if index < dnn_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for wide data
+    for index in range(lr_data_num):
+        data = str(random.randint(0, lr_data_range - 1)) + ":" + str(1)
+        if index < lr_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for label
+    line += str(random.randint(0, 1))
+    line += "\n"
+    return line
+
+
+def gen_zero_line(dnn_data_num=7, lr_data_num=5):
+    # for embedding zero padding test
+    line = ""
+
+    # for deep data
+    for index in range(dnn_data_num):
+        data = str(0)
+        if index < dnn_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for wide data
+    for index in range(lr_data_num):
+        data = str(0) + ":" + str(1)
+        if index < lr_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for label
+    line += str(random.randint(0, 1))
+    line += "\n"
+    return line
+
+
+def prepare_fake_data(file_nums=4, file_lines=500):
+    """
+    Create fake data with same type as avazu_ctr_data
+    """
+    file_dir = tempfile.mkdtemp()
+    warnings.warn("Fake data write in {}".format(file_dir))
+    for file_index in range(file_nums):
+        with open(
+                os.path.join(file_dir,
+                             "ctr_train_data_part_{}".format(file_index)),
+                'w+') as fin:
+            file_str = ""
+            file_str += gen_zero_line()
+            for line_index in range(file_lines - 1):
+                file_str += gen_fake_line()
+            fin.write(file_str)
+            warnings.warn("Write done ctr_train_data_part_{}".format(
+                file_index))
+
+    file_list = [os.path.join(file_dir, x) for x in os.listdir(file_dir)]
+    assert len(file_list) == file_nums
+
+    return file_list
 
 
 if __name__ == "__main__":

@@ -23,9 +23,6 @@ namespace operators {
 using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos, int64_t *neg,
                                         const int bucket_length,
@@ -133,6 +130,7 @@ class AucCUDAKernel : public framework::OpKernel<T> {
     auto *pos_in_data = stat_pos_in_tensor->data<int64_t>();
     auto *stat_neg_in_tensor = ctx.Input<Tensor>("StatNeg");
     auto *neg_in_data = stat_neg_in_tensor->data<int64_t>();
+#ifdef PADDLE_WITH_CUDA
     if (stat_pos_in_tensor != stat_pos) {
       cudaMemcpy(origin_stat_pos, pos_in_data,
                  ((1 + slide_steps) * (num_thresholds + 1) +
@@ -147,6 +145,22 @@ class AucCUDAKernel : public framework::OpKernel<T> {
                      sizeof(int64_t),
                  cudaMemcpyDeviceToDevice);
     }
+#else
+    if (stat_pos_in_tensor != stat_pos) {
+      hipMemcpy(origin_stat_pos, pos_in_data,
+                ((1 + slide_steps) * (num_thresholds + 1) +
+                 (slide_steps > 0 ? 1 : 0)) *
+                    sizeof(int64_t),
+                hipMemcpyDeviceToDevice);
+    }
+    if (stat_neg_in_tensor != stat_neg) {
+      hipMemcpy(origin_stat_neg, neg_in_data,
+                ((1 + slide_steps) * (num_thresholds + 1) +
+                 (slide_steps > 0 ? 1 : 0)) *
+                    sizeof(int64_t),
+                hipMemcpyDeviceToDevice);
+    }
+#endif
 
     statAuc(ctx, label, predict, num_thresholds, slide_steps, origin_stat_pos,
             origin_stat_neg);

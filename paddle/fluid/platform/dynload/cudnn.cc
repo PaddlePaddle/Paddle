@@ -30,6 +30,10 @@ CUDNN_DNN_ROUTINE_EACH_R2(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DEFINE_WRAP);
 #endif
 
+#ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8
+CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DEFINE_WRAP);
+#endif
+
 #ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_R4
 CUDNN_DNN_ROUTINE_EACH_AFTER_R4(DEFINE_WRAP);
 #endif
@@ -46,11 +50,18 @@ CUDNN_DNN_ROUTINE_EACH_R6(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R7(DEFINE_WRAP);
 #endif
 
+#ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(DEFINE_WRAP);
+#endif
+
 #ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_R7
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 #endif
 
-#ifdef PADDLE_USE_DSO
+#ifdef CUDNN_DNN_ROUTINE_EACH_R8
+CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
+#endif
+
 bool HasCUDNN() {
   std::call_once(cudnn_dso_flag,
                  []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });
@@ -58,13 +69,12 @@ bool HasCUDNN() {
 }
 
 void EnforceCUDNNLoaded(const char* fn_name) {
-  PADDLE_ENFORCE(cudnn_dso_handle != nullptr,
-                 "Cannot load cudnn shared library. Cannot invoke method %s",
-                 fn_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      cudnn_dso_handle,
+      platform::errors::PreconditionNotMet(
+          "Cannot load cudnn shared library. Cannot invoke method %s.",
+          fn_name));
 }
-#else
-bool HasCUDNN() { return true; }
-#endif
 
 }  // namespace dynload
 }  // namespace platform

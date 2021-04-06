@@ -13,23 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
-#include <algorithm>
-#include <fstream>
-#include <functional>
-#include <limits>
-#include <map>
-#include <set>
+
 #include <string>
-#include <type_traits>
 #include <utility>
-#include <vector>
+
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
-#include "paddle/fluid/framework/ir/graph_traits.h"
-#include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -90,37 +89,12 @@ void MemoryOptimizePass::CollectLifeCycle(
   }
 }
 
-// TODO(Superjomn) Make this a general help method.
-int DataTypeToSpace(framework::proto::VarType_Type type) {
-  switch (type) {
-    case framework::proto::VarType_Type_BOOL:
-      return sizeof(bool);
-    case framework::proto::VarType_Type_FP32:
-      return sizeof(float);
-    case framework::proto::VarType_Type_INT32:
-      return sizeof(int32_t);
-    case framework::proto::VarType_Type_INT64:
-      return sizeof(int64_t);
-    case framework::proto::VarType_Type_INT16:
-      return sizeof(int16_t);
-    case framework::proto::VarType_Type_FP16:
-      return sizeof(int16_t);
-    case framework::proto::VarType_Type_FP64:
-      return sizeof(double);
-    case framework::proto::VarType_Type_UINT8:
-      return sizeof(unsigned char);
-    case framework::proto::VarType_Type_INT8:
-      return sizeof(int8_t);
-    default:
-      PADDLE_THROW("Unknown data type");
-  }
-}
-
 void MemoryOptimizePass::CollectVarMemorySize(
     space_table_t* space_table) const {
   const int fake_batch_size = 1;
 
   auto valid_var = [&](framework::ir::Node* node) -> bool {
+    // lod operator reuse may cause unknown errors.
     std::set<std::string> invalid_op = {"while",
                                         "conditional_block",
                                         "tensorrt_engine",
@@ -128,6 +102,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "merge_lod_tensor_infer",
                                         "merge_lod_tensor",
                                         "equal",
+                                        "sequence_pool",
+                                        "recurrent",
                                         "lod_reset"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());
@@ -163,7 +139,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
       int size = std::accumulate(shape.begin(), shape.end(), 1,
                                  std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
-          size * DataTypeToSpace(node->Var()->GetDataType());
+          size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
   }
 }
@@ -250,7 +226,9 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto input_node : node->inputs) {
-        PADDLE_ENFORCE(input_node->IsVar());
+        PADDLE_ENFORCE_EQ(input_node->IsVar(), true,
+                          platform::errors::PreconditionNotMet(
+                              "The input node should be a variable."));
         std::string input_node_name = input_node->Name();
         if (reuse_table.count(input_node_name) &&
             reuse_table.at(input_node_name) != input_node_name) {
@@ -272,7 +250,9 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto out_node : node->outputs) {
-        PADDLE_ENFORCE(out_node->IsVar());
+        PADDLE_ENFORCE_EQ(out_node->IsVar(), true,
+                          platform::errors::PreconditionNotMet(
+                              "The output node should be a variable."));
         std::string out_node_name = out_node->Name();
         if (reuse_table.count(out_node_name) &&
             reuse_table.at(out_node_name) != out_node_name) {

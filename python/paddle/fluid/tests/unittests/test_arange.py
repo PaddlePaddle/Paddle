@@ -15,7 +15,8 @@
 from __future__ import print_function
 
 import paddle
-import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.static import program_guard, Program
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -44,47 +45,68 @@ class TestArangeOp(OpTest):
         self.check_output()
 
 
-class TestFloatArangeOpCase0(TestArangeOp):
+class TestFloatArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
-class TestInt32ArangeOpCase0(TestArangeOp):
+class TestInt32ArangeOp(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
-class TestInt32ArangeOpCase1(TestArangeOp):
+class TestFloat64ArangeOp(TestArangeOp):
     def init_config(self):
-        self.dtype = np.int32
+        self.dtype = np.float64
         self.case = (10, 1, -2)
 
 
-class TestInt32ArangeOpCase2(TestArangeOp):
+class TestInt64ArangeOp(TestArangeOp):
     def init_config(self):
-        self.dtype = np.int32
+        self.dtype = np.int64
         self.case = (-1, -10, -2)
+
+
+class TestArangeOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 
 class TestArangeAPI(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0, 5, 1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[data])
-            expected_data = np.arange(0, 5, 1).astype(np.float32)
-        self.assertEqual((result == expected_data).all(), True)
+        with program_guard(Program(), Program()):
+            x1 = paddle.arange(0, 5, 1, 'float32')
 
-        with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0.0, 5.0, 1.0, 'int32')
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            result, = exe.run(fetch_list=[data])
-            expected_data = np.arange(0, 5, 1).astype(np.int32)
-        self.assertEqual((result == expected_data).all(), True)
+            place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            out = exe.run(fetch_list=[x1])
+
+        expected_data = np.arange(0, 5, 1).astype(np.float32)
+        self.assertEqual((out == expected_data).all(), True)
+
+
+class TestArangeImperative(unittest.TestCase):
+    def test_out(self):
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        paddle.disable_static(place)
+        x1 = paddle.arange(0, 5, 1)
+        x2 = paddle.tensor.arange(5)
+        x3 = paddle.tensor.creation.arange(5)
+
+        start = paddle.to_tensor(np.array([0], 'float32'))
+        end = paddle.to_tensor(np.array([5], 'float32'))
+        step = paddle.to_tensor(np.array([1], 'float32'))
+        x4 = paddle.arange(start, end, step, 'int64')
+        paddle.enable_static()
+
+        expected_data = np.arange(0, 5, 1).astype(np.int64)
+        for i in [x1, x2, x3, x4]:
+            self.assertEqual((i.numpy() == expected_data).all(), True)
 
 
 if __name__ == "__main__":

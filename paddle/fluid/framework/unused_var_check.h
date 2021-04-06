@@ -14,15 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/operator.h"
+
+#include "gflags/gflags.h"
 
 namespace paddle {
 namespace framework {
+
+class OperatorBase;
+class Scope;
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
 

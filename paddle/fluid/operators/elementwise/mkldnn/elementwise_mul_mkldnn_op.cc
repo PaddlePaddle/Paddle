@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,94 +12,130 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <mkldnn/include/mkldnn.hpp>
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
 
-#include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
-
-#ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak.h"
-#include "xbyak/xbyak_util.h"
-#endif
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
-
-using framework::DataLayout;
-using mkldnn::memory;
-using platform::StringToMKLDNNFormat;
-
 template <typename T>
-static void ComputeBroadcastedMultiply(const T* x_data, const T* y_data,
-                                       T* z_data, int64_t n, int64_t c,
-                                       int64_t h, int64_t w, int simd_width,
-                                       void (*multiply)(const T*, const T*, T*,
-                                                        int, int)) {
-  const int64_t C = c / simd_width;
-#pragma omp parallel for collapse(2)
-  for (int ni = 0; ni < n; ni++) {
-    for (int ci = 0; ci < C; ci++) {
-      auto ptr_x =
-          x_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-
-      auto ptr_y = y_data + ni * C * simd_width + ci * simd_width;
-      auto ptr_z =
-          z_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-
-      multiply(ptr_x, ptr_y, ptr_z, h, w);
-    }
-  }
-}
-
-template <typename T>
-class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
+class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
+    ElemwiseGradKernel<T>::Compute(ctx);
 
+    auto& dev_ctx =
+        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
+
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
-    const T* x_data = x->data<T>();
-    const T* y_data = y->data<T>();
-    T* z_data = z->mutable_data<T>(ctx.GetPlace());
 
-    auto x_dims = x->dims();
-    auto y_dims_untrimmed = y->dims();
-    auto x_int_dims = paddle::framework::vectorize<int64_t>(x_dims);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    int pre, num, post, is_run_common_broadcast;
-    get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &num, &post,
-                 &is_run_common_broadcast);
+    if (dx) {
+      // dx = dout*y
+      platform::BinaryMKLDNNHandler<T> handler(
+          dnnl::algorithm::binary_mul, axis, dev_ctx, mkldnn_engine,
+          ctx.GetPlace(), dout, y, dx, 1.0f, 1.0f, 1.0f,
+          ctx.InputName(framework::GradVarName("Out")));
 
-    if (post == 1)
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Not implemented when post is 1."));
+      const auto src_dout_memory = handler.AcquireSrcMemory(dout);
+      const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
+      const auto dst_dx_memory = handler.AcquireDstMemory(dx);
 
-    const int64_t n = x_dims[0];
-    const int64_t c = x_dims[1];
-    const int64_t h = x_dims[2];
-    const int64_t w = x_dims[3];
+      const auto binary_prim = handler.AcquireForwardPrimitive();
 
-    const int simd_width = 16;
-    auto multiply =
-        jit::KernelFuncs<jit::NCHW16CMulNCTuple<T>, platform::CPUPlace>::Cache()
-            .At(0);
-    ComputeBroadcastedMultiply(x_data, y_data, z_data, n, c, h, w, simd_width,
-                               multiply);
+      const std::unordered_map<int, dnnl::memory> args = {
+          {DNNL_ARG_SRC_0, *src_dout_memory},
+          {DNNL_ARG_SRC_1, *src_y_memory},
+          {DNNL_ARG_DST, *dst_dx_memory}};
 
-    z->set_layout(DataLayout::kMKLDNN);
-    z->set_format(x->format());
+      binary_prim->execute(astream, args);
+      astream.wait();
+
+      dx->set_layout(framework::DataLayout::kMKLDNN);
+      dx->set_format(platform::GetMKLDNNFormat(*dst_dx_memory));
+    }
+
+    if (dy) {
+      // dy = dout*x
+      // Handler is having nullptr passed instead of output tensor as
+      // we want Dst buffer to be allocated by oneDNN not to use Tensor
+      platform::BinaryMKLDNNHandler<T> handler(
+          dnnl::algorithm::binary_mul, axis, dev_ctx, mkldnn_engine,
+          ctx.GetPlace(), dout, x, nullptr, 1.0f, 1.0f, 1.0f,
+          ctx.InputName(framework::GradVarName("Out")));
+
+      const auto src_dout_memory = handler.AcquireSrcMemory(dout);
+      const auto src_x_memory = handler.AcquireSecondSrcMemory(x);
+
+      // If broadcasting is in use then let's write to temporary
+      // buffer allocated by oneDNN
+      const auto dst_dy_memory = (dout->dims() == dy->dims())
+                                     ? handler.AcquireDstMemory(dy)
+                                     : handler.AcquireDstMemory();
+
+      const auto binary_prim = handler.AcquireForwardPrimitive();
+
+      const std::unordered_map<int, dnnl::memory> args = {
+          {DNNL_ARG_SRC_0, *src_dout_memory},
+          {DNNL_ARG_SRC_1, *src_x_memory},
+          {DNNL_ARG_DST, *dst_dy_memory}};
+
+      binary_prim->execute(astream, args);
+      astream.wait();
+
+      dy->set_layout(framework::DataLayout::kMKLDNN);
+
+      // Reduction is needed for broadcasting scenario
+      if (dout->dims() != dy->dims()) {
+        platform::ReductionMKLDNNHandler<T> handler_sum(
+            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, mkldnn_engine,
+            ctx.GetPlace(), dout, dy,
+            ctx.InputName(framework::GradVarName("Out")));
+        auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
+        auto reduction_p = handler_sum.AcquireForwardPrimitive();
+        // As source we use mem object with results from binary operation
+        reduction_p->execute(astream, {{DNNL_ARG_SRC, *dst_dy_memory},
+                                       {DNNL_ARG_DST, *dy_memory_p}});
+        astream.wait();
+        dy->set_format(
+            platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
+                paddle::framework::vectorize<int64_t>(dy->dims()))));
+
+      } else {
+        dy->set_format(platform::GetMKLDNNFormat(*dst_dy_memory));
+      }
+    }
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(elementwise_mul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ElementwiseMulMKLDNNKernel<float>)
+REGISTER_OP_KERNEL(
+    elementwise_mul, MKLDNN, ::paddle::platform::CPUPlace,
+    ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_mul>,
+    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
+                             dnnl::algorithm::binary_mul>,
+    ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_mul>,
+    ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_mul>)
+
+REGISTER_OP_KERNEL(elementwise_mul_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::EltwiseMulMKLDNNGradKernel<paddle::platform::bfloat16>,
+                   ops::EltwiseMulMKLDNNGradKernel<float>)

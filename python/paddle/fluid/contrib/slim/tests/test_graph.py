@@ -22,6 +22,8 @@ import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
 from paddle.fluid import core
 
+paddle.enable_static()
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 

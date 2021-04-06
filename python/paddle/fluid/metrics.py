@@ -475,7 +475,7 @@ class Accuracy(MetricBase):
         self.weight = .0
 
     def update(self, value, weight):
-        """
+        r"""
         This function takes the minibatch states (value, weight) as input,
         to accumulate and update the corresponding status of the Accuracy object. The update method is as follows:
 
@@ -561,7 +561,7 @@ class ChunkEvaluator(MetricBase):
         self.num_correct_chunks = 0
 
     def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
-        """
+        r"""
         This function takes (num_infer_chunks, num_label_chunks, num_correct_chunks) as input,
         to accumulate and update the corresponding status of the ChunkEvaluator object. The update method is as follows:
         
@@ -850,6 +850,9 @@ class DetectionMAP(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
+            import paddle
+            paddle.enable_static()
 
             batch_size = None # can be any size
             image_boxs_num = 10

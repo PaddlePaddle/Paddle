@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -21,6 +22,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -186,19 +188,20 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(info->proto_, nullptr,
                       platform::errors::AlreadyExists(
-                          "OpProto of %s has been registered", op_type));
+                          "OpProto of %s has been registered.", op_type));
     PADDLE_ENFORCE_EQ(info->checker_, nullptr,
                       platform::errors::AlreadyExists(
-                          "OpAttrChecker of %s has been registered", op_type));
+                          "OpAttrChecker of %s has been registered.", op_type));
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     T maker;
     maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
-    PADDLE_ENFORCE(
-        info->proto_->IsInitialized(),
-        "Fail to initialize %s's OpProto, because %s is not initialized",
-        op_type, info->proto_->InitializationErrorString());
+    PADDLE_ENFORCE_EQ(
+        info->proto_->IsInitialized(), true,
+        platform::errors::PreconditionNotMet(
+            "Fail to initialize %s's OpProto, because %s is not initialized.",
+            op_type, info->proto_->InitializationErrorString()));
   }
 };
 
@@ -245,8 +248,9 @@ struct OpInfoFiller<T, kGradOpBaseMaker> {
         const std::string& type,
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out,
-        const framework::AttributeMap& attrs) {
-      T maker(type, var_base_map_in, var_base_map_out, attrs);
+        const framework::AttributeMap& attrs,
+        const std::map<std::string, std::string>& inplace_map) {
+      T maker(type, var_base_map_in, var_base_map_out, attrs, inplace_map);
       return maker();
     };
   }

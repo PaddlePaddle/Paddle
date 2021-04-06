@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import six
 import paddle.fluid as fluid
+import paddle
 
 
 def enable_parallel_ssa_executor(enabled=True):
@@ -27,7 +28,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
     def build_network(self, is_training):
         x = fluid.data(name='x', shape=[-1, 10], dtype='float32')
         y = fluid.data(name='y', shape=[-1, 10], dtype='float32')
-        fc = fluid.layers.fc(x, size=30)
+        fc = fluid.layers.fc(x, size=30, bias_attr=False)
         loss = fluid.layers.reduce_mean(fc)
         if is_training:
             adam = fluid.optimizer.Adam(learning_rate=1e-3)
@@ -57,6 +58,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
 
     def run_impl(self, use_gpu, dev_cnt, is_training, use_experimental_executor,
                  use_parallel_ssa_executor):
+        paddle.enable_static()
         enable_parallel_ssa_executor(use_parallel_ssa_executor)
 
         if fluid.is_compiled_with_cuda():

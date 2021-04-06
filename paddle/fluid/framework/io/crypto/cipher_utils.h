@@ -14,10 +14,9 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <unordered_map>
-
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

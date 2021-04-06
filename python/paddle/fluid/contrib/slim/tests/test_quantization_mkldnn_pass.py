@@ -22,9 +22,10 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import QatInt8MkldnnPass
+from paddle.fluid.contrib.slim.quantization import QuantInt8MkldnnPass
 from paddle.fluid import core
 
+paddle.enable_static()
 os.environ["CPU_NUM"] = "1"
 
 
@@ -90,7 +91,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                                   seed,
                                   activation_quant_type,
                                   weight_quant_type='abs_max',
-                                  qat_perf=False,
+                                  quant_perf=False,
                                   for_ci=False):
         random.seed(0)
         np.random.seed(0)
@@ -109,7 +110,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup)
-        # Apply the QAT QuantizationTransformPass
+        # Apply the QuantizationTransformPass
         transform_pass = QuantizationTransformPass(
             scope=scope,
             place=place,
@@ -149,7 +150,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         freeze_pass.apply(test_graph)
 
         # Transform quantized graph for MKL-DNN INT8 inference
-        mkldnn_int8_pass = QatInt8MkldnnPass(_scope=scope, _place=place)
+        mkldnn_int8_pass = QuantInt8MkldnnPass(_scope=scope, _place=place)
         mkldnn_int8_pass.apply(test_graph)
         dev_name = '_cpu_'
         if not for_ci:
@@ -169,7 +170,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         self.assertFalse(self.isinteger(np.sum(conv_w_mkldnn)))
         self.assertFalse(self.isinteger(np.sum(mul_w_mkldnn)))
 
-        # Check if the conv2d output and mul output are correctly linked to fake_dequantize's 
+        # Check if the conv2d output and mul output are correctly linked to fake_dequantize's
         # output
         self.check_program(mkldnn_program)
         if not for_ci:

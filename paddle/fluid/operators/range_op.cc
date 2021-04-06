@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/range_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -64,6 +65,13 @@ class RangeOp : public framework::OperatorWithKernel {
                             step_dims[0]));
     }
     ctx->SetOutputDim("Out", {-1});
+  }
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return expected_kernel_type;
   }
 };
 

@@ -169,8 +169,18 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto row_numel = sr_value.numel() / sr_rows.size();
       auto out_dims = out->dims();
 
-      PADDLE_ENFORCE_EQ(sr.height(), out_dims[0]);
-      PADDLE_ENFORCE_EQ(row_numel, out->numel() / sr.height());
+      PADDLE_ENFORCE_EQ(sr.height(), out_dims[0],
+                        platform::errors::InvalidArgument(
+                            "The table height of input must be same as output, "
+                            "but received input height is %d"
+                            ", output height is %d",
+                            sr.height(), out_dims[0]));
+      PADDLE_ENFORCE_EQ(row_numel, out->numel() / sr.height(),
+                        platform::errors::InvalidArgument(
+                            "The table width of input must be same as output, "
+                            "but received input width is %d"
+                            ", output width is %d",
+                            row_numel, out->numel() / sr.height()));
 
       auto *sr_data = sr_value.data<T>();
       auto *sr_out_data = out->data<T>();
@@ -231,8 +241,11 @@ class SumKernel<platform::CUDADeviceContext, T>
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(out_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Ouput(out) must be Tensor,  SelectedRows or "
+          "LodTensorArray. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
   }
 };

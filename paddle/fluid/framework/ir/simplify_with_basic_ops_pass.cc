@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +32,8 @@ namespace ir {
  * - remove dropout_op (upscale_in_train) or
  *   replace dropout_op with scale_op (downgrade_in_infer) when is_test is true
  */
+class Graph;
+
 void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;

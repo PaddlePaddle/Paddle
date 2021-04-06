@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_function_with_cache
+from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 
 from test_fetch_feed import Pool2D, Linear
 
@@ -116,14 +116,14 @@ def simple_func(x):
 
 class TestConvertWithCache(unittest.TestCase):
     def test_cache(self):
-        static_func = convert_function_with_cache(simple_func)
+        static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
-        cached_func = convert_function_with_cache(simple_func)
+        cached_func = convert_to_static(simple_func)
         self.assertTrue(id(static_func), id(cached_func))
 
 
 @declarative
-def sum_even_util_limit(max_len, limit):
+def sum_even_until_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
         if i % 2 > 0:
@@ -147,7 +147,7 @@ def sum_under_while(limit):
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
         with fluid.dygraph.guard():
-            ret = sum_even_util_limit(80, 10)
+            ret = sum_even_until_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
             ret = declarative(sum_under_while)(100)

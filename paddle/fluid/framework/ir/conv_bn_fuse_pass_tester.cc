@@ -19,6 +19,12 @@
 
 namespace paddle {
 namespace framework {
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
 
 void AddVarToScope(Scope* param_scope, const std::string& name,
@@ -71,8 +77,16 @@ void TestMain(const std::string& conv_type) {
   int num_bn_nodes_after = GetNumOpNodes(graph, "batch_norm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_bn_nodes_before, 1);
-  PADDLE_ENFORCE_EQ(num_bn_nodes_after, 0);
+  PADDLE_ENFORCE_EQ(
+      num_bn_nodes_before, 1,
+      platform::errors::InvalidArgument(
+          "Before conv_bn_fuse_pass, number of batch norm op(%d) must be 1.",
+          num_bn_nodes_before));
+  PADDLE_ENFORCE_EQ(
+      num_bn_nodes_after, 0,
+      platform::errors::InvalidArgument(
+          "After conv_bn_fuse_pass, number of batch norm op(%d) must be 0.",
+          num_bn_nodes_after));
 }
 
 TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }

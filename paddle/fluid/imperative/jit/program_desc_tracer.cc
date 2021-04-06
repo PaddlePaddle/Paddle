@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
+
+namespace paddle {
+namespace imperative {
+class VarBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {
@@ -66,6 +69,7 @@ UniqueBlockVarGenerator::UniqueBlockVarGenerator(
 
 std::string UniqueBlockVarGenerator::NameOf(const std::weak_ptr<VarBase> &var,
                                             const std::string &prefix) {
+  VLOG(3) << "Finding: " << var.lock()->Name();
   auto all_vars_iter = all_vars_.find(var);
   PADDLE_ENFORCE_EQ(all_vars_iter != all_vars_.end(), true,
                     platform::errors::NotFound(
@@ -108,6 +112,15 @@ void UniqueBlockVarGenerator::InsertNewVarInBlock(
   }
 }
 
+bool ProgramDescTracer::ContainVar(const std::weak_ptr<VarBase> &var) const {
+  auto vars_iter = vars_.find(var);
+  bool ret = (vars_iter != vars_.end());
+  if (!ret) {
+    VLOG(5) << "Can't found variable: " << var.lock()->Name();
+  }
+  return ret;
+}
+
 void ProgramDescTracer::InsertOp(const std::string &type,
                                  const NameVarBaseMap &inputs,
                                  const NameVarBaseMap &outputs,
@@ -144,12 +157,16 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 
   std::vector<std::string> feed_var_names;
   for (auto &feed_var : feed_vars) {
-    feed_var_names.emplace_back(generator.NameOf(feed_var, feed_prefix));
+    if (ContainVar(feed_var)) {
+      feed_var_names.emplace_back(generator.NameOf(feed_var, feed_prefix));
+    }
   }
 
   std::vector<std::string> fetch_var_names;
   for (auto &fetch_var : fetch_vars) {
-    fetch_var_names.emplace_back(generator.NameOf(fetch_var, fetch_prefix));
+    if (ContainVar(fetch_var)) {
+      fetch_var_names.emplace_back(generator.NameOf(fetch_var, fetch_prefix));
+    }
   }
 
   for (auto &op : ops_) {
@@ -161,7 +178,9 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
       std::vector<std::string> names;
       names.reserve(pair.second.size());
       for (auto &var : pair.second) {
-        names.emplace_back(generator.NameOf(var, tmp_prefix));
+        if (ContainVar(var)) {
+          names.emplace_back(generator.NameOf(var, tmp_prefix));
+        }
       }
 
       op_desc->SetInput(pair.first, std::move(names));
@@ -171,7 +190,9 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
       std::vector<std::string> names;
       names.reserve(pair.second.size());
       for (auto &var : pair.second) {
-        names.emplace_back(generator.NameOf(var, tmp_prefix));
+        if (ContainVar(var)) {
+          names.emplace_back(generator.NameOf(var, tmp_prefix));
+        }
       }
 
       op_desc->SetOutput(pair.first, std::move(names));
@@ -198,7 +219,8 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 
 void ProgramDescTracer::InsertVarIfNotExist(
     const std::shared_ptr<VarBase> &new_var, bool is_input) {
-  PADDLE_ENFORCE_NOT_NULL(new_var);
+  PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
+                                       "The variable to insert is NULL."));
   if (vars_.count(new_var) != 0) return;
 
   auto new_var_desc = new framework::VarDesc("");
@@ -215,7 +237,9 @@ void ProgramDescTracer::InsertVarIfNotExist(
   }
 
   const auto &inner_var = new_var->Var();
-  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true);
+  PADDLE_ENFORCE_EQ(inner_var.IsInitialized(), true,
+                    platform::errors::InvalidArgument(
+                        "The variable to insert is not initialized."));
   if (inner_var.IsType<framework::LoDTensor>()) {
     const auto &tensor = inner_var.Get<framework::LoDTensor>();
     new_var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -227,8 +251,9 @@ void ProgramDescTracer::InsertVarIfNotExist(
       new_var_desc->SetDataType(framework::proto::VarType::FP32);
     }
   } else {
-    PADDLE_THROW("Not support variable type %s",
-                 framework::ToTypeName(inner_var.Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support variable type %s.",
+        framework::ToTypeName(inner_var.Type())));
   }
 }
 

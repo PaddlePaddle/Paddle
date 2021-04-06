@@ -27,6 +27,9 @@ limitations under the License. */
 
 #if defined(_WIN32)
 #include <intrin.h>
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #endif  // _WIN32
 
@@ -98,7 +101,7 @@ inline int clz(const T& value) {
   }
 }
 
-inline size_t FindLastSet(size_t x) { return sizeof(size_t) * 8 - clz(x); }
+inline size_t FindLastSet(size_t x) { return 1 + sizeof(size_t) * 8 - clz(x); }
 #endif  // !_WIN32
 class SimpleCode {
  public:

@@ -81,15 +81,31 @@ struct Layers {
     return out;
   }
 
-  VarDesc* pool2d(VarDesc* x, bool use_cudnn) {
+  VarDesc* pool2d(VarDesc* x, bool use_cudnn,
+                  const AttributeMap* attrs = nullptr) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("pool2d");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("unsqueeze2");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
     return out;
   }
 
@@ -188,8 +204,9 @@ struct Layers {
     return binary_op("elementwise_add", x, y, out);
   }
 
-  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("elementwise_mul", x, y, out);
+  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+                           const AttributeMap* attrs = nullptr) {
+    return binary_op("elementwise_mul", x, y, out, attrs);
   }
 
   VarDesc* dropout(VarDesc* x, float dropout_prob,

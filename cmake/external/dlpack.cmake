@@ -17,7 +17,7 @@ include(ExternalProject)
 set(DLPACK_PREFIX_DIR ${THIRD_PARTY_PATH}/dlpack)
 set(DLPACK_SOURCE_DIR ${THIRD_PARTY_PATH}/dlpack/src/extern_dlpack)
 
-set(DLPACK_REPOSITORY https://github.com/dmlc/dlpack.git)
+set(DLPACK_REPOSITORY ${GIT_URL}/dmlc/dlpack.git)
 set(DLPACK_TAG        v0.2)
 
 cache_third_party(extern_dlpack
@@ -42,12 +42,6 @@ ExternalProject_Add(
   TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/dlpack_dummy.c)
-  file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-  add_library(dlpack STATIC ${dummyfile})
-else()
-  add_library(dlpack INTERFACE)
-endif()
+add_library(dlpack INTERFACE)
 
 add_dependencies(dlpack extern_dlpack)

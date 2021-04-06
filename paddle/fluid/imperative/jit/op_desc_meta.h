@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 

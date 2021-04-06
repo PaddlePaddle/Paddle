@@ -38,7 +38,9 @@ IRPassManager::IRPassManager(Argument *argument) {
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
     auto *scope_ptr = argument->scope_ptr();
-    PADDLE_ENFORCE(scope_ptr);
+    PADDLE_ENFORCE_NOT_NULL(scope_ptr,
+                            platform::errors::PreconditionNotMet(
+                                "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
 
@@ -77,6 +79,10 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cpu_quantize_pass") {
       pass->Set("quant_var_scales",
                 new VarQuantScale(argument->quant_var_scales()));
+    } else if (pass_name == "cpu_bfloat16_placement_pass") {
+      pass->Set("bfloat16_enabled_op_types",
+                new std::unordered_set<std::string>(
+                    argument->bfloat16_enabled_op_types()));
 #endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
       pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
@@ -93,6 +99,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
+      pass->Set("use_oss", new bool(argument->tensorrt_use_oss()));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
 
@@ -101,15 +108,31 @@ void IRPassManager::CreatePasses(Argument *argument,
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid =
           !(model_from_memory && optim_cache_dir.empty() && enable_int8);
-      PADDLE_ENFORCE(int8_valid,
-                     "When you are in TRT INT8 mode, and load model from "
-                     "memory, you should set optim_cache_dir using "
-                     "config.SetOptimCacheDir()");
-      PADDLE_ENFORCE(!(model_from_memory && use_static_engine),
-                     "When you are using Paddle-TRT, and also using load model "
-                     "from memory, you should set the use_static to false.");
+      PADDLE_ENFORCE_EQ(
+          int8_valid, true,
+          platform::errors::PreconditionNotMet(
+              "When you are in TRT INT8 mode, and load model from "
+              "memory, you should set optim_cache_dir using "
+              "config.SetOptimCacheDir()"));
+      if (model_from_memory && use_static_engine) {
+        PADDLE_ENFORCE_EQ(
+            optim_cache_dir.empty(), false,
+            platform::errors::PreconditionNotMet(
+                "When you are using Paddle-TRT, and using load model "
+                "from memory, and also set the use_static to true. "
+                "you must set optim_cache_dir using "
+                "config.SetOptimCacheDir()."));
+      }
 
       if (!optim_cache_dir.empty()) {
+        if (!PathExists(optim_cache_dir)) {
+          PADDLE_ENFORCE_NE(
+              MKDIR(optim_cache_dir.c_str()), -1,
+              platform::errors::PreconditionNotMet(
+                  "Can not create optimize cache directory: %s, Make sure you "
+                  "have permission to write",
+                  optim_cache_dir));
+        }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
       } else if (use_static_engine || enable_int8) {
         std::string model_opt_cache_dir =
@@ -130,6 +153,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
+      bool with_dynamic_shape = argument->max_input_shape().size() > 0 &&
+                                argument->min_input_shape().size() > 0 &&
+                                argument->optim_input_shape().size() > 0;
+      pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
+      pass->Set("trt_disabled_ops", new std::vector<std::string>(
+                                        argument->tensorrt_disabled_ops()));
+      pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
+      pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not
       // run fp16.
@@ -146,6 +177,12 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("predictor_id", new int(argument->predictor_id()));
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
+      pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
+      pass->Set("use_xpu", new bool(argument->use_xpu()));
+      pass->Set("xpu_l3_workspace_size",
+                new int(argument->xpu_l3_workspace_size()));
+      pass->Set("cpu_math_library_num_threads",
+                new int(argument->cpu_math_library_num_threads()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {

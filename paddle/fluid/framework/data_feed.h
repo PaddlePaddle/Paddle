@@ -43,6 +43,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class DataFeedDesc;
+class LoDTensor;
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 // DataFeed is the base virtual class for all ohther DataFeeds.
 // It is used to read files and parse the data for subsequent trainer.
@@ -60,20 +69,23 @@ namespace framework {
 //   while (reader->Next()) {
 //      // trainer do something
 //   }
-union FeatureKey {
+union FeatureFeasign {
   uint64_t uint64_feasign_;
   float float_feasign_;
 };
 
 struct FeatureItem {
   FeatureItem() {}
-  FeatureItem(FeatureKey sign, uint16_t slot) {
+  FeatureItem(FeatureFeasign sign, uint16_t slot) {
     this->sign() = sign;
     this->slot() = slot;
   }
-  FeatureKey& sign() { return *(reinterpret_cast<FeatureKey*>(sign_buffer())); }
-  const FeatureKey& sign() const {
-    const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
+  FeatureFeasign& sign() {
+    return *(reinterpret_cast<FeatureFeasign*>(sign_buffer()));
+  }
+  const FeatureFeasign& sign() const {
+    const FeatureFeasign* ret =
+        reinterpret_cast<FeatureFeasign*>(sign_buffer());
     return *ret;
   }
   uint16_t& slot() { return slot_; }
@@ -81,7 +93,7 @@ struct FeatureItem {
 
  private:
   char* sign_buffer() const { return const_cast<char*>(sign_); }
-  char sign_[sizeof(FeatureKey)];
+  char sign_[sizeof(FeatureFeasign)];
   uint16_t slot_;
 };
 
@@ -110,11 +122,14 @@ class DataFeed {
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
     file_idx_ = nullptr;
+    mutex_for_fea_num_ = nullptr;
+    total_fea_num_ = nullptr;
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
   virtual bool CheckFile(const char* filename) {
-    PADDLE_THROW("This function(CheckFile) is not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(CheckFile) is not implemented."));
   }
   // Set filelist for DataFeed.
   // Pay attention that it must init all readers before call this function.
@@ -166,7 +181,9 @@ class DataFeed {
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
+  virtual void SetFeaNumMutex(std::mutex* mutex) { mutex_for_fea_num_ = mutex; }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFeaNum(uint64_t* fea_num) { total_fea_num_ = fea_num; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -175,7 +192,8 @@ class DataFeed {
   }
   virtual int GetCurBatchSize() { return batch_size_; }
   virtual void LoadIntoMemory() {
-    PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(LoadIntoMemory) is not implemented."));
   }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
@@ -199,6 +217,9 @@ class DataFeed {
   std::vector<std::string> filelist_;
   size_t* file_idx_;
   std::mutex* mutex_for_pick_file_;
+  std::mutex* mutex_for_fea_num_ = nullptr;
+  uint64_t* total_fea_num_ = nullptr;
+  uint64_t fea_num_ = 0;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -397,6 +418,7 @@ class MultiSlotType {
   void AppendValues(const float* input, size_t size) {
     CheckFloat();
     offset_.push_back(offset_.back() + size);
+
     float_feasign_.insert(float_feasign_.end(), input, input + size);
   }
   const std::vector<float>& GetFloatData() const { return float_feasign_; }
@@ -409,6 +431,7 @@ class MultiSlotType {
 
   std::string DebugString() {
     std::stringstream ss;
+
     ss << "\ntype: " << type_ << "\n";
     ss << "offset: ";
     ss << "[";
@@ -431,14 +454,23 @@ class MultiSlotType {
 
  private:
   void CheckType(const std::string& type) const {
-    PADDLE_ENFORCE((type == "uint64") || (type == "float"),
-                   "There is no this type<%s>.", type);
+    PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"), true,
+                      platform::errors::InvalidArgument(
+                          "MultiSlotType error, expect type is uint64 or "
+                          "float, but received type is %s.",
+                          type));
   }
   void CheckFloat() const {
-    PADDLE_ENFORCE(type_[0] == 'f', "Add %s value to float slot.", type_);
+    PADDLE_ENFORCE_EQ(
+        type_[0], 'f',
+        platform::errors::InvalidArgument(
+            "MultiSlotType error, add %s value to float slot.", type_));
   }
   void CheckUint64() const {
-    PADDLE_ENFORCE(type_[0] == 'u', "Add %s value to uint64 slot.", type_);
+    PADDLE_ENFORCE_EQ(
+        type_[0], 'u',
+        platform::errors::InvalidArgument(
+            "MultiSlotType error, add %s value to uint64 slot.", type_));
   }
   std::vector<float> float_feasign_;
   std::vector<uint64_t> uint64_feasign_;
@@ -486,7 +518,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 
 struct RecordCandidate {
   std::string ins_id_;
-  std::unordered_multimap<uint16_t, FeatureKey> feas_;
+  std::unordered_multimap<uint16_t, FeatureFeasign> feas_;
   size_t shadow_index_ = -1;  // Optimization for Reservoir Sample
 
   RecordCandidate() {}
@@ -578,7 +610,7 @@ class RecordCandidateList {
 
 template <class AR>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
-                                           const FeatureKey& fk) {
+                                           const FeatureFeasign& fk) {
   ar << fk.uint64_feasign_;
   ar << fk.float_feasign_;
   return ar;
@@ -586,7 +618,7 @@ paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,
 
 template <class AR>
 paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
-                                           FeatureKey& fk) {
+                                           FeatureFeasign& fk) {
   ar >> fk.uint64_feasign_;
   ar >> fk.float_feasign_;
   return ar;
@@ -684,7 +716,7 @@ class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
   int pv_batch_size_;
 };
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>
 class PrivateInstantDataFeed : public DataFeed {
  public:

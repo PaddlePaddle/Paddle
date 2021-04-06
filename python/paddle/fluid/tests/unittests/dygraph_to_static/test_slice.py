@@ -16,63 +16,66 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+import paddle
 
 SEED = 2020
 np.random.seed(SEED)
+prog_trans = paddle.jit.ProgramTranslator()
 
 
+@paddle.jit.to_static
 def test_slice_without_control_flow(x):
     # Python slice will not be transformed.
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     a = [x]
-    a[0] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
-    return a
+    a[0] = paddle.full(shape=[2], fill_value=2, dtype="float32")
+    return a[0]
 
 
+@paddle.jit.to_static
 def test_slice_in_if(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(
-            fluid.layers.fill_constant(
-                shape=[1, 2], value=9, dtype="int64"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+
     if x.numpy()[0] > 0:
         a[0] = x
-    out = a[0:]
+
+    a[0] = x + 1
+    out = a[0]
     return out
 
 
-def test_slice_in_while_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
-    iter_num_var = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32")
+@paddle.jit.to_static
+def test_slice_in_while_loop(x, iter_num=3):
+    x = paddle.to_tensor(x)
+    iter_num_var = paddle.full(shape=[1], fill_value=iter_num, dtype="int32")
     a = []
     i = 0
-    # Note: `i < iter_num` can't be supported in dygraph mode now,
-    # but PR22892 is fixing it https://github.com/PaddlePaddle/Paddle/pull/22892.
-    # If PR22892 merged, change `i < iter_num.numpy()[0]` to `i < iter_num`.
-    while i < iter_num_var.numpy()[0]:
+
+    while i < iter_num_var:
         a.append(x)
         i += 1
 
     i = 0
     while i < iter_num_var.numpy()[0]:
-        a[i] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
+        a[i] = paddle.full(shape=[2], fill_value=2, dtype="float32")
         i += 1
     out = a[0:iter_num]
-    return out
+    return out[0]
 
 
-def test_slice_in_for_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
+@paddle.jit.to_static
+def test_slice_in_for_loop(x, iter_num=3):
+    x = paddle.to_tensor(x)
     a = []
-    # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
-    iter_num = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32"
+    # Use `paddle.full` so that static analysis can analyze the type of iter_num is Tensor
+    iter_num = paddle.full(
+        shape=[1], fill_value=iter_num, dtype="int32"
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
 
     for i in range(iter_num):
@@ -84,38 +87,57 @@ def test_slice_in_for_loop(x, iter_num):
     return out
 
 
+@paddle.jit.to_static
+def test_set_value(x):
+    x = paddle.to_tensor(x)
+    x[0] = paddle.full(shape=[1], fill_value=2, dtype="float32")
+    x[1:2, 0:1] = 10
+    return x
+
+
+class LayerWithSetValue(paddle.nn.Layer):
+    def __init__(self, input_dim, hidden):
+        super(LayerWithSetValue, self).__init__()
+        self.linear = paddle.nn.Linear(input_dim, hidden)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x = self.linear(x)
+        x[0] = 1
+        return x
+
+
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((3)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.init_input()
+        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
         self.init_dygraph_func()
+        paddle.disable_static()
+
+    def init_input(self):
+        self.input = np.random.random((3)).astype('int32')
 
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_without_control_flow
 
     def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            res = self.dygraph_func(self.input)
-            if isinstance(res, (list, tuple)):
-                res = res[0]
-            return res.numpy()
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
+        prog_trans.enable(to_static)
+        res = self.dygraph_func(self.input)
+        return res.numpy()
 
     def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_list = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=tensor_list[0])
-
-        return static_res[0]
+        return self._run(to_static=True)
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
         self.assertTrue(
             np.allclose(dygraph_res, static_res),
-            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
+            msg='dygraph_res is {}\nstatic_res is {}'.format(dygraph_res,
                                                              static_res))
 
 
@@ -123,68 +145,35 @@ class TestSliceInIf(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(self.input)
-            static_out = fluid.layers.array_read(
-                tensor_array,
-                i=fluid.layers.fill_constant(
-                    shape=[1], value=0, dtype='int64'))
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_out)
-        return numpy_res[0]
-
 
 class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
-    def setUp(self):
-        self.iter_num = 3
-        self.input = np.random.random((3)).astype('int32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        self.init_dygraph_func()
-
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_while_loop
 
-    def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            var_res = self.dygraph_func(self.input, self.iter_num)
-            if not isinstance(var_res, list):
-                var_res = [var_res]
-            numpy_res = [ele.numpy() for ele in var_res]
-            return numpy_res
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(
-                self.input, self.iter_num)
-            static_outs = []
-            for i in range(self.iter_num):
-                static_outs.append(
-                    fluid.layers.array_read(
-                        tensor_array,
-                        i=fluid.layers.fill_constant(
-                            shape=[1], value=i, dtype='int64')))
-
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_outs)
-        return numpy_res
-
-
-class TestSliceInForLoop(TestSliceInWhileLoop):
+class TestSliceInForLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_for_loop
 
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)(
-                self.input, self.iter_num)
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=static_out)
-        return numpy_res
+
+class TestSetValue(TestSliceWithoutControlFlow):
+    def init_input(self):
+        self.input = np.full([3, 4, 5], 5).astype('float32')
+
+    def init_dygraph_func(self):
+        self.dygraph_func = test_set_value
+
+
+class TestSetValueWithLayerAndSave(unittest.TestCase):
+    def test_set_value_with_save(self):
+        prog_trans.enable(True)
+        model = LayerWithSetValue(input_dim=10, hidden=1)
+        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+        paddle.jit.save(
+            layer=model,
+            path="./layer_use_set_value",
+            input_spec=[x],
+            output_spec=None)
 
 
 if __name__ == '__main__':

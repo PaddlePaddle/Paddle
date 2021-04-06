@@ -13,15 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
+
 #include <string>
-#include <vector>
+
 #include "glog/logging.h"
-#include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
+
+class LoDTensor;
+class Variable;
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,
                      const std::string& var_name, size_t index) {

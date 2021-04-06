@@ -19,10 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
@@ -54,7 +50,7 @@ __global__ void expand_input_by_rank_kernel(
 }
 
 template <typename T>
-void expand_rank_attention_input(cudaStream_t stream, const T* input,
+void expand_rank_attention_input(gpuStream_t stream, const T* input,
                                  int input_row, int input_col, T* output,
                                  int output_row, int output_col,
                                  const int* rank_offset, int rank_offset_row,
@@ -97,7 +93,7 @@ __global__ void expand_rank_attention_param_kernel(
 }
 
 template <typename T>
-void expand_rank_attention_param(cudaStream_t stream, const T* input,
+void expand_rank_attention_param(gpuStream_t stream, const T* input,
                                  int input_row, int input_col,
                                  const int* rank_offset, int rank_offset_row,
                                  int rank_offset_col, const T* param,
@@ -137,7 +133,7 @@ __global__ void merge_param_gradient_kernel(
 }
 
 template <typename T>
-void merge_rank_attention_param_grad(cudaStream_t stream, T* expanded_grad,
+void merge_rank_attention_param_grad(gpuStream_t stream, T* expanded_grad,
                                      int expanded_grad_row,
                                      int expanded_grad_col, T* param_grad,
                                      int param_grad_row, int param_grad_col,

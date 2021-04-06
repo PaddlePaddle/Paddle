@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker_factory.h"
+
+#include <stdlib.h>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 namespace paddle {
 namespace framework {
+
+class DeviceWorker;
 
 typedef std::shared_ptr<DeviceWorker> (*Createdevice_workerFunction)();
 typedef std::unordered_map<std::string, Createdevice_workerFunction>
@@ -62,7 +65,21 @@ std::shared_ptr<DeviceWorker> DeviceWorkerFactory::CreateDeviceWorker(
 REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
-#if defined(PADDLE_WITH_NCCL)
+#ifdef PADDLE_WITH_PSLIB
+REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
+#endif
+
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
+#endif
+
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
+    (defined PADDLE_WITH_PSLIB)
+REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
 }  // namespace framework

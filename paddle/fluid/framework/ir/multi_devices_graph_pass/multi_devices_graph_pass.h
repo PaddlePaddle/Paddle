@@ -20,17 +20,37 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
+namespace framework {
+namespace details {
+class OpHandleBase;
+struct VarHandle;
+}  // namespace details
+namespace ir {
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace platform {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+class NCCLCommunicator;
 class NCCLContextMap;
+#elif defined(PADDLE_WITH_XPU_BKCL)
+class BKCLContextMap;
+class BKCLCommunicator;
+#endif
 }
 
 namespace framework {
 class Scope;
+
 namespace ir {
 
 constexpr char kLossVarName[] = "loss_var_name";
@@ -46,7 +66,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   virtual std::vector<ir::Node *> SortOperations(const ir::Graph &graph) const;
 
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                                  const std::string &p_name,
                                   const std::string &g_name) const = 0;
 
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
@@ -76,8 +97,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   bool IsSparseGradient(const std::string &og) const;
 
-  void CreateAllReduceOp(ir::Graph *result, const std::string &og,
-                         bool is_encoded = false) const;
+  void CreateAllReduceOp(ir::Graph *result, ir::Node *node,
+                         const std::string &og, bool is_encoded = false) const;
 
   void CreateBroadcastOp(ir::Graph *result, const std::string &p_name,
                          size_t src_dev_id) const;
@@ -96,9 +117,12 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
   void CreateIsolatedVarNode(ir::Graph *result, ir::Node *var_node) const;
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
   mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  mutable platform::BKCLContextMap *bkcl_ctxs_{nullptr};
+  mutable platform::BKCLCommunicator *multi_bkcl_ctxs_{nullptr};
 #endif
 
   mutable std::string loss_var_name_;
@@ -111,7 +135,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 
 class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                                  const std::string &p_name,
                                   const std::string &g_name) const;
 
   virtual void InsertPostprocessOps(ir::Graph *result) const {}
@@ -121,7 +146,8 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
 
 class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
-  void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+  void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                          const std::string &p_name,
                           const std::string &g_name) const override {}
 
   bool NeedCollectiveForGrad(const std::string &grad_name,
@@ -160,7 +186,8 @@ class ReduceSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
  protected:
   virtual void Init() const;
 
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                                  const std::string &p_name,
                                   const std::string &g_name) const;
 
   virtual bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const;
@@ -189,7 +216,8 @@ class DistSSAGraphBuilder : public BalanceVarSSAGraphBuilder {
 
   virtual void InsertPostprocessOps(ir::Graph *result) const;
 
-  virtual void InsertCollectiveOp(ir::Graph *result, const std::string &p_name,
+  virtual void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                                  const std::string &p_name,
                                   const std::string &g_name) const;
 
   virtual void ResetState() const;

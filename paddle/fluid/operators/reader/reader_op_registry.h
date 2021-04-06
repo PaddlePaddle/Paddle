@@ -18,8 +18,16 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class ReaderBase;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

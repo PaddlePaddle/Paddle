@@ -21,6 +21,16 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+inline std::vector<size_t> GetNmsLodFromRoisNum(const Tensor* rois_num) {
+  std::vector<size_t> rois_lod;
+  auto* rois_num_data = rois_num->data<int>();
+  rois_lod.push_back(static_cast<size_t>(0));
+  for (int i = 0; i < rois_num->numel(); ++i) {
+    rois_lod.push_back(rois_lod.back() + static_cast<size_t>(rois_num_data[i]));
+  }
+  return rois_lod;
+}
+
 class MultiClassNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -290,6 +300,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       } else {
         sdata = scores_data + label * predict_dim;
       }
+
       for (size_t j = 0; j < indices.size(); ++j) {
         int idx = indices[j];
         odata[count * out_dim] = label;  // label
@@ -320,6 +331,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* outs = ctx.Output<LoDTensor>("Out");
     bool return_index = ctx.HasOutput("Index") ? true : false;
     auto index = ctx.Output<LoDTensor>("Index");
+    bool has_roisnum = ctx.HasInput("RoisNum") ? true : false;
+    auto rois_num = ctx.Input<Tensor>("RoisNum");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -331,19 +344,34 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
     Tensor boxes_slice, scores_slice;
-    int n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
+    int n = 0;
+    if (has_roisnum) {
+      n = score_size == 3 ? batch_size : rois_num->numel();
+    } else {
+      n = score_size == 3 ? batch_size : boxes->lod().back().size() - 1;
+    }
     for (int i = 0; i < n; ++i) {
+      std::map<int, std::vector<int>> indices;
       if (score_size == 3) {
         scores_slice = scores->Slice(i, i + 1);
         scores_slice.Resize({score_dims[1], score_dims[2]});
         boxes_slice = boxes->Slice(i, i + 1);
         boxes_slice.Resize({score_dims[2], box_dim});
       } else {
-        auto boxes_lod = boxes->lod().back();
+        std::vector<size_t> boxes_lod;
+        if (has_roisnum) {
+          boxes_lod = GetNmsLodFromRoisNum(rois_num);
+        } else {
+          boxes_lod = boxes->lod().back();
+        }
+        if (boxes_lod[i] == boxes_lod[i + 1]) {
+          all_indices.push_back(indices);
+          batch_starts.push_back(batch_starts.back());
+          continue;
+        }
         scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
         boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
       }
-      std::map<int, std::vector<int>> indices;
       MultiClassNMS(ctx, scores_slice, boxes_slice, score_size, &indices,
                     &num_nmsed_out);
       all_indices.push_back(indices);
@@ -374,13 +402,20 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
             offset = i * score_dims[2];
           }
         } else {
-          auto boxes_lod = boxes->lod().back();
+          std::vector<size_t> boxes_lod;
+          if (has_roisnum) {
+            boxes_lod = GetNmsLodFromRoisNum(rois_num);
+          } else {
+            boxes_lod = boxes->lod().back();
+          }
+          if (boxes_lod[i] == boxes_lod[i + 1]) continue;
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
           if (return_index) {
             offset = boxes_lod[i] * score_dims[1];
           }
         }
+
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
@@ -394,6 +429,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
                            score_dims.size(), &out, oindices, offset);
         }
       }
+    }
+    if (ctx.HasOutput("NmsRoisNum")) {
+      auto* nms_rois_num = ctx.Output<Tensor>("NmsRoisNum");
+      nms_rois_num->mutable_data<int>({n}, ctx.GetPlace());
+      int* num_data = nms_rois_num->data<int>();
+      for (int i = 1; i <= n; i++) {
+        num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
+      }
+      nms_rois_num->Resize({n});
     }
 
     framework::LoD lod;
@@ -527,6 +571,34 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   }
 };
 
+class MultiClassNMS3Op : public MultiClassNMS2Op {
+ public:
+  MultiClassNMS3Op(const std::string& type,
+                   const framework::VariableNameMap& inputs,
+                   const framework::VariableNameMap& outputs,
+                   const framework::AttributeMap& attrs)
+      : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    MultiClassNMS2Op::InferShape(ctx);
+
+    ctx->SetOutputDim("NmsRoisNum", {-1});
+  }
+};
+
+class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
+ public:
+  void Make() override {
+    MultiClassNMS2OpMaker::Make();
+    AddInput("RoisNum",
+             "(Tensor) The number of RoIs in shape (B),"
+             "B is the number of images")
+        .AsDispensable();
+    AddOutput("NmsRoisNum", "(Tensor), The number of NMS RoIs in each image")
+        .AsDispensable();
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -542,4 +614,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);
+
+REGISTER_OPERATOR(
+    multiclass_nms3, ops::MultiClassNMS3Op, ops::MultiClassNMS3OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(multiclass_nms3, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);

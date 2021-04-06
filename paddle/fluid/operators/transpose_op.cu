@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/gpu_launch_param_config.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +28,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using Dim3 = framework::Dim3;
 using Index3 = framework::Index3;
-
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 struct EqualTo {
   constexpr bool operator()(int a, int b) const { return a == b; }
@@ -464,7 +460,7 @@ __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
   output_dims[pos1] = input_dims[1];
   output_dims[pos2] = input_dims[2];
 
-  CUDA_1D_KERNEL_LOOP(output_index, nthreads) {
+  CUDA_KERNEL_LOOP(output_index, nthreads) {
     Index3 output_tensor_index = ConvertTensorIndex(output_index, output_dims);
 
     Index3 input_tensor_index;
@@ -664,19 +660,26 @@ template <typename DeviceContext, typename T>
 class TransposeGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-    if (out->numel() == 0) {
+    auto* x = context.InputVar("X");
+    auto* out = context.OutputVar("Out");
+
+    const framework::Tensor* x_tensor =
+        GetLoDTensorOrSelectedRowsValueFromVar(*x);
+    framework::Tensor* out_tensor =
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(out);
+
+    out_tensor->mutable_data<T>(context.GetPlace());
+    if (out_tensor->numel() == 0) {
       return;
     }
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     const auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto ret = TransposeSimple<T>::run(dev_ctx, *x, axis, out);
+    auto ret = TransposeSimple<T>::run(dev_ctx, *x_tensor, axis, out_tensor);
     if (!ret) {
-      TransCompute<DeviceContext, T>(ndims, dev_ctx, *x, out, axis);
+      TransCompute<DeviceContext, T>(ndims, dev_ctx, *x_tensor, out_tensor,
+                                     axis);
     }
   }
 };
@@ -684,14 +687,19 @@ template <typename DeviceContext, typename T>
 class TransposeGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (!x_grad) return;
+    auto* out_grad = context.InputVar(framework::GradVarName("Out"));
+    auto* x_grad = context.OutputVar(framework::GradVarName("X"));
+    if (!x_grad) {
+      return;
+    }
 
-    x_grad->mutable_data<T>(context.GetPlace());
-    if (x_grad->numel() == 0) {
+    const framework::Tensor* out_grad_tensor =
+        GetLoDTensorOrSelectedRowsValueFromVar(*out_grad);
+    framework::Tensor* x_grad_tensor =
+        GetMutableLoDTensorOrSelectedRowsValueFromVar(x_grad);
+
+    x_grad_tensor->mutable_data<T>(context.GetPlace());
+    if (x_grad_tensor->numel() == 0) {
       return;
     }
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
@@ -703,11 +711,11 @@ class TransposeGradGPUKernel : public framework::OpKernel<T> {
 
     int ndims = axis.size();
     const auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto ret =
-        TransposeSimple<T>::run(dev_ctx, *out_grad, reversed_axis, x_grad);
+    auto ret = TransposeSimple<T>::run(dev_ctx, *out_grad_tensor, reversed_axis,
+                                       x_grad_tensor);
     if (!ret) {
-      TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad, x_grad,
-                                     reversed_axis);
+      TransCompute<DeviceContext, T>(ndims, dev_ctx, *out_grad_tensor,
+                                     x_grad_tensor, reversed_axis);
     }
   }
 };
@@ -722,14 +730,21 @@ REGISTER_OP_CUDA_KERNEL(
     transpose,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            plat::float16>);
+                            paddle::platform::complex64>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>);
+                                plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex64>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex128>);
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
@@ -737,8 +752,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
-                            plat::float16>);
+                            paddle::platform::complex64>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
@@ -746,4 +764,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
-                                plat::float16>);
+                                plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex64>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::complex128>);

@@ -14,15 +14,19 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "boost/variant/get.hpp"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -37,9 +41,10 @@ struct ExtractAttribute {
     try {
       attr_value = &boost::get<T>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type %s, its type is %s",
-                   attr_name_, paddle::platform::demangle(typeid(T).name()),
-                   paddle::platform::demangle(attr.type().name()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type %s, its type is %s.", attr_name_,
+          paddle::platform::demangle(typeid(T).name()),
+          paddle::platform::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -70,8 +75,9 @@ struct ExtractAttribute<bool> {
     try {
       attr_value = &boost::get<bool>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
-                   attr_name_, paddle::platform::demangle(attr.type().name()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type bool, its type is %s.", attr_name_,
+          paddle::platform::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -96,8 +102,9 @@ struct ExtractAttribute<int64_t> {
     try {
       attr_value = &boost::get<int64_t>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
-                   attr_name_, paddle::platform::demangle(attr.type().name()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type int64_t, its type is %s.",
+          attr_name_, paddle::platform::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -124,8 +131,10 @@ struct ExtractAttribute<std::vector<int64_t>> {
     try {
       attr_value = &boost::get<std::vector<int64_t>>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
-                   attr_name_, paddle::platform::demangle(attr.type().name()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type std::vector<int64_t>, its type is "
+          "%s.",
+          attr_name_, paddle::platform::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -150,8 +159,9 @@ struct ExtractAttribute<float> {
     try {
       attr_value = &boost::get<float>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type float, its type is %s",
-                   attr_name_, paddle::platform::demangle(attr.type().name()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type float, its type is %s.",
+          attr_name_, paddle::platform::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -159,6 +169,35 @@ struct ExtractAttribute<float> {
   const std::string& attr_name_;
 };
 
+template <>
+struct ExtractAttribute<std::vector<double>> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  std::vector<double>* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
+      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<double> vec(val.begin(), val.end());
+      attr = vec;
+    } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
+      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<double> vec(val.begin(), val.end());
+      attr = vec;
+    }
+    std::vector<double>* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<std::vector<double>>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot get attribute (%s) by type std::vector<double>, its type is "
+          "%s.",
+          attr_name_, paddle::platform::demangle(attr.type().name())));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
 template <typename T>
 inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
@@ -173,8 +212,9 @@ class AttrReader {
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE_NE(attrs_.count(name), 0,
+                      platform::errors::NotFound(
+                          "Attribute (%s) should be in AttributeMap.", name));
 
     Attribute& attr = const_cast<Attribute&>(attrs_.at(name));
     ExtractAttribute<T> extract_attr(name);
@@ -192,8 +232,10 @@ class GreaterThanChecker {
  public:
   explicit GreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(const T& value) const {
-    PADDLE_ENFORCE_GT(value, lower_bound_,
-                      platform::errors::OutOfRange("larger_than check fails."));
+    PADDLE_ENFORCE_GT(
+        value, lower_bound_,
+        platform::errors::OutOfRange(
+            "Check for attribute value greater than a certain value failed."));
   }
 
  private:
@@ -205,7 +247,10 @@ class EqualGreaterThanChecker {
  public:
   explicit EqualGreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(const T& value) const {
-    PADDLE_ENFORCE_GE(value, lower_bound_, "equal_larger_than check fails.");
+    PADDLE_ENFORCE_GE(
+        value, lower_bound_,
+        platform::errors::OutOfRange("Check for attribute valur equal or "
+                                     "greater than a certain value failed."));
   }
 
  private:
@@ -231,9 +276,10 @@ class EnumInContainer {
  public:
   explicit EnumInContainer(const std::unordered_set<T>& c) : container_(c) {}
   void operator()(const T& val) const {
-    PADDLE_ENFORCE(container_.find(val) != container_.end(),
-                   "Value %s is not in enum container %s", val,
-                   ContainerDebugString());
+    PADDLE_ENFORCE_NE(
+        container_.find(val), container_.end(),
+        platform::errors::NotFound("Value %s is not in enum container %s.", val,
+                                   ContainerDebugString()));
   }
 
  private:
@@ -284,8 +330,11 @@ class TypedAttrChecker {
   // we can add more common limits, like LessThan(), Between()...
 
   TypedAttrChecker& SetDefault(const T& default_value) {
-    PADDLE_ENFORCE(default_value_setter_.empty(),
-                   "%s can't have more than one default value!", attr_name_);
+    PADDLE_ENFORCE_EQ(
+        default_value_setter_.empty(), true,
+        platform::errors::AlreadyExists(
+            "Attribute (%s) has a default value and cannot be set repeatedly.",
+            attr_name_));
     default_value_setter_.push_back(DefaultValueSetter<T>(default_value));
     return *this;
   }
@@ -308,8 +357,10 @@ class TypedAttrChecker {
     auto it = attr_map->find(attr_name_);
     if (it == attr_map->end()) {
       // user do not set this attr
-      PADDLE_ENFORCE(!default_value_setter_.empty(),
-                     "Attribute '%s' is required!", attr_name_);
+      PADDLE_ENFORCE_EQ(
+          default_value_setter_.empty(), false,
+          platform::errors::InvalidArgument(
+              "Attribute (%s) is not set correctly.", attr_name_));
       // default_value_setter_ has no more than one element
       attr_map->emplace(attr_name_, default_value_setter_[0]());
     }

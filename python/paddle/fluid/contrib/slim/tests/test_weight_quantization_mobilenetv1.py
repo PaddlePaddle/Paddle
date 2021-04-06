@@ -17,6 +17,9 @@ import os
 import time
 from paddle.dataset.common import download, DATA_HOME
 from paddle.fluid.contrib.slim.quantization import WeightQuantization
+import paddle
+
+paddle.enable_static()
 
 
 class TestWeightQuantization(unittest.TestCase):

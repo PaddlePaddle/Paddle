@@ -13,10 +13,11 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/threadpool.h"
-#include <memory>
-#include <utility>
+
+#include <thread>
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_int32(io_threadpool_size, 100,
@@ -42,7 +43,8 @@ void ThreadPool::Init() {
       num_threads = FLAGS_dist_threadpool_size;
       VLOG(1) << "set dist_threadpool_size to " << num_threads;
     }
-    PADDLE_ENFORCE_GT(num_threads, 0);
+    PADDLE_ENFORCE_GT(num_threads, 0, platform::errors::InvalidArgument(
+                                          "The number of threads is 0."));
     threadpool_.reset(new ThreadPool(num_threads));
   }
 }
@@ -83,7 +85,8 @@ void ThreadPool::TaskLoop() {
       }
 
       if (tasks_.empty()) {
-        PADDLE_THROW("This thread has no task to Run");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Current thread has no task to Run."));
       }
 
       // pop a task from the task queue

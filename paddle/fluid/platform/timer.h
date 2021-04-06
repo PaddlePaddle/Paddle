@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <stdlib.h>
+
 #include "paddle/fluid/platform/port.h"
 
 #ifdef _WIN32

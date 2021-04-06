@@ -25,8 +25,10 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+
+from predictor_utils import PredictorTools
 
 SEED = 2020
 
@@ -99,7 +101,7 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
@@ -107,12 +109,9 @@ class MNIST(fluid.dygraph.Layer):
             loss = fluid.layers.cross_entropy(x, label)
             avg_loss = fluid.layers.mean(loss)
 
-        # TODO: Uncomment code after "return" statement can be transformed correctly.
-
-        #     return x, acc, avg_loss
-        # else:
-        #     return x
-        return x, acc, avg_loss
+            return x, acc, avg_loss
+        else:
+            return x
 
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
@@ -134,7 +133,7 @@ class TestMNIST(unittest.TestCase):
             drop_last=True)
 
 
-class TestMNISTWithDeclarative(TestMNIST):
+class TestMNISTWithToStatic(TestMNIST):
     """
     Tests model if doesn't change the layers while decorated
     by `dygraph_to_static_output`. In this case, everything should
@@ -147,13 +146,25 @@ class TestMNISTWithDeclarative(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    def test_mnist_declarative(self):
+    def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
         self.assertTrue(
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+
+    def test_mnist_declarative_cpu_vs_mkldnn(self):
+        dygraph_loss_cpu = self.train_dygraph()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            dygraph_loss_mkldnn = self.train_dygraph()
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertTrue(
+            np.allclose(dygraph_loss_cpu, dygraph_loss_mkldnn),
+            msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
+                dygraph_loss_cpu, dygraph_loss_mkldnn))
 
     def train(self, to_static=False):
         prog_trans = ProgramTranslator()
@@ -198,31 +209,66 @@ class TestMNISTWithDeclarative(TestMNIST):
                         mnist.eval()
                         prediction, acc, avg_loss = mnist(img, label)
                         loss_data.append(avg_loss.numpy()[0])
-                        self.check_save_inference_model([dy_x_data, y_data],
-                                                        prog_trans, to_static,
-                                                        prediction)
+                        # new save load check
+                        self.check_jit_save_load(mnist, [dy_x_data], [img],
+                                                 to_static, prediction)
                         break
         return loss_data
 
-    def check_save_inference_model(self, inputs, prog_trans, to_static, gt_out):
+    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
         if to_static:
-            infer_model_path = "./test_mnist_inference_model"
-            prog_trans.save_inference_model(infer_model_path)
-            infer_out = self.load_and_run_inference(infer_model_path, inputs)
-            self.assertTrue(np.allclose(gt_out.numpy(), infer_out))
+            infer_model_path = "./test_mnist_inference_model_by_jit_save"
+            model_save_dir = "./inference"
+            model_save_prefix = "./inference/mnist"
+            model_filename = "mnist" + INFER_MODEL_SUFFIX
+            params_filename = "mnist" + INFER_PARAMS_SUFFIX
+            fluid.dygraph.jit.save(
+                layer=model,
+                path=model_save_prefix,
+                input_spec=input_spec,
+                output_spec=[gt_out])
+            # load in static mode
+            static_infer_out = self.jit_load_and_run_inference_static(
+                model_save_dir, model_filename, params_filename, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), static_infer_out))
+            # load in dygraph mode
+            dygraph_infer_out = self.jit_load_and_run_inference_dygraph(
+                model_save_prefix, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), dygraph_infer_out))
+            # load in Paddle-Inference
+            predictor_infer_out = self.predictor_load_and_run_inference_analysis(
+                model_save_dir, model_filename, params_filename, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), predictor_infer_out))
 
     @switch_to_static_graph
-    def load_and_run_inference(self, model_path, inputs):
+    def jit_load_and_run_inference_static(self, model_path, model_filename,
+                                          params_filename, inputs):
+        paddle.enable_static()
         exe = fluid.Executor(self.place)
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             dirname=model_path, executor=exe)
+             dirname=model_path,
+             executor=exe,
+             model_filename=model_filename,
+             params_filename=params_filename)
         assert len(inputs) == len(feed_target_names)
         results = exe.run(inference_program,
                           feed=dict(zip(feed_target_names, inputs)),
                           fetch_list=fetch_targets)
 
         return np.array(results[0])
+
+    def jit_load_and_run_inference_dygraph(self, model_path, inputs):
+        infer_net = fluid.dygraph.jit.load(model_path)
+        pred = infer_net(inputs[0])
+        return pred.numpy()
+
+    def predictor_load_and_run_inference_analysis(
+            self, model_path, model_filename, params_filename, inputs):
+        output = PredictorTools(model_path, model_filename, params_filename,
+                                inputs)
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

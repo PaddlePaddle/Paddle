@@ -17,12 +17,21 @@
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <string>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 DECLARE_int32(rpc_deadline);
 DECLARE_int32(rpc_retry_times);
@@ -77,12 +86,19 @@ class RPCClient {
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
-      const std::string& ep, const std::string& dir,
+      const std::string& ep, const std::string& dirname,
+      const std::string& varname, const int mode,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncDistributeNotify(
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncSendAndRecv(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& send_var_name,
+      const std::string& recv_var_name, const std::string& table_name = "",
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendComplete(

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -61,7 +62,10 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     switch (rank) {
       REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support tensor with rank being between 1 and 6. But received "
+            "tensor X's rank = %d.",
+            rank));
     }
   }
 
@@ -72,18 +76,24 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto in_dims = in0->dims();
     auto* target_tensor = context.Input<Tensor>("target_tensor");
     auto* out0 = context.Output<Tensor>("Out");
-    Eigen::DSizes<int, Rank> bcast_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     int bcast_dims_remainder = 0;
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) should not have 0 dim");
+      PADDLE_ENFORCE_NE(
+          x_dims[i], 0UL,
+          platform::errors::InvalidArgument(
+              "X(input) should not have 0 dim. But received x_dims[%d] = 0.",
+              i));
       bcast_dims[i] = y_dims[i] / x_dims[i];
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
-    PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                      "X(input) could not be broadcast together with remapped "
-                      "shape(expand tensor's shape)");
+    PADDLE_ENFORCE_EQ(
+        bcast_dims_remainder, 0UL,
+        platform::errors::InvalidArgument(
+            "X(input) could not be broadcast together with remapped "
+            "shape(expand tensor's shape)"));
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
       out_dims[i] *= bcast_dims[i];
@@ -95,7 +105,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    y.device(place) = x.broadcast(bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
+                                                                 bcast_dims);
   }
 };
 
@@ -137,7 +148,10 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
-          PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
       }
     }
   }
@@ -149,30 +163,23 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                         const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
-    PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reshape dimensions.");
-    PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reduce dimensions.");
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
-    Eigen::DSizes<int, Dims * 2> reshape_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<int, Dims> reduce_dims;
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(
-        *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims)
-            .sum(reduce_dims)
-            .reshape(x_grad.dimensions());
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

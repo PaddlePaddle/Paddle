@@ -35,6 +35,30 @@ class GatherOpKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Index");
     auto *output = ctx.Output<Tensor>("Out");
 
+    if (ctx.HasInput("Axis")) {
+      const Tensor *axis = ctx.Input<Tensor>("Axis");
+      const auto &index_type = index->type();
+      const auto &axis_type = axis->type();
+      auto place = ctx.GetPlace();
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2Function<T, int32_t, int32_t>(x, index, axis, output, place);
+      }
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2Function<T, int32_t, int64_t>(x, index, axis, output, place);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2Function<T, int64_t, int32_t>(x, index, axis, output, place);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2Function<T, int64_t, int64_t>(x, index, axis, output, place);
+      }
+      return;
+    }
+
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
 
@@ -69,6 +93,30 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    if (ctx.HasInput("Axis")) {
+      const Tensor *axis = ctx.Input<Tensor>("Axis");
+      const auto &index_type = index->type();
+      const auto &axis_type = axis->type();
+      auto place = ctx.GetPlace();
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2GradFunction<T, int32_t, int32_t>(dO, index, axis, dX, place);
+      }
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2GradFunction<T, int32_t, int64_t>(dO, index, axis, dX, place);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2GradFunction<T, int64_t, int32_t>(dO, index, axis, dX, place);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2GradFunction<T, int64_t, int64_t>(dO, index, axis, dX, place);
+      }
+      return;
+    }
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);

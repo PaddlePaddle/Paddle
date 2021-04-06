@@ -23,7 +23,9 @@ import paddle.fluid.core as core
 import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
+import paddle
+paddle.enable_static()
 
 
 class TestOptimizer(unittest.TestCase):
@@ -714,6 +716,23 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
         ])
 
+    def test_str_checkpoints(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out.name])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
     def test_multi_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
@@ -815,8 +834,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         try:
-            stat_dict = {}
-            recompute_optimizer.load(stat_dict)
+            state_dict = {}
+            recompute_optimizer.load(state_dict)
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
@@ -946,6 +965,112 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                                        "dropout_with_seed_gpu.tmp_1.subprog_0"
                                    ])
                 self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+
+
+class TestGradientMergeOptimizer(unittest.TestCase):
+    def net(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1")
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": mul_out,
+                    "Y": b1},
+            outputs={"Out": b1_out})
+        block.append_op(
+            type="mean", inputs={"X": b1_out}, outputs={"Out": mean_out})
+        return mean_out
+
+    def test_program_desc(self, ):
+        cost = self.net()
+        main_program = cost.block.program
+        init_program = framework.Program()
+        self.assertEqual(main_program.num_blocks, 1)
+        self.assertEqual(len(cost.block.ops), 3)
+        self.assertEqual([op.type for op in cost.block.ops],
+                         ["mul", "elementwise_add", "mean"])
+
+        opt = optimizer.SGD(learning_rate=1.0)
+        opt = optimizer.GradientMergeOptimizer(opt, k_steps=4)
+        with framework.program_guard(main_program, init_program):
+            ops, params_grads = opt.minimize(cost)
+
+        self.assertEqual(main_program.num_blocks, 2)
+
+        # main block
+        self.assertEqual(len(cost.block.ops), 13)
+        self.assertEqual(
+            [op.type for op in cost.block.ops],
+            [
+                'mul',
+                'elementwise_add',
+                'mean',
+                'fill_constant',
+                'mean_grad',
+                'elementwise_add_grad',
+                'mul_grad',
+                'increment',  # step += 1
+                'elementwise_mod',  # step %= k_steps
+                'equal',  # cond_var == (step == 0)
+                'elementwise_add',
+                'elementwise_add',
+                'conditional_block',
+            ])
+
+        # optimize block
+        self.assertEqual(len(main_program.block(1).ops), 6)
+        self.assertEqual([op.type for op in main_program.block(1).ops], [
+            'scale', 'scale', 'sgd', 'sgd', 'fill_constant', 'fill_constant'
+        ])
+
+
+class TestOptimizerDtype(unittest.TestCase):
+    '''
+    The dtype of optimizer should be inferred by parameters, and the learning rate
+    is cteated with the same dtype.
+    '''
+
+    def check_with_dtype(self, dtype):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super(MyLayer, self).__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+                self._b = self.create_parameter([2, 3], dtype=dtype)
+
+            def forward(self, x):
+                return x * self._w + self._b
+
+        with paddle.fluid.dygraph.guard():
+            model = MyLayer(dtype)
+            x = paddle.rand([10, 2, 3], dtype=dtype)
+            loss = model(x)
+            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            loss.backward()
+            adam.step()
+            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+
+    def test_float64(self):
+        self.check_with_dtype('float64')
+
+    def test_float32(self):
+        self.check_with_dtype('float32')
 
 
 if __name__ == '__main__':

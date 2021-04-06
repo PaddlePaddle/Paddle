@@ -81,7 +81,7 @@ class FlipKernel<platform::CUDADeviceContext, T>
     Tensor* out = ctx.Output<Tensor>("Out");
     auto* in_data = x->data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
-    auto flip_dims = ctx.template Attr<std::vector<int>>("dims");
+    auto flip_dims = ctx.template Attr<std::vector<int>>("axis");
 
     const int flip_dims_size = static_cast<int>(flip_dims.size());
     auto x_dims = x->dims();

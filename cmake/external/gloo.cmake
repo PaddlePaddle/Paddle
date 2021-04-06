@@ -15,46 +15,40 @@
 INCLUDE(ExternalProject)
 
 SET(GLOO_PROJECT       "extern_gloo")
-IF((NOT DEFINED GLOO_VER) OR (NOT DEFINED GLOO_URL))
-  MESSAGE(STATUS "use pre defined download url")
-  SET(GLOO_VER "master" CACHE STRING "" FORCE)
-  SET(GLOO_NAME "gloo" CACHE STRING "" FORCE)
-  SET(GLOO_URL "https://pslib.bj.bcebos.com/gloo.tar.gz" CACHE STRING "" FORCE)
-ENDIF()
-MESSAGE(STATUS "GLOO_NAME: ${GLOO_NAME}, GLOO_URL: ${GLOO_URL}")
-SET(GLOO_SOURCE_DIR    "${THIRD_PARTY_PATH}/gloo")
-SET(GLOO_DOWNLOAD_DIR  "${GLOO_SOURCE_DIR}/src/${GLOO_PROJECT}")
-SET(GLOO_DST_DIR       "gloo")
-SET(GLOO_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
-SET(GLOO_INSTALL_DIR   ${GLOO_INSTALL_ROOT}/${GLOO_DST_DIR})
-SET(GLOO_ROOT          ${GLOO_INSTALL_DIR})
-SET(GLOO_INC_DIR       ${GLOO_ROOT}/include)
-SET(GLOO_LIB_DIR       ${GLOO_ROOT}/lib)
-SET(GLOO_LIB           ${GLOO_LIB_DIR}/libgloo.a)
-#SET(GLOO_IOMP_LIB      ${GLOO_LIB_DIR}/libiomp5.so) #todo what is this
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${GLOO_ROOT}/lib")
+SET(GLOO_PREFIX_DIR    ${THIRD_PARTY_PATH}/gloo)
+SET(GLOO_SOURCE_DIR    ${THIRD_PARTY_PATH}/gloo/src/extern_gloo/gloo)
+SET(GLOO_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gloo)
+SET(GLOO_INCLUDE_DIR   "${GLOO_INSTALL_DIR}/include" CACHE PATH "gloo include directory." FORCE)
+SET(GLOO_LIBRARY_DIR   "${GLOO_INSTALL_DIR}/lib" CACHE PATH "gloo library directory." FORCE)
+# As we add extra features for gloo, we use the non-official repo
+SET(GLOO_REPOSITORY    ${GIT_URL}/sandyhouse/gloo.git)
+SET(GLOO_TAG           v0.0.2)
+SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a" CACHE FILEPATH "gloo library." FORCE)
 
-INCLUDE_DIRECTORIES(${GLOO_INC_DIR})
+INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
 
-FILE(WRITE ${GLOO_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(GLOO)\n"
-  "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${GLOO_NAME}/include ${GLOO_NAME}/lib \n"
-  "        DESTINATION ${GLOO_DST_DIR})\n")
+cache_third_party(extern_gloo
+    REPOSITORY    ${GLOO_REPOSITORY}
+    TAG           ${GLOO_TAG}
+    DIR           GLOO_SOURCE_DIR)
 
 ExternalProject_Add(
-    ${GLOO_PROJECT}
+    extern_gloo
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${GLOO_SOURCE_DIR}
-    DOWNLOAD_DIR          ${GLOO_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${GLOO_URL} -c -q -O ${GLOO_NAME}.tar.gz
-                          && tar zxvf ${GLOO_NAME}.tar.gz
-    DOWNLOAD_NO_PROGRESS  1
+    ${SHALLOW_CLONE}
+    "${GLOO_DOWNLOAD_CMD}"
+    PREFIX                "${GLOO_PREFIX_DIR}"
+    SOURCE_DIR            "${GLOO_SOURCE_DIR}"
     UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${GLOO_INSTALL_ROOT}
-    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${GLOO_INSTALL_ROOT}
+    CONFIGURE_COMMAND     ""
+    BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
+        && cd ${GLOO_SOURCE_DIR}/build && cmake .. && make
+        && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
+    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+    COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
 )
 
-ADD_LIBRARY(gloo SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIB})
+
+ADD_LIBRARY(gloo STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIBRARIES})
 ADD_DEPENDENCIES(gloo ${GLOO_PROJECT})

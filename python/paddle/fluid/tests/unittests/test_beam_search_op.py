@@ -38,9 +38,9 @@ class BeamSearchOpTester(unittest.TestCase):
         self._create_pre_scores()
         self._create_scores()
         self._create_pre_ids()
-        self.scope.var('selected_ids')
-        self.scope.var('selected_scores')
-        self.scope.var('parent_idx')
+        self.scope.var('selected_ids').get_tensor()
+        self.scope.var('selected_scores').get_tensor()
+        self.scope.var('parent_idx').get_tensor()
 
     def test_run(self):
         op = Operator(

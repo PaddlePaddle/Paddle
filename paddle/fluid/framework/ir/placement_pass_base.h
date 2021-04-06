@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -25,6 +26,8 @@ namespace ir {
 /*
  * Specifies which operators should use cuDNN.
  */
+class Graph;
+
 class PlacementPassBase : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -35,6 +38,7 @@ class PlacementPassBase : public Pass {
 
  private:
   bool IsSupport(const std::string& op_type) const;
+  bool IsDefaultOpTypes(const std::string& op_type) const;
 
 #if PADDLE_WITH_TESTING
   friend class PlacementPassTest;

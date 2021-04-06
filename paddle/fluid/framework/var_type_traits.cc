@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/var_type_traits.h"
-#include <unordered_map>
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
@@ -28,6 +27,18 @@
 #include <cudnn.h>
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"  // NOLINT
+#include "paddle/fluid/platform/nccl_helper.h"            // NOLINT
+#endif
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"  // NOLINT
+#include "paddle/fluid/operators/miopen_rnn_cache.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/bkcl_helper.h"
 #endif
 
 namespace paddle {
@@ -46,12 +57,14 @@ struct VarIdToTypeIndexMapInitializerImpl {
     static_assert(!std::is_same<Type, void>::value, "Type cannot be void");
     constexpr int kId = VarTypeTrait<Type>::kId;
     auto type = std::type_index(typeid(Type));
-    PADDLE_ENFORCE(id_to_type->count(kId) == 0,
-                   "Registered duplicate type id %d for type %s", kId,
-                   type.name());
-    PADDLE_ENFORCE(type_to_id->count(type) == 0,
-                   "Registered duplicate type_index %s for id %d", type.name(),
-                   kId);
+    PADDLE_ENFORCE_EQ(
+        id_to_type->count(kId), 0,
+        platform::errors::AlreadyExists(
+            "Registered duplicate type id %d for type %s.", kId, type.name()));
+    PADDLE_ENFORCE_EQ(
+        type_to_id->count(type), 0,
+        platform::errors::AlreadyExists(
+            "Registered duplicate type index %s for id %d.", type.name(), kId));
     id_to_type->emplace(kId, type);
     type_to_id->emplace(type, kId);
     VarIdToTypeIndexMapInitializerImpl<kStart + 1, kEnd,
@@ -79,15 +92,17 @@ struct VarIdToTypeIndexMapHolder {
  public:
   static const std::type_index &ToTypeIndex(int var_id) {
     auto it = Instance().id_to_type_map_.find(var_id);
-    PADDLE_ENFORCE(it != Instance().id_to_type_map_.end(),
-                   "VarId %d is not registered.", var_id);
+    PADDLE_ENFORCE_NE(it, Instance().id_to_type_map_.end(),
+                      platform::errors::NotFound(
+                          "Variable Id %d is not registered.", var_id));
     return it->second;
   }
 
   static int ToTypeId(const std::type_index &type) {
     auto it = Instance().type_to_id_map_.find(type);
-    PADDLE_ENFORCE(it != Instance().type_to_id_map_.end(),
-                   "VarType %s is not registered.", type.name());
+    PADDLE_ENFORCE_NE(it, Instance().type_to_id_map_.end(),
+                      platform::errors::NotFound(
+                          "Variable Type %s is not registered.", type.name()));
     return it->second;
   }
 

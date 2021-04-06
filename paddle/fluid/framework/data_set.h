@@ -229,6 +229,20 @@ class DatasetImpl : public Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
 
+  std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
+    return multi_output_channel_;
+  }
+
+  std::vector<paddle::framework::Channel<T>>& GetCurOutputChannel() {
+    if (cur_channel_ == 0) {
+      return multi_output_channel_;
+    } else {
+      return multi_consume_channel_;
+    }
+  }
+
+  Channel<T>& GetInputChannelRef() { return input_channel_; }
+
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
@@ -255,7 +269,9 @@ class DatasetImpl : public Dataset {
   int trainer_num_;
   std::vector<std::string> filelist_;
   size_t file_idx_;
+  uint64_t total_fea_num_;
   std::mutex mutex_for_pick_file_;
+  std::mutex mutex_for_fea_num_;
   std::string fs_name_;
   std::string fs_ugi_;
   int64_t fleet_send_batch_size_;

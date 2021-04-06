@@ -12,23 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <map>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -179,9 +167,10 @@ class BackWardOpDepsPass : public ir::Pass {
     // Currently, we assume that once gradient is generated, it can be
     // broadcast, and each gradient is only broadcast once.
     auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-    PADDLE_ENFORCE_EQ(node->IsWrappedBy<details::OpHandleBase>(), true,
-                      platform::errors::InvalidArgument(
-                          "Node must be wrapped by OpHandleBase"));
+    PADDLE_ENFORCE_EQ(
+        node->IsWrappedBy<details::OpHandleBase>(), true,
+        platform::errors::InvalidArgument(
+            "Node(%s) must be wrapped by OpHandleBase.", node->Name()));
 
     backward_op_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
 

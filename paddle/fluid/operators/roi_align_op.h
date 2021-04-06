@@ -145,6 +145,7 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
@@ -165,21 +166,23 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
     int rois_batch_size;
-    if (ctx.HasInput("RoisLod")) {
-      auto* rois_lod_t = ctx.Input<framework::Tensor>("RoisLod");
-      rois_batch_size = rois_lod_t->numel();
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
       PADDLE_ENFORCE_EQ(
-          rois_batch_size - 1, batch_size,
+          rois_batch_size, batch_size,
           platform::errors::InvalidArgument(
               "The batch size of rois and the batch size of images "
               " must be the same. But received the batch size of rois is %d, "
               "and the batch size of images is %d",
               rois_batch_size, batch_size));
-      auto* rois_lod = rois_lod_t->data<int64_t>();
-      for (int n = 0; n < rois_batch_size - 1; ++n) {
-        for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
           roi_batch_id_data[i] = n;
         }
+        start += rois_num_data[n];
       }
     } else {
       auto lod = rois->lod();
@@ -213,15 +216,19 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     }
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
+    T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_id = roi_batch_id_data[n];
-      T roi_xmin = rois_data[0] * spatial_scale;
-      T roi_ymin = rois_data[1] * spatial_scale;
-      T roi_xmax = rois_data[2] * spatial_scale;
-      T roi_ymax = rois_data[3] * spatial_scale;
+      T roi_xmin = rois_data[0] * spatial_scale - roi_offset;
+      T roi_ymin = rois_data[1] * spatial_scale - roi_offset;
+      T roi_xmax = rois_data[2] * spatial_scale - roi_offset;
+      T roi_ymax = rois_data[3] * spatial_scale - roi_offset;
 
-      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T roi_width = roi_xmax - roi_xmin;
+      T roi_height = roi_ymax - roi_ymin;
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
+
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
       const T* batch_data = input_data + roi_batch_id * in_stride[0];
@@ -288,6 +295,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto in_dims = in->dims();
+    auto aligned = ctx.Attr<bool>("aligned");
 
     int channels = in_dims[1];
     int height = in_dims[2];
@@ -303,14 +311,16 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
     int rois_batch_size;
-    if (ctx.HasInput("RoisLod")) {
-      auto* rois_lod_t = ctx.Input<framework::Tensor>("RoisLod");
-      rois_batch_size = rois_lod_t->numel();
-      auto* rois_lod = rois_lod_t->data<int64_t>();
-      for (int n = 0; n < rois_batch_size - 1; ++n) {
-        for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
           roi_batch_id_data[i] = n;
         }
+        start += rois_num_data[n];
       }
     } else {
       auto rois_lod = rois->lod().back();
@@ -340,14 +350,19 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto roi_stride = framework::stride(rois->dims());
     auto out_stride = framework::stride(out_grad->dims());
 
+    T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {
       int roi_batch_idx = roi_batch_id_data[n];
-      T roi_xmin = rois_data[0] * spatial_scale;
-      T roi_ymin = rois_data[1] * spatial_scale;
-      T roi_xmax = rois_data[2] * spatial_scale;
-      T roi_ymax = rois_data[3] * spatial_scale;
-      T roi_width = std::max(roi_xmax - roi_xmin, static_cast<T>(1.));
-      T roi_height = std::max(roi_ymax - roi_ymin, static_cast<T>(1.));
+      T roi_xmin = rois_data[0] * spatial_scale - roi_offset;
+      T roi_ymin = rois_data[1] * spatial_scale - roi_offset;
+      T roi_xmax = rois_data[2] * spatial_scale - roi_offset;
+      T roi_ymax = rois_data[3] * spatial_scale - roi_offset;
+
+      T roi_width = roi_xmax - roi_xmin;
+      T roi_height = roi_ymax - roi_ymin;
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
+
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
       for (int c = 0; c < channels; ++c) {

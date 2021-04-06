@@ -19,13 +19,24 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
+class BlockDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 constexpr char kGrad[] = "Grad";
 constexpr char kParam[] = "Param";

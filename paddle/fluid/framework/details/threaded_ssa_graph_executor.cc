@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/communicator.h"
+#if defined PADDLE_WITH_PSCORE
+#include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
 namespace paddle {
@@ -138,7 +139,10 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
         }
       }
     }
-    PADDLE_ENFORCE(ready_ops.empty());
+    PADDLE_ENFORCE_EQ(
+        ready_ops.empty(), true,
+        platform::errors::Fatal("After the execution of computation graph, "
+                                "there are unexecuted operators left."));
   }
 
   // Wait FetchOps.
@@ -165,9 +169,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     FetchResultType *fetch_data, bool return_merged) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
-  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
-                                                   fetch_tensors.end());
-  for (auto &fetch_var_name : fetch_tensor_set) {
+
+  for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
@@ -231,7 +234,11 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       ready_ops->insert(static_cast<OpHandleBase *>(op));
     }
   }
-  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
+  PADDLE_ENFORCE_EQ(
+      local_ready_vars.size(), 0,
+      platform::errors::Fatal(
+          "The number of ready variables should be 0, but got %d.",
+          local_ready_vars.size()));
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(
@@ -277,7 +284,9 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
     }
   }
   op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
-  PADDLE_ENFORCE_GT(op_deps_->num_ops_, 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(
+      op_deps_->num_ops_, 0,
+      platform::errors::InvalidArgument("The graph doesn't have operators."));
 
   for (auto ready_var : ready_vars) {
     pending_vars.erase(ready_var);
@@ -339,7 +348,7 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
     VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
-      op->Run(strategy_.use_cuda_);
+      op->Run(strategy_.use_device_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;
@@ -351,16 +360,13 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
 
 void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
-#ifdef PADDLE_WITH_DISTRIBUTE
+#if defined PADDLE_WITH_PSCORE
   if (strategy_.thread_barrier_) {
-    operators::distributed::Communicator::GetInstance()
-        ->BarrierTriggerDecrement();
+    paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
-
   VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
   ClearFetchOp(graph_, fetch_ops);
-
   exception_holder_.ReThrow();
 }
 

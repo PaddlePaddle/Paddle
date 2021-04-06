@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
@@ -60,8 +61,8 @@ class TestPyReaderCombination(unittest.TestCase):
             py_reader2 = fluid.io.PyReader(
                 feed_list=[image, label], capacity=16, iterable=True)
 
-            reader1 = fluid.io.cache(self.create_reader(self.n1))
-            reader2 = fluid.io.cache(self.create_reader(self.n2))
+            reader1 = paddle.reader.cache(self.create_reader(self.n1))
+            reader2 = paddle.reader.cache(self.create_reader(self.n2))
             py_reader1.decorate_batch_generator(reader1, places=place)
             py_reader2.decorate_batch_generator(reader2, places=place)
 

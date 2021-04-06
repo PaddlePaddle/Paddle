@@ -86,18 +86,22 @@ class SplitOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPluginDynamic* plugin =
-          new plugin::SplitPluginDynamic(axis, output_lengths);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
+          new plugin::SplitPluginDynamic(axis, output_lengths, with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "
           "your TRT version is no less than 6.0"));
 #endif
     } else {
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
-          new plugin::SplitPlugin(axis, output_lengths);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+          new plugin::SplitPlugin(axis, output_lengths, with_fp16);
+      layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
 
     std::string layer_name = "split (Output: ";

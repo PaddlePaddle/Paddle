@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 void BuildGraph(Graph* g) {
   ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);

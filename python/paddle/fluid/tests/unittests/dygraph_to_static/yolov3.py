@@ -15,6 +15,9 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph.base import to_variable
@@ -73,7 +76,7 @@ cfg.label_smooth = True
 # Model options
 #
 # input size
-cfg.input_size = 608
+cfg.input_size = 224 if sys.platform == 'darwin' else 608
 # pixel mean values
 cfg.pixel_means = [0.485, 0.456, 0.406]
 # pixel std values
@@ -90,7 +93,7 @@ cfg.ignore_thresh = .7
 # SOLVER options
 #
 # batch size
-cfg.batch_size = 4
+cfg.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else 4
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
@@ -314,21 +317,19 @@ class YOLOv3(fluid.dygraph.Layer):
                         scores, perm=[0, 2, 1]))
             self.downsample //= 2
 
-        # TODO(liym27): Uncomment code after "return" statement can be transformed correctly.
-        # if not self.is_train:
-        #     # get pred
-        #     yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
-        #     yolo_scores = fluid.layers.concat(self.scores, axis=2)
-        #
-        #     pred = fluid.layers.multiclass_nms(
-        #         bboxes=yolo_boxes,
-        #         scores=yolo_scores,
-        #         score_threshold=cfg.valid_thresh,
-        #         nms_top_k=cfg.nms_topk,
-        #         keep_top_k=cfg.nms_posk,
-        #         nms_threshold=cfg.nms_thresh,
-        #         background_label=-1)
-        #     return pred
-        # else:
-        #     return sum(self.losses)
-        return sum(self.losses)
+        if not self.is_train:
+            # get pred
+            yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
+            yolo_scores = fluid.layers.concat(self.scores, axis=2)
+
+            pred = fluid.layers.multiclass_nms(
+                bboxes=yolo_boxes,
+                scores=yolo_scores,
+                score_threshold=cfg.valid_thresh,
+                nms_top_k=cfg.nms_topk,
+                keep_top_k=cfg.nms_posk,
+                nms_threshold=cfg.nms_thresh,
+                background_label=-1)
+            return pred
+        else:
+            return sum(self.losses)

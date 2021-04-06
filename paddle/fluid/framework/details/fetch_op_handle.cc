@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
+
 #include <string>
-#include <utility>
-#include <vector>
+
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -36,7 +36,8 @@ FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
 FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-  PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "No nodes need to wait FetchOp. Unexpceted Error."));
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,
@@ -113,11 +114,11 @@ static void TransData(const framework::LoDTensor &src_item,
                       framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
 #endif
     } else {
-      dst_item->ShareDataWith(src_item);
+      TensorCopy(src_item, platform::CPUPlace(), dst_item);
     }
   } else {
     dst_item->clear();
@@ -137,8 +138,10 @@ void FetchOpHandle::RunImpl() {
     auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
     auto &scope = scopes.at(var_handle->scope_idx());
     auto *var = scope->FindVar(var_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
-                            var_handle->name());
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::NotFound(
+            "Cannot find variable %s in execution scope.", var_handle->name()));
 
     if (var->IsType<LoDTensor>()) {
       auto &t = var->Get<framework::LoDTensor>();

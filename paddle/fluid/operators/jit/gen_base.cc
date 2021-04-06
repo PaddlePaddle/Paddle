@@ -13,10 +13,8 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen_base.h"
+
 #include <fstream>
-#include <iostream>
-#include <sstream>
-#include <vector>
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"  // for posix_memalign
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -49,9 +47,14 @@ void GenBase::dumpCode(const unsigned char* code) const {
 void* GenBase::operator new(size_t size) {
   void* ptr;
   constexpr size_t alignment = 32ul;
-  PADDLE_ENFORCE_EQ(posix_memalign(&ptr, alignment, size), 0,
-                    "GenBase Alloc %ld error!", size);
-  PADDLE_ENFORCE(ptr, "Fail to allocate GenBase CPU memory: size = %d .", size);
+  PADDLE_ENFORCE_EQ(
+      posix_memalign(&ptr, alignment, size), 0,
+      platform::errors::InvalidArgument(
+          "Jitcode generator (GenBase) allocate %ld memory error!", size));
+  PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::InvalidArgument(
+                                   "Fail to allocate jitcode generator "
+                                   "(GenBase) CPU memory: size = %d .",
+                                   size));
   return ptr;
 }
 

@@ -13,8 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class LoDTensor;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -54,7 +65,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
                             cpu_mask.get());
 #else

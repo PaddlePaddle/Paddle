@@ -13,12 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.h"
+
 #include <vector>
+
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 void ConvConcatReLUFusePass::FindConcatWithConvs(
     ir::Graph* graph,
@@ -39,7 +44,10 @@ void ConvConcatReLUFusePass::FindConcatWithConvs(
 
     for (auto node : concat_inputs) {
       auto prev_op_node = node->inputs;
-      PADDLE_ENFORCE_EQ(prev_op_node.size(), 1);
+      PADDLE_ENFORCE_EQ(prev_op_node.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Node(%s) input size(%d) must be 1.", node->Name(),
+                            prev_op_node.size()));
       auto* conv_op = prev_op_node[0];
       if (conv_op->Op()->Type() != "conv2d") return;
 
@@ -103,7 +111,8 @@ void ConvConcatReLUFusePass::FuseConvConcatReLU(
 }
 
 void ConvConcatReLUFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   std::unordered_map<const Node*, int> concat_with_convs_counter;
@@ -117,3 +126,10 @@ void ConvConcatReLUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_concat_relu_mkldnn_fuse_pass,
               paddle::framework::ir::ConvConcatReLUFusePass);
+
+REGISTER_PASS_CAPABILITY(conv_concat_relu_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("concat", 0)
+            .EQ("relu", 0));

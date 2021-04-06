@@ -14,6 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/platform/complex128.h"
+#include "paddle/fluid/platform/complex64.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
@@ -41,7 +43,7 @@ struct SameDimsElemwiseSub<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 grid_size = dim3(((size + 1) / 2 + PADDLE_CUDA_THREAD_SIZE - 1) /
+    dim3 grid_size = dim3(((size + 7) / 8 + PADDLE_CUDA_THREAD_SIZE - 1) /
                               PADDLE_CUDA_THREAD_SIZE,
                           1);
     dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
@@ -99,7 +101,11 @@ REGISTER_OP_CUDA_KERNEL(
                               paddle::platform::float16>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex64>,
+    ops::ElementwiseSubKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -107,8 +113,11 @@ REGISTER_OP_CUDA_KERNEL(
                                   paddle::platform::float16>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+                                  paddle::platform::complex64>,
+    ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::complex128>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_sub_grad_grad,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -118,4 +127,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         int>,
     ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>);
+                                        int64_t>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex64>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::complex128>);

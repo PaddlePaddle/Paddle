@@ -38,7 +38,7 @@ class TestCreateGlobalVarError(unittest.TestCase):
             def test_dtype():
                 fluid.layers.create_global_var([1, 2, 3], 2.0, np.complex128)
 
-            self.assertRaises(ValueError, test_dtype)
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gflags/gflags.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #endif
 
@@ -45,7 +45,7 @@ DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDA related related FLAG
@@ -84,7 +84,7 @@ DEFINE_string(selected_gpus, "",
               "share-memory only.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * CUDNN related FLAG
@@ -167,7 +167,7 @@ DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
             "batch_norm, default is False.");
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * NCCL related FLAG
@@ -377,7 +377,7 @@ DEFINE_double(
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
     "reserve the rest for page tables, etc");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 /**
  * Memory related FLAG
@@ -473,3 +473,106 @@ DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "each CUDAPlace. If you don't need to limit the memory, "
               "you should set FLAGS_local_exe_sub_scope_limit=-1. "
               "The default value is 256 MBytes.");
+
+/**
+ * MKLDNN related FLAG
+ * Name: use_mkldnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+
+/**
+ * Debug related FLAG
+ * Name: FLAGS_call_stack_level
+ * Since Version: 2.0.0
+ * Value Range: int, default=2
+ * Example:
+ * Note: Used to debug. Determine the call stack to print when error or
+ * exeception happens.
+ * If FLAGS_call_stack_level == 0, only the error message summary will be shown.
+ * If FLAGS_call_stack_level == 1, the python stack and  error message summary
+ * will be shown.
+ * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
+ * message summary will be shown.
+ */
+#ifdef PADDLE_ON_INFERENCE
+static const int32_t kDefaultCallStackLevel = 2;
+#else
+static const int32_t kDefaultCallStackLevel = 1;
+#endif
+
+DEFINE_int32(
+    call_stack_level, kDefaultCallStackLevel,
+    "Determine the call stack to print when error or exeception happens."
+    // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
+    // "If FLAGS_call_stack_level == 0, only the error message summary will be "
+    // "shown. "
+    "If FLAGS_call_stack_level == 1, the python stack and error message "
+    "summary will be shown."
+    "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
+    "error message summary will be shown.");
+
+/**
+ * Debug related FLAG
+ * Name: sort_sum_gradient
+ * Since Version: 2.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, gradients are summed by the reverse order of
+ * the forward execution sequence.
+ */
+DEFINE_bool(sort_sum_gradient, false,
+            "Sum gradients by the reverse order of "
+            "the forward execution sequence.");
+
+/**
+ * Performance related FLAG
+ * Name: max_inplace_grad_add
+ * Since Version: 2.0.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: The maximum number of inplace grad_add.
+ */
+DEFINE_int32(
+    max_inplace_grad_add, 0,
+    "The maximum number of inplace grad_add. When doing "
+    "gradient accumulation, if the number of gradients need to that "
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "instead of sum. Default is 0.");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_on
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be enabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_on, "",
+              "List of OneDNN operation types to be turned on");
+
+/**
+ * Debug related FLAG
+ * Name: tracer_mkldnn_ops_off
+ * Since Version: 2.0.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be disabled.
+ */
+DEFINE_string(tracer_mkldnn_ops_off, "",
+              "List of OneDNN operation types to be turned off");
+
+/**
+ * CUDNN related FLAG
+ * Name: conv2d_disable_cudnn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Disable cudnn in conv2d.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DEFINE_bool(conv2d_disable_cudnn, false, "Disable cudnn in conv2d");
+#endif

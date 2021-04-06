@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit
@@ -28,21 +29,21 @@ class Config(object):
     config for training
     '''
     # encoder rnn hidden_size
-    encoder_size = 200
+    encoder_size = 8
     # decoder size for decoder stage
-    decoder_size = 128
+    decoder_size = 8
     # size for word embedding
-    word_vector_dim = 128
+    word_vector_dim = 8
     # max length for label padding
-    max_length = 5
+    max_length = 3
     # optimizer setting
     LR = 1.0
     learning_rate_decay = None
 
     # batch size to train
-    batch_size = 16
+    batch_size = 2
     # class number to classify
-    num_classes = 481
+    num_classes = 64
 
     use_gpu = False
     # special label for start and end
@@ -54,7 +55,7 @@ class Config(object):
     TRAIN_LIST_FILE_NAME = "train.list"
 
     # data shape for input image
-    DATA_SHAPE = [1, 48, 384]
+    DATA_SHAPE = [1, 16, 64]
 
 
 class ConvBNPool(fluid.dygraph.Layer):
@@ -123,13 +124,13 @@ class OCRConv(fluid.dygraph.Layer):
     def __init__(self, is_test=False, use_cudnn=True):
         super(OCRConv, self).__init__()
         self.conv_bn_pool_1 = ConvBNPool(
-            2, [16, 16], [1, 16], is_test=is_test, use_cudnn=use_cudnn)
+            2, [8, 8], [1, 8], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_2 = ConvBNPool(
-            2, [32, 32], [16, 32], is_test=is_test, use_cudnn=use_cudnn)
+            2, [8, 8], [8, 8], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_3 = ConvBNPool(
-            2, [64, 64], [32, 64], is_test=is_test, use_cudnn=use_cudnn)
+            2, [8, 8], [8, 8], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_4 = ConvBNPool(
-            2, [128, 128], [64, 128],
+            2, [16, 16], [8, 16],
             is_test=is_test,
             pool=False,
             use_cudnn=use_cudnn)
@@ -211,9 +212,9 @@ class EncoderNet(fluid.dygraph.Layer):
         self.ocr_convs = OCRConv(is_test=is_test, use_cudnn=use_cudnn)
 
         self.fc_1_layer = Linear(
-            768, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False)
+            32, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False)
         self.fc_2_layer = Linear(
-            768, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False)
+            32, rnn_hidden_size * 3, param_attr=para_attr, bias_attr=False)
         self.gru_forward_layer = DynamicGRU(
             size=rnn_hidden_size,
             h_0=h_0,
@@ -240,10 +241,9 @@ class EncoderNet(fluid.dygraph.Layer):
 
         transpose_conv_features = fluid.layers.transpose(
             conv_features, perm=[0, 3, 1, 2])
-
         sliced_feature = fluid.layers.reshape(
             transpose_conv_features, [
-                -1, 48, transpose_conv_features.shape[2] *
+                -1, 8, transpose_conv_features.shape[2] *
                 transpose_conv_features.shape[3]
             ],
             inplace=False)
@@ -373,11 +373,10 @@ class OCRAttention(fluid.dygraph.Layer):
 class TestDygraphOCRAttention(unittest.TestCase):
     def test_while_op(self):
         seed = 90
-        epoch_num = 2
+        epoch_num = 1
         if core.is_compiled_with_cuda():
-            batch_num = 20
+            batch_num = 3
         else:
-            print("in CPU")
             batch_num = 2
         np.random.seed = seed
         image_np = np.random.randn(Config.batch_size, Config.DATA_SHAPE[0],
@@ -402,10 +401,9 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 dtype='int64').reshape([1, Config.max_length])))
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
@@ -439,7 +437,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         for param in ocr_attention.parameters():
                             if param.name not in dy_param_init_value:
                                 dy_param_init_value[param.name] = param.numpy()
-                    avg_loss.backward(backward_strategy)
+                    avg_loss.backward()
                     dy_grad_value = {}
                     for param in ocr_attention.parameters():
                         if param.trainable:
@@ -455,9 +453,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            # print("static start")
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             ocr_attention = OCRAttention()
@@ -523,7 +520,6 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     static_param_value = {}
                     static_grad_value = {}
                     static_out = out[0]
-                    # static_test_grad = out[1]
                     for i in range(1, len(static_param_name_list) + 1):
                         static_param_value[static_param_name_list[i - 1]] = out[
                             i]
@@ -533,14 +529,15 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
 
-        self.assertTrue(np.array_equal(static_out, dy_out))
+        self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-20))
+            self.assertTrue(np.allclose(value, dy_param_value[key], rtol=1e-05))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

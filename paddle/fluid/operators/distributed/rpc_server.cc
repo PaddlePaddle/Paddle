@@ -15,14 +15,22 @@
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 #include <fstream>
-#include <iostream>
-#include <limits>
 #include <string>
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RequestHandler;
 
 void RPCServer::ShutDown() {
   VLOG(3) << "RPCServer ShutDown ";
@@ -151,9 +159,9 @@ void RPCServer::RegisterVar(const std::string& var_name,
 
   {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (var_map_.find(var_name) != var_map_.end()) {
-      PADDLE_ENFORCE(false, "%s alreay in var_map", var_name);
-    }
+    PADDLE_ENFORCE_EQ(
+        var_map_.find(var_name), var_map_.end(),
+        platform::errors::AlreadyExists("%s already in var_map.", var_name));
     var_map_[var_name] = h;
   }
 

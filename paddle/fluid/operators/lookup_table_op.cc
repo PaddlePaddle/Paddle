@@ -17,7 +17,9 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace paddle {
 namespace operators {
@@ -92,31 +94,49 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
-    // NOTE(minqiyang): grad_inplace is an temporal attribute,
-    // please do NOT set this attribute in python layer.
-    AddAttr<bool>("grad_inplace",
-                  "(boolean, default false) "
-                  "If the grad op reuse the input's variable.")
+
+    // for parameter training config
+    AddAttr<bool>("remote_prefetch",
+                  "pull sparse params from parameters, this can only be used "
+                  "in distributed training")
         .SetDefault(false);
 
-    // for parameter prefetch
-    AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
-    AddAttr<std::vector<std::string>>(
-        "epmap",
-        "(string vector, default 127.0.0.1:6164)"
-        "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+    AddAttr<std::string>("entry_config",
+                         "embedding sparse feature entry config, "
+                         " probability entry / counting "
+                         " this can only be used in distributed training"
+                         "entry")
+        .SetDefault("");
+
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training.")
+        .SetDefault(false);
+
+    AddAttr<std::string>("entry",
+                         "(std::string, default "
+                         ") for entry attribute.")
+        .SetDefault("none");
+
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
-
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<bool>("grad_inplace",
+                  "(boolean, default false) "
+                  "If the grad op reuse the input's variable.")
+        .SetDefault(false);
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -203,6 +223,21 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
-                       ops::LookupTableKernel<int8_t>);
+                       ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
-                       ops::LookupTableGradKernel<double>);
+                       ops::LookupTableGradKernel<double>,
+                       ops::LookupTableGradKernel<paddle::platform::bfloat16>);
+
+/* ==========================  register checkpoint ===========================*/
+
+REGISTER_OP_VERSION(lookup_table)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade lookup_table add 1 attribute [entry_config].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "entry_config",
+            "(std::string) embedding sparse feature entry config.", ""));
+
+/* ========================================================================== */

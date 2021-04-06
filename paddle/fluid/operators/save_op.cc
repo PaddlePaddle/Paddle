@@ -89,6 +89,7 @@ REGISTER_OP_CPU_KERNEL(
     save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

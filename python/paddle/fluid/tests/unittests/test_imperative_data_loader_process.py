@@ -18,6 +18,7 @@ import multiprocessing
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.reader import _reader_process_loop
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -66,7 +67,7 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
             loader._data_queue = queue.Queue(self.batch_num + 1)
-            loader._reader_process_loop()
+            _reader_process_loop(loader._batch_reader, loader._data_queue)
             # For clean memory mapped files
             util_queue = multiprocessing.Queue(self.batch_num + 1)
             for _ in range(self.batch_num):
@@ -94,8 +95,8 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             loader._data_queue = queue.Queue(self.batch_num + 1)
             exception = None
             try:
-                loader._reader_process_loop()
-            except core.EnforceNotMet as ex:
+                _reader_process_loop(loader._batch_reader, loader._data_queue)
+            except ValueError as ex:
                 exception = ex
             self.assertIsNotNone(exception)
 

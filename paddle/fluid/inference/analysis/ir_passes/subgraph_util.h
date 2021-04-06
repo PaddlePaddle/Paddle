@@ -28,6 +28,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
+namespace framework {
+class BlockDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace analysis {
 

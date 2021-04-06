@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+
 #include <algorithm>
 #include <memory>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
@@ -104,7 +106,12 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       places_(places),
       graphs_(std::move(graphs)),
       feed_status_(places.size(), FeedStatus::kNone) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+                    platform::errors::InvalidArgument(
+                        "The number of places and the number of local scopes "
+                        "should be equal, but got number of places is %d and "
+                        "number of local scopes is %d.",
+                        places_.size(), local_scopes_.size()));
 
   PADDLE_ENFORCE_EQ(places_.size(), graphs_.size(),
                     platform::errors::InvalidArgument(

@@ -12,10 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thread>  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -23,7 +34,7 @@ namespace paddle {
 namespace operators {
 
 static size_t CUDADevCount() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return platform::GetCUDADeviceCount();
 #else
   return 0UL;

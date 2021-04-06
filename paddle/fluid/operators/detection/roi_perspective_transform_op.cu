@@ -30,10 +30,6 @@ namespace operators {
 #define idx4_2(index, d1, d2, d3, d4) ((index / d4 / d3) % d2)
 #define idx4_1(index, d1, d2, d3, d4) ((index / d4 / d3 / d2) % d1)
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __device__ bool GT_E(T a, T b) {
   return (a > b) || Eigen::numext::abs(a - b) < 1e-4;
@@ -284,7 +280,7 @@ __global__ void RoiTransformKernel(const float* input_data,
                                    int* mask, T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
-  CUDA_1D_KERNEL_LOOP(index, output_size) {
+  CUDA_KERNEL_LOOP(index, output_size) {
     // (n, c, out_h, out_w) is an element in the transformed output
     int out_w = idx4_4(index, num_rois, channels, transformed_height,
                        transformed_width);
@@ -463,7 +459,7 @@ __global__ void RoiTransformGradKernel(int out_size, const int* out2in_idx_data,
                                        const T* out2in_w_data,
                                        const T* out_grad_data,
                                        T* in_grad_data) {
-  CUDA_1D_KERNEL_LOOP(index, out_size * 4) {
+  CUDA_KERNEL_LOOP(index, out_size * 4) {
     int in_idx = out2in_idx_data[index];
     if (in_idx >= 0) {
       int out_idx = index / 4;

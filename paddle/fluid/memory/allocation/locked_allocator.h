@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {

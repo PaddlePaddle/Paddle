@@ -17,8 +17,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
 #endif
 
 namespace paddle {
@@ -28,10 +32,15 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 struct Linspace<paddle::platform::CPUDeviceContext, T> {
-  void operator()(T start, T end, int count, framework::Tensor* numbers,
+  void operator()(T start, T end, int count, bool align_corners,
+                  framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx) {
     T* number_data = numbers->mutable_data<T>({count}, platform::CPUPlace());
     T slice = (end - start) / (T)(count - 1);
+    if (!align_corners) {
+      slice = (end - start) / (T)count;
+      start *= (T)(count - 1) / (T)count;
+    }
     for (int i = 0; i < count; ++i) {
       number_data[i] = start + (T)i * slice;
     }
@@ -103,7 +112,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library = framework::LibraryType::kCUDNN;
     }
@@ -129,6 +138,10 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(true);
+    AddAttr<bool>("align_corners",
+                  "(bool, default false) Whether to align the corners of input"
+                  "and ouput.")
         .SetDefault(true);
     AddAttr<std::vector<int>>(
         "output_shape",
@@ -164,10 +177,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]]]
-        C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+        C[0] is the coordinates in height axis and  C[1] is the coordinates in
+        width axis.
     
     Step2:
-        Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+        Tanspose and reshape C to shape [H * W, 2] and append ones to last
+        dimension. The we get:
         C_ = [[-1.  -1.   1. ]
               [-0.5 -1.   1. ]
               [ 0.  -1.   1. ]
@@ -214,7 +229,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
@@ -260,3 +275,11 @@ REGISTER_OP_CPU_KERNEL(
     affine_grid_grad,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(affine_grid)
+    .AddCheckpoint(
+        R"ROC(
+               Compatible upgrade of affine_grid, add a new attribute [align_corners])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "align_corners",
+            "Whether to align the corners of input and output.", true));

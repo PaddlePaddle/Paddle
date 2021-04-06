@@ -16,11 +16,22 @@ limitations under the License. */
 #include <cfloat>
 #include <string>
 #include <vector>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/instance_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -35,8 +46,7 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 template <typename T>
 static __global__ void repeat_param(const T *input, T *output,
                                     const int repeat_num, const int C) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < repeat_num * C;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, repeat_num * C) {
     int index = i % C;
     output[i] = input[index];
   }
@@ -100,6 +110,15 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
+#ifdef PADDLE_WITH_HIP
+    miopenTensorDescriptor_t data_desc_;
+    miopenTensorDescriptor_t in_param_desc_;
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
+#else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t in_param_desc_;
 
@@ -107,7 +126,7 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
-
+#endif
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
                  << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -123,12 +142,22 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+        data_desc_, CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4, const_cast<int *>(dims.data()),
+        const_cast<int *>(strides.data())));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDeriveBNTensorDescriptor(
+            in_param_desc_, data_desc_, miopenBNSpatial));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDeriveBNTensorDescriptor(
             in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
+#endif
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -146,10 +175,19 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale->data<T>(), scale_tmp.data<T>(), N, C);
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        bias->data<T>(), bias_tmp.data<T>(), N, C);
+    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+    if (scale) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          scale->data<T>(), scale_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
+    if (bias) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          bias->data<T>(), bias_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &bias_tmp, static_cast<T>(0));
+    }
 
     auto handle = dev_ctx.cudnn_handle();
 
@@ -163,6 +201,35 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
     functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenBatchNormalizationForwardTraining(
+            handle, miopenBNSpatial,
+            const_cast<void *>(
+                static_cast<const void *>(CudnnDataType<T>::kOne())),
+            const_cast<void *>(
+                static_cast<const void *>(CudnnDataType<T>::kZero())),
+            data_desc_, static_cast<const void *>(x_tmp.template data<T>()),
+            data_desc_,
+            static_cast<void *>(y->template mutable_data<T>(ctx.GetPlace())),
+            in_param_desc_,
+            const_cast<void *>(static_cast<const void *>(
+                scale_tmp.template data<BatchNormParamType<T>>())),
+            const_cast<void *>(static_cast<const void *>(
+                bias_tmp.template data<BatchNormParamType<T>>())),
+            0, nullptr, nullptr, epsilon,
+            static_cast<void *>(
+                saved_mean->template mutable_data<BatchNormParamType<T>>(
+                    ctx.GetPlace())),
+            static_cast<void *>(
+                saved_variance->template mutable_data<BatchNormParamType<T>>(
+                    ctx.GetPlace()))));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTraining(
             handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
@@ -180,6 +247,7 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
+#endif
   }
 };
 
@@ -267,24 +335,27 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE_EQ(
-        scale->dims().size(), 1UL,
-        platform::errors::InvalidArgument(
-            "The `shape` in InstanceNormOp is invalid: "
-            "the size of scale's dimensions must be equal to 1. But "
-            "received: the size of scale's dimensions"
-            "is [%d]",
-            scale->dims().size()));
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C,
-                      platform::errors::InvalidArgument(
-                          "The `shape` in InstanceNormOp is invalid: "
-                          "the first dimension of scale must be equal to "
-                          "Channels([%d]). But received: "
-                          "the first dimension of scale is [%d],"
-                          "the dimensions of scale is [%s], ",
-                          C, scale->dims()[0], scale->dims()));
+    if (scale) {
+      PADDLE_ENFORCE_EQ(
+          scale->dims().size(), 1UL,
+          platform::errors::InvalidArgument(
+              "The `shape` in InstanceNormOp is invalid: "
+              "the size of scale's dimensions must be equal to 1. But "
+              "received: the size of scale's dimensions"
+              "is [%d]",
+              scale->dims().size()));
+      PADDLE_ENFORCE_EQ(scale->dims()[0], C,
+                        platform::errors::InvalidArgument(
+                            "The `shape` in InstanceNormOp is invalid: "
+                            "the first dimension of scale must be equal to "
+                            "Channels([%d]). But received: "
+                            "the first dimension of scale is [%d],"
+                            "the dimensions of scale is [%s], ",
+                            C, scale->dims()[0], scale->dims()));
+    }
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
 
     const int n = x->numel();
     const int block = 512;
@@ -300,8 +371,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
     Tensor d_bias_tmp =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale->data<T>(), scale_tmp.data<T>(), N, C);
+    if (scale) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          scale->data<T>(), scale_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
 
     std::vector<int> dims;
     std::vector<int> strides;
@@ -317,6 +392,15 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       return;
     }
 
+#ifdef PADDLE_WITH_HIP
+    miopenTensorDescriptor_t data_desc_;
+    miopenTensorDescriptor_t in_param_desc_;
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
+#else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t in_param_desc_;
 
@@ -324,6 +408,8 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
+#endif
+
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
                  << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -331,12 +417,22 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
+        data_desc_, CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4, const_cast<int *>(dims.data()),
+        const_cast<int *>(strides.data())));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDeriveBNTensorDescriptor(
+            in_param_desc_, data_desc_, miopenBNSpatial));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDeriveBNTensorDescriptor(
             in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
+#endif
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -345,6 +441,21 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     const auto *saved_var_data =
         saved_var->template data<BatchNormParamType<T>>();
     if (d_scale && d_bias) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenBatchNormalizationBackward(
+              dev_ctx.cudnn_handle(), miopenBNSpatial, CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(), CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
+              data_desc_, d_y_tmp.template data<T>(), data_desc_,
+              d_x->template mutable_data<T>(ctx.GetPlace()), in_param_desc_,
+              scale_tmp.template data<BatchNormParamType<T>>(),
+              d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
+                  ctx.GetPlace()),
+              d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
+                  ctx.GetPlace()),
+              epsilon, saved_mean_data, saved_var_data));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnBatchNormalizationBackward(
               dev_ctx.cudnn_handle(), CUDNN_BATCHNORM_SPATIAL,
@@ -358,10 +469,11 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
               d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
                   ctx.GetPlace()),
               epsilon, saved_mean_data, saved_var_data));
+#endif
     } else {
       if (d_x) {
         GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
-            d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
+            d_y->data<T>(), scale_tmp.data<BatchNormParamType<T>>(),
             saved_mean_data, x->data<T>(), saved_var_data, C, H * W * D,
             d_x->data<T>());
       }
@@ -374,10 +486,17 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
           d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
     }
 
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
+#endif
   }
 };
 
@@ -610,7 +729,6 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     auto *ddY = ctx.Output<Tensor>("DDY");
 
     const T *x_data = X->data<T>();
-    const T *scale_data = Scale->data<T>();
     const T *dy_data = dY->data<T>();
     const T *ddx_data = (ddX == nullptr ? nullptr : ddX->data<T>());
 
@@ -620,6 +738,9 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const T *mean_data = Saved_mean->data<T>();
     const T *variance_data = Saved_variance->data<T>();
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+
     auto &x_dims = X->dims();
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
@@ -627,14 +748,18 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const int n = X->numel();
     int sample_size = n / N / C;
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    Tensor scale_tmp;
+    if (!Scale) {
+      scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
+      set_zero(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
+    const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
+
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = NxC;
     const int grid1 = (C + block - 1) / block;
-
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
 
     if (dX) {
       T *dx_data = dX->mutable_data<T>(ctx.GetPlace());
@@ -672,6 +797,17 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_CUDA_KERNEL(
+    instance_norm, ops::InstanceNormKernel<plat::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    instance_norm_grad,
+    ops::InstanceNormGradKernel<plat::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(instance_norm_grad_grad,
+                        ops::InstanceNormDoubleGradKernel<
+                            paddle::platform::CUDADeviceContext, float>);
+#else
 REGISTER_OP_CUDA_KERNEL(
     instance_norm, ops::InstanceNormKernel<plat::CUDADeviceContext, float>,
     ops::InstanceNormKernel<plat::CUDADeviceContext, double>);
@@ -685,3 +821,4 @@ REGISTER_OP_CUDA_KERNEL(
                                       float>,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                       double>);
+#endif

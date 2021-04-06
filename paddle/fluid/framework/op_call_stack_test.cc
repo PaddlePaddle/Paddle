@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_call_stack.h"
 
 #include <string>
-#include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

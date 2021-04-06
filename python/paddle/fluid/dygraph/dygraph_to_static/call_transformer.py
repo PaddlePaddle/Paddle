@@ -19,6 +19,8 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
 
+PDB_SET = "pdb.set_trace"
+
 
 class CallTransformer(gast.NodeTransformer):
     """
@@ -62,8 +64,13 @@ class CallTransformer(gast.NodeTransformer):
             return node
 
         func_str = ast_to_source_code(node.func).strip()
-        new_func_str = "fluid.dygraph.dygraph_to_static.convert_call({})".format(
-            func_str)
+
+        # NOTE(liym27): Don't convert `pad.set_trace` even if the convertion doesn't work finally, because
+        # it is clearer to see where it is called from.
+        if PDB_SET in func_str:
+            return node
+
+        new_func_str = "paddle.jit.dy2static.convert_call({})".format(func_str)
         new_func_ast = gast.parse(new_func_str).body[0].value
         node.func = new_func_ast
 

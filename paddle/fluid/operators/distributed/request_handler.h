@@ -46,6 +46,7 @@ constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
 constexpr char kRequestNotify[] = "RequestNotify";
+constexpr char kRequestSendAndRecv[] = "RequestSendAndRecv";
 
 constexpr char kSendRPC[] = "SendRPC";
 constexpr char kGetRPC[] = "GetRPC";
@@ -57,6 +58,8 @@ constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
 constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
 constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
 constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
+constexpr char kSendAndRecvRPC[] = "SendAndRecvRPC";
+constexpr int64_t kPrefetchTimeout = 60000;
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
@@ -64,6 +67,7 @@ constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
 #define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
+#define STEP_COUNTER "@PS_STEP_COUNTER@"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"

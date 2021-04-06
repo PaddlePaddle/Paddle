@@ -13,9 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
-
-#include <memory>
 #include <string>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -117,6 +128,8 @@ REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext,
+                     paddle::platform::bfloat16>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,

@@ -15,9 +15,12 @@
 from __future__ import print_function
 
 import numpy as np
+import six
+import os
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
@@ -33,10 +36,11 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
-from .dygraph.learning_rate_scheduler import LearningRateDecay
+from .dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
+from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
@@ -46,9 +50,8 @@ __all__ = [
     'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
     'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
     'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
-    'RecomputeOptimizer'
+    'LarsMomentumOptimizer', 'LambOptimizer', 'ExponentialMovingAverage',
+    'PipelineOptimizer', 'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
 
 
@@ -67,13 +70,16 @@ class Optimizer(object):
                  regularization=None,
                  grad_clip=None,
                  name=None):
-        self._parameter_list = parameter_list
+        # Because of the loop import, so place it in the function body
+        from paddle.optimizer.lr import LRScheduler
+        self._parameter_list = list(
+            parameter_list) if parameter_list is not None else None
         self._name = name
         if framework.in_dygraph_mode():
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, LearningRateDecay):
+            if not isinstance(learning_rate,
+                              (float, LearningRateDecay, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or LearningRateDecay, got %s here"
+                    "learning rate should be float or LRScheduler, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -88,11 +94,11 @@ class Optimizer(object):
                             % regularization.__str__())
                         break
         else:
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, framework.Variable):
+            if not isinstance(learning_rate,
+                              (float, framework.Variable, LRScheduler)):
                 raise TypeError(
-                    "learning rate should be float or Variable, got %s here" %
-                    type(learning_rate))
+                    "learning rate should be float or LRScheduler, got %s here"
+                    % type(learning_rate))
 
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
@@ -102,8 +108,12 @@ class Optimizer(object):
         self.regularization = regularization
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+
         self._dtype = None
+        # Infer the dtype form parameter
+        if self._parameter_list:
+            self._dtype = self._parameter_list[0].dtype
+
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
@@ -142,27 +152,31 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
+        from paddle.optimizer.lr import LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
+        if isinstance(self._learning_rate, LRScheduler):
+            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+            return state_dict
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_tmp = None
-            if framework.in_dygraph_mode():
+            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                var_tmp = None
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
-            else:
-                var_temp = Variable(None, name='global_step', dtype='int32')
 
-            tensor.fill_constant(
-                [1], "int32", self._learning_rate.step_num, out=var_temp)
+                tensor.fill_constant(
+                    [1], "int32", self._learning_rate.step_num, out=var_temp)
 
-            state_dict['global_step'] = var_temp
+                state_dict['global_step'] = var_temp
         return state_dict
 
     @framework.dygraph_only
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
@@ -174,48 +188,53 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
+                import paddle.fluid as fluid
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.disable_static()
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+                state_dict = emb.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                scheduler = paddle.optimizer.lr.NoamDecay(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
+                state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
-            assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
-            global_step = state_dict['global_step']
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
-            if isinstance(global_step, core.VarBase):
-                step_np = global_step
-                step_np = np.array(step_np.value().get_tensor())
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
+                assert 'global_step' in state_dict, \
+                        'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                global_step = state_dict['global_step']
 
-                self._learning_rate.step_num = int(step_np[0])
-            elif isinstance(global_step, Variable):
-                step_np = global_step.numpy()
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
-                self._learning_rate.step_num = step_np[0]
-            elif isinstance(global_step, np.ndarray):
-                assert global_step.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( global_step.shape )
-                self._learning_rate.step_num = global_step[0]
-            else:
-                raise RuntimeError(
-                    "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
-                    type(global_step))
+                if isinstance(global_step, Variable):
+                    step_np = global_step
+                    step_np = np.array(step_np.value().get_tensor())
+                    assert step_np.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( step_np.shape )
+
+                    self._learning_rate.step_num = int(step_np[0])
+                elif isinstance(global_step, np.ndarray):
+                    assert global_step.shape == (1,),  \
+                            "global step shape is (1,), the shape is {}".format( global_step.shape )
+                    self._learning_rate.step_num = global_step[0]
+                else:
+                    raise RuntimeError(
+                        "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                        type(global_step))
 
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
@@ -248,10 +267,37 @@ class Optimizer(object):
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+
     def get_opti_var_name_list(self):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+        from paddle.optimizer.lr import LRScheduler
+        if isinstance(self._learning_rate, LRScheduler):
+            lr_var = self._global_learning_rate()
+            # only create global lr_var once
+            if not isinstance(lr_var, framework.Variable):
+                lr_name = unique_name.generate('learning_rate')
+                self._learning_rate._var_name = lr_name
+                lr_var = self.helper.create_global_variable(
+                    name=lr_name,
+                    shape=[1],
+                    persistable=True,
+                    stop_gradient=True,
+                    dtype='float32' if self._dtype is None else self._dtype)
+                main_prog = framework.default_main_program()
+                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_var = lr_var
+                self._learning_rate_map[framework.default_main_program(
+                )] = lr_var
+
+            lr_value = float(self._learning_rate())
+            self.helper.set_variable_initializer(
+                lr_var, initializer=Constant(value=lr_value))
+            return
+
         if imperative_base.enabled():
             # create learning rate Variable
             if isinstance(self._learning_rate, float):
@@ -297,10 +343,86 @@ class Optimizer(object):
                 persistable=True)
 
     @framework.dygraph_only
+    def set_lr(self, value):
+        """
+        :api_attr: imperative
+        
+        Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
+        this API cannot be invoked, because it will lead to conflict.
+
+        Args:
+            value (float|Variable): the value of learning rate
+
+        Returns:
+            None
+          
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                        
+                with fluid.dygraph.guard():
+                    linear = fluid.dygraph.nn.Linear(10, 10)
+
+                    adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+
+                    # set learning rate manually by python float value
+                    lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+                    for i in range(5):
+                        adam.set_lr(lr_list[i])
+                        lr = adam.current_step_lr()
+                        print("current lr is {}".format(lr))
+                    # Print:
+                    #    current lr is 0.2
+                    #    current lr is 0.3
+                    #    current lr is 0.4
+                    #    current lr is 0.5
+                    #    current lr is 0.6
+
+
+                    # set learning rate manually by framework Variable
+                    lr_var = fluid.layers.create_global_var(
+                        shape=[1], value=0.7, dtype='float32')
+                    adam.set_lr(lr_var)
+                    lr = adam.current_step_lr()
+                    print("current lr is {}".format(lr))
+                    # Print:
+                    #    current lr is 0.7
+
+
+
+        """
+        if not isinstance(value, (framework.Variable, float)):
+            raise TypeError(
+                "The type of 'value' in optimizer.set_lr must be (float, Variable), but received %s."
+                % (type(value)))
+        if isinstance(self._learning_rate, LearningRateDecay):
+            raise RuntimeError(
+                "optimizer's learning rate can't be LearningRateDecay when invoke this API, because this will lead to conflict."
+            )
+        if isinstance(value, float):
+            self._learning_rate = value
+            current_lr = self._global_learning_rate()
+            if current_lr is not None:
+                global_block = framework.default_main_program().global_block()
+                global_block.append_op(
+                    type='fill_constant',
+                    outputs={'Out': [current_lr]},
+                    attrs={
+                        'dtype': current_lr.dtype,
+                        'shape': list(current_lr.shape),
+                        'value': float(value)
+                    },
+                    stop_gradient=True)
+        else:
+            assert len(value.shape) == 1 and value.shape[
+                0] == 1, "optimizer's learning rate must be 1-D Tensor with shape[1]"
+            self._learning_rate_map[framework.default_main_program()] = value
+
+    @framework.dygraph_only
     def current_step_lr(self):
         """
-        .. note::
-          **This API is ONLY available in Dygraph mode**
+        :api_attr: imperative
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
@@ -346,11 +468,14 @@ class Optimizer(object):
 
         """
         current_lr = self._global_learning_rate()
-        if current_lr:
+        if isinstance(current_lr, framework.Variable):
             return self._global_learning_rate().numpy()[0]
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
+        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
+            step_lr = self._learning_rate()
+            return step_lr.numpy()[0]
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
@@ -611,9 +736,6 @@ class Optimizer(object):
                     outputs={"ParamOut": param_and_grad[0]})
         return new_param_grads, (table_param, table_grad), sgd_op
 
-    def _append_dgc_ops(self, param_and_grad):
-        pass
-
     def backward(self,
                  loss,
                  startup_program=None,
@@ -629,7 +751,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
@@ -650,10 +772,16 @@ class Optimizer(object):
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
-        self._dtype = loss.dtype
+        # Infer dtype by loss if None
+        if self._dtype is None:
+            self._dtype = loss.dtype
+
         if framework.in_dygraph_mode():
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -675,9 +803,6 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -705,9 +830,6 @@ class Optimizer(object):
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
-        params_grads, table_param_and_grad, table_optimize_op = \
-            self._process_distribute_lookuptable(params_grads)
-
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
@@ -719,10 +841,6 @@ class Optimizer(object):
                                                  self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
-        if table_optimize_op is not None:
-            optimize_ops.append(table_optimize_op)
-            params_grads.append(table_param_and_grad)
-
         return optimize_ops
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -765,6 +883,8 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+
+        If not, new gradient will accumulat on previous gradient.
         
         Returns:
             None
@@ -806,7 +926,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
@@ -827,6 +947,7 @@ class Optimizer(object):
 
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -840,7 +961,7 @@ class Optimizer(object):
 
 
 class SGDOptimizer(Optimizer):
-    """
+    r"""
     Optimizer of the stochastic gradient descent algorithm.
 
     .. math::
@@ -850,7 +971,7 @@ class SGDOptimizer(Optimizer):
     Parameters:
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -934,7 +1055,7 @@ class SGDOptimizer(Optimizer):
 
 
 class MomentumOptimizer(Optimizer):
-    """
+    r"""
 
     Simple Momentum optimizer with velocity state
 
@@ -958,7 +1079,7 @@ class MomentumOptimizer(Optimizer):
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
@@ -1069,7 +1190,7 @@ class MomentumOptimizer(Optimizer):
 
 
 class DGCMomentumOptimizer(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
@@ -1106,7 +1227,7 @@ class DGCMomentumOptimizer(Optimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
@@ -1449,6 +1570,11 @@ class DGCMomentumOptimizer(Optimizer):
 
     @imperative_base.no_grad
     def apply_gradients(self, params_grads):
+        # Note: since we can't use all_reduce_op now,
+        # dgc_op should be the last op of one grad.
+        # Maybe need a grad allreduce pass.
+        self._append_dgc_ops(params_grads)
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
@@ -1484,7 +1610,7 @@ class DGCMomentumOptimizer(Optimizer):
 
 
 class LarsMomentumOptimizer(Optimizer):
-    """
+    r"""
     Momentum optimizer with LARS support
 
     The update equations are as follows:
@@ -1494,7 +1620,7 @@ class LarsMomentumOptimizer(Optimizer):
         & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param + epsilon)
 
         & param = param - velocity
 
@@ -1504,7 +1630,7 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1518,7 +1644,9 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
+        epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
+        
     Examples:
         .. code-block:: python
 
@@ -1549,7 +1677,9 @@ class LarsMomentumOptimizer(Optimizer):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
-                 name=None):
+                 name=None,
+                 exclude_from_weight_decay=None,
+                 epsilon=0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
@@ -1562,6 +1692,11 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
+        self._epsilon = float(epsilon)
+        if exclude_from_weight_decay is None:
+            self._exclude_from_weight_decay = []
+        else:
+            self._exclude_from_weight_decay = exclude_from_weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1571,6 +1706,14 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        _lars_weight_decay = self._lars_weight_decay
+        param_name = param_and_grad[0].name
+        if len(self._exclude_from_weight_decay) > 0:
+            for name in self._exclude_from_weight_decay:
+                if name in param_name:
+                    _lars_weight_decay = 0.0
+                    break
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -1590,7 +1733,8 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay
+                "lars_weight_decay": _lars_weight_decay,
+                "epsilon": self._epsilon
             },
             stop_gradient=True)
 
@@ -1598,7 +1742,7 @@ class LarsMomentumOptimizer(Optimizer):
 
 
 class AdagradOptimizer(Optimizer):
-    """
+    r"""
     The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
     different learning rates to individual parameters.
 
@@ -1623,7 +1767,7 @@ class AdagradOptimizer(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1714,7 +1858,7 @@ class AdagradOptimizer(Optimizer):
 
 
 class AdamOptimizer(Optimizer):
-    """
+    r"""
     The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
@@ -1748,7 +1892,7 @@ class AdamOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1980,7 +2124,7 @@ class AdamOptimizer(Optimizer):
 
 
 class AdamaxOptimizer(Optimizer):
-    """
+    r"""
     The Adamax optimizer is implemented based on the Adamax Optimization 
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
@@ -2014,7 +2158,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2152,7 +2296,7 @@ class AdamaxOptimizer(Optimizer):
 
 
 class DpsgdOptimizer(Optimizer):
-    """
+    r"""
     We implement the Dpsgd optimizer according to CCS16 paper -
     Deep Learning with Differential Privacy.
 
@@ -2189,7 +2333,7 @@ class DpsgdOptimizer(Optimizer):
         clip (float): clipping threshold
         batch_size (float): batch size.
         sigma (float): for gaussian noise.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
     Notes:
@@ -2247,7 +2391,7 @@ class DpsgdOptimizer(Optimizer):
 
 
 class DecayedAdagradOptimizer(Optimizer):
-    """
+    r"""
     The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
     the decay rate to solve the problem of a sharp drop in the learning rate
     during model training when using the AdagradOptimizer.
@@ -2272,7 +2416,7 @@ class DecayedAdagradOptimizer(Optimizer):
         decay (float, optional): The decay rate. The default value is 0.95.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2357,7 +2501,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
 
 class AdadeltaOptimizer(Optimizer):
-    """
+    r"""
     **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:
@@ -2377,7 +2521,7 @@ class AdadeltaOptimizer(Optimizer):
         learning_rate (float|Variable): global learning rate.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2476,7 +2620,7 @@ class AdadeltaOptimizer(Optimizer):
 
 
 class RMSPropOptimizer(Optimizer):
-    """
+    r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
     rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
@@ -2534,7 +2678,7 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2664,7 +2808,7 @@ class RMSPropOptimizer(Optimizer):
 
 
 class FtrlOptimizer(Optimizer):
-    """
+    r"""
     FTRL (Follow The Regularized Leader) Optimizer.
 
     The paper that proposed Follow The Regularized Leader (FTRL):
@@ -2708,7 +2852,7 @@ class FtrlOptimizer(Optimizer):
         l1 (float): L1 regularization strength, default is 0.0.
         l2 (float): L2 regularization strength, default is 0.0.
         lr_power (float): Learning Rate Power, default is -0.5.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2815,7 +2959,7 @@ class FtrlOptimizer(Optimizer):
                 "LinearAccumOut": linear_acc
             },
             attrs={"l1": self._l1,
-                   "l2": self._l1,
+                   "l2": self._l2,
                    "lr_power": self._lr_power},
             stop_gradient=True)
 
@@ -2823,7 +2967,7 @@ class FtrlOptimizer(Optimizer):
 
 
 class LambOptimizer(AdamOptimizer):
-    """
+    r"""
     LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
     LAMB Optimizer is designed to scale up the batch size of training without losing 
@@ -2838,6 +2982,10 @@ class LambOptimizer(AdamOptimizer):
         m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t 
 
         v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
+
+        m_t &= \\frac{m_t}{\\beta_1^t}
+
+        v_t &= \\frac{v_t}{\\beta_2^t}
 
         r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
@@ -2856,7 +3004,7 @@ class LambOptimizer(AdamOptimizer):
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2866,8 +3014,9 @@ class LambOptimizer(AdamOptimizer):
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
             some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
+            :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
+            to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -2892,7 +3041,6 @@ class LambOptimizer(AdamOptimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
-    # these two not used in op temporarily
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -2943,6 +3091,16 @@ class LambOptimizer(AdamOptimizer):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _, _, _, _ = core.ops.lamb(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'beta1', self._beta1,
+                'beta2', self._beta2, 'epsilon', self._epsilon, 'weight_decay',
+                weight_decay)
+            return None
 
         # create the lamb optimize op
         lamb_op = block.append_op(
@@ -2950,7 +3108,7 @@ class LambOptimizer(AdamOptimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
+                "LearningRate": lr,
                 "Moment1": moment1,
                 "Moment2": moment2,
                 "Beta1Pow": beta1_pow_acc,
@@ -2959,7 +3117,9 @@ class LambOptimizer(AdamOptimizer):
             outputs={
                 "ParamOut": param_and_grad[0],
                 "Moment1Out": moment1,
-                "Moment2Out": moment2
+                "Moment2Out": moment2,
+                "Beta1PowOut": beta1_pow_acc,
+                "Beta2PowOut": beta2_pow_acc
             },
             attrs={
                 "beta1": self._beta1,
@@ -2995,7 +3155,7 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """
+    r"""
 	:api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
@@ -3304,7 +3464,7 @@ class ModelAverage(Optimizer):
 
 
 class ExponentialMovingAverage(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
@@ -3442,8 +3602,10 @@ class ExponentialMovingAverage(object):
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
-                layers.assign(input=ema, output=param)
+                        layers.assign(
+                            output=param, input=ema / (1.0 - decay_pow))
+                    with switch.default():
+                        layers.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -3557,302 +3719,1100 @@ class PipelineOptimizer(object):
     """
 	:api_attr: Static Graph
 
-    Pipeline Optimizer
-
-    Train with pipeline mode. The program will be split by cut_list. 
-
-    If the len of cut_list is k, then the whole program (including \
-    backward part) will be split to 2*k-1 sections. 
-    
-    So the length of place_list and concurrency_list must be also 2*k-1.
-
-    Note: Though the asynchronous mode is applied in pipeline training to speed up, \
-    the final performance depends on the training progress of each pipeline heavily.
-
-    And we will try the synchronous mode in the future.
+    Pipeline Optimizer: Make a program to run as pipeline, that is splitting a
+    program into multiple sections (sub-programs) and each section run on a
+    device to enable the training of large scale models and the use of
+    heterogeneous devices. Meanwhile, all sections run in the stype of pipeline.
 
     Args:
-        optimizer (Optimizer): The based optimizer, such as SGD.
-        cut_list (list of Variable list): The cut variable of the main_program.
-        place_list (list of Place): The place where the section will run on.
-        concurrency_list (list of int): The concurrency degree.
-        queue_size (int): Each section will consume scopes from its in-scope queue 
-                        and produce scopes to out-scope queue. And this parameter 
-                        specify the scope queue size. [Optional. Default: 30].
-        sync_steps (int): The synchronization steps between different cards. [Optional. Default: 1].
-        start_cpu_core_id (int): specify the first cpu core id. [Optional. Default:0].
-
+        optimizer (Optimizer): The optimizer to use, such as SGD.
+        num_microbatches (int): Number of microbatches. [Optional. Default:1].
+        start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
+    
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-            emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
-            emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
-            concat = layers.concat([emb_x, emb_y], axis=1)
-            fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
-            loss = layers.reduce_mean(fc)
+            with fluid.device_guard("gpu:0"):
+                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[x, y],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+
+                emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+                emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+
+            with fluid.device_guard("gpu:1"):
+                concat = layers.concat([emb_x, emb_y], axis=1)
+                fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+                loss = layers.reduce_mean(fc)
             optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-            optimizer = fluid.optimizer.PipelineOptimizer(optimizer,
-                    cut_list=[[emb_x, emb_y], [loss]],
-                    place_list=[fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()],
-                    concurrency_list=[1, 1, 4],
-                    queue_size=2,
-                    sync_steps=1,
-                    )
+            optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)
-            place = fluid.CPUPlace()
+
+            def train_reader():
+                for _ in range(4):
+                    x = np.random.random(size=[1]).astype('int64')
+                    y = np.random.random(size=[1]).astype('int64')
+                    yield x, y
+            data_loader.set_sample_generator(train_reader, batch_size=1)
+
+            place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-            dataset.set_use_var([x,y])
-            dataset.set_batch_size(batch_size)
-            dataset.set_filelist(filelist)
+            batch_size = 1
+            data_loader.start()
             exe.train_from_dataset(
-                        fluid.default_main_program(),
-                        dataset,
-                        thread=2,
-                        debug=False,
-                        fetch_list=[],
-                        fetch_info=[],
-                        print_period=1)
+                    fluid.default_main_program())
+            data_loader.reset()
     """
 
-    def __init__(self,
-                 optimizer,
-                 cut_list=None,
-                 place_list=None,
-                 concurrency_list=None,
-                 queue_size=30,
-                 sync_steps=1,
-                 start_cpu_core_id=0):
+    def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        # TODO: check properties
+        if not isinstance(optimizer, Optimizer) and not isinstance(
+                optimizer, paddle.optimizer.Optimizer) and not isinstance(
+                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
+                    OptimizerWithMixedPrecision):
+            raise ValueError("The 'optimizer' parameter for "
+                             "PipelineOptimizer must be an instance of "
+                             "Optimizer, but the given type is {}.".format(
+                                 type(optimizer)))
         self._optimizer = optimizer
-        self._cut_list = cut_list
-        self._place_list = place_list
-        self._concurrency_list = concurrency_list
-        self._queue_size = queue_size
-        self._sync_steps = sync_steps
-        self._start_cpu_core_id = start_cpu_core_id
 
-    def _create_vars(self, block, main_program):
+        # Get the original optimizer defined by users, such as SGD
+        self._origin_optimizer = self._optimizer
+        while hasattr(self._origin_optimizer, "inner_opt"):
+            self._origin_optimizer = self._origin_optimizer.inner_opt
+
+        assert num_microbatches >= 1, (
+            "num_microbatches must be a positive value.")
+        self._num_microbatches = num_microbatches
+        assert start_cpu_core_id >= 0, (
+            "start_cpu_core_id must be a non-negative integer.")
+        self._start_cpu_core_id = start_cpu_core_id
+        self._place_list = None
+        op_maker = core.op_proto_and_checker_maker
+        self._op_role = op_maker.OpRole
+        self._op_role_key = op_maker.kOpRoleAttrName()
+        self._op_role_var_key = op_maker.kOpRoleVarAttrName()
+        self._op_device_key = op_maker.kOpDeviceAttrName()
+        self._param_device_map = None
+        self._pipeline_pair = []
+        self._pp_ring_map = dict()
+
+    # insert allreduce op to sync global information for global
+    # gradient clip and amp
+    def _insert_allreduce_op(self, op_idx, block):
+        """
+        Insert allreduce op to sync global information for global
+        gradient clip and amp.
+        """
+        op = block.ops[op_idx]
+        out_name = op.desc.output_arg_names()[0]
+        out_var = block.var(out_name)
+        offset = 0
+        if op.type == "reduce_any":
+            # cast the bool var to int32 to use allreduce_max op
+            temp_var_name = unique_name.generate(out_name + "_cast_int32")
+            temp_var = block.create_var(
+                name=temp_var_name, shape=[1], dtype="int32")
+            block._insert_op(
+                op_idx + 1 + offset,
+                type='cast',
+                inputs={'X': out_var},
+                outputs={'Out': temp_var},
+                attrs={
+                    'in_dtype': out_var.dtype,
+                    'out_dtype': temp_var.dtype,
+                    self._op_role_key: self._op_role.Optimize
+                })
+            offset += 1
+        block._insert_op(
+            op_idx + 1 + offset,
+            type='c_allreduce_max'
+            if op.type == "reduce_any" else 'c_allreduce_sum',
+            inputs={'X': temp_var if op.type == "reduce_any" else out_var},
+            outputs={'Out': temp_var if op.type == "reduce_any" else out_var},
+            attrs={
+                'ring_id': self.global_ring_id,
+                self._op_role_key: self._op_role.Optimize,
+                'use_calc_stream': True
+            })
+        offset += 1
+        if op.type == "reduce_any":
+            block._insert_op(
+                op_idx + 1 + offset,
+                type='cast',
+                inputs={'X': temp_var},
+                outputs={'Out': out_var},
+                attrs={
+                    'in_dtype': temp_var.dtype,
+                    'out_dtype': out_var.dtype,
+                    self._op_role_key: self._op_role.Optimize
+                })
+        return offset
+
+    def _create_vars(self, block, ori_block):
+        # Create vars for block, copied from ori_block
         used_var_set = set()
-        for op_idx in range(block.desc.op_size()):
-            op_desc = block.desc.op(op_idx)
-            vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+        added_op_num = 0
+        op_idx = 0
+        op_size = block.desc.op_size()
+        while op_idx < op_size + added_op_num:
+            # Whether to insert allreduce_sum or allreduce_max op.
+            # For amp and global gradient clip strategies, we should
+            # get the global information, so allreduce op is needed.
+            should_insert = False
+            op = block.ops[op_idx]
+            # For op process vars on all devices, remove its input 
+            # vars not in this block
+            reserved_x = []
+            if op.type == 'reduce_any' and self._is_optimize_op(op):
+                should_insert = True
+            elif op.type == 'concat' and self._is_optimize_op(op):
+                for input_name in op.desc.input("X"):
+                    if block._find_var_recursive(input_name):
+                        reserved_x.append(input_name)
+                op.desc.set_input('X', reserved_x)
+            elif op.type == 'update_loss_scaling':
+                for input_name in op.desc.input("X"):
+                    if block._find_var_recursive(input_name):
+                        reserved_x.append(input_name)
+                op.desc.set_input('X', reserved_x)
+                op.desc.set_output('Out', reserved_x)
+            elif op.type == 'check_finite_and_unscale':
+                for input_name in op.desc.input("X"):
+                    if block._find_var_recursive(input_name):
+                        reserved_x.append(input_name)
+                op.desc.set_input('X', reserved_x)
+                op.desc.set_output('Out', reserved_x)
+                if len(reserved_x) == 0:
+                    block._remove_op(op_idx)
+                    op_size -= 1
+                    continue
+            elif op.type == 'sum' and self._is_gradient_clip_op(op):
+                for input_name in op.desc.input("X"):
+                    if block._find_var_recursive(input_name):
+                        reserved_x.append(input_name)
+                op.desc.set_input('X', reserved_x)
+                should_insert = True
+
+            vars = op.desc.input_arg_names() + op.desc.output_arg_names()
             for var in vars:
-                if var in used_var_set:
+                # a var whose name contains "blocking_queue" 
+                # only exists in startup program 
+                if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
-                source_var = main_program.block(0).var(str(var))
-                block._clone_variable(source_var, False)
+                if block._find_var_recursive(str(var)): continue
+                source_var = ori_block._var_recursive(str(var))
+                if source_var.type == core.VarDesc.VarType.READER:
+                    dest_var = block.create_var(
+                        name=var,
+                        type=core.VarDesc.VarType.READER,
+                        persistable=source_var.persistable)
+                else:
+                    dest_var = block._clone_variable(source_var, False)
+                dest_var.stop_gradient = source_var.stop_gradient
+            # When use with sharding, allreduce_sum and allreduce_max
+            # used for global gradient clip and amp will be added by sharding.
+            op_idx += 1
+            if self.use_sharding or not should_insert: continue
+            inserted_ops = self._insert_allreduce_op(op_idx - 1, block)
+            added_op_num += inserted_ops
+            op_idx += inserted_ops
+        block._sync_with_cpp()
 
-    def _extract_section_opt_ops(self, ops, cut_point_name):
+    def _is_loss_grad_op(self, op):
+        assert self._op_role_key in op.attr_names
+        op_role = int(op.attr(self._op_role_key))
+        return op_role & int(self._op_role.Backward) and op_role & int(
+            self._op_role.Loss)
+
+    def _is_backward_op(self, op):
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) & int(self._op_role.Backward))
+
+    def _is_loss_op(self, op):
+        assert self._op_role_key in op.attr_names
+        return int(op.attr(self._op_role_key)) == int(self._op_role.Loss)
+
+    def _is_optimize_op(self, op):
+        return self._op_role_key in op.attr_names and (
+            int(op.attr(self._op_role_key)) & int(self._op_role.Optimize))
+
+    def _is_update_op(self, op):
+        return 'Param' in op.input_names and 'Grad' in op.input_names and (
+            "LearningRate" in op.input_names)
+
+    def _split_program(self, main_program, devices):
         """
-        Extract opt ops in the given section
+        Split a program into sections according to devices that ops run on.
+        The op whose op_device attr is "gpu:all" is copied to all sections.
+
+        Args:
+            main_program (Program): the main program
+            devices: all used devices
         """
-        output_names = set(cut_point_name)
-        relevant_op_flags = [True] * len(ops)
-        for i, op in reversed(list(enumerate(ops))):
-            if _some_in_set_(op.desc.output_arg_names(), output_names):
-                for name in op.desc.input_arg_names():
-                    output_names.add(name)
-            else:
-                relevant_op_flags[i] = False
+        # Map from device to its corresponding section program info
+        device_program_map = defaultdict(Program)
 
-        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
-        return op_path
-
-    def _find_input_output(self, ops, name, is_forward=True):
-        """
-        Find the inputs or outputs of a section
-        """
-        all_set = set()
-        part_set = set()
-        for op in ops:
-            if is_forward:
-                part_set.update(op.desc.output_arg_names())
-            else:
-                part_set.update(op.desc.input_arg_names())
-            all_set.update(op.desc.output_arg_names())
-            all_set.update(op.desc.input_arg_names())
-        return all_set - part_set
-
-    def _find_persistable_vars(self, ops, whole_parameters):
-        """
-        find the persistable input vars in current section
-        """
-        res = set()
-        for op in ops:
-            vars = op.desc.input_arg_names()
-            for var in vars:
-                if var in whole_parameters:
-                    res.add(var)
-        return res
-
-    def _is_opt_role_op(self, op):
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) & int(optimize_role) != 0:
-            return True
-        return False
-
-    def _is_lr_role_op(self, op):
-        op_maker = core.op_proto_and_checker_maker
-        optimize_role = core.op_proto_and_checker_maker.OpRole.LRSched
-        if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-            return True
-        return False
-
-    def _extract_section_ops(self, ops, cut_point_name):
-        """
-        Extract ops in the given section 
-        """
-        output_names = set(cut_point_name)
-        relevant_op_flags = [True] * len(ops)
-        for i, op in reversed(list(enumerate(ops))):
-            if not self._is_opt_role_op(op) and _some_in_set_(
-                    op.desc.output_arg_names(), output_names):
-                for name in op.desc.input_arg_names():
-                    output_names.add(name)
-            elif op.desc.type() == "print" and op.desc.input_arg_names()[
-                    0] in output_names:
-                continue
-            else:
-                relevant_op_flags[i] = False
-
-        op_path = [ops[i] for i in range(len(ops)) if relevant_op_flags[i]]
-        return op_path
-
-    def _find_section_opt(self, ops, params):
-        res = self._extract_section_opt_ops(ops, params)
-        return res
-
-    def _split_program(self, main_program, cut_list):
-        programs = []
         block = main_program.block(0)
-        whole_parameters = [e.name for e in block.all_parameters()]
-        cut_var_names = []
-        cut_len = len(cut_list)
-        sec_params = []
-        for i, cut_vars in enumerate(cut_list[:-1]):
-            cut_var_names.append([cut_var.name for cut_var in cut_vars])
-        for i, cut_vars in reversed(list(enumerate(cut_list[:-1]))):
-            cut_var_names.append(
-                [_append_grad_suffix_(cut_var.name) for cut_var in cut_vars])
-            if i == 0:
-                cut_var_names[-1] += [var.name for var in cut_list[-1]]
-        ops = block.ops[:]
-        for i, cut_vars in enumerate(cut_var_names):
-            program = {
-                "program": Program(),
-                "input_set": set(),
-                "output_set": set()
-            }
-            cur_ops = self._extract_section_ops(ops, cut_vars)
-            if i == 0:
-                for op in ops:
-                    if self._is_lr_role_op(op):
-                        cur_ops.append(op)
-            #prevent inplace in/out
-            program["input_set"].update(
-                self._find_input_output(
-                    cur_ops, [], is_forward=True))
-            for e in cur_ops:
-                ops.remove(e)
-
-            if i < cut_len:
-                sec_params.append(
-                    self._find_persistable_vars(cur_ops, whole_parameters))
-            if i >= cut_len - 1:
-                opt_ops = self._find_section_opt(
-                    ops, sec_params[2 * cut_len - 2 - i])
-
-                for e in opt_ops:
-                    ops.remove(e)
-                cur_ops += opt_ops
-
-            op_descs = [op.desc for op in cur_ops]
-            for op_desc in op_descs:
-                ap_op = program["program"].block(0).desc.append_op()
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
+            # Copy ops whose op_device set to "gpu:all" to all sections.
+            if device == "gpu:all":
+                for device in devices:
+                    program = device_program_map[device]
+                    op_desc = op.desc
+                    ap_op = program.global_block().desc.append_op()
+                    ap_op.copy_from(op_desc)
+                    ap_op._set_attr(self._op_device_key, "")
+            else:
+                program = device_program_map[device]
+                op_desc = op.desc
+                ap_op = program.global_block().desc.append_op()
                 ap_op.copy_from(op_desc)
-            program["input_set"].update(
-                self._find_input_output(
-                    cur_ops, cut_vars, is_forward=True))
-            program["input_set"].update(sec_params[min(i, 2 * cut_len - 2 - i)])
-            program["output_set"].update(
-                self._find_input_output(
-                    cur_ops, cut_vars, is_forward=False))
-            programs.append(program)
-        program = {
-            "program": Program(),
-            "input_set": set(),
-            "output_set": set()
-        }
-        op_descs = [op.desc for op in ops]
-        for op_desc in op_descs:
-            ap_op = program["program"].block(0).desc.append_op()
+                ap_op._set_attr(self._op_device_key, "")
+
+        program_list = []
+        for key in devices:
+            program = device_program_map[key]
+            program._sync_with_cpp()
+            program_list.append(program)
+
+        return program_list
+
+    def _get_op_device_for_startup_program(self, var_name):
+        """
+        For adam optimizer, it will add accumulators and initialize them
+        with fill_constant, and force the op device to cpu. Hence, we should
+        get the real op_device attribute of the fill_constant as the device
+        where the corresponding parameters on.
+        """
+        assert "beta1_pow_acc" in var_name or "beta2_pow_acc" in var_name, \
+            'For accumulators for Adam, the name must contain beta1_pow_acc ' \
+            'or beta2_pow_acc.'
+        param_name = var_name[0:var_name.index('_beta')]
+        device = self._param_device_map[param_name]
+        return device
+
+    def _split_startup_program(self, startup_program, device_id):
+        block = startup_program.global_block()
+        new_startup_program = Program()
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
+            if device == "cpu":
+                assert op.type == "fill_constant", (
+                    "For ops in startup program with the op_device attribute "
+                    "of cpu, they must be of type fill_constant.")
+                output_var = op.output_arg_names[0]
+                device = self._get_op_device_for_startup_program(output_var)
+
+            if device:
+                device_index = int(device.split(':')[1])
+            else:
+                # LR related ops
+                device = None
+            if device and device_index != device_id: continue
+            op_desc = op.desc
+            ap_op = new_startup_program.global_block().desc.append_op()
             ap_op.copy_from(op_desc)
-        program["input_set"].update(
-            [cut_var.name + "@GRAD" for cut_var in cut_list[0]])
-        program["input_set"].update(
-            self._find_input_output(
-                ops, [], is_forward=True))
-        program["input_set"].update(sec_params[0])
-        programs.append(program)
-        inputs = set()
-        for program in reversed(list(programs)):
-            output_list = list(program["output_set"])
-            for output in output_list:
-                if output not in inputs:
-                    program["output_set"].remove(output)
-            inputs.update(program["input_set"])
-        return programs
+            ap_op._set_attr(self._op_device_key, "")
+        new_startup_program._sync_with_cpp()
+        self._create_vars(new_startup_program.global_block(), block)
+        return new_startup_program
+
+    def _find_post_op(self, index, var_name):
+        """
+        Find the post op that has variable named var_name as input.
+        """
+        post_ops = self.input_var_to_op[var_name]
+        if post_ops == None: return None
+        result_op = None
+        for post_op, post_idx in reversed(post_ops):
+            if post_idx > index:
+                result_op = post_op
+                break
+        return result_op
+
+    def _find_prev_op(self, index, var_name):
+        """
+        Find the previous op of op with index that outputs
+        variable named var_name.
+        """
+        prev_ops = self.output_var_to_op[var_name]
+        if prev_ops == None: return None
+        result_op = None
+        for prev_op, prev_idx in reversed(prev_ops):
+            if prev_idx < index:
+                result_op = prev_op
+                break
+        return result_op
+
+    def _rename_arg(self, op, old_name, new_name):
+        op._rename_input(old_name, new_name)
+        op._rename_output(old_name, new_name)
+
+    def _create_var(self, block, ref_var, name):
+        """
+        Create a new var for block, which has the same type,
+        shape and dtype as ref_var, then rename it with the
+        name `name`.
+        """
+        new_var = block.create_var(
+            name=name,
+            shape=ref_var.shape,
+            dtype=ref_var.dtype,
+            type=ref_var.type,
+            lod_level=ref_var.lod_level,
+            persistable=ref_var.persistable,
+            is_data=ref_var.is_data,
+            need_check_feed=ref_var.desc.need_check_feed())
+        new_var.stop_gradient = ref_var.stop_gradient
+        return new_var
+
+    def _strip_grad_suffix(self, name):
+        """
+        Strip the grad suffix from the given variable name
+        """
+        pos = name.find(core.grad_var_suffix())
+        return name[:pos] if pos != -1 else name
+
+    def _append_grad_suffix(self, name):
+        """
+        Append grad suffix to the given variable name
+        """
+        return name + core.grad_var_suffix()
+
+    def _get_op_device_attr(self, op):
+        """
+        Get the op_device attribute of a op.
+        """
+        device = op.attr(self._op_device_key) \
+            if op.has_attr(self._op_device_key) else None
+        if device:
+            assert device[0:3] == 'gpu', "Now, only gpu devices are " \
+                "supported in pipeline parallemism."
+        return device
+
+    def _add_op_device_attr_for_op(self, op, idx, block):
+        """
+        Add op_device attrribute for ops that have not that attribute set.
+        We use "gpu:all" to represent the op should be put on all
+        sub-programs, such as lr-related ops. Note that: "gpu:all"
+        is only used by pipeline as an indicator.
+        """
+        lrsched_role = int(self._op_role.LRSched)
+        if op.attr(self._op_role_key) == lrsched_role:
+            # For LRSched ops, we should put them on all sub-programs to
+            # make sure each sub-program update the lr correctly
+            op._set_attr(self._op_device_key, "gpu:all")
+        elif op.type == "scale" and self._is_backward_op(op):
+            prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
+            op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
+        elif op.type == "memcpy" and not self._is_optimize_op(op):
+            # for checkpoint offloading
+            assert len(op.input_arg_names) == 1 and len(
+                op.output_arg_names) == 1
+            input_name = op.input_arg_names[0]
+            output_name = op.output_arg_names[0]
+            if '@Fetch' in output_name:
+                post_op = self._find_post_op(idx, output_name)
+                op._set_attr(self._op_device_key,
+                             post_op.attr(self._op_device_key))
+            else:
+                prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
+                op._set_attr(self._op_device_key,
+                             prev_op.attr(self._op_device_key))
+        elif self._is_loss_op(op):
+            # For loss * loss_scaling op added by AMP
+            offset = 1
+            while (not block.ops[idx + offset].has_attr(self._op_device_key) or
+                   not block.ops[idx + offset].attr(self._op_device_key)):
+                offset += 1
+            device = block.ops[idx + offset].attr(self._op_device_key)
+            assert device, "Please put you program within device_guard scope."
+            for i in range(offset):
+                block.ops[idx + i]._set_attr(self._op_device_key, device)
+        elif self._is_optimize_op(op) and op.type == "cast":
+            # For fp16-->fp32 cast added by AMP
+            grad_name = op.output('Out')
+            assert len(grad_name) == 1
+            param_name = self._strip_grad_suffix(grad_name[0])
+            device = self._param_device_map[param_name]
+            op._set_attr(self._op_device_key, device)
+        elif self._is_gradient_clip_op(op) or self._is_regularization_op(op):
+            # For gradient clip and regularization ops, we set their op_device
+            # attribute to the device where their corresponding parameters on.
+            assert self._op_role_var_key in op.attr_names, "gradient_clip " \
+                "and regularization ops must have op_role_var attribute."
+            op_role_var = op.attr(self._op_role_var_key)
+            assert len(op_role_var) == 2, "op_role_var for gradient_clip " \
+                "regularization ops must have two elements."
+            param_name = op_role_var[0]
+            device = self._param_device_map[param_name]
+            # For sum op added by global gradient clip, it must be 
+            # put on all devices
+            if (op.type == 'sum' or op.type == 'sqrt' or
+                    op.type == 'fill_constant' or
+                    op.type == 'elementwise_max' or
+                    op.type == 'elementwise_div'):
+                device = "gpu:all"
+            op._set_attr(self._op_device_key, device)
+        else:
+            other_known_ops = [
+                'update_loss_scaling',
+                'reduce_any',
+                'concat',
+                'sum',
+                'check_finite_and_unscale',
+            ]
+            assert op.type in other_known_ops, "For other ops without " \
+                "op_device set, they must be one of {}, but it " \
+                "is {}".format(other_known_ops, op.type)
+            assert self._is_optimize_op(op)
+            op._set_attr(self._op_device_key, "gpu:all")
+
+    def _add_op_device_attr(self, block):
+        """
+        Add op_device attrribute for ops in block that have 
+        not that attribute set.
+        """
+        for idx, op in enumerate(list(block.ops)):
+            if (op.type == "create_py_reader" or op.type == "read" or
+                    op.type == "create_double_buffer_reader"):
+                # Copy read related ops to all section to make them exit 
+                # after each epoch.
+                # We use "gpu:all" to represent the op should be put on all
+                # sub-programs, such as lr-related ops. Note that: "gpu:all"
+                # is only used by pipeline as an indicator.
+                op._set_attr(self._op_device_key, "gpu:all")
+                continue
+            # op_device attribute has been set
+            if self._get_op_device_attr(op): continue
+            self._add_op_device_attr_for_op(op, idx, block)
+
+    def _check_validation(self, block):
+        """
+        Check whether ops in a block have both the op_device and the 
+        op_role attributes set.
+        Then, return all devices in order.
+        """
+        device_list = []
+        # Section worker only supports the following op_role
+        valid_op_role_value = [
+            int(self._op_role.LRSched),
+            int(self._op_role.Forward),
+            int(self._op_role.Backward),
+            int(self._op_role.Loss),
+            int(self._op_role.Optimize),
+            int(self._op_role.Backward) | int(self._op_role.Loss),
+        ]
+        for op in block.ops:
+            if not op._has_kernel(op.type):
+                assert op.type == "conditional_block" and (
+                    op.attr(self._op_role_key) == int(self._op_role.LRSched)), (
+                        "Now, the only supported op without kernel is "
+                        "conditional_block, and its op role must be LRSched.")
+            assert op.has_attr(self._op_role_key), (
+                "op ({}) has no {} attribute.".format(op.type,
+                                                      self._op_role_key))
+            assert int(op.attr(self._op_role_key)) in valid_op_role_value, \
+                "op_role {} for op {} must be one of {}".format(
+                    op.attr(self._op_role_key),
+                    op.type,
+                    valid_op_role_value)
+            assert op.has_attr(self._op_device_key), (
+                "op ({}) has no {} attribute.".format(op.type,
+                                                      self._op_device_key))
+
+            device = op.attr(self._op_device_key)
+            assert device, ("op_device attribute for op "
+                            "{} has not been set.".format(op.type))
+            if device == "gpu:all": continue
+            dev_type = device.split(':')[0]
+            assert dev_type == "gpu", ("Now only gpu devices are supported "
+                                       "for pipeline parallelism.")
+            if not device in device_list:
+                device_list.append(device)
+        return device_list
+
+    def _insert_sendrecv_ops_for_boundaries(self, block):
+        """
+        Insert a pair of send and recv ops for every two
+        consecutive ops on different devices.
+        """
+        extra_index_info = {'index': 0}
+
+        # A map from var to device where op takes it as input,
+        # avoiding multiple send and recv ops.
+        input_var_to_device = dict()
+
+        for index, op in enumerate(list(block.ops)):
+            cur_device = op.attr(self._op_device_key)
+            if cur_device == "gpu:all": continue
+            for var_name in op.input_arg_names:
+                var = block.var(var_name)
+                # skip data var
+                if var.is_data: continue
+                prev_device = None
+                generate_ops = self.output_var_to_op.get(var_name)
+                if generate_ops is None:
+                    if var_name not in self._param_device_map:
+                        continue
+                    prev_device = self._param_device_map[var_name]
+
+                prev_op = self._find_prev_op(index, var_name)
+
+                if not prev_device:
+                    prev_device = prev_op.attr(self._op_device_key) \
+                        if prev_op else None
+
+                if prev_device is None or prev_device == "gpu:all": continue
+
+                if prev_device == cur_device: continue
+
+                if var_name not in input_var_to_device:
+                    input_var_to_device[var_name] = []
+                if (cur_device, prev_device) in input_var_to_device[var_name]:
+                    continue
+
+                device_type = cur_device.split(':')[0] + ':'
+
+                def _insert_send_recv(cur_id, prev_id):
+                    cur_dev = device_type + str(cur_id)
+                    prev_dev = device_type + str(prev_id)
+                    if (cur_dev, prev_dev) in input_var_to_device[var_name]:
+                        return
+
+                    if cur_id - prev_id > 1:
+                        _insert_send_recv(cur_id - 1, prev_id)
+                        _insert_send_recv(cur_id, cur_id - 1)
+                        input_var_to_device[var_name].append(
+                            (cur_dev, prev_dev))
+                        return
+                    elif cur_id - prev_id < -1:
+                        _insert_send_recv(cur_id + 1, prev_id)
+                        _insert_send_recv(cur_id, cur_id + 1)
+                        input_var_to_device[var_name].append(
+                            (cur_dev, prev_dev))
+                        return
+
+                    assert abs(cur_id - prev_id) == 1
+                    input_var_to_device[var_name].append((cur_dev, prev_dev))
+
+                    op_role = op.attr(self._op_role_key)
+                    var = block.vars[var_name]
+                    pair = (prev_id, cur_id)
+                    # 1000 is just a magic number
+                    pair_key = prev_id * 1000 + cur_id
+                    if pair not in self._pipeline_pair:
+                        self._pipeline_pair.append(pair)
+                        self._pp_ring_map[pair_key] = self.ring_id
+                        ring_id = self.ring_id
+                        self.ring_id += 1
+                    else:
+                        ring_id = self._pp_ring_map[pair_key]
+
+                    if self.schedule_mode == 'F-then-B':  # F-then-B
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='send_v2',
+                            inputs={'X': var},
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': True,
+                                'peer': 1,
+                                'ring_id': ring_id
+                            })
+                        extra_index_info['index'] += 1
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='recv_v2',
+                            outputs={'Out': [var]},
+                            attrs={
+                                'out_shape': var.shape,
+                                'dtype': var.dtype,
+                                self._op_device_key: cur_dev,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': True,
+                                'peer': 0,
+                                'ring_id': ring_id
+                            })
+                        extra_index_info['index'] += 1
+                    elif self.schedule_mode == '1F1B':  # 1F1B
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='c_sync_calc_stream',
+                            inputs={'X': [var]},
+                            outputs={'Out': [var]},
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: op_role,
+                            })
+                        extra_index_info['index'] += 1
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='send_v2',
+                            inputs={'X': var},
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': False,
+                                'ring_id': ring_id,
+                                'peer': 1,
+                            })
+                        extra_index_info['index'] += 1
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='c_sync_comm_stream',
+                            inputs={'X': [var]},
+                            outputs={'Out': [var]},
+                            attrs={
+                                self._op_device_key: prev_dev,
+                                self._op_role_key: self._op_role.Backward,
+                                'ring_id': ring_id,
+                            })
+                        extra_index_info['index'] += 1
+                        var_shape = list(var.shape)
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
+                        block._insert_op(
+                            index=index + extra_index_info['index'],
+                            type='recv_v2',
+                            outputs={'Out': [var]},
+                            attrs={
+                                'out_shape': var_shape,
+                                'dtype': var.dtype,
+                                self._op_device_key: cur_dev,
+                                self._op_role_key: op_role,
+                                'use_calc_stream': True,
+                                'peer': 0,
+                                'ring_id': ring_id
+                            })
+                        extra_index_info['index'] += 1
+                    else:
+                        raise ValueError(
+                            "Now only 'F-then-B' and '1F1B' are supported."
+                            "The given value is {}.".format(self.schedule_mode))
+
+                _insert_send_recv(
+                    int(cur_device.split(':')[1]),
+                    int(prev_device.split(':')[1]))
+        block._sync_with_cpp()
+
+    def _insert_loss_scale(self, block):
+        """
+        Scale the loss corresponding to number of micro-batches.
+        """
+        if self._num_microbatches == 1: return
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    index=index + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self._num_microbatches,
+                        self._op_role_key: self._op_role.Backward
+                    })
+                break
+
+    def _rename_gradient_var_name(self, block):
+        for index, op in enumerate(block.ops):
+            if not self._is_optimize_op(op): continue
+            input_names = op.input_arg_names
+            output_names = op.output_arg_names
+            in_out_names = input_names + output_names
+            if op.type == 'cast': continue
+            # append "MERGED" to the names of parameter gradients,
+            # and mofify the op_role_var attribute (by rename_arg func).
+            for name in in_out_names:
+                if not core.grad_var_suffix() in name: continue
+                param_name = name.strip(core.grad_var_suffix())
+                new_grad_name = name + "@MERGED"
+                self._rename_arg(op, name, new_grad_name)
+
+    def _accumulate_gradients(self, block, pp_allreduce_in_optimize=False):
+        """
+        Create a new merged gradient for each parameter and accumulate the
+        corresponding gradient to it.
+        """
+        merged_gradient_names = []
+        first_opt_op_idx = None
+
+        for index, op in reversed(tuple(enumerate(list(block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and not first_opt_op_idx:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(block.ops): return
+                if block.ops[first_opt_op_idx].type == "c_sync_comm_stream":
+                    first_opt_op_idx += 1
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0: continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    offset = 0
+                    param_name = op_role_var[i]
+                    if not block.has_var(param_name): continue
+                    if '@BroadCast' in param_name: continue
+                    param_grad_name = param_name + core.grad_var_suffix()
+                    merged_param_grad_name = param_grad_name + '@MERGED'
+                    if not block.has_var(merged_param_grad_name):
+                        self._create_var(block, block.vars[param_name],
+                                         merged_param_grad_name)
+                    assert block.has_var(merged_param_grad_name)
+                    param_grad_var = block.var(param_grad_name)
+                    merged_param_grad_var = block.var(merged_param_grad_name)
+                    merged_param_grad_var.persistable = True
+                    block._insert_op(
+                        index=first_opt_op_idx + offset,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': [merged_param_grad_var]},
+                        attrs={
+                            'shape': merged_param_grad_var.shape,
+                            'dtype': merged_param_grad_var.dtype,
+                            'value': float(0),
+                            # a trick to run this op once per mini-batch
+                            self._op_role_key: self._op_role.Optimize.LRSched,
+                        })
+                    offset += 1
+                    grad_name = op_role_var[i + 1]
+                    grad_var = block.vars[grad_name]
+                    if not 'cast_fp16' in grad_name:
+                        block._insert_op(
+                            index=first_opt_op_idx + offset,
+                            type='sum',
+                            inputs={'X': [grad_var, merged_param_grad_var]},
+                            outputs={'Out': merged_param_grad_var},
+                            attrs={
+                                self._op_role_key: self._op_role.Backward,
+                            })
+                        offset += 1
+                        merged_gradient_names.append(merged_param_grad_name)
+                    else:
+                        # cast gradient to fp32 to accumulate to merged gradient
+                        cast_grad_var_name = param_grad_name + '@TMP'
+                        cast_grad_var = self._create_var(block, param_grad_var,
+                                                         cast_grad_var_name)
+                        cast_grad_var.persistable = False
+                        block._insert_op(
+                            index=first_opt_op_idx + offset,
+                            type='cast',
+                            inputs={'X': grad_var},
+                            outputs={'Out': cast_grad_var},
+                            attrs={
+                                'in_dtype': grad_var.dtype,
+                                'out_dtype': cast_grad_var.dtype,
+                                self._op_role_key: self._op_role.Backward,
+                            })
+                        offset += 1
+                        block._insert_op(
+                            index=first_opt_op_idx + offset,
+                            type='sum',
+                            inputs={
+                                'X': [merged_param_grad_var, cast_grad_var]
+                            },
+                            outputs={'Out': merged_param_grad_var},
+                            attrs={
+                                self._op_role_key: self._op_role.Backward,
+                            })
+                        offset += 1
+                        merged_gradient_names.append(merged_param_grad_name)
+        return merged_gradient_names
+
+    def _add_sub_blocks(self, main_block, program_list):
+        main_program = main_block.program
+        for prog in program_list:
+            for op in prog.block(0).ops:
+                if not op.has_attr('sub_block'):
+                    continue
+                origin_sub_block_id = op.attr('sub_block').id
+                origin_sub_block = main_program.block(origin_sub_block_id)
+                new_sub_block = prog._create_block(parent_idx=0)
+                for op in origin_sub_block.ops:
+                    op_desc = op.desc
+                    ap_op = new_sub_block.desc.append_op()
+                    ap_op.copy_from(op_desc)
+                new_sub_block._sync_with_cpp()
+                self._create_vars(new_sub_block, origin_sub_block)
+                op._set_attr('sub_block:', new_sub_block)
+
+    def _get_device_info(self, block):
+        for op in block.ops:
+            if not op._has_kernel(op.type): continue
+            op_device = op.attr(self._op_device_key)
+            return op_device
+
+    def _process_persistable_vars_in_multi_sections(self, main_program,
+                                                    startup_prog, program_list):
+        """
+        Special Case: process persistable vars that exist in
+        multiple sections, e.g., shared weight
+        """
+        # var_info = {var_name: [program1, program2...]},
+        # persistable var only
+        var_info = dict()
+        for prog in program_list:
+            block = prog.block(0)
+            for var_name in block.vars:
+                if var_name == "double_buffer_0": continue
+                var = block.var(var_name)
+                if not var.persistable: continue
+                if not var_name in var_info:
+                    var_info[var_name] = []
+                if not prog in var_info[var_name]:
+                    var_info[var_name].append(prog)
+        for var_name in list(var_info.keys()):
+            if len(var_info[var_name]) == 1:
+                var_info.pop(var_name)
+
+        # write_info = {var_name: program}, where program is the only program
+        # in which the var named var_name is written.
+        write_info = dict()
+        for var_name in var_info.keys():
+            for prog in var_info[var_name]:
+                block = prog.block(0)
+                for op in block.ops:
+                    if op.type == "recv_v2" or op.type == "create_py_reader" or \
+                        op.type == "read" or op.type == "update_loss_scaling":
+                        continue
+                    # We have processed lr related vars
+                    if op.attr(self._op_role_key) == int(
+                            self._op_role.Optimize.LRSched):
+                        continue
+                    if var_name in op.desc.output_arg_names():
+                        assert var_name not in write_info, (
+                            "two sections write the same var({}): second "
+                            "op {}.".format(var_name, op))
+                        write_info[var_name] = prog
+                        break
+
+        for var_name in var_info.keys():
+            # Case 1: read only variables, no special process
+            if not var_name in write_info: continue
+
+            # Case 2: one write multiple reads
+            write_prog = write_info[var_name]
+            write_block = write_prog.block(0)
+            write_device = self._get_device_info(write_block)
+            write_dev_index = int(write_device.split(':')[1])
+            all_progs = var_info[var_name]
+            for prog in all_progs:
+                if prog == write_prog: continue
+                read_block = prog.block(0)
+                read_device = self._get_device_info(read_block)
+                read_dev_index = int(read_device.split(':')[1])
+                pair = (write_dev_index, read_dev_index)
+                pair_key = write_dev_index * 1000 + read_dev_index
+                if pair not in self._pipeline_pair:
+                    self._pipeline_pair.append(pair)
+                    self._pp_ring_map[pair_key] = self.ring_id
+                    ring_id = self.ring_id
+                    self.ring_id += 1
+                else:
+                    ring_id = self._pp_ring_map[pair_key]
+
+                write_block._insert_op(
+                    index=0,
+                    type='send_v2',
+                    inputs={'X': write_block.var(var_name), },
+                    attrs={
+                        self._op_device_key: write_device,
+                        'use_calc_stream': False,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched,
+                        'peer': read_dev_index,
+                        'ring_id': ring_id
+                    })
+                read_block._insert_op(
+                    index=0,
+                    type='recv_v2',
+                    outputs={'Out': [read_block.var(var_name)]},
+                    attrs={
+                        'out_shape': read_block.var(var_name).shape,
+                        'dtype': read_block.var(var_name).dtype,
+                        self._op_device_key: read_device,
+                        'use_calc_stream': False,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched,
+                        'peer': write_dev_index,
+                        'ring_id': ring_id
+                    })
+                read_block._insert_op(
+                    index=1,
+                    type='c_sync_comm_stream',
+                    inputs={'X': [read_block.var(var_name)]},
+                    outputs={'Out': [read_block.var(var_name)]},
+                    attrs={
+                        self._op_device_key: read_device,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        self._op_role_key: self._op_role.LRSched,
+                        'ring_id': ring_id
+                    })
+
+    def _is_gradient_clip_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/gradient_clip")
+
+    def _is_regularization_op(self, op):
+        return op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/regularization")
+
+    def _get_input_output_info(self, block):
+        '''
+        Get info of op input and output.
+        '''
+        # A map from output var to op which generate it.
+        self.output_var_to_op = dict()
+        # A map from var to op which takes it as input.
+        self.input_var_to_op = dict()
+
+        for index, op in enumerate(list(block.ops)):
+            for var_name in op.input_arg_names:
+                ops = self.input_var_to_op.setdefault(var_name, [])
+                ops.append([op, index])
+            for var_name in op.output_arg_names:
+                ops = self.output_var_to_op.setdefault(var_name, [])
+                ops.append([op, index])
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        self._optimizer.minimize(loss, startup_program, parameter_list,
-                                 no_grad_set)
-        program = loss.block.program
-        if len(self._cut_list) == 0:
-            program_list = []
-            ptmp = {"program": program, "input_set": set(), "output_set": set()}
-            program_list.append(ptmp)
-        else:
-            program_list = self._split_program(program, self._cut_list)
-            for p in program_list:
-                self._create_vars(p["program"].block(0), program)
-        whole_parameters = [e.name for e in program.block(0).all_parameters()]
-        param_need_sync = []
-        for i, section_p in enumerate(program_list):
-            if not isinstance(self._place_list[i], core.CUDAPlace):
-                continue
-            section_var = [e for e in section_p["program"].block(0).vars]
-            for p in section_var:
-                if p in whole_parameters:
-                    param_need_sync.append(p)
-        program._pipeline_opt = {
+        main_block = loss.block
+        self.origin_main_block = main_block
+        main_program = main_block.program
+        if startup_program is None:
+            startup_program = default_startup_program()
+
+        assert main_program._pipeline_opt, 'Please use pipeline with fleet.'
+        required_keys = [
+            'local_rank',
+            'schedule_mode',
+            'micro_batch_size',
+            'ring_id',
+            'global_ring_id',
+            'use_sharding',
+        ]
+        for key in required_keys:
+            assert key in main_program._pipeline_opt, \
+                'Please use pipeline with fleet to use {}.'.format(key)
+        self.local_rank = main_block.program._pipeline_opt['local_rank']
+        self.schedule_mode = main_block.program._pipeline_opt['schedule_mode']
+        self.micro_batch_size = main_block.program._pipeline_opt[
+            'micro_batch_size']
+        self.use_sharding = main_block.program._pipeline_opt['use_sharding']
+        self.ring_id = main_block.program._pipeline_opt['ring_id']
+        self.global_ring_id = main_block.program._pipeline_opt['global_ring_id']
+
+        optimize_ops, params_grads = self._optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+        self._param_device_map = self._origin_optimizer._param_device_map
+
+        self._get_input_output_info(main_block)
+        # Step1: add default op_device attribute for ops.
+        self._add_op_device_attr(main_block)
+        device_list = self._check_validation(main_block)
+
+        def device_cmp(device1, device2):
+            dev1_id = int(device1.split(':')[1])
+            dev2_id = int(device2.split(':')[1])
+            if dev1_id < dev2_id:
+                return -1
+            elif dev1_id > dev2_id:
+                return 1
+            else:
+                return 0
+
+        sorted_device_list = sorted(device_list, key=cmp_to_key(device_cmp))
+        assert sorted_device_list == device_list, (
+            "With pipeline parallelism, you must use gpu devices one after "
+            "another in the order of their ids.")
+        # Step2: add send and recv ops between section boundaries
+        self._insert_sendrecv_ops_for_boundaries(main_block)
+
+        # Step3: split program into sections and add pairs of
+        # send and recv ops for data var.
+        main_program = main_block.program
+        program_list = self._split_program(main_program, device_list)
+        for p in program_list:
+            self._create_vars(p.global_block(), main_block)
+
+        # Step4: Special Case: process persistable vars that exist in
+        # multiple sections
+        self._process_persistable_vars_in_multi_sections(
+            main_program, startup_program, program_list)
+
+        # Step5: Add sub blocks for section programs
+        self._add_sub_blocks(main_block, program_list)
+
+        self.local_rank %= len(device_list)
+        place_list = []
+        for dev in device_list:
+            dev_index = int(dev.split(":")[1])
+            place_list.append(core.CUDAPlace(0))
+
+        # Step6: Split startup program
+        new_startup_program = self._split_startup_program(startup_program,
+                                                          self.local_rank)
+
+        startup_program._pipeline_opt = {
+            "startup_program": new_startup_program,
+        }
+        real_block = program_list[self.local_rank].global_block()
+        self._insert_loss_scale(real_block)
+        if not self.use_sharding:
+            # Step7: clear gradients before each mini-batch and 
+            # accumulate gradients during backward
+            self._rename_gradient_var_name(real_block)
+            real_block._sync_with_cpp()
+            self._accumulate_gradients(real_block)
+            real_block._sync_with_cpp()
+
+        place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
-            "section_program_list": program_list,
-            "place_list": self._place_list,
-            "concurrency_list": self._concurrency_list,
-            "queue_size": self._queue_size,
+            "pipeline_stage": self.local_rank,
+            "num_pipeline_stages": len(device_list),
+            "schedule_mode": self.schedule_mode,
+            "inner_parallelism": len(device_list),
+            "section_program": program_list[self.local_rank],
+            "place": place_list[self.local_rank],
+            "place_id": place_id,
+            "sync_steps": -1,
+            "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
-            "sync_steps": self._sync_steps,
-            "param_need_sync": param_need_sync
         }
+        return optimize_ops, params_grads, program_list, self._pipeline_pair, self._pp_ring_map
 
 
 class RecomputeOptimizer(Optimizer):
@@ -3925,19 +4885,36 @@ class RecomputeOptimizer(Optimizer):
         self._checkpoints = None
         self._learning_rate = self._optimizer._learning_rate
         self._learning_rate_map = self._optimizer._learning_rate_map
+        self.enable_offload = False
 
     def _set_checkpoints(self, checkpoints):
+        """
+        Args:
+            checkpoints (list): List of Variable or string    
+        """
+        assert isinstance(
+            checkpoints, list
+        ), "_checkpoints should be a list of Variable or a list of String"
+        for ckpt in checkpoints:
+            assert (
+                isinstance(ckpt, six.string_types) or isinstance(ckpt, Variable)
+            ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
-    def load(self, stat_dict):
+    # should enable offload before calling backward 
+    def _enable_offload(self):
+        self.enable_offload = True
+
+    @framework.deprecate_stat_dict
+    def load(self, state_dict):
         """
-	:api_attr: Static Graph
+	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
         Args:
-            stat_dict: the dict load by load_persistable method
+            state_dict: the dict load by load_persistable method
 
         Examples:
             .. code-block:: python
@@ -3961,8 +4938,8 @@ class RecomputeOptimizer(Optimizer):
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
-                    stat_dict = {}
-                    sgd.load(stat_dict)
+                    state_dict = {}
+                    sgd.load(state_dict)
                 except NotImplementedError as e:
                     print(cpt.get_exception_message(e))
         """
@@ -4016,6 +4993,360 @@ class RecomputeOptimizer(Optimizer):
 
         return self._optimizer.apply_gradients(params_grads=params_grads)
 
+    def _creat_vars(self, varname):
+        pinned_var_name = unique_name.generate(varname + "@Pinned")
+        fetched_var_name = unique_name.generate(varname + "@Fetch")
+
+        pinned_var = self._main_program.global_block().create_var(
+            name=pinned_var_name,
+            shape=self.checkpoint_shape,
+            dtype=self._main_program.global_block().var(varname).dtype,
+            persistable=False,
+            stop_gradient=True)
+
+        fetch_var = self._main_program.global_block().create_var(
+            name=fetched_var_name,
+            shape=self.checkpoint_shape,
+            dtype=self._main_program.global_block().var(varname).dtype,
+            persistable=False,
+            stop_gradient=False)
+
+        return pinned_var_name, fetched_var_name
+
+    def _append_fill_constant_ops(self, startup_program):
+        """
+        add fill_constant_ops to the end of the prog
+
+        we should fill the pinned vars before runing the main_prog
+        to instantiate their tensor hold_, which could tell us whether 
+        the host memory could hold all the checkpoints from all the 
+        GPU devices in this node. 
+        """
+        op_role = 0
+        block = startup_program.global_block()
+        fill_constant_vars = self.checkpoint_name2pinned_name.values()
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        for varname in fill_constant_vars:
+            var = self._main_program.global_block().var(varname)
+            # NOTE (JZ-LIANG) to pre-allocate the CUDAPinned MEM
+            pinned_var = block.create_var(
+                name=varname,
+                shape=self.checkpoint_shape,
+                dtype=self._main_program.global_block().var(var.name).dtype,
+                persistable=False,
+                stop_gradient=True)
+            block.append_op(
+                type='fill_constant',
+                outputs={'Out': varname},
+                attrs={
+                    "shape": var.shape,
+                    "dtype": var.dtype,
+                    "value": 0.0,
+                    "place_type": 2,
+                    OP_ROLE_KEY: op_role,
+                })
+
+        return
+
+    def _insert_async_memcpy_op(self, insert_idx, src_varname, dst_varname,
+                                op_role, dst_place_type):
+        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        self.block._insert_op_without_sync(
+            insert_idx,
+            type='memcpy',
+            inputs={'X': [self._main_program.global_block().var(src_varname)]},
+            outputs={
+                'Out': [self._main_program.global_block().var(dst_varname)]
+            },
+            attrs={
+                "dst_place_type": int(dst_place_type),
+                OP_ROLE_KEY: op_role
+            })
+
+    def _insert_fetch_op(self, idx, varname):
+        assert varname in self.checkpoint_name2pinned_name, "Try to fetch {} from Pinned Memory, but it is NOT a checkpoint".format(
+            varname)
+
+        pinned_varname = self.checkpoint_name2pinned_name[varname]
+        fetch_varname = self.checkpoint_name2fetch_name[varname]
+        self._insert_async_memcpy_op(idx, pinned_varname, fetch_varname, 1, 1)
+
+    def _insert_offload_op(self, idx, varname):
+        assert varname in self.checkpoint_name2pinned_name, "Try to offload {} to Pinned Memory, but it is NOT a checkpoint".format(
+            varname)
+        pinned_varname = self.checkpoint_name2pinned_name[varname]
+        self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
+
+    def _insert_sync_op(self, op_idx, checkpoint_name):
+        # single stream offload no need sync 
+        pass
+
+    def _record_fetch_op(self, idx):
+        assert len(self.un_fetch_checkpoint_names
+                   ) > 0, "Could NOT found checkpoint to fetch"
+        checkpoint_name = self.un_fetch_checkpoint_names.pop(-1)
+        logging.debug("Record fetch [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("fetch", checkpoint_name)
+
+        return checkpoint_name
+
+    def _record_offload_op(self, idx, checkpoint_name):
+        expected_checkpoint_name = self.un_offload_checkpoint_names.pop(0)
+        assert checkpoint_name == expected_checkpoint_name, "expected to offload [{}] but got [{}]".format(
+            expected_checkpoint_name, checkpoint_name)
+        logging.debug("Record offload [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("offload", checkpoint_name)
+
+    def _record_sync_op(self, idx, checkpoint_name):
+        assert checkpoint_name not in self.synced_checkpoints, "Try to sync the checkpoint [{}] twice".format(
+            checkpoint_name)
+        self.synced_checkpoints.add(checkpoint_name)
+        logging.debug("Record offload sync [{}]".format(checkpoint_name))
+        self.idx2insertions[idx] = ("sync", checkpoint_name)
+
+    def _parse_backward(self):
+
+        self.idx2insertions = {}
+        # don't offload the last checkpoints, to favor throughput        
+        self.un_fetch_checkpoint_names = self.sorted_checkpoint_names[:]
+        self.un_fetch_checkpoint_names.pop(-1)
+        need_fetch_checkpoint_names = self.un_fetch_checkpoint_names[:]
+        self.checkpoint_usage_count = {}
+        for checkpoint_name in self.un_fetch_checkpoint_names:
+            self.checkpoint_usage_count[checkpoint_name] = 0
+
+        self.bw_strart_op_idx = len(self.block.ops)
+        for idx, op in enumerate(self.block.ops):
+            if int(op.desc.attr("op_role")) == 1:
+                self.bw_strart_op_idx = idx
+                break
+
+        assert self.bw_strart_op_idx < len(
+            self.block.ops), "Could NOT found backword op in prog"
+
+        # fetch second to last checkpoint at the beginning of BW
+        fetched_checkpoint_varname = self._record_fetch_op(
+            self.bw_strart_op_idx)
+        last_last_fetch_checkpoint = None
+
+        for i, op in enumerate(self.block.ops[self.bw_strart_op_idx:]):
+            idx = self.bw_strart_op_idx + i
+            input_vars = op.desc.input_arg_names()
+
+            for input_var in input_vars:
+                if input_var in need_fetch_checkpoint_names:
+                    if input_var not in self.un_fetch_checkpoint_names:
+                        # fetch the  offloade checkpoint when the first usage of its previous one
+                        if self.checkpoint_usage_count[input_var] == 0:
+                            # TODO (JZ-LIANG) sync memcpy_stream if extra stream for memcpy
+                            second_to_last_fetch_checkpoint = fetched_checkpoint_varname
+                            # there is NO fetch ahead the first checkpoint 
+                            if input_var != self.sorted_checkpoint_names[0]:
+                                fetched_checkpoint_varname = self._record_fetch_op(
+                                    idx)
+
+                        # should check the current used checkpoint is ths last fetch one 
+                        assert second_to_last_fetch_checkpoint == input_var, "Current recompute segment should use [{}] BUT got [{}]".format(
+                            second_to_last_fetch_checkpoint, input_var)
+                        # rename
+                        self.block.ops[idx]._rename_input(
+                            input_var,
+                            self.checkpoint_name2fetch_name[input_var])
+                        self.checkpoint_usage_count[input_var] += 1
+                    else:
+                        raise ValueError(
+                            "use checkpoint [{}] before fetch in BW".format(
+                                input_var))
+
+        assert len(self.un_fetch_checkpoint_names
+                   ) == 0, "{} checkpoints have NOT been Recorded".format(
+                       self.un_fetch_checkpoint_names)
+
+    def _update_backward(self):
+        if len(self.idx2insertions) == 0:
+            return
+        total_op = len(self.block.ops)
+        for op_idx in reversed(range(self.bw_strart_op_idx, total_op)):
+            if op_idx in self.idx2insertions:
+                operation, checkpoint_name = self.idx2insertions[op_idx]
+                if operation == "fetch":
+                    self._insert_fetch_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] fetch op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+                elif operation == "sync":
+                    self._insert_sync_op(op_idx, checkpoint_name)
+                    logging.debug("Sync [{}] fetch op.".format(checkpoint_name))
+        self.block._sync_with_cpp()
+        assert len(
+            self.idx2insertions) == 0, "{} checkpoints left un-Fecthed".format(
+                [ele[1] for ele in self.idx2insertions.values()])
+
+    def _parse_forward(self):
+
+        self.idx2insertions = {}
+        # don't offload the last checkpoints, faster, less memory saving       
+        self.un_offload_checkpoint_names = self.sorted_checkpoint_names[:]
+        last_checkpoint = self.un_offload_checkpoint_names.pop(-1)
+        need_offload_checkpoint_names = self.un_offload_checkpoint_names[:]
+        self.checkpoint_usage_count_and_idx = {}
+        for checkpoint_name in self.un_offload_checkpoint_names:
+            self.checkpoint_usage_count_and_idx[checkpoint_name] = {
+                'count': 0,
+                'idx': -1
+            }
+        self.synced_checkpoints = set()
+        self.fw_strart_op_idx = len(self.block.ops)
+        for idx, op in enumerate(self.block.ops):
+            if int(op.desc.attr("op_role")) == 0:
+                self.fw_strart_op_idx = idx
+                break
+
+        assert self.fw_strart_op_idx < len(
+            self.block.ops), "Could NOT found Forward op in prog"
+        last_offload_checkpoint = None
+
+        for i, op in enumerate(self.block.ops[self.fw_strart_op_idx:
+                                              self.bw_strart_op_idx]):
+
+            idx = self.fw_strart_op_idx + i
+            output_vars = op.desc.output_arg_names()
+            input_vars = op.desc.input_arg_names()
+
+            for output_var in output_vars:
+                if output_var in need_offload_checkpoint_names:
+                    assert len(
+                        output_vars
+                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                        output_var, op)
+
+                    if output_var in self.un_offload_checkpoint_names:
+                        # insert sync op if last checkpoint has not been sync
+                        if last_offload_checkpoint != None:
+                            if self.checkpoint_usage_count_and_idx[
+                                    last_offload_checkpoint]['count'] == 0:
+                                self._record_sync_op(idx,
+                                                     last_offload_checkpoint)
+                            else:
+                                last_usage_idx = self.checkpoint_usage_count_and_idx[
+                                    last_offload_checkpoint]['idx']
+                                assert last_usage_idx > 0, "last_usage_idx of checkpoint [{}] should large than 0".format(
+                                    last_offload_checkpoint)
+                                self._record_sync_op(last_usage_idx + 1,
+                                                     last_offload_checkpoint)
+                        # insert offload op after the checkpoint's generation op
+                        self._record_offload_op(idx + 1, output_var)
+                        last_offload_checkpoint = output_var
+                    else:
+                        raise ValueError(
+                            "There should be just ONE op that output checkpoint [{}]".
+                            format(output_var))
+                # need to sync the last need to offload checkpoint before the last checkpoint as output op
+                if output_var == last_checkpoint:
+                    assert len(
+                        output_vars
+                    ) == 1, "chekpoint should be the only Output of a certain op, but [{}] is from [{}]".format(
+                        output_var, op)
+                    assert last_offload_checkpoint == self.sorted_checkpoint_names[
+                        -2], "the last offload chekpoint before [{}] is suppose to be [{}], but got [{}]".format(
+                            last_checkpoint, self.sorted_checkpoint_names[-2],
+                            last_offload_checkpoint)
+                    # sync if last checkpoint has not been sync
+                    if self.checkpoint_usage_count_and_idx[
+                            last_offload_checkpoint]['idx'] == 0:
+                        self._record_sync_op(idx, last_offload_checkpoint)
+                    else:
+                        last_usage_idx = self.checkpoint_usage_count_and_idx[
+                            last_offload_checkpoint]['idx']
+                        assert last_usage_idx > 0, "last_usage_idx of checkpoint [{}] should large than 0".format(
+                            last_offload_checkpoint)
+                        self._record_sync_op(last_usage_idx + 1,
+                                             last_offload_checkpoint)
+            # record checkpoint usage  
+            for input_var in input_vars:
+                if input_var in need_offload_checkpoint_names:
+                    assert input_var not in self.synced_checkpoints, "checkpoint [{}] used after sync".format(
+                        input_var)
+                    self.checkpoint_usage_count_and_idx[input_var]['count'] += 1
+                    self.checkpoint_usage_count_and_idx[input_var]['idx'] = idx
+
+        assert len(self.un_offload_checkpoint_names
+                   ) == 0, "{} checkpoints have NOT been Recorded".format(
+                       self.un_fetch_checkpoint_names)
+        assert len(self.synced_checkpoints) == len(
+            need_offload_checkpoint_names
+        ), "{} checkpoints have NOT been Recorded".format(
+            set(need_offload_checkpoint_names) - set(self.synced_checkpoints))
+
+    def _update_forward(self):
+        if len(self.idx2insertions) == 0:
+            return
+        for op_idx in reversed(
+                range(self.fw_strart_op_idx, self.bw_strart_op_idx)):
+            if op_idx in self.idx2insertions:
+                operation, checkpoint_name = self.idx2insertions[op_idx]
+                if operation == "offload":
+                    self._insert_offload_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] offload op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+                elif operation == "sync":
+                    self._insert_sync_op(op_idx, checkpoint_name)
+                    logging.debug("Insert [{}] offload_sync op.".format(
+                        checkpoint_name))
+                    del self.idx2insertions[op_idx]
+
+        self.block._sync_with_cpp()
+        assert len(self.idx2insertions
+                   ) == 0, "{} checkpoints left un-Offloaded".format(
+                       [ele[1] for ele in self.idx2insertions.values()])
+
+    def _check_offload_fetch(self):
+        # TODO(JZ-LIANG) the single stream offload need no sync
+        pass
+
+    def _offload(self, loss, startup_program=None):
+        """
+        core steps for recompute offload
+        1. create pinned vars and temp vars 
+        2. parse & update Forward pass: offload, sync
+        3. parse & update Backward pass: rename, fetch, sync
+        4. verify the correctness
+        """
+        self._main_program = loss.block.program
+        self.block = loss.block
+        if startup_program == None:
+            startup_program = fluid.default_startup_program()
+
+        with program_guard(self._main_program, startup_program):
+            assert len(self.checkpoint_shape) > 0, (
+                "checkpoints shape {} should be an non empty list like: [12, 512, 1024]".
+                format(self.checkpoint_shape))
+            assert all([ele > 0 for ele in self.checkpoint_shape]), (
+                "all ele in checkpoints shape {} should be a determined integer larger than 0".
+                format(self.checkpoint_shape))
+            self.checkpoint_name2pinned_name = dict()
+            self.checkpoint_name2fetch_name = dict()
+            for checkpoint_varname in self.sorted_checkpoint_names:
+                pinned_var_name, fetch_var_name = self._creat_vars(
+                    checkpoint_varname)
+                self.checkpoint_name2pinned_name[
+                    checkpoint_varname] = pinned_var_name
+                self.checkpoint_name2fetch_name[
+                    checkpoint_varname] = fetch_var_name
+            self._append_fill_constant_ops(startup_program)
+            # TODO (JZ-LIANG) to provide two offload stragtegy in future
+            # step 2. parse & update FW: rename, offload, sync
+            self._parse_backward()
+            self._update_backward()
+            # step 3. parse & update BW: rename, offload, sync
+            self._parse_forward()
+            self._update_forward()
+            # step 4. verify the correctness
+            self._check_offload_fetch()
+
+        return
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -4063,6 +5394,8 @@ class RecomputeOptimizer(Optimizer):
                     no_grad_set=None)
                 print("Finished backward")
         """
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
 
         if framework.in_dygraph_mode():
             raise NotImplementedError(
@@ -4071,15 +5404,31 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
-            params_grads = append_backward(
-                loss,
-                parameter_list,
-                no_grad_set,
-                checkpoints=self._checkpoints)
-            # Note: since we can't use all_reduce_op now,
-            #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
+            checkpoint_vars = []
+            for ckpt in self._checkpoints:
+                if isinstance(ckpt, Variable):
+                    checkpoint_vars.append(ckpt)
+                else:
+                    checkpoint_vars.append(loss.block.var(ckpt))
+
+            # allow return to non-recompute when checkpoints is empty
+            if len(checkpoint_vars) > 0:
+                params_grads, sorted_checkpoint_names = append_backward(
+                    loss,
+                    parameter_list,
+                    no_grad_set,
+                    checkpoints=checkpoint_vars)
+            else:
+                params_grads = append_backward(
+                    loss,
+                    parameter_list,
+                    no_grad_set,
+                    checkpoints=checkpoint_vars)
+
+        if self.enable_offload:
+            self.sorted_checkpoint_names = sorted_checkpoint_names
+            self._offload(loss, startup_program=startup_program)
+
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4148,7 +5497,7 @@ class RecomputeOptimizer(Optimizer):
 
 
 class LookaheadOptimizer(object):
-    """
+    r"""
 	:api_attr: Static Graph
 
     This implements the Lookahead optimizer of the
@@ -4176,29 +5525,35 @@ class LookaheadOptimizer(object):
             import paddle
             import paddle.fluid as fluid
             import numpy as np
+            import numpy.random as random
 
-	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
-	    loss = fluid.layers.cross_entropy(input=y, label=label)
-	    loss = fluid.layers.mean(x=loss)
-	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
-	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
-                                            alpha=0.5,
-                                            k=5)
-	    optimizer.minimize(loss)
-	    main_program = fluid.default_main_program()
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            paddle.enable_static()
+        
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            y = fluid.layers.fc(input=[x], size=2, act="softmax")
+            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = fluid.layers.mean(x=loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                                alpha=0.5,
+                                                k=5)
+            optimizer.minimize(loss)
+            main_program = fluid.default_main_program()
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
 
-	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
-
-	    step = 0
-            while(step < 10):
-                step += 1
-		exe.run(fluid.default_main_program(),
-            	feed=feeder.feed(batch_data))
+            def train_reader(limit=5):
+                for i in range(limit):
+                    yield random.random([2]).astype('float32'), random.random([1]).astype('int64')
+            
+            feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+            reader = paddle.batch(paddle.reader.shuffle(train_reader, buf_size=50000),batch_size=1)
+            
+            for batch_data in reader():
+                exe.run(fluid.default_main_program(),
+                feed=feeder.feed(batch_data))
 
     """
 
@@ -4257,48 +5612,386 @@ class LookaheadOptimizer(object):
                 inputs={"X": fast_var},
                 outputs={"Out": slow_var})
 
-        # Add Var k to main prog and startup prog
-        k = layers.create_global_var(
-            name="lookahead_k",
+        with framework.program_guard(main_block.program, startup_program):
+            # Add Var k to main prog and startup prog
+            k = layers.create_global_var(
+                name="lookahead_k",
+                shape=[1],
+                value=int(self.k),
+                dtype='int32',
+                persistable=True)
+
+            # Add Var alpha to main prog and startup prog
+            alpha = layers.create_global_var(
+                name="lookahead_alpha",
+                shape=[1],
+                value=float(self.alpha),
+                dtype='float32',
+                persistable=True)
+
+            # Add Var step
+            step = layers.create_global_var(
+                name="lookahead_step",
+                shape=[1],
+                value=int(0),
+                dtype='int32',
+                persistable=True)
+            layers.increment(x=step, value=1.0, in_place=True)
+
+            # lookahead
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0)
+
+            one_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
+
+            mod = layers.elementwise_mod(step, k)
+            with layers.control_flow.Switch() as switch:
+                with switch.case(step == one_var):
+                    for param_name in params:
+                        fast_var = main_block.var(param_name)
+                        slow_var = param_to_slow[param_name]
+                        layers.assign(input=fast_var, output=slow_var)
+                with switch.case(mod == zero_var):
+                    for param_name in params:
+                        fast_var = main_block.var(param_name)
+                        slow_var = param_to_slow[param_name]
+                        tmp_var = layers.elementwise_add(
+                            layers.elementwise_mul(fast_var, alpha),
+                            layers.elementwise_mul(
+                                slow_var,
+                                layers.elementwise_sub(one_var, alpha)))
+                        layers.assign(input=tmp_var, output=slow_var)
+                        layers.assign(input=tmp_var, output=fast_var)
+                with switch.default():
+                    pass
+        return mini_out
+
+
+class GradientMergeOptimizer(object):
+    """
+    Gradient Merge, also called as Gradient Accumulation,
+    is a training strategy for larger batches. With this strategy,
+    the parameter will not be updated until specific steps.
+
+    For each step, the forward network and the backward network
+    will run to calculate the gradient of the parameters.
+
+    For every k step, the optimization network will run,
+    applying a specific optimization method (such as SGD, Adam)
+    to the parameters.
+
+    Args:
+        inner_optimizer (Optimizer): The specific optimization (such as SGD, Adam)
+            which update the parameters
+        k_steps (int): the update period of the parameters
+        avg (bool): whether to average the gradients of each mini-batch,
+            the default value is `True`
+
+    Examples:
+        .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data(batch_size):
+            return {"x": np.random.random(size=(batch_size, 32)).astype('float32'),
+                    "y": np.random.random(size=(batch_size, 1)).astype('int64')}
+
+        def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+            fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+            prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            sum_cost = fluid.layers.reduce_mean(cost)
+            return sum_cost, fc_1, prediction
+
+        input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+        input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+        cost, fc_1, pred = mlp(input_x, input_y)
+        sgd = fluid.optimizer.Adam(learning_rate=0.01)
+        sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
+        sgd.minimize(cost)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+
+        for i in range(10):
+            cost_val = exe.run(feed=gen_data(32),
+                       program=fluid.default_main_program(),
+                       fetch_list=[cost.name])
+            print("step=%d, cost=%f" % (i, cost_val[0]))
+    """
+
+    GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
+
+    def __init__(self, inner_optimizer, k_steps=1, avg=True):
+        if framework.in_dygraph_mode():
+            raise Exception(
+                "In dygraph, we don't support GradientMergeOptimizer."
+                "You can do Gradient merge by yourself with k-times forward + backward, "
+                "and one-time optimizer.minimize()")
+
+        assert (inner_optimizer is not None), "inner optimizer can not be None"
+        assert (isinstance(k_steps, int) and
+                k_steps > 0), "k_steps should be a positive integer"
+
+        self.inner_optimizer = inner_optimizer
+        self.k_steps = k_steps
+        self.type = "gradient_merge"
+        self.avg = avg
+        self._optimize_ops = None
+
+    def _set_k_steps(self, k_steps):
+        self.k_steps = k_steps
+
+    def _set_avg(self, avg):
+        self.avg = avg
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+        assert (
+            parameter_list is None
+        ), "The parameter_list should be None when using GradientMergeOptimizer"
+        assert (
+            no_grad_set is None
+        ), "The no_grad_set should be None when using GradientMergeOptimizer"
+
+        params_grads = self.inner_optimizer.backward(
+            loss, startup_program=startup_program)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
+    def _is_the_backward_op(self, op):
+        op_maker = core.op_proto_and_checker_maker
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+            return True
+        return False
+
+    def _remove_op_role_var(self, param, grad):
+        op_maker = core.op_proto_and_checker_maker
+        op = grad.op
+        assert self._is_the_backward_op(op), \
+            'grad.op={} is not the backward op which produces the grad={}' \
+            .format(op, grad.name)
+
+        block = grad.block
+        var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
+        assert param.name in var_attr, \
+            'when using GradientMergeOptimizer, param={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+        assert grad.name in var_attr, \
+            'when using GradientMergeOptimizer, grad={} must be in var_attr={}' \
+            .format(param.name, var_attr)
+
+        # remove (param, grad) from op_role_var
+        var_attr.remove(param.name)
+        var_attr.remove(grad.name)
+        if len(var_attr) > 1:
+            op._set_attr(op_maker.kOpRoleVarAttrName(), var_attr)
+        else:
+            op._remove_attr(op_maker.kOpRoleVarAttrName())
+
+    def _add_gm_op_role_var(self, op, param, grad, cond):
+        grad.op = op
+        op_maker = core.op_proto_and_checker_maker
+        backward = op_maker.OpRole.Backward
+
+        # NOTE(wangxi). When distributed, we will insert grad_merge_all_reduce_op_handle
+        # in multi_devices_graph_pass, which will allreduce(grad) if cond is True, else
+        # do nothing.
+        # In this way, the gradient can be merged first, and then communicate when the
+        # condition is met, reducing the number of communications to increase the
+        # speed.
+        op._set_attr(self.GRAD_MERGE_COND_NAME, cond.name)
+        op._set_attr(op_maker.kOpRoleAttrName(), backward)
+        op._set_attr(op_maker.kOpRoleVarAttrName(), [param.name, grad.name])
+
+    def _get_gm_cond_var(self, main_block):
+        # Add const var
+        k_step_var = layers.create_global_var(
+            name="gradient_merge_k",
             shape=[1],
-            value=int(self.k),
+            value=int(self.k_steps),
             dtype='int32',
-            persistable=True)
+            persistable=True,
+            force_cpu=True)
 
-        # Add Var alpha to main prog and startup prog
-        alpha = layers.create_global_var(
-            name="lookahead_alpha",
-            shape=[1],
-            value=float(self.alpha),
-            dtype='float32',
-            persistable=True)
-
-        # Add Var step
-        step = layers.create_global_var(
-            name="lookahead_step",
+        zero_var = layers.create_global_var(
+            name="gradient_merge_zero",
             shape=[1],
             value=int(0),
             dtype='int32',
-            persistable=True)
-        layers.increment(x=step, value=1.0, in_place=True)
+            persistable=True,
+            force_cpu=True)
 
-        # lookahead
-        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+        # Add step var & cond var
+        step_var = layers.create_global_var(
+            name="gradient_merge_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True,
+            force_cpu=True)
 
-        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+        cond_var = layers.create_global_var(
+            name="gradient_merge_cond",
+            shape=[1],
+            value=bool(0),
+            dtype='bool',
+            persistable=True,
+            force_cpu=True)
 
-        mod = layers.elementwise_mod(step, k)
-        with layers.control_flow.Switch() as switch:
-            with switch.case(mod == zero_var):
-                for param_name in params:
-                    fast_var = main_block.var(param_name)
-                    slow_var = param_to_slow[param_name]
-                    tmp_var = layers.elementwise_add(
-                        layers.elementwise_mul(fast_var, alpha),
-                        layers.elementwise_mul(
-                            slow_var, layers.elementwise_sub(one_var, alpha)))
-                    layers.assign(input=tmp_var, output=slow_var)
-                    layers.assign(input=tmp_var, output=fast_var)
-            with switch.default():
-                pass
-        return mini_out
+        with device_guard("cpu"):
+            # step_var = (step_var + 1) % k_step
+            layers.increment(x=step_var, value=1.0, in_place=True)
+            main_block.append_op(
+                type='elementwise_mod',
+                inputs={'X': step_var,
+                        'Y': k_step_var},
+                outputs={'Out': step_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+
+            # cond_var = (step_var == 0)
+            main_block.append_op(
+                type='equal',
+                inputs={'X': step_var,
+                        'Y': zero_var},
+                outputs={'Out': cond_var})
+
+        return cond_var
+
+    def apply_gradients(self, params_grads):
+        main_program = default_main_program()
+        startup_program = default_startup_program()
+        main_block = main_program.global_block()
+        startup_block = startup_program.global_block()
+
+        cond = self._get_gm_cond_var(main_block)
+
+        #TODO(mapingshuo) support sparse embedding
+        # step1: remove grad.op's op_role_var
+        for param, grad in params_grads:
+            assert (
+                param.type != core.VarDesc.VarType.SELECTED_ROWS
+            ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+
+            self._remove_op_role_var(param, grad)
+
+        param_to_grad = {k.name: v for (k, v) in params_grads}
+        param_names = param_to_grad.keys()
+        param_to_gradient_merge = {}
+
+        new_params_grads = []
+        # step2: create gradient_merge var and init with 0
+        # and update op_role_var
+        for param, grad in params_grads:
+            param_name = param.name
+            param_var = main_block.var(param_name)
+            assert (param_var is not None)
+            gradient_merge_var = main_block.create_var(
+                name=param_name + "@GRAD@GradientMerge",
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True)
+            param_to_gradient_merge[param_name] = gradient_merge_var
+
+            startup_gradient_merge_var = startup_block.create_var(
+                name=param_name + "@GRAD@GradientMerge",
+                shape=param_var.shape,
+                dtype=param_var.dtype,
+                persistable=True)
+            startup_block.append_op(
+                type="fill_constant",
+                outputs={"Out": startup_gradient_merge_var},
+                attrs={
+                    "shape": param_var.shape,
+                    "dtype": param_var.dtype,
+                    "value": float(0),
+                })
+
+            # grad_merge += grad
+            new_grad_op = main_block.append_op(
+                type="elementwise_add",
+                inputs={'X': grad,
+                        'Y': gradient_merge_var},
+                outputs={'Out': gradient_merge_var},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            self._add_gm_op_role_var(new_grad_op, param, gradient_merge_var,
+                                     cond)
+            new_params_grads.append([param, gradient_merge_var])
+
+        def true_apply_gradient():
+            cur_block_idx = main_program.current_block_idx
+            cur_block = main_program.current_block()
+
+            # cur_block's forward_block & backward_block is itself
+            cur_block._set_forward_block_idx(cur_block_idx)
+
+            if self.avg:
+                for param, new_grad in new_params_grads:
+                    # grad /= k_steps
+                    cur_block.append_op(
+                        type='scale',
+                        inputs={'X': new_grad},
+                        outputs={'Out': new_grad},
+                        attrs={
+                            'scale': 1.0 / self.k_steps,
+                            'bias': 0.0,
+                            'bias_after_scale': False
+                        })
+
+            for param, new_grad in new_params_grads:
+                # NOTE. regularization will append ops to grad.block,
+                # while new_grad's real block is global_block,
+                # but we want append regularization ops to cur_block,
+                # so we set new_grad.block = cur_block
+                new_grad.block = cur_block
+
+            self._optimize_ops = self.inner_optimizer.apply_gradients(
+                new_params_grads)
+
+            # clear gradient_merge_vars
+            for param, new_grad in new_params_grads:
+                layers.fill_constant(
+                    shape=new_grad.shape,
+                    dtype=new_grad.dtype,
+                    value=0.0,
+                    out=new_grad)
+
+        # step3. apply gradient
+        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+
+        return self._optimize_ops
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+        return optimize_ops, params_grads

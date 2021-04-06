@@ -19,7 +19,7 @@ for file in $files; do
     if [[ $file =~ ^(patches/.*) ]]; then
         continue;
     else
-        cpplint --filter=-readability/fn_size $file;
+        cpplint --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11 $file;
         TOTAL_ERRORS=$(expr $TOTAL_ERRORS + $?);
     fi
 done

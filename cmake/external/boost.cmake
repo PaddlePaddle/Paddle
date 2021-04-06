@@ -38,6 +38,10 @@ set(BOOST_INCLUDE_DIR "${BOOST_SOURCE_DIR}" CACHE PATH "boost include directory.
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
 
+if(WIN32 AND MSVC_VERSION GREATER_EQUAL 1600)
+    add_definitions(-DBOOST_HAS_STATIC_ASSERT)
+endif()
+
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -52,13 +56,7 @@ ExternalProject_Add(
     UPDATE_COMMAND        ""
     )
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0" OR NOT WIN32)
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-    add_library(boost STATIC ${dummyfile})
-else()
-    add_library(boost INTERFACE)
-endif()
+add_library(boost INTERFACE)
 
 add_dependencies(boost ${BOOST_PROJECT})
 set(Boost_INCLUDE_DIR ${BOOST_INCLUDE_DIR})

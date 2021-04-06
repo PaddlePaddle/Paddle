@@ -12,9 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/lrn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -52,22 +59,13 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
     mid->set_layout(framework::DataLayout::kMKLDNN);
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
       mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
       lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DST, *dst_memory},
                                {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
     } else {
-      // mid has to be allocated and filled
-      // k to pass LRN unit tests
-      // TODO(jczaja): Disable checking mid in unit tests (Require API change)
-      mid->mutable_data<T>(ctx.GetPlace());
-      auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-      const float k = ctx.Attr<float>("k");
-      e_mid = e_mid.constant(k);
-      mid->set_format(platform::GetMKLDNNFormat(*dst_memory));
-
       lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DST, *dst_memory}});
     }
@@ -85,7 +83,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const bool is_float_type = std::is_same<T, float>::value;
     PADDLE_ENFORCE_EQ(is_float_type, true,
                       platform::errors::PreconditionNotMet(
-                          "DNNL LRN GradOpKernl must use float data."));
+                          "DNNL LRN GradOpKernel must use float data."));
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRNGrad must use CPUPlace"));
@@ -120,7 +118,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
-    mkldnn::stream astream(dev_ctx.GetEngine());
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
                                {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},

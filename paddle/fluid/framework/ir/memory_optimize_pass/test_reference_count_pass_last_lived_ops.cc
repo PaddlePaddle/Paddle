@@ -30,6 +30,7 @@ DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace framework {
+namespace p = paddle::platform;
 
 static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
   std::vector<platform::Place> result;
@@ -88,7 +89,7 @@ class ReferenceCountPassTestHelper {
     FLAGS_eager_delete_tensor_gb = -1;
 
     details::ExecutionStrategy exec_strategy;
-    exec_strategy.use_cuda_ = use_cuda;
+    exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
 
     executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda), {}, "",
                                          &scope_, {}, exec_strategy,
@@ -179,7 +180,7 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
            {{"Out", {x7}}}, {});
 
   std::vector<bool> use_cuda_list{false};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_cuda_list.push_back(true);
 #endif
   for (auto use_cuda : use_cuda_list) {

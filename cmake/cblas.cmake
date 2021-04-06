@@ -22,9 +22,7 @@
 #    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
 
-set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
-file(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
-add_library(cblas STATIC ${dummyfile})
+generate_dummy_static_lib(LIB_NAME "cblas" GENERATOR "cblas.cmake")
 
 if(WITH_LIBXSMM)
   target_link_libraries(cblas ${LIBXSMM_LIBS})
@@ -103,6 +101,8 @@ if(NOT DEFINED CBLAS_PROVIDER AND WITH_SYSTEM_BLAS)
         ${REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS})
   find_library(REFERENCE_CBLAS_LIBRARY NAMES cblas PATHS
         ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
+  find_library(REFERENCE_BLAS_LIBRARY NAMES blas PATHS
+        ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
 
   if(REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
     set(CBLAS_PROVIDER REFERENCE_CBLAS)
@@ -127,6 +127,9 @@ endif()
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 
 include_directories(${CBLAS_INC_DIR})
-if(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
+if(${CBLAS_PROVIDER} STREQUAL REFERENCE_CBLAS)
+  target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES} ${REFERENCE_BLAS_LIBRARY})
+elseif(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()
+

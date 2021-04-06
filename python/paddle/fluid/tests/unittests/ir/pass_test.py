@@ -36,6 +36,7 @@ class PassTest(unittest.TestCase):
         self.fetch_list = None
         self.pass_names = None
         self.pass_attrs = {}
+        self.graph_attrs = {}
         self.fused_op_type = None
         self.num_fused_ops = -1
 
@@ -85,6 +86,8 @@ class PassTest(unittest.TestCase):
     def _apply_ir_passes(self):
         graph = core.Graph(self.main_program.desc)
         graph.set_not_owned("__param_scope__", fluid.global_scope())
+        for attr_name, attr_value in self.graph_attrs.items():
+            graph.set(attr_name, attr_value)
 
         if not isinstance(self.pass_names, list):
             self.pass_names = [self.pass_names]
@@ -148,11 +151,19 @@ class PassTest(unittest.TestCase):
             "Checking the number of fetchs failed. Expected: {}, Received: {}".
             format(len(self.fetch_list), len(outs_opt)))
         for i in six.moves.xrange(len(self.fetch_list)):
-            self.assertTrue(
-                np.allclose(
-                    outs_opt[i], outs[i], atol=atol),
-                "Output < {} > has diff at {}, expected {} but got {}".format(
-                    self.fetch_list[i], str(place), outs_opt[i], outs[i]))
+            is_allclose = np.allclose(outs_opt[i], outs[i], atol=atol)
+            if not is_allclose:
+                a = outs_opt[i]
+                b = outs[i]
+                diff_mat = np.abs(a - b) / np.abs(a)
+                max_diff = np.max(diff_mat)
+                offset = np.argmax(diff_mat > atol)
+                self.assertTrue(
+                    is_allclose,
+                    "Output (name: %s, shape: %s, dtype: %s) has diff at %s. The maximum diff is %e, first error element is %d, expected %e, but got %e"
+                    % (self.fetch_list[i].name, str(self.fetch_list[i].shape),
+                       self.fetch_list[i].dtype, str(place), max_diff, offset,
+                       a.flatten()[offset], b.flatten()[offset]))
 
     def _check_fused_ops(self, program):
         '''

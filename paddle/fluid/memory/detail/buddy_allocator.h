@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <set>
@@ -40,6 +41,8 @@ class BuddyAllocator {
  public:
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
+  // Release the unused memory pool, a real free operation for the OS.
+  uint64_t Release();
   size_t Used();
   size_t GetMinChunkSize();
   size_t GetMaxChunkSize();
@@ -91,6 +94,11 @@ class BuddyAllocator {
    * \note  Only store free chunk memory in pool
    */
   PoolSet pool_;
+
+  /**
+   * \brief Record the allocated chunks when Refill pool.
+   */
+  PoolSet chunks_;
 
  private:
   /*! Unify the metadata format between GPU and CPU allocations */

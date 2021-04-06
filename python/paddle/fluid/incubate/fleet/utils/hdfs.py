@@ -24,596 +24,306 @@ import copy
 import errno
 import time
 import logging
+import six
+from . import fs
+from .fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
+from paddle.fluid import core
+import functools
+
+import shutil
 
 __all__ = ["HDFSClient"]
 
 
-def get_logger(name, level, fmt):
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    handler = logging.FileHandler('hdfs.log', mode='w')
-    formatter = logging.Formatter(fmt=fmt)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
+def _handle_errors(max_time_out=None):
+    def decorator(f):
+        @functools.wraps(f)
+        def handler(*args, **kwargs):
+            o = args[0]
+            time_out = max_time_out
+            if time_out is None:
+                time_out = float(o._time_out) / 1000.0
+            else:
+                time_out /= 1000.0
+            inter = float(o._sleep_inter) / 1000.0
+
+            start = time.time()
+            last_print_time = start
+            while True:
+                try:
+                    return f(*args, **kwargs)
+                #important: only ExecuteError need to retry
+                except ExecuteError as e:
+                    if time.time() - start >= time_out:
+                        raise FSTimeOut("args:{} timeout:{}".format(
+                            args, time.time() - start))
+
+                    time.sleep(inter)
+
+                if time.time() - last_print_time > 30:
+                    print("hadoop operator timeout:args:{} timeout:{}".format(
+                        args, time.time() - start))
+                    last_print_time = time.time()
+
+        return handler
+
+    return decorator
 
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+class HDFSClient(FS):
+    def __init__(
+            self,
+            hadoop_home,
+            configs,
+            time_out=5 * 60 * 1000,  #ms
+            sleep_inter=1000):  #ms
+        # Raise exception if JAVA_HOME not exists.
 
-
-class HDFSClient(object):
-    """
-    A tool of HDFS
-
-    Args:
-        hadoop_home (string): hadoop_home
-        configs (dict): hadoop config, it is a dict, please contain \
-            key "fs.default.name" and "hadoop.job.ugi"
-        Can be a float value
-    Examples:
-        hadoop_home = "/home/client/hadoop-client/hadoop/"
-
-        configs = {
-            "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-            "hadoop.job.ugi": "hello,hello123"
-        }
-
-        client = HDFSClient(hadoop_home, configs)
-
-        client.ls("/user/com/train-25")
-        files = client.lsr("/user/com/train-25/models")
-    """
-
-    def __init__(self, hadoop_home, configs):
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
-            config_command = '-D%s=%s' % (k, v)
-            self.pre_commands.append(config_command)
+        if configs:
+            for k, v in six.iteritems(configs):
+                config_command = '-D%s=%s' % (k, v)
+                self.pre_commands.append(config_command)
 
-    def __run_hdfs_cmd(self, commands, retry_times=5):
-        whole_commands = copy.deepcopy(self.pre_commands)
-        whole_commands.extend(commands)
+        self._time_out = time_out
+        self._sleep_inter = sleep_inter
+        self._base_cmd = " ".join(self.pre_commands)
+        self._bd_err_re = re.compile(
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
-        ret_code = 0
-        ret_out = None
-        ret_err = None
-        retry_sleep_second = 3
-        whole_commands = " ".join(whole_commands)
-        for x in range(retry_times + 1):
-            proc = subprocess.Popen(
-                whole_commands,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True)
-            (output, errors) = proc.communicate()
-            ret_code, ret_out, ret_err = proc.returncode, output, errors
+    def _run_cmd(self, cmd, redirect_stderr=False):
+        exe_cmd = "{} -{}".format(self._base_cmd, cmd)
+        ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
+        ret = int(ret)
+        if ret == 134:
+            raise FSShellCmdAborted(cmd)
+        return ret, output.splitlines()
 
-            _logger.info(
-                'Times: %d, Running command: %s. Return code: %d, Msg: %s' %
-                (x, whole_commands, proc.returncode, errors))
+    @_handle_errors()
+    def list_dirs(self, fs_path):
+        if not self.is_exist(fs_path):
+            return []
 
-            if ret_code == 0:
-                break
-            time.sleep(retry_sleep_second)
+        dirs, files = self._ls_dir(fs_path)
+        return dirs
 
-        return ret_code, ret_out, ret_err
-
-    def cat(self, hdfs_path=None):
+    @_handle_errors()
+    def ls_dir(self, fs_path):
+        """	
+        list directory under fs_path, and only give the pure name, not include the fs_path	
         """
-        cat hdfs file
-        Args:
-            hdfs_path(str): the hdfs file path
-        Returns:
-            file content
-        """
-        if self.is_file(hdfs_path):
-            exist_cmd = ['-cat', hdfs_path]
-            returncode, output, errors = self.__run_hdfs_cmd(
-                exist_cmd, retry_times=1)
-            if returncode != 0:
-                _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
-                return ""
+        if not self.is_exist(fs_path):
+            return [], []
+
+        return self._ls_dir(fs_path)
+
+    def _ls_dir(self, fs_path):
+        cmd = "ls {}".format(fs_path)
+        ret, lines = self._run_cmd(cmd)
+
+        if ret != 0:
+            raise ExecuteError(cmd)
+
+        dirs = []
+        files = []
+        for line in lines:
+            arr = line.split()
+            if len(arr) != 8:
+                continue
+
+            p = os.path.basename(arr[7])
+            if arr[0][0] == 'd':
+                dirs.append(p)
             else:
-                _logger.info("HDFS cat HDFS path: {} succeed".format(hdfs_path))
-                return output.strip()
+                files.append(p)
 
-        else:
-            return ""
+        return dirs, files
 
-    def is_exist(self, hdfs_path=None):
-        """
-        whether the remote HDFS path exists
+    def _test_match(self, lines):
+        for l in lines:
+            m = self._bd_err_re.match(l)
+            if m != None:
+                return m
 
-        Args:
-            hdfs_path(str): the hdfs file path
+        return None
 
-        Returns:
-            True or False
-        """
-        exist_cmd = ['-test', '-e', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(
-            exist_cmd, retry_times=1)
-
-        if returncode:
-            _logger.error("HDFS is_exist HDFS path: {} failed".format(
-                hdfs_path))
-            return False
-        else:
-            _logger.info("HDFS is_exist HDFS path: {} successfully".format(
-                hdfs_path))
-            return True
-
-    def is_dir(self, hdfs_path=None):
-        """
-        whether the remote HDFS path is directory
-
-        Args:
-            hdfs_path(str): the hdfs file path
-
-        Returns:
-            True or False
-        """
-
-        if not self.is_exist(hdfs_path):
+    @_handle_errors()
+    def is_dir(self, fs_path):
+        if not self.is_exist(fs_path):
             return False
 
-        dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
+        return self._is_dir(fs_path)
 
-        if returncode:
-            _logger.error("HDFS path: {} failed is not a directory".format(
-                hdfs_path))
-            return False
-        else:
-            _logger.info("HDFS path: {} successfully is a directory".format(
-                hdfs_path))
-            return True
+    def _is_dir(self, fs_path):
+        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
+        ret, lines = self._run_cmd(cmd)
+        if ret:
+            # other error
+            if self._test_match(lines):
+                raise ExecuteError(cmd)
 
-    def is_file(self, hdfs_path=None):
-        """
-        whether the remote HDFS path is file
-
-        Args:
-            hdfs_path(str): the hdfs file path
-
-        Returns:
-            True or False
-        """
-
-        if not self.is_exist(hdfs_path):
             return False
 
-        dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
-
-        if returncode == 0:
-            _logger.error("HDFS path: {} failed is not a file".format(
-                hdfs_path))
-            return False
-        else:
-            _logger.info("HDFS path: {} successfully is a file".format(
-                hdfs_path))
-            return True
-
-    def delete(self, hdfs_path):
-        """
-        Remove a file or directory from HDFS.
-
-        whether the remote HDFS path exists
-
-        Args:
-            hdfs_path(str): HDFS path.
-
-        Returns:
-            True or False
-            This function returns `True` if the deletion was successful and `False` if
-            no file or directory previously existed at `hdfs_path`.
-        """
-        _logger.info('Deleting %r.', hdfs_path)
-
-        if not self.is_exist(hdfs_path):
-            _logger.warn("HDFS path: {} do not exist".format(hdfs_path))
-            return True
-
-        if self.is_dir(hdfs_path):
-            del_cmd = ['-rmr', hdfs_path]
-        else:
-            del_cmd = ['-rm', hdfs_path]
-
-        returncode, output, errors = self.__run_hdfs_cmd(del_cmd, retry_times=0)
-
-        if returncode:
-            _logger.error("HDFS path: {} delete files failure".format(
-                hdfs_path))
-            return False
-        else:
-            _logger.info("HDFS path: {} delete files successfully".format(
-                hdfs_path))
-            return True
-
-    def rename(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
-        """
-        Move a file or folder on HDFS.
-
-        Args:
-            hdfs_src_path(str): HDFS path
-            hdfs_dst_path(str): HDFS path
-            overwrite(bool|False): If the path already exists and overwrite is
-                                   False, will return False.
-        Returns:
-            True or False
-        """
-        assert hdfs_src_path is not None
-        assert hdfs_dst_path is not None
-
-        if not self.is_exist(hdfs_src_path):
-            _logger.info("HDFS path do not exist: {}".format(hdfs_src_path))
-        if self.is_exist(hdfs_dst_path) and not overwrite:
-            _logger.error("HDFS path is exist: {} and overwrite=False".format(
-                hdfs_dst_path))
-
-        rename_command = ['-mv', hdfs_src_path, hdfs_dst_path]
-        returncode, output, errors = self.__run_hdfs_cmd(
-            rename_command, retry_times=1)
-
-        if returncode:
-            _logger.error("HDFS rename path: {} to {} failed".format(
-                hdfs_src_path, hdfs_dst_path))
-            return False
-        else:
-            _logger.info("HDFS rename path: {} to {} successfully".format(
-                hdfs_src_path, hdfs_dst_path))
-            return True
-
-    @staticmethod
-    def make_local_dirs(local_path):
-        """
-        create a directory local, is same to mkdir
-
-        Args:
-            local_path(str): local path that wants to create a directory.
-        """
-        try:
-            os.makedirs(local_path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-
-    def makedirs(self, hdfs_path):
-        """
-        Create a remote directory, recursively if necessary.
-
-        Args:
-            hdfs_path(str): Remote path. Intermediate directories will be
-                            created appropriately.
-
-        Returns:
-            True or False
-        """
-        _logger.info('Creating directories to %r.', hdfs_path)
-        assert hdfs_path is not None
-
-        if self.is_exist(hdfs_path):
-            _logger.error("HDFS path is exist: {}".format(hdfs_path))
-            return
-
-        mkdirs_commands = ['-mkdir', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(
-            mkdirs_commands, retry_times=1)
-
-        if returncode:
-            _logger.error("HDFS mkdir path: {} failed".format(hdfs_path))
-            return False
-        else:
-            _logger.info("HDFS mkdir path: {} successfully".format(hdfs_path))
-            return True
-
-    def ls(self, hdfs_path):
-        """
-        ls directory contents about HDFS hdfs_path
-
-        Args:
-            hdfs_path(str): Remote HDFS path will be ls.
-
-        Returns:
-            List: a contents list about hdfs_path.
-        """
-        assert hdfs_path is not None
-
-        if not self.is_exist(hdfs_path):
-            return []
-
-        ls_commands = ['-ls', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(
-            ls_commands, retry_times=10)
-
-        if returncode:
-            _logger.error("HDFS list path: {} failed".format(hdfs_path))
-            return []
-        else:
-            _logger.info("HDFS list path: {} successfully".format(hdfs_path))
-
-            ret_lines = []
-            regex = re.compile('\s+')
-            out_lines = output.strip().split("\n")
-            for line in out_lines:
-                re_line = regex.split(line)
-                if len(re_line) == 8:
-                    ret_lines.append(re_line[7])
-            return ret_lines
-
-    def lsr(self, hdfs_path, excludes=[]):
-        """
-        list directory contents about HDFS hdfs_path recursively
-
-        Args:
-            hdfs_path(str): Remote HDFS path.
-            excludes(list): excludes
-
-        Returns:
-            List: a contents list about hdfs_path.
-        """
-
-        assert hdfs_path is not None
-
-        if not self.is_exist(hdfs_path):
-            return []
-
-        ls_commands = ['-lsr', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(
-            ls_commands, retry_times=1)
-
-        if returncode:
-            _logger.error("HDFS list all files: {} failed".format(hdfs_path))
-            return []
-        else:
-            _logger.info("HDFS list all files: {} successfully".format(
-                hdfs_path))
-            lines = []
-            regex = re.compile('\s+')
-            out_lines = output.strip().split("\n")
-            for line_id, line in enumerate(out_lines):
-                re_line = regex.split(line)
-                if len(re_line) == 8:
-                    if re_line[0][0] == "d":
-                        continue
-                    if re_line[7] in excludes:
-                        continue
-                    else:
-                        lines.append((re_line[7], re_line[5] + " " + re_line[6],
-                                      line_id))
-            lines = sorted(lines, key=lambda line: line[2])
-            ret_lines = [ret[0] for ret in lines]
-            return ret_lines
-
-    @staticmethod
-    def split_files(files, trainer_id, trainers):
-        """
-        split file list
-
-        Args:
-            files(list): file list
-            trainer_id(int): trainer mpi rank id
-            trainers(int): all trainers num
-
-        Returns:
-            fileist(list): file list of current trainer
-        """
-        remainder = len(files) % trainers
-        blocksize = len(files) / trainers
-
-        blocks = [blocksize] * trainers
-        for i in range(remainder):
-            blocks[i] += 1
-
-        trainer_files = [[]] * trainers
-        begin = 0
-        for i in range(trainers):
-            trainer_files[i] = files[begin:begin + blocks[i]]
-            begin += blocks[i]
-
-        return trainer_files[trainer_id]
-
-    def download(self,
-                 hdfs_path,
-                 local_path,
-                 multi_processes=5,
-                 overwrite=False,
-                 retry_times=5):
-        """
-        Download files from HDFS using multi process.
-
-        Args:
-            hdfs_path(str): path on hdfs
-            local_path(str): path on local
-            multi_processes(int|5): the download data process at the same time, default=5
-            overwrite(bool): is overwrite
-            retry_times(int): retry times
-
-        Returns:
-            List:
-            Download files in local folder.
-        """
-
-        def __subprocess_download(local_path, datas):
-            """
-            download file from HDFS
-
-            Args:
-                hdfs_path(str): the hdfs file path
-                local_path(str): the local file path
-                overwrite(bool|None): will overwrite the file on HDFS or not
-                retry_times(int|5): retry times
-
-            Returns:
-                True or False
-            """
-            for data in datas:
-                download_commands = ["-get", data, local_path]
-
-                returncode, output, errors = self.__run_hdfs_cmd(
-                    download_commands, retry_times=retry_times)
-
-                if returncode:
-                    _logger.error(
-                        "Get local path: {} from HDFS path: {} failed".format(
-                            local_path, hdfs_path))
-                    return False
-            return True
-
-        self.make_local_dirs(local_path)
-
-        all_files = self.ls(hdfs_path)
-
-        procs = []
-        for i in range(multi_processes):
-            process_datas = HDFSClient.split_files(all_files, i,
-                                                   multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download,
-                args=(
-                    local_path,
-                    process_datas, ))
-            procs.append(p)
-            p.start()
-
-        # complete the processes
-        for proc in procs:
-            proc.join()
-
-        _logger.info("Finish {} multi process to download datas".format(
-            multi_processes))
-
-        local_downloads = []
-        for dirname, folder, files in os.walk(local_path):
-            for i in files:
-                t = os.path.join(dirname, i)
-                local_downloads.append(t)
-        return local_downloads
-
-    def upload(self,
-               hdfs_path,
-               local_path,
-               multi_processes=5,
-               overwrite=False,
-               retry_times=5):
-        """
-        Upload files to HDFS using multi process.
-
-        Args:
-            hdfs_path(str): path on hdfs
-            local_path(str): path on local
-            multi_processes(int|5): the upload data process at the same time, default=5
-            overwrite(bool|False): will overwrite file on HDFS or not
-            retry_times(int): upload file max retry time.
-
-        Returns:
-            None
-        """
-
-        def __subprocess_upload(hdfs_path_single, datas):
-            for data in datas:
-                put_commands = ["-put", data, hdfs_path_single]
-                returncode, output, errors = self.__run_hdfs_cmd(put_commands,
-                                                                 retry_times)
-
-                if returncode:
-                    _logger.error("Put local path: {} to HDFS path: {} failed".
-                                  format(data, hdfs_path_single))
-                    return False
-            return True
-
-        def get_local_files(path):
-            """
-            get local files
-
-            Args:
-                path(str): local path
-
-            Returns:
-                list of local files
-            """
-            rlist = []
-
-            if not os.path.exists(path):
-                return rlist
-
-            if os.path.isdir(path):
-                for file in os.listdir(path):
-                    t = os.path.join(path, file)
-                    rlist.append(t)
-            else:
-                rlist.append(path)
-            return rlist
-
-        all_files = get_local_files(local_path)
-        if not all_files:
-            _logger.info("there are nothing need to upload, exit")
-            return
-
-        if self.is_exist(hdfs_path) and overwrite:
-            self.delete(hdfs_path)
-            self.makedirs(hdfs_path)
-
-        procs = []
-        for i in range(multi_processes):
-            process_datas = HDFSClient.split_files(all_files, i,
-                                                   multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_upload, args=(
-                    hdfs_path,
-                    process_datas, ))
-            procs.append(p)
-            p.start()
-
-        # complete the processes
-        for proc in procs:
-            proc.join()
-
-        _logger.info("Finish upload datas from {} to {}".format(local_path,
-                                                                hdfs_path))
-
-    def upload_dir(self, dest_dir, local_dir, overwrite=False):
-        """
-        upload dir to hdfs
-        Args:
-            dest_dir(str): hdfs dest dir
-            local_dir(str): hdfs local dir
-            overwrite(bool): is overwrite
-        Returns:
-            return code
-        """
-        local_dir = local_dir.rstrip("/")
-        dest_dir = dest_dir.rstrip("/")
-        local_basename = os.path.basename(local_dir)
-        if self.is_exist(dest_dir + "/" + local_basename) and overwrite:
-            self.delete(dest_dir + "/" + local_basename)
-        if not self.is_exist(dest_dir):
-            self.makedirs(dest_dir)
-        put_command = ["-put", local_dir, dest_dir]
-        returncode, output, errors = self.__run_hdfs_cmd(put_command)
-        if returncode != 0:
-            _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
-                local_dir, dest_dir))
-            return False
         return True
 
+    def is_file(self, fs_path):
+        if not self.is_exist(fs_path):
+            return False
 
-if __name__ == "__main__":
-    hadoop_home = "/home/client/hadoop-client/hadoop/"
+        return not self._is_dir(fs_path)
 
-    configs = {
-        "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-        "hadoop.job.ugi": "hello,hello123"
-    }
+    @_handle_errors()
+    def is_exist(self, fs_path):
+        cmd = "ls {} ".format(fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        if ret != 0:
+            for l in out:
+                if "No such file or directory" in l:
+                    return False
+            raise ExecuteError(cmd)
 
-    client = HDFSClient(hadoop_home, configs)
+        return True
 
-    client.ls("/user/com/train-25")
-    files = client.lsr("/user/com/train-25/models")
+    # can't retry
+    def upload(self, local_path, fs_path):
+        if self.is_exist(fs_path):
+            raise FSFileExistsError("{} exists".format(fs_path))
+
+        local = LocalFS()
+        if not local.is_exist(local_path):
+            raise FSFileNotExistsError("{} not exists".format(local_path))
+
+        return self._try_upload(local_path, fs_path)
+
+    @_handle_errors()
+    def _try_upload(self, local_path, fs_path):
+        cmd = "put {} {}".format(local_path, fs_path)
+        ret = 0
+        try:
+            ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
+        except Exception as e:
+            self.delete(fs_path)
+            raise e
+
+    # can't retry
+    def download(self, fs_path, local_path):
+        if self.is_exist(local_path):
+            raise FSFileExistsError("{} exists".format(local_path))
+
+        if not self.is_exist(fs_path):
+            raise FSFileNotExistsError("{} not exits".format(fs_path))
+
+        return self._try_download(fs_path, local_path)
+
+    @_handle_errors()
+    def _try_download(self, fs_path, local_path):
+        cmd = "get {} {}".format(fs_path, local_path)
+        ret = 0
+        try:
+            ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
+        except Exception as e:
+            local_fs = LocalFS()
+            local_fs.delete(local_path)
+            raise e
+
+    @_handle_errors()
+    def mkdirs(self, fs_path):
+        if self.is_exist(fs_path):
+            return
+
+        out_hdfs = False
+
+        cmd = "mkdir {} ".format(fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        if ret != 0:
+            for l in out:
+                if "No such file or directory" in l:
+                    out_hdfs = True
+                    break
+            if not out_hdfs:
+                raise ExecuteError(cmd)
+
+        if out_hdfs and not self.is_exist(fs_path):
+            cmd = "mkdir -p {}".format(fs_path)
+            ret, lines = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
+
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
+        if overwrite and self.is_exist(fs_dst_path):
+            self.delete(fs_dst_path)
+
+        if test_exists:
+            if not self.is_exist(fs_src_path):
+                raise FSFileNotExistsError("{} is not exists".format(
+                    fs_src_path))
+
+            if self.is_exist(fs_dst_path):
+                raise FSFileExistsError("{} exists already".format(
+                    fs_src_path, fs_dst_path, fs_dst_path))
+
+        return self._try_mv(fs_src_path, fs_dst_path)
+
+    @_handle_errors()
+    def _try_mv(self, fs_src_path, fs_dst_path):
+        cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
+        ret = 0
+        try:
+            ret, _ = self._run_cmd(cmd)
+            if ret != 0:
+                raise ExecuteError(cmd)
+        except Exception as e:
+            if not self.is_exist(fs_src_path) and \
+                    self.is_exist(fs_dst_path):
+                return
+            raise e
+
+    def _rmr(self, fs_path):
+        cmd = "rmr {}".format(fs_path)
+        ret, _ = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError(cmd)
+
+    def _rm(self, fs_path):
+        cmd = "rm {}".format(fs_path)
+        ret, _ = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError(cmd)
+
+    @_handle_errors()
+    def delete(self, fs_path):
+        if not self.is_exist(fs_path):
+            return
+
+        is_dir = self._is_dir(fs_path)
+        if is_dir:
+            return self._rmr(fs_path)
+
+        return self._rm(fs_path)
+
+    def touch(self, fs_path, exist_ok=True):
+        if self.is_exist(fs_path):
+            if exist_ok:
+                return
+            raise FSFileExistsError
+
+        return self._touchz(fs_path)
+
+    @_handle_errors()
+    def _touchz(self, fs_path):
+        cmd = "touchz {}".format(fs_path)
+        ret, _ = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
+
+    def need_upload_download(self):
+        return True

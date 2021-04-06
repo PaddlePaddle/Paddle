@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
@@ -51,8 +52,7 @@ class TestDygraphDoubleGrad(TestCase):
              retain_graph=None,
              create_graph=False,
              allow_unused=False):
-        backward_strategy = fluid.dygraph.BackwardStrategy()
-        backward_strategy.sort_sum_gradient = self.sort_sum_gradient
+        fluid.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
         return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
@@ -60,8 +60,7 @@ class TestDygraphDoubleGrad(TestCase):
             no_grad_vars=no_grad_vars,
             retain_graph=retain_graph,
             create_graph=create_graph,
-            allow_unused=allow_unused,
-            backward_strategy=backward_strategy)
+            allow_unused=allow_unused)
 
     @dygraph_guard
     def test_exception(self):
@@ -215,13 +214,23 @@ class TestDygraphDoubleGrad(TestCase):
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
         loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         x_grad_actual = x.gradient()
         x_grad_expected = (2.0 / float(numel) *
                            (x_np + dx_expected *
                             (x_np > 0) * 2 / float(numel))).astype('float32')
         self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+        for i in range(5):
+            loss.backward(retain_graph=True)
+            x_grad_actual = x.gradient()
+            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+                x_np + dx_expected *
+                (x_np > 0) * 2 / float(numel))).astype('float32')
+            print(x_grad_actual)
+            print(x_grad_expected)
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
@@ -293,6 +302,71 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
     def setUp(self):
         self.sort_sum_gradient = True
         self.shape = [5, 10]
+
+
+class TestDygraphDoubleGradVisitedUniq(TestCase):
+    def test_compare(self):
+        value = np.random.uniform(-0.5, 0.5, 100).reshape(10, 2,
+                                                          5).astype("float32")
+
+        def model_f(input):
+            linear = fluid.dygraph.Linear(5, 3, bias_attr=False)
+            for i in range(10):
+                if i == 0:
+                    out = linear(input)
+                else:
+                    out = out + linear(input)
+            return out
+
+        fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+
+        with fluid.dygraph.guard():
+            paddle.seed(123)
+            paddle.framework.random._manual_program_seed(123)
+            a = fluid.dygraph.to_variable(value)
+            a.stop_gradient = False
+
+            out = model_f(a)
+
+            dx = fluid.dygraph.grad(
+                outputs=[out],
+                inputs=[a],
+                create_graph=False,
+                only_inputs=True,
+                allow_unused=False)
+
+            grad_1 = dx[0].numpy()
+
+        with fluid.dygraph.guard():
+            paddle.seed(123)
+            paddle.framework.random._manual_program_seed(123)
+            a = fluid.dygraph.to_variable(value)
+            a.stop_gradient = False
+
+            out = model_f(a)
+            out.backward()
+
+            grad_2 = a.gradient()
+
+        self.assertTrue(np.array_equal(grad_1, grad_2))
+
+
+class TestRaiseNoDoubleGradOp(TestCase):
+    def raise_no_grad_op(self):
+        with fluid.dygraph.guard():
+            x = fluid.layers.ones(shape=[2, 3, 2, 2], dtype='float32')
+            x.stop_gradient = False
+            y = paddle.fluid.layers.group_norm(x, groups=1)
+
+            dx = fluid.dygraph.grad(
+                outputs=[y], inputs=[x], create_graph=True,
+                retain_graph=True)[0]
+
+            loss = fluid.layers.reduce_mean(dx)
+            loss.backward()
+
+    def test_raise(self):
+        self.assertRaises(RuntimeError, self.raise_no_grad_op)
 
 
 if __name__ == '__main__':

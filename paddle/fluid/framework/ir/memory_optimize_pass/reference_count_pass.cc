@@ -12,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <queue>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
@@ -34,6 +26,8 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 class ReferenceCountPass : public ir::Pass {
  protected:
@@ -77,11 +71,15 @@ class ShrinkDepsOpFunctor {
       const std::vector<details::OpHandleBase *> &ops) const {
     std::unordered_map<details::OpHandleBase *, size_t> op_to_idx;
     for (size_t i = 0; i < ops.size(); ++i) {
-      PADDLE_ENFORCE(graph_.HasOp(ops[i]), "Op does not exist in graph");
+      PADDLE_ENFORCE_EQ(
+          graph_.HasOp(ops[i]), true,
+          platform::errors::InvalidArgument("Op does not exist in graph."));
       op_to_idx[ops[i]] = i;
     }
 
-    PADDLE_ENFORCE(op_to_idx.size() == ops.size(), "Duplicate ops");
+    PADDLE_ENFORCE_EQ(
+        op_to_idx.size(), ops.size(),
+        platform::errors::InvalidArgument("Graph may have duplicate ops."));
 
     std::vector<std::vector<RelationShip>> ret(ops.size());
     for (auto &e : ret) {
@@ -247,9 +245,9 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
     return {};
   }
 
-  PADDLE_ENFORCE_EQ(
-      computation_ops.empty(), false,
-      platform::errors::InvalidArgument("Computation ops should not be empty"));
+  PADDLE_ENFORCE_EQ(computation_ops.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "Computation ops should not be empty."));
 
   // stage four. Try to shrink computation op if they depend on each other.
   // Get the smallest set of the most ops.
@@ -263,8 +261,9 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
   PADDLE_ENFORCE(last_live_ops_of_vars.empty() && var_infos.empty(),
-                 "Last Live Ops and Reference Counts of vars should be "
-                 "initialized at here.");
+                 platform::errors::InvalidArgument(
+                     "Last live ops and reference counts of vars should be "
+                     "initialized at here."));
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);
 
@@ -304,11 +303,15 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       auto &var_name = name_var_pair.first;
       auto &var_handles = name_var_pair.second;
 
-      PADDLE_ENFORCE_EQ(var_desc->Name(), var_name);
-
       PADDLE_ENFORCE_EQ(
-          var_handles.empty(), false,
-          platform::errors::InvalidArgument("Variable %s not found", var_name));
+          var_desc->Name(), var_name,
+          platform::errors::InvalidArgument(
+              "A Var, it's VarName(%s) and DescName(%s) not same.", var_name,
+              var_desc->Name()));
+
+      PADDLE_ENFORCE_EQ(var_handles.empty(), false,
+                        platform::errors::InvalidArgument(
+                            "Variable %s not found.", var_name));
       auto last_ver_var = var_handles.back();
 
       if (last_ver_var->Node()->IsCtrlVar()) {
@@ -327,12 +330,13 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
+      PADDLE_ENFORCE_EQ(status, LastLiveOpSearchStatus::kSuccess,
+                        platform::errors::InvalidArgument(
+                            "Status(%d) must be success.", status));
       PADDLE_ENFORCE_EQ(
-          status, LastLiveOpSearchStatus::kSuccess,
-          platform::errors::InvalidArgument("status must be success"));
-      PADDLE_ENFORCE_EQ(result.empty(), false,
-                        platform::errors::NotFound(
-                            "Last living ops of %s cannot be empty", var_name));
+          result.empty(), false,
+          platform::errors::NotFound("Last living ops of %s cannot be empty.",
+                                     var_name));
 
       std::string last_live_ops_log_str;
       for (auto &each_ret : result) {

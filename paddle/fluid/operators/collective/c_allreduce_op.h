@@ -20,9 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_GLOO)
+#include <gloo/allreduce.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
 namespace paddle {
@@ -50,7 +55,53 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW("CAllReduce op do not support CPUKernel for now.");
+#if defined(PADDLE_WITH_GLOO)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+    int64_t send_numel = in->numel();
+    const T* send_buff = in->data<T>();
+    T* recv_buff = out->mutable_data<T>(in->dims(), place);
+    auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    PADDLE_ENFORCE_EQ(
+        gloo->IsInitialized(), true,
+        platform::errors::PreconditionNotMet(
+            "You must initialize the gloo environment first to use it."));
+    gloo::AllreduceOptions opts(gloo->GetContext());
+    opts.setInput(const_cast<T*>(send_buff), send_numel);
+    opts.setOutput(recv_buff, send_numel);
+    switch (red_type) {
+      case kRedSum:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::sum<T>));
+        break;
+      case kRedMax:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::max<T>));
+        break;
+      case kRedMin:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::min<T>));
+        break;
+      case kRedProd:
+        opts.setReduceFunction(
+            static_cast<void (*)(void*, const void*, const void*, size_t)>(
+                &gloo::product<T>));
+        break;
+      default:
+        PADDLE_ENFORCE_EQ(true, false,
+                          platform::errors::InvalidArgument(
+                              "Invalid reduce type: %d.", red_type));
+    }
+    gloo::allreduce(opts);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+#endif
   }
 };
 
@@ -58,7 +109,7 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
@@ -72,7 +123,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-    cudaStream_t stream = nullptr;
+    gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
@@ -99,13 +150,15 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW("Invalid reduce type: %d", red_type);
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

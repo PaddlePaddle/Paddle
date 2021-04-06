@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
-#include <algorithm>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -31,7 +31,8 @@ void IrInferCleanGraphPass::RunImpl(Argument* argument) {
   std::unordered_set<const framework::ir::Node*> invalid_nodes;
   int valid_op = 0;
   for (auto* node : graph.Nodes()) {
-    PADDLE_ENFORCE_NOT_NULL(node);
+    PADDLE_ENFORCE_NOT_NULL(node, platform::errors::PreconditionNotMet(
+                                      "The node should not be nullptr."));
     if (is_valid_node(node)) {
       invalid_nodes.insert(node);
     } else if (node->IsOp()) {

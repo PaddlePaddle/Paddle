@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -29,10 +29,6 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
 using platform::PADDLE_CUDA_NUM_THREADS;
-
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -178,7 +174,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         d_batch_sum, d_batch_square_sum);
 
     if (need_sync_stats) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       auto comm = platform::NCCLCommContext::Instance().Get(0, ctx.GetPlace());
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),
@@ -192,7 +188,11 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
           reinterpret_cast<const void *>(d_batch_square_sum),
           reinterpret_cast<void *>(d_batch_square_sum), C,
           platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
+#ifdef PADDLE_WITH_RCCL
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+#endif
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU, and need_sync_stats connot be "

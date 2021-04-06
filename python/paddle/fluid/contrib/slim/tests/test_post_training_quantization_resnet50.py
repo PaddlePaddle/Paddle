@@ -15,6 +15,9 @@
 import sys
 import unittest
 from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantization
+import paddle
+
+paddle.enable_static()
 
 
 class TestPostTrainingForResnet50(TestPostTrainingQuantization):

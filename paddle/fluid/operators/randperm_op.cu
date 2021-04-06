@@ -20,4 +20,5 @@ template <typename T>
 using kernel =
     paddle::operators::RandpermKernel<paddle::platform::CUDADeviceContext, T>;
 
-REGISTER_OP_CUDA_KERNEL(randperm, kernel<int64_t>, kernel<int>);
+REGISTER_OP_CUDA_KERNEL(randperm, kernel<int64_t>, kernel<int>, kernel<float>,
+                        kernel<double>);

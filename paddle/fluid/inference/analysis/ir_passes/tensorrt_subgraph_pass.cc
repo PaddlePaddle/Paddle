@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <map>
-#include <set>
+#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -37,10 +34,18 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
+  auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
-                                             no_calib_int8);
+    if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
+             node->Op()->Type()) != trt_disabled_ops.end()) {
+      VLOG(3) << node->Op()->Type().c_str()
+              << " is diabled by config in TensorRT";
+      return false;
+    }
+    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+                                             with_dynamic_shape);
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -78,16 +83,30 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
                               const std::set<std::string> &engine_outputs,
-                              const std::string &predictor_id) {
+                              const std::string &predictor_id,
+                              const std::string &max_batch_size,
+                              const std::string &precision,
+                              const bool for_calibration) {
   std::string engine_hash_key = "";
   for (auto name : engine_inputs) {
     engine_hash_key += name;
+    engine_hash_key += "#";
   }
   for (auto name : engine_outputs) {
     engine_hash_key += name;
+    engine_hash_key += "#";
   }
   engine_hash_key += predictor_id;
+  if (!for_calibration) {
+    engine_hash_key += "#";
+    engine_hash_key += max_batch_size;
+  }
+  engine_hash_key += "#";
+  engine_hash_key += precision;
+
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  VLOG(2) << "TRT engine hash key: " << engine_hash_key;
+  VLOG(2) << "TRT engine key: " << engine_key;
   return engine_key;
 }
 
@@ -97,7 +116,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
   auto &subgraph = *framework::ir::Agent(node).subgraph();
-  PADDLE_ENFORCE(!subgraph.empty());
+  PADDLE_ENFORCE_EQ(subgraph.empty(), false,
+                    platform::errors::PreconditionNotMet(
+                        "The subgraph should not be empty."));
 
   framework::ProgramDesc *program_desc =
       Get<framework::ProgramDesc *>("program");
@@ -147,9 +168,11 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
+  std::map<std::string, int> origin_name_output_dims;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
+    origin_name_output_dims[x->Name()] = x->Var()->GetShape().size();
   }
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -193,13 +216,20 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // output_mapping help us copy the data from the renamed ITensor
   // to Tensor.
   std::vector<std::string> output_mapping;
+  std::vector<int> renamed_output_dims;
   for (auto name : output_names) {
-    PADDLE_ENFORCE(output_name_map.count(name) != 0);
+    PADDLE_ENFORCE_NE(output_name_map.count(name), 0,
+                      platform::errors::PreconditionNotMet(
+                          "The output_name_map should have %s", name));
     output_mapping.push_back(output_name_map[name]);
+    renamed_output_dims.push_back(origin_name_output_dims[name]);
   }
-  PADDLE_ENFORCE(!output_mapping.empty());
-  PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
-                 "the block has no var-desc");
+  PADDLE_ENFORCE_EQ(output_mapping.empty(), false,
+                    platform::errors::PreconditionNotMet(
+                        "The output_mapping should not be empty."));
+  PADDLE_ENFORCE_EQ(
+      !block_desc.Proto()->vars().empty(), true,
+      platform::errors::PreconditionNotMet("the block has no var-desc"));
 
   // Set attrs
   op_desc->SetType("tensorrt_engine");
@@ -215,6 +245,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
+  op_desc->SetAttr("origin_output_dims", renamed_output_dims);
   op_desc->SetAttr("parameters", params);
 
   // we record all inputs' shapes in attr to check if they are consistent
@@ -230,22 +261,31 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
-  auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
-                                      std::to_string(0));
+  // serialization is affected by max_batch_size, but calibration is not.
+  // So we use seperate engine keys in serialization and calibration.
+  auto engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0),
+      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(static_cast<int>(precision_mode)), false);
+  auto calibration_engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0),
+      std::to_string(Get<int>("max_batch_size")),
+      std::to_string(static_cast<int>(precision_mode)), true);
   auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
-  bool load_from_memory = Get<bool>("model_from_memory");
   std::string calibration_data = "";
   if (enable_int8 && use_calib_mode) {
-    calibration_data = GetTrtCalibTableData(
-        Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
+    calibration_data =
+        GetTrtCalibTableData(Get<std::string>("model_opt_cache_dir"),
+                             calibration_engine_key, enable_int8);
   }
   op_desc->SetAttr("calibration_data", calibration_data);
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
   op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
+  op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
 
   std::string trt_engine_serialized_data = "";
@@ -300,9 +340,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
                   min_input_shape, max_input_shape, opt_input_shape,
                   disable_trt_plugin_fp16);
+  trt_engine->SetUseOSS(Get<bool>("use_oss"));
+  trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
+  trt_engine->SetDLACore(Get<int>("trt_dla_core"));
 
-  bool need_serialize = (use_static_engine && !load_from_memory);
-  if (need_serialize) {
+  trt_engine->SetWithErnie(
+      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass));
+
+  if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
         Get<std::string>("model_opt_cache_dir"), engine_key);
     // we can load the engine info serialized before from the disk.
@@ -330,7 +376,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set, output_mapping, trt_engine);
 
-  if (need_serialize) {
+  if (use_static_engine) {
     nvinfer1::IHostMemory *serialized_engine_data = trt_engine->Serialize();
     trt_engine_serialized_data =
         std::string((const char *)serialized_engine_data->data(),
@@ -339,6 +385,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         GetTrtEngineSerializedPath(Get<std::string>("model_opt_cache_dir"),
                                    engine_key),
         trt_engine_serialized_data);
+    LOG(INFO) << "Save TRT Optimized Info to "
+              << GetTrtEngineSerializedPath(
+                     Get<std::string>("model_opt_cache_dir"), engine_key);
   }
 }
 
@@ -351,3 +400,32 @@ REGISTER_PASS(tensorrt_subgraph_pass,
     .RequirePassAttr("max_batch_size")
     .RequirePassAttr("workspace_size")
     .RequirePassAttr("min_subgraph_size");
+
+REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("conv2d", 1)
+            .EQ("pool2d", 0)
+            .EQ("relu", 0)
+            .EQ("softmax", 0)
+            .EQ("sigmoid", 0)
+            .EQ("hard_swish", 0)
+            .LE("depthwise_conv2d", 1)
+            .EQ("batch_norm", 0)
+            .EQ("concat", 0)
+            .EQ("tanh", 0)
+            .EQ("pad", 0)
+            .LE("elementwise_add", 1)
+            .LE("elementwise_mul", 1)
+            .EQ("prelu", 0)
+            .LE("conv2d_transpose", 2)
+            .LE("leaky_relu", 1)
+            .EQ("fc", 0)
+            .EQ("shuffle_channel", 0)
+            .EQ("swish", 0)
+            .EQ("split", 0)
+            .LE("instance_norm", 1)
+            .EQ("gelu", 0)
+            .EQ("layer_norm", 0)
+            .EQ("scale", 0)
+            .LE("matmul", 1));

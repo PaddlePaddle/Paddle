@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
-#include "cub/cub.cuh"
 #include "paddle/fluid/operators/bce_loss_op.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -24,14 +23,10 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUBCELossForward(const T* x_data, const T* label_data,
                                   T* out_data, const int in_numel) {
-  CUDA_1D_KERNEL_LOOP(i, in_numel) {
+  CUDA_KERNEL_LOOP(i, in_numel) {
     T x = x_data[i];
     T label = label_data[i];
     T one = static_cast<T>(1.);
@@ -48,7 +43,7 @@ template <typename T>
 __global__ void GPUBCELossBackward(const T* x_data, const T* label_data,
                                    const T* dout_data, T* dx_data,
                                    const int in_numel) {
-  CUDA_1D_KERNEL_LOOP(i, in_numel) {
+  CUDA_KERNEL_LOOP(i, in_numel) {
     T x = x_data[i];
     T label = label_data[i];
     T dout = dout_data[i];
@@ -71,15 +66,16 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
 
     auto x_data = x->data<T>();
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
-    int x_numel = x->numel();
+    auto x_numel = x->numel();
+
     platform::GpuLaunchConfig config =
-        platform::getGpuLaunchConfig(x_numel, ctx);
+        platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), x_numel);
 
     Tensor x_cpu;
     framework::TensorCopy(*x, platform::CPUPlace(), &x_cpu);
     T* x_cpu_data = x_cpu.data<T>();
 
-    for (int i = 0; i < x_numel; ++i) {
+    for (int64_t i = 0; i < x_numel; ++i) {
       PADDLE_ENFORCE_GE(
           x_cpu_data[i], static_cast<T>(0),
           platform::errors::InvalidArgument(
@@ -92,9 +88,9 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.cuda_device_context();
 
-    GPUBCELossForward<
-        T><<<config.blocks, config.threads, 0, dev_ctx.stream()>>>(
-        x_data, labels->data<T>(), out_data, x_numel);
+    GPUBCELossForward<T><<<config.block_per_grid, config.thread_per_block, 0,
+                           dev_ctx.stream()>>>(x_data, labels->data<T>(),
+                                               out_data, x_numel);
   }
 };
 
@@ -109,12 +105,12 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     auto dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     int x_numel = x->numel();
-    platform::GpuLaunchConfig config =
-        platform::getGpuLaunchConfig(x_numel, ctx);
     auto& dev_ctx = ctx.cuda_device_context();
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(dev_ctx, x_numel);
 
-    GPUBCELossBackward<
-        T><<<config.blocks, config.threads, 0, dev_ctx.stream()>>>(
+    GPUBCELossBackward<T><<<config.block_per_grid, config.thread_per_block, 0,
+                            dev_ctx.stream()>>>(
         x->data<T>(), labels->data<T>(), dout->data<T>(), dx_data, x_numel);
   }
 };

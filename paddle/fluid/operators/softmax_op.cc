@@ -22,6 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -53,13 +57,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(X)."));
 
-    auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    if (axis != rank_x - 1 && axis != -1) {
-      PADDLE_ENFORCE_EQ(use_cudnn, false,
-                        platform::errors::InvalidArgument(
-                            "CUDNN kernel only support axis as -1."));
-    }
-
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -71,21 +68,21 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
 
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                         platform::errors::InvalidArgument(
@@ -122,6 +119,11 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -190,21 +192,20 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-
-#ifdef PADDLE_WITH_CUDA
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
-        ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                         platform::errors::InvalidArgument(
@@ -236,10 +237,6 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
-// NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
-DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(SoftmaxGradInplaceInferer,
-                                     {"Out", framework::GradVarName("X")});
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -250,8 +247,7 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer);
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
-                  ops::SoftmaxGradInplaceInferer);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);

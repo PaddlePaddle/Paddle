@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
-#include <algorithm>
-#include <string>
-#include <vector>
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -34,8 +30,9 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -55,27 +52,33 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
           if (adaptive) {
             hstart = AdaptStartIndex(ph, input_height, output_height);
             hend = AdaptEndIndex(ph, input_height, output_height);
-          } else {
-            hstart = ph * stride_height - padding_height;
-            hend = std::min(hstart + ksize_height, input_height);
-            hstart = std::max(hstart, 0);
           }
           for (int pw = 0; pw < output_width; ++pw) {
+            int pool_size = 1;
             if (adaptive) {
               wstart = AdaptStartIndex(pw, input_width, output_width);
               wend = AdaptEndIndex(pw, input_width, output_width);
             } else {
+              hstart = ph * stride_height - padding_height;
               wstart = pw * stride_width - padding_width;
-              wend = std::min(wstart + ksize_width, input_width);
+              hend = std::min(hstart + ksize_height,
+                              input_height + padding_height);
+              wend =
+                  std::min(wstart + ksize_width, input_width + padding_width);
+              pool_size = (hend - hstart) * (wend - wstart);
+
               wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
             }
 
             T ele = pool_process.initial();
@@ -84,9 +87,10 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                 pool_process.compute(input_data[h * input_width + w], &ele);
               }
             }
-            int pool_size = (exclusive || adaptive)
-                                ? (hend - hstart) * (wend - wstart)
-                                : ksize_height * ksize_width;
+            if (exclusive || adaptive) {
+              pool_size = (hend - hstart) * (wend - wstart);
+            }
+
             pool_process.finalize(static_cast<T>(pool_size), &ele);
             output_data[ph * output_width + pw] = ele;
           }
@@ -101,8 +105,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NHWC");
 
     const int batch_size = input.dims()[0];
@@ -129,8 +133,8 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_height * input_width;
       const int output_stride = output_height * output_width;
@@ -140,19 +144,25 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                hstart = ph * stride_height - padding_height;
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
                 wstart = std::max(wstart, 0);
+                hstart = std::max(hstart, 0);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
 
               T ele = pool_process.initial();
@@ -161,9 +171,9 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   pool_process.compute(input_data[h * input_width + w], &ele);
                 }
               }
-              int pool_size = (exclusive || adaptive)
-                                  ? (hend - hstart) * (wend - wstart)
-                                  : ksize_height * ksize_width;
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
               pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[ph * output_width + pw] = ele;
             }
@@ -181,19 +191,25 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                hstart = ph * stride_height - padding_height;
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
                 wstart = std::max(wstart, 0);
+                hstart = std::max(hstart, 0);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
               T ele = pool_process.initial();
               for (int h = hstart; h < hend; ++h) {
@@ -204,10 +220,9 @@ class Pool2dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                       &ele);
                 }
               }
-              int pool_size = (exclusive || adaptive)
-                                  ? (hend - hstart) * (wend - wstart)
-                                  : ksize_height * ksize_width;
-
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
               pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[ph * output_width * output_channels +
                           pw * output_channels + c] = ele;
@@ -235,8 +250,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const platform::CPUDeviceContext& context, const framework::Tensor& input,
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
-      const std::vector<int>& paddings, PoolProcess pool_grad_process,
-      bool exclusive, bool adaptive, framework::Tensor* input_grad) {
+      const std::vector<int>& paddings, bool exclusive, bool adaptive,
+      framework::Tensor* input_grad, PoolProcess pool_grad_process) {
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -257,31 +272,37 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
           if (adaptive) {
             hstart = AdaptStartIndex(ph, input_height, output_height);
             hend = AdaptEndIndex(ph, input_height, output_height);
-          } else {
-            hstart = ph * stride_height - padding_height;
-            hend = std::min(hstart + ksize_height, input_height);
-            hstart = std::max(hstart, 0);
           }
           for (int pw = 0; pw < output_width; ++pw) {
+            int pool_size = 1;
             if (adaptive) {
               wstart = AdaptStartIndex(pw, input_width, output_width);
               wend = AdaptEndIndex(pw, input_width, output_width);
             } else {
+              hstart = ph * stride_height - padding_height;
               wstart = pw * stride_width - padding_width;
-              wend = std::min(wstart + ksize_width, input_width);
+              hend = std::min(hstart + ksize_height,
+                              input_height + padding_height);
+              wend =
+                  std::min(wstart + ksize_width, input_width + padding_width);
+              pool_size = (hend - hstart) * (wend - wstart);
+
               wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
             }
-            int pool_size = (exclusive || adaptive)
-                                ? (hend - hstart) * (wend - wstart)
-                                : ksize_height * ksize_width;
+            if (exclusive || adaptive) {
+              pool_size = (hend - hstart) * (wend - wstart);
+            }
             float scale = 1.0 / pool_size;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
@@ -308,8 +329,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::string data_format,
-      PoolProcess pool_grad_process, bool exclusive, bool adaptive,
-      framework::Tensor* input_grad) {
+      bool exclusive, bool adaptive, framework::Tensor* input_grad,
+      PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NHWC");
 
     const int batch_size = input.dims()[0];
@@ -338,8 +359,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int hstart, hend;
-    int wstart, wend;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_height * input_width;
       const int output_stride = output_height * output_width;
@@ -349,23 +370,29 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                hstart = ph * stride_height - padding_height;
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
                 wstart = std::max(wstart, 0);
+                hstart = std::max(hstart, 0);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
-              int pool_size = (exclusive || adaptive)
-                                  ? (hend - hstart) * (wend - wstart)
-                                  : ksize_height * ksize_width;
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
               float scale = 1.0 / pool_size;
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
@@ -394,23 +421,29 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                hstart = ph * stride_height - padding_height;
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (hend - hstart) * (wend - wstart);
+
                 wstart = std::max(wstart, 0);
+                hstart = std::max(hstart, 0);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
-              int pool_size = (exclusive || adaptive)
-                                  ? (hend - hstart) * (wend - wstart)
-                                  : ksize_height * ksize_width;
+              if (exclusive || adaptive) {
+                pool_size = (hend - hstart) * (wend - wstart);
+              }
               float scale = 1.0 / pool_size;
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
@@ -646,8 +679,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::vector<int>& paddings, bool exclusive,
+                  bool adaptive, framework::Tensor* output,
+                  PoolProcess pool_process) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -672,37 +706,46 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
+
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int pd = 0; pd < output_depth; ++pd) {
           if (adaptive) {
             dstart = AdaptStartIndex(pd, input_depth, output_depth);
             dend = AdaptEndIndex(pd, input_depth, output_depth);
-          } else {
-            dstart = pd * stride_depth - padding_depth;
-            dend = std::min(dstart + ksize_depth, input_depth);
-            dstart = std::max(dstart, 0);
           }
+
           for (int ph = 0; ph < output_height; ++ph) {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
+
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                dstart = pd * stride_depth - padding_depth;
+                dend =
+                    std::min(dstart + ksize_depth, input_depth + padding_depth);
+                hstart = ph * stride_height - padding_height;
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+                pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+                dstart = std::max(dstart, 0);
+                hstart = std::max(hstart, 0);
                 wstart = std::max(wstart, 0);
+                dend = std::min(dend, input_depth);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
               int output_idx = (pd * output_height + ph) * output_width + pw;
               T ele = pool_process.initial();
@@ -715,10 +758,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   }
                 }
               }
-              int pool_size =
-                  (exclusive || adaptive)
-                      ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                      : ksize_depth * ksize_height * ksize_width;
+              if (exclusive || adaptive) {
+                pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+              }
               pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[output_idx] = ele;
             }
@@ -733,8 +775,8 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                   const framework::Tensor& input, const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::string data_format, PoolProcess pool_process,
-                  bool exclusive, bool adaptive, framework::Tensor* output) {
+                  const std::string data_format, bool exclusive, bool adaptive,
+                  framework::Tensor* output, PoolProcess pool_process) {
     bool channel_last = (data_format == "NDHWC");
     const int batch_size = input.dims()[0];
 
@@ -767,10 +809,9 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
-
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_depth * input_height * input_width;
       const int output_stride = output_depth * output_height * output_width;
@@ -780,29 +821,40 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               dstart = AdaptStartIndex(pd, input_depth, output_depth);
               dend = AdaptEndIndex(pd, input_depth, output_depth);
-            } else {
-              dstart = pd * stride_depth - padding_depth;
-              dend = std::min(dstart + ksize_depth, input_depth);
-              dstart = std::max(dstart, 0);
             }
+
             for (int ph = 0; ph < output_height; ++ph) {
               if (adaptive) {
                 hstart = AdaptStartIndex(ph, input_height, output_height);
                 hend = AdaptEndIndex(ph, input_height, output_height);
-              } else {
-                hstart = ph * stride_height - padding_height;
-                hend = std::min(hstart + ksize_height, input_height);
-                hstart = std::max(hstart, 0);
               }
+
               for (int pw = 0; pw < output_width; ++pw) {
+                int pool_size = 1;
                 if (adaptive) {
                   wstart = AdaptStartIndex(pw, input_width, output_width);
                   wend = AdaptEndIndex(pw, input_width, output_width);
                 } else {
+                  dstart = pd * stride_depth - padding_depth;
+                  dend = std::min(dstart + ksize_depth,
+                                  input_depth + padding_depth);
+                  hstart = ph * stride_height - padding_height;
+                  hend = std::min(hstart + ksize_height,
+                                  input_height + padding_height);
                   wstart = pw * stride_width - padding_width;
-                  wend = std::min(wstart + ksize_width, input_width);
+                  wend = std::min(wstart + ksize_width,
+                                  input_width + padding_width);
+
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  dstart = std::max(dstart, 0);
+                  hstart = std::max(hstart, 0);
                   wstart = std::max(wstart, 0);
+                  dend = std::min(dend, input_depth);
+                  hend = std::min(hend, input_height);
+                  wend = std::min(wend, input_width);
                 }
+
                 int output_idx = (pd * output_height + ph) * output_width + pw;
                 T ele = pool_process.initial();
                 for (int d = dstart; d < dend; ++d) {
@@ -814,10 +866,10 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                     }
                   }
                 }
-                int pool_size =
-                    (exclusive || adaptive)
-                        ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                        : ksize_depth * ksize_height * ksize_width;
+                if (exclusive || adaptive) {
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                }
                 pool_process.finalize(static_cast<T>(pool_size), &ele);
                 output_data[output_idx] = ele;
               }
@@ -838,28 +890,38 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               dstart = AdaptStartIndex(pd, input_depth, output_depth);
               dend = AdaptEndIndex(pd, input_depth, output_depth);
-            } else {
-              dstart = pd * stride_depth - padding_depth;
-              dend = std::min(dstart + ksize_depth, input_depth);
-              dstart = std::max(dstart, 0);
             }
+
             for (int ph = 0; ph < output_height; ++ph) {
               if (adaptive) {
                 hstart = AdaptStartIndex(ph, input_height, output_height);
                 hend = AdaptEndIndex(ph, input_height, output_height);
-              } else {
-                hstart = ph * stride_height - padding_height;
-                hend = std::min(hstart + ksize_height, input_height);
-                hstart = std::max(hstart, 0);
               }
+
               for (int pw = 0; pw < output_width; ++pw) {
+                int pool_size = 1;
                 if (adaptive) {
                   wstart = AdaptStartIndex(pw, input_width, output_width);
                   wend = AdaptEndIndex(pw, input_width, output_width);
                 } else {
+                  dstart = pd * stride_depth - padding_depth;
+                  dend = std::min(dstart + ksize_depth,
+                                  input_depth + padding_depth);
+                  hstart = ph * stride_height - padding_height;
+                  hend = std::min(hstart + ksize_height,
+                                  input_height + padding_height);
                   wstart = pw * stride_width - padding_width;
-                  wend = std::min(wstart + ksize_width, input_width);
+                  wend = std::min(wstart + ksize_width,
+                                  input_width + padding_width);
+
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  dstart = std::max(dstart, 0);
+                  hstart = std::max(hstart, 0);
                   wstart = std::max(wstart, 0);
+                  dend = std::min(dend, input_depth);
+                  hend = std::min(hend, input_height);
+                  wend = std::min(wend, input_width);
                 }
 
                 T ele = pool_process.initial();
@@ -874,10 +936,10 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                     }
                   }
                 }
-                int pool_size =
-                    (exclusive || adaptive)
-                        ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                        : ksize_depth * ksize_height * ksize_width;
+                if (exclusive || adaptive) {
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                }
                 pool_process.finalize(static_cast<T>(pool_size), &ele);
                 int output_idx =
                     ((pd * output_height + ph) * output_width + pw) *
@@ -910,8 +972,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const platform::CPUDeviceContext& context, const framework::Tensor& input,
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
-      const std::vector<int>& paddings, PoolProcess pool_grad_process,
-      bool exclusive, bool adaptive, framework::Tensor* input_grad) {
+      const std::vector<int>& paddings, bool exclusive, bool adaptive,
+      framework::Tensor* input_grad, PoolProcess pool_grad_process) {
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -937,43 +999,51 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int pd = 0; pd < output_depth; ++pd) {
           if (adaptive) {
             dstart = AdaptStartIndex(pd, input_depth, output_depth);
             dend = AdaptEndIndex(pd, input_depth, output_depth);
-          } else {
-            dstart = pd * stride_depth - padding_depth;
-            dend = std::min(dstart + ksize_depth, input_depth);
-            dstart = std::max(dstart, 0);
           }
+
           for (int ph = 0; ph < output_height; ++ph) {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
             }
+
             for (int pw = 0; pw < output_width; ++pw) {
+              int pool_size = 1;
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
               } else {
+                dstart = pd * stride_depth - padding_depth;
+                dend =
+                    std::min(dstart + ksize_depth, input_depth + padding_depth);
+                hstart = ph * stride_height - padding_height;
+                hend = std::min(hstart + ksize_height,
+                                input_height + padding_height);
                 wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
+                wend =
+                    std::min(wstart + ksize_width, input_width + padding_width);
+
+                pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+                dstart = std::max(dstart, 0);
+                hstart = std::max(hstart, 0);
                 wstart = std::max(wstart, 0);
+                dend = std::min(dend, input_depth);
+                hend = std::min(hend, input_height);
+                wend = std::min(wend, input_width);
               }
 
-              int pool_size =
-                  (exclusive || adaptive)
-                      ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                      : ksize_depth * ksize_height * ksize_width;
+              if (exclusive || adaptive) {
+                pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
+              }
               float scale = 1.0 / pool_size;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
@@ -1003,8 +1073,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
       const framework::Tensor& output, const framework::Tensor& output_grad,
       const std::vector<int>& ksize, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::string data_format,
-      PoolProcess pool_grad_process, bool exclusive, bool adaptive,
-      framework::Tensor* input_grad) {
+      bool exclusive, bool adaptive, framework::Tensor* input_grad,
+      PoolProcess pool_grad_process) {
     bool channel_last = (data_format == "NDHWC");
 
     const int batch_size = input.dims()[0];
@@ -1037,9 +1107,9 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int dstart, dend;
-    int hstart, hend;
-    int wstart, wend;
+    int dstart = 0, dend = 1;
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
     if (!channel_last) {
       const int input_stride = input_depth * input_height * input_width;
       const int output_stride = output_depth * output_height * output_width;
@@ -1049,34 +1119,44 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               dstart = AdaptStartIndex(pd, input_depth, output_depth);
               dend = AdaptEndIndex(pd, input_depth, output_depth);
-            } else {
-              dstart = pd * stride_depth - padding_depth;
-              dend = std::min(dstart + ksize_depth, input_depth);
-              dstart = std::max(dstart, 0);
             }
+
             for (int ph = 0; ph < output_height; ++ph) {
               if (adaptive) {
                 hstart = AdaptStartIndex(ph, input_height, output_height);
                 hend = AdaptEndIndex(ph, input_height, output_height);
-              } else {
-                hstart = ph * stride_height - padding_height;
-                hend = std::min(hstart + ksize_height, input_height);
-                hstart = std::max(hstart, 0);
               }
+
               for (int pw = 0; pw < output_width; ++pw) {
+                int pool_size = 1;
                 if (adaptive) {
                   wstart = AdaptStartIndex(pw, input_width, output_width);
                   wend = AdaptEndIndex(pw, input_width, output_width);
                 } else {
+                  dstart = pd * stride_depth - padding_depth;
+                  dend = std::min(dstart + ksize_depth,
+                                  input_depth + padding_depth);
+                  hstart = ph * stride_height - padding_height;
+                  hend = std::min(hstart + ksize_height,
+                                  input_height + padding_height);
                   wstart = pw * stride_width - padding_width;
-                  wend = std::min(wstart + ksize_width, input_width);
+                  wend = std::min(wstart + ksize_width,
+                                  input_width + padding_width);
+
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  dstart = std::max(dstart, 0);
+                  hstart = std::max(hstart, 0);
                   wstart = std::max(wstart, 0);
+                  dend = std::min(dend, input_depth);
+                  hend = std::min(hend, input_height);
+                  wend = std::min(wend, input_width);
                 }
 
-                int pool_size =
-                    (exclusive || adaptive)
-                        ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                        : ksize_depth * ksize_height * ksize_width;
+                if (exclusive || adaptive) {
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                }
                 float scale = 1.0 / pool_size;
                 for (int d = dstart; d < dend; ++d) {
                   for (int h = hstart; h < hend; ++h) {
@@ -1111,34 +1191,44 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             if (adaptive) {
               dstart = AdaptStartIndex(pd, input_depth, output_depth);
               dend = AdaptEndIndex(pd, input_depth, output_depth);
-            } else {
-              dstart = pd * stride_depth - padding_depth;
-              dend = std::min(dstart + ksize_depth, input_depth);
-              dstart = std::max(dstart, 0);
             }
+
             for (int ph = 0; ph < output_height; ++ph) {
               if (adaptive) {
                 hstart = AdaptStartIndex(ph, input_height, output_height);
                 hend = AdaptEndIndex(ph, input_height, output_height);
-              } else {
-                hstart = ph * stride_height - padding_height;
-                hend = std::min(hstart + ksize_height, input_height);
-                hstart = std::max(hstart, 0);
               }
+
               for (int pw = 0; pw < output_width; ++pw) {
+                int pool_size = 1;
                 if (adaptive) {
                   wstart = AdaptStartIndex(pw, input_width, output_width);
                   wend = AdaptEndIndex(pw, input_width, output_width);
                 } else {
+                  dstart = pd * stride_depth - padding_depth;
+                  dend = std::min(dstart + ksize_depth,
+                                  input_depth + padding_depth);
+                  hstart = ph * stride_height - padding_height;
+                  hend = std::min(hstart + ksize_height,
+                                  input_height + padding_height);
                   wstart = pw * stride_width - padding_width;
-                  wend = std::min(wstart + ksize_width, input_width);
+                  wend = std::min(wstart + ksize_width,
+                                  input_width + padding_width);
+
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  dstart = std::max(dstart, 0);
+                  hstart = std::max(hstart, 0);
                   wstart = std::max(wstart, 0);
+                  dend = std::min(dend, input_depth);
+                  hend = std::min(hend, input_height);
+                  wend = std::min(wend, input_width);
                 }
 
-                int pool_size =
-                    (exclusive || adaptive)
-                        ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                        : ksize_depth * ksize_height * ksize_width;
+                if (exclusive || adaptive) {
+                  pool_size =
+                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                }
                 float scale = 1.0 / pool_size;
                 for (int d = dstart; d < dend; ++d) {
                   for (int h = hstart; h < hend; ++h) {

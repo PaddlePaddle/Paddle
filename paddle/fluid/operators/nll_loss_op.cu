@@ -11,7 +11,6 @@ limitations under the License. */
 #include <algorithm>
 #include <functional>
 #include <string>
-#include "cub/cub.cuh"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/nll_loss_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -31,10 +30,6 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUNLLLossForward1D_no_reduce(T* out_data, const T* x_data,
                                               const int64_t* label_data,
@@ -42,12 +37,14 @@ __global__ void GPUNLLLossForward1D_no_reduce(T* out_data, const T* x_data,
                                               const int64_t batch_size,
                                               const int64_t n_classes,
                                               const int64_t ignore_index) {
-  CUDA_1D_KERNEL_LOOP(i, batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size) {
     const int64_t cur_label = label_data[i];
     if (cur_label == ignore_index) {
       out_data[i] = 0;
       continue;
     }
+    PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                   "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
     out_data[i] = -x_data[i * n_classes + cur_label] * cur_weight;
   }
@@ -66,6 +63,8 @@ __global__ void GPUNLLLossForward1D_with_reduce(
   for (i = threadIdx.x; i < batch_size; i += NTHREADS) {
     const auto cur_label = label_data[i];
     if (cur_label != ignore_index) {
+      PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                     "label should not be out of bounds.");
       const auto cur_weight = weight_data ? weight_data[cur_label] : (T)1;
       sharedInputs[threadIdx.x] -=
           x_data[i * n_classes + cur_label] * cur_weight;
@@ -191,7 +190,7 @@ __global__ void GPUNLLLossForward2D_no_reduce(
   const int64_t map_size = in_dim2 * in_dim3;
   const int64_t sample_size = n_classes * map_size;
   const int64_t out_numel = batch_size * map_size;
-  CUDA_1D_KERNEL_LOOP(i, out_numel) {
+  CUDA_KERNEL_LOOP(i, out_numel) {
     const int64_t b = i % batch_size;
     const int64_t h = (i / batch_size) % in_dim2;
     const int64_t w = (i / (batch_size * in_dim2)) % in_dim3;
@@ -202,6 +201,8 @@ __global__ void GPUNLLLossForward2D_no_reduce(
       out_data[index] = 0;
       continue;
     }
+    PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                   "label should not be out of bounds.");
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
     out_data[index] =
         -x_data[b * sample_size + cur_label * map_size + h * in_dim3 + w] *
@@ -230,6 +231,8 @@ __global__ void GPUNLLLossForward2D_with_reduce(
        i < map_nelem; i += step) {
     const int64_t cur_label = label_data[toffset + i];
     if (cur_label != ignore_index) {
+      PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                     "label should not be out of bounds.");
       const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
       input_sum -= x_data[ioffset + i + map_nelem * cur_label] * cur_weight;
       acc_weight += cur_weight;
@@ -261,7 +264,7 @@ __global__ void GPUNLLLossBackward1D_no_reduce(
     T* dx_data, const int64_t* label_data, const T* weight_data,
     const T* dout_data, const int64_t batch_size, const int64_t n_classes,
     const int64_t ignore_index) {
-  CUDA_1D_KERNEL_LOOP(i, batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size) {
     const int64_t cur_label = label_data[i];
     if (cur_label == ignore_index) {
       continue;
@@ -299,7 +302,7 @@ __global__ void GPUNLLLossBackward2D_no_reduce(
   const int64_t map_size = in_dim2 * in_dim3;
   const int64_t sample_size = n_classes * map_size;
   const int64_t out_numel = batch_size * map_size;
-  CUDA_1D_KERNEL_LOOP(i, out_numel) {
+  CUDA_KERNEL_LOOP(i, out_numel) {
     const int64_t b = i % batch_size;
     const int64_t h = (i / batch_size) % in_dim2;
     const int64_t w = (i / (batch_size * in_dim2)) % in_dim3;
@@ -357,7 +360,11 @@ class NLLLossCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->mutable_data<T>(ctx.GetPlace());
     auto label_data = labels->data<int64_t>();
     auto weight_data = weight ? weight->data<T>() : nullptr;
+#ifdef PADDLE_WITH_HIP
+    hipMemset(total_weight_data, 0, sizeof(T));
+#else
     cudaMemset(total_weight_data, 0, sizeof(T));
+#endif
     auto x_dims = x->dims();
     auto batch_size = x_dims[0];
     auto n_classes = x_dims[1];
@@ -425,7 +432,11 @@ class NLLLossGradCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->data<T>();
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
     auto reduction = ctx.Attr<std::string>("reduction");
+#ifdef PADDLE_WITH_HIP
+    hipMemset(dx_data, 0, dx->numel() * sizeof(T));
+#else
     cudaMemset(dx_data, 0, dx->numel() * sizeof(T));
+#endif
 
     int64_t size_average = (int64_t)(reduction == "mean");
     auto x_dims = x->dims();

@@ -17,8 +17,12 @@ INCLUDE(ExternalProject)
 SET(CBLAS_PREFIX_DIR  ${THIRD_PARTY_PATH}/openblas)
 SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
-SET(CBLAS_REPOSITORY  https://github.com/xianyi/OpenBLAS.git)
+SET(CBLAS_REPOSITORY  ${GIT_URL}/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
+if(WITH_MIPS)
+  SET(CBLAS_TAG         v0.3.13)
+endif()
+
 cache_third_party(extern_openblas
     REPOSITORY    ${CBLAS_REPOSITORY}
     TAG           ${CBLAS_TAG}

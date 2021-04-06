@@ -95,6 +95,10 @@ class BeamSearchOp : public framework::OperatorWithKernel {
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
       OP_INOUT_CHECK(ctx->HasOutput(arg), "Output", arg, "BeamSeach");
     }
+    auto id_dims = ctx->GetInputDim("pre_ids");
+    ctx->SetOutputDim("selected_scores", ctx->GetInputDim("pre_scores"));
+    ctx->SetOutputDim("selected_ids", id_dims);
+    ctx->SetOutputDim("parent_idx", {id_dims[0]});
   }
 
  protected:

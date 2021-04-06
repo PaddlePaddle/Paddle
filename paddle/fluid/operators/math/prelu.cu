@@ -20,11 +20,6 @@ namespace math {
 
 #define CUDA_NUM_THREADS 1024
 
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 inline static int PADDLE_GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
@@ -33,7 +28,6 @@ template <typename T>
 __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
                                        T *output, size_t channel_num,
                                        size_t plane_size, size_t numel) {
-  size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     size_t temp = index / plane_size;
     size_t channel_index = temp % channel_num;
@@ -47,7 +41,6 @@ template <typename T>
 __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
                                        T *output, size_t spatial_size,
                                        size_t numel) {
-  size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     size_t element_index = index % spatial_size;
     T scale = alpha[element_index];
@@ -60,7 +53,6 @@ template <typename T>
 __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
                                   size_t numel) {
   T scale = alpha[0];
-  size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T x = input[index];
     output[index] = (x > 0) ? x : scale * x;
@@ -69,35 +61,28 @@ __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
 
 template <typename T>
 void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
-    cudaStream_t stream, const T *input, const T *alpha, T *output,
-    std::vector<int> input_shape) {
-  size_t plane_size = input_shape[2] * input_shape[3];
-  size_t spatial_size = input_shape[1] * plane_size;
-  size_t numel = input_shape[0] * spatial_size;
+    gpuStream_t stream, const T *input, const T *alpha, T *output,
+    size_t batch_size, size_t channel, size_t numel) {
   PReluChannelWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
-                           stream>>>(input, alpha, output, input_shape[1],
-                                     plane_size, numel);
+                           stream>>>(input, alpha, output, channel,
+                                     numel / batch_size / channel, numel);
 }
 
 template <typename T>
-void PreluElementWiseDirectCUDAFunctor<T>::operator()(
-    cudaStream_t stream, const T *input, const T *alpha, T *output,
-    std::vector<int> input_shape) {
-  size_t plane_size = input_shape[2] * input_shape[3];
-  size_t spatial_size = input_shape[1] * plane_size;
-  size_t numel = input_shape[0] * spatial_size;
+void PreluElementWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
+                                                      const T *input,
+                                                      const T *alpha, T *output,
+                                                      size_t batch_size,
+                                                      size_t numel) {
   PReluElementWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
-                           stream>>>(input, alpha, output, spatial_size, numel);
+                           stream>>>(input, alpha, output, numel / batch_size,
+                                     numel);
 }
 
 template <typename T>
-void PreluScalarDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
+void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                  const T *input, const T *alpha,
-                                                 T *output,
-                                                 std::vector<int> input_shape) {
-  size_t plane_size = input_shape[2] * input_shape[3];
-  size_t spatial_size = input_shape[1] * plane_size;
-  size_t numel = input_shape[0] * spatial_size;
+                                                 T *output, size_t numel) {
   PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
       input, alpha, output, numel);
 }

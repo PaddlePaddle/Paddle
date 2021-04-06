@@ -206,11 +206,10 @@ class TestDygraphDeepCF(unittest.TestCase):
         else:
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = get_data()
-
+        paddle.seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
         startup = fluid.Program()
-        startup.random_seed = seed
         main = fluid.Program()
-        main.random_seed = seed
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
@@ -244,8 +243,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('static loss %s\n' % static_loss)
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = fluid.optimizer.AdamOptimizer(
@@ -269,14 +268,13 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf2 = DeepCF(num_users, num_items, matrix)
             adam2 = fluid.optimizer.AdamOptimizer(
                 0.01, parameter_list=deepcf2.parameters())
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             for e in range(NUM_EPOCHES):
                 sys.stderr.write('epoch %d\n' % e)
                 for slice in range(0, BATCH_SIZE * NUM_BATCHES, BATCH_SIZE):
@@ -289,7 +287,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         fluid.layers.log_loss(prediction2,
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     adam2.minimize(loss2)
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()

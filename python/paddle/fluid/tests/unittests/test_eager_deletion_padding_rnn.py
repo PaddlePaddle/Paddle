@@ -18,6 +18,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -465,9 +466,9 @@ class PaddingRNNTestBase(unittest.TestCase):
         pass
 
     def _prepare_program(self, config, parallel=True):
+        paddle.seed(config.random_seed)
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
-        self.startup_program.random_seed = config.random_seed
         with fluid.program_guard(self.main_program, self.startup_program):
             with fluid.unique_name.guard():
                 res_vars = lm_model(

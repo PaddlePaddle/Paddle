@@ -18,6 +18,9 @@ from test_dist_base import TestDistBase
 import os
 
 import os
+import paddle
+
+paddle.enable_static()
 flag_name = os.path.splitext(__file__)[0]
 
 

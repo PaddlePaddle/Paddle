@@ -13,19 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <cuda.h>
 #include <cusolverDn.h>
-
 #include <mutex>  // NOLINT
-#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 extern std::once_flag cusolver_dso_flag;
 extern void *cusolver_dso_handle;
-#ifdef PADDLE_USE_DSO
+
 #define DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name)                   \
   struct DynLoad__##__name {                                         \
     template <typename... Args>                                      \
@@ -40,16 +40,6 @@ extern void *cusolver_dso_handle;
     }                                                                \
   };                                                                 \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP(__name) \
-  struct DynLoad__##__name {                       \
-    template <typename... Args>                    \
-    cusolverStatus_t operator()(Args... args) {    \
-      return ::__name(args...);                    \
-    }                                              \
-  };                                               \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUSOLVER_ROUTINE_EACH(__macro)  \
   __macro(cusolverDnCreate);            \
