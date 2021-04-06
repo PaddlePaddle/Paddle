@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/service/env.h"
+#include "paddle/fluid/distributed/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/service/graph_py_service.h"
 #include "paddle/fluid/distributed/service/heter_client.h"
 
 namespace py = pybind11;
@@ -39,6 +41,11 @@ using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
 using paddle::distributed::FleetWrapper;
 using paddle::distributed::HeterClient;
+using paddle::distributed::GraphPyService;
+using paddle::distributed::GraphNode;
+using paddle::distributed::GraphPyServer;
+using paddle::distributed::GraphPyClient;
+using paddle::distributed::FeatureNode;
 
 namespace paddle {
 namespace pybind {
@@ -150,6 +157,59 @@ void BindHeterClient(py::module* m) {
             return HeterClient::GetInstance(endpoint, trainer_id);
           }))
       .def("stop", &HeterClient::Stop);
+}
+
+void BindGraphNode(py::module* m) {
+  py::class_<GraphNode>(*m, "GraphNode")
+      .def(py::init<>())
+      .def("get_id", &GraphNode::get_id)
+      .def("get_feature", &GraphNode::get_feature);
+}
+void BindGraphPyFeatureNode(py::module* m) {
+  py::class_<FeatureNode>(*m, "FeatureNode")
+      .def(py::init<>())
+      .def("get_id", &GraphNode::get_id)
+      .def("get_feature", &GraphNode::get_feature);
+}
+
+void BindGraphPyService(py::module* m) {
+  py::class_<GraphPyService>(*m, "GraphPyService").def(py::init<>());
+}
+
+void BindGraphPyServer(py::module* m) {
+  py::class_<GraphPyServer>(*m, "GraphPyServer")
+      .def(py::init<>())
+      .def("start_server", &GraphPyServer::start_server)
+      .def("set_up", &GraphPyServer::set_up)
+      .def("add_table_feat_conf", &GraphPyServer::add_table_feat_conf);
+}
+void BindGraphPyClient(py::module* m) {
+  py::class_<GraphPyClient>(*m, "GraphPyClient")
+      .def(py::init<>())
+      .def("load_edge_file", &GraphPyClient::load_edge_file)
+      .def("load_node_file", &GraphPyClient::load_node_file)
+      .def("set_up", &GraphPyClient::set_up)
+      .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
+      .def("pull_graph_list", &GraphPyClient::pull_graph_list)
+      .def("start_client", &GraphPyClient::start_client)
+      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighboors)
+      .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
+      .def("stop_server", &GraphPyClient::stop_server)
+      .def("get_node_feat",
+           [](GraphPyClient& self, std::string node_type,
+              std::vector<uint64_t> node_ids,
+              std::vector<std::string> feature_names) {
+             auto feats =
+                 self.get_node_feat(node_type, node_ids, feature_names);
+             std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
+             for (int i = 0; i < feats.size(); ++i) {
+               for (int j = 0; j < feats[i].size(); ++j) {
+                 bytes_feats[i].push_back(py::bytes(feats[i][j]));
+               }
+             }
+             return bytes_feats;
+           })
+      .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
 
 }  // end namespace pybind
