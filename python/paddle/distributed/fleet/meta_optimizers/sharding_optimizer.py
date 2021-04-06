@@ -122,7 +122,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.pp_degree = int(self.user_defined_strategy.sharding_configs[
             "pp_degree"])
         if self.pp_degree > 1:
-            assert self.user_defined_strategy.pipeline == False
+            assert self.user_defined_strategy.pipeline == True
 
         self.dp_degree = int(self.user_defined_strategy.sharding_configs[
             'dp_degree'])
