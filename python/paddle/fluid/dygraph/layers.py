@@ -1344,7 +1344,7 @@ class Layer(core.Layer):
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
                     self._parameters[key] = param_applied
-                
+
                 if param.grad is not None:
                     with dygraph.no_grad():
                         grad_applied = func(param.grad, place, dtype, blocking)
@@ -1357,6 +1357,53 @@ class Layer(core.Layer):
             self._buffers[key] = func(buf, place, dtype, blocking)
 
     def to(self, place=None, dtype=None, blocking=None):
+        '''
+        Cast the parameters and buffers of Layer by the give place, dtype and blocking.
+
+        Parameters:
+            place(paddle.CPUPlace|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device place of the Layer which want to be stored. 
+            If None, the place is the same with the origin Tensor. Default: None.
+            
+            dtype(str|core.VarDesc.VarType|None, optional): the type of the data. If None, the dtype is the same with the origin Tensor. Default: None.
+
+            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be 
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+            
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                linear=paddle.nn.Linear(2, 2)
+                linear.weight
+                #Parameter containing:
+                #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+
+                linear.to(dtype='float64')
+                linear.weight
+                #Tenor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+
+                linear.to(place=paddle.CPUPlace())
+                linear.weight
+                #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
+                #       [[-0.32770029,  0.38653070],
+                #        [ 0.46030545,  0.08158520]])
+                linear.to(place=paddle.CUDAPinnedPlace(), blocking=False)
+                linear.weight
+                #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
+                #       [[-0.04989364, -0.56889004],
+                #        [ 0.33960250,  0.96878713]])
+    
+
+        '''
+
         if place is None and dtype is None and blocking is None:
             return
 
