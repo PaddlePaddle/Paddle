@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from nets import mlp
+#from nets import mlp
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.base import role_maker
-
-input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-input_y = fluid.layers.cast(input_y, dtype="float32")
 
 
 def gen_data():
@@ -29,6 +25,23 @@ def gen_data():
             2, size=(1)).astype('int64')
     }
 
+
+def mlp(input_x, input_y):
+    prediction = fluid.layers.fc(input=input_x, size=2, act='softmax')
+    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+    sum_cost = fluid.layers.reduce_mean(cost)
+    return sum_cost
+
+
+def mlp(img, label):
+    hidden = fluid.layers.fc(input=img, size=200, act='tanh')
+    hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
+    return loss_net(hidden, label)
+
+
+input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+input_y = fluid.layers.cast(input_y, dtype="float32")
 
 with fluid.device_guard("gpu"):
     input_y = fluid.layers.cast(input_y, dtype="int64")
