@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/miopen_helper.h"
 #endif
 
@@ -263,6 +265,34 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     bool global_pooling = ctx.Attr<bool>("global_pooling");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+#ifdef PADDLE_WITH_HIP
+    if (pooling_type == "max") {
+      using OpKernelMap = paddle::framework::OperatorWithKernel::OpKernelMap;
+      using OpKernelFunc = paddle::framework::OperatorWithKernel::OpKernelFunc;
+      auto &all_op_kernels =
+          paddle::framework::OperatorWithKernel::AllOpKernels();
+      std::string op_type = "pool2d_grad";
+      auto kernels_iter = all_op_kernels.find(op_type);
+      PADDLE_ENFORCE_NE(
+          kernels_iter, all_op_kernels.end(),
+          platform::errors::Unavailable(
+              "There are no kernels which are registered in the %s operator.",
+              op_type));
+      OpKernelMap &kernels = kernels_iter->second;
+      paddle::framework::OpKernelType expected_kernel_key(
+          paddle::framework::ToDataType(typeid(T)), ctx.GetPlace());
+      auto kernel_iter = kernels.find(expected_kernel_key);
+      PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                        platform::errors::NotFound(
+                            "Operator (%s) does not have kernel for %s.",
+                            op_type, KernelTypeToString(expected_kernel_key)));
+      std::unique_ptr<OpKernelFunc> kernel_func_(
+          new OpKernelFunc(kernel_iter->second));
+      (*kernel_func_)(ctx);
+      return;
+    }
+#endif
 
     // update paddings
     auto in_x_dims = input->dims();

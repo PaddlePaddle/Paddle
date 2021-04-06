@@ -116,7 +116,9 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(miopenPoolingForward);                          \
   __macro(miopenPoolingBackward);                         \
   __macro(miopenSoftmaxBackward);                         \
+  __macro(miopenSoftmaxBackward_V2);                      \
   __macro(miopenSoftmaxForward);                          \
+  __macro(miopenSoftmaxForward_V2);                       \
   __macro(miopenCreateDropoutDescriptor);                 \
   __macro(miopenDestroyDropoutDescriptor);                \
   __macro(miopenRestoreDropoutDescriptor);                \
