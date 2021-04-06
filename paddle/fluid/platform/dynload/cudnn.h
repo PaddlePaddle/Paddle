@@ -129,7 +129,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #if CUDNN_VERSION >= 7000 && CUDNN_VERSION < 8000
-#define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R7_LESS_R8(__macro) \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
   __macro(cudnnGetConvolutionForwardAlgorithm);          \
   __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
