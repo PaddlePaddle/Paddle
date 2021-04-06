@@ -176,7 +176,7 @@ class ExpandAsV2GradKernel : public framework::OpKernel<T> {
                             "expand_as_v2_grad op must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { 
+      switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(

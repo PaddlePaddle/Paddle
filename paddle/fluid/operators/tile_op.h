@@ -240,7 +240,7 @@ class TileGradKernel : public framework::OpKernel<T> {
                             "must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { 
+      switch (dims) {
         REP_TILE_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
