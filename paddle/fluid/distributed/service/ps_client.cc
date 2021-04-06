@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/service/graph_brpc_client.h"
 #include "paddle/fluid/distributed/service/ps_local_client.h"
 #include "paddle/fluid/distributed/table/table.h"
 
@@ -22,6 +23,7 @@ namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(PSClient, BrpcPsClient);
 REGISTER_PSCORE_CLASS(PSClient, PsLocalClient);
+REGISTER_PSCORE_CLASS(PSClient, GraphBrpcClient);
 
 int32_t PSClient::configure(
     const PSParameter &config,
@@ -80,8 +82,7 @@ PSClient *PSClientFactory::create(const PSParameter &ps_config) {
   }
 
   TableManager::instance().initialize();
-  LOG(INFO) << "Create PSClient[" << service_param.client_class()
-            << "] success";
+  VLOG(3) << "Create PSClient[" << service_param.client_class() << "] success";
   return client;
 }
 }  // namespace distributed

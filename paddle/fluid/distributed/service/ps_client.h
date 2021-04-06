@@ -24,15 +24,10 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 
 namespace paddle {
 namespace distributed {
-
-class PSEnvironment;
-class PsRequestMessage;
-class PsResponseMessage;
-class ValueAccessor;
-struct Region;
 
 using paddle::distributed::PsRequestMessage;
 using paddle::distributed::PsResponseMessage;
@@ -170,6 +165,7 @@ class PSClient {
     promise.set_value(-1);
     return fut;
   }
+
   // client2client消息处理，std::function<int32_t (int, int, const std::string&)
   // -> ret (msg_type, from_client_id, msg)
   typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;

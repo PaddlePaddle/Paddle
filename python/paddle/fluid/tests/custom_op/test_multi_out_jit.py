@@ -21,7 +21,7 @@ import paddle
 from paddle.utils.cpp_extension import load
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_compile_args
+from utils import paddle_includes, extra_cc_args
 
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -35,7 +35,7 @@ multi_out_module = load(
     name='multi_out_jit',
     sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_compile_args,  # add for Coverage CI
+    extra_cxx_cflags=extra_cc_args,  # test for cflags 
     verbose=True)
 
 

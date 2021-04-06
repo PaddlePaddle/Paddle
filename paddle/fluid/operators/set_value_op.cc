@@ -57,8 +57,7 @@ class SetValue : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -125,6 +124,9 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>(
         "steps", "(list<int64_t>) Stride step from the start to the end.")
         .SetDefault({});
+    AddAttr<std::vector<int64_t>>("decrease_axes",
+                                  "(list<int>) The axes to decrease.")
+        .SetDefault({});
 
     AddAttr<std::vector<int>>("bool_values", "Store the bool values.")
         .SetDefault({});
@@ -186,4 +188,10 @@ Upgrade set_value, add 3 inputs [StartsTensorList, EndsTensorList, StepsTensorLi
                         "Ending indices of corresponding axis in `axes`.",
                         std::vector<int64_t>{})
             .NewAttr("steps", "Stride step from the start to the end.",
-                     std::vector<int64_t>{}));
+                     std::vector<int64_t>{}))
+    .AddCheckpoint(
+        R"ROC(
+Upgrade set_value, add 1 attribute [decrease_axes].
+              )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "decrease_axes", "The axes to decrease.", std::vector<int64_t>{}));

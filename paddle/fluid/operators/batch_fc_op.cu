@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cublas.h>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
@@ -42,7 +41,7 @@ __global__ void add_bias_kernel(T* data, int slot_pairs_num, int ins_num,
 }
 
 template <typename T>
-void add_bias(cudaStream_t stream, T* data, int slot_pairs_num, int ins_num,
+void add_bias(gpuStream_t stream, T* data, int slot_pairs_num, int ins_num,
               int out_dim, const T* bias) {
   add_bias_kernel<<<GET_BLOCKS(slot_pairs_num * ins_num * out_dim),
                     CUDA_NUM_THREADS, 0, stream>>>(data, slot_pairs_num,
@@ -65,7 +64,7 @@ __global__ void add_bias_grad_kernel(const T* dout_data, int slot_pairs_num,
 }
 
 template <typename T>
-void add_bias_grad(cudaStream_t stream, const T* dout_data, int slot_pairs_num,
+void add_bias_grad(gpuStream_t stream, const T* dout_data, int slot_pairs_num,
                    int ins_num, int out_dim, T* db_data) {
   add_bias_grad_kernel<<<GET_BLOCKS(slot_pairs_num * out_dim), CUDA_NUM_THREADS,
                          0, stream>>>(dout_data, slot_pairs_num, ins_num,

@@ -21,7 +21,7 @@ TEST(PD_THROW, empty) {
   } catch (const std::exception& e) {
     caught_exception = true;
     std::string err_msg = e.what();
-    EXPECT_TRUE(err_msg.find("An error occured.") != std::string::npos);
+    EXPECT_TRUE(err_msg.find("An error occurred.") != std::string::npos);
 #if _WIN32
     EXPECT_TRUE(err_msg.find("tests\\custom_op\\test_check_error.cc:20") !=
                 std::string::npos);

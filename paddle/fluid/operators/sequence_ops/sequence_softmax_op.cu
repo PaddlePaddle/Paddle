@@ -20,6 +20,7 @@ limitations under the License. */
 
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/math.h"
@@ -31,11 +32,7 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <typename T, int BlockDim>
-#ifdef __HIPCC__
-using BlockReduce = hipcub::BlockReduce<T, BlockDim>;
-#else
 using BlockReduce = cub::BlockReduce<T, BlockDim>;
-#endif
 
 template <typename T, int BlockDim>
 using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
@@ -57,13 +54,8 @@ __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
       T ele = in_data[start + tid];
       max_ele = max_ele > ele ? max_ele : ele;
     }
-#ifdef __HIPCC__
-    max_ele =
-        BlockReduce<T, BlockDim>(temp_storage).Reduce(max_ele, hipcub::Max());
-#else
     max_ele =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(max_ele, cub::Max());
-#endif
     if (threadIdx.x == 0) {
       shared_max_data = max_ele;
     }
@@ -75,13 +67,8 @@ __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
       T ele = in_data[start + tid];
       sum_data += real_exp(ele - shared_max_data);
     }
-#ifdef __HIPCC__
-    sum_data =
-        BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, hipcub::Sum());
-#else
     sum_data =
         BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
-#endif
     if (threadIdx.x == 0) {
       shared_sum_data = sum_data;
     }
@@ -116,12 +103,7 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
       T s_d = softmax_data[idx];
       result += s_g_d * s_d;
     }
-#ifdef __HIPCC__
-    result =
-        BlockReduce<T, BlockDim>(temp_storage).Reduce(result, hipcub::Sum());
-#else
     result = BlockReduce<T, BlockDim>(temp_storage).Reduce(result, cub::Sum());
-#endif
     if (threadIdx.x == 0) {
       shared_data = result;
     }
