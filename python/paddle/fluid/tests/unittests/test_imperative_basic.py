@@ -772,13 +772,6 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.relu(a)
         self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_bias_in_dygraph_exception(self):
-        with new_program_scope():
-            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
-            a = fluid.layers.data("a", [10, 20])
-            func = dygraph_utils._append_bias_in_dygraph
-            self.assertRaises(AssertionError, func, a)
-
     def test_append_bias_in_dygraph(self):
         a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
         func = dygraph_utils._append_bias_in_dygraph
