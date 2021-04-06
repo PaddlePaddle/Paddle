@@ -13,7 +13,7 @@
 // limitations under the License.
 
 syntax = "proto2";
-package paddle.framework;
+package paddle.distributed;
 
 message Node {
   required uint64 id = 1;

@@ -14,8 +14,7 @@
 
 import unittest
 from paddle.dataset.common import download, DATA_HOME
-from paddle.distributed.fleet.data_generator import TreeIndex
-from paddle.fluid.core import IndexSampler
+from paddle.distributed.fleet.dataset import TreeIndex
 
 
 class TestTreeIndex(unittest.TestCase):
@@ -87,7 +86,6 @@ class TestIndexSampler(unittest.TestCase):
             "tree_index_unittest", "cadec20089f5a8a44d320e117d9f9f1a")
 
         tree = TreeIndex("demo", path)
-        sampler = IndexSampler("by_layerwise", "demo")
 
         layer_nodes = []
         for i in range(tree.height()):
@@ -101,7 +99,7 @@ class TestIndexSampler(unittest.TestCase):
         layer_sample_counts = list(sample_num) + [1] * (sample_layers -
                                                         len(sample_num))
         total_sample_num = sum(layer_sample_counts) + len(layer_sample_counts)
-        sampler.init_layerwise_conf(sample_num, start_sample_layer, seed)
+        tree.init_layerwise_sampler(sample_num, start_sample_layer, seed)
 
         ids = [315757, 838060, 1251533, 403522, 2473624, 3321007]
         tmp = tree.get_parent_path(ids, start_sample_layer, False)
@@ -111,8 +109,8 @@ class TestIndexSampler(unittest.TestCase):
         # print(parent_path)
 
         # 2. check sample res with_hierarchy = False
-        sample_res = sampler.sample([[315757, 838060], [1251533, 403522]],
-                                    [2473624, 3321007], False)
+        sample_res = tree.sample([[315757, 838060], [1251533, 403522]],
+                                 [2473624, 3321007], False)
         # print(sample_res)
         idx = 0
         layer = tree.height() - 1
@@ -151,7 +149,7 @@ class TestIndexSampler(unittest.TestCase):
         self.assertTrue(idx == total_sample_num * 2)
 
         # 3. check sample res with_hierarchy = True
-        sample_res_with_hierarchy = sampler.sample(
+        sample_res_with_hierarchy = tree.sample(
             [[315757, 838060], [1251533, 403522]], [2473624, 3321007], True)
         # print(sample_res_with_hierarchy)
         idx = 0

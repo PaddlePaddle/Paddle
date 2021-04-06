@@ -29,17 +29,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/fleet/index_sampler.h"
-#include "paddle/fluid/framework/fleet/index_wrapper.h"
+#include "paddle/fluid/distributed/index_dataset/index_sampler.h"
+#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
 
-using paddle::framework::TreeIndex;
-using paddle::framework::IndexWrapper;
-using paddle::framework::Node;
+using paddle::distributed::TreeIndex;
+using paddle::distributed::IndexWrapper;
+using paddle::distributed::Node;
 
 void BindIndexNode(py::module* m) {
   py::class_<Node>(*m, "IndexNode")
@@ -101,9 +101,9 @@ void BindIndexWrapper(py::module* m) {
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
 
-using paddle::framework::IndexSampler;
-using paddle::framework::LayerWiseSampler;
-// using paddle::framework::BeamSearchSampler;
+using paddle::distributed::IndexSampler;
+using paddle::distributed::LayerWiseSampler;
+// using paddle::distributed::BeamSearchSampler;
 
 void BindIndexSampler(py::module* m) {
   py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")

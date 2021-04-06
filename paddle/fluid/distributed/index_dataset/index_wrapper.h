@@ -17,11 +17,11 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/index_dataset.pb.h"
+#include "paddle/fluid/distributed/index_dataset/index_dataset.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
+namespace distributed {
 
 class Index {
  public:
@@ -154,7 +154,7 @@ class IndexWrapper {
   // IndexWrapper singleton
   static std::shared_ptr<IndexWrapper> GetInstancePtr() {
     if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::IndexWrapper());
+      s_instance_.reset(new paddle::distributed::IndexWrapper());
     }
     return s_instance_;
   }
@@ -162,7 +162,7 @@ class IndexWrapper {
   // IndexWrapper singleton
   static IndexWrapper* GetInstance() {
     if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::IndexWrapper());
+      s_instance_.reset(new paddle::distributed::IndexWrapper());
     }
     return s_instance_.get();
   }
@@ -172,5 +172,5 @@ class IndexWrapper {
   std::unordered_map<std::string, TreePtr> tree_map;
 };
 
-}  // end namespace framework
+}  // end namespace distributed
 }  // end namespace paddle

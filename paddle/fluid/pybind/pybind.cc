@@ -2897,12 +2897,11 @@ All parameter, weight, gradient are variables in Paddle.
   BindCommunicatorContext(&m);
   BindDistCommunicator(&m);
   BindHeterClient(&m);
-#endif
-
   BindIndexNode(&m);
   BindTreeIndex(&m);
   BindIndexWrapper(&m);
   BindIndexSampler(&m);
+#endif
 }
 }  // namespace pybind
 }  // namespace paddle

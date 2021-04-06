@@ -5,7 +5,7 @@ include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
-  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator index_wrapper index_sampler)
+  gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
 
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -35,7 +35,6 @@ if(WITH_PYTHON)
 endif()
 
 set(PYBIND_SRCS
-  index_dataset_py.cc
   pybind.cc
   exception.cc
   protobuf.cc
@@ -72,8 +71,8 @@ endif (WITH_CRYPTO)
 if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet communicator)
-  list(APPEND PYBIND_SRCS fleet_py.cc)
+  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
+  list(APPEND PYBIND_SRCS fleet_py.cc index_dataset_py.cc)
 endif()
 
 if (WITH_NCCL OR WITH_RCCL)

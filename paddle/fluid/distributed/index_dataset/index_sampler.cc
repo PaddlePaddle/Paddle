@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/fleet/index_sampler.h"
+#include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/operators/math/sampler.h"
 
 namespace paddle {
-namespace framework {
+namespace distributed {
 
 using Sampler = paddle::operators::math::Sampler;
 
@@ -82,5 +82,5 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
   return outputs;
 }
 
-}  // end namespace framework
+}  // end namespace distributed
 }  // end namespace paddle

@@ -14,12 +14,12 @@
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/fleet/index_wrapper.h"
+#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
+namespace distributed {
 
 class IndexSampler {
  public:
@@ -96,5 +96,5 @@ class LayerWiseSampler : public IndexSampler {
   int start_sample_layer_{1};
 };
 
-}  // end namespace framework
+}  // end namespace distributed
 }  // end namespace paddle

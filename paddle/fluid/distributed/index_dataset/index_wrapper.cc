@@ -19,10 +19,10 @@ limitations under the License. */
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
-#include "paddle/fluid/framework/fleet/index_wrapper.h"
+#include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 
 namespace paddle {
-namespace framework {
+namespace distributed {
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
@@ -144,5 +144,5 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
   return res;
 }
 
-}  // end namespace framework
+}  // end namespace distributed
 }  // end namespace paddle
