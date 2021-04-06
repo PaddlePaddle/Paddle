@@ -114,7 +114,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # parallelism
         self.sharding_degree = int(self.user_defined_strategy.sharding_configs[
             "sharding_degree"])
-        assert self.sharding_degree > 1, "sharding degree must be larger than zero"
+        assert self.sharding_degree > 0, "sharding degree must be larger than zero"
         self.mp_degree = int(self.user_defined_strategy.sharding_configs[
             "mp_degree"])
         # pipeline setting
@@ -333,13 +333,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
             self._sharding_gradient_merge(main_block)
 
-        with open("start_sharding_%d" % self.role_maker._worker_index(),
-                  'w') as f:
-            f.writelines(str(startup_block.program))
-        with open("main_sharding_%d" % self.role_maker._worker_index(),
-                  'w') as f:
-            f.writelines(str(main_block.program))
-
         # # check op dependecy
         # FIXME (JZ-LIANG) enable checking in future.
         # check_broadcast(main_block)
@@ -349,7 +342,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.hybrid_dp:
             # NOTE(JZ-LIANG) ensure in both sharding_hybrid_dp & pp_hybrid_dp 
             # init param broadcast should be called after startup pruning             
-            self._initialization_broadcast(startup_program)
+            self._initialization_broadcast(startup_block)
+
+        with open("start_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(startup_block.program))
+        with open("main_sharding_%d" % self.role_maker._worker_index(),
+                  'w') as f:
+            f.writelines(str(main_block.program))
 
         self._wait()
 
@@ -413,15 +413,25 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree > 1:
             if self.schedule_mode == 'F-then-B':  # GPipe
                 self._collective_helper._init_communicator(
-                    self._startup_program, self.current_endpoint,
-                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id,
-                    False)
+                    self._startup_program,
+                    self.current_endpoint,
+                    self.pp_group_endpoints,
+                    self.pp_rank,
+                    self.pp_ring_id,
+                    False,
+                    global_ring_id=self.global_ring_id,
+                    sync=False)
                 # append_naive_sync(startup_block, self.startup_prog_sync_var,
                 #                   self.global_ring_id)
                 self._collective_helper._init_communicator(
-                    self._startup_program, self.current_endpoint,
-                    self.pp_group_endpoints, self.pp_rank, self.pp_ring_id + 2,
-                    False)
+                    self._startup_program,
+                    self.current_endpoint,
+                    self.pp_group_endpoints,
+                    self.pp_rank,
+                    self.pp_ring_id + 2,
+                    False,
+                    global_ring_id=self.global_ring_id,
+                    sync=False)
                 # append_naive_sync(startup_block, self.startup_prog_sync_var,
                 #                   self.global_ring_id)
             else:
@@ -442,8 +452,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                             1] - 1
                     pp_rank = 0 if self.pp_rank == pair[0] else 1
                     self._collective_helper._init_communicator(
-                        self._startup_program, self.current_endpoint,
-                        pp_group_endpoints, pp_rank, ring_id, False, False)
+                        self._startup_program,
+                        self.current_endpoint,
+                        pp_group_endpoints,
+                        pp_rank,
+                        ring_id,
+                        False,
+                        global_ring_id=self.global_ring_id,
+                        sync=False)
                     # append_naive_sync(startup_block, self.startup_prog_sync_var,
                     #                   self.global_ring_id)
 
@@ -1126,16 +1142,15 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         return
 
-    def _initialization_broadcast(self, startup_prog):
+    def _initialization_broadcast(self, startup_block):
         """
         this funtion is to ensure the initialization between dp group to be 
         identical when hybrid-dp is used.
         """
-        block = startup_prog.global_block()
         params = []
-        for param in block.iter_parameters():
+        for param in startup_block.iter_parameters():
             params.append(param)
-            block.append_op(
+            startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
                 outputs={'Out': param},
@@ -1144,14 +1159,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                     'root': 0,
                     OP_ROLE_KEY: OpRole.Forward
                 })
-        block.append_op(
+        startup_block.append_op(
             type='c_sync_comm_stream',
             inputs={'X': params},
             outputs={'Out': params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
         # sync within global group
-        append_naive_sync(block, self.startup_prog_sync_var,
+        append_naive_sync(startup_block, self.startup_prog_sync_var,
                           self.global_ring_id)
 
     # sharding gradient merge
