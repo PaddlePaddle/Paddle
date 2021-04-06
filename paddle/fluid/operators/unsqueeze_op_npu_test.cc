@@ -63,9 +63,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   axis.push_back(1);
   f::AttributeMap attrs = {{"axes", axis}};
 
-  auto op =
-      f::OpRegistry::CreateOp("unsqueeze", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("unsqueeze", {{"X", {"X"}}},
+                                    {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();
@@ -86,7 +85,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(unsqueeze, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
-

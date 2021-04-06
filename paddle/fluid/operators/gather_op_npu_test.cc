@@ -152,18 +152,18 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
 
 TEST(gather, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx, "gather");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx, "gather");
 }
 
 TEST(gather, NPU_fp16) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<p::float16>(&scope, ctx, "gather");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<p::float16>(&scope, *ctx, "gather");
 }
 
 TEST(gather_grad, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx, "gather_grad");
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx, "gather_grad");
 }

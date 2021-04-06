@@ -120,12 +120,12 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
 
 TEST(check_finite_and_unscale, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
 
 TEST(check_finite_and_unscale, NPU_fp16) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<p::float16>(&scope, ctx);
+  auto *ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<p::float16>(&scope, *ctx);
 }

@@ -16,19 +16,19 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <stdio.h>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
-#include <stdio.h>
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/string/printf.h"
 
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 
@@ -47,25 +47,23 @@ USE_OP_DEVICE_KERNEL(c_broadcast, NPU);
 
 DECLARE_string(selected_npus);
 
-template<typename T>
-void PrintDebugInfo(const std::string preStr, const  std::vector<T> &data){
+template <typename T>
+void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   std::string debugstring = "";
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
   }
-  VLOG(2) << preStr << ":" << std::endl <<debugstring; 
+  VLOG(2) << preStr << ":" << std::endl << debugstring;
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
-
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id  
-  << "; rank_id = " << rank_id  
-  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));  
-  
+  VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
+          << "; rank_id = " << rank_id
+          << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
@@ -87,7 +85,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   int num = 2;
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
-  
+
   for (int64_t i = 0; i < num * num; ++i) {
     init.push_back(1.0 + rank_id);
   }
@@ -106,18 +104,18 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"]=std::string("tagx");
-  attrs["root"]=0;
-  attrs["ring_id"]=0;
+  attrs["tag"] = std::string("tagx");
+  attrs["root"] = 0;
+  attrs["ring_id"] = 0;
 
   auto op = f::OpRegistry::CreateOp("c_broadcast", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+                                    {{"Out", {"Out"}}}, attrs);
 
-  for (int i = 0; i < 10; i ++) {
+  for (int i = 0; i < 10; i++) {
     op->Run(*scope, place);
   }
   ctx.Wait();
-  
+
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
   ctx.Wait();
@@ -132,9 +130,10 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 TEST(c_broadcast, NPU) {
   f::Scope scope;
 
-  // only support one device, if more than one device, use first default  
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+  // only support one device, if more than one device, use first default
+  auto* ctx = p::DeviceContextPool::Instance().Get(
+      p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  Prepare(&scope, ctx);
-  TestHCCLBroadcastOp(&scope, ctx);
+  Prepare(&scope, *ctx);
+  TestHCCLBroadcastOp(&scope, *ctx);
 }
