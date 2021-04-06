@@ -21,11 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/framework/tensor_util.h"
-
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -59,15 +58,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   int axis = 1;
   f::AttributeMap attrs = {
-            {"axis", axis},
-            {"use_cudnn", false},
-            {"use_mkldnn", false},
-            {"mkldnn_data_type", std::string("float32")},
-            {"is_test", false}, };
+      {"axis", axis},        {"use_cudnn", false},
+      {"use_mkldnn", false}, {"mkldnn_data_type", std::string("float32")},
+      {"is_test", false},
+  };
 
-  auto op =
-      f::OpRegistry::CreateOp("softmax", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("softmax", {{"X", {"X"}}},
+                                    {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();
@@ -76,14 +73,13 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   TensorToVector(*tensor_out, ctx, &out_vec);
 
   for (int i = 0; i < static_cast<int>(out_vec.size()); ++i) {
-       VLOG(3) << "out_vec[" << i << "] : "<< out_vec[i];
+    VLOG(3) << "out_vec[" << i << "] : " << out_vec[i];
   }
 
   ctx.Wait();
 
   EXPECT_EQ((uint32_t)out_vec.size(), (uint32_t)(6));
 }
-
 
 template <typename T>
 void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
@@ -128,16 +124,15 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs = {
       {"name", std::string("softmax_grad")},
       {"axis", static_cast<int>(0)},
-            {"use_cudnn", false},
-            {"use_mkldnn", false},
-            {"mkldnn_data_type", std::string("float32")},
-            {"is_test", false},
-            {"data_format", std::string("AnyLayout")}, };
-  auto op =
-      f::OpRegistry::CreateOp("softmax_grad",
-                              {{"Out", {"Out"}},
-                               {"Out@GRAD", {"DOut"}}},
-                              {{"X@GRAD", {"DX"}}}, attrs);
+      {"use_cudnn", false},
+      {"use_mkldnn", false},
+      {"mkldnn_data_type", std::string("float32")},
+      {"is_test", false},
+      {"data_format", std::string("AnyLayout")},
+  };
+  auto op = f::OpRegistry::CreateOp("softmax_grad",
+                                    {{"Out", {"Out"}}, {"Out@GRAD", {"DOut"}}},
+                                    {{"X@GRAD", {"DX"}}}, attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);
@@ -164,12 +159,12 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(softmax, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
 
 TEST(softmax_grad, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  CompareGrad<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  CompareGrad<float>(&scope, *ctx);
 }

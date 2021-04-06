@@ -16,23 +16,23 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <stdio.h>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
-#include <stdio.h>
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/string/printf.h"
 
-#include "paddle/fluid/operators/collective/c_broadcast_op.h"
-#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
+#include "paddle/fluid/operators/collective/c_broadcast_op.h"
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -50,24 +50,22 @@ USE_OP_DEVICE_KERNEL(c_allreduce_max, NPU);
 
 DECLARE_string(selected_npus);
 
-template<typename T>
-void PrintDebugInfo(const std::string preStr, const std::vector<T> &data){
+template <typename T>
+void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   std::string debugstring = "";
   for (auto ele : data) {
     debugstring += std::to_string(ele) + std::string(",");
   }
-  VLOG(2) << preStr << ":" << std::endl <<debugstring;
+  VLOG(2) << preStr << ":" << std::endl << debugstring;
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
-
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
 
-  VLOG(2) << "rank_id = " << rank_id
-  << "; device_id = " << device_id
-  << "; rank_id = " << rank_id
-  << "; RANK_TABLE_FILE = " << atoi(getenv("RANK_TABLE_FILE"));
+  VLOG(2) << "rank_id = " << rank_id << "; device_id = " << device_id
+          << "; rank_id = " << rank_id
+          << "; RANK_TABLE_FILE = " << atoi(getenv("RANK_TABLE_FILE"));
 
   std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
@@ -112,13 +110,13 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   // run
   f::AttributeMap attrs;
-  attrs["tag"]=std::string("tagx");
-  attrs["ring_id"]=0;
+  attrs["tag"] = std::string("tagx");
+  attrs["ring_id"] = 0;
 
   auto op = f::OpRegistry::CreateOp("c_allreduce_max", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+                                    {{"Out", {"Out"}}}, attrs);
 
-  for (int i = 0; i < 10; i ++) {
+  for (int i = 0; i < 10; i++) {
     op->Run(*scope, place);
   }
   ctx.Wait();
@@ -139,8 +137,9 @@ TEST(c_allreduce_max, NPU) {
   f::Scope scope;
 
   // only support one device, if more than one device, use first default
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
+  auto* ctx = p::DeviceContextPool::Instance().Get(
+      p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  Prepare(&scope, ctx);
-  TestHCCLAllReduceOp(&scope, ctx);
+  Prepare(&scope, *ctx);
+  TestHCCLAllReduceOp(&scope, *ctx);
 }

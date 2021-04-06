@@ -124,8 +124,8 @@ TEST(c_broadcast, NPU) {
   f::Scope scope;
   char* npu_id = getenv("FLAGS_selected_npus");
 
-  p::NPUDeviceContext ctx(p::NPUPlace(atoi(npu_id)));
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(atoi(npu_id)));
 
-  Prepare(&scope, ctx);
-  TestHCCLBroadcastOp(&scope, ctx);
+  Prepare(&scope, *ctx);
+  TestHCCLBroadcastOp(&scope, *ctx);
 }

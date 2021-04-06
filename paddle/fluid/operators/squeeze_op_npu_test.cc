@@ -64,9 +64,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   axis.push_back(2);
   f::AttributeMap attrs = {{"axes", axis}};
 
-  auto op =
-      f::OpRegistry::CreateOp("squeeze", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("squeeze", {{"X", {"X"}}},
+                                    {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();
@@ -74,7 +73,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ((uint32_t)tensor_out->dims().size(), uint32_t(2));
   EXPECT_EQ((uint32_t)tensor_out->dims()[0], uint32_t(dim0));
   EXPECT_EQ((uint32_t)tensor_out->dims()[1], uint32_t(dim1));
-  
+
   std::vector<T> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
@@ -86,7 +85,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 
 TEST(squeeze, NPU_fp32) {
   f::Scope scope;
-  p::NPUDeviceContext ctx(p::NPUPlace(0));
-  Compare<float>(&scope, ctx);
+  auto* ctx = p::DeviceContextPool::Instance().Get(p::NPUPlace(0));
+  Compare<float>(&scope, *ctx);
 }
-
