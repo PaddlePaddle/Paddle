@@ -308,7 +308,6 @@ class TestSoftmaxWithCrossEntropyOp_NotWithSoftmax_HardLabel_2D_Ignore_Axis3(
 ##############################################################################
 #NotWithSoftmax_HardLabel_2D_Ignore end
 ##############################################################################
->>>>>>> 6148b87... add softmax_switch for softmax_with_cross_entropy_op, test=develop (#31428)
 
 
 class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
