@@ -1603,6 +1603,10 @@ def conv2d(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
+    if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+            "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+        use_cudnn = False
+
     helper.append_op(
         type=l_type,
         inputs={
@@ -9256,6 +9260,9 @@ def affine_grid(theta, out_shape, name=None):
                                  'affine_grid')
     else:
         attrs['output_shape'] = out_shape
+    if core.is_compiled_with_rocm():
+        # ROCM platform do not have MIOPEN kernel for affine_grid
+        attrs['use_cudnn'] = False
 
     helper.append_op(
         type='affine_grid',

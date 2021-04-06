@@ -18,7 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#ifdef __HIPCC__
+#define PADDLE_CUDA_THREAD_SIZE 256
+#else
 #define PADDLE_CUDA_THREAD_SIZE 512
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -33,10 +37,6 @@ limitations under the License. */
 #include <hip/hip_fp16.h>
 #endif
 #endif  // PADDLE_WITH_HIP
-
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
-#define __h2div h2div
-#endif
 
 #define DIV_ERROR_INFO                                                     \
   "InvalidArgumentError: Integer division by zero encountered in divide. " \
@@ -162,32 +162,62 @@ inline DEVICE half2 half2_div(const half2& a, const half2& b) {
 #endif
 }
 
-#define DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Func, expr, FP16Function)           \
-  template <typename T>                                                      \
-  __global__ void SameDimsElemwise##Func##CUDAKernel(const T* x, const T* y, \
-                                                     T* z, int64_t size) {   \
-    int col = blockIdx.x * blockDim.x + threadIdx.x;                         \
-    while (col < size) {                                                     \
-      z[col] = x[col] expr y[col];                                           \
-      col += blockDim.x * gridDim.x;                                         \
-    }                                                                        \
-  }                                                                          \
-  template <>                                                                \
-  inline __global__ void SameDimsElemwise##Func##CUDAKernel<half>(           \
-      const half* x, const half* y, half* z, int64_t size) {                 \
-    int start = threadIdx.x + blockDim.x * blockIdx.x;                       \
-    int stride = blockDim.x * gridDim.x;                                     \
-    int n2 = size / 2;                                                       \
-    const half2* x2 = reinterpret_cast<const half2*>(x);                     \
-    const half2* y2 = reinterpret_cast<const half2*>(y);                     \
-    half2* z2 = reinterpret_cast<half2*>(z);                                 \
-    for (int i = start; i < n2; i += stride) {                               \
-      z2[i] = FP16Function(x2[i], y2[i]);                                    \
-    }                                                                        \
-    if (start == 0 && (size % 2)) {                                          \
-      z[size - 1] = __float2half(__half2float(x[size - 1])                   \
-                                     expr __half2float(y[size - 1]));        \
-    }                                                                        \
+#define DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Func, expr, FP16Function)             \
+  inline __global__ void SameDimsElemwise##Func##CUDAKernel(                   \
+      const float* __restrict__ x, const float* __restrict__ y, float* z,      \
+      int64_t size) {                                                          \
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;                           \
+    int stride = gridDim.x * blockDim.x;                                       \
+    int loop = size / 4;                                                       \
+    int remainder = size % 4;                                                  \
+    const float4* x_vec = reinterpret_cast<const float4*>(x);                  \
+    const float4* y_vec = reinterpret_cast<const float4*>(y);                  \
+    float4* z_vec = reinterpret_cast<float4*>(z);                              \
+    float4 x_f4, y_f4;                                                         \
+    for (int i = tid; i < loop; i += stride) {                                 \
+      x_f4 = x_vec[i];                                                         \
+      y_f4 = y_vec[i];                                                         \
+      z_vec[i] = make_float4(x_f4.x expr y_f4.x, x_f4.y expr y_f4.y,           \
+                             x_f4.z expr y_f4.z, x_f4.w expr y_f4.w);          \
+    }                                                                          \
+    if (tid == loop && remainder != 0) {                                       \
+      while (remainder) {                                                      \
+        int idx = size - remainder;                                            \
+        remainder--;                                                           \
+        z[idx] = x[idx] expr y[idx];                                           \
+      }                                                                        \
+    }                                                                          \
+  }                                                                            \
+  inline __global__ void SameDimsElemwise##Func##CUDAKernel(                   \
+      const half* __restrict__ x, const half* __restrict__ y, half* z,         \
+      int64_t size) {                                                          \
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;                           \
+    int stride = gridDim.x * blockDim.x;                                       \
+    int loop = size / 8;                                                       \
+    int remainder = size % 8;                                                  \
+    const float4* x_vec = reinterpret_cast<const float4*>(x);                  \
+    const float4* y_vec = reinterpret_cast<const float4*>(y);                  \
+    float4* z_vec = reinterpret_cast<float4*>(z);                              \
+    float4 x_h8, y_h8, z_h8;                                                   \
+    for (int i = tid; i < loop; i += stride) {                                 \
+      x_h8 = x_vec[i];                                                         \
+      y_h8 = y_vec[i];                                                         \
+      half2* x_h2 = reinterpret_cast<half2*>(&x_h8);                           \
+      half2* y_h2 = reinterpret_cast<half2*>(&y_h8);                           \
+      half2* z_h2 = reinterpret_cast<half2*>(&z_h8);                           \
+      z_h2[0] = FP16Function(x_h2[0], y_h2[0]);                                \
+      z_h2[1] = FP16Function(x_h2[1], y_h2[1]);                                \
+      z_h2[2] = FP16Function(x_h2[2], y_h2[2]);                                \
+      z_h2[3] = FP16Function(x_h2[3], y_h2[3]);                                \
+      z_vec[i] = z_h8;                                                         \
+    }                                                                          \
+    if (tid == loop && remainder != 0) {                                       \
+      while (remainder) {                                                      \
+        int idx = size - remainder;                                            \
+        remainder--;                                                           \
+        z[idx] = __float2half(__half2float(x[idx]) expr __half2float(y[idx])); \
+      }                                                                        \
+    }                                                                          \
   }
 DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Add, +, half2_add)
 DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Sub, -, half2_sub)
