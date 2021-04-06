@@ -30,6 +30,9 @@ def get_prec_ut_list(all_test_cases,prec_test_cases):
             case_to_run.append(case)
         else:
             print("{} won't run in PRECISION_TEST mode.".format(case))
+    for case in case_to_run:
+        print("{} will run in PRECISION_TEST mode.".format(case))
+        print(case)
     return "\n".join(case_to_run)
 
 
@@ -37,4 +40,5 @@ if __name__ == '__main__':
     
     all_test_cases = sys.argv[1]
     prec_test_cases = sys.argv[2]
-    print(get_prec_ut_list(all_test_cases,prec_test_cases))
+    #print(get_prec_ut_list(all_test_cases,prec_test_cases))
+    get_prec_ut_list(all_test_cases,prec_test_cases)
