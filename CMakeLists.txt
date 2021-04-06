@@ -25,9 +25,6 @@ project(paddle CXX C)
 include(init)
 include(generic)            # simplify cmake module
 
-# enable language CUDA
-# TODO(Shibo Tao): remove find_package(CUDA) completely.
-find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
