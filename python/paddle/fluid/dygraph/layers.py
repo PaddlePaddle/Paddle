@@ -1407,7 +1407,15 @@ class Layer(core.Layer):
         if place is None and dtype is None and blocking is None:
             return
 
+        if place is not None:
+            assert isinstance(
+                place, (core.CPUPlace, core.CUDAPlace, core.CUDAPinnedPlace)
+            ), "place value error, must be the paddle.CPUPlace(), paddle.CUDAPlace() or paddle.CUDAPinnedPlace()"
+
         if blocking is None:
+            assert isinstance(
+                blocking,
+                bool), "blocking value error, must be the True, False or None"
             blocking = True
 
         def transform(t, place, dtype, blocking):
