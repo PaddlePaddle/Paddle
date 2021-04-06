@@ -216,7 +216,14 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
+      switch (dims) { 
+        REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
+      }
     }
   }
 

@@ -143,6 +143,18 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
+      PADDLE_ENFORCE_GE(dims, 1,
+                        platform::errors::InvalidArgument(
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_as_v2_grad op must be greater than or "
+                            "equal to 1, but the value received is %d.",
+                            dims));
+      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+                        platform::errors::InvalidArgument(
+                            "The rank of the input 'Out@GRAD' for "
+                            "expand_as_v2_grad op must be less than or equal "
+                            "to %d, but the value received is %d.",
+                            MAX_RANK_SUPPORTED, dims));
       switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
