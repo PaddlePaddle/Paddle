@@ -404,7 +404,7 @@ EOF
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
-        echo "ipipe_log_param_Paddle_Inference_Size: $buildSize"
+        export ipipe_log_param_Paddle_Inference_Size="$buildSize"
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -414,10 +414,10 @@ EOF
         fi
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
         echo "Build Size: $buildSize"
-        echo "ipipe_log_param_Build_Size: $buildSize"
+        export ipipe_log_param_Build_Size="$buildSize"
         PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         echo "PR whl Size: $PR_whlSize"
-        echo "ipipe_log_param_PR_whl_Size: $PR_whlSize"
+        export ipipe_log_param_PR_whl_Size="$PR_whlSize"
     fi
 }
 
@@ -442,7 +442,7 @@ function cmake_gen_and_build() {
     build $2
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
+    ipipe_log_param_Build_Time="$[ $endTime_s - $startTime_s ]s"
 }
 
 function build_mac() {
@@ -480,7 +480,7 @@ function cmake_gen_and_build_mac() {
     build_mac
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
+    export ipipe_log_param_Build_Time="$[ $endTime_s - $startTime_s ]s"
 }
 
 function run_test() {
@@ -684,7 +684,7 @@ EOF
         #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        export ipipe_log_param_Mac_TestCases_Time="$[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
         set +x
@@ -993,10 +993,10 @@ EOF
     num=$(echo $testcases|grep -o '\^'|wc -l)
     if (( $2 == -1 )); then
         echo "exclusive TestCases count is $num"
-        echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
+        export ipipe_log_param_Exclusive_TestCases_Count="$num"
     else
         echo "$2 card TestCases count is $num"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num"
+        export ipipe_log_param_${2}_Cards_TestCases_Count="$num"
     fi
 }
 
@@ -1098,10 +1098,10 @@ function card_test() {
     ut_endTime_s=`date +%s`
     if (( $2 == -1 )); then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        export ipipe_log_param_Exclusive_TestCases_Total_Time="$[ $ut_endTime_s - $ut_startTime_s ]s"
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        export ipipe_log_param_${2}_Cards_TestCases_Total_Time="$[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
     set +m
 }
@@ -1448,7 +1448,7 @@ function parallel_test() {
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
-    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
+    export ipipe_log_param_TestCases_Total_Time="$[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
 
 function enable_unused_var_check() {
@@ -1760,7 +1760,7 @@ EOF
     EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
-    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
+    export ipipe_log_param_Test_Fluid_Lib_Total_Time="$[ $fluid_endTime_s - $fluid_startTime_s ]s"          
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
@@ -1779,7 +1779,7 @@ EOF
     EXIT_CODE=$?
     fluid_train_endTime_s=`date +%s`
     echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
-    echo "ipipe_log_param_Test_Fluid_Lib_Train_Total_Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
+    export ipipe_log_param_Test_Fluid_Lib_Train_Total_Time="$[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
@@ -1807,7 +1807,7 @@ function example() {
 function collect_ccache_hits() {
     rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
     echo "ccache hit rate: ${rate}%"
-    echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%"
+    export ipipe_log_param_Ccache_Hit_Rate="${rate}%"
 }
 
 
@@ -1858,6 +1858,48 @@ function summary_check_problems() {
       [ $example_code -ne 0 ] && exit $example_code
     fi
     set -x
+}
+
+function print_build_summary() {
+    func_list="ipipe_log_param_Paddle_Inference_Size \
+                ipipe_log_param_Build_Size \
+                ipipe_log_param_PR_whl_Size \
+                ipipe_log_param_Ccache_Hit_Rate \
+                ipipe_log_param_Build_Time \
+                ipipe_log_param_Exclusive_TestCases_Count \
+                ipipe_log_param_Exclusive_TestCases_Total_Time \
+                ipipe_log_param_${2}_Cards_TestCases_Count \
+                ipipe_log_param_${2}_Cards_TestCases_Total_Time \
+                ipipe_log_param_Mac_TestCases_Time \
+                ipipe_log_param_TestCases_Total_Time \
+                ipipe_log_param_Test_Fluid_Lib_Total_Time \
+                ipipe_log_param_Test_Fluid_Lib_Train_Total_Time"
+    for func in $func_list;do
+        if [[ -n ${$func} ]];then
+            echo ${$func}
+        fi
+    done
+    # if [ "$1" == "paddle_inference" ]; then
+    #     echo $ipipe_log_param_Paddle_Inference_Size
+    # else
+    #     echo $ipipe_log_param_Build_Size
+    #     echo $ipipe_log_param_PR_whl_Size
+    # fi
+    # echo $ipipe_log_param_Ccache_Hit_Rate
+    # echo $ipipe_log_param_Build_Time
+    # if (( $2 == -1 )); then
+    #     echo $ipipe_log_param_Exclusive_TestCases_Count
+    #     echo $ipipe_log_param_Exclusive_TestCases_Total_Time
+    # else
+    #     echo ${ipipe_log_param_${2}_Cards_TestCases_Count}
+    #     echo ${ipipe_log_param_${2}_Cards_TestCases_Total_Time}
+    # fi
+    # echo $ipipe_log_param_Mac_TestCases_Time
+    # echo $ipipe_log_param_TestCases_Total_Time
+    # echo $ipipe_log_param_Test_Fluid_Lib_Total_Time
+    # echo $ipipe_log_param_Test_Fluid_Lib_Train_Total_Time
+
+
 }
 
 function main() {
@@ -2029,6 +2071,7 @@ function main() {
         exit 1
         ;;
       esac
+      print_build_summary
       echo "paddle_build script finished as expected"
 }
 
