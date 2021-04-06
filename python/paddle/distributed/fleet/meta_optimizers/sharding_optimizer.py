@@ -127,7 +127,12 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.dp_degree = int(self.user_defined_strategy.sharding_configs[
             'dp_degree'])
         assert self.role_maker._worker_num(
-        ) == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree
+        ) == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "global work size [{}], mp_degree [{}], sharding_degree [{}], pp_degree [{}], dp_degree [{}].".format(
+            self.role_maker._worker_num(),
+            self.mp_degree,
+            self.sharding_degree,
+            self.pp_degree,
+            self.dp_degree, )
 
         self.hybrid_dp = self.user_defined_strategy.sharding_configs[
             "hybrid_dp"]
