@@ -179,7 +179,7 @@ class ValueBlock {
       PADDLE_ENFORCE_EQ(
           value_dims[i], value_dims_[i],
           platform::errors::InvalidArgument("value dims is not match"));
-      pts.push_back(values->data_ +
+      pts.push_back(values.data_ +
                     value_offsets_.at(value_idx_.at(value_names[i])));
     }
     return pts;
@@ -188,7 +188,7 @@ class ValueBlock {
   // pull
   float *Init(const uint64_t &id, const bool with_update = true) {
     if (!Has(id)) {
-      values_[id] = VALUE(value_length_);
+      values_.emplace(std::make_pair(id, VALUE(value_length_)));
     }
 
     auto &value = values_.at(id);

@@ -135,8 +135,8 @@ int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
     auto* vs = value.second.data_;
     std::stringstream ss;
     auto id = value.first;
-    ss << id << "\t" << value.second->count_ << "\t"
-       << value.second->unseen_days_ << "\t" << value.second->is_entry_ << "\t";
+    ss << id << "\t" << value.second.count_ << "\t" << value.second.unseen_days_
+       << "\t" << value.second.is_entry_ << "\t";
 
     for (int i = 0; i < block->value_length_; i++) {
       ss << vs[i];
@@ -148,7 +148,7 @@ int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
     os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
 
     if (mode == SaveMode::base || mode == SaveMode::delta) {
-      value.second->need_save_ = false;
+      value.second.need_save_ = false;
     }
   }
 
