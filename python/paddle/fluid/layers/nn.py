@@ -9260,6 +9260,9 @@ def affine_grid(theta, out_shape, name=None):
                                  'affine_grid')
     else:
         attrs['output_shape'] = out_shape
+    if core.is_compiled_with_rocm():
+        # ROCM platform do not have MIOPEN kernel for affine_grid
+        attrs['use_cudnn'] = False
 
     helper.append_op(
         type='affine_grid',
