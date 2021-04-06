@@ -21,31 +21,29 @@ import paddle
 from paddle.nn.layer import PyLayer
 
 
-class tanh(PyLayer):
-    @staticmethod
-    def backward(ctx, x1, x2, y1, y2, dy1, dy2):
-        print(ctx.func)
-        re1 = dy1 * (1 - paddle.square(y1))
-        re2 = dy2 * (1 - paddle.square(y2))
-        return re1, re2
-
-    @staticmethod
-    def forward(ctx, x1, x2, func):
-        ctx.func = func
-        y1 = func(x1)
-        y2 = func(x2)
-        return y1, y2
-
-
 class TestSaveLoadLargeParameters(unittest.TestCase):
-    def test_simple_pylayer(self):
+    def test_simple_pylayer_multiple_output(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, x2, func1, func2=paddle.square):
+                ctx.func = func2
+                y1 = func1(x1)
+                y2 = func1(x2)
+                return y1, y2
+
+            @staticmethod
+            def backward(ctx, x1, x2, y1, y2, dy1, dy2):
+
+                re1 = dy1 * (1 - ctx.func(y1))
+                re2 = dy2 * (1 - paddle.square(y2))
+                return re1, re2
+
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
         input2 = input1.detach().clone()
         input1.stop_gradient = False
         input2.stop_gradient = False
-        # import pdb; pdb.set_trace()
-        z = tanh.apply(input1, input1, paddle.tanh)
+        z = tanh.apply(input1, input1, paddle.tanh, paddle.square)
         z = z[0] + z[1]
         z.mean().backward()
 
@@ -53,3 +51,94 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+
+    def test_simple_pylayer_single_output(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, func1, func2=paddle.square):
+                ctx.func = func2
+                y1 = func1(x1)
+                return y1
+
+            @staticmethod
+            def backward(ctx, x1, y1, dy1):
+                re1 = dy1 * (1 - ctx.func(y1))
+                return re1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        input2 = input1.detach().clone()
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        z = tanh.apply(input1, paddle.tanh, paddle.square)
+        z.mean().backward()
+        z2 = paddle.tanh(input2)
+        z2.mean().backward()
+
+        self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+
+    def test_pylayer_Exception_forward(self):
+        class Layer1(PyLayer):
+            @staticmethod
+            def forward(ctx, *args):
+                return None
+
+            @staticmethod
+            def backward(ctx, *args):
+                return args
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        with self.assertRaises(NotImplementedError):
+            z = Layer1.apply(input1)
+
+        class Layer2(PyLayer):
+            @staticmethod
+            def forward(ctx, *args):
+                return [None, ]
+
+            @staticmethod
+            def backward(ctx, *args):
+                return args
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        with self.assertRaises(NotImplementedError):
+            z = Layer2.apply(input1)
+
+        class Layer3(PyLayer):
+            @staticmethod
+            def forward(ctx, *args):
+                return 1
+
+            @staticmethod
+            def backward(ctx, *args):
+                return args
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        with self.assertRaises(NotImplementedError):
+            z = Layer3.apply(input1)
+
+        class Layer4(PyLayer):
+            @staticmethod
+            def forward(ctx, *args):
+                return [1, 2]
+
+            @staticmethod
+            def backward(ctx, *args):
+                return args
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        with self.assertRaises(NotImplementedError):
+            z = Layer4.apply(input1)
+
+        class Layer_py(PyLayer):
+            @staticmethod
+            def backward(ctx, *args):
+                return args
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        with self.assertRaises(NotImplementedError):
+            z = Layer_py.apply(input1)
+
+
+if __name__ == '__main__':
+    unittest.main()

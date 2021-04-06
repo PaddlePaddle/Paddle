@@ -16,6 +16,8 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/tracer.h"
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -25,27 +27,7 @@ namespace paddle {
 namespace imperative {
 
 namespace py = ::pybind11;
-// copy from tracer.cc
-void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
-  for (const auto& pair : outs) {
-    for (const auto& var : pair.second) {
-      // NOTE(zhiqiu): this happends when None output are passed from python
-      // side. For example, fake_quantize_dequantize_moving_average_abs_max may
-      // pass None OutAccum in eval mode.
-      // It can be refined by generate several different pybind interface for
-      // one operator with different function signature.
-      if (var == nullptr) {
-        VLOG(4) << pair.first << " is NULL";
-        continue;
-      }
-      VLOG(6) << "Set output: " << var->Name() << "'s OverridedStopGradient as "
-              << generate_grad;
-      var->InnerSetOverridedStopGradient(generate_grad);
-    }
-  }
-}
 
-// copy from tracer.cc
 bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
@@ -59,41 +41,6 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   }
   return false;
 }
-static void ClearNoNeedBufferInputs(OpBase* op) {
-  auto& inferer = op->Info().NoNeedBufferVarsInferer();
-  if (!inferer) return;
-  auto* ins = op->GetMutableInsMap();
-  const auto& no_need_buffer_slots =
-      inferer(*ins, op->GetOutsMap(), op->Attrs());
-  if (no_need_buffer_slots.empty()) return;
-
-  for (auto& slot : no_need_buffer_slots) {
-    auto iter = ins->find(slot);
-    if (iter == ins->end()) continue;
-    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
-
-    PADDLE_ENFORCE_EQ(
-        iter->second.IsGrad(), false,
-        platform::errors::InvalidArgument(
-            "Only forward variable buffers can be clear, this may be a bug"));
-
-    for (auto& each_var : *(iter->second.MutableVarList())) {
-      if (!each_var) continue;
-
-      auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
-                        platform::errors::PermissionDenied(
-                            "NoNeedBufferVars only support LoDTensor"));
-      auto new_var = new VariableWrapper(each_var->Name());
-      auto* new_tensor =
-          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto& old_tensor = var.Get<framework::LoDTensor>();
-      new_tensor->Resize(old_tensor.dims());
-      new_tensor->set_lod(old_tensor.lod());
-      each_var.reset(new_var);
-    }
-  }
-}
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const std::string& type, const NameVarBaseMap& ins,
@@ -101,7 +48,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
     const std::shared_ptr<PyLayerContext>& PyLayerContext) {
-  operators::test();
   operators::PyLayerGradOpMaker<paddle::imperative::OpBase> maker(
       type, ins, outs, attrs, inplace_map);
 
@@ -175,40 +121,40 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       PyList_Check(result_forward.ptr())) {
     auto tuple_result = result_forward.cast<py::tuple>();
     for (size_t i = 0; i < tuple_result.size(); i++) {
-      try {
-        if (Py_None != tuple_result[i].ptr()) {
+      if (Py_None != tuple_result[i].ptr()) {
+        try {
           auto temp_out =
               tuple_result[i].cast<std::shared_ptr<imperative::VarBase>>();
           output_vars.push_back(temp_out);
-        } else {
+        } catch (py::cast_error&) {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "The output of forward can not be `None`."));
+              "The output of forward should be `Tensor`."));
+        } catch (...) {
+          // TODO(weixin): to support returning None.
+          PADDLE_THROW(platform::errors::Fatal(
+              "PyLayer raises an unknown exception in apply."));
         }
-      } catch (py::cast_error&) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of forward should be `Tensor`."));
-      } catch (...) {
-        // TODO(weixin): to support returning None.
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in apply."));
-      }
-    }
-  } else {  // varbase
-    try {
-      if (Py_None != result_forward.ptr()) {
-        auto temp_out =
-            result_forward.cast<std::shared_ptr<imperative::VarBase>>();
-        output_vars.push_back(temp_out);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "The output of forward can not be `None`."));
       }
-    } catch (py::cast_error&) {
+    }
+  } else {  // varbase
+    if (Py_None != result_forward.ptr()) {
+      try {
+        auto temp_out =
+            result_forward.cast<std::shared_ptr<imperative::VarBase>>();
+        output_vars.push_back(temp_out);
+      } catch (py::cast_error&) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The output of forward should be `Tensor`."));
+      } catch (...) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "PyLayer raises an unknown exception in apply."));
+      }
+    } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "The output of forward should be `Tensor`."));
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "PyLayer raises an unknown exception in apply."));
+          "The output of forward can not be `None`."));
     }
   }
 

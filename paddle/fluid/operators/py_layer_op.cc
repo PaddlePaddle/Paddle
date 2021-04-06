@@ -20,7 +20,6 @@
 
 namespace paddle {
 namespace operators {
-void test() {}
 
 namespace py = ::pybind11;
 
@@ -34,25 +33,24 @@ void RunPyObject(py::object *py_object,
   py::tuple inputs(ins.size());
   for (size_t i = 0; i < ins.size(); i++) {
     auto in_var = ins[i];
-    if (in_var == nullptr) {
-      continue;
-    }
 
-    char name[50] = {};
-    // same name
-    snprintf(name, sizeof(name), "generator_custom_py_layer%d@@grad \n",
-             static_cast<int>(i));
+    if (in_var != nullptr) {
+      char name[50] = {};
+      // same name
+      snprintf(name, sizeof(name), "generator_custom_py_layer%d@@grad \n",
+               static_cast<int>(i));
 
-    std::shared_ptr<imperative::VariableWrapper> temp_wrap =
-        std::make_shared<imperative::VariableWrapper>(name, *in_var);
-    temp_wrap->InnerSetOverridedStopGradient(true);
-    std::shared_ptr<imperative::VarBase> temp_varbase =
-        std::make_shared<imperative::VarBase>(temp_wrap);
-    try {
-      inputs[i] = py::cast(temp_varbase).ptr();
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "PyLayer raises an unknown exception in backward when cast tensor."));
+      std::shared_ptr<imperative::VariableWrapper> temp_wrap =
+          std::make_shared<imperative::VariableWrapper>(name, *in_var);
+      temp_wrap->InnerSetOverridedStopGradient(true);
+      std::shared_ptr<imperative::VarBase> temp_varbase =
+          std::make_shared<imperative::VarBase>(temp_wrap);
+      try {
+        inputs[i] = py::cast(temp_varbase).ptr();
+      } catch (py::cast_error &) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The output of backward should be `Tensor`."));
+      }
     }
   }
 
@@ -61,26 +59,72 @@ void RunPyObject(py::object *py_object,
   if (PyTuple_Check(py_result.ptr()) || PyList_Check(py_result.ptr())) {
     auto result_tuple = py_result.cast<py::tuple>();
     for (size_t i = 0; i < result_tuple.size(); i++) {
-      try {
-        auto result_var = result_tuple[i].cast<imperative::VarBase *>();
-        *(*outs)[i] = result_var->Var();
-      } catch (...) {
-        PADDLE_THROW(
-            platform::errors::Fatal("PyLayer raises an unknown exception in "
-                                    "backward when cast tensor."));
+      if (Py_None != result_tuple[i].ptr()) {
+        try {
+          auto result_var = result_tuple[i].cast<imperative::VarBase *>();
+          *(*outs)[i] = result_var->Var();
+        } catch (py::cast_error &) {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "The output of backward should be `Tensor`."));
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The output of backward can not be `None`."));
       }
     }
   } else {
-    try {
-      auto result_var = py_result.cast<imperative::VarBase *>();
-      *((*outs)[0]) = result_var->Var();
-    } catch (py::cast_error &) {
-      // err_msg
-    } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "PyLayer raises an unknown exception in backward when cast tensor."));
+    if (Py_None != py_result.ptr()) {
+      try {
+        auto result_var = py_result.cast<imperative::VarBase *>();
+        *((*outs)[0]) = result_var->Var();
+      } catch (py::cast_error &) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "The output of backward should be `Tensor`."));
+      }
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "The output of backward can not be `None`."));
     }
   }
+}
+
+void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
+    GradOpPtr<paddle::imperative::OpBase> grad_op) const {
+  grad_op->SetType("py_layer");
+  auto inner_op = grad_op->MutableInnerOp();
+  auto py_layer_op = dynamic_cast<PyLayerOp *>(inner_op);
+
+  if (py_layer_op) {
+    py_layer_op->GetMutablePyLayerContext() = py_context;
+
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "PyLayerGradOpMaker can only be matched with PyLayer."));
+  }
+
+  // All forward inputs
+  auto fwd_ins = this->Input("X");
+  // All forward outputs
+  auto fwd_outs = this->Output("Out");
+
+  auto fwd_out_grads = this->OutputGrad("Out");
+  using return_type = decltype(fwd_out_grads);
+  return_type bwd_ins;
+  bwd_ins.reserve(fwd_ins.size() + fwd_outs.size());
+  for (auto var : fwd_ins) {
+    bwd_ins.emplace_back(var);
+  }
+  for (auto var : fwd_outs) {
+    bwd_ins.emplace_back(var);
+  }
+
+  bwd_ins.reserve(bwd_ins.size() + fwd_out_grads.size());
+  bwd_ins.insert(bwd_ins.end(), fwd_out_grads.begin(), fwd_out_grads.end());
+
+  auto bwd_outs = this->InputGrad("X", false);
+
+  grad_op->SetInput("X", bwd_ins);
+  grad_op->SetOutput("Out", bwd_outs);
 }
 
 class PyLayerOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -103,12 +147,7 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
       py::object bk_ctx(py::handle(py_layer_context->GetMatableCtx()), true);
       auto &input_vars = ctx.MultiInputVar("X");
       auto output_vars = ctx.MultiOutputVar("Out");
-      try {
-        RunPyObject(&bk_ctx, input_vars, &output_vars);
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception when run backward."));
-      }
+      RunPyObject(&bk_ctx, input_vars, &output_vars);
 
     } else {
       PADDLE_THROW(platform::errors::Fatal(

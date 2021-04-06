@@ -51,8 +51,8 @@ class FunctionMeta(type):
 class PyLayer(with_mateclass(FunctionMeta, CFunction)):
     @staticmethod
     def forward(ctx, *args, **kwargs):
-        assert False, "Not implemented"
+        raise NotImplementedError("`forward` of `PyLayer` is not Implemented.")
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-        assert False, "Not implemented"
+        raise NotImplementedError("`backward` of `PyLayer` is not Implemented")
