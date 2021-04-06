@@ -17,6 +17,10 @@ from nets import mlp
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.base import role_maker
 
+input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+input_y = fluid.layers.cast(input_y, dtype="float32")
+
 
 def gen_data():
     return {
@@ -25,10 +29,6 @@ def gen_data():
             2, size=(1)).astype('int64')
     }
 
-
-input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-input_y = fluid.layers.cast(input_y, dtype="float32")
 
 with fluid.device_guard("gpu"):
     input_y = fluid.layers.cast(input_y, dtype="int64")
