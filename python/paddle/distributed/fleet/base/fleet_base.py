@@ -271,6 +271,14 @@ class Fleet(object):
     def run_backward(self, loss, parameters=None):
         self.model.backward_impl(loss, parameters)
 
+    @dygraph_only
+    def distributed_gradscaler(self, scaler):
+        if isinstance(scaler, paddle.amp.GradScaler):
+            if self.mp_num == 1 and self.pp_num == 1:
+                return scaler
+        else:
+            return
+
     def is_first_worker(self):
         """
         Check whether the node is the first instance of worker.

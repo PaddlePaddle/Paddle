@@ -158,3 +158,22 @@ def fused_allreduce_gradients(parameter_list, hcg, bucket_size=50000000):
     with framework.no_grad():
         _apply_collective_grads(parameter_list, data_parallel_group,
                                 bucket_size)
+
+
+class CheckFinite(object):
+    def __init__(self, parameters, hcg):
+        self.parameters = parameters
+        self.hcg = hcg
+        self.param_grads = [
+            param._grad_ivar() for param in parameters
+            if param._grad_ivar() is not None
+        ]
+
+    def check(self):
+        pass
+
+    def check_finite(self):
+        pass
+
+    def is_nan_or_inf(self):
+        pass
