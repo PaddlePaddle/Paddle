@@ -56,5 +56,6 @@ elif [ "$1" == "gcc54" ]; then
   cd .. && rm -rf temp_gcc54
   cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
   ln -s /usr/local/gcc-5.4/lib64/libgfortran.so.5 ${lib_so_5} && \
-  ln -s /usr/local/gcc-5.4/lib64/libstdc++.so.6 ${lib_so_6}
+  ln -s /usr/local/gcc-5.4/lib64/libstdc++.so.6 ${lib_so_6} && \
+  cp /usr/local/gcc-5.4/lib64/libstdc++.so.6.0.21 ${lib_path}
 fi
