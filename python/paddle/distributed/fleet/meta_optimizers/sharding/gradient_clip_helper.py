@@ -32,6 +32,7 @@ class GradientClipHelper(object):
         deperated_vars = set()
         deperate_op_idx = set()
         reversed_x_paramname = []
+        global_norm_sum_op_idx = -1
         for idx, op in enumerate(block.ops):
             if not self._is_gradient_clip_op(op):
                 continue
@@ -70,6 +71,7 @@ class GradientClipHelper(object):
                 continue
             reversed_inputs = []
             if op.type == "sum":
+                global_norm_sum_op_idx = idx
                 for input_name in op.desc.input_arg_names():
                     if input_name not in deperated_vars:
                         reversed_inputs.append(input_name)
@@ -91,20 +93,20 @@ class GradientClipHelper(object):
                         OP_ROLE_KEY: OpRole.Optimize,
                     })
 
-        # global norm should only be sum within each model parallelism word size when use global group
-        if pure_dp_degree > 1:
-            block._insert_op_without_sync(
-                idx + 2,
-                type='scale',
-                inputs={'X': sum_res},
-                outputs={'Out': sum_res},
-                attrs={
-                    'scale': 1.0 / float(pure_dp_degree),
-                    'op_namescope': "/gradient_clip_model_parallelism",
-                    'bias': 0.0,
-                    'bias_after_scale': False,
-                    OP_ROLE_KEY: OpRole.Optimize
-                })
+                # global norm should only be sum within each model parallelism word size when use global group
+                if pure_dp_degree > 1:
+                    block._insert_op_without_sync(
+                        idx + 2,
+                        type='scale',
+                        inputs={'X': sum_res},
+                        outputs={'Out': sum_res},
+                        attrs={
+                            'scale': 1.0 / float(pure_dp_degree),
+                            'op_namescope': "/gradient_clip_model_parallelism",
+                            'bias': 0.0,
+                            'bias_after_scale': False,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })
 
         # the grad sum here should take the all and only param in the current shard
         to_check_param = set(reversed_x_paramname)

@@ -470,6 +470,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
                 outputs={'Out': loss_grad_var},
                 attrs={'scale': scale,
                        OP_ROLE_KEY: OpRole.Backward})
+            break
 
 
 def comm_analyse(main_program):
