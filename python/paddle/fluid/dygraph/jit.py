@@ -1016,6 +1016,7 @@ def load(path, **configs):
     return TranslatedLayer._construct(model_path, config)
 
 
+@dygraph_only
 def _trace(layer,
            inputs,
            feed_prefix='feed_',

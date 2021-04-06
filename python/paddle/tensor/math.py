@@ -217,6 +217,9 @@ def pow(x, y, name=None):
         else:
             raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
+
+
+@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from . import core
+from .framework import dygraph_only
 
 
+@dygraph_only
 def _append_activation_in_dygraph(input,
                                   act=None,
                                   use_cudnn=None,
@@ -29,6 +31,7 @@ def _append_activation_in_dygraph(input,
 
     Return the Variable after append activation
     """
+    return None
     if act is None:
         return input
 
@@ -42,6 +45,7 @@ def _append_activation_in_dygraph(input,
     return act_op(input, *attrs)
 
 
+@dygraph_only
 def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     """Append bias operation in dygraph mode.
 
