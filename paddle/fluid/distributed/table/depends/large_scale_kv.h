@@ -195,7 +195,7 @@ class ValueBlock {
     auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(value, counter);
+      AttrUpdate(&value, counter);
     }
 
     return value.data_;
