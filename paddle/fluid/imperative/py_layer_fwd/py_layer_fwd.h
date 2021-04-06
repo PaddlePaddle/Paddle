@@ -32,8 +32,6 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
       if (!var_base->OverridedStopGradient()) {
-        VLOG(6) << "Find out input: " << var_base->Name()
-                << "'s GeneratedGrad is True";
         PassStopGradient(outs, var_base->OverridedStopGradient());
         return true;
       }
@@ -156,7 +154,7 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
   if (RequiredGrad(ins, outs)) {
     CreateGradOpNode("py_layer", ins, outs, {{}}, place, {}, py_layer_ctx);
   } else {
-    VLOG(3) << "No Grad to track for Op: py_layer";
+    VLOG(3) << "No Grad to track for Op: py_layer_op";
   }
 
   return result_forward;

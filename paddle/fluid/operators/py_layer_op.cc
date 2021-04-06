@@ -57,6 +57,11 @@ void RunPyObject(py::object *py_object,
 
   if (PyTuple_Check(py_result.ptr()) || PyList_Check(py_result.ptr())) {
     auto result_tuple = py_result.cast<py::tuple>();
+    if (result_tuple.size() != outs->size()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The number of outputs of backward should be %d, but received %d.",
+          outs->size(), result_tuple.size()));
+    }
     for (size_t i = 0; i < result_tuple.size(); i++) {
       if (Py_None != result_tuple[i].ptr()) {
         try {

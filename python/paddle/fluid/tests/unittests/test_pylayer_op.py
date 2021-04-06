@@ -21,7 +21,7 @@ import paddle
 from paddle.nn.layer import PyLayer
 
 
-class TestSaveLoadLargeParameters(unittest.TestCase):
+class TestPyLayer(unittest.TestCase):
     def test_simple_pylayer_multiple_output(self):
         class tanh(PyLayer):
             @staticmethod
@@ -39,7 +39,6 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
                 return re1, re2
 
         input1 = paddle.randn([2, 3]).astype("float64")
-        input1.stop_gradient = False
         input2 = input1.detach().clone()
         input1.stop_gradient = False
         input2.stop_gradient = False
@@ -66,11 +65,10 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
                 return re1
 
         input1 = paddle.randn([2, 3]).astype("float64")
-        input1.stop_gradient = False
         input2 = input1.detach().clone()
         input1.stop_gradient = False
         input2.stop_gradient = False
-        z = tanh.apply(input1, paddle.tanh, paddle.square)
+        z = tanh.apply(x1=input1, func1=paddle.tanh)
         z.mean().backward()
         z2 = paddle.tanh(input2)
         z2.mean().backward()
@@ -78,7 +76,7 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
 
     def test_pylayer_Exception_forward(self):
-        class Layer1(PyLayer):
+        class Layer_None1(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return None
@@ -89,12 +87,12 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer1.apply(input1)
+            z = Layer_None1.apply(input1)
 
-        class Layer2(PyLayer):
+        class Layer_None2(PyLayer):
             @staticmethod
             def forward(ctx, *args):
-                return [None, ]
+                return [None, None]
 
             @staticmethod
             def backward(ctx, *args):
@@ -102,9 +100,9 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer2.apply(input1)
+            z = Layer_None1.apply(input1)
 
-        class Layer3(PyLayer):
+        class Layer_one1(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return 1
@@ -115,9 +113,9 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer3.apply(input1)
+            z = Layer_one1.apply(input1)
 
-        class Layer4(PyLayer):
+        class Layer_one2(PyLayer):
             @staticmethod
             def forward(ctx, *args):
                 return [1, 2]
@@ -128,16 +126,133 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer4.apply(input1)
+            z = Layer_one2.apply(input1)
 
-        class Layer_py(PyLayer):
+        class Layer_no_fw(PyLayer):
             @staticmethod
             def backward(ctx, *args):
                 return args
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer_py.apply(input1)
+            z = Layer_no_fw.apply(input1)
+
+    def test_pylayer_nograd(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, func1, func2=paddle.square, xx=None):
+                ctx.func = func2
+                y1 = func1(x1)
+                return y1
+
+            @staticmethod
+            def backward(ctx, x1, y1, dy1):
+                re1 = dy1 * (1 - ctx.func(y1))
+                return re1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        z = tanh.apply(input1, paddle.tanh, paddle.square)
+        z.mean().backward()
+        self.assertTrue(z.grad is None)
+
+
+class TestPylayerExceptionBK(unittest.TestCase):
+    def test_pylayer_Exception_bk(self):
+        class Layer_bk_none1(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x * 2
+
+            @staticmethod
+            def backward(ctx, x1, y1, dy1):
+                return None
+
+        input2 = paddle.randn([2, 3]).astype("float64")
+        input2.stop_gradient = False
+        z = Layer_bk_none1.apply(input2)
+
+        with self.assertRaises(NotImplementedError):
+            with paddle.fluid.dygraph.guard():
+                z.sum().backward()
+
+        class Layer_bk_none2(PyLayer):
+            @staticmethod
+            def forward(ctx, x1, x2):
+                return x1 + x2
+
+            @staticmethod
+            def backward(ctx, x1, x2, y1, dy1):
+                return 1, x1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        z = Layer_bk_none2.apply(input1, input1)
+        with self.assertRaises(NotImplementedError):
+            with paddle.fluid.dygraph.guard():
+                z.mean().backward()
+
+        class Layer_bk_one1(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x + x
+
+            @staticmethod
+            def backward(ctx, x, y, dy):
+                return 1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        z = Layer_bk_one1.apply(input1)
+        with self.assertRaises(NotImplementedError):
+            with paddle.fluid.dygraph.guard():
+                z.mean().backward()
+
+        class Layer_bk_one2(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x * 2, x * 5
+
+            @staticmethod
+            def backward(ctx, *args):
+                return 1, 1
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        z = Layer_bk_one1.apply(input1)
+        with self.assertRaises(NotImplementedError):
+            with paddle.fluid.dygraph.guard():
+                z.mean().backward()
+
+        class Layer_no_bk(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x * 2, x * 5
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        z = Layer_no_bk.apply(input1)
+
+        with self.assertRaises(NotImplementedError):
+            with paddle.fluid.dygraph.guard():
+                z = z[0] + z[1]
+                z.mean().backward()
+
+        class Layer_bk_match(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x * 2, x * 5
+
+            @staticmethod
+            def backward(ctx, x, y1, y2, dy1, dy2):
+                return x * 2, y1 * 2
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input1.stop_gradient = False
+        z = Layer_bk_match.apply(input1)
+        with self.assertRaises(ValueError):
+            with paddle.fluid.dygraph.guard():
+                z = z[0] + z[1]
+                z.mean().backward()
 
 
 if __name__ == '__main__':

@@ -38,18 +38,6 @@ class PyLayerOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
-    }
-  }
-
  public:
   CtxPtr& GetMutablePyLayerContext() { return py_context; }
   const CtxPtr& GetMutablePyLayerContext() const { return py_context; }
@@ -68,9 +56,7 @@ class PyLayerGradOpMaker<paddle::framework::OpDesc>
       paddle::framework::OpDesc>::SingleGradOpMaker;
 
  protected:
-  void Apply(GradOpPtr<paddle::framework::OpDesc> grad_op) const override {
-    grad_op->SetType("py_layer");
-  }
+  void Apply(GradOpPtr<paddle::framework::OpDesc> grad_op) const override {}
 };
 
 template <>
