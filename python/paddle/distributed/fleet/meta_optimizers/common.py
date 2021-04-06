@@ -106,6 +106,11 @@ class CollectiveHelper(object):
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward
                 })
+            block.append_op(
+                type='c_sync_calc_stream',
+                inputs={'X': sync_var},
+                outputs={'Out': sync_var},
+                attrs={OP_ROLE_KEY: OpRole.Forward})
 
         block = program.global_block()
         if core.is_compiled_with_cuda():

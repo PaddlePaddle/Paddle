@@ -306,9 +306,10 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   }
 };
 
-class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
+class EmbEltwiseLayernormPluginDynamicCreator
+    : public nvinfer1::IPluginCreator {
  public:
-  EmbEltwiseLayernormPluginV2Creator() {}
+  EmbEltwiseLayernormPluginDynamicCreator() {}
   const char* getPluginName() const override {
     return "fused_embedding_eltwise_layernorm_plugin";
   }
@@ -345,7 +346,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(EmbEltwiseLayernormPluginDynamicCreator);
 
 #endif
 }  // namespace plugin
