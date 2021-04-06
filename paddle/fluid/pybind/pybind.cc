@@ -14,11 +14,13 @@ limitations under the License. */
 #include <Python.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -179,6 +181,51 @@ bool SupportsBfloat16FastPerformance() {
   else
     return false;
 #endif
+}
+
+std::unordered_set<std::string> UnsupportedOps(
+    std::string place, framework::proto::VarType::Type dtype) {
+  std::transform(place.begin(), place.end(), place.begin(),
+                 [](unsigned char c) { return std::toupper(c); });
+  using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
+  std::unordered_map<std::string, fn_type> is_target_place{
+      {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
+  };
+  PADDLE_ENFORCE_NE(
+      is_target_place.count(place), 0,
+      platform::errors::InvalidArgument(
+          "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
+          place));
+
+  std::unordered_set<std::string> all_ops;
+  const auto &op_info = framework::OpInfoMap::Instance().map();
+  for (auto it = op_info.begin(); it != op_info.end(); it++) {
+    all_ops.emplace(it->first);
+  }
+
+  std::unordered_set<std::string> supported_ops;
+  auto &all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
+    for (auto &kernel_type : it->second) {
+      if (is_target_place[place](kernel_type.first.place_) &&
+          kernel_type.first.data_type_ == dtype) {
+        supported_ops.emplace(it->first);
+      }
+    }
+  }
+
+  std::unordered_set<std::string> unsupported_ops;
+  for (auto &op : all_ops) {
+    if (!supported_ops.count(op)) {
+      unsupported_ops.emplace(op);
+    }
+  }
+
+  VLOG(4) << "-- The size of all_ops: " << all_ops.size() << " --";
+  VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
+  VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
+          << " --";
+  return unsupported_ops;
 }
 
 bool IsCompiledWithBrpc() {
@@ -1761,6 +1808,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
+  m.def("unsupported_op_list", UnsupportedOps);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
