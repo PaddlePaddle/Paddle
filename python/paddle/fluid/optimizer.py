@@ -4033,6 +4033,12 @@ class PipelineOptimizer(object):
         """
         Find the post op that has variable named var_name as input.
         """
+        # bugfix for uniform hybrid parallelism
+        if '.cast_fp32' in var_name:
+            var_name = var_name.replace('.cast_fp32', '')
+        if '.cast_fp16' in var_name:
+            var_name = var_name.replace('.cast_fp16', '')
+
         post_ops = self.input_var_to_op[var_name]
         if post_ops == None: return None
         result_op = None
@@ -4114,7 +4120,23 @@ class PipelineOptimizer(object):
             # For LRSched ops, we should put them on all sub-programs to
             # make sure each sub-program update the lr correctly
             op._set_attr(self._op_device_key, "gpu:all")
-        elif op.type == "scale" and self._is_backward_op(op):
+        # bugfix in hybrid parallelism
+        elif op.type == "sum" and self._is_backward_op(op):
+            # For sum ops that compute the sum of @RENAMED@ vars
+            for name in op.desc.input_arg_names():
+                assert '@RENAME@' in name, \
+                    "The op must be sum used to accumulate renamed vars."
+            assert len(op.desc.output_arg_names()) == 1
+            out_name = op.desc.output_arg_names()[0]
+            post_op = self._find_post_op(idx, out_name)
+            assert post_op.has_attr(
+                'op_device'), "{} has no op_device attr for var {}".format(
+                    post_op.type, out_name)
+            device = post_op.attr(self._op_device_key)
+            assert device, "The post op must have op_device set."
+            op._set_attr(self._op_device_key, device)
+        elif (op.type == "cast" or
+              op.type == "scale") and self._is_backward_op(op):
             prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
             op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif op.type == "memcpy" and not self._is_optimize_op(op):
@@ -4768,8 +4790,9 @@ class PipelineOptimizer(object):
 
         # Step4: Special Case: process persistable vars that exist in
         # multiple sections
-        self._process_persistable_vars_in_multi_sections(
-            main_program, startup_program, program_list)
+        # FIXME 
+        # self._process_persistable_vars_in_multi_sections(
+        #     main_program, startup_program, program_list)
 
         # Step5: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
