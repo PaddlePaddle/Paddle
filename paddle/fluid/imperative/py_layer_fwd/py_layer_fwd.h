@@ -84,9 +84,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
           input_vars.push_back(a);
         }
       } catch (py::cast_error& err) {
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }
@@ -99,9 +96,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
           input_vars.push_back(a);
         }
       } catch (py::cast_error&) {
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }

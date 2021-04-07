@@ -93,10 +93,11 @@ void RunPyObject(py::object *py_object,
 void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
     GradOpPtr<paddle::imperative::OpBase> grad_op) const {
   grad_op->SetType("py_layer");
-  auto inner_op = grad_op->MutableInnerOp();
-  auto py_layer_op = dynamic_cast<PyLayerOp *>(inner_op);
+  auto &inner_op = grad_op->InnerOp();
+  auto py_layer_op_const = dynamic_cast<const PyLayerOp *>(&inner_op);
 
-  if (py_layer_op) {
+  if (py_layer_op_const) {
+    auto py_layer_op = const_cast<PyLayerOp *>(py_layer_op_const);
     py_layer_op->GetMutablePyLayerContext() = py_context;
 
   } else {

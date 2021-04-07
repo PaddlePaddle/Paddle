@@ -278,7 +278,8 @@ class TracedGradOp {
   std::string Type() const { return op_->Type(); }
 
   void SetType(const std::string& type) { op_->SetType(type); }
-  framework::OperatorBase* MutableInnerOp() { return op_->MutableInnerOp(); }
+
+  const framework::OperatorBase& InnerOp() { return op_->InnerOp(); }
 
   void SetAttrMap(const framework::AttributeMap& attrs) {
     return op_->SetAttrMap(attrs);
