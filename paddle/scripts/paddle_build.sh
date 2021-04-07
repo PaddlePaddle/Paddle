@@ -2029,7 +2029,10 @@ function main() {
         exit 1
         ;;
       esac
+      set +x
+      echo "=====================build summary======================"
       cat ${PADDLE_ROOT}/build/build_summary.txt
+      echo "========================================================"
       echo "paddle_build script finished as expected"
 }
 
