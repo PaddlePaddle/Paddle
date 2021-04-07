@@ -86,6 +86,8 @@ class FleetWrapper {
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
+  // is_training is true means training, false means inference, the behavior is different on pserver
+
   void PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                               uint64_t padding_id, platform::Place place,
                               bool is_training,
