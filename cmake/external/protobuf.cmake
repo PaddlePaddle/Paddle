@@ -239,7 +239,11 @@ endif()
     )
 ENDFUNCTION()
 
-SET(PROTOBUF_VERSION 3.8.0)
+if(WITH_ASCEND)
+    SET(PROTOBUF_VERSION 3.8.0)
+else()
+    SET(PROTOBUF_VERSION 3.1.0)
+endif()
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)
