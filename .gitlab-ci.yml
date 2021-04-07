@@ -1,0 +1,6 @@
+ci-trigger:
+  variables:
+    PADDLE_BRANCH: "${CI_COMMIT_BRANCH}"
+  stage: deploy
+  trigger:
+    project: dl/dgx/paddle
