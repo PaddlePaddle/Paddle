@@ -29,31 +29,36 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
       input_num * layer_counts_sum_,
       std::vector<uint64_t>(user_feature_num + 2));
 
-  auto max_layer = tree_->height();
+  auto max_layer = tree_->Height();
   std::vector<Sampler*> sampler_vec(max_layer - start_sample_layer_);
-  std::vector<std::vector<uint64_t>> layer_ids(max_layer - start_sample_layer_);
+  std::vector<std::vector<IndexNode>> layer_ids(max_layer -
+                                                start_sample_layer_);
 
   auto layer_index = max_layer - 1;
   size_t idx = 0;
   while (layer_index >= start_sample_layer_) {
-    layer_ids[idx] = tree_->get_nodes_given_level(layer_index);
+    auto layer_codes = tree_->GetLayerCodes(layer_index);
+    layer_ids[idx] = tree_->GetNodes(layer_codes);
     sampler_vec[idx] = new paddle::operators::math::UniformSampler(
         layer_ids[idx].size() - 1, seed_);
     layer_index--;
     idx++;
   }
 
-  auto ancestors = tree_->get_parent_path(target_ids, start_sample_layer_);
   idx = 0;
   for (size_t i = 0; i < input_num; i++) {
-    for (size_t j = 0; j < ancestors[i].size(); j++) {
+    auto travel_codes =
+        tree_->GetTravelCodes(target_ids[i], start_sample_layer_);
+    auto travel_path = tree_->GetNodes(travel_codes);
+    for (size_t j = 0; j < travel_path.size(); j++) {
       // user
       if (j > 0 && with_hierarchy) {
-        auto hierarchical_user =
-            tree_->get_ancestor_given_level(user_inputs[i], max_layer - j - 1);
+        auto ancestor_codes =
+            tree_->GetAncestorCodes(user_inputs[i], max_layer - j - 1);
+        auto hierarchical_user = tree_->GetNodes(ancestor_codes);
         for (int idx_offset = 0; idx_offset <= layer_counts_[j]; idx_offset++) {
           for (size_t k = 0; k < user_feature_num; k++) {
-            outputs[idx + idx_offset][k] = hierarchical_user[k];
+            outputs[idx + idx_offset][k] = hierarchical_user[k].id();
           }
         }
       } else {
@@ -65,15 +70,16 @@ std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
       }
 
       // sampler ++
-      outputs[idx][user_feature_num] = ancestors[i][j];
+      outputs[idx][user_feature_num] = travel_path[j].id();
       outputs[idx][user_feature_num + 1] = 1.0;
       idx += 1;
       for (int idx_offset = 0; idx_offset < layer_counts_[j]; idx_offset++) {
         int sample_res = 0;
         do {
           sample_res = sampler_vec[j]->Sample();
-        } while (layer_ids[j][sample_res] == ancestors[i][j]);
-        outputs[idx + idx_offset][user_feature_num] = layer_ids[j][sample_res];
+        } while (layer_ids[j][sample_res].id() == travel_path[j].id());
+        outputs[idx + idx_offset][user_feature_num] =
+            layer_ids[j][sample_res].id();
         outputs[idx + idx_offset][user_feature_num + 1] = 0;
       }
       idx += layer_counts_[j];

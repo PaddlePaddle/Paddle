@@ -29,54 +29,52 @@ class TestTreeIndex(unittest.TestCase):
         self.assertTrue(height == 14)
         self.assertTrue(branch == 2)
         self.assertEqual(tree.total_node_nums(), 15581)
-        self.assertEqual(tree.tree_max_node(), 5171135)
+        self.assertEqual(tree.emb_size(), 5171136)
 
-        # get_nodes_given_level
+        # get_layer_codes
         layer_node_ids = []
         layer_node_codes = []
         for i in range(tree.height()):
-            layer_node_ids.append(tree.get_nodes_given_level(i, False))
-            layer_node_codes.append(tree.get_nodes_given_level(i, True))
-            self.assertTrue(
-                len(layer_node_ids[-1]) == len(layer_node_codes[-1]))
+            layer_node_codes.append(tree.get_layer_codes(i))
+            layer_node_ids.append(
+                [node.id() for node in tree.get_nodes(layer_node_codes[-1])])
 
-        all_items = tree.get_ids_given_codes([])
-        self.assertEqual(sum(all_items), sum(layer_node_ids[-1]))
+        all_leaf_ids = [node.id() for node in tree.get_all_leafs()]
+        self.assertEqual(sum(all_leaf_ids), sum(layer_node_ids[-1]))
 
-        # get_parent_path
-        parent_path_ids = tree.get_parent_path([all_items[0]])[0]
-        parent_path_codes = tree.get_parent_path(
-            [all_items[0]], ret_code=True)[0]
+        # get_travel
+        travel_codes = tree.get_travel_codes(all_leaf_ids[0])
+        travel_ids = [node.id() for node in tree.get_nodes(travel_codes)]
+
         for i in range(height):
-            self.assertIn(parent_path_ids[i], layer_node_ids[height - 1 - i])
-            self.assertIn(parent_path_codes[i],
-                          layer_node_codes[height - 1 - i])
+            self.assertIn(travel_ids[i], layer_node_ids[height - 1 - i])
+            self.assertIn(travel_codes[i], layer_node_codes[height - 1 - i])
 
-        # get_ancestor_given_level
-        ancestor_ids = tree.get_ancestor_given_level([all_items[0]], height - 2,
-                                                     False)
-        ancestor_codes = tree.get_ancestor_given_level([all_items[0]],
-                                                       height - 2, True)
-        self.assertEqual(ancestor_ids[0], parent_path_ids[1])
-        self.assertEqual(ancestor_codes[0], parent_path_codes[1])
+        # get_ancestor
+        ancestor_codes = tree.get_ancestor_codes([all_leaf_ids[0]], height - 2)
+        ancestor_ids = [node.id() for node in tree.get_nodes(ancestor_codes)]
+
+        self.assertEqual(ancestor_ids[0], travel_ids[1])
+        self.assertEqual(ancestor_codes[0], travel_codes[1])
 
         # get_pi_relation
-        pi_relation = tree.get_pi_relation([all_items[0]], height - 2)
-        self.assertEqual(pi_relation[all_items[0]], ancestor_codes[0])
+        pi_relation = tree.get_pi_relation([all_leaf_ids[0]], height - 2)
+        self.assertEqual(pi_relation[all_leaf_ids[0]], ancestor_codes[0])
 
         # get_travel_path
-        travel_path_ids = tree.get_travel_path(parent_path_codes[0],
-                                               parent_path_codes[-1])
-        self.assertEquals(travel_path_ids + [parent_path_ids[-1]],
-                          parent_path_ids)
-        travel_path_codes = tree.get_travel_path(parent_path_codes[0],
-                                                 parent_path_codes[-1], True)
-        self.assertEquals(travel_path_codes + [parent_path_codes[-1]],
-                          parent_path_codes)
+        travel_path_codes = tree.get_travel_path(travel_codes[0],
+                                                 travel_codes[-1])
+        travel_path_ids = [
+            node.id() for node in tree.get_nodes(travel_path_codes)
+        ]
 
-        children = tree.get_children_given_ancestor_and_level(
-            parent_path_codes[1], height - 1, False)
-        self.assertIn(all_items[0], children)
+        self.assertEquals(travel_path_ids + [travel_ids[-1]], travel_ids)
+        self.assertEquals(travel_path_codes + [travel_codes[-1]], travel_codes)
+
+        # get_children
+        children_codes = tree.get_children_codes(travel_codes[1], height - 1)
+        children_ids = [node.id() for node in tree.get_nodes(children_codes)]
+        self.assertIn(all_leaf_ids[0], children_ids)
 
 
 class TestIndexSampler(unittest.TestCase):
@@ -89,7 +87,9 @@ class TestIndexSampler(unittest.TestCase):
 
         layer_nodes = []
         for i in range(tree.height()):
-            layer_nodes.append(tree.get_nodes_given_level(i, False))
+            layer_codes = tree.get_layer_codes(i)
+            layer_nodes.append(
+                [node.id() for node in tree.get_nodes(layer_codes)])
 
         sample_num = range(1, 10000)
         start_sample_layer = 1
@@ -102,16 +102,14 @@ class TestIndexSampler(unittest.TestCase):
         tree.init_layerwise_sampler(sample_num, start_sample_layer, seed)
 
         ids = [315757, 838060, 1251533, 403522, 2473624, 3321007]
-        tmp = tree.get_parent_path(ids, start_sample_layer, False)
         parent_path = {}
         for i in range(len(ids)):
-            parent_path[ids[i]] = tmp[i]
-        # print(parent_path)
+            tmp = tree.get_travel_codes(ids[i], start_sample_layer)
+            parent_path[ids[i]] = [node.id() for node in tree.get_nodes(tmp)]
 
-        # 2. check sample res with_hierarchy = False
+        # check sample res with_hierarchy = False
         sample_res = tree.layerwise_sample(
             [[315757, 838060], [1251533, 403522]], [2473624, 3321007], False)
-        # print(sample_res)
         idx = 0
         layer = tree.height() - 1
         for i in range(len(layer_sample_counts)):
@@ -148,10 +146,9 @@ class TestIndexSampler(unittest.TestCase):
             layer -= 1
         self.assertTrue(idx == total_sample_num * 2)
 
-        # 3. check sample res with_hierarchy = True
+        # check sample res with_hierarchy = True
         sample_res_with_hierarchy = tree.layerwise_sample(
             [[315757, 838060], [1251533, 403522]], [2473624, 3321007], True)
-        # print(sample_res_with_hierarchy)
         idx = 0
         layer = tree.height() - 1
         for i in range(len(layer_sample_counts)):

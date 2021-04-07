@@ -9,13 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdio.h>
 #include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/io/fs.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -26,21 +26,18 @@ namespace distributed {
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
-int TreeIndex::load(const std::string filename) {
-  FILE* fp = fopen(filename.c_str(), "rb");
-  if (fp == NULL) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Can not open file: %s. Please check whether the file exists.",
-        filename));
-    return -1;
-  }
+int TreeIndex::Load(const std::string filename) {
+  int err_no;
+  auto fp = paddle::framework::fs_open_read(filename, &err_no, "");
+  CHECK(fp != nullptr);
 
   int num = 0;
   max_id_ = 0;
-  size_t ret = fread(&num, sizeof(num), 1, fp);
+  size_t ret = fread(&num, sizeof(num), 1, fp.get());
   while (ret == 1 && num > 0) {
     std::string content(num, '\0');
-    size_t read_num = fread(const_cast<char*>(content.data()), 1, num, fp);
+    size_t read_num =
+        fread(const_cast<char*>(content.data()), 1, num, fp.get());
     PADDLE_ENFORCE_EQ(
         read_num, static_cast<size_t>(num),
         platform::errors::InvalidArgument(
@@ -71,15 +68,25 @@ int TreeIndex::load(const std::string filename) {
         max_id_ = node.id();
       }
     }
-    ret = fread(&num, sizeof(num), 1, fp);
+    ret = fread(&num, sizeof(num), 1, fp.get());
   }
-  fclose(fp);
   total_nodes_num_ = data_.size();
   return 0;
 }
 
-std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level,
-                                                       bool ret_code) {
+std::vector<IndexNode> TreeIndex::GetNodes(const std::vector<uint64_t>& codes) {
+  std::vector<IndexNode> nodes;
+  nodes.reserve(codes.size());
+  for (size_t i = 0; i < codes.size(); i++) {
+    PADDLE_ENFORCE_EQ(CheckIsValid(codes[i]), true,
+                      paddle::platform::errors::InvalidArgument(
+                          "codes[%d] = %d is in valid.", i, codes[i]));
+    nodes.push_back(data_.at(codes[i]));
+  }
+  return nodes;
+}
+
+std::vector<uint64_t> TreeIndex::GetLayerCodes(int level) {
   uint64_t level_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   uint64_t level_offset = level_num - 1;
 
@@ -87,101 +94,40 @@ std::vector<uint64_t> TreeIndex::get_nodes_given_level(int level,
   res.reserve(level_num);
   for (uint64_t i = 0; i < level_num; i++) {
     auto code = level_offset + i;
-    if (data_.find(code) != data_.end()) {
-      if (ret_code) {
-        res.push_back(code);
-      } else {
-        res.push_back(data_[code].id());
-      }
-    }
-  }
-
-  return res;
-}
-
-std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(
-    const std::vector<uint64_t>& ids, int start_level, bool ret_code) {
-  std::vector<std::vector<uint64_t>> res(ids.size(), std::vector<uint64_t>());
-  for (size_t i = 0; i < ids.size(); i++) {
-    auto code = id_codes_map_.at(ids[i]);
-    int level = meta_.height() - 1;
-
-    while (level >= start_level) {
-      if (ret_code) {
-        res[i].push_back(code);
-      } else {
-        res[i].push_back(data_.at(code).id());
-      }
-      code = (code - 1) / meta_.branch();
-      level--;
+    if (CheckIsValid(code)) {
+      res.push_back(code);
     }
   }
   return res;
 }
 
-std::vector<uint64_t> TreeIndex::get_ids_given_codes(
-    const std::vector<uint64_t>& codes) {
-  std::vector<uint64_t> ids;
-  if (codes.size() == 0) {
-    ids.reserve(id_codes_map_.size());
-    for (auto& ite : id_codes_map_) {
-      ids.push_back(ite.first);
-    }
-  } else {
-    ids.reserve(codes.size());
-    for (size_t i = 0; i < codes.size(); i++) {
-      ids.push_back(data_.at(codes[i]).id());
-    }
-  }
-  return ids;
-}
-
-std::unordered_map<uint64_t, uint64_t> TreeIndex::get_relation(
-    int level, const std::vector<uint64_t>& ids) {
-  std::unordered_map<uint64_t, uint64_t> pi_new;
-
-  for (auto& id : ids) {
-    auto code = id_codes_map_.at(id);
-    auto cur_level = meta_.height() - 1;
-    while (cur_level > level) {
-      code = (code - 1) / meta_.branch();
-      cur_level--;
-    }
-    pi_new[id] = code;
-  }
-  return pi_new;
-}
-
-std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
-    const std::vector<uint64_t>& ids, int level, bool ret_code) {
+std::vector<uint64_t> TreeIndex::GetAncestorCodes(
+    const std::vector<uint64_t>& ids, int level) {
   std::vector<uint64_t> res;
   res.reserve(ids.size());
+
   int cur_level;
   for (size_t i = 0; i < ids.size(); i++) {
-    if (ids[i] == 0 || id_codes_map_.find(ids[i]) == id_codes_map_.end()) {
-      res.push_back(0);
-      continue;
-    }
+    PADDLE_ENFORCE_NE(id_codes_map_.find(ids[i]), id_codes_map_.end(),
+                      paddle::platform::errors::InvalidArgument(
+                          "ids[%d] = %d doesn't exist in Tree.", i, ids[i]));
     auto code = id_codes_map_.at(ids[i]);
     cur_level = meta_.height() - 1;
-    while (cur_level > level) {
+
+    while (level >= 0 && cur_level > level) {
       code = (code - 1) / meta_.branch();
       cur_level--;
     }
-    if (ret_code) {
-      res.push_back(code);
-    } else {
-      res.push_back(data_.at(code).id());
-    }
+    res.push_back(code);
   }
   return res;
 }
 
-std::vector<uint64_t> TreeIndex::get_children_given_ancestor_and_level(
-    uint64_t ancestor, int level, bool ret_code) {
+std::vector<uint64_t> TreeIndex::GetChildrenCodes(uint64_t ancestor,
+                                                  int level) {
   auto level_code_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   auto code_min = level_code_num - 1;
-  auto code_max = level * level_code_num - 1;
+  auto code_max = meta_.branch() * level_code_num - 1;
 
   std::vector<uint64_t> parent;
   parent.push_back(ancestor);
@@ -200,13 +146,34 @@ std::vector<uint64_t> TreeIndex::get_children_given_ancestor_and_level(
     }
   }
 
-  res = std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
-  if (ret_code == false) {
-    for (size_t i = 0; i < res.size(); i++) {
-      res[i] = data_.at(res[i]).id();
-    }
+  return std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
+}
+
+std::vector<uint64_t> TreeIndex::GetTravelCodes(uint64_t id, int start_level) {
+  std::vector<uint64_t> res;
+  PADDLE_ENFORCE_NE(id_codes_map_.find(id), id_codes_map_.end(),
+                    paddle::platform::errors::InvalidArgument(
+                        "id = %d doesn't exist in Tree.", id));
+  auto code = id_codes_map_.at(id);
+  int level = meta_.height() - 1;
+
+  while (level >= start_level) {
+    res.push_back(code);
+    code = (code - 1) / meta_.branch();
+    level--;
   }
   return res;
 }
+
+std::vector<IndexNode> TreeIndex::GetAllLeafs() {
+  std::vector<IndexNode> res;
+  res.reserve(id_codes_map_.size());
+  for (auto& ite : id_codes_map_) {
+    auto code = ite.second;
+    res.push_back(data_.at(code));
+  }
+  return res;
+}
+
 }  // end namespace distributed
 }  // end namespace paddle

@@ -59,17 +59,17 @@ class LayerWiseSampler : public IndexSampler {
         paddle::platform::errors::InvalidArgument(
             "start sampler layer = [%d], it should greater than 0.",
             start_sample_layer_));
-    PADDLE_ENFORCE_LT(start_sample_layer_, tree_->height(),
+    PADDLE_ENFORCE_LT(start_sample_layer_, tree_->Height(),
                       paddle::platform::errors::InvalidArgument(
                           "start sampler layer = [%d], it should less than "
                           "max_layer, which is [%d].",
-                          start_sample_layer_, tree_->height()));
+                          start_sample_layer_, tree_->Height()));
 
     size_t i = 0;
     layer_counts_sum_ = 0;
     layer_counts_.clear();
     int cur_layer = start_sample_layer_;
-    while (cur_layer < tree_->height()) {
+    while (cur_layer < tree_->Height()) {
       int layer_sample_num = 1;
       if (i < layer_sample_counts.size()) {
         layer_sample_num = layer_sample_counts[i];

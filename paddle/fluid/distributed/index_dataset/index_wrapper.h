@@ -34,23 +34,27 @@ class TreeIndex : public Index {
   TreeIndex() {}
   ~TreeIndex() {}
 
-  int height() { return meta_.height(); }
-  int branch() { return meta_.branch(); }
-  uint64_t total_node_nums() { return total_nodes_num_; }
-  uint64_t tree_max_node() { return max_id_; }
-  int load(const std::string path);
+  int Height() { return meta_.height(); }
+  int Branch() { return meta_.branch(); }
+  uint64_t TotalNodeNums() { return total_nodes_num_; }
+  uint64_t EmbSize() { return max_id_ + 1; }
+  int Load(const std::string path);
 
-  std::vector<uint64_t> get_nodes_given_level(int level, bool ret_code = false);
-  std::vector<std::vector<uint64_t>> get_parent_path(
-      const std::vector<uint64_t>& ids, int start_level = 0,
-      bool ret_code = false);
-  std::vector<uint64_t> get_ancestor_given_level(
-      const std::vector<uint64_t>& ids, int level, bool ret_code = false);
-  std::vector<uint64_t> get_ids_given_codes(const std::vector<uint64_t>& codes);
-  std::unordered_map<uint64_t, uint64_t> get_relation(
-      int level, const std::vector<uint64_t>& ids);
-  std::vector<uint64_t> get_children_given_ancestor_and_level(
-      uint64_t ancestor, int level, bool ret_code = true);
+  inline bool CheckIsValid(int code) {
+    if (data_.find(code) != data_.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  std::vector<IndexNode> GetNodes(const std::vector<uint64_t>& codes);
+  std::vector<uint64_t> GetLayerCodes(int level);
+  std::vector<uint64_t> GetAncestorCodes(const std::vector<uint64_t>& ids,
+                                         int level);
+  std::vector<uint64_t> GetChildrenCodes(uint64_t ancestor, int level);
+  std::vector<uint64_t> GetTravelCodes(uint64_t id, int start_level);
+  std::vector<IndexNode> GetAllLeafs();
 
   std::unordered_map<uint64_t, IndexNode> data_;
   std::unordered_map<uint64_t, uint64_t> id_codes_map_;
@@ -79,11 +83,15 @@ class IndexWrapper {
 
   void insert_tree_index(const std::string name, const std::string tree_path) {
     if (tree_map.find(name) != tree_map.end()) {
+      VLOG(0) << "Tree " << name << " has already existed.";
       return;
     }
     TreePtr tree = std::make_shared<TreeIndex>();
-    int ret = tree->load(tree_path);
-    if (ret != 0) return;
+    int ret = tree->Load(tree_path);
+    PADDLE_ENFORCE_EQ(ret, 0, paddle::platform::errors::InvalidArgument(
+                                  "Load tree[%s] from path[%s] failed. Please "
+                                  "check whether the file exists.",
+                                  name, tree_path));
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 

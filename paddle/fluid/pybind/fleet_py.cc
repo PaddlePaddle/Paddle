@@ -233,39 +233,30 @@ void BindTreeIndex(py::module* m) {
         index_wrapper->insert_tree_index(name, path);
         return index_wrapper->get_tree_index(name);
       }))
-      .def("height", [](TreeIndex& self) { return self.height(); })
-      .def("branch", [](TreeIndex& self) { return self.branch(); })
+      .def("height", [](TreeIndex& self) { return self.Height(); })
+      .def("branch", [](TreeIndex& self) { return self.Branch(); })
       .def("total_node_nums",
-           [](TreeIndex& self) { return self.total_node_nums(); })
-      .def("get_nodes_given_level",
-           [](TreeIndex& self, int level, bool ret_code) {
-             return self.get_nodes_given_level(level, ret_code);
-           })
-      .def("get_parent_path",
-           [](TreeIndex& self, std::vector<uint64_t>& ids, int start_level,
-              bool ret_code) {
-             return self.get_parent_path(ids, start_level, ret_code);
-           })
-      .def("get_ancestor_given_level",
-           [](TreeIndex& self, const std::vector<uint64_t>& ids, int level,
-              bool ret_code) {
-             return self.get_ancestor_given_level(ids, level, ret_code);
-           })
-      .def("get_ids_given_codes",
+           [](TreeIndex& self) { return self.TotalNodeNums(); })
+      .def("emb_size", [](TreeIndex& self) { return self.EmbSize(); })
+      .def("get_all_leafs", [](TreeIndex& self) { return self.GetAllLeafs(); })
+      .def("get_nodes",
            [](TreeIndex& self, const std::vector<uint64_t>& codes) {
-             return self.get_ids_given_codes(codes);
+             return self.GetNodes(codes);
            })
-      .def("get_pi_relation",
+      .def("get_layer_codes",
+           [](TreeIndex& self, int level) { return self.GetLayerCodes(level); })
+      .def("get_ancestor_codes",
            [](TreeIndex& self, const std::vector<uint64_t>& ids, int level) {
-             return self.get_relation(level, ids);
+             return self.GetAncestorCodes(ids, level);
            })
-      .def("get_children_given_ancestor_and_level",
-           [](TreeIndex& self, uint64_t ancestor, int level, bool ret_code) {
-             return self.get_children_given_ancestor_and_level(ancestor, level,
-                                                               ret_code);
+      .def("get_children_codes",
+           [](TreeIndex& self, uint64_t ancestor, int level) {
+             return self.GetChildrenCodes(ancestor, level);
            })
-      .def("tree_max_node",
-           [](TreeIndex& self) { return self.tree_max_node(); });
+      .def("get_travel_codes",
+           [](TreeIndex& self, uint64_t id, int start_level) {
+             return self.GetTravelCodes(id, start_level);
+           });
 }
 
 void BindIndexWrapper(py::module* m) {
