@@ -21,7 +21,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program, PADDLE_FLAGS
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer

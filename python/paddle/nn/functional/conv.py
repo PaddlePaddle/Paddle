@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+from paddle.fluid.framework import PADDLE_FLAGS
 
 __all__ = [
     'conv1d',

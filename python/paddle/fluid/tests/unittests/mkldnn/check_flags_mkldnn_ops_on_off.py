@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 import os
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import PADDLE_FLAGS
 
 
 def check():

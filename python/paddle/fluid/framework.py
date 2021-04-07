@@ -58,6 +58,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    'PADDLE_FLAGS',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
