@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -54,6 +55,8 @@ class Table {
     VLOG(0) << "NOT IMPLEMENT";
     return 0;
   }
+  virtual int32_t pull_sparse(float *values,
+                              const PullSparseValue &pull_value) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float **values,

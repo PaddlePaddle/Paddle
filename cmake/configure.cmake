@@ -100,6 +100,11 @@ if(WITH_GPU)
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
+
+    if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
+        message(FATAL_ERROR "Paddle needs CUDNN >= 7.0 to compile")
+    endif()
+
     if(CUPTI_FOUND)
         include_directories(${CUPTI_INCLUDE_DIR})
         add_definitions(-DPADDLE_WITH_CUPTI)
