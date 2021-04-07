@@ -205,6 +205,9 @@ void FleetWrapper::PullSparseVarsSync(
   }
 }
 
+// is_training is true means training, false means inference, the behavior is
+// different on pserver
+
 void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
