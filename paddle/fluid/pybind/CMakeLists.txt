@@ -76,7 +76,7 @@ if (WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result")
   set_source_files_properties(fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
-  list(APPEND PYBIND_SRCS fleet_py.cc index_dataset_py.cc)
+  list(APPEND PYBIND_SRCS fleet_py.cc)
 endif()
 
 if (WITH_NCCL OR WITH_RCCL)
