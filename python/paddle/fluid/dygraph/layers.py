@@ -22,6 +22,9 @@ import copy
 import weakref
 import warnings
 from copy import deepcopy
+import inspect
+
+import paddle
 
 from . import parallel_helper
 from .. import unique_name
@@ -894,9 +897,15 @@ class Layer(core.Layer):
             if not self._built:
                 with program_desc_tracing_guard(False):
                     self._build_once(*inputs, **kwargs)
-                    if parallel_helper._is_data_parallel_mode():
+
+                    # TODO(liuyuhui) Only xpu broadcast parameters here. 
+                    # The other device is to call _sync_params_buffers in DataParallel 
+                    # to realize the parameter synchronization among multiply cards.
+                    if parallel_helper._is_data_parallel_mode(
+                    ) and paddle.is_compiled_with_xpu():
                         parallel_helper._broadcast_parameters(
                             self._parameters.values())
+
                 self._built = True
 
             outputs = self.forward(*inputs, **kwargs)
@@ -1287,10 +1296,12 @@ class Layer(core.Layer):
             if state is None:
                 raise ValueError("{} is not found in the provided dict.".format(
                     key))
-            if list(state.shape) != list(param.shape):
+            state_shape = state.shape() if inspect.ismethod(
+                state.shape) else state.shape
+            if list(state_shape) != list(param.shape):
                 raise ValueError(
                     "{} receives a shape {}, but the expected shape is {}.".
-                    format(key, list(state.shape), list(param.shape)))
+                    format(key, list(state_shape), list(param.shape)))
             return param, state
 
         matched_param_state = []

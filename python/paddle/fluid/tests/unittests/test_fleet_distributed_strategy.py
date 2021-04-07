@@ -179,6 +179,15 @@ class TestStrategyConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             strategy.last_comm_group_size_MB = -1
 
+    def test_find_unused_parameters(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.find_unused_parameters = True
+        self.assertEqual(strategy.find_unused_parameters, True)
+        strategy.find_unused_parameters = False
+        self.assertEqual(strategy.find_unused_parameters, False)
+        strategy.find_unused_parameters = "True"
+        self.assertEqual(strategy.find_unused_parameters, False)
+
     def test_fuse_grad_size_in_TFLOPS(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy._fuse_grad_size_in_TFLOPS = 0.1
