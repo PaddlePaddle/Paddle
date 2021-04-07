@@ -100,7 +100,7 @@ class TestPyLayer(unittest.TestCase):
 
         input1 = paddle.randn([2, 3]).astype("float64")
         with self.assertRaises(NotImplementedError):
-            z = Layer_None1.apply(input1)
+            z = Layer_None2.apply(input1)
 
         class Layer_one1(PyLayer):
             @staticmethod
@@ -155,8 +155,6 @@ class TestPyLayer(unittest.TestCase):
         z.mean().backward()
         self.assertTrue(z.grad is None)
 
-
-class TestPylayerExceptionBK(unittest.TestCase):
     def test_pylayer_Exception_bk(self):
         class Layer_bk_none1(PyLayer):
             @staticmethod
