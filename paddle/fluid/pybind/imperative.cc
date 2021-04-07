@@ -242,6 +242,7 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(
+
     imperative::VarBase *self, const framework::LoDTensor &tensor) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
@@ -1297,28 +1298,22 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetOverridedStopGradient)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property_readonly("shape",
-                             [](imperative::VarBase &self) {
-                               if (self.Var().IsType<framework::LoDTensor>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::LoDTensor>()
-                                         .dims());
-                               } else if (self.Var()
-                                              .IsType<
-                                                  framework::SelectedRows>()) {
-                                 return framework::vectorize<int>(
-                                     self.Var()
-                                         .Get<framework::SelectedRows>()
-                                         .value()
-                                         .dims());
-                               } else {
-                                 VLOG(2) << "It is meaningless to get shape of "
-                                            "variable type "
-                                         << GetTypeName(self);
-                                 return std::vector<int>();
-                               }
-                             })
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of "
+                         "variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
       .def_property_readonly("is_leaf", &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
