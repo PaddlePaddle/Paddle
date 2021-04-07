@@ -44,9 +44,15 @@ def _remove_if_exists(path):
             shutil.rmtree(path)
 
 
-def _git_archive_link(repo_owner, repo_name, branch):
-    return 'https://github.com/{}/{}/archive/{}.zip'.format(repo_owner,
-                                                            repo_name, branch)
+def _git_archive_link(repo_owner, repo_name, branch, source):
+    if source == 'github':
+        return 'https://github.com/{}/{}/archive/{}.zip'.format(
+            repo_owner, repo_name, branch)
+    elif source == 'gitee':
+        return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
+            repo_owner, repo_name, branch)
+    else:
+        raise ValueError('Do not support source `{}` by now.'.format(source))
 
 
 def _parse_repo_info(github):
@@ -59,19 +65,19 @@ def _parse_repo_info(github):
     return repo_owner, repo_name, branch
 
 
-def _get_cache_or_reload(github, force_reload, verbose=True):
+def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
     # Setup hub_dir to save downloaded files
     hub_dir = HUB_DIR
     if not os.path.exists(hub_dir):
         os.makedirs(hub_dir)
-    # Parse github repo information
-    repo_owner, repo_name, branch = _parse_repo_info(github)
+    # Parse github/gitee repo information
+    repo_owner, repo_name, branch = _parse_repo_info(repo)
     # Github allows branch name with slash '/',
     # this causes confusion with path on both Linux and Windows.
     # Backslash is not allowed in Github branch name so no need to
     # to worry about it.
     normalized_br = branch.replace('/', '_')
-    # Github renames folder repo-v1.x.x to repo-1.x.x
+    # Github renames folder repo/v1.x.x to repo-1.x.x
     # We don't know the repo name before downloading the zip file
     # and inspect name from it.
     # To check if cached repo exists, we need to normalize folder names.
@@ -87,7 +93,7 @@ def _get_cache_or_reload(github, force_reload, verbose=True):
         cached_file = os.path.join(hub_dir, normalized_br + '.zip')
         _remove_if_exists(cached_file)
 
-        url = _git_archive_link(repo_owner, repo_name, branch)
+        url = _git_archive_link(repo_owner, repo_name, branch, source=source)
 
         get_path_from_url(url, hub_dir, decompress=False)
 
@@ -147,7 +153,7 @@ def list(repo_dir, source='github', force_reload=False):
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
                 tag/branch. The default branch is `master` if not specified.
             local path (str): local repo path
-        source (str): `github` | `local`
+        source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
         entrypoints: a list of available entrypoint names
@@ -160,13 +166,14 @@ def list(repo_dir, source='github', force_reload=False):
 
         ```
     """
-    if source not in ('github', 'local'):
+    if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
-                source))
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.
+            format(source))
 
-    if source == 'github':
-        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(
+            repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
@@ -190,7 +197,7 @@ def help(repo_dir, model, source='github', force_reload=False):
                 tag/branch. The default branch is `master` if not specified.
             local path (str): local repo path
         model (str): model name
-        source (str): source of repo_dir, `github` | `local`, default is `github`
+        source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional): default is `False`
     Return:
         docs
@@ -202,13 +209,14 @@ def help(repo_dir, model, source='github', force_reload=False):
         paddle.hub.help('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
         ```
     """
-    if source not in ('github', 'local'):
+    if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
-                source))
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.
+            format(source))
 
-    if source == 'github':
-        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(
+            repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
@@ -229,7 +237,7 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
                 tag/branch. The default branch is `master` if not specified.
             local path (str): local repo path
         mdoel (str): model name
-        source (str): `github` | `local`, default is `github`
+        source (str): `github` | `gitee` | `local`, default is `github`
         force_reload (bool, optional), default is `False`
         *args, **kwargs: parameters using for model
     Return:
@@ -240,14 +248,14 @@ def load(repo_dir, model, *args, source='github', force_reload=False, **kwargs):
         paddle.hub.load('lyuwenyu/PaddleClas:hub_L', model='ResNet18Test', source='github')
         ```
     """
-
-    if source not in ('github', 'local'):
+    if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "local".'.format(
-                source))
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.
+            format(source))
 
-    if source == 'github':
-        repo_dir = _get_cache_or_reload(repo_dir, force_reload, True)
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(
+            repo_dir, force_reload, True, source=source)
 
     sys.path.insert(0, repo_dir)
     hub_module = import_module(MODULE_HUBCONF, repo_dir + '/' + MODULE_HUBCONF)
