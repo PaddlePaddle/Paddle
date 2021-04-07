@@ -44,6 +44,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     if (x->type() == dtype) {
+      // NOTE(zhiqiu): NPU cast op may result in wrong value, so
+      // add special case here.
       VLOG(4) << "cast to same dtype:" << dtype;
       out->mutable_data(place, x->type());
       framework::TensorCopy(
