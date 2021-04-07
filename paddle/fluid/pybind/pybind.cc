@@ -20,6 +20,7 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -183,8 +184,9 @@ bool SupportsBfloat16FastPerformance() {
 #endif
 }
 
-std::unordered_set<std::string> UnsupportedOps(
-    std::string place, framework::proto::VarType::Type dtype) {
+std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
+           std::unordered_set<std::string>>
+OpSupportedInfos(std::string place, framework::proto::VarType::Type dtype) {
   std::transform(place.begin(), place.end(), place.begin(),
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
@@ -225,7 +227,8 @@ std::unordered_set<std::string> UnsupportedOps(
   VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
   VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
           << " --";
-  return unsupported_ops;
+  return std::make_tuple(std::move(all_ops), std::move(supported_ops),
+                         std::move(unsupported_ops));
 }
 
 bool IsCompiledWithBrpc() {
@@ -1808,7 +1811,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
-  m.def("unsupported_op_list", UnsupportedOps);
+  m.def("op_supported_infos", OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
