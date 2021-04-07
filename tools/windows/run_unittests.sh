@@ -386,18 +386,6 @@ function show_ut_retry_result() {
 
 set +e
 
-
-if [ -f "$PADDLE_ROOT/added_ut" ];then
-    added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-    ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
-    if [ "$added_ut_error" != 0 ];then
-        echo "========================================"
-        echo "Added UT should pass three additional executions"
-        echo "========================================"
-        exit 8;
-    fi
-fi
-
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
     if [ -f "$PADDLE_ROOT/added_ut" ];then
         added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
