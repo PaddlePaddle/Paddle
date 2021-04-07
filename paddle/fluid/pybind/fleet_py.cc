@@ -274,7 +274,7 @@ void BindIndexWrapper(py::module* m) {
   py::class_<IndexWrapper, std::shared_ptr<IndexWrapper>>(*m, "IndexWrapper")
       .def(py::init([]() { return IndexWrapper::GetInstancePtr(); }))
       .def("insert_tree_index", &IndexWrapper::insert_tree_index)
-      .def("get_tree_index", &IndexWrapper::GetTreeIndex)
+      .def("get_tree_index", &IndexWrapper::get_tree_index)
       .def("clear_tree", &IndexWrapper::clear_tree);
 }
 
