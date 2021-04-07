@@ -287,7 +287,7 @@ def add(x, y, name=None):
     if in_dygraph_mode():
         return core.ops.elementwise_add(x, y)
 
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 def subtract(x, y, name=None):
