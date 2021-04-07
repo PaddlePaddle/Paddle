@@ -1372,8 +1372,9 @@ class Layer(core.Layer):
         Cast the parameters and buffers of Layer by the give place, dtype and blocking.
 
         Parameters:
-            place(paddle.CPUPlace|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device place of the Layer which want to be stored. 
-            If None, the place is the same with the origin Tensor. Default: None.
+            place(str|paddle.CPUPlace|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device place of the Layer which want to be stored. 
+            If None, the place is the same with the origin Tensor. If place is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
+            index of the GPUs or XPUs. Default: None. 
             
             dtype(str|core.VarDesc.VarType|None, optional): the type of the data. If None, the dtype is the same with the origin Tensor. Default: None.
 
@@ -1419,9 +1420,15 @@ class Layer(core.Layer):
             return
 
         if place is not None:
-            assert isinstance(
-                place, (core.CPUPlace, core.CUDAPlace, core.CUDAPinnedPlace)
-            ), "place value error, must be the paddle.CPUPlace(), paddle.CUDAPlace() or paddle.CUDAPinnedPlace()"
+            if isinstance(place, str):
+                place = paddle.device._make_device(place)
+            elif isinstance(place, (core.CPUPlace, core.CUDAPlace,
+                                    core.CUDAPinnedPlace, core.XPUPlace)):
+                pass
+            else:
+                raise ValueError(
+                    "place value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of place is "
+                    + type(place).__name__)
 
         if blocking is None:
             blocking = True
