@@ -218,6 +218,19 @@ copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_inference_c_lib}
       DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 
+set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
+set(module "inference")
+if(WIN32)
+        copy(inference_lib_dist
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
+                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+                )
+        else()
+        copy(inference_lib_dist
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_inference_lib}
+                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
+                )
+endif()
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
 
