@@ -300,10 +300,14 @@ class SliceGradKernel : public framework::OpKernel<T> {
  private:
   template <size_t D>
   void SliceCompute(const framework::ExecutionContext& context) const {
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    auto axes = context.Attr<std::vector<int>>("axes");
+    if (!SliceComputeTensorArray<D>(context)) {
+      SliceComputeTensor<D>(context);
+    }
+  }
 
+  template <size_t D>
+  bool SliceComputeTensorArray(
+      const framework::ExecutionContext& context) const {
     auto starts_int = context.Attr<std::vector<int>>("starts");
     std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
 
@@ -375,7 +379,25 @@ class SliceGradKernel : public framework::OpKernel<T> {
             context.Input<framework::Tensor>(framework::GradVarName("Out"));
         TensorCopy(*d_out, context.GetPlace(), &(d_input_array->at(start)));
       }
-      return;
+      return true;
+    }
+    return false;
+  }
+
+  template <size_t D>
+  void SliceComputeTensor(const framework::ExecutionContext& context) const {
+    auto axes = context.Attr<std::vector<int>>("axes");
+
+    auto starts_int = context.Attr<std::vector<int>>("starts");
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+
+    auto list_new_starts_tensor =
+        context.MultiInput<framework::Tensor>("StartsTensorList");
+    if (list_new_starts_tensor.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
+    } else if (context.HasInput("StartsTensor")) {
+      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+      starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
     auto* d_out =
@@ -435,6 +457,28 @@ class SliceGradKernel : public framework::OpKernel<T> {
       paddings[i].first = offsets[i];
       paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
     }
+    SliceComputeFunction<D>(context, d_input, in_dims, d_out, out_dims,
+                            paddings);
+  }
+
+  template <size_t D>
+  void SliceComputeFunction(
+      const framework::ExecutionContext& context, framework::Tensor* d_input,
+      const framework::DDim& in_dims, const framework::Tensor* d_out,
+      const framework::DDim& out_dims,
+      const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) const {
+    LaunchEigenFunction<D>(context, d_input, in_dims, d_out, out_dims,
+                           paddings);
+  }
+
+  template <size_t D>
+  void LaunchEigenFunction(
+      const framework::ExecutionContext& context, framework::Tensor* d_input,
+      const framework::DDim& in_dims, const framework::Tensor* d_out,
+      const framework::DDim& out_dims,
+      const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) const {
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     auto d_in_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *d_input);
