@@ -73,15 +73,31 @@ RUN ln -sf /usr/local/python3.7.0/bin/python3.7 /usr/local/bin/python3 && ln -sf
 
 RUN rm -r /root/python_build
 
+# Install Python2.7.15 to replace original python
+WORKDIR /home
+ENV version=2.7.15
+RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz && tar -xvf Python-$version.tgz
+WORKDIR /home/Python-$version
+RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15 && make && make install
+
+RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc && echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc && echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc && echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
+ENV PATH=/usr/local/python2.7.15/include:${PATH}
+ENV PATH=/usr/local/python2.7.15/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH
+RUN mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/local/python2.7.15/bin/python2.7 /usr/local/bin/python && ln -s /usr/local/python2.7.15/bin/python2.7 /usr/bin/python
+
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/b0/d1/8acb42f391cba52e35b131e442e80deffbb8d0676b93261d761b1f0ef8fb/setuptools-40.6.2.zip && apt-get -y install unzip && unzip setuptools-40.6.2.zip
 WORKDIR /home/setuptools-40.6.2
+RUN python setup.py build && python setup.py install
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz && tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
 RUN python3.8 setup.py install && \
     python3.7 setup.py install && \
-    python3.6 setup.py install
+    python3.6 setup.py install && \
+    python setup.py install
 
 # Install Go and glide
 WORKDIR /home
@@ -126,28 +142,35 @@ RUN pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.8 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip3.8 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.8 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
+    pip3.8 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
+    pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
+    pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
+    pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0'
 
 #For docstring checker
 RUN pip3.6 --no-cache-dir install pylint pytest astroid isort && \
     pip3.7 --no-cache-dir install pylint pytest astroid isort && \
-    pip3.8 --no-cache-dir install pylint pytest astroid isort
+    pip3.8 --no-cache-dir install pylint pytest astroid isort && \
+    pip --no-cache-dir install pylint pytest astroid isort
 
 RUN pip3.6 --no-cache-dir install coverage && \
     pip3.7 --no-cache-dir install coverage && \
-    pip3.8 --no-cache-dir install coverage
+    pip3.8 --no-cache-dir install coverage && \
+    pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
 RUN pip3.6 --no-cache-dir install -r /root/requirements.txt && \
     pip3.7 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.8 --no-cache-dir install -r /root/requirements.txt
+    pip3.8 --no-cache-dir install -r /root/requirements.txt && \
+    pip --no-cache-dir install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
@@ -157,7 +180,8 @@ RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
     pip3.8 install --upgrade pip && \ 
     pip3.6 --no-cache-dir install certifi urllib3[secure] && \
     pip3.7 --no-cache-dir install certifi urllib3[secure] && \
-    pip3.8 --no-cache-dir install certifi urllib3[secure]
+    pip3.8 --no-cache-dir install certifi urllib3[secure] && \
+    pip --no-cache-dir install certifi urllib3[secure]
 
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625

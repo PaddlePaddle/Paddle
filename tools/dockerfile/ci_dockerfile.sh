@@ -48,6 +48,8 @@ function make_centos_dockerfile(){
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN yum install -y pigz graphviz" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN rm -f /usr/bin/cc && ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/g++ && ln -s /usr/local/gcc-5.4/bin/g++ /usr/bin/g++" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN rm -f /usr/bin/c++ && ln -s /usr/local/gcc-5.4/bin/c++ /usr/bin/c++" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN rm -f /usr/bin/gcc && ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/gcc" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so \\
     RUN ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/" ${dockerfile_name}
