@@ -16,9 +16,11 @@ import os
 import re
 import logging
 import numpy as np
+import shutil
 from .... import io
 from .... import core
 from .... import framework
+from .... import unique_name
 from ....executor import global_scope, Executor
 from ....framework import IrGraph
 from ....log_helper import get_logger
@@ -116,6 +118,27 @@ def _apply_pass(scope,
         graph.draw('.', 'qat_fp32_{}'.format(pass_name), graph.all_op_nodes())
     _remove_unused_var_nodes(graph)
     return graph
+
+
+def _clone_var_to_block_(input_var, dest_block):
+    assert isinstance(input_var, framework.Variable), \
+    "Input var should be variable"
+
+    if input_var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+        return dest_block.create_var(
+            name=input_var.name,
+            shape=input_var.shape,
+            dtype=input_var.dtype,
+            type=input_var.type,
+            lod_level=input_var.lod_level,
+            persistable=True)
+    else:
+        return dest_block.create_var(
+            name=input_var.name,
+            shape=input_var.shape,
+            dtype=input_var.dtype,
+            type=input_var.type,
+            persistable=True)
 
 
 class PostTrainingQuantization(object):
@@ -1005,6 +1028,81 @@ class WeightQuantization(object):
                 test_model_dir, save_model_filename, save_params_filename,
                 quantizable_op_type, weight_bits, weight_quantize_type, True,
                 threshold_rate)
+
+    def convert_weight_to_fp16(self, save_model_dir):
+        """
+        Convert all presistable vars from fp32 to fp16.
+        Note that, this api only change the data type of variables, and it doesn't
+        modify the dtype in var_desc.
+
+        Args:
+            save_model_dir(str): The path to save the fp16 model.
+        """
+
+        # Load model
+        place = core.CPUPlace()
+        exe = Executor(place)
+        scope = global_scope()
+        [infer_program, feed_list, fetch_list] = \
+            io.load_inference_model(dirname=self._model_dir,
+                                    executor=exe,
+                                    model_filename=self._model_filename,
+                                    params_filename=self._params_filename)
+
+        # Clone and save fp16 weights
+        save_program = framework.Program()
+        save_block = save_program.global_block()
+        save_var_map = {}
+
+        for var in infer_program.list_vars():
+            if (var.type == core.VarDesc.VarType.RAW) or \
+                (not var.persistable) or (var.name in ['feed', 'fetch']) \
+                or (var.dtype != core.VarDesc.VarType.FP32):
+                continue
+
+            new_var = _clone_var_to_block_(var, save_block)
+            if self._params_filename is not None:
+                save_var_map[new_var.name] = new_var
+            else:
+                save_file_path = os.path.join(
+                    os.path.normpath(save_model_dir), new_var.name)
+                save_block.append_op(
+                    type='save',
+                    inputs={'X': [new_var]},
+                    outputs={},
+                    attrs={
+                        'file_path': os.path.normpath(save_file_path),
+                        'save_as_fp16': True
+                    })
+
+        if self._params_filename is not None:
+            save_var_list = []
+            for name in sorted(save_var_map.keys()):
+                save_var_list.append(save_var_map[name])
+
+            saved_params_var = save_block.create_var(
+                type=core.VarDesc.VarType.RAW,
+                name=unique_name.generate("saved_params"))
+            saved_params_var.desc.set_persistable(True)
+
+            save_path = os.path.join(
+                os.path.normpath(save_model_dir), self._params_filename)
+            save_block.append_op(
+                type='save_combine',
+                inputs={'X': save_var_list},
+                outputs={'Y': saved_params_var},
+                attrs={'file_path': save_path,
+                       'save_as_fp16': True})
+
+        save_program._sync_with_cpp()
+        exe.run(save_program)
+
+        # Copy model
+        model_filename = "__model__" if self._model_filename is None \
+                    else self._model_filename
+        src_model = os.path.join(self._model_dir, model_filename)
+        dest_model = os.path.join(save_model_dir, model_filename)
+        shutil.copyfile(src_model, dest_model)
 
     def _quantize_weight_to_int(self, save_model_dir, save_model_filename,
                                 save_params_filename, quantizable_op_type,
