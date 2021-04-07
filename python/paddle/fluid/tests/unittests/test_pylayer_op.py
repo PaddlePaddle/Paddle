@@ -182,7 +182,7 @@ class TestPylayerExceptionBK(unittest.TestCase):
 
             @staticmethod
             def backward(ctx, x1, x2, y1, dy1):
-                return 1, x1
+                return None, x1
 
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False

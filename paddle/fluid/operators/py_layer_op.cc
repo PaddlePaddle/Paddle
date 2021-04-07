@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/py_layer_op.h"
+
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/py_layer_op.h"
 
 namespace paddle {
 namespace operators {
@@ -103,7 +104,8 @@ void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
 
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "PyLayerGradOpMaker can only be matched with PyLayer."));
+        "PyLayerGradOpMaker can't cast %s to PyLayerOp*.",
+        typeid(&inner_op).name()));
   }
 
   auto fwd_ins = this->Input("X");
@@ -153,7 +155,7 @@ class PyLayerOpKernel : public framework::OpKernel<T> {
 
     } else {
       PADDLE_THROW(platform::errors::Fatal(
-          "PyLayerOpKernel can only be matched with PyLayer."));
+          "PyLayerOpKernel can't cast %s to PyLayer*.", typeid(&op_).name()));
     }
   }
 };
