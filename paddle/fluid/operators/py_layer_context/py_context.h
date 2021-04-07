@@ -35,8 +35,6 @@ class PyLayerContext {
   PyObject* GetMatableCtx() { return context; }
 
  private:
-  // TODO(weixin): support save_for_backward
-
   PyObject* context;
 };
 

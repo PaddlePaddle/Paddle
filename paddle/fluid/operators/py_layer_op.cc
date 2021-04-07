@@ -106,22 +106,11 @@ void PyLayerGradOpMaker<paddle::imperative::OpBase>::Apply(
         typeid(&inner_op).name()));
   }
 
-  auto fwd_ins = this->Input("X");
-  auto fwd_outs = this->Output("Out");
-
   auto fwd_out_grads = this->OutputGrad("Out");
   using return_type = decltype(fwd_out_grads);
   return_type bwd_ins;
-  bwd_ins.reserve(fwd_ins.size() + fwd_outs.size());
-  for (auto var : fwd_ins) {
-    bwd_ins.emplace_back(var);
-  }
-  for (auto var : fwd_outs) {
-    bwd_ins.emplace_back(var);
-  }
 
-  bwd_ins.reserve(bwd_ins.size() + fwd_out_grads.size());
-  bwd_ins.insert(bwd_ins.end(), fwd_out_grads.begin(), fwd_out_grads.end());
+  bwd_ins.insert(bwd_ins.begin(), fwd_out_grads.begin(), fwd_out_grads.end());
 
   auto bwd_outs = this->InputGrad("X", false);
 

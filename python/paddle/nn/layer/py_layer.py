@@ -35,9 +35,18 @@ class CFunction(object):
 
 
 class BackwardFunction(object):
+    def __init__(self):
+        self.container = None
+
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.no_grad():
             return self._forward_cls.backward(*args, **kwargs)
+
+    def save_for_backward(self, *tensor):
+        self.container = tensor
+
+    def saved_tensor(self):
+        return self.container
 
 
 class FunctionMeta(type):

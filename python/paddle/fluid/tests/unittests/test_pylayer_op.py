@@ -29,11 +29,12 @@ class TestPyLayer(unittest.TestCase):
                 ctx.func = func2
                 y1 = func1(x1)
                 y2 = func1(x2)
+                ctx.save_for_backward(y1, y2)
                 return y1, y2
 
             @staticmethod
-            def backward(ctx, x1, x2, y1, y2, dy1, dy2):
-
+            def backward(ctx, dy1, dy2):
+                y1, y2 = ctx.saved_tensor()
                 re1 = dy1 * (1 - ctx.func(y1))
                 re2 = dy2 * (1 - paddle.square(y2))
                 return re1, re2
@@ -57,10 +58,12 @@ class TestPyLayer(unittest.TestCase):
             def forward(ctx, x1, func1, func2=paddle.square):
                 ctx.func = func2
                 y1 = func1(x1)
+                ctx.save_for_backward(y1)
                 return y1
 
             @staticmethod
-            def backward(ctx, x1, y1, dy1):
+            def backward(ctx, dy1):
+                y1, = ctx.saved_tensor()
                 re1 = dy1 * (1 - ctx.func(y1))
                 return re1
 
@@ -162,7 +165,7 @@ class TestPyLayer(unittest.TestCase):
                 return x * 2
 
             @staticmethod
-            def backward(ctx, x1, y1, dy1):
+            def backward(ctx, dy1):
                 return None
 
         input2 = paddle.randn([2, 3]).astype("float64")
@@ -179,8 +182,8 @@ class TestPyLayer(unittest.TestCase):
                 return x1 + x2
 
             @staticmethod
-            def backward(ctx, x1, x2, y1, dy1):
-                return None, x1
+            def backward(ctx, dy1):
+                return None, dy1
 
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
@@ -195,7 +198,7 @@ class TestPyLayer(unittest.TestCase):
                 return x + x
 
             @staticmethod
-            def backward(ctx, x, y, dy):
+            def backward(ctx, dy):
                 return 1
 
         input1 = paddle.randn([2, 3]).astype("float64")
@@ -241,8 +244,8 @@ class TestPyLayer(unittest.TestCase):
                 return x * 2, x * 5
 
             @staticmethod
-            def backward(ctx, x, y1, y2, dy1, dy2):
-                return x * 2, y1 * 2
+            def backward(ctx, dy1, dy2):
+                return dy2 * 2, dy1 * 2
 
         input1 = paddle.randn([2, 3]).astype("float64")
         input1.stop_gradient = False
