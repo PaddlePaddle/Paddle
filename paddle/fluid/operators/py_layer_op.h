@@ -18,7 +18,7 @@
 #include <functional>
 #include <utility>
 #include <vector>
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/operators/py_layer_context/py_context.h"
 
