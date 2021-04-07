@@ -179,6 +179,16 @@ class TestReduceMean4DReduceAllONEDNNOp(TestReduceSumDefaultONEDNNOp):
         }
 
 
+@skip_check_grad_ci(reason="not implemented")
+class TestReduceMeanNoReduce1DOp(TestReduceSumDefaultONEDNNOp):
+    def setUp(self):
+        self.op_type = "reduce_mean"
+        self.use_mkldnn = True
+        self.inputs = {'X': np.random.random((1)).astype("float32")}
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.inputs['X']}
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

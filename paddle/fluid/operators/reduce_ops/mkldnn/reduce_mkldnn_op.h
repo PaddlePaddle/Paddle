@@ -40,26 +40,61 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> output_dims =
         CalculateOutputDims(input, output, reduce_dims, reduce_all, keep_dim);
 
-    platform::ReductionMKLDNNHandler<T> handler(
-        reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine, ctx.GetPlace(),
-        input, output, ctx.InputName("X"), output_dims);
+    auto input_dims = framework::vectorize(input->dims());
 
-    auto src_memory_p = handler.AcquireSrcMemory(input);
-    auto dst_memory_p = handler.AcquireDstMemory(output);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    std::unordered_map<int, dnnl::memory> reduction_args = {
-        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
+    // oneDNN reduce op does not support edge case in which memory is being
+    // copied without actual reduction.
+    // In that case reorder must be executed to maintain compatibility with
+    // PaddlePaddle reduce op
+    if (input_dims == output_dims) {
+      mkldnn::memory::data_type input_type =
+          framework::ToMKLDNNDataType(input->type());
+      std::string key = platform::CreateKey(
+          dev_ctx, input_dims, input->format(), input->format(), input_type);
+      platform::ReorderMKLDNNHandler reorder_handler(
+          input_dims, input->type(), input_type, dev_ctx, onednn_engine, key);
 
-    auto reduction_p = handler.AcquireForwardPrimitive();
+      auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+          input->format(), platform::to_void_cast(input->data<T>()));
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
-    reduction_p->execute(astream, reduction_args);
-    astream.wait();
+      auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          output, input->format(), ctx.GetPlace());
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(
-        platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
-            paddle::framework::vectorize<int64_t>(output->dims()))));
+      auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
+                                                      reorder_dst_memory_p);
+
+      platform::RecordEvent record_reorder("int_reorder",
+                                           platform::EventRole::kUniqueOp);
+
+      reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+      astream.wait();
+
+      output->set_layout(framework::DataLayout::kMKLDNN);
+      output->set_format(
+          platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
+              paddle::framework::vectorize<int64_t>(output->dims()))));
+    } else {
+      platform::ReductionMKLDNNHandler<T> handler(
+          reduction_type, 0.0f, 0.0f, dev_ctx, onednn_engine, ctx.GetPlace(),
+          input, output, ctx.InputName("X"), output_dims);
+
+      auto src_memory_p = handler.AcquireSrcMemory(input);
+      auto dst_memory_p = handler.AcquireDstMemory(output);
+
+      std::unordered_map<int, dnnl::memory> reduction_args = {
+          {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
+
+      auto reduction_p = handler.AcquireForwardPrimitive();
+
+      reduction_p->execute(astream, reduction_args);
+      astream.wait();
+      output->set_layout(framework::DataLayout::kMKLDNN);
+      output->set_format(
+          platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
+              paddle::framework::vectorize<int64_t>(output->dims()))));
+    }
   }
 
  private:
