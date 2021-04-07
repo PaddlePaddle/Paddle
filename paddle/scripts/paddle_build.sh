@@ -2030,9 +2030,11 @@ function main() {
         ;;
       esac
       set +x
-      echo "=====================build summary======================"
-      cat ${PADDLE_ROOT}/build/build_summary.txt
-      echo "========================================================"
+      if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
+        echo "=====================build summary======================"
+        cat ${PADDLE_ROOT}/build/build_summary.txt
+        echo "========================================================"
+      fi
       echo "paddle_build script finished as expected"
 }
 
