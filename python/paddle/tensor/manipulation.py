@@ -213,8 +213,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     Args:
         x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
                       float64, int8, int32, int64, uint8.
-        start_axis (int): the start axis to flatten
-        stop_axis (int): the stop axis to flatten
+        start_axis (int): the start axis to flatten.
+        stop_axis (int): the stop axis to flatten.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
 
