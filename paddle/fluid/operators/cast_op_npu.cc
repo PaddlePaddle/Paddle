@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <memory>
 #include <string>
 
@@ -41,46 +40,54 @@ class CastNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     int dtype = ctx.Attr<int>("out_dtype");
-
     auto* out = ctx.Output<Tensor>("Out");
-
     auto place = ctx.GetPlace();
-   
-    auto iter = DTYPE_2_ACL_DTYPE.find(static_cast<framework::proto::VarType::Type>(dtype));
+
+    if (x->type() == dtype) {
+      VLOG(4) << "cast to same dtype:" << dtype;
+      out->mutable_data(place, x->type());
+      framework::TensorCopy(
+          *x, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), out);
+      return;
+    }
+
+    auto iter = DTYPE_2_ACL_DTYPE.find(
+        static_cast<framework::proto::VarType::Type>(dtype));
     int aclDtype = iter->second;
 
     if (dtype == framework::proto::VarType::FP32) {
-        out->mutable_data<float>(place);
+      out->mutable_data<float>(place);
     } else if (dtype == framework::proto::VarType::FP16) {
-        out->mutable_data<paddle::platform::float16>(place);
+      out->mutable_data<paddle::platform::float16>(place);
     } else if (dtype == framework::proto::VarType::INT16) {
-        out->mutable_data<int16_t>(place);
+      out->mutable_data<int16_t>(place);
     } else if (dtype == framework::proto::VarType::INT32) {
-        out->mutable_data<int32_t>(place);
+      out->mutable_data<int32_t>(place);
     } else if (dtype == framework::proto::VarType::INT64) {
-        out->mutable_data<int64_t>(place);
+      out->mutable_data<int64_t>(place);
     } else if (dtype == framework::proto::VarType::FP64) {
-        out->mutable_data<double>(place);
+      out->mutable_data<double>(place);
     } else if (dtype == framework::proto::VarType::BOOL) {
-        out->mutable_data<bool>(place);
+      out->mutable_data<bool>(place);
     }
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Cast", {*x}, {*out}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
+    auto runner = NpuOpRunner("Cast", {*x}, {*out},
+                              {{"dst_type", static_cast<int32_t>(aclDtype)}});
     runner.Run(stream);
   }
 };
 }  // namespace operators
-}  // namespace paddleaclDtype
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast,
-    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,
@@ -88,5 +95,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext,
-    paddle::platform::float16>);
-#endif
+                       paddle::platform::float16>);

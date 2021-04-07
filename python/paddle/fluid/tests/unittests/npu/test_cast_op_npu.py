@@ -50,6 +50,7 @@ class TestCast1(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+
 class TestCast2(OpTest):
     def setUp(self):
         self.set_npu()
@@ -70,6 +71,29 @@ class TestCast2(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+
+
+class TestCast3(OpTest):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "cast"
+        self.place = paddle.NPUPlace(0)
+
+        ipt = np.random.random(size=[10, 10]) + 1
+        self.inputs = {'X': ipt.astype('int32')}
+        self.outputs = {'Out': ipt.astype('int32')}
+
+        self.attrs = {
+            'in_dtype': int(core.VarDesc.VarType.INT32),
+            'out_dtype': int(core.VarDesc.VarType.INT32)
+        }
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+
 
 if __name__ == '__main__':
     unittest.main()
