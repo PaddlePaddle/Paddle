@@ -1468,11 +1468,12 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
-        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
-                        'transpose_Y', False, "alpha", 1)
-        return dygraph_utils._append_bias_in_dygraph(
-            pre_bias, bias, axis=len(x.shape) - 1)
+        pre_bias = core.ops.matmul_v2(x, weight)
+
+        if bias is None:
+            return pre_bias
+
+        return core.ops.elementwise_add(pre_bias, bias)
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype

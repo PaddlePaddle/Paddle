@@ -283,11 +283,9 @@ def add(x, y, name=None):
         print(z)  # [3., 8., 6. ]
 
     """
-    op_type = 'elementwise_add'
-    axis = -1
+
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, op_name=op_type)
+        return core.ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
