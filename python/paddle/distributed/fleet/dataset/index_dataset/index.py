@@ -12,8 +12,12 @@ class GraphIndex(Index):
         super(GraphIndex, self).__init__(name)
         self._graph = None
         self.name = name
+        self.width = width
+        self.height = height
         self._builder = GraphIndexBuilder(name, width, height, item_path_nums)
         self._wrapper = IndexWrapper()
+        self.kd_represent_list = []
+        self.gen_kd_represent(width, height)
 
     def _init_by_random(self, input_filename, output_filename):
         self._builder.graph_init_by_random(input_filename, output_filename)
@@ -44,6 +48,35 @@ class GraphIndex(Index):
         else:
             raise ValueError(
                 "Illegal input type {}, required list or int".format(type(id)))
+
+    def gen_kd_represent(self, width, height):
+
+        def recursive_method(start_idx, cur_path):
+            if start_idx == width:
+                self.kd_represent_list.append(list(cur_path))
+                return
+
+            for i in range(height):
+                cur_path.append(i)
+                recursive_method(start_idx + 1, cur_path)
+                cur_path.pop()
+
+        init_idx = 0
+        init_path = []
+        recursive_method(init_idx, init_path)
+        return
+
+    def path_id_to_kd_represent(self, path_id):
+        assert 0 <= path_id and path_id < pow(self.height, self.width)
+        return self.kd_represent_list[path_id]
+
+    def kd_represent_to_path_id(self, kd_represent):
+        assert len(kd_represent) == self.width
+        path_id = 0
+        for idx, val in enumerate(reversed(kd_represent)):
+            assert 0 <= val and val < self.height
+            path_id += val * pow(self.height, idx)
+        return path_id
 
 
 class TreeIndex(Index):
