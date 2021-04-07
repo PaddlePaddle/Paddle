@@ -18,10 +18,10 @@ set(FLUID_CORE_NAME "core")
 if(WITH_AVX AND AVX_FOUND)
   set(FLUID_CORE_NAME "${FLUID_CORE_NAME}_avx")
   if(NOT DEFINED NOAVX_CORE_FILE OR NOAVX_CORE_FILE STREQUAL "")
-    message(STATUS "WARNING: This is just a warning for publishing release.
+    message(STATUS "MESSAGE: This is just a message for publishing release.
       You are building AVX version without NOAVX core.
       So the wheel package may fail on NOAVX machine.
-      You can add -DFLUID_CORE_NAME=/path/to/your/core_noavx.* in cmake command
+      You can add -DNOAVX_CORE_FILE=/path/to/your/core_noavx.* in cmake command
       to get a full wheel package to resolve this warning.
       While, this version will still work on local machine.")
   endif()
@@ -77,6 +77,7 @@ IF(WIN32)
   add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle/
     COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+    COMMENT "Packing whl packages------>>>"
     DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto profiler_py_proto ${PY_FILES})
 ELSE(WIN32)
   add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
