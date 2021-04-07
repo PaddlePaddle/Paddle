@@ -78,6 +78,31 @@ class GraphIndex(Index):
             path_id += val * pow(self.height, idx)
         return path_id
 
+    def update_path_of_item(self, item_paths):
+        if isinstance(item_paths, dict):
+            assert len(item_paths) > 0
+            assert isinstance(item_paths[0], list)
+            return self._graph.update_path_of_item(item_paths)
+        elif isinstance(item_paths, int):  # {int, ["",""]}
+            return self._graph.update_path_of_item({item_paths, []})
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
+
+#   int update_Jpath_of_item(
+#     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lambda, const int factor);
+    def update_Jpath_of_item(self, item_paths, T, J, lamd, factor):
+
+        if isinstance(item_paths, dict):
+            assert len(item_paths) > 0
+            assert isinstance(item_paths[0], list)
+            return self._graph.update_Jpath_of_item(item_paths, T, J, lamd, factor)
+        elif isinstance(item_paths, int):  # {int, ["",""]}
+            return self._graph.update_Jpath_of_item({item_paths, []}, T, J, lamd, factor)
+        else:
+            raise ValueError(
+                "Illegal input type {}, required list or int".format(type(id)))
+
 
 class TreeIndex(Index):
     def __init__(self, name):
