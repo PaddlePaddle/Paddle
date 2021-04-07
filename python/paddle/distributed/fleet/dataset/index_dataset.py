@@ -28,6 +28,7 @@ class TreeIndex(Index):
         self._tree = self._wrapper.get_tree_index(name)
         self._height = self._tree.height()
         self._branch = self._tree.branch()
+        self._layerwise_sampler = None
 
     def get_nodes_given_level(self, level, ret_code=False):
         return self._tree.get_nodes_given_level(level, ret_code)
@@ -86,5 +87,5 @@ class TreeIndex(Index):
     def layerwise_sample(self, user_input, index_input, with_hierarchy=False):
         if self._layerwise_sampler is None:
             raise ValueError("please init layerwise_sampler first.")
-        return self._layerwise_sampler.sample([user_input], [index_input],
+        return self._layerwise_sampler.sample(user_input, index_input,
                                               with_hierarchy)

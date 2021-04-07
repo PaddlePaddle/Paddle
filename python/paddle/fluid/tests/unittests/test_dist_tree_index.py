@@ -109,8 +109,8 @@ class TestIndexSampler(unittest.TestCase):
         # print(parent_path)
 
         # 2. check sample res with_hierarchy = False
-        sample_res = tree.sample([[315757, 838060], [1251533, 403522]],
-                                 [2473624, 3321007], False)
+        sample_res = tree.layerwise_sample(
+            [[315757, 838060], [1251533, 403522]], [2473624, 3321007], False)
         # print(sample_res)
         idx = 0
         layer = tree.height() - 1
@@ -149,7 +149,7 @@ class TestIndexSampler(unittest.TestCase):
         self.assertTrue(idx == total_sample_num * 2)
 
         # 3. check sample res with_hierarchy = True
-        sample_res_with_hierarchy = tree.sample(
+        sample_res_with_hierarchy = tree.layerwise_sample(
             [[315757, 838060], [1251533, 403522]], [2473624, 3321007], True)
         # print(sample_res_with_hierarchy)
         idx = 0
