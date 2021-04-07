@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/ps_client.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/service/service.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
