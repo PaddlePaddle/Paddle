@@ -21,6 +21,16 @@
 #include <iostream>
 #include <limits>
 
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define PADDLE_CUDA_BF16
+#include <cuda_bf16.h>
+#endif
+
+// #ifdef __HIPCC__
+// #define PADDLE_CUDA_BF16
+// #include <hip/hip_bf16.h>
+// #endif
+
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
@@ -44,6 +54,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
  public:
   uint16_t x;
 
+  // Constructors
   bfloat16() = default;
   bfloat16(const bfloat16& o) = default;
   bfloat16& operator=(const bfloat16& o) = default;
@@ -60,15 +71,25 @@ struct PADDLE_ALIGN(2) bfloat16 {
     tempRes = reinterpret_cast<uint32_t*>(&val);
     res = *tempRes;
     x = res >> 16;
+#elif defined(PADDLE_CUDA_BF16)
+    __nv_bfloat16 tmp = __float2bfloat16(val);
+    x = *reinterpret_cast<uint16_t*>(&tmp);
 #else
     std::memcpy(&x, reinterpret_cast<char*>(&val) + 2, 2);
 #endif
   }
 
+#if defined(PADDLE_CUDA_BF16)
+  HOSTDEVICE inline explicit bfloat16(const __nv_bfloat16& val) {
+    x = *reinterpret_cast<const unsigned short*>(&val);
+  }
+#endif
+
   template <class T>
   HOSTDEVICE inline explicit bfloat16(const T& val)
       : x(bfloat16(static_cast<float>(val)).x) {}
 
+  // Assignment operators
   HOSTDEVICE inline bfloat16& operator=(bool b) {
     x = b ? 0x3f80 : 0;
     return *this;
@@ -124,13 +145,24 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return *this;
   }
 
+  // Conversion opertors
   HOSTDEVICE inline explicit operator float() const {
+#ifdef PADDLE_CUDA_BF16
+    return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
+#else
     float val = 0.f;
     uint16_t temp = x;
     memcpy(reinterpret_cast<char*>(&val) + 2, reinterpret_cast<char*>(&temp),
            2);
     return val;
+#endif
   }
+
+#ifdef PADDLE_CUDA_BF16
+  HOSTDEVICE inline explicit operator __nv_bfloat16() const {
+    return *reinterpret_cast<const __nv_bfloat16*>(&x);
+  }
+#endif
 
   HOSTDEVICE inline explicit operator bool() const { return (x & 0x7fff) != 0; }
 
@@ -170,6 +202,65 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return static_cast<double>(static_cast<float>(*this));
   }
 };
+
+// Arithmetic & Comparison operators on CUDA11 & Ampere-arch GPU
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000 && __CUDA__ARCH__ >= 800
+DEVICE inline nv_bfloat16 operator+(const nv_bfloat16& a,
+                                    const nv_bfloat16& b) {
+  return __hadd(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator-(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
+  return __hsub(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator*(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
+  return __hmul(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator/(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
+  float num = __bfloat162float(a);
+  float denom = __bfloat162float(b);
+  return __nv_bfloat16(num / denom);
+}
+
+DEVICE inline __nv_bfloat16 operator-(const __nv_bfloat16& a) {
+  return __hneg(a);
+}
+
+DEVICE inline __nv_bfloat16 operator==(const __nv_bfloat16& a,
+                                       const __nv_bfloat16& b) {
+  return __heq(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator!=(const __nv_bfloat16& a,
+                                       const __nv_bfloat16& b) {
+  return __hne(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator<(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
+  return __hlt(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator<=(const __nv_bfloat16& a,
+                                       const __nv_bfloat16& b) {
+  return __hle(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator>(const __nv_bfloat16& a,
+                                      const __nv_bfloat16& b) {
+  return __hgt(a, b);
+}
+
+DEVICE inline __nv_bfloat16 operator>=(const __nv_bfloat16& a,
+                                       const __nv_bfloat16& b) {
+  return __hge(a, b);
+}
+#endif
 
 HOSTDEVICE inline bfloat16 operator+(const bfloat16& a, const bfloat16& b) {
   return bfloat16(static_cast<float>(a) + static_cast<float>(b));
@@ -223,6 +314,7 @@ HOSTDEVICE inline bfloat16 raw_uint16_to_bfloat16(uint16_t a) {
   return res;
 }
 
+// Comparison operators
 HOSTDEVICE inline bool operator==(const bfloat16& a, const bfloat16& b) {
   return static_cast<float>(a) == static_cast<float>(b);
 }
