@@ -2029,6 +2029,7 @@ function main() {
         exit 1
         ;;
       esac
+      cat ${PADDLE_ROOT}/build/build_summary.txt
       echo "paddle_build script finished as expected"
 }
 
