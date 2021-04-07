@@ -1168,9 +1168,9 @@ set +x
         is_nightly=''             # indicate whether the case will only run at night
         if [ ${WITH_ROCM:-OFF} == "ON" ] ; then
             disable_ut_quickly = ''  # indicate whether the case was in quickly disable list on ROCM platform
-            rocm_disable_ut_file="./rocm_build/disable_ut_list.txt"
+            rocm_disable_ut_file="$(dirname $0)/rocm_build/disable_ut_list.txt"
             if [ -f $rocm_disable_ut_file ]; then
-                disable_ut_tests=$(cat $rocm_disable_ut_file | sed  's/ .*$//;/^$/d')
+                disable_ut_tests=$(cat $rocm_disable_ut_file | sed  's/#.*$//;s/ .*$//;/^$/d')
                 num_disable_ut_tests=$(echo "$disable_ut_tests" | wc -l)
                 echo "$num_disable_ut_tests tests in disable list..."
                 disable_ut_quickly=$(echo $disable_ut_tests | sed 's/ /\$|^/g' | sed '1s/^/\^/' | sed '1s/$/\$/')

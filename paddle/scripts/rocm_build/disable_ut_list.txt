@@ -1,6 +1,3 @@
-  # Disabled ut tests on rocm ci,
-  # take the part before the first space of each line as case name
-  # Format : "casename [notes]"
 test_addmm_op
 test_affine_grid_op
 test_allgather
