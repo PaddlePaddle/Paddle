@@ -191,35 +191,35 @@ int32_t PsLocalClient::initialize() {
   return done();
 }
 
-::std::future<int32_t> PsLocalClient::pull_sparse(float** select_values,
-                                                  size_t table_id,
-                                                  const uint64_t* keys,
-                                                  size_t num) {
-  // FIXME
-  // auto timer =
-  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
-  // auto local_timer =
-  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-  //将key拆分到各shard请求，并记录原始对应value指针
-  auto* accessor = table_accessor(table_id);
-  auto* table_ptr = table(table_id);
-  size_t value_size = accessor->select_size();
-
-  // table_ptr->pull_sparse(keys, num);
-  std::vector<float> res_data;
-  res_data.resize(num * value_size / sizeof(float));
-  table_ptr->pull_sparse(res_data.data(), keys, num);
-  // memcpy(select_values[0], res_data->data(), res_data->size() *
-  // sizeof(float));
-  size_t offset = 0;
-  for (int i = 0; i < num; ++i) {
-    memcpy(select_values[i], (char*)res_data.data() + offset, value_size);
-    offset += value_size;
-  }
-
-  // return fut;
-  return done();
-}
+//::std::future<int32_t> PsLocalClient::pull_sparse(float** select_values,
+//                                                  size_t table_id,
+//                                                  const uint64_t* keys,
+//                                                  size_t num) {
+//  // FIXME
+//  // auto timer =
+//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
+//  // auto local_timer =
+//  // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
+//  //将key拆分到各shard请求，并记录原始对应value指针
+//  auto* accessor = table_accessor(table_id);
+//  auto* table_ptr = table(table_id);
+//  size_t value_size = accessor->select_size();
+//
+//  // table_ptr->pull_sparse(keys, num);
+//  std::vector<float> res_data;
+//  res_data.resize(num * value_size / sizeof(float));
+//  table_ptr->pull_sparse(res_data.data(), keys, num);
+//  // memcpy(select_values[0], res_data->data(), res_data->size() *
+//  // sizeof(float));
+//  size_t offset = 0;
+//  for (int i = 0; i < num; ++i) {
+//    memcpy(select_values[i], (char*)res_data.data() + offset, value_size);
+//    offset += value_size;
+//  }
+//
+//  // return fut;
+//  return done();
+//}
 
 ::std::future<int32_t> PsLocalClient::pull_sparse_ptr(char** select_values,
                                                       size_t table_id,

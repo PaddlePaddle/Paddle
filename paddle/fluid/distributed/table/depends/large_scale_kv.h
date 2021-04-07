@@ -172,7 +172,8 @@ class ValueBlock {
     return value->data_.data();
   }
 
-  VALUE *InitGet(const uint64_t &id, const bool with_update = true) {
+  VALUE *InitGet(const uint64_t &id, const bool with_update = true,
+                 const int counter = 1) {
     if (!Has(id)) {
       values_[id] = std::make_shared<VALUE>(value_length_);
     }
@@ -180,7 +181,7 @@ class ValueBlock {
     auto &value = values_.at(id);
 
     if (with_update) {
-      AttrUpdate(value);
+      AttrUpdate(value, counter);
     }
 
     return value.get();
