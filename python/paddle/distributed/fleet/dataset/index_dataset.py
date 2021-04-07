@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from paddle.fluid.core import IndexWrapper, IndexSampler
+from paddle.fluid import core
 
 
 class Index(object):
@@ -23,7 +22,7 @@ class Index(object):
 class TreeIndex(Index):
     def __init__(self, name, path):
         super(TreeIndex, self).__init__(name)
-        self._wrapper = IndexWrapper()
+        self._wrapper = core.IndexWrapper()
         self._wrapper.insert_tree_index(name, path)
         self._tree = self._wrapper.get_tree_index(name)
         self._height = self._tree.height()
@@ -78,7 +77,7 @@ class TreeIndex(Index):
                                start_sample_layer=1,
                                seed=0):
         assert self._layerwise_sampler is None
-        self._layerwise_sampler = IndexSampler("by_layerwise", self._name)
+        self._layerwise_sampler = core.IndexSampler("by_layerwise", self._name)
         self._layerwise_sampler.init_layerwise_conf(layer_sample_counts,
                                                     start_sample_layer, seed)
 
