@@ -26,7 +26,7 @@
 #include <vector>
 #include "paddle/fluid/distributed/table/accessor.h"
 #include "paddle/fluid/distributed/table/common_table.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/string/string_helper.h"
 namespace paddle {
