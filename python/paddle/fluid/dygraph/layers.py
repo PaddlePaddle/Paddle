@@ -1430,7 +1430,6 @@ class Layer(core.Layer):
                 blocking,
                 bool), "blocking value error, must be the True, False or None"
 
-
         def transform(t, place, dtype, blocking):
             if place is None:
                 place = t.place
