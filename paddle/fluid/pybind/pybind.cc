@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
@@ -184,17 +185,28 @@ bool SupportsBfloat16FastPerformance() {
 #endif
 }
 
+// According to the input `place` and `dtype`, this function returns a tuple
+// consists of three sets:
+// 1) All operators registered in the Paddle framework.
+// 2) All operators supported for `place` and `dtype`.
+// 3) All operators unsupported for `place` and `dtype`.
+// The input `place` is a type of string, which can only be `GPU` or `CPU`.
+// The input `dtype` is a type of paddle::framework::proto::VarType::Type,
+// which can be paddle::framework::proto::VarType::FP16,
+// paddle::framework::proto::VarType::FP32 and so on.
 std::tuple<std::unordered_set<std::string>, std::unordered_set<std::string>,
            std::unordered_set<std::string>>
-OpSupportedInfos(std::string place, framework::proto::VarType::Type dtype) {
-  std::transform(place.begin(), place.end(), place.begin(),
+OpSupportedInfos(const std::string &place,
+                 framework::proto::VarType::Type dtype) {
+  std::string query_place;
+  std::transform(place.begin(), place.end(), std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
   using fn_type = std::add_pointer<bool(const platform::Place &)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
       {"GPU", &platform::is_gpu_place}, {"CPU", &platform::is_cpu_place},
   };
   PADDLE_ENFORCE_NE(
-      is_target_place.count(place), 0,
+      is_target_place.count(query_place), 0,
       platform::errors::InvalidArgument(
           "The argument `place` should be 'GPU' or 'CPU', but get '%s'.",
           place));
@@ -209,7 +221,7 @@ OpSupportedInfos(std::string place, framework::proto::VarType::Type dtype) {
   auto &all_kernels = framework::OperatorWithKernel::AllOpKernels();
   for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
     for (auto &kernel_type : it->second) {
-      if (is_target_place[place](kernel_type.first.place_) &&
+      if (is_target_place[query_place](kernel_type.first.place_) &&
           kernel_type.first.data_type_ == dtype) {
         supported_ops.emplace(it->first);
       }
