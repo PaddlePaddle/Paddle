@@ -167,8 +167,6 @@ void BKCLParallelContext::WaitCompute(int ring_id) {
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
                                    ring_id, strategy_.nrings_));
-  // TODO(wangxi16): [Performance optimize] Maybe need to put Wait and
-  // bkcl_allreduce to comm thread, for bkcl_allreduce is blocking now.
   auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
@@ -186,6 +184,12 @@ void BKCLParallelContext::WaitComm(int ring_id) {
   auto comm_dev_ctx =
       platform::BKCLCommContext::Instance().Get(ring_id, place_)->dev_context();
   comm_dev_ctx->Wait();
+}
+
+void BKCLParallelContext::SynchronizeCompute() {
+  auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  compute_dev_ctx->Wait();
 }
 
 }  //  namespace imperative

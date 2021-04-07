@@ -21,6 +21,8 @@
 #include <string>
 #include <utility>
 #include "paddle/fluid/distributed/table/accessor.h"
+#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
+#include "paddle/fluid/distributed/table/graph_node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -46,8 +48,8 @@ class Table {
     return 0;
   }
 
-  virtual int32_t pull_sparse(float *values, const uint64_t *keys,
-                              size_t num) = 0;
+  virtual int32_t pull_sparse(float *values,
+                              const PullSparseValue &pull_value) = 0;
   virtual int32_t push_sparse(const uint64_t *keys, const float *values,
                               size_t num) = 0;
   virtual int32_t push_sparse_param(const uint64_t *keys, const float *values,
@@ -86,6 +88,31 @@ class Table {
     return 0;
   }
 
+  // only for graph table
+  virtual int32_t pull_graph_list(int start, int total_size,
+                                  std::unique_ptr<char[]> &buffer,
+                                  int &actual_size, bool need_feature,
+                                  int step = 1) {
+    return 0;
+  }
+  // only for graph table
+  virtual int32_t random_sample_neighboors(
+      uint64_t *node_ids, int sample_size,
+      std::vector<std::unique_ptr<char[]>> &buffers,
+      std::vector<int> &actual_sizes) {
+    return 0;
+  }
+
+  virtual int32_t random_sample_nodes(int sample_size,
+                                      std::unique_ptr<char[]> &buffers,
+                                      int &actual_sizes) {
+    return 0;
+  }
+  virtual int32_t get_node_feat(const std::vector<uint64_t> &node_ids,
+                                const std::vector<std::string> &feature_names,
+                                std::vector<std::vector<std::string>> &res) {
+    return 0;
+  }
   virtual int32_t pour() { return 0; }
 
   virtual void clear() = 0;
@@ -141,5 +168,6 @@ class TableManager {
   TableManager() {}
   ~TableManager() {}
 };
+
 }  // namespace distributed
 }  // namespace paddle

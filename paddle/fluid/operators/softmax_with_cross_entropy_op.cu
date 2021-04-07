@@ -672,7 +672,11 @@ template <typename T>
 static void SoftmaxWithCrossEntropyFusedKernel(
     const T* logits_data, const T* labels_data, T* softmax_data, T* loss_data,
     int64_t n, int64_t d, int axis_dim, gpuStream_t stream) {
+#ifdef __HIPCC__
+  constexpr int kMaxBlockDim = 256;
+#else
   constexpr int kMaxBlockDim = 512;
+#endif
   int64_t block_dim = axis_dim >= kMaxBlockDim
                           ? kMaxBlockDim
                           : (1 << static_cast<int>(std::log2(axis_dim)));

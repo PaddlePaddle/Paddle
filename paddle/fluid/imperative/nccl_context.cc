@@ -173,6 +173,12 @@ void NCCLParallelContext::WaitComm(int ring_id) {
 #endif
 }
 
+void NCCLParallelContext::SynchronizeCompute() {
+  auto *compute_dev_ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(place_));
+  compute_dev_ctx->Wait();
+}
+
 #endif
 
 }  //  namespace imperative
