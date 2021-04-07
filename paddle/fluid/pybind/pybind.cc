@@ -79,7 +79,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/index_dataset_py.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
