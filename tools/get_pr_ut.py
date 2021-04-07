@@ -251,6 +251,7 @@ class PRChecker(object):
             else:
                 f_judge = f
             if f_judge not in file_ut_map:
+                continue
                 if f.endswith('.md'):
                     ut_list.append('md_placeholder')
                 elif f.endswith('.h') or f.endswith('.cu'):
