@@ -356,7 +356,6 @@ class TestResnet(unittest.TestCase):
         self.verify_predict()
 
     def test_in_static_mode_mkldnn(self):
-        paddle.enable_static()
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
             train(to_static=True)
