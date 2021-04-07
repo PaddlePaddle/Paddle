@@ -33,7 +33,7 @@ from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid import dygraph
+from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
 __all__ = ['Layer']
@@ -1339,14 +1339,14 @@ class Layer(core.Layer):
 
         for key, param in self._parameters.items():
             if param is not None:
-                with dygraph.no_grad():
+                with no_grad():
                     param_applied = func(param, place, dtype, blocking)
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
-                    with dygraph.no_grad():
+                    with no_grad():
                         grad_applied = func(param.grad, place, dtype, blocking)
 
                         assert param.grad.is_leaf
@@ -1413,10 +1413,12 @@ class Layer(core.Layer):
             ), "place value error, must be the paddle.CPUPlace(), paddle.CUDAPlace() or paddle.CUDAPinnedPlace()"
 
         if blocking is None:
+            blocking = True
+        else:
             assert isinstance(
                 blocking,
                 bool), "blocking value error, must be the True, False or None"
-            blocking = True
+
 
         def transform(t, place, dtype, blocking):
             if place is None:
