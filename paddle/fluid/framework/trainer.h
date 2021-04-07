@@ -109,9 +109,9 @@ class MultiTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   virtual std::string GetDumpPath(int tid);
 
-#ifdef PADDLE_WITH_HETERPS
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+#ifdef PADDLE_WITH_HETERPS
 
   void MergeDenseParam();
 #endif
