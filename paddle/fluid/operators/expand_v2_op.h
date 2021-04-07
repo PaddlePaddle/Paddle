@@ -30,7 +30,7 @@ limitations under the License. */
 #define MAX_RANK_SUPPORTED 6
 // 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
 //    Usage: BOOST_PP_REPEAT(count, macro, data).
-//    This macro expands to the sequence: 
+//    This macro expands to the sequence:
 //    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
 // 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
 //    So the range of n is 0-5(which is count-1).
