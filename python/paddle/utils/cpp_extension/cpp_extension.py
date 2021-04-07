@@ -368,6 +368,9 @@ class BuildExtension(build_ext, object):
             self.build_lib = self.output_dir
 
     def build_extensions(self):
+        if OS_NAME.startswith("darwin"):
+            self._valid_clang_compiler()
+
         self._check_abi()
 
         # Note(Aurelius84): If already compiling source before, we should check whether
@@ -423,16 +426,6 @@ class BuildExtension(build_ext, object):
                 # cxx compile Cpp source
                 elif isinstance(cflags, dict):
                     cflags = cflags['cxx']
-                    # make sure to use clang to as compiler
-                    if OS_NAME.startswith("darwin"):
-                        compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
-                        linker_infos = ['clang'] + CLANG_LINK_FLAGS
-                        self.compiler.set_executables(
-                            compiler=compiler_infos,
-                            compiler_so=compiler_infos,
-                            compiler_cxx=['clang'],
-                            linker_exe=['clang'],
-                            linker_so=linker_infos)
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=False)
@@ -572,20 +565,34 @@ class BuildExtension(build_ext, object):
     def get_ext_filename(self, fullname):
         # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super(BuildExtension, self).get_ext_filename(fullname)
+        split_str = '.'
+        name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix and six.PY3:
-            split_str = '.'
-            name_items = ext_name.split(split_str)
             assert len(
                 name_items
             ) > 2, "Expected len(name_items) > 2, but received {}".format(
                 len(name_items))
             name_items.pop(-2)
-            # custommed_extension.so
-            if OS_NAME.startswith('darwin'):
-                name_items[-1] = 'dylib'
             ext_name = split_str.join(name_items)
 
+        # custommed_extension.dylib
+        if OS_NAME.startswith('darwin'):
+            name_items[-1] = 'dylib'
+            ext_name = split_str.join(name_items)
         return ext_name
+
+    def _valid_clang_compiler(self):
+        """
+        Make sure to use Clang as compiler on Mac platform
+        """
+        compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
+        linker_infos = ['clang'] + CLANG_LINK_FLAGS
+        self.compiler.set_executables(
+            compiler=compiler_infos,
+            compiler_so=compiler_infos,
+            compiler_cxx=['clang'],
+            linker_exe=['clang'],
+            linker_so=linker_infos)
 
     def _check_abi(self):
         """

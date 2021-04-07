@@ -610,6 +610,11 @@ def find_paddle_includes(use_cuda=False):
             cuda_include_dir = find_cuda_includes()
             include_dirs.extend(cuda_include_dir)
 
+    if OS_NAME.startswith('darwin'):
+        # NOTE(Aurelius84): Ensure to find std v1 headers correctly.
+        std_v1_includes = '/Library/Developer/CommandLineTools/usr/include/c++/v1/'
+        include_dirs.append(std_v1_includes)
+
     return include_dirs
 
 
