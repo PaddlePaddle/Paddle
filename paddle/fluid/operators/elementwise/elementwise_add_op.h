@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -69,9 +70,23 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     auto dims_equal = x->dims() == y->dims();
+    bool is_cuda =
+        std::is_same<DeviceContext, platform::CUDADeviceContext>::value;
     if (dims_equal) {
-      SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
-      same_dims_add(ctx, x, y, z);
+      if (is_cuda) {
+        // enter same_dims_launch_kernel
+        // output_num default 1
+        // for binary op, input_num is 2
+        // for activation op, input_num is 1
+        auto size = x->numel();
+        auto data =
+            SameDimsData<T>(3, z->data<T>(), x->data<T>(), y->data<T>());
+        same_dims_launch_kernel<T, AddFunctor<T>>(ctx, data, size,
+                                                  AddFunctor<T>());
+      } else {
+        SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
+        same_dims_add(ctx, x, y, z);
+      }
     } else {
       default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }
@@ -134,11 +149,6 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
 
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
-
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
 
 template <typename T>
 inline int VectorizedSize(const T *pointer) {
