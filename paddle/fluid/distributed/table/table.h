@@ -88,31 +88,6 @@ class Table {
     return 0;
   }
 
-  // only for graph table
-  virtual int32_t pull_graph_list(int start, int total_size,
-                                  std::unique_ptr<char[]> &buffer,
-                                  int &actual_size, bool need_feature,
-                                  int step = 1) {
-    return 0;
-  }
-  // only for graph table
-  virtual int32_t random_sample_neighboors(
-      uint64_t *node_ids, int sample_size,
-      std::vector<std::unique_ptr<char[]>> &buffers,
-      std::vector<int> &actual_sizes) {
-    return 0;
-  }
-
-  virtual int32_t random_sample_nodes(int sample_size,
-                                      std::unique_ptr<char[]> &buffers,
-                                      int &actual_sizes) {
-    return 0;
-  }
-  virtual int32_t get_node_feat(const std::vector<uint64_t> &node_ids,
-                                const std::vector<std::string> &feature_names,
-                                std::vector<std::vector<std::string>> &res) {
-    return 0;
-  }
   virtual int32_t pour() { return 0; }
 
   virtual void clear() = 0;
