@@ -90,12 +90,12 @@ else()
         BUILD_ALWAYS    1
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-												-DCMAKE_C_FLAGS=$<FILTER:${CMAKE_C_FLAGS},EXCLUDE,/Zc:inline>
-												-DCMAKE_C_FLAGS_DEBUG=$<FILTER:${CMAKE_C_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
-												-DCMAKE_C_FLAGS_RELEASE=$<FILTER:${CMAKE_C_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
-												-DCMAKE_CXX_FLAGS=$<FILTER:${CMAKE_CXX_FLAGS},EXCLUDE,/Zc:inline>
-												-DCMAKE_CXX_FLAGS_RELEASE=$<FILTER:${CMAKE_CXX_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
-												-DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
+                        -DCMAKE_C_FLAGS=$<FILTER:${CMAKE_C_FLAGS},EXCLUDE,/Zc:inline>
+                        -DCMAKE_C_FLAGS_DEBUG=$<FILTER:${CMAKE_C_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
+                        -DCMAKE_C_FLAGS_RELEASE=$<FILTER:${CMAKE_C_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                        -DCMAKE_CXX_FLAGS=$<FILTER:${CMAKE_CXX_FLAGS},EXCLUDE,/Zc:inline>
+                        -DCMAKE_CXX_FLAGS_RELEASE=$<FILTER:${CMAKE_CXX_FLAGS_RELEASE},EXCLUDE,/Zc:inline>
+                        -DCMAKE_CXX_FLAGS_DEBUG=$<FILTER:${CMAKE_CXX_FLAGS_DEBUG},EXCLUDE,/Zc:inline>
                         -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
                         -DWITH_GPU=${WITH_GPU}
                         -DWITH_ROCM=${WITH_ROCM}
