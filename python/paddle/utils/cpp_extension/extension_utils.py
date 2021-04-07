@@ -368,10 +368,10 @@ def _get_core_name():
     Return pybind DSO module name.
     """
     import paddle
-    if paddle.fluid.core.avx_supported():
-        return 'core_avx.so'
-    else:
+    if paddle.fluid.core.load_noavx:
         return 'core_noavx.so'
+    else:
+        return 'core_avx.so'
 
 
 def _get_lib_core_path():
