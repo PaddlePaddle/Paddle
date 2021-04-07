@@ -15,7 +15,7 @@
 syntax = "proto2";
 package paddle.distributed;
 
-message Node {
+message IndexNode {
   required uint64 id = 1;
   required bool is_leaf = 2;
   required float probability = 3;

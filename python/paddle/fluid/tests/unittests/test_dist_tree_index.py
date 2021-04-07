@@ -40,7 +40,7 @@ class TestTreeIndex(unittest.TestCase):
             self.assertTrue(
                 len(layer_node_ids[-1]) == len(layer_node_codes[-1]))
 
-        all_items = tree.get_all_items()
+        all_items = tree.get_ids_given_codes([])
         self.assertEqual(sum(all_items), sum(layer_node_ids[-1]))
 
         # get_parent_path

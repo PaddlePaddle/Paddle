@@ -61,7 +61,7 @@ int TreeIndex::load(const std::string filename) {
       meta_.ParseFromString(item.value());
     } else {
       auto code = boost::lexical_cast<uint64_t>(item.key());
-      Node node;
+      IndexNode node;
       node.ParseFromString(item.value());
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
@@ -103,20 +103,53 @@ std::vector<std::vector<uint64_t>> TreeIndex::get_parent_path(
     const std::vector<uint64_t>& ids, int start_level, bool ret_code) {
   std::vector<std::vector<uint64_t>> res(ids.size(), std::vector<uint64_t>());
   for (size_t i = 0; i < ids.size(); i++) {
-    auto code = id_codes_map_[ids[i]];
+    auto code = id_codes_map_.at(ids[i]);
     int level = meta_.height() - 1;
 
     while (level >= start_level) {
       if (ret_code) {
         res[i].push_back(code);
       } else {
-        res[i].push_back(data_[code].id());
+        res[i].push_back(data_.at(code).id());
       }
       code = (code - 1) / meta_.branch();
       level--;
     }
   }
   return res;
+}
+
+std::vector<uint64_t> TreeIndex::get_ids_given_codes(
+    const std::vector<uint64_t>& codes) {
+  std::vector<uint64_t> ids;
+  if (codes.size() == 0) {
+    ids.reserve(id_codes_map_.size());
+    for (auto& ite : id_codes_map_) {
+      ids.push_back(ite.first);
+    }
+  } else {
+    ids.reserve(codes.size());
+    for (size_t i = 0; i < codes.size(); i++) {
+      ids.push_back(data_.at(codes[i]).id());
+    }
+  }
+  return ids;
+}
+
+std::unordered_map<uint64_t, uint64_t> TreeIndex::get_relation(
+    int level, const std::vector<uint64_t>& ids) {
+  std::unordered_map<uint64_t, uint64_t> pi_new;
+
+  for (auto& id : ids) {
+    auto code = id_codes_map_.at(id);
+    auto cur_level = meta_.height() - 1;
+    while (cur_level > level) {
+      code = (code - 1) / meta_.branch();
+      cur_level--;
+    }
+    pi_new[id] = code;
+  }
+  return pi_new;
 }
 
 std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
@@ -129,7 +162,7 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
       res.push_back(0);
       continue;
     }
-    auto code = id_codes_map_[ids[i]];
+    auto code = id_codes_map_.at(ids[i]);
     cur_level = meta_.height() - 1;
     while (cur_level > level) {
       code = (code - 1) / meta_.branch();
@@ -138,39 +171,14 @@ std::vector<uint64_t> TreeIndex::get_ancestor_given_level(
     if (ret_code) {
       res.push_back(code);
     } else {
-      res.push_back(data_[code].id());
+      res.push_back(data_.at(code).id());
     }
   }
   return res;
 }
 
-std::vector<uint64_t> TreeIndex::get_all_items() {
-  std::vector<uint64_t> ids;
-  ids.reserve(id_codes_map_.size());
-  for (auto& ite : id_codes_map_) {
-    ids.push_back(ite.first);
-  }
-  return ids;
-}
-
-std::unordered_map<uint64_t, uint64_t> TreeIndex::get_relation(
-    int level, const std::vector<uint64_t>& ids) {
-  std::unordered_map<uint64_t, uint64_t> pi_new;
-
-  for (auto& id : ids) {
-    auto code = id_codes_map_[id];
-    auto cur_level = meta_.height() - 1;
-    while (cur_level > level) {
-      code = (code - 1) / meta_.branch();
-      cur_level--;
-    }
-    pi_new[id] = code;
-  }
-  return pi_new;
-}
-
 std::vector<uint64_t> TreeIndex::get_children_given_ancestor_and_level(
-    uint64_t ancestor, int level, bool ret_code = true) {
+    uint64_t ancestor, int level, bool ret_code) {
   auto level_code_num = static_cast<uint64_t>(std::pow(meta_.branch(), level));
   auto code_min = level_code_num - 1;
   auto code_max = level * level_code_num - 1;
@@ -195,18 +203,8 @@ std::vector<uint64_t> TreeIndex::get_children_given_ancestor_and_level(
   res = std::vector<uint64_t>(parent.begin() + p_idx, parent.end());
   if (ret_code == false) {
     for (size_t i = 0; i < res.size(); i++) {
-      res[i] = data_[res[i]].id();
+      res[i] = data_.at(res[i]).id();
     }
-  }
-  return res;
-}
-
-std::vector<uint64_t> TreeIndex::get_travel_path(uint64_t child,
-                                                 uint64_t ancestor) {
-  std::vector<uint64_t> res;
-  while (child > ancestor) {
-    res.push_back(data_[child].id());
-    child = (child - 1) / meta_.branch();
   }
   return res;
 }

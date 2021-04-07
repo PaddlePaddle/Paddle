@@ -216,14 +216,14 @@ void BindGraphPyClient(py::module* m) {
 
 using paddle::distributed::TreeIndex;
 using paddle::distributed::IndexWrapper;
-using paddle::distributed::Node;
+using paddle::distributed::IndexNode;
 
 void BindIndexNode(py::module* m) {
-  py::class_<Node>(*m, "IndexNode")
+  py::class_<IndexNode>(*m, "IndexNode")
       .def(py::init<>())
-      .def("id", [](Node& self) { return self.id(); })
-      .def("is_leaf", [](Node& self) { return self.is_leaf(); })
-      .def("probability", [](Node& self) { return self.probability(); });
+      .def("id", [](IndexNode& self) { return self.id(); })
+      .def("is_leaf", [](IndexNode& self) { return self.is_leaf(); })
+      .def("probability", [](IndexNode& self) { return self.probability(); });
 }
 
 void BindTreeIndex(py::module* m) {
@@ -231,7 +231,7 @@ void BindTreeIndex(py::module* m) {
       .def(py::init([](const std::string name, const std::string path) {
         auto index_wrapper = IndexWrapper::GetInstancePtr();
         index_wrapper->insert_tree_index(name, path);
-        return index_wrapper->GetTreeIndex(name);
+        return index_wrapper->get_tree_index(name);
       }))
       .def("height", [](TreeIndex& self) { return self.height(); })
       .def("branch", [](TreeIndex& self) { return self.branch(); })
@@ -251,8 +251,10 @@ void BindTreeIndex(py::module* m) {
               bool ret_code) {
              return self.get_ancestor_given_level(ids, level, ret_code);
            })
-      .def("get_all_items",
-           [](TreeIndex& self) { return self.get_all_items(); })
+      .def("get_ids_given_codes",
+           [](TreeIndex& self, const std::vector<uint64_t>& codes) {
+             return self.get_ids_given_codes(codes);
+           })
       .def("get_pi_relation",
            [](TreeIndex& self, const std::vector<uint64_t>& ids, int level) {
              return self.get_relation(level, ids);
@@ -261,10 +263,6 @@ void BindTreeIndex(py::module* m) {
            [](TreeIndex& self, uint64_t ancestor, int level, bool ret_code) {
              return self.get_children_given_ancestor_and_level(ancestor, level,
                                                                ret_code);
-           })
-      .def("get_travel_path",
-           [](TreeIndex& self, uint64_t child, uint64_t ancestor) {
-             return self.get_travel_path(child, ancestor);
            })
       .def("tree_max_node",
            [](TreeIndex& self) { return self.tree_max_node(); });
@@ -280,7 +278,6 @@ void BindIndexWrapper(py::module* m) {
 
 using paddle::distributed::IndexSampler;
 using paddle::distributed::LayerWiseSampler;
-// using paddle::distributed::BeamSearchSampler;
 
 void BindIndexSampler(py::module* m) {
   py::class_<IndexSampler, std::shared_ptr<IndexSampler>>(*m, "IndexSampler")

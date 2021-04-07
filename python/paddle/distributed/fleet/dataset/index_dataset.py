@@ -47,8 +47,8 @@ class TreeIndex(Index):
     def get_ancestor_given_level(self, ids, level, ret_code=False):
         return self._tree.get_ancestor_given_level(ids, level, ret_code)
 
-    def get_all_items(self):
-        return self._tree.get_all_items()
+    def get_ids_given_codes(self, codes):
+        return self._tree.get_ids_given_codes(codes)
 
     def get_pi_relation(self, ids, level):
         return self._tree.get_pi_relation(ids, level)
@@ -61,15 +61,15 @@ class TreeIndex(Index):
                                                                 ret_code)
 
     def get_travel_path(self, child, ancestor, ret_code=False):
-        if ret_code == False:
-            return self._tree.get_travel_path(child, ancestor)
-        else:
-            res = []
-            while (child > ancestor):
-                res.append(child)
-                child = int((child - 1) / self._branch)
+        res = []
+        while (child > ancestor):
+            res.append(child)
+            child = int((child - 1) / self._branch)
 
+        if ret_code == True:
             return res
+        else:
+            return self.get_ids_given_codes(res)
 
     def tree_max_node(self):
         return self._tree.tree_max_node()

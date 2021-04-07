@@ -46,14 +46,13 @@ class TreeIndex : public Index {
       bool ret_code = false);
   std::vector<uint64_t> get_ancestor_given_level(
       const std::vector<uint64_t>& ids, int level, bool ret_code = false);
-  std::vector<uint64_t> get_all_items();
+  std::vector<uint64_t> get_ids_given_codes(const std::vector<uint64_t>& codes);
   std::unordered_map<uint64_t, uint64_t> get_relation(
       int level, const std::vector<uint64_t>& ids);
   std::vector<uint64_t> get_children_given_ancestor_and_level(
       uint64_t ancestor, int level, bool ret_code = true);
-  std::vector<uint64_t> get_travel_path(uint64_t child, uint64_t ancestor);
 
-  std::unordered_map<uint64_t, Node> data_;
+  std::unordered_map<uint64_t, IndexNode> data_;
   std::unordered_map<uint64_t, uint64_t> id_codes_map_;
   uint64_t total_nodes_num_;
   TreeMeta meta_;

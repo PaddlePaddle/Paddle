@@ -46,7 +46,7 @@ class LayerWiseSampler : public IndexSampler {
  public:
   virtual ~LayerWiseSampler() {}
   explicit LayerWiseSampler(const std::string& name) {
-    tree_ = IndexWrapper::GetInstance()->GetTreeIndex(name);
+    tree_ = IndexWrapper::GetInstance()->get_tree_index(name);
   }
 
   void init_layerwise_conf(const std::vector<int>& layer_sample_counts,
