@@ -29,14 +29,18 @@ message RecomputeConfig {
 }
 
 message ShardingConfig {
-  optional float segment_broadcast_MB = 1 [ default = 32.0 ];
-  optional bool hybrid_dp = 2 [ default = false ];
-  optional int32 sharding_degree = 3 [ default = 8 ];
-  optional int32 mp_degree = 4 [ default = 1 ];
-  optional string sharding_segment_strategy = 5
+  optional string sharding_segment_strategy = 1
       [ default = 'segment_broadcast_MB' ];
-  repeated string segment_anchors = 6;
-  optional int32 gradient_merge_acc_step = 7 [ default = 1 ];
+  optional float segment_broadcast_MB = 2 [ default = 32.0 ];
+  repeated string segment_anchors = 3;
+  optional int32 sharding_degree = 4 [ default = 8 ];
+  optional int32 mp_degree = 5 [ default = 1 ];
+  optional int32 dp_degree = 6 [ default = 1 ];
+  optional bool hybrid_dp = 7 [ default = false ];
+  optional int32 gradient_merge_acc_step = 8 [ default = 1 ];
+  optional bool optimize_offload = 9 [ default = false ];
+  optional bool pp_allreduce_in_optimize = 10 [ default = false ];
+  optional int32 pp_degree = 11 [ default = 1 ];
 }
 
 message AMPConfig {

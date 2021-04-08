@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#ifdef PADDLE_WITH_ASCEND
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
-
+#include "paddle/fluid/distributed/table/graph/graph_edge.h"
+#include <cstring>
 namespace paddle {
-namespace pybind {
+namespace distributed {
 
-void BindAscendGraph(py::module* m);
-void BindAscendWrapper(py::module* m);
-void BindAscendDevice(py::module* m);
+void GraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
+  id_arr.push_back(id);
+}
 
-}  // namespace pybind
-}  // namespace paddle
-#endif
+void WeightedGraphEdgeBlob::add_edge(uint64_t id, float weight = 1) {
+  id_arr.push_back(id);
+  weight_arr.push_back(weight);
+}
+}
+}
