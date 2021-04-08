@@ -20,7 +20,7 @@ sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
@@ -31,9 +31,189 @@ import six
 import pickle
 import os
 import errno
-from ..unittests.test_static_save_load import SimpleLSTMRNN, PtbModel
 
 paddle.enable_static()
+
+
+class SimpleLSTMRNN(fluid.Layer):
+    def __init__(self,
+                 name_scope,
+                 hidden_size,
+                 num_steps,
+                 num_layers=2,
+                 init_scale=0.1,
+                 dropout=None):
+        super(SimpleLSTMRNN, self).__init__()
+        self._hidden_size = hidden_size
+        self._num_layers = num_layers
+        self._init_scale = init_scale
+        self._dropout = dropout
+        self._input = None
+        self._num_steps = num_steps
+        self.cell_array = []
+        self.hidden_array = []
+
+        self.weight_1_arr = []
+        self.weight_2_arr = []
+        self.bias_arr = []
+        self.mask_array = []
+
+        for i in range(self._num_layers):
+            weight_1 = self.create_parameter(
+                attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.UniformInitializer(
+                        low=-self._init_scale, high=self._init_scale)),
+                shape=[self._hidden_size * 2, self._hidden_size * 4],
+                dtype="float32",
+                default_initializer=fluid.initializer.UniformInitializer(
+                    low=-self._init_scale, high=self._init_scale))
+            self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
+            bias_1 = self.create_parameter(
+                attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.UniformInitializer(
+                        low=-self._init_scale, high=self._init_scale)),
+                shape=[self._hidden_size * 4],
+                dtype="float32",
+                default_initializer=fluid.initializer.Constant(0.0))
+            self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
+
+    def forward(self, input_embedding, init_hidden=None, init_cell=None):
+        self.cell_array = []
+        self.hidden_array = []
+
+        for i in range(self._num_layers):
+            pre_hidden = fluid.layers.slice(
+                init_hidden, axes=[0], starts=[i], ends=[i + 1])
+            pre_cell = fluid.layers.slice(
+                init_cell, axes=[0], starts=[i], ends=[i + 1])
+            pre_hidden = fluid.layers.reshape(
+                pre_hidden, shape=[-1, self._hidden_size])
+            pre_cell = fluid.layers.reshape(
+                pre_cell, shape=[-1, self._hidden_size])
+            self.hidden_array.append(pre_hidden)
+            self.cell_array.append(pre_cell)
+
+        res = []
+        for index in range(self._num_steps):
+            self._input = fluid.layers.slice(
+                input_embedding, axes=[1], starts=[index], ends=[index + 1])
+            self._input = fluid.layers.reshape(
+                self._input, shape=[-1, self._hidden_size])
+            for k in range(self._num_layers):
+                pre_hidden = self.hidden_array[k]
+                pre_cell = self.cell_array[k]
+                weight_1 = self.weight_1_arr[k]
+                bias = self.bias_arr[k]
+
+                nn = fluid.layers.concat([self._input, pre_hidden], 1)
+                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
+
+                gate_input = fluid.layers.elementwise_add(gate_input, bias)
+                i, j, f, o = fluid.layers.split(
+                    gate_input, num_or_sections=4, dim=-1)
+                c = pre_cell * fluid.layers.sigmoid(f) + fluid.layers.sigmoid(
+                    i) * fluid.layers.tanh(j)
+                m = fluid.layers.tanh(c) * fluid.layers.sigmoid(o)
+                self.hidden_array[k] = m
+                self.cell_array[k] = c
+                self._input = m
+
+                if self._dropout is not None and self._dropout > 0.0:
+                    self._input = fluid.layers.dropout(
+                        self._input,
+                        dropout_prob=self._dropout,
+                        dropout_implementation='upscale_in_train')
+            res.append(
+                fluid.layers.reshape(
+                    self._input, shape=[1, -1, self._hidden_size]))
+        real_res = fluid.layers.concat(res, 0)
+        real_res = fluid.layers.transpose(x=real_res, perm=[1, 0, 2])
+        last_hidden = fluid.layers.concat(self.hidden_array, 1)
+        last_hidden = fluid.layers.reshape(
+            last_hidden, shape=[-1, self._num_layers, self._hidden_size])
+        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_cell = fluid.layers.concat(self.cell_array, 1)
+        last_cell = fluid.layers.reshape(
+            last_cell, shape=[-1, self._num_layers, self._hidden_size])
+        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        return real_res, last_hidden, last_cell
+
+
+class PtbModel(fluid.Layer):
+    def __init__(self,
+                 name_scope,
+                 hidden_size,
+                 vocab_size,
+                 num_layers=2,
+                 num_steps=20,
+                 init_scale=0.1,
+                 dropout=None):
+        super(PtbModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
+        self.init_scale = init_scale
+        self.num_layers = num_layers
+        self.num_steps = num_steps
+        self.dropout = dropout
+        self.simple_lstm_rnn = SimpleLSTMRNN(
+            self.full_name(),
+            hidden_size,
+            num_steps,
+            num_layers=num_layers,
+            init_scale=init_scale,
+            dropout=dropout)
+        self.embedding = Embedding(
+            num_embeddings=vocab_size,
+            embedding_dim=hidden_size,
+            weight_attr=fluid.ParamAttr(
+                name='embedding_para',
+                initializer=fluid.initializer.UniformInitializer(
+                    low=-init_scale, high=init_scale)))
+        self.softmax_weight = self.create_parameter(
+            attr=fluid.ParamAttr(),
+            shape=[self.hidden_size, self.vocab_size],
+            dtype="float32",
+            default_initializer=fluid.initializer.UniformInitializer(
+                low=-self.init_scale, high=self.init_scale))
+        self.softmax_bias = self.create_parameter(
+            attr=fluid.ParamAttr(),
+            shape=[self.vocab_size],
+            dtype="float32",
+            default_initializer=fluid.initializer.UniformInitializer(
+                low=-self.init_scale, high=self.init_scale))
+
+    def forward(self, input, label, init_hidden, init_cell):
+        init_h = fluid.layers.reshape(
+            init_hidden, shape=[self.num_layers, -1, self.hidden_size])
+
+        init_c = fluid.layers.reshape(
+            init_cell, shape=[self.num_layers, -1, self.hidden_size])
+
+        input = fluid.layers.cast(input, "int32")
+        x_emb = self.embedding(input)
+        x_emb = fluid.layers.reshape(
+            x_emb, shape=[-1, self.num_steps, self.hidden_size])
+        if self.dropout is not None and self.dropout > 0.0:
+            x_emb = fluid.layers.dropout(
+                x_emb,
+                dropout_prob=self.drop_out,
+                dropout_implementation='upscale_in_train')
+        rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(x_emb, init_h,
+                                                               init_c)
+
+        rnn_out = fluid.layers.reshape(
+            rnn_out, shape=[-1, self.num_steps, self.hidden_size])
+        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
+        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = fluid.layers.reshape(
+            projection, shape=[-1, self.vocab_size])
+        loss = fluid.layers.softmax_with_cross_entropy(
+            logits=projection, label=label, soft_label=False)
+        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = fluid.layers.reduce_sum(loss)
+
+        return loss, last_hidden, last_cell
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
