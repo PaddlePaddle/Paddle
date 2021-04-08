@@ -64,7 +64,14 @@ class PsLocalClient : public PSClient {
 
   virtual ::std::future<int32_t> pull_sparse(float** select_values,
                                              size_t table_id,
-                                             const uint64_t* keys, size_t num);
+                                             const uint64_t* keys, size_t num,
+                                             bool is_training) {
+    std::promise<int32_t> prom;
+    std::future<int32_t> fut = prom.get_future();
+    prom.set_value(0);
+
+    return fut;
+  }
 
   virtual ::std::future<int32_t> pull_sparse_ptr(char** select_values,
                                                  size_t table_id,
