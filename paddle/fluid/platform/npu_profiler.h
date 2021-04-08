@@ -23,7 +23,17 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// For ACL 20.1
+#ifdef PADDLE_WITH_ASCEND_STRING
+// For CANN 20.2+
+// ACL_AICORE_ARITHMETIC_UTILIZATION = 0, record arithmetic stats
+// ACL_AICORE_PIPE_UTILIZATION = 1, record pipeline
+// ACL_AICORE_MEMORY_BANDWIDTH = 2, record memory
+// ACL_AICORE_L0B_AND_WIDTH = 3, recore internal memory
+// ACL_AICORE_RESOURCE_CONFLICT_RATIO = 5, record pipeline ratio
+constexpr aclprofAicoreMetrics default_metrics =
+    ACL_AICORE_ARITHMETIC_UTILIZATION;
+#else
+// For CANN 20.1
 // ACL_AICORE_ARITHMATIC_THROUGHPUT = 0, record arithmetic stats
 // ACL_AICORE_PIPELINE = 1, record pipeline
 // ACL_AICORE_SYNCHRONIZATION = 2, record sync
@@ -32,6 +42,7 @@ namespace platform {
 // ACL_AICORE_STALL = 5, record pipeline ratio
 constexpr aclprofAicoreMetrics default_metrics =
     ACL_AICORE_ARITHMATIC_THROUGHPUT;
+#endif
 
 // ACL_PROF_ACL_API, record ACL API stats
 // ACL_PROF_TASK_TIME, record AI core stats
