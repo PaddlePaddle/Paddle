@@ -77,7 +77,7 @@ int GetCurrentNPUDeviceId() {
 std::vector<int> GetSelectedNPUDevices() {
   // use user specified NPUs in single-node multi-process mode.
   std::vector<int> devices;
-  if (!FLAGS_selected_gpus.empty()) {
+  if (!FLAGS_selected_npus.empty()) {
     auto devices_str = paddle::string::Split(FLAGS_selected_npus, ',');
     for (auto id : devices_str) {
       devices.push_back(atoi(id.c_str()));
