@@ -194,15 +194,26 @@ if(WITH_PYTHON)
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
   add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto)
   if (NOT WIN32)
-    add_custom_command(TARGET framework_py_proto POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
-      COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-      COMMENT "Copy generated python proto into directory paddle/fluid/proto."
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (WITH_PSCORE)
+      add_custom_command(TARGET framework_py_proto POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
+        COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+        COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_custom_command(TARGET framework_py_proto POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
+        COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+        COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+        COMMENT "Copy generated python proto into directory paddle/fluid/proto."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
   else(NOT WIN32)
     string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
