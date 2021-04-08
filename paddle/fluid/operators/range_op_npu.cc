@@ -71,8 +71,6 @@ class RangeNPUKernel : public framework::OpKernel<T> {
       value += step;
     }
 
-    context.template device_context<paddle::platform::NPUDeviceContext>()
-        .Wait();
     framework::TensorFromVector(odata, context.device_context(), out);
   }
 };
