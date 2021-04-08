@@ -561,7 +561,7 @@ class StaticGraphAdapter(object):
                         dist_strategy.amp_configs = self._amp_configs.copy()
                         dist_strategy.amp_configs.update(self._amp_custom_lists)
                         dist_strategy.amp_configs[
-                            'use_pure_fp16'] = True if self._amp_level == 'O2' else False
+                            'use_pure_fp16'] = self._amp_level == 'O2'
                     self.model._optimizer = fleet.distributed_optimizer(
                         self.model._optimizer, strategy=dist_strategy)
                 elif self._amp_level != "O0" and core.is_compiled_with_cuda:
@@ -570,7 +570,7 @@ class StaticGraphAdapter(object):
                         _amp_custom_lists) if self._amp_custom_lists else None
                     use_fp16_guard = self._amp_configs.pop(
                         'use_fp16_guard'
-                    ) if 'use_fp16_guard' in self._amp_configs else False
+                    ) if 'use_fp16_guard' in self._amp_configs else True
                     self._amp_configs.pop(
                         'use_pure_fp16'
                     ) if 'use_pure_fp16' in self._amp_configs else None
@@ -578,8 +578,7 @@ class StaticGraphAdapter(object):
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
-                        use_pure_fp16=True
-                        if self._amp_level == "O2" else False,
+                        use_pure_fp16=self._amp_level == "O2",
                         use_fp16_guard=use_fp16_guard,
                         **self._amp_configs)
 
@@ -626,9 +625,7 @@ class StaticGraphAdapter(object):
                 self._executor.run(startup_prog)
 
         self.model._optimizer.amp_init(
-            place
-        ) if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
-        ) and self._nranks <= 1 else None
+            place) if self._amp_level == "O2" and mode == 'train' else None
 
         if self._nranks < 2:
             compiled_prog = fluid.CompiledProgram(prog)
@@ -862,14 +859,15 @@ class Model(object):
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
-    When training on GPU, Auto mixed precision (AMP) training is supported,
-    and pure float16 training is also supported in static mode while using
-    Adam, AdamW and Momentum optimizer. Before pure float16 training,
-    `multi_precision` should be set to True when creating the optimizer, and
-    inputs of dtype float32 should be cast to float16 by users. In pure float16
-    training, you could use `paddle.static.amp.fp16_guard` API to limit the
-    range of pure float16 training. However, limiting the range of AMP training
-    is not supported for users.
+    When training on GPU, auto mixed precision (AMP) training is supported, and
+    pure float16 training is also supported in static mode while using Adam,
+    AdamW and Momentum optimizer. Before using pure float16 training,
+    `multi_precision` could be set to True when creating optimizer, which can
+    avoid poor accuracy or slow convergence in a way, and inputs of dtype float
+    should be cast to float16 by users. Users should also use
+    `paddle.static.amp.fp16_guard` API to limit the range of pure float16
+    training, otherwise, 'use_fp16_guard' should be set to False by users.
+    However, limiting the range of is not supported during training using AMP.
 
     Args:
         network (paddle.nn.Layer): The network is an instance of
