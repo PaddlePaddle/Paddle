@@ -9260,6 +9260,9 @@ def affine_grid(theta, out_shape, name=None):
                                  'affine_grid')
     else:
         attrs['output_shape'] = out_shape
+    if core.is_compiled_with_rocm():
+        # ROCM platform do not have MIOPEN kernel for affine_grid
+        attrs['use_cudnn'] = False
 
     helper.append_op(
         type='affine_grid',
@@ -9937,7 +9940,7 @@ def flatten(x, axis=1, name=None):
 
     Args:
         x (Variable): A tensor of rank >= axis. A tensor with type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         axis (int): Indicate up to which input dimensions (exclusive) should
                     be flattened to the outer dimension of the output.
                     The value for axis must be in the range [0, R], where R
@@ -9959,14 +9962,17 @@ def flatten(x, axis=1, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):

@@ -404,7 +404,7 @@ EOF
         tar -czf paddle_inference.tgz paddle_inference
         buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
         echo "Paddle_Inference Size: $buildSize"
-        echo "ipipe_log_param_Paddle_Inference_Size: $buildSize"
+        echo "ipipe_log_param_Paddle_Inference_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -414,10 +414,10 @@ EOF
         fi
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
         echo "Build Size: $buildSize"
-        echo "ipipe_log_param_Build_Size: $buildSize"
+        echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
         PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         echo "PR whl Size: $PR_whlSize"
-        echo "ipipe_log_param_PR_whl_Size: $PR_whlSize"
+        echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
 }
 
@@ -442,7 +442,7 @@ function cmake_gen_and_build() {
     build $2
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 function build_mac() {
@@ -480,7 +480,7 @@ function cmake_gen_and_build_mac() {
     build_mac
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 function run_test() {
@@ -684,7 +684,7 @@ EOF
         #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
         set +x
@@ -991,12 +991,12 @@ function case_count(){
 EOF
     testcases=$1
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    if [ "$2" == "" ]; then
+    if (( $2 == -1 )); then
         echo "exclusive TestCases count is $num"
-        echo "ipipe_log_param_Exclusive_TestCases_Count: $num"
+        echo "ipipe_log_param_Exclusive_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         echo "$2 card TestCases count is $num"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Count: $num" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
 }
 
@@ -1034,6 +1034,11 @@ function card_test() {
     set -m
     case_count $1 $2
     ut_startTime_s=`date +%s` 
+
+    testcases=$1
+    cardnumber=$2
+    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
+
     # get the CUDA device count, XPU device count is one
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
@@ -1043,20 +1048,13 @@ function card_test() {
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
 
-    testcases=$1
-    parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
-    if (( $# > 1 )); then
-        cardnumber=$2
-        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
-            cardnumber=$CUDA_DEVICE_COUNT
-        fi
-        if (( $# > 2 )); then
-            parallel_job=`expr $3 \* $parallel_level_base`
-        else
-            parallel_job=$parallel_level_base
-        fi
-    else
+    if (( $cardnumber == -1 ));then
         cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if (( $# > 2 )); then
+        parallel_job=`expr $3 \* $parallel_level_base`
+    else
         parallel_job=$parallel_level_base
     fi
 
@@ -1098,12 +1096,12 @@ function card_test() {
     done
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
-    if [ "$2" == "" ]; then
+    if (( $2 == -1 )); then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     else
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
-        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        echo "ipipe_log_param_${2}_Cards_TestCases_Total_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
     set +m
 }
@@ -1153,13 +1151,18 @@ set -x
 set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
-        single_card_tests_eight_parallel='^job$'    # cases list which would run 8 job each time with single GPU
-        single_card_tests_tetrad_parallel='^job$'   # cases list which would run 4 job each time with single GPU
-        single_card_tests_non_parallel_1='^job$'    # cases list which would run 1 job each time with single GPU
-        single_card_tests_non_parallel_2='^job$'    # cases list which would run 1 job each time with single GPU
-        single_card_tests='^job$' # all cases list which would take one graph card
-        exclusive_tests=''        # cases list which would be run exclusively
-        multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+        # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
+        single_card_tests_high_parallel='^job$'     # cases list which would run the most job each time with single GPU
+        single_card_tests_two_parallel='^job$'      # cases list which would run 2 job each time with single GPU
+        single_card_tests_non_parallel='^job$'      # cases list which would run 1 job each time with single GPU
+        single_card_tests='^job$'                   # all cases list which would take single GPU
+        
+        multiple_card_tests_two_parallel='^job$'    # cases list which would run 2 job each time with multiple GPUs, most cases would be two GPUs
+        multiple_card_tests_non_parallel='^job$'    # cases list which would run 1 job each time with multiple GPUs, most cases would be two GPUs
+        
+        exclusive_tests_two_parallel='^job$'        # cases list which would run 2 job exclusively(with all GPUs)
+        exclusive_tests_non_parallel='^job$'        # cases list which would run 1 job exclusively(with all GPUs)
+        
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
@@ -1167,9 +1170,10 @@ set +x
 
         UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
         output=$(python ${PADDLE_ROOT}/tools/parallel_UT_rule.py "${UT_list}")
-        eight_parallel_job=$(echo $output | cut -d ";" -f 1)
-        tetrad_parallel_jog=$(echo $output | cut -d ";" -f 2)
-        non_parallel_job=$(echo $output | cut -d ";" -f 3)
+        cpu_parallel_job=$(echo $output | cut -d ";" -f 1)
+        tetrad_parallel_job=$(echo $output | cut -d ";" -f 2)
+        two_parallel_job=$(echo $output | cut -d ";" -f 3)
+        non_parallel_job=$(echo $output | cut -d ";" -f 4)
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1211,26 +1215,24 @@ set +x
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
-                    if [[ "$exclusive_tests" == "" ]]; then
-                        exclusive_tests="^$testcase$"
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                        exclusive_tests_two_parallel="$exclusive_tests_two_parallel|^$testcase$"
                     else
-                        exclusive_tests="$exclusive_tests|^$testcase$"
+                        exclusive_tests_non_parallel="$exclusive_tests_non_parallel|^$testcase$"
                     fi
                 elif [[ "$is_multicard" != "" ]]; then
-                    if [[ "$multiple_card_tests" == "" ]]; then
-                        multiple_card_tests="^$testcase$"
+                    if [[ $(echo $cpu_parallel_job$tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                        multiple_card_tests_two_parallel="$multiple_card_tests_two_parallel|^$testcase$"
                     else
-                        multiple_card_tests="$multiple_card_tests|^$testcase$"
+                        multiple_card_tests_non_parallel="$multiple_card_tests_non_parallel|^$testcase$"
                     fi
                 else
-                    if [[ $(echo $eight_parallel_job | grep $testcase) != "" ]]; then
-                        single_card_tests_eight_parallel="$single_card_tests_eight_parallel|^$testcase$"
-                    elif [[ $(echo $tetrad_parallel_jog | grep $testcase) != "" ]]; then
-                        single_card_tests_tetrad_parallel="$single_card_tests_tetrad_parallel|^$testcase$"
-                    elif [[ "${#single_card_tests_non_parallel_1}" -gt 10000 ]];then
-                        single_card_tests_non_parallel_2="$single_card_tests_non_parallel_2|^$testcase$"
+                    if [[ $(echo $cpu_parallel_job | grep -o $testcase) != "" ]]; then
+                        single_card_tests_high_parallel="$single_card_tests_high_parallel|^$testcase$"
+                    elif [[ $(echo $tetrad_parallel_job$two_parallel_job | grep -o $testcase) != "" ]]; then
+                        single_card_tests_two_parallel="$single_card_tests_two_parallel|^$testcase$"
                     else
-                        single_card_tests_non_parallel_1="$single_card_tests_non_parallel_1|^$testcase$"
+                        single_card_tests_non_parallel="$single_card_tests_non_parallel|^$testcase$"
                     fi
                     single_card_tests="$single_card_tests|^$testcase$"
                 fi
@@ -1241,12 +1243,13 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests_eight_parallel" 1 8     # run cases 8 job each time with single GPU
-        card_test "$single_card_tests_tetrad_parallel" 1 4    # run cases 4 job each time with single GPU
-        card_test "$single_card_tests_non_parallel_1" 1       # run cases 1 job each time with single GPU
-        card_test "$single_card_tests_non_parallel_2" 1       # run cases 1 job each time with single GPU
-        card_test "$multiple_card_tests" 2    # run cases with two GPUs
-        card_test "$exclusive_tests"          # run cases exclusively, in this cases would be run with 4/8 GPUs
+        card_test "$single_card_tests_high_parallel" 1 8        # run cases the most each time with single GPU
+        card_test "$single_card_tests_two_parallel" 1 2         # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1           # run cases 1 job each time with single GPU
+        card_test "$multiple_card_tests_two_parallel" 2 2       # run cases 2 job each time with two GPUs
+        card_test "$multiple_card_tests_non_parallel" 2         # run cases 1 job each time with two GPUs
+        card_test "$exclusive_tests_two_parallel" -1 2          # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        card_test "$exclusive_tests_non_parallel" -1            # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -1319,7 +1322,7 @@ set +x
                         fi
 
                         if [[ "$exclusive_retry" != "" ]]; then
-                            card_test "$exclusive_retry"
+                            card_test "$exclusive_retry" -1
                         fi
                         
                         exec_times=$[$exec_times+1]
@@ -1445,7 +1448,7 @@ function parallel_test() {
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
-    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
+    echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 function enable_unused_var_check() {
@@ -1725,7 +1728,7 @@ EOF
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s"
+    echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     build_size "paddle_inference"
 }
@@ -1757,7 +1760,7 @@ EOF
     EXIT_CODE=$?
     fluid_endTime_s=`date +%s`
     echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
-    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"          
+    echo "ipipe_log_param_Test_Fluid_Lib_Total_Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt     
     ./clean.sh
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
@@ -1804,7 +1807,7 @@ function example() {
 function collect_ccache_hits() {
     rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
     echo "ccache hit rate: ${rate}%"
-    echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%"
+    echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
 
@@ -2026,6 +2029,12 @@ function main() {
         exit 1
         ;;
       esac
+      set +x
+      if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
+        echo "=====================build summary======================"
+        cat ${PADDLE_ROOT}/build/build_summary.txt
+        echo "========================================================"
+      fi
       echo "paddle_build script finished as expected"
 }
 

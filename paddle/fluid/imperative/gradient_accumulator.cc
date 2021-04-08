@@ -384,8 +384,8 @@ static platform::Place GetPlaceOfVar(
 
 void GradientAccumulator::AccumulateGrad() {
   /**
-   * If the gradient has been calculated by previous graph,
-   * it should be added to the previous graph result.
+   * If the leaf gradient has been calculated done, the inner_var_
+   * should be added to the var_.
    */
   if (!var_->IsLeafGrad() || !SumGradCompleted() || !HasInnerVar()) {
     return;
@@ -396,7 +396,7 @@ void GradientAccumulator::AccumulateGrad() {
                         "this auto-grad"));
   PADDLE_ENFORCE_EQ(inner_var_->Var().IsInitialized(), true,
                     platform::errors::InvalidArgument(
-                        "Interior var of Leaf tensor  should be initialized."));
+                        "Interior var of Leaf tensor should be initialized."));
   auto* src = inner_var_->MutableVar();
   auto* dst = var_->MutableVar();
   if (!var_->IsEmpty()) {
@@ -427,8 +427,63 @@ void GradientAccumulator::AccumulateGrad() {
     *(dst) = std::move(*src);
     var_->SetType(inner_var_->Type());
     var_->SetDataType(inner_var_->DataType());
+    var_->SetIsEmpty(false);
   }
   inner_var_.reset();
+}
+
+void GradientAccumulator::CallGradientHooks() {
+  PADDLE_ENFORCE_EQ(var_->IsLeafGrad(), true,
+                    platform::errors::Unavailable(
+                        "Only leaf gradient Tensor can deal with by gradient "
+                        "hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(
+      SumGradCompleted(), true,
+      platform::errors::PreconditionNotMet(
+          "Only can call gradient hooks after sum gradient completed."));
+  PADDLE_ENFORCE_EQ(
+      HasInnerVar(), true,
+      platform::errors::PreconditionNotMet(
+          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(
+      inner_var_->Var().IsInitialized(), true,
+      platform::errors::PreconditionNotMet("Leaf Tensor's inner var "
+                                           "is not initialized when "
+                                           "call gradient hook."));
+  if (var_->HasHook()) {
+    VLOG(3) << "Call " << var_->GetHooks().size()
+            << " hooks of leaf gradient accumulator's inner var `"
+            << var_->Name() << "`.";
+    auto tmp_var = inner_var_;
+    VLOG(3) << "Input var " << var_->Name() << "'s hook size - "
+            << var_->GetHooks().size();
+    for (const auto& hook_pair : var_->GetHooks()) {
+      tmp_var = (*hook_pair.second)(tmp_var);
+    }
+    inner_var_ = tmp_var;
+  }
+}
+
+void GradientAccumulator::CallReduceHooks() {
+  PADDLE_ENFORCE_EQ(
+      var_->IsLeafGrad(), true,
+      platform::errors::Unavailable("Only leaf gradient Tensor can deal with "
+                                    "by reduce hook in gradient accumulator."));
+  PADDLE_ENFORCE_EQ(SumGradCompleted(), true,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the gradient "
+                        "summation is completed in current batch."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(), false,
+                    platform::errors::PreconditionNotMet(
+                        "Only can call reduce hooks after the "
+                        "gradient accumulation is completed in "
+                        "current batch or across batchs."));
+  if (var_->HasMutableHook()) {
+    for (const auto& hook : var_->GetMutableHooks()) {
+      VLOG(3) << "call gradient accumulator backward hooks.";
+      (*hook)(var_);
+    }
+  }
 }
 
 void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,

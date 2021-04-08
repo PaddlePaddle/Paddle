@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/table/common_dense_table.h"
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
+#include "paddle/fluid/distributed/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/table/sparse_geo_table.h"
 #include "paddle/fluid/distributed/table/table.h"
 
@@ -53,14 +54,18 @@ TEST(SparseGeoTable, SSUM) {
 
   // test push_sparse_param, and create params
   std::vector<uint64_t> init_keys = {0, 1, 2, 3, 4};
+  std::vector<uint32_t> init_fres = {1, 1, 1, 1, 1};
   std::vector<float> init_values;
   for (size_t i = 0; i < init_keys.size() * emb_dim; i++) {
     init_values.push_back(0.0);
   }
   table->push_sparse_param(init_keys.data(), init_values.data(),
                            init_keys.size());
+
   std::vector<float> pull_values(init_values.size());
-  table->pull_sparse(pull_values.data(), init_keys.data(), init_keys.size());
+  auto value = PullSparseValue(init_keys, init_fres, emb_dim);
+  table->pull_sparse(pull_values.data(), value);
+
   for (size_t i = 0; i < init_keys.size() * emb_dim; i++) {
     ASSERT_TRUE(abs(pull_values[i] - init_values[i]) < 1e-5);
   }

@@ -23,6 +23,7 @@ from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
+
 class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
@@ -151,6 +152,7 @@ class TestTransposeOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_each_elem_value_check)
 
+
 class TestTransposeApi(unittest.TestCase):
     def test_static_out(self):
         paddle.enable_static()
@@ -161,10 +163,11 @@ class TestTransposeApi(unittest.TestCase):
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             x_np = np.random.random([2, 3, 4]).astype("float32")
-            result1, result2 = exe.run(feed={"x": x_np}, fetch_list=[x_trans1, x_trans2])
+            result1, result2 = exe.run(feed={"x": x_np},
+                                       fetch_list=[x_trans1, x_trans2])
             expected_result1 = np.transpose(x_np, [1, 0, 2])
             expected_result2 = np.transpose(x_np, (2, 1, 0))
-            
+
             np.testing.assert_array_equal(result1, expected_result1)
             np.testing.assert_array_equal(result2, expected_result2)
 
@@ -184,6 +187,7 @@ class TestTransposeApi(unittest.TestCase):
         # This is an old test before 2.0 API so we enable static again after
         # dygraph test
         paddle.enable_static()
+
 
 class TestTAPI(unittest.TestCase):
     def test_out(self):
