@@ -597,7 +597,7 @@ PYBIND11_MODULE(core_noavx, m) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](Tensor &self, paddle::platform::NPUPlace &place) {
+           [](framework::Tensor &self, paddle::platform::NPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_double",
@@ -648,7 +648,7 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
-           [](Tensor &self, paddle::platform::NPUPlace &place,
+           [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
