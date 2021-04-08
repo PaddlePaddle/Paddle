@@ -37,25 +37,50 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// typedef std::vector<std::string> AscendGraphDesc;
 typedef ge::Graph AscendGraphDesc;
+
+#ifdef PADDLE_WITH_ASCEND_STRING
+using AscendString = ge::AscendString;
+#else
+using AscendString = std::string;
+#endif
 
 class AscendInstance {
  public:
   virtual ~AscendInstance() {}
   AscendInstance() {}
 
-  std::map<std::string, std::string> GetDefaultInitSessionOptions() {
-    std::map<std::string, std::string> init_options;
-    init_options["a"] = "b";
-    init_options["ge.trainFlag"] = "1";
+  std::map<AscendString, AscendString> _GetDefaultInitOptions() {
+    std::map<AscendString, AscendString> init_options;
+    init_options["ge.exec.deviceId"] = "0";
+    init_options["ge.graphRunMode"] = "1";
     return init_options;
   }
 
-  // add other parameters here to init
+  std::map<AscendString, AscendString> _GetDefaultInitSessionOptions() {
+    std::map<AscendString, AscendString> init_options;
+    // init_options["a"] = "b";
+    // init_options["ge.trainFlag"] = "1";
+    return init_options;
+  }
+
+  ge::Status InitGEForUT() {
+    return ge::GEInitialize(_GetDefaultInitOptions());
+  }
+
   void InitGlobalResouces() {
-    session_.reset(new ge::Session(GetDefaultInitSessionOptions()));
-    VLOG(1) << "InitGlobalResouces Done";
+    LOG(INFO) << "Begin ascend InitGlobalResouces";
+    session_.reset(new ge::Session(_GetDefaultInitSessionOptions()));
+    if (session_ == nullptr) {
+      PADDLE_THROW(platform::errors::Fatal("new session error: nullptr"));
+    }
+    LOG(INFO) << "End ascend InitGlobalResouces";
+  }
+
+  void DestroyGlobalResouces() {
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
+    session_ = nullptr;
+    LOG(INFO) << "Begin ascend DestroyGlobalResouces";
   }
 
   static std::shared_ptr<AscendInstance> GetInstance() {
@@ -178,6 +203,6 @@ class AscendInstance {
  private:
   static std::shared_ptr<AscendInstance> ascend_instance_;
 };
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif
