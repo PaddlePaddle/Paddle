@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/slice_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -67,7 +68,7 @@ void LaunchSlicePaddingKernel(const gpuStream_t &stream, const T *input_data,
                               const EigenIndexArray<D> &out_stride_array,
                               const int64_t out_size) {
   // Padding zero for output
-  cudaMemsetAsync(output_data, 0, out_size * sizeof(T), stream);
+  platform::GpuMemsetAsync(output_data, 0, out_size * sizeof(T), stream);
 
   int threads = 256;
   int block_num = threads * 10;
