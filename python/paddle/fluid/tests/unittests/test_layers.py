@@ -3736,7 +3736,7 @@ class MySuperLayer(paddle.nn.Layer):
         self._mylayer = MyLayer()
 
     def forward(self, input):
-        temp = self.mylayer(input)
+        temp = self._mylayer(input)
         return temp
 
 
