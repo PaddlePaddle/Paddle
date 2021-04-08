@@ -364,6 +364,7 @@ RoiAlignPluginDynamicCreator::getFieldNames() {
 nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) {
   const nvinfer1::PluginField* fields = fc->fields;
+  return nullptr;
 }
 
 nvinfer1::IPluginV2Ext* RoiAlignPluginDynamicCreator::deserializePlugin(

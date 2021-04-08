@@ -146,7 +146,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
         elif name == "sharding":
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
         elif name == "recompute-offload":
             strategy.recompute = True
             strategy.recompute_configs = {

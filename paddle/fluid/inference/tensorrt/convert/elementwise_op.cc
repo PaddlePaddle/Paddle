@@ -251,7 +251,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
         plugin::ElementwisePluginDynamic* plugin =
             new plugin::ElementwisePluginDynamic(op_type_, axis);
-        layer = engine_->AddPluginV2(itensors.data(), 2, plugin);
+        layer = engine_->AddDynamicPlugin(itensors.data(), 2, plugin);
 #else
         PADDLE_THROW(platform::errors::Fatal(
             "You are running the TRT Dynamic Shape mode, need to confirm that "

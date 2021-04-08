@@ -149,6 +149,7 @@ packages=['paddle',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
+          'paddle.distributed.fleet.meta_optimizers.ascend',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
@@ -216,6 +217,7 @@ packages=['paddle',
           'paddle.static.amp',
           'paddle.tensor',
           'paddle.onnx',
+          'paddle.autograd',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
