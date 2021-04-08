@@ -58,12 +58,15 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
             expand_times.size(), static_cast<size_t>(in_dims.size())));
     auto* out0 = context.Output<framework::LoDTensor>("Out");
     framework::DDim out_dims(in_dims);
+
     for (size_t i = 0; i < expand_times.size(); ++i) {
       out_dims[i] *= expand_times[i];
     }
+
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.device_context().GetPlace());
-    auto runner = NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
+    auto runner =
+        NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -76,6 +79,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     expand, ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
 

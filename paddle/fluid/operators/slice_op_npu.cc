@@ -124,11 +124,13 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
     slice, ops::SliceNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SliceNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::SliceNPUKernel<paddle::platform::NPUDeviceContext,
                         paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     slice_grad,
     ops::SliceGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::SliceGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::SliceGradNPUKernel<paddle::platform::NPUDeviceContext,
                             paddle::platform::float16>);

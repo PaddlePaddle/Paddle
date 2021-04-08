@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
 #include "glog/logging.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace memory {
@@ -253,7 +253,9 @@ NPUDeviceContext::~NPUDeviceContext() {
 }
 
 void NPUDeviceContext::Wait() const {
+  platform::RecordEvent record_event("NPUDeviceContext/wait");
   NPUDeviceGuard guard(place_.device);
+  VLOG(4) << "NPU context Wait";
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
 }
 
