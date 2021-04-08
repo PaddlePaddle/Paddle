@@ -20,11 +20,11 @@
 namespace paddle {
 namespace operators {
 
-#define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)        \
-  case near_greater_power_of_two:                                    \
-    ComputeLogSoftmaxForwardInWarp<                                  \
-        T, AccT, near_greater_power_of_two><<<blocks, threads, 0>>>( \
-        dst, src, outer_size, dim_size);                             \
+#define LAUNCH_WARP_FORWAR_COMPUTE(near_greater_power_of_two)                \
+  case near_greater_power_of_two:                                            \
+    ComputeLogSoftmaxForwardInWarp<                                          \
+        T, AccT, near_greater_power_of_two><<<blocks, threads, 0, stream>>>( \
+        dst, src, outer_size, dim_size);                                     \
     break;
 
 template <typename T, int KernelWarpSize>
@@ -89,8 +89,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   }
 
   // 2.compute max_value. For each thread, loop all registers to find max
-  AccT max_value;
-  max_value = elements[0];
+  AccT max_value = elements[0];
 #pragma unroll
   for (int it = 1; it < warp_iter; ++it) {
     max_value = (max_value > elements[it]) ? max_value : elements[it];
@@ -112,7 +111,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < element_count) {
       dst[global_warp_id * element_count + element_index] =
-          elements[it] - max_value - sum;
+          static_cast<T>(elements[it] - max_value - sum);
     } else {
       break;
     }
@@ -121,7 +120,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
 
 template <typename T, typename AccT>
 void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
-                                     int outer_size) {
+                                     int outer_size, cudaStream_t stream) {
   int threads_per_block = 128;
   int near_greater_power_of_two = GetNearGreaterPowerOfTwo(dim_size);
   int kernel_warp_size =
@@ -165,17 +164,16 @@ class LogSoftmaxKernel<platform::CUDADeviceContext, T>
 
     int dim_size = x->dims()[axis];
     int inner_size = 1;
-    for (int i = axis + 1; i < x->dims().size(); i++) {
+    for (int i = axis + 1; i < x->dims().size(); ++i) {
       inner_size *= x->dims()[i];
     }
     int outer_size = SizeToAxis(axis, x->dims());
+    cudaStream_t stream = context.cuda_device_context().stream();
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
-      // execute CUDA kernel
       LaunchSoftmaxForwardForLastAxis<T, MPDType>(output_data, input_data,
-                                                  dim_size, outer_size);
+                                                  dim_size, outer_size, stream);
     } else {
-      // execute Eigen kernel
       LogSoftmaxFunctor<platform::CUDADeviceContext, T>()(
           context.template device_context<platform::CUDADeviceContext>(), x,
           out, axis);
