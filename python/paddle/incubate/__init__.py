@@ -19,3 +19,7 @@ from ..fluid.layer_helper import LayerHelper
 __all__ = []
 __all__ += ["reader"]
 __all__ += optimizer.__all__
+
+from ..fluid.incubate import checkpoint
+
+__all__ += ["checkpoint"]
