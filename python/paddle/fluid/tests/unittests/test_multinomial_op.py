@@ -101,6 +101,8 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
         paddle.disable_static()
+        if fluid.core.is_compiled_with_rocm():
+            return
         x_numpy = np.random.rand(4)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
@@ -116,6 +118,8 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
         paddle.disable_static()
+        if fluid.core.is_compiled_with_rocm():
+            return
         x_numpy = np.random.rand(3, 4)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100000, replacement=True)
@@ -131,6 +135,8 @@ class TestMultinomialApi(unittest.TestCase):
     def test_dygraph3(self):
         # replacement is False. number of samples must be less than number of categories.
         paddle.disable_static()
+        if fluid.core.is_compiled_with_rocm():
+            return
         x_numpy = np.random.rand(1000)
         x = paddle.to_tensor(x_numpy)
         out = paddle.multinomial(x, num_samples=100, replacement=False)
@@ -143,6 +149,8 @@ class TestMultinomialApi(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
+        if fluid.core.is_compiled_with_rocm():
+            return
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
@@ -169,6 +177,8 @@ class TestMultinomialApi(unittest.TestCase):
 class TestMultinomialAlias(unittest.TestCase):
     def test_alias(self):
         paddle.disable_static()
+        if fluid.core.is_compiled_with_rocm():
+            return
         x = paddle.rand([4])
         paddle.multinomial(x, num_samples=10, replacement=True)
         paddle.tensor.multinomial(x, num_samples=10, replacement=True)
@@ -180,6 +190,9 @@ class TestMultinomialError(unittest.TestCase):
         paddle.disable_static()
 
     def test_num_sample(self):
+        if fluid.core.is_compiled_with_rocm():
+            return
+
         def test_num_sample_less_than_0():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=-2)
@@ -187,6 +200,9 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_num_sample_less_than_0)
 
     def test_replacement_False(self):
+        if fluid.core.is_compiled_with_rocm():
+            return
+
         def test_samples_larger_than_categories():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=5, replacement=False)
@@ -194,6 +210,9 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_samples_larger_than_categories)
 
     def test_input_probs_dim(self):
+        if fluid.core.is_compiled_with_rocm():
+            return
+
         def test_dim_larger_than_2():
             x = paddle.rand([2, 3, 3])
             paddle.multinomial(x)

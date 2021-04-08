@@ -135,6 +135,8 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
+    if core.is_compiled_with_rocm():
+        raise Exception('This api is not support in ROCM platform.')
     if in_dygraph_mode():
         return core.ops.multinomial(x, 'num_samples', num_samples,
                                     'replacement', replacement)
