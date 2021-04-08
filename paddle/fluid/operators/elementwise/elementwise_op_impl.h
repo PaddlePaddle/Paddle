@@ -60,12 +60,18 @@ inline int VectorizedSize_V2(const T *pointer) {
 
 template <typename T>
 struct SameDimsData {
-  int data_num = 0;
   T *out = nullptr;
   const T *in0 = nullptr;
   const T *in1 = nullptr;
-  SameDimsData(int data_num, T *out, const T *in0, const T *in1 = nullptr)
-      : data_num(data_num), out(out), in0(in0), in1(in1) {}
+  int data_num = 3;
+  bool is_binary = true;
+  SameDimsData(T *out, const T *in0, const T *in1 = nullptr)
+      : out(out), in0(in0), in1(in1) {
+    if (in1 == nullptr) {
+      is_binary = false;
+      data_num--;
+    }
+  }
 
   int GetVectorizedSize() {
     int vec_size = 1;

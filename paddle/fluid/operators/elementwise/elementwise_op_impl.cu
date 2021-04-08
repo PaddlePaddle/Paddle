@@ -20,18 +20,23 @@ namespace operators {
 template <int Vec_size, typename T, typename Functor>
 __global__ void VectorizedSameDimsKernel(SameDimsData<T> data, int size,
                                          Functor func) {
-  // int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  // int remain = size - Vec_size * tid;
-  // if (remain >= Vec_size) {
-  //  // vectorized kernel helper(TODO)
-  //} else {
-  //  // simple kernel helper(TODO)
-  //}
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int remain = size - Vec_size * tid;
+  if (remain >= Vec_size) {
+    // vectorized kernel helper(TODO)
+    VectorizedKernelHelper();
+  } else {
+    // simple kernel helper(TODO)
+    ScalarKernelHelpler();
+  }
 }
 
 template <typename T, typename Functor>
 __global__ void ScalarSameDimsKernel(SameDimsData<T> data, int size,
-                                     Functor func) {}
+                                     Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  ScalarKernelHelpler();
+}
 
 template <typename T, typename Functor>
 void same_dims_launch_kernel(const framework::ExecutionContext &ctx,

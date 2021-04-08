@@ -79,8 +79,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
         // for binary op, input_num is 2
         // for activation op, input_num is 1
         auto size = x->numel();
-        auto data =
-            SameDimsData<T>(3, z->data<T>(), x->data<T>(), y->data<T>());
+        auto data = SameDimsData<T>(z->data<T>(), x->data<T>(), y->data<T>());
         same_dims_launch_kernel<T, AddFunctor<T>>(ctx, data, size,
                                                   AddFunctor<T>());
       } else {
