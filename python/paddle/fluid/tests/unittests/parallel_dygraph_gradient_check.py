@@ -101,10 +101,12 @@ class TestDistTraning(unittest.TestCase):
             self.check_gradient(model_b.parameters())
 
             # test acc gradient
-            w1_grad_sum = self.check_acc(model_a._layers.w1.grad, w1_grad_sum,
-                                         model_b._layers.w1.grad)
-            w2_grad_sum = self.check_acc(model_a._layers.w2.grad, w2_grad_sum,
-                                         model_b._layers.w2.grad)
+            w1_grad_sum = self.check_acc(model_a._layers.w1.grad.numpy(),
+                                         w1_grad_sum,
+                                         model_b._layers.w1.grad.numpy())
+            w2_grad_sum = self.check_acc(model_a._layers.w2.grad.numpy(),
+                                         w2_grad_sum,
+                                         model_b._layers.w2.grad.numpy())
 
             model_a.clear_gradients()
 

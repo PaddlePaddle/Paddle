@@ -46,7 +46,7 @@ class TestTensorBackward(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad))
+                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
 
 
 class TestBackwardAPI(unittest.TestCase):
@@ -75,7 +75,8 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad * 2, x_tensor.grad))
+                    self.assertTrue(
+                        np.allclose(x_grad * 2, x_tensor.grad.numpy()))
 
     def test_backward_single_tensor(self):
         for dtype in self._dtypes:
@@ -94,7 +95,7 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad))
+                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
 
     def test_backward_none_grad_tensor(self):
         for dtype in self._dtypes:
@@ -112,7 +113,7 @@ class TestBackwardAPI(unittest.TestCase):
 
                     x_grad = np.matmul(grad, y.T)
 
-                    self.assertTrue(np.allclose(x_grad, x_tensor.grad))
+                    self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
 
 
 if __name__ == '__main__':

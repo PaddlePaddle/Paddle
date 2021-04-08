@@ -75,15 +75,15 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad is not affected
-                self.assertTrue(np.array_equal(z.grad, w.numpy()))
+                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
                 # w.grad is not changed by hook
-                self.assertTrue(np.array_equal(w.grad, z.numpy()))
+                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
                 # x.grad and y.grad are changed if run hook
                 self.assertTrue(
-                    np.array_equal(x.grad,
+                    np.array_equal(x.grad.numpy(),
                                    z.numpy() * 2 if not removed else z.numpy()))
                 self.assertTrue(
-                    np.array_equal(y.grad,
+                    np.array_equal(y.grad.numpy(),
                                    z.numpy() * 2 if not removed else z.numpy()))
 
         def run_print_hook_for_interior_var(print_hook, removed=False):
@@ -111,10 +111,10 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # all grads are not affected
-                self.assertTrue(np.array_equal(z.grad, w.numpy()))
-                self.assertTrue(np.array_equal(w.grad, z.numpy()))
-                self.assertTrue(np.array_equal(x.grad, z.numpy()))
-                self.assertTrue(np.array_equal(y.grad, z.numpy()))
+                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
+                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
+                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
+                self.assertTrue(np.array_equal(y.grad.numpy(), z.numpy()))
 
         def double_hook(grad):
             grad = grad * 2
@@ -165,12 +165,12 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad, w.grad, x.grad is not affected
-                self.assertTrue(np.array_equal(z.grad, w.numpy()))
-                self.assertTrue(np.array_equal(w.grad, z.numpy()))
-                self.assertTrue(np.array_equal(x.grad, z.numpy()))
+                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
+                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
+                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
                 # y.grad are changed if run hook
                 self.assertTrue(
-                    np.array_equal(y.grad,
+                    np.array_equal(y.grad.numpy(),
                                    z.numpy() * 2 if not removed else z.numpy()))
 
         # register hook
@@ -216,14 +216,14 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 base_grad = np.array([5., 9., 13., 19.])
                 # x.grad is not changed
-                self.assertTrue(np.array_equal(x.grad, base_grad))
+                self.assertTrue(np.array_equal(x.grad.numpy(), base_grad))
                 # b.grad is changed by x.hook
                 self.assertTrue(
-                    np.array_equal(b.grad, base_grad * 2
+                    np.array_equal(b.grad.numpy(), base_grad * 2
                                    if not removed else base_grad))
                 # a.grad is changed by x.hook and a.hook
                 self.assertTrue(
-                    np.array_equal(a.grad, base_grad * 4
+                    np.array_equal(a.grad.numpy(), base_grad * 4
                                    if not removed else base_grad))
 
         # register hook
@@ -252,7 +252,8 @@ class TestTensorRegisterHook(unittest.TestCase):
                 loss = loss_fn(out, label)
                 loss.backward()
 
-                return ret1.grad, net.linear1.weight.grad, net.linear1.bias.grad
+                return (ret1.grad.numpy(), net.linear1.weight.grad.numpy(),
+                        net.linear1.bias.grad.numpy())
 
         data = np.random.uniform(
             size=[self.batch_size, self.in_size]).astype('float32')
@@ -313,7 +314,7 @@ class TestTensorRegisterHook(unittest.TestCase):
 
             o.backward()
 
-            return z.numpy(), w.grad, x.grad, y.grad
+            return z.numpy(), w.grad.numpy(), x.grad.numpy(), y.grad.numpy()
 
         def double_hook(grad):
             return grad * 2
@@ -386,7 +387,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         # after changed by hook: 8.0
 
         z.backward()
-        self.assertTrue(np.array_equal(x.grad, np.array([8.])))
+        self.assertTrue(np.array_equal(x.grad.numpy(), np.array([8.])))
 
     def test_remove_one_hook_multiple_times(self):
         for device in self.devices:

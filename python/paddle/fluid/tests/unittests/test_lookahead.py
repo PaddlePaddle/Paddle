@@ -110,7 +110,8 @@ class TestLookAhead(unittest.TestCase):
                     out = layer(image)
                     loss = loss_fn(out, label)
                     loss.backward()
-                    fast_param = layer.bias.numpy() - SGD_LR * layer.bias.grad
+                    fast_param = (
+                        layer.bias.numpy() - SGD_LR * layer.bias.grad.numpy())
                     opt.step()
                     if idx == 1:
                         slow_param = fast_param
