@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -x
-cd "$(dirname "$0")"
-rm -rf build/
-set +x
+set -e
+
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch --gpus=0,1  new_group.py

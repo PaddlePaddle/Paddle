@@ -171,6 +171,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         program._pipeline_opt['ring_id'] = self.start_pipeline_ring_id
         program._pipeline_opt['micro_batch_size'] = self.micro_batch_size
         program._pipeline_opt['schedule_mode'] = self.schedule_mode
+        program._pipeline_opt['use_sharding'] = False
         optimize_ops, params_grads, prog_list, pp_pair, ring_map = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         self.startup_program = orig_startup_program._pipeline_opt[
@@ -218,7 +219,6 @@ class PipelineOptimizer(MetaOptimizerBase):
         grad = None
         processed_param_name = set()
         first_optimize_op_idx = None
-        add_sync_calc_stream = False
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and not first_optimize_op_idx:
                 first_optimize_op_idx = idx + 1
@@ -242,15 +242,6 @@ class PipelineOptimizer(MetaOptimizerBase):
                     origin_param = origin_block.vars[op_role_var[i]]
                     if origin_param.is_distributed:
                         continue
-                    if not add_sync_calc_stream:
-                        add_sync_calc_stream = True
-                        block._insert_op(
-                            first_optimize_op_idx + offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
-                            attrs={OP_ROLE_KEY: OpRole.Optimize})
-                        offset += 1
 
                     block._insert_op(
                         first_optimize_op_idx + offset,

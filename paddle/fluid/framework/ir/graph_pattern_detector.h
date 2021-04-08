@@ -145,6 +145,11 @@ struct PDNode {
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
+  PDNode* assert_is_only_input_of_ops(
+      const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_only_output_of_ops(
+      const std::unordered_set<std::string>& op_types);
+
   PDNode* assert_has_n_inputs(size_t n);
   PDNode* assert_has_n_outputs(size_t n);
 

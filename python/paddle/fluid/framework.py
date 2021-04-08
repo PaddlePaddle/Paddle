@@ -53,7 +53,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_xpu',
     'Variable',
-    'load_op_library',
     'require_version',
     'device_guard',
     'set_flags',
@@ -5769,33 +5768,6 @@ def _dygraph_place_guard(place):
     finally:
         _global_expected_place_ = tmp_place
         _set_dygraph_tracer_expected_place(tmp_place)
-
-
-def load_op_library(lib_filename):
-    """
-    :api_attr: Static Graph
-
-    Load a dynamic library, including custom operators and kernels.
-    When library is loaded, ops and kernels registered in the library
-    will be available in PaddlePaddle main process.
-    Please note, the type of custom operators can't have the same type
-    with the existing operators in the framework.
-
-    Args:
-        lib_filename (str): name of dynamic library.
-    
-    Returns:
-        list[str]: new registered custom op names.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            #fluid.load_op_library('custom_op.so')
-
-    """
-    core.load_op_library(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
 
 
 def switch_device(device):

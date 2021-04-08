@@ -303,8 +303,8 @@ class MultiprocessContext(object):
                 raise Exception("Process %d terminated with signal %s." %
                                 (error_index, name))
             else:
-                raise Exception("Process %d terminated with exit code %d." & (
-                    error_index, exitcode))
+                raise Exception("Process %d terminated with exit code %d." %
+                                (error_index, exitcode))
 
         original_trace = self.error_queues[error_index].get()
         msg = "\n\n----------------------------------------------\n" \
