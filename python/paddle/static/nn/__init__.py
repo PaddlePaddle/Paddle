@@ -85,18 +85,18 @@ from ...fluid.layers import while_loop  #DEFINE_ALIAS
 from ...fluid.input import embedding  #DEFINE_ALIAS
 from ...fluid.contrib.layers import sparse_embedding  #DEFINE_ALIAS
 
-from ...fluid.layers.sequence_lod import sequence_conv  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_softmax  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_pool  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_concat  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_first_step  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_last_step  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_slice  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_expand  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_expand_as  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_pad  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_unpad  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_reshape  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_scatter  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_enumerate  #DEFINE_ALIAS
-from ...fluid.layers.sequence_lod import sequence_reverse  #DEFINE_ALIAS
+from ...fluid.layers.sequence_lod import sequence_conv
+from ...fluid.layers.sequence_lod import sequence_softmax
+from ...fluid.layers.sequence_lod import sequence_pool
+from ...fluid.layers.sequence_lod import sequence_concat
+from ...fluid.layers.sequence_lod import sequence_first_step
+from ...fluid.layers.sequence_lod import sequence_last_step
+from ...fluid.layers.sequence_lod import sequence_slice
+from ...fluid.layers.sequence_lod import sequence_expand
+from ...fluid.layers.sequence_lod import sequence_expand_as
+from ...fluid.layers.sequence_lod import sequence_pad
+from ...fluid.layers.sequence_lod import sequence_unpad
+from ...fluid.layers.sequence_lod import sequence_reshape
+from ...fluid.layers.sequence_lod import sequence_scatter
+from ...fluid.layers.sequence_lod import sequence_enumerate
+from ...fluid.layers.sequence_lod import sequence_reverse

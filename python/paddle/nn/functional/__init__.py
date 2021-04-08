@@ -97,7 +97,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import temporal_shift  #DEFINE_ALIAS
 # from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
-from .extension import sequence_mask  #DEFINE_ALIASs
+from .extension import sequence_mask
 # from .lod import sequence_concat        #DEFINE_ALIAS
 # from .lod import sequence_conv        #DEFINE_ALIAS
 # from .lod import sequence_enumerate        #DEFINE_ALIAS
