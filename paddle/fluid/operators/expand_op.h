@@ -28,7 +28,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 6
-
+// 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
+//    Usage: BOOST_PP_REPEAT(count, macro, data).
+//    This macro expands to the sequence:
+//    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
+// 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
+//    So the range of n is 0-5(which is count-1).
+//    We want to generate case 1-6 instead of case 0-5.
+//    So we need to change n to n + 1.
 #define EXPAND_TEMPLATE(z, n, data) \
   case n + 1: {                     \
     Expand<n + 1>(context);         \
@@ -36,10 +43,10 @@ limitations under the License. */
   }
 #define REP_EXPAND_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_GRAD_CASE(n)                                        \
-  case n: {                                                        \
-    ExpandBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                         \
+#define EXPAND_GRAD_CASE(n)                                            \
+  case n + 1: {                                                        \
+    ExpandBackward<n + 1>(context, reshape_dims_vec, reduce_dims_vec); \
+    break;                                                             \
   }
 #define EXPAND_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), EXPAND_GRAD_CASE(n), )
@@ -219,7 +226,14 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
-      switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
+      switch (dims) {
+        REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
+        default:
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6. But "
+              "received tensor's rank = %d.",
+              dims));
+      }
     }
   }
 

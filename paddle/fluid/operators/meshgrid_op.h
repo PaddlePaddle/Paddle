@@ -29,7 +29,14 @@
 #include "paddle/fluid/platform/errors.h"
 
 #define MAX_RANK_SUPPORTED 6
-
+// 1. BOOST_PP_REPEAT macro represents a fast horizontal repetition construct.
+//    Usage: BOOST_PP_REPEAT(count, macro, data).
+//    This macro expands to the sequence:
+//    macro(z, 0, data) macro(z, 1, data) ... macro(z, count - 1, data).
+// 2. As for our case, count = MAX_RANK_SUPPORTED(which is 6).
+//    So the range of n is 0-5(which is count-1).
+//    We want to generate case 1-6 instead of case 0-5.
+//    So we need to change n to n + 1.
 #define MESHGRID_TEMPLATE(z, n, data) \
   case n + 1: {                       \
     MeshgridForward<n + 1>(context);  \
@@ -38,10 +45,10 @@
 #define REP_MESHGRID_TEMPLATE(n) BOOST_PP_REPEAT(n, MESHGRID_TEMPLATE, ~)
 #define COND(n) BOOST_PP_GREATER_EQUAL(n, BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
 
-#define MESHGRID_GRAD_CASE(n)     \
-  case n: {                       \
-    MeshgridBackward<n>(context); \
-    break;                        \
+#define MESHGRID_GRAD_CASE(n)         \
+  case n + 1: {                       \
+    MeshgridBackward<n + 1>(context); \
+    break;                            \
   }
 #define MESHGRID_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), MESHGRID_GRAD_CASE(n), )
