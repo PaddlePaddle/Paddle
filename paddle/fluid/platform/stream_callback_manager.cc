@@ -70,7 +70,8 @@ void StreamCallbackManager<Stream>::AddCallback(
 #endif
 }
 
-void StreamCallbackManager::Wait() const {
+template <typename Stream>
+void StreamCallbackManager<Stream>::Wait() const {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(stream_));
 #else
@@ -88,7 +89,10 @@ void StreamCallbackManager::Wait() const {
 }
 
 #ifdef PADDLE_WITH_CUDA
-template struct StreamCallbackManager<cudaStream_t>;
+template struct StreamCallbackManager<gpuStream_t>;
+#endif
+#ifdef PADDLE_WITH_HIP
+template struct StreamCallbackManager<hipStream_t>;
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 template struct StreamCallbackManager<aclrtStream>;
