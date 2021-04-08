@@ -24,7 +24,7 @@ function make_ubuntu_dockerfile(){
   sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y gettext \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
-    ./configure --with-openssl --prefix=/usr/local \&\& \
+    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
