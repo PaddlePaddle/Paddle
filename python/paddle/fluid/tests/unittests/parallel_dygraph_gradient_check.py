@@ -101,18 +101,17 @@ class TestDistTraning(unittest.TestCase):
             self.check_gradient(model_b.parameters())
 
             # test acc gradient
-            w1_grad_sum = self.check_acc(model_a._layers.w1.grad.numpy(),
-                                         w1_grad_sum,
-                                         model_b._layers.w1.grad.numpy())
-            w2_grad_sum = self.check_acc(model_a._layers.w2.grad.numpy(),
-                                         w2_grad_sum,
-                                         model_b._layers.w2.grad.numpy())
+            w1_grad_sum = self.check_acc(model_a._layers.w1.grad, w1_grad_sum,
+                                         model_b._layers.w1.grad)
+            w2_grad_sum = self.check_acc(model_a._layers.w2.grad, w2_grad_sum,
+                                         model_b._layers.w2.grad)
 
             model_a.clear_gradients()
 
     def check_acc(self, grad, grad_sum, acc_grad):
         if grad is not None:
-            grad_sum = grad_sum + grad
+            grad_sum = grad_sum + grad.numpy()
+            acc_grad = acc_grad.numpy() if acc_grad is not None else None
             np.testing.assert_allclose(grad_sum, acc_grad, rtol=1e-6)
         return grad_sum
 
