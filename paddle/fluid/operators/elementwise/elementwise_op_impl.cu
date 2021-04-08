@@ -18,16 +18,46 @@ namespace paddle {
 namespace operators {
 
 template <int Vec_size, typename T, typename Functor>
+__device__ void VectorizedKernelHelper(SameDimsData<T> data, int size,
+                                       Functor func, int tid) {
+  using VecType = AlignedVector<T, Vec_size>;
+  const VecType *x = reinterpret_cast<const VecType *>(data.in0);
+  const VecType *y = reinterpret_cast<const VecType *>(data.in1);
+  VecType *z = reinterpret_cast<VecType *>(data.out);
+  VecType x_vec, y_vec, z_vec;
+  x_vec = x_vec[tid];
+  y_vec = y_vec[tid];
+  T *x_slr = reinterpret_cast<T *>(&x_vec);
+  T *y_slr = reinterpret_cast<T *>(&y_vec);
+  T *z_slr = reinterpret_cast<T *>(&z_vec);
+
+#pragma unroll
+  for (int i = 0; i < Vec_size; ++i) {
+    z_slr[i] = x_slr[i] + y_slr[i];
+  }
+
+  z[tid] = z_vec;
+}
+
+template <int Vec_size, typename T, typename Functor>
 __global__ void VectorizedSameDimsKernel(SameDimsData<T> data, int size,
                                          Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = size - Vec_size * tid;
   if (remain >= Vec_size) {
-    // vectorized kernel helper(TODO)
-    VectorizedKernelHelper();
+    VectorizedKernelHelper<Vec_size>(data, size, func, tid);
   } else {
-    // simple kernel helper(TODO)
-    ScalarKernelHelpler();
+    ScalarKernelHelper(data, size, func, tid * Vec_size, remain);
+  }
+}
+
+template <typename T, typename Functor>
+__device__ void ScalarKernelHelper(SameDimsData<T> data, int size, Functor func,
+                                   int start, int remain) {
+  for (int i = 0; i < remain; ++i) {
+    T x = (data.in0)[start + i];
+    T y = (data.in1)[start + i];
+    (data.out)[start + i] = x + y;
   }
 }
 
@@ -35,7 +65,7 @@ template <typename T, typename Functor>
 __global__ void ScalarSameDimsKernel(SameDimsData<T> data, int size,
                                      Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  ScalarKernelHelpler();
+  ScalarKernelHelper(data, size, func, tid, 0);
 }
 
 template <typename T, typename Functor>
