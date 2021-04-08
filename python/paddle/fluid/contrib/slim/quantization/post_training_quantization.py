@@ -120,27 +120,6 @@ def _apply_pass(scope,
     return graph
 
 
-def _clone_var_to_block_(input_var, dest_block):
-    assert isinstance(input_var, framework.Variable), \
-    "Input var should be variable"
-
-    if input_var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
-        return dest_block.create_var(
-            name=input_var.name,
-            shape=input_var.shape,
-            dtype=input_var.dtype,
-            type=input_var.type,
-            lod_level=input_var.lod_level,
-            persistable=True)
-    else:
-        return dest_block.create_var(
-            name=input_var.name,
-            shape=input_var.shape,
-            dtype=input_var.dtype,
-            type=input_var.type,
-            persistable=True)
-
-
 class PostTrainingQuantization(object):
     """
     Utilizing post training quantization methon to quantize the FP32 model,
@@ -1032,8 +1011,8 @@ class WeightQuantization(object):
     def convert_weight_to_fp16(self, save_model_dir):
         """
         Convert all presistable vars from fp32 to fp16.
-        Note that, this api only changes the data type of variables, and it doesn't
-        modify the dtype in var_desc.
+        Note that, this api only changes the data type of variables in
+        __params__ file, and the __model__ file remains unchanged. 
 
         Args:
             save_model_dir(str): The path to save the fp16 model.
@@ -1060,7 +1039,8 @@ class WeightQuantization(object):
                 or (var.dtype != core.VarDesc.VarType.FP32):
                 continue
 
-            new_var = _clone_var_to_block_(var, save_block)
+            #new_var = _clone_var_to_block_(var, save_block)
+            new_var = save_block._clone_variable(var)
             if self._params_filename is not None:
                 save_var_map[new_var.name] = new_var
             else:
