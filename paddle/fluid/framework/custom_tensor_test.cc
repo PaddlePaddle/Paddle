@@ -220,6 +220,21 @@ void GroupTestDtypeConvert() {
         paddle::DataType::FLOAT16);
 }
 
+void TestInitilized() {
+  paddle::Tensor test_tensor(paddle::PlaceType::kCPU);
+  CHECK(test_tensor.IsInitialized() == false);
+  test_tensor.reshape({1, 1});
+  test_tensor.mutable_data<float>();
+  CHECK(test_tensor.IsInitialized() == true);
+  float* tensor_data = test_tensor.data<float>();
+  for (int i = 0; i < test_tensor.size(); i++) {
+    tensor_data[i] = 0.5;
+  }
+  for (int i = 0; i < test_tensor.size(); i++) {
+    CHECK(tensor_data[i] == 0.5);
+  }
+}
+
 TEST(CustomTensor, copyTest) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -233,4 +248,6 @@ TEST(CustomTensor, copyTest) {
   GroupTestCast();
   VLOG(2) << "TestDtypeConvert";
   GroupTestDtypeConvert();
+  VLOG(2) << "TestInitilized";
+  TestInitilized();
 }

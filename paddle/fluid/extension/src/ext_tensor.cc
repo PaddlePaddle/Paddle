@@ -393,6 +393,15 @@ int64_t Tensor::size() const {
   return tensor->numel();
 }
 
+bool Tensor::IsInitialized() const {
+  GET_CASTED_TENSOR;
+  if (tensor->IsInitialized()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 #ifdef PADDLE_WITH_CUDA
 cudaStream_t Tensor::stream() const {
   if (!stream_.IsStreamSet()) {
