@@ -17,6 +17,7 @@ import json
 import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
 
+
 def _get_ascend_rankfile(rank_table_file_path):
     """
     Args:
@@ -62,6 +63,7 @@ def _get_ascend_rankfile(rank_table_file_path):
     Returns:
         node_ips: node ip list
         device_count: number of npu per machine
+        
     """
     json_data = None
     with open(rank_table_file_path) as json_file:
@@ -74,13 +76,14 @@ def _get_ascend_rankfile(rank_table_file_path):
         node_ips.append(server['server_id'])
         device_list = server['device']
         device_count = len(device_list)
-            
+
     return node_ips, device_count
 
-def get_cloud_cluster(rank_table_file=None, 
-                    device_mode=DeviceMode.ASCEND_NPU, 
-                    devices_per_proc=None,
-                    start_port=6070):
+
+def get_cloud_cluster(rank_table_file=None,
+                      device_mode=DeviceMode.ASCEND_NPU,
+                      devices_per_proc=None,
+                      start_port=6070):
     """
     Args:
     rank_table_file: string, ascend npu rank file path
@@ -88,7 +91,7 @@ def get_cloud_cluster(rank_table_file=None,
     devices_per_proc:list
     start_port: the start port of current runtime env
     """
-    if rank_table_file: 
+    if rank_table_file:
         # multi trainers
         node_ips, device_count = _get_ascend_rankfile(rank_table_file)
         node_index = os.environ.get("PADDLE_TRAINER_ID")
@@ -118,5 +121,5 @@ def get_cloud_cluster(rank_table_file=None,
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
-    return get_cluster(node_ips, node_ip, trainer_endpoints,
-                               device_mode, devices_per_proc)
+    return get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                       devices_per_proc)
