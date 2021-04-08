@@ -14,6 +14,7 @@ class GraphIndex(Index):
         self.name = name
         self.width = width
         self.height = height
+        self.item_path_nums = item_path_nums
         self._builder = GraphIndexBuilder(name, width, height, item_path_nums)
         self._wrapper = IndexWrapper()
         self.kd_represent_list = []
@@ -91,7 +92,7 @@ class GraphIndex(Index):
 
 #   int update_Jpath_of_item(
 #     std::map<uint64_t, std::vector<std::string>>& item_paths, const int T, const int J, const double lambda, const int factor);
-    def update_Jpath_of_item(self, item_paths, T, J, lamd, factor):
+    def update_Jpath_of_item(self, item_paths, T=3, J=self.item_path_nums, lamd=1e-7, factor=2):
 
         if isinstance(item_paths, dict):
             assert len(item_paths) > 0
