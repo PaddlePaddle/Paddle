@@ -188,6 +188,7 @@ option(WITH_SW   "Compile PaddlePaddle with sw support"         OFF)
 option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
+option(WITH_STRIP       "Strip elf file after compilation"         ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -353,6 +354,13 @@ if(ON_INFER)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.
     message(WARNING "On inference mode, will take place some specific optimization. Turn on the ON_INFER flag when building inference_lib only.")
+endif()
+
+if(WITH_STRIP)
+    find_program(STRIP_PATH strip)
+    if(NOT STRIP_PATH)
+        set(WITH_STRIP OFF CACHE STRING "No strip command." FORCE)
+    endif()
 endif()
 
 add_subdirectory(paddle)

@@ -119,3 +119,8 @@ if(NOT APPLE AND NOT WIN32)
     DEPENDS paddle_inference_shared)
   add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
 endif()
+
+if(LINUX AND WITH_STRIP)
+  add_custom_command(TARGET paddle_inference_shared POST_BUILD
+    COMMAND ${STRIP_PATH} $<TARGET_FILE:paddle_inference_shared>)
+endif()
