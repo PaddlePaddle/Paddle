@@ -193,6 +193,8 @@ class SGDOpKernel<platform::CPUDeviceContext, platform::bfloat16>
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
+    VLOG(4) << "SGDOpKernel<CPUDeviceContext, bfloat16>::Compute()";
+
     if (param_var->IsType<framework::LoDTensor>()) {
       const auto *param = ctx.Input<framework::Tensor>("Param");
       auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
