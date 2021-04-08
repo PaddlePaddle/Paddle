@@ -752,6 +752,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
         platform::CPUPlace(), py_arr.mutable_data(), p, tensor_buf_ptr,
         copy_bytes,
         reinterpret_cast<const platform::NPUDeviceContext &>(ctx).stream());
+    ctx->Wait();
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

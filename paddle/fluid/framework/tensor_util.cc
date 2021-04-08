@@ -912,6 +912,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+      if (platform::is_npu_place(dev_ctx.GetPlace())) {
+        dev_ctx.Wait();
+      }
 #else
       if (platform::is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -962,8 +965,10 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     auto ctx = platform::CPUDeviceContext();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
-        platform::is_xpu_place(dev_ctx.GetPlace())) {
-#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+        platform::is_xpu_place(dev_ctx.GetPlace()) ||
+        platform::is_npu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU || \
+    defined PADDLE_WITH_ASCEND_CL
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(dims));
       framework::VisitDataType(
@@ -972,13 +977,19 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+      if (platform::is_npu_place(dev_ctx.GetPlace())) {
+        dev_ctx.Wait();
+      }
 #else
       if (platform::is_gpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "CUDAPlace is not supported when not compiled with CUDA"));
-      } else {
+      } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "NPUPlace is not supported when not compiled with NPU"));
       }
 #endif
     } else {
