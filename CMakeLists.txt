@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+# print compile time
+set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
+
+# print link time
+set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
+
+set(CMAKE_VERBOSE_MAKEFILEON ON)
+
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -363,11 +371,3 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
-
-# print compile time
-set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
-
-# print link time
-set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
-
-set(CMAKE_VERBOSE_MAKEFILEON ON)
