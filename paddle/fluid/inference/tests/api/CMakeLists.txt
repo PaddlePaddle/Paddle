@@ -530,7 +530,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
             
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR}/small_quant_model.tgz)
+    if (NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "small_quant_model.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
@@ -538,7 +538,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
     set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR}/yolov3_r50_quant_aware.tgz)
+    if (NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
@@ -576,8 +576,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
-    set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
@@ -585,8 +584,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
-    set(TEST_TRT_ERNIE_UNSER_FP16_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_fp16_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_FP16_MODEL}/ernie_model_4_unserialized.tgz)
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_fp16_unserialized.tgz")
     endif()
 

@@ -193,9 +193,9 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> output_length_;
 };
 
-class SplitPluginV2Creator : public nvinfer1::IPluginCreator {
+class SplitPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  SplitPluginV2Creator() {}
+  SplitPluginDynamicCreator() {}
   const char* getPluginName() const override { return "split_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -231,7 +231,7 @@ class SplitPluginV2Creator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-REGISTER_TRT_PLUGIN_V2(SplitPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(SplitPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA

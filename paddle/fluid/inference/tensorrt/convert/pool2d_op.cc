@@ -147,7 +147,7 @@ class Pool2dOpConverter : public OpConverter {
         plugin::PoolPluginDynamic *plugin =
             new plugin::PoolPluginDynamic(ceil_mode, pool_type, adaptive, ksize,
                                           strides, paddings, global_pooling);
-        layer = engine_->AddPluginV2(&input1, 1, plugin);
+        layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
 #endif
       }
       auto output_name = op_desc.Output("Out")[0];

@@ -230,6 +230,7 @@ def __bootstrap__():
             'gpu_allocator_retry_time',
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
+            'conv2d_disable_cudnn',
         ]
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
