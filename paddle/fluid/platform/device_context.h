@@ -532,7 +532,6 @@ class MKLDNNDeviceContextThreadLocals {
     bool key_attach_thread_id = true;
 
     Body();
-    ~Body();
     void set_cur_mkldnn_session_id(size_t sid);
     size_t get_cur_mkldnn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);
