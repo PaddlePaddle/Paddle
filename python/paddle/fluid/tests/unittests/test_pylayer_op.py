@@ -81,28 +81,26 @@ class TestPyLayer(unittest.TestCase):
     def test_pylayer_dtype(self):
         class tanh(PyLayer):
             @staticmethod
-            def forward(ctx, x):
-                ctx.save_for_backward(x)
-                y = paddle.dot(x, x)
+            def forward(ctx, x, dtype):
+                y = paddle.cast(x, dtype)
                 return y
 
             @staticmethod
             def backward(ctx, dy1):
-                x, = ctx.saved_tensor()
-                return x * 2
+                return dy1
 
-        dtypes = ['float32', 'float64']
+        dtypes = [
+            'bool', 'float16', 'float32', 'float64', 'uint8', 'int32', 'int64'
+        ]
         for dtype in dtypes:
-            input1 = (paddle.randn([1]) * 10).astype(dtype)
-            input2 = input1.detach().clone()
+            input1 = (paddle.randn([2, 3]))
             input1.stop_gradient = False
-            input2.stop_gradient = False
-            z = tanh.apply(input1)
-            z.sum().backward()
-            z2 = paddle.dot(input2, input2)
-            z2.sum().backward()
+            self.assertTrue(input1.grad is None)
 
-            self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+            z = tanh.apply(input1, dtype)
+            z = paddle.cast(z, "float32")
+            z.sum().backward()
+            self.assertTrue(input1.grad is not None)
 
     def test_pylayer_Exception_forward(self):
         class Layer_None1(PyLayer):

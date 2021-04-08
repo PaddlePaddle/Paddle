@@ -33,8 +33,8 @@ void RunPyObject(py::object *py_object,
     auto in_var = ins[i];
 
     if (in_var != nullptr) {
-      auto name = paddle::string::Sprintf(
-          "generator_custom_py_layer_%d@@grad \n", static_cast<int>(i));
+      auto name = paddle::string::Sprintf("generator_custom_py_layer_%d@GRAD",
+                                          static_cast<int>(i));
 
       std::shared_ptr<imperative::VariableWrapper> temp_wrap =
           std::make_shared<imperative::VariableWrapper>(name, *in_var);
@@ -158,13 +158,39 @@ REGISTER_OPERATOR(py_layer, ops::PyLayerOp, ops::PyLayerOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
+                         ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
+                         ::paddle::platform::bfloat16>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
+
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
+                         ::paddle::platform::complex64>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
+                         ::paddle::platform::complex128>);
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
+                         ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
+                         ::paddle::platform::bfloat16>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
+
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, uint8_t>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int16_t>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int8_t>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
+                         ::paddle::platform::complex64>,
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
+                         ::paddle::platform::complex128>);
 #endif  // PADDLE_WITH_CUDA

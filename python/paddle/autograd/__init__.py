@@ -14,7 +14,8 @@
 
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 
-from . import backward_mode, py_layer
+from . import backward_mode
+from . import py_layer
 from .backward_mode import backward
 from .py_layer import PyLayer
 

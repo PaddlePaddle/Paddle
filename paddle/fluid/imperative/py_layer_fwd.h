@@ -86,9 +86,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       } catch (py::cast_error& err) {
         // Only collect Tensor type in 'args' and pass them to backward. Ignore
         // other types of input temporarily.
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }
@@ -103,9 +100,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       } catch (py::cast_error&) {
         // Only collect Tensor type in 'kwargs' and pass them to backward.
         // Ignore other types of input temporarily.
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }
@@ -124,10 +118,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
         } catch (py::cast_error&) {
           PADDLE_THROW(platform::errors::Unimplemented(
               "The output of `PyLayer.forward` should be `Tensor`."));
-        } catch (...) {
-          // TODO(weixin): to support returning None.
-          PADDLE_THROW(platform::errors::Fatal(
-              "PyLayer raises an unknown exception in apply."));
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -143,9 +133,6 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
       } catch (py::cast_error&) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "The output of `PyLayer.forward` should be `Tensor`."));
-      } catch (...) {
-        PADDLE_THROW(platform::errors::Fatal(
-            "PyLayer raises an unknown exception in apply."));
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(

@@ -15,7 +15,7 @@
 import paddle
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid import core
-__all__ = ['PyLayer']
+__all__ = ['PyLayer', 'PyLayerContext']
 
 
 class PyLayerContext(object):
@@ -45,6 +45,7 @@ class PyLayerContext(object):
         Returns:
             list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
                 then return these tensors, otherwise return None.
+                
         """
 
         return self.container
@@ -84,18 +85,22 @@ class LayerMeta(type):
 class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
     """
     Build a custom `Layer` by creating subclasses. Subclasses need to follow the following rules:
-        **1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
+        1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
             Their first argument should be a context and `None` can be included in the returned result.
-        **2. Input of backward contains a context as the first argument, and the rest arguments are the 
+        2. Input of backward contains a context as the first argument, and the rest arguments are the 
             gradient of forward's output tensors. so the number of backward's input tensors equal to 
             the number of forward output tensors. If you need the forward's inputs or outputs in `backward`, 
             you can use `save_for_backward` to store the required tensors, and then use them in the backward.
-        **3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
+        3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
             Output tensors of backward are the gradient of forward's input tensors, 
             so the number of backward's output tensors equal to the number of forward input tensors.
     
+
     Examples:
             .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
 
                 # Inherit from PyLayer
                 class cus_tanh(PyLayer):
