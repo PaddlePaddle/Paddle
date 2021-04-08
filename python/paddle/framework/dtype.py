@@ -13,11 +13,15 @@
 # limitations under the License.
 
 __all__ = [
-    "uint8", "int8", "int16", "int32", "int64", "bfloat16", "float16",
+    "dtype", "uint8", "int8", "int16", "int32", "int64", "bfloat16", "float16",
     "float32", "float64", "complex64", "complex128", "bool"
 ]
 
 from ..fluid.core import VarDesc
+
+dtype = VarDesc.VarType
+dtype.__qualname__ = "dtype"
+dtype.__module__ = "paddle"
 
 uint8 = VarDesc.VarType.UINT8
 int8 = VarDesc.VarType.INT8
