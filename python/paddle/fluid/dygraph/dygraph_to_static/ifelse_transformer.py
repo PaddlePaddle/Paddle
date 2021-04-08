@@ -243,8 +243,9 @@ class NameVisitor(gast.NodeVisitor):
             assert self.ancestor_nodes[-1] == node
             parent_node = self.ancestor_nodes[-2]
             if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                # e.g: var_list.append(ele), var_list is also a name_id.
-                should_skip = isinstance(node, gast.Attribute) and node.attr in white_func_names
+                # e.g: var_list.append(elem), var_list is also a name_id.
+                should_skip = isinstance(
+                    node, gast.Attribute) and node.attr in white_func_names
                 if not should_skip:
                     return True
         return False
