@@ -1014,7 +1014,8 @@ class ForNodeVisitor(object):
         #   - for x in var
         self.iter_var_len_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
         # - created zip to list var : __for_loop_iter_zip_0
-        self.iter_zip_to_list_name = unique_name.generate(FOR_ITER_ZIP_TO_LIST_PREFIX)
+        self.iter_zip_to_list_name = unique_name.generate(
+            FOR_ITER_ZIP_TO_LIST_PREFIX)
 
         # - var.numpy()/var
         #   - for x in var|var.numpy()
@@ -1179,15 +1180,21 @@ class ForNodeVisitor(object):
             - for i, val in enumerate(__for_loop_iter_zip_0)
         """
         new_nodes = []
-        if isinstance(self.iter_node, gast.Call) and isinstance(self.iter_node.func, gast.Name):
+        if isinstance(self.iter_node, gast.Call) and isinstance(
+                self.iter_node.func, gast.Name):
             if self.iter_node.func.id == 'zip':
                 iter_var_name = ast_to_source_code(self.iter_node).strip()
-                zip_to_list_str = "{target} = list({value})".format(target=self.iter_zip_to_list_name, value=iter_var_name)
+                zip_to_list_str = "{target} = list({value})".format(
+                    target=self.iter_zip_to_list_name, value=iter_var_name)
                 zip_to_list_node = gast.parse(zip_to_list_str).body[0]
                 new_nodes.append(zip_to_list_node)
-                
-                self.iter_node = gast.Name(id=self.iter_zip_to_list_name, ctx=gast.Load(), annotation=None, type_comment=None)
-                
+
+                self.iter_node = gast.Name(
+                    id=self.iter_zip_to_list_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None)
+
         return new_nodes
 
     def _build_enum_init_node(self):
@@ -1426,6 +1433,7 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
         for spec in src_input_specs:
             if spec not in desired_input_specs:
                 return False
+
     else:
         for i in range(len_specs):
             src_shape = src_input_specs[i].shape

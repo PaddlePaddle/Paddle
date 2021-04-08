@@ -435,7 +435,8 @@ class NameVisitor(gast.NodeVisitor):
                     elt_nodes.extend([comp_node.key, comp_node.value])
 
                 for node in elt_nodes:
-                    vars_of_list_generator |= filter_name_nodes_from(node, target_var_names)
+                    vars_of_list_generator |= filter_name_nodes_from(
+                        node, target_var_names)
 
             # 2. Get target vars or vars from target vars used in for-loop but the for-loop is
             #   1) not the "loop_node" itself

@@ -243,7 +243,6 @@ class TestDictPop(TestNetWithDict):
 
 class TestDictCmpInFor(unittest.TestCase):
     def test_with_for(self):
-        
         def func():
             pos = [1, 3]
             neg = [-1, -3]
@@ -251,15 +250,15 @@ class TestDictCmpInFor(unittest.TestCase):
             # test `zip` with `for`
             for (x, y) in zip(pos, neg):
                 val = x - y
-                dict_val.update({
-                    k: val + dict_val[k] for k, v in dict_val.items()})
-            
+                dict_val.update(
+                    {k: val + dict_val[k]
+                     for k, v in dict_val.items()})
+
             return dict_val
-        
+
         self.assertEqual(paddle.jit.to_static(func)()['minus'], 8)
 
     def test_with_for_enumerate(self):
-        
         def func():
             pos = [1, 3]
             neg = [-1, -3]
@@ -267,11 +266,12 @@ class TestDictCmpInFor(unittest.TestCase):
             # test `zip` with `for`
             for i, (x, y) in enumerate(zip(pos, neg)):
                 val = x - y
-                dict_val.update({
-                    k: val + dict_val[k] for k, v in dict_val.items()})
-            
+                dict_val.update(
+                    {k: val + dict_val[k]
+                     for k, v in dict_val.items()})
+
             return dict_val
-        
+
         self.assertEqual(paddle.jit.to_static(func)()['minus'], 8)
 
 
