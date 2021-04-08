@@ -363,3 +363,11 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+# print compile time
+set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
+
+# print link time
+set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_COMMAND} -E time ${CCACHE_PATH}")
+
+set(CMAKE_VERBOSE_MAKEFILEON ON)
