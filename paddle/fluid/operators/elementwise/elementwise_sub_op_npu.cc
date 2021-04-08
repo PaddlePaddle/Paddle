@@ -76,7 +76,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    Tensor* tmp_dout = const_cast<Tensor*>(dout);
+    auto tmp_dout = dout;
     Tensor reduced_dout(dx->type());
     if (axes.size() != 0) {
       std::vector<int64_t> reduced_dout_dims;
@@ -113,7 +113,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
     for (auto i = 0; i < reduce_ndim; ++i) {
       axes.push_back(i);
     }
-    tmp_dout = const_cast<Tensor*>(dout);
+    tmp_dout = dout;
     Tensor reduced_dy(dy->type());
 
     if (axes.size() != 0) {
@@ -131,7 +131,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
 
     // stage 2
     axes.clear();
-    Tensor* tmp_dy = tmp_dout;
+    auto* tmp_dy = tmp_dout;
     for (auto i = 0; i < dy->dims().size(); ++i) {
       if (dy->dims()[i] == 1) {
         axes.push_back(i);

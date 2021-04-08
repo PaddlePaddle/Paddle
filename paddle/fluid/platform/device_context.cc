@@ -262,9 +262,7 @@ aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
 
 Place NPUDeviceContext::GetPlace() const { return place_; }
 
-aclrtContext* NPUDeviceContext::context() const {
-  return const_cast<aclrtContext*>(&context_);
-}
+aclrtContext NPUDeviceContext::context() const { return context_; }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

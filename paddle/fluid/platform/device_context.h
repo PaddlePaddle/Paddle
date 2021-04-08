@@ -180,7 +180,7 @@ class NPUDeviceContext : public DeviceContext {
   virtual ~NPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   Place GetPlace() const override;
-  aclrtContext* context() const;
+  aclrtContext context() const;
 
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
