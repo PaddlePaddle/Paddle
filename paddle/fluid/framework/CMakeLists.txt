@@ -199,6 +199,7 @@ if(WITH_PYTHON)
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+      COMMAND cp ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
