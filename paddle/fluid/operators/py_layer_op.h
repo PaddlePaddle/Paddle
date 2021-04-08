@@ -20,16 +20,34 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/python_headers.h"
-#include "paddle/fluid/operators/py_layer_context/py_context.h"
 
 namespace paddle {
 namespace operators {
-using CtxPtr = std::shared_ptr<imperative::PyLayerContext>;
+namespace py = ::pybind11;
+
+class PyLayerContext {
+ public:
+  explicit PyLayerContext(const py::handle& handle) : context(handle.ptr()) {
+    Py_INCREF(context);
+  }
+  ~PyLayerContext() { Py_DECREF(context); }
+  PyLayerContext() = delete;
+
+  PyObject* GetMatableCtx() { return context; }
+
+ private:
+  PyObject* context;
+};
+
+using CtxPtr = std::shared_ptr<PyLayerContext>;
 
 class PyLayerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    VLOG(3) << "`InferShape` of `PyLayer` is an empty function, and it cannot "
+               "infer the shape of the output tensors.";
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -56,7 +74,10 @@ class PyLayerGradOpMaker<paddle::framework::OpDesc>
       paddle::framework::OpDesc>::SingleGradOpMaker;
 
  protected:
-  void Apply(GradOpPtr<paddle::framework::OpDesc> grad_op) const override {}
+  void Apply(GradOpPtr<paddle::framework::OpDesc> grad_op) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "`PyLayer` don't support static graph mode."));
+  }
 };
 
 template <>

@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.nn.layer import PyLayer
+from paddle.autograd import PyLayer
 
 
 class TestPyLayer(unittest.TestCase):
@@ -77,6 +77,32 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
+
+    def test_pylayer_dtype(self):
+        class tanh(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                ctx.save_for_backward(x)
+                y = paddle.dot(x, x)
+                return y
+
+            @staticmethod
+            def backward(ctx, dy1):
+                x, = ctx.saved_tensor()
+                return x * 2
+
+        dtypes = ['float32', 'float64']
+        for dtype in dtypes:
+            input1 = (paddle.randn([1]) * 10).astype(dtype)
+            input2 = input1.detach().clone()
+            input1.stop_gradient = False
+            input2.stop_gradient = False
+            z = tanh.apply(input1)
+            z.sum().backward()
+            z2 = paddle.dot(input2, input2)
+            z2.sum().backward()
+
+            self.assertTrue(np.max(np.abs((input1.grad - input2.grad))) < 1e-10)
 
     def test_pylayer_Exception_forward(self):
         class Layer_None1(PyLayer):

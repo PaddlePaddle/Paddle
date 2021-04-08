@@ -45,7 +45,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
-    const std::shared_ptr<PyLayerContext>& PyLayerContext) {
+    const std::shared_ptr<operators::PyLayerContext>& PyLayerContext) {
   operators::PyLayerGradOpMaker<paddle::imperative::OpBase> maker(
       type, ins, outs, attrs, inplace_map);
 
@@ -71,8 +71,8 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
 
   auto result_forward = forward(contex, *args, **kwargs);
 
-  std::shared_ptr<PyLayerContext> py_layer_ctx =
-      std::make_shared<PyLayerContext>(contex);
+  std::shared_ptr<operators::PyLayerContext> py_layer_ctx =
+      std::make_shared<operators::PyLayerContext>(contex);
   // make inputs to varbase
   std::vector<std::shared_ptr<imperative::VarBase>> input_vars;
   // process args,`input_vars` only collect `imperative::VarBase`
@@ -84,6 +84,11 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
           input_vars.push_back(a);
         }
       } catch (py::cast_error& err) {
+        // Only collect Tensor type in 'args' and pass them to backward. Ignore
+        // other types of input temporarily.
+      } catch (...) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }
@@ -96,6 +101,11 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
           input_vars.push_back(a);
         }
       } catch (py::cast_error&) {
+        // Only collect Tensor type in 'kwargs' and pass them to backward.
+        // Ignore other types of input temporarily.
+      } catch (...) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "PyLayer raises an unknown exception in rumtime."));
       }
     }
   }
@@ -113,7 +123,7 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
           output_vars.push_back(temp_out);
         } catch (py::cast_error&) {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "The output of forward should be `Tensor`."));
+              "The output of `PyLayer.forward` should be `Tensor`."));
         } catch (...) {
           // TODO(weixin): to support returning None.
           PADDLE_THROW(platform::errors::Fatal(
@@ -121,7 +131,7 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of forward can not be `None`."));
+            "The output of `PyLayer.forward` can not be `None`."));
       }
     }
   } else {
@@ -132,14 +142,14 @@ py::object PyLayer_apply(const platform::Place& place, const py::object& cls,
         output_vars.push_back(temp_out);
       } catch (py::cast_error&) {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of forward should be `Tensor`."));
+            "The output of `PyLayer.forward` should be `Tensor`."));
       } catch (...) {
         PADDLE_THROW(platform::errors::Fatal(
             "PyLayer raises an unknown exception in apply."));
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "The output of forward can not be `None`."));
+          "The output of `PyLayer.forward` can not be `None`."));
     }
   }
 

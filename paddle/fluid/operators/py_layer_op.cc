@@ -33,9 +33,8 @@ void RunPyObject(py::object *py_object,
     auto in_var = ins[i];
 
     if (in_var != nullptr) {
-      char name[50] = {};
-      snprintf(name, sizeof(name), "generator_custom_py_layer%d@@grad \n",
-               static_cast<int>(i));
+      auto name = paddle::string::Sprintf(
+          "generator_custom_py_layer_%d@@grad \n", static_cast<int>(i));
 
       std::shared_ptr<imperative::VariableWrapper> temp_wrap =
           std::make_shared<imperative::VariableWrapper>(name, *in_var);
@@ -46,7 +45,7 @@ void RunPyObject(py::object *py_object,
         inputs[i] = py::cast(temp_varbase).ptr();
       } catch (py::cast_error &) {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of backward should be `Tensor`."));
+            "The output of `PyLayer.backward` should be `Tensor`."));
       }
     }
   }
@@ -57,7 +56,8 @@ void RunPyObject(py::object *py_object,
     auto result_tuple = py_result.cast<py::tuple>();
     if (result_tuple.size() != outs->size()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The number of outputs of backward should be %d, but received %d.",
+          "The number of outputs of `PyLayer.backward` should be %d, but "
+          "received %d.",
           outs->size(), result_tuple.size()));
     }
     for (size_t i = 0; i < result_tuple.size(); i++) {
@@ -67,11 +67,11 @@ void RunPyObject(py::object *py_object,
           *(*outs)[i] = result_var->Var();
         } catch (py::cast_error &) {
           PADDLE_THROW(platform::errors::Unimplemented(
-              "The output of backward should be `Tensor`."));
+              "The output of `PyLayer.backward` should be `Tensor`."));
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of backward can not be `None`."));
+            "The output of `PyLayer.backward` can not be `None`."));
       }
     }
   } else {
@@ -81,11 +81,11 @@ void RunPyObject(py::object *py_object,
         *((*outs)[0]) = result_var->Var();
       } catch (py::cast_error &) {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "The output of backward should be `Tensor`."));
+            "The output of `PyLayer.backward` should be `Tensor`."));
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "The output of backward can not be `None`."));
+          "The output of `PyLayer.backward` can not be `None`."));
     }
   }
 }
@@ -159,16 +159,12 @@ REGISTER_OPERATOR(py_layer, ops::PyLayerOp, ops::PyLayerOpMaker,
 REGISTER_OP_CPU_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex64>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex128>);
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     py_layer, ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex64>,
-    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext,
-                         paddle::platform::complex128>);
+    ops::PyLayerOpKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 #endif  // PADDLE_WITH_CUDA
