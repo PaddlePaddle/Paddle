@@ -12,30 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the distribution functions 
-# __all__ = ['Categorical',
-#            'MultivariateNormalDiag',
-#            'Normal',
-#            'sampling_id',
-#            'Uniform']
-
 from __future__ import print_function
 
 from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
-from .fluid.layers import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
+from .fluid.layers import elementwise_mul  # noqa: F401
+from .fluid.layers import elementwise_div
+from .fluid.layers import elementwise_add
+from .fluid.layers import elementwise_sub
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
-from .tensor import arange, gather_nd, concat, multinomial
+from .tensor import arange
+from .tensor import gather_nd
+from .tensor import concat
+from .tensor import multinomial
 import math
 import numpy as np
 import warnings
 
-from .fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from .fluid.data_feeder import convert_dtype
+from .fluid.data_feeder import check_variable_and_dtype
+from .fluid.data_feeder import check_type
+from .fluid.data_feeder import check_dtype
 
-__all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
+__all__ = [     #noqa
+           'Distribution',
+           'Uniform',
+           'Normal',
+           'Categorical',
+           'elementwise_div',
+           'elementwise_mul',
+           'elementwise_add',
+           'elementwise_sub'
+]
 
 
 class Distribution(object):

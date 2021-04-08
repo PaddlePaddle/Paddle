@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_as_type  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  #DEFINE_ALIAS
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node  #DEFINE_ALIAS
-
-__all__ = [
-    'create_bool_as_type', 'create_fill_constant_node',
-    'create_static_variable_gast_node', 'data_layer_not_check',
-    'to_static_variable', 'to_static_variable_gast_node'
-]
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_as_type  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node  # noqa: F401

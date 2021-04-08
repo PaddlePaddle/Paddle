@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from . import dy2static  # noqa: F401
+from ..fluid.dygraph.jit import save  # noqa: F401
+from ..fluid.dygraph.jit import load  # noqa: F401
+from ..fluid.dygraph.jit import TracedLayer  # noqa: F401
+from ..fluid.dygraph.jit import set_code_level  # noqa: F401
+from ..fluid.dygraph.jit import set_verbosity  # noqa: F401
+from ..fluid.dygraph.jit import declarative as to_static  # noqa: F401
+from ..fluid.dygraph.jit import not_to_static  # noqa: F401
+from ..fluid.dygraph import ProgramTranslator  # noqa: F401
+from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
 
-from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_code_level  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import set_verbosity  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import declarative as to_static  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import not_to_static  #DEFINE_ALIAS
-from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
-from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
 
-from . import dy2static
-
-__all__ = [
-    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
-    'TranslatedLayer', 'set_code_level', 'set_verbosity', 'not_to_static'
+__all__ = [     #noqa
+           'save',
+           'load',
+           'TracedLayer',
+           'to_static',
+           'ProgramTranslator',
+           'TranslatedLayer',
+           'set_code_level',
+           'set_verbosity'
 ]

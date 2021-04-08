@@ -14,8 +14,6 @@
 
 from paddle.fluid.dygraph.amp import amp_guard
 
-__all__ = ['auto_cast']
-
 
 def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
     """

@@ -1058,5 +1058,5 @@ def assign(x, output=None):
           result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
-    check_type(x, 'x', (Variable, numpy.ndarray), 'assign')
+    check_type(x, 'x', (Variable, np.ndarray), 'assign')
     return tensor.assign(x, output)
