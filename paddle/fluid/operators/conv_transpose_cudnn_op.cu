@@ -1090,7 +1090,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         handle, &alpha, args2.odesc.desc(),
                         x + i * group_offset_in, args2.wdesc.desc(),
                         ddw + i * group_offset_filter, args2.cdesc.desc(),
-                        bwd_algo2, &alpha, args2.idesc.desc(),
+                        bwd_algo2, &beta, args2.idesc.desc(),
                         transformed_ddy_channel + i * group_offset_out,
                         workspace_ptr, workspace_size));
               },
