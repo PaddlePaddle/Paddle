@@ -18,7 +18,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
@@ -29,6 +29,8 @@ import six
 import pickle
 import os
 import errno
+
+paddle.enable_static()
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -158,11 +160,10 @@ class PtbModel(fluid.Layer):
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
-        self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            num_embeddings=vocab_size,
+            embedding_dim=hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
@@ -186,6 +187,8 @@ class PtbModel(fluid.Layer):
         init_c = fluid.layers.reshape(
             init_cell, shape=[self.num_layers, -1, self.hidden_size])
 
+        # NPU 'tok_k' kernel only support `int32` dtype, so cast `input` from `int64` to `int32`.
+        input = fluid.layers.cast(input, "int32")
         x_emb = self.embedding(input)
         x_emb = fluid.layers.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size])
@@ -213,6 +216,10 @@ class PtbModel(fluid.Layer):
 
 
 class TestSaveLoadBase(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -234,8 +241,7 @@ class TestSaveLoadBase(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -314,6 +320,10 @@ class TestSaveLoadBase(unittest.TestCase):
 
 
 class TestSaveLoadPartial(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -335,8 +345,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -424,6 +433,10 @@ class TestSaveLoadPartial(unittest.TestCase):
 
 
 class TestSaveLoadSetStateDict(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -445,8 +458,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -525,6 +537,10 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
 
 
 class TestProgramStatePartial(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -546,8 +562,7 @@ class TestProgramStatePartial(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -707,14 +722,17 @@ class TestProgramStatePartial(unittest.TestCase):
 
 
 class TestVariableInit(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_variable_init(self):
 
         x = fluid.data(name="x", shape=[10, 10], dtype='float32')
         y = fluid.layers.fc(x, 10)
         z = fluid.layers.fc(y, 10)
 
-        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
+        place = self.set_place()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
@@ -737,8 +755,7 @@ class TestVariableInit(unittest.TestCase):
         program = fluid.default_main_program()
         new_scope = fluid.core.Scope()
 
-        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
+        place = self.set_place()
         exe = fluid.Executor(place)
         parameter_list = list(
             filter(fluid.io.is_parameter, program.list_vars()))
@@ -797,6 +814,10 @@ class TestLoadFromOldInterface(unittest.TestCase):
         if os.path.exists("test_static_load_var_list.pdparams"):
             os.remove("test_static_load_var_list.pdparams")
 
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_load_from_old_interface(self):
         seed = 90
         hidden_size = 10
@@ -818,8 +839,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -934,8 +954,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -1026,6 +1045,10 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
 
 class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_load_from_old_interface(self):
         seed = 90
         hidden_size = 10
@@ -1047,8 +1070,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -1170,6 +1192,13 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
 
 
 class TestProgramStateOldSave(unittest.TestCase):
+    def setUp(self):
+        self.test_dygraph = True
+
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -1191,8 +1220,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
@@ -1298,11 +1326,12 @@ class TestProgramStateOldSave(unittest.TestCase):
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
-        # make sure `load_program_state` can be used in dynamic graph mode
-        with fluid.dygraph.guard(place):
-            load_state = fluid.load_program_state("test_program_1")
-            for k, v in load_state.items():
-                self.assertTrue(np.array_equal(base_map[k], v))
+        if self.test_dygraph:
+            # make sure `load_program_state` can be used in dynamic graph mode
+            with fluid.dygraph.guard(place):
+                load_state = fluid.load_program_state("test_program_1")
+                for k, v in load_state.items():
+                    self.assertTrue(np.array_equal(base_map[k], v))
 
     def check_in_static(self, main_program, base_map):
         for var in main_program.list_vars():
@@ -1313,40 +1342,11 @@ class TestProgramStateOldSave(unittest.TestCase):
                 self.assertTrue(np.array_equal(new_t, base_t))
 
 
-class TestStaticSaveLoadLargeParameters(unittest.TestCase):
-    def test_large_parameters_static_save(self):
-        # enable static mode
-        paddle.enable_static()
-        LARGE_PARAM = 2**26
-        with new_program_scope():
-            # create network
-            x = paddle.static.data(
-                name="static_save_load_large_x",
-                shape=[None, 10],
-                dtype='float32')
-            z = paddle.static.nn.fc(x, LARGE_PARAM)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            prog = paddle.static.default_main_program()
-
-            inputs = np.random.randn(1, 10).astype("float32")
-            result_z = exe.run(program=prog,
-                               feed={"static_save_load_large_x": inputs},
-                               fetch_list=[z.name])
-            path = "test_static_save_load_large_param/static_save"
-            paddle.fluid.save(prog, path)
-
-            paddle.fluid.load(prog, path)
-            result_load = exe.run(program=prog,
-                                  feed={"static_save_load_large_x": inputs},
-                                  fetch_list=[z.name])
-            # compare results before and after saving
-            self.assertTrue(
-                np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
-
-
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
+    def set_place(self):
+        return fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
         hidden_size = 10
@@ -1368,8 +1368,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                 num_steps=num_steps,
                 init_scale=init_scale)
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = self.set_place()
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
