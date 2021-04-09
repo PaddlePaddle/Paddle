@@ -63,11 +63,11 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   constexpr int kernel_warp_size =
       (near_greater_power_of_two < 32) ? near_greater_power_of_two : 32;
   constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
-  int global_warp_id = blockDim.y * blockIdx.x + threadIdx.y;
+  int batch_id = blockDim.y * blockIdx.x + threadIdx.y;
 
   // set effective_warp_id as 1 when warps do effective work,
   // when warps do ineffective work, effective_warp_id remains unchanged.
-  int effective_warp_id = batch_size - global_warp_id;
+  int effective_warp_id = batch_size - batch_id;
   if (effective_warp_id > 1) effective_warp_id = 1;
 
   int thread_in_warp_idx = threadIdx.x;
@@ -81,8 +81,8 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < effective_element_count) {
-      elements[it] = static_cast<AccT>(
-          src[global_warp_id * element_count + element_index]);
+      elements[it] =
+          static_cast<AccT>(src[batch_id * element_count + element_index]);
     } else {
       elements[it] = -std::numeric_limits<AccT>::infinity();
     }
@@ -110,7 +110,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < element_count) {
-      dst[global_warp_id * element_count + element_index] =
+      dst[batch_id * element_count + element_index] =
           static_cast<T>(elements[it] - max_value - sum);
     } else {
       break;
@@ -120,7 +120,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
 
 template <typename T, typename AccT>
 void LaunchSoftmaxForwardForLastAxis(T *dst, const T *src, int dim_size,
-                                     int outer_size, cudaStream_t stream) {
+                                     int outer_size, gpuStream_t stream) {
   int threads_per_block = 128;
   int near_greater_power_of_two = GetNearGreaterPowerOfTwo(dim_size);
   int kernel_warp_size =
@@ -168,7 +168,7 @@ class LogSoftmaxKernel<platform::CUDADeviceContext, T>
       inner_size *= x->dims()[i];
     }
     int outer_size = SizeToAxis(axis, x->dims());
-    cudaStream_t stream = context.cuda_device_context().stream();
+    gpuStream_t stream = context.cuda_device_context().stream();
 
     if (inner_size == 1 && dim_size <= 1024 && dim_size * sizeof(T) <= 4096) {
       LaunchSoftmaxForwardForLastAxis<T, MPDType>(output_data, input_data,
