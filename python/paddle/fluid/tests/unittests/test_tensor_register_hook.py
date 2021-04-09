@@ -178,8 +178,9 @@ class TestTensorRegisterHook(unittest.TestCase):
         # register hook and removed
         run_double_hook_for_leaf_var(lambda grad: grad * 2, removed=True)
 
-    def test_hook_for_accumulated_grad(self):
-        def run_double_hook_for_accumulated_grad(double_hook, removed=False):
+    def test_hook_for_accumulated_grad_interior_var(self):
+        def run_double_hook_for_accumulated_grad_interior_var(double_hook,
+                                                              removed=False):
             for device in self.devices:
                 paddle.set_device(device)
 
@@ -227,9 +228,50 @@ class TestTensorRegisterHook(unittest.TestCase):
                                    if not removed else base_grad))
 
         # register hook
-        run_double_hook_for_accumulated_grad(lambda grad: grad * 2)
+        run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2)
         # register hook and removed
-        run_double_hook_for_accumulated_grad(
+        run_double_hook_for_accumulated_grad_interior_var(
+            lambda grad: grad * 2, removed=True)
+
+    def test_hook_for_accumulated_grad_leaf_var(self):
+        def run_double_hook_for_accumulated_grad_leaf_var(double_hook,
+                                                          removed=False):
+            for device in self.devices:
+                paddle.set_device(device)
+
+                x = paddle.to_tensor([0., 1., 2., 4.])
+                x.stop_gradient = False
+
+                helper = x.register_hook(double_hook)
+
+                y = paddle.to_tensor([4., 5., 6., 7.])
+                z = paddle.to_tensor([1., 2., 3., 4.])
+                y.stop_gradient = False
+                z.stop_gradient = False
+
+                o1 = x + y
+                o2 = x + z
+                o1.stop_gradient = False
+                o2.stop_gradient = False
+
+                o = o1.matmul(o2)
+
+                # remove hook before backward
+                if removed:
+                    helper.remove()
+
+                o.backward()
+
+                base_grad = np.array([5., 9., 13., 19.])
+                # x.grad is changed by x.hook
+                self.assertTrue(
+                    np.array_equal(x.grad, base_grad * 2
+                                   if not removed else base_grad))
+
+        # register hook
+        run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2)
+        # register hook and removed
+        run_double_hook_for_accumulated_grad_leaf_var(
             lambda grad: grad * 2, removed=True)
 
     def test_hook_in_model(self):
