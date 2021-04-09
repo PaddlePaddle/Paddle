@@ -10,6 +10,12 @@ ELSE()
   set(XPU_CTX_DEPS)
 endif(WITH_XPU)
 
+if(WITH_ASCEND)
+    set(ASCEND_DEPS xpulib)
+ELSE()
+  set(ASCEND_DEPS)
+endif(WITH_ASCEND)
+
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -64,6 +70,10 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 if(WITH_XPU)
 cc_library(xpu_info SRCS xpu_info.cc DEPS gflags glog enforce xpulib)
+endif()
+
+if(WITH_ASCEND)
+    cc_library(ascend_npu_info SRCS ascend_npu_info.cc DEPS gflags glog enforce atlas_acl)
 endif()
 
 add_subdirectory(dynload)
