@@ -101,7 +101,7 @@ def get_cudnn_version():
         return _cudnn_version
 
 
-def _make_device(device):
+def _convert_to_place(device):
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
@@ -169,7 +169,7 @@ def set_device(device):
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
     """
-    place = _make_device(device)
+    place = _convert_to_place(device)
     framework._set_expected_place(place)
     return place
 

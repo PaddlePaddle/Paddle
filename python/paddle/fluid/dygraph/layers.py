@@ -1344,21 +1344,21 @@ class Layer(core.Layer):
             for param, state in matched_param_state:
                 _set_var(param, state)
 
-    def _apply(self, func, place, dtype, blocking):
+    def _apply(self, func, device, dtype, blocking):
         for layer in self.children():
-            layer._apply(func, place, dtype, blocking)
+            layer._apply(func, device, dtype, blocking)
 
         for key, param in self._parameters.items():
             if param is not None:
                 with no_grad():
-                    param_applied = func(param, place, dtype, blocking)
+                    param_applied = func(param, device, dtype, blocking)
                     assert param.is_leaf
                     param_applied.stop_gradient = param.stop_gradient
                     self._parameters[key] = param_applied
 
                 if param.grad is not None:
                     with no_grad():
-                        grad_applied = func(param._grad_ivar(), place, dtype,
+                        grad_applied = func(param._grad_ivar(), device, dtype,
                                             blocking)
 
                         grad_applied.stop_gradient = param._grad_ivar(
@@ -1366,15 +1366,15 @@ class Layer(core.Layer):
                         self._parameters[key]._set_grad_ivar(grad_applied)
 
         for key, buf in self._buffers.items():
-            self._buffers[key] = func(buf, place, dtype, blocking)
+            self._buffers[key] = func(buf, device, dtype, blocking)
 
-    def to(self, place=None, dtype=None, blocking=None):
+    def to(self, device=None, dtype=None, blocking=None):
         '''
         Cast the parameters and buffers of Layer by the give place, dtype and blocking.
 
         Parameters:
-            place(str|paddle.CPUPlace|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device place of the Layer which want to be stored. 
-            If None, the place is the same with the origin Tensor. If place is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device of the Layer which want to be stored. 
+            If None, the place is the same with the origin Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
             index of the GPUs or XPUs. Default: None. 
             
             dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the origin Tensor. Default: None.
@@ -1403,12 +1403,12 @@ class Layer(core.Layer):
                 #       [[-0.32770029,  0.38653070],
                 #        [ 0.46030545,  0.08158520]])
 
-                linear.to(place='cpu')
+                linear.to(device='cpu')
                 linear.weight
                 #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
                 #       [[-0.32770029,  0.38653070],
                 #        [ 0.46030545,  0.08158520]])
-                linear.to(place=paddle.CUDAPinnedPlace(), blocking=False)
+                linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
                 linear.weight
                 #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
                 #       [[-0.04989364, -0.56889004],
@@ -1417,19 +1417,19 @@ class Layer(core.Layer):
 
         '''
 
-        if place is None and dtype is None and blocking is None:
+        if device is None and dtype is None and blocking is None:
             return
 
-        if place is not None:
-            if isinstance(place, str):
-                place = paddle.device._make_device(place)
-            elif isinstance(place, (core.CPUPlace, core.CUDAPlace,
-                                    core.CUDAPinnedPlace, core.XPUPlace)):
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
+                                     core.CUDAPinnedPlace, core.XPUPlace)):
                 pass
             else:
                 raise ValueError(
-                    "place value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of place is "
-                    + type(place).__name__)
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    + type(device).__name__)
 
         if blocking is None:
             blocking = True
@@ -1438,19 +1438,19 @@ class Layer(core.Layer):
                 blocking,
                 bool), "blocking value error, must be the True, False or None"
 
-        def transform(t, place, dtype, blocking):
-            if place is None:
-                place = t.place
+        def transform(t, device, dtype, blocking):
+            if device is None:
+                device = t.place
             if dtype is None:
                 dtype = t.dtype
 
-            new_t = t._copy_to(place, blocking)
+            new_t = t._copy_to(device, blocking)
             if dtype is not None and dtype != t.dtype:
                 new_t = new_t.cast(dtype=dtype)
 
             return new_t
 
-        self._apply(transform, place, dtype, blocking)
+        self._apply(transform, device, dtype, blocking)
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

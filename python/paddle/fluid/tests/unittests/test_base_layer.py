@@ -363,7 +363,7 @@ class TestLayerTo(unittest.TestCase):
                         paddle.fluid.core.VarDesc.VarType.FP64)
 
         if paddle.fluid.is_compiled_with_cuda():
-            self.linear.to(place=paddle.CUDAPlace(0))
+            self.linear.to(device=paddle.CUDAPlace(0))
             self.assertTrue(self.linear.weight.place.is_gpu_place())
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
@@ -373,7 +373,7 @@ class TestLayerTo(unittest.TestCase):
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
 
-            self.linear.to(place='gpu:0')
+            self.linear.to(device='gpu:0')
             self.assertTrue(self.linear.weight.place.is_gpu_place())
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
@@ -383,17 +383,17 @@ class TestLayerTo(unittest.TestCase):
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0)
 
-        self.linear.to(place=paddle.CPUPlace())
+        self.linear.to(device=paddle.CPUPlace())
         self.assertTrue(self.linear.weight.place.is_cpu_place())
         self.assertTrue(self.linear.buf_name.place.is_cpu_place())
         self.assertTrue(self.linear.weight._grad_ivar().place.is_cpu_place())
 
-        self.linear.to(place='cpu')
+        self.linear.to(device='cpu')
         self.assertTrue(self.linear.weight.place.is_cpu_place())
         self.assertTrue(self.linear.buf_name.place.is_cpu_place())
         self.assertTrue(self.linear.weight._grad_ivar().place.is_cpu_place())
 
-        self.assertRaises(ValueError, self.linear.to, place=1)
+        self.assertRaises(ValueError, self.linear.to, device=1)
 
         self.assertRaises(AssertionError, self.linear.to, blocking=1)
 
