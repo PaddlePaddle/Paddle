@@ -884,7 +884,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 
     int iwo_group = groups;
     int c_group = 1;
-#if CUDNN_VERSION_MIN(7, 0, 1)
+    #if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
     iwo_group = 1;
     c_group = groups;
     groups = 1;
@@ -948,7 +948,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         args1.idesc.set(transformed_ddO_channel, iwo_group);
         args1.wdesc.set(*W, layout, iwo_group);
         args1.odesc.set(transformed_ddX, iwo_group);
-        args1.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+        args1.cdesc.set(dtype, padding_common, strides, dilations, platform::AllowTF32Cudnn(), c_group);
 #ifdef PADDLE_WITH_HIP
         using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size = search1::GetWorkspaceSize(args1);
@@ -967,7 +967,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         args2.idesc.set(transformed_ddO_channel, iwo_group);
         args2.wdesc.set(*ddW, layout, iwo_group);
         args2.odesc.set(transformed_X, iwo_group);
-        args2.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+        args2.cdesc.set(dtype, padding_common, strides, dilations, platform::AllowTF32Cudnn(), c_group);
 #ifdef PADDLE_WITH_HIP
         using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size =
@@ -991,7 +991,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 
       args3.odesc.set(transformed_ddX_channel, iwo_group);
 
-      args3.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+      args3.cdesc.set(dtype, padding_common, strides, dilations, platform::AllowTF32Cudnn(), c_group);
 #ifdef PADDLE_WITH_HIP
       using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
@@ -1013,7 +1013,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       args4.idesc.set(transformed_dO, iwo_group);
       args4.wdesc.set(*ddW, layout, iwo_group);
       args4.odesc.set(transformed_dX_channel, iwo_group);
-      args4.cdesc.set(dtype, padding_common, strides, dilations, c_group);
+      args4.cdesc.set(dtype, padding_common, strides, dilations, platform::AllowTF32Cudnn(), c_group);
 #ifdef PADDLE_WITH_HIP
       using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
