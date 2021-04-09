@@ -92,7 +92,12 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit ElementwisePluginDynamic(const std::string& type, int axis)
       : type_(type), axis_(axis) {}
-  ElementwisePluginDynamic(void const* serialData, size_t serialLength) {}
+  ElementwisePluginDynamic(void const* serialData, size_t serialLength) {
+    const char* elementwise_type;
+    DeserializeValue(&serialData, &serialLength, &elementwise_type);
+    type_ = std::string(elementwise_type);
+    DeserializeValue(&serialData, &serialLength, &axis_);
+  }
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new ElementwisePluginDynamic(type_, axis_);
   }
@@ -138,6 +143,46 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
   std::string type_;
   int axis_;
 };
+
+class ElementwisePluginDynamicCreator : public nvinfer1::IPluginCreator {
+ public:
+  ElementwisePluginDynamicCreator() {}
+  const char* getPluginName() const override { return "elementwise_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    auto plugin = new ElementwisePluginDynamic(serial_data, serial_length);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* lib_namespace) override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+REGISTER_TRT_PLUGIN_V2(ElementwisePluginDynamicCreator);
 #endif
 
 }  // namespace plugin

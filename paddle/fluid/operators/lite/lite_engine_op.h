@@ -83,7 +83,7 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetInputNames()[i] << ")";
       inference::lite::utils::TensorCopy(&dst_t, &src_t, *ctx, zero_copy_);
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
           static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
@@ -101,7 +101,7 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(dev_place)) {
       platform::GpuStreamSync(
           static_cast<const platform::CUDADeviceContext *>(ctx)->stream());

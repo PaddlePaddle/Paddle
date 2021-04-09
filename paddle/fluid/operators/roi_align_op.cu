@@ -124,11 +124,9 @@ __global__ void GPUROIAlignForward(
 
     T roi_width = roi_xmax - roi_xmin;
     T roi_height = roi_ymax - roi_ymin;
+    roi_width = max(roi_width, static_cast<T>(1.));
+    roi_height = max(roi_height, static_cast<T>(1.));
 
-    if (!continuous_coordinate) {
-      roi_width = max(roi_width, static_cast<T>(1.));
-      roi_height = max(roi_height, static_cast<T>(1.));
-    }
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
@@ -182,10 +180,9 @@ __global__ void GPUROIAlignBackward(
 
     T roi_width = roi_xmax - roi_xmin;
     T roi_height = roi_ymax - roi_ymin;
-    if (!continuous_coordinate) {
-      roi_width = max(roi_width, static_cast<T>(1.));
-      roi_height = max(roi_height, static_cast<T>(1.));
-    }
+    roi_width = max(roi_width, static_cast<T>(1.));
+    roi_height = max(roi_height, static_cast<T>(1.));
+
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 

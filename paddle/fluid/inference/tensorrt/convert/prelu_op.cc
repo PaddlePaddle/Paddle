@@ -65,16 +65,41 @@ class PReluOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
       plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
           alpha_data, alpha_tensor_temp->numel(), mode);
-      layer = engine_->AddPluginV2(&input, input_num, plugin);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the TRT Dynamic Shape mode, need to confirm that "
           "your TRT version is no less than 6.0"));
 #endif
     } else {
+#if IS_TRT_VERSION_GE(7000)
+      float* alpha_weight_data = engine_->GetWeightCPUData(
+          op_desc.Input("Alpha")[0], alpha_tensor, false);
+      TensorRTEngine::Weight alpha_weight{
+          nvinfer1::DataType::kFLOAT, static_cast<void*>(alpha_weight_data),
+          static_cast<size_t>(alpha_tensor->numel())};
+
+      nvinfer1::Dims dims;
+      dims.nbDims = 0;
+      // jump batch dim
+      for (int i = 1; i < alpha_tensor->dims().size(); i++) {
+        dims.d[dims.nbDims++] = alpha_tensor->dims()[i];
+      }
+      for (; dims.nbDims < input->getDimensions().nbDims; dims.nbDims++) {
+        dims.d[dims.nbDims] = 1;
+      }
+
+      auto alpha_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, alpha_weight.get());
+      auto alpha_layer_output = alpha_layer->getOutput(0);
+
+      layer = TRT_ENGINE_ADD_LAYER(engine_, ParametricReLU, *input,
+                                   *alpha_layer_output);
+#else
       plugin::PReluPlugin* plugin =
           new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
       layer = engine_->AddPlugin(&input, input_num, plugin);
+#endif
     }
     // keep alpha tensor to avoid release it's memory
     engine_->SetWeights(op_desc.Input("Alpha")[0],

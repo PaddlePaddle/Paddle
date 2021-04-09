@@ -50,8 +50,9 @@ class TestReshapeBf16Op(OpTest):
         self.infered_shape = (10, 2, 3, -1)
 
     def init_input_data(self):
-        self.input_data = convert_float_to_uint16(
-            np.random.random(self.ori_shape).astype(np.float32))
+        self.input_data_fp32 = np.random.random(self.ori_shape).astype(
+            np.float32)
+        self.input_data = convert_float_to_uint16(self.input_data_fp32)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), no_check_set=['XShape'])
@@ -61,7 +62,7 @@ class TestReshapeBf16Op(OpTest):
             core.CPUPlace(), ["X"],
             "Out",
             check_dygraph=False,
-            user_defined_grads=[self.inputs["X"]],
+            user_defined_grads=[self.input_data_fp32],
             user_defined_grad_outputs=[
                 self.inputs["X"].reshape(self.infered_shape)
             ])

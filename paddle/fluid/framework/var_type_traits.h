@@ -21,13 +21,18 @@
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
+#endif
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <miopen/miopen.h>
+#ifdef PADDLE_WITH_RCCL
+#include <rccl.h>
 #endif
 #endif
 
@@ -39,8 +44,8 @@
 namespace paddle {
 
 namespace platform {
-#ifdef PADDLE_WITH_CUDA
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class Communicator;
 class NCCLCommunicator;
 #endif
@@ -151,8 +156,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
     operators::reader::LoDTensorBlockingQueueHolder, FetchList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
-#ifdef PADDLE_WITH_CUDA
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
 #endif
     operators::CudnnRNNCache,

@@ -144,11 +144,6 @@ def dyfunc_with_for_2(x):
 
 
 def dyfunc_with_for_3(x):
-    # TODO(liym27):
-    #  It will fail to run because `for i in range(len(x.shape))` will be transformed into Paddle while_loop.
-    #  Here the python list x.shape will be added to loop_vars. However, loop_vars doesn't support python list.
-    #  And the condition of `for i in range(len(x.shape))` only uses the length of x.shape, so it doesn't have to be transformed into Paddle while_loop.
-    #  After the AST tranformation of for loop is improved, add TestTensorShapeInFor3.
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     # `len(x.shape)` is not transformed.
@@ -282,6 +277,11 @@ class TestTensorShapeBasic2(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_2
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 3
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 0
+
 
 class TestTensorShapeBasic3(TestTensorShapeBasic):
     def init_test_func(self):
@@ -319,12 +319,22 @@ class TestTupleShape1(TestTensorShapeBasic):
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_1
 
+    def _set_expected_op_num(self):
+        self.expected_op_num = 6
+        self.expected_shape_op_num = 2
+        self.expected_slice_op_num = 2
+
 
 class TestTupleShape2(TestTensorShapeBasic):
     def init_test_func(self):
         self.input = numpy.ones((5, 7)).astype("int32")
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_2
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 5
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 2
 
 
 class TestPaddleShapeApi(TestTensorShapeBasic):
@@ -381,6 +391,16 @@ class TestTensorShapeInFor2(TestTensorShapeInFor1):
         self.expected_slice_op_num = 1
 
 
+class TestTensorShapeInFor3(TestTensorShapeInFor1):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_for_3
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 25
+        self.expected_shape_op_num = 6
+        self.expected_slice_op_num = 3
+
+
 # 4. Tests with control flow while loop
 class TestTensorShapeInWhile1(TestTensorShapeInFor1):
     def init_test_func(self):
@@ -402,8 +422,8 @@ class TestTensorShapeInWhile3(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
-        self.expected_shape_op_num = 0
+        self.expected_op_num = 3
+        self.expected_shape_op_num = 1
         self.expected_slice_op_num = 0
 
 
@@ -474,9 +494,9 @@ class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
-        self.expected_shape_op_num = 0
-        self.expected_slice_op_num = 0
+        self.expected_op_num = 7
+        self.expected_shape_op_num = 2
+        self.expected_slice_op_num = 2
 
 
 class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
@@ -484,7 +504,7 @@ class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_if_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 19
+        self.expected_op_num = 28
         self.expected_shape_op_num = 4
         self.expected_slice_op_num = 2
 
@@ -516,9 +536,31 @@ class TestChangeShapeAfterAssign(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_change_shape_after_assign
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 3
-        self.expected_shape_op_num = 0
-        self.expected_slice_op_num = 0
+        self.expected_op_num = 7
+        self.expected_shape_op_num = 2
+        self.expected_slice_op_num = 2
+
+
+def dyfunc_with_static_convert_var_shape(x):
+    # Note: this will create `batch_size__static_convert_var_shape_suffix_0` firstly.
+    batch_size = x.shape[0]
+    if len(x.shape) < 1:
+        res = x
+    else:
+        # Test for correctly to find `batch_size__static_convert_var_shape_suffix_0` in
+        # deeply nested scope.
+        res = fluid.layers.fill_constant(
+            value=8, shape=[batch_size], dtype="int32")
+
+    return res
+
+
+class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
+    def test(self):
+        x_spec = paddle.static.InputSpec(shape=[None, 10])
+        func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
+        # Call this function to trigger program translation.
+        func.concrete_program
 
 
 if __name__ == '__main__':

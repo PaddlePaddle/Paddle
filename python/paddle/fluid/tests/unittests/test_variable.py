@@ -190,7 +190,6 @@ class TestVariable(unittest.TestCase):
         with fluid.dygraph.guard():
             self.assertRaises(AssertionError, var.detach)
             self.assertRaises(AssertionError, var.numpy)
-            self.assertRaises(AssertionError, var.set_value, None)
             self.assertRaises(AssertionError, var.backward)
             self.assertRaises(AssertionError, var.gradient)
             self.assertRaises(AssertionError, var.clear_gradient)

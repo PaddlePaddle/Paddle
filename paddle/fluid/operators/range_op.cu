@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/range_op.h"
 #include "paddle/fluid/operators/utils.h"
@@ -44,7 +45,7 @@ class CUDARangeKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     auto stream = context.cuda_device_context().stream();
-    int block = 512;
+    int block = std::min(size, static_cast<int64_t>(256));
     int grid = (size + block - 1) / block;
     RangeKernel<T><<<grid, block, 0, stream>>>(start, step, size, out_data);
   }

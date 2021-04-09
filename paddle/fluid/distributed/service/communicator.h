@@ -199,10 +199,10 @@ class Communicator {
   Communicator();
 
   explicit Communicator(const std::map<std::string, std::string> &envs_) {
-    VLOG(0) << "Communicator Init Envs";
+    VLOG(3) << "Communicator Init Envs";
     for (auto &iter : envs_) {
       envs[iter.first] = iter.second;
-      VLOG(0) << iter.first << ": " << iter.second;
+      VLOG(3) << iter.first << ": " << iter.second;
     }
     barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
     trainer_id_ = std::stoi(envs.at("trainer_id"));
@@ -436,7 +436,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
-    VLOG(0) << "HalfAsyncCommunicator Initialized";
+    VLOG(1) << "HalfAsyncCommunicator Initialized";
   }
 
   void MainThread() override;
@@ -481,7 +481,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
 
-    VLOG(0) << "SyncCommunicator Initialized";
+    VLOG(1) << "SyncCommunicator Initialized";
   }
 
   void BarrierSend();
@@ -525,7 +525,7 @@ class GeoCommunicator : public AsyncCommunicator {
     // id_queue's size
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_queue_size_ = max_merge_var_num_;
-    VLOG(0) << "GeoCommunicator Initialized";
+    VLOG(1) << "GeoCommunicator Initialized";
   }
 
   void Send(const std::vector<std::string> &var_names,

@@ -26,19 +26,27 @@ from parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphMnist(TestDistBase):
+class TestParallelDygraphUnusedVar(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
 
-    def test_mnist(self):
+    def test_net(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_unused_variables.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
+
+
+class TestFleetDygraphUnusedVar(TestParallelDygraphUnusedVar):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
+        self._use_fleet_api = True
 
 
 class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
@@ -48,17 +56,31 @@ class TestSparseEmbeddingUnusedVarsSpawn(TestDistSpawnRunner):
                 test_class=TestSparseEmbeddingUnusedVars, delta=1e-5)
 
 
-class TestFleetDygraphMnist(TestDistBase):
+class TestParallelDygraphNoVar(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
-        self._use_fleet_api = True
+
+    def test_net(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place(
+                "parallel_dygraph_none_var.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestParallelDygraphSharedUnusedVariables(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._nccl2_mode = True
+        self._dygraph = True
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                "parallel_dygraph_unused_variables.py",
+                "parallel_dygraph_shared_unused_var.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)

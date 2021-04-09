@@ -39,7 +39,7 @@ inline double GetCurrentUS() {
 Communicator::Communicator() {}
 
 void Communicator::init_gflag(const std::string &gflags) {
-  VLOG(0) << "Init With Gflags:" << gflags;
+  VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
@@ -320,9 +320,11 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
+  bool training = true;
+
   auto status = _worker_ptr->pull_sparse(
       (float **)push_g_vec.data(), table_id,  // NOLINT
-      sparse_push_keys.data(), sparse_push_keys.size());
+      sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
   return;
 }

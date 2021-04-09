@@ -162,7 +162,11 @@ struct FindChannelAbsMaxFunctor<platform::CUDADeviceContext, T> {
       int grid = cout;
       int max_threads = 1024;
 
+#ifdef PADDLE_WITH_HIP
+      hipMemset(out_abs_max, 0, sizeof(T) * cout);
+#else
       cudaMemset(out_abs_max, 0, sizeof(T) * cout);
+#endif
 
       for (int i = 0; i < cin / max_threads; i++) {
         int block = max_threads;
@@ -539,8 +543,8 @@ REGISTER_OP_CUDA_KERNEL(moving_average_abs_max_scale,
 REGISTER_OP_CUDA_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CUDA, float>);
-REGISTER_OP_CUDA_KERNEL(fake_quantize_dequantize_grad,
-                        ops::FakeQuantDequantGradKernel<CUDA, float>);
+REGISTER_OP_CUDA_KERNEL(stright_throuth_estimator_grad,
+                        ops::StrightThroughEstimatorGradKernel<CUDA, float>);
 REGISTER_OP_CUDA_KERNEL(
     fake_channel_wise_quantize_dequantize_abs_max,
     ops::FakeChannelWiseQuantizeDequantizeAbsMaxKernel<CUDA, float>);

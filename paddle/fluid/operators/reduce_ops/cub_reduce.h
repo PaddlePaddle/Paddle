@@ -20,7 +20,15 @@
 #include <set>
 #include <vector>
 
-#include <cub/cub.cuh>  // NOLINT
+#ifdef __NVCC__
+#include "cub/cub.cuh"  // NOLINT
+#endif
+
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
@@ -153,7 +161,11 @@ static inline std::vector<int> GetStrides(const std::vector<int>& dims,
   return strides;
 }
 
+#ifdef __HIPCC__
+constexpr int kMaxBlockDim = 256;
+#else
 constexpr int kMaxBlockDim = 512;
+#endif
 
 static inline int GetDesiredBlockDim(int block_dim) {
   return block_dim >= kMaxBlockDim
@@ -188,7 +200,7 @@ static void TensorReduceImpl(
     int left_num, int reduce_num, const std::vector<int>& x_strides,
     const std::vector<int>& reduce_dim, const std::vector<int>& reduce_strides,
     const std::vector<int>& left_dim, const std::vector<int>& left_strides,
-    cudaStream_t stream) {
+    gpuStream_t stream) {
 #define CUB_RANK_CASE(i, ...)             \
   case i: {                               \
     constexpr auto kRank = i;             \
@@ -280,7 +292,7 @@ template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
                   std::vector<int> origin_reduce_dims, const Ty& init,
                   const ReduceOp& reducer, const TransformOp& transformer,
-                  cudaStream_t stream) {
+                  gpuStream_t stream) {
   auto x_dim = framework::vectorize<int>(x.dims());
   std::vector<int> new_x_dim, new_reduce_dims;
   int is_reduced = 0;
@@ -362,11 +374,11 @@ struct TensorReduceFunctor {
   const double& init;
   const ReduceOp& reducer;
   const TransformOp& transformer;
-  cudaStream_t stream;
+  gpuStream_t stream;
   TensorReduceFunctor(const framework::Tensor& x, framework::Tensor* y,
                       std::vector<int> origin_reduce_dims, const double& init,
                       const ReduceOp& reducer, const TransformOp& transformer,
-                      cudaStream_t stream)
+                      gpuStream_t stream)
       : x(x),
         y(y),
         origin_reduce_dims(origin_reduce_dims),

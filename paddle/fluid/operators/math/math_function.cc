@@ -51,6 +51,7 @@ template struct SetConstant<platform::CPUDeviceContext, platform::complex128>;
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::XPUDeviceContext, float>;
 template struct SetConstant<platform::XPUDeviceContext, double>;
+template struct SetConstant<platform::XPUDeviceContext, uint8_t>;
 template struct SetConstant<platform::XPUDeviceContext, int>;
 template struct SetConstant<platform::XPUDeviceContext, int64_t>;
 template struct SetConstant<platform::XPUDeviceContext, bool>;
@@ -180,7 +181,7 @@ struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
 void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   tensor->place().apply_visitor(func);
 #else
   func(platform::CPUPlace());

@@ -25,6 +25,7 @@ __all__ = [
 
 import numpy as np
 
+from ...fluid import get_flags
 from ...fluid import core
 from ...device import get_cudnn_version
 from ...fluid.dygraph import layers
@@ -84,6 +85,12 @@ class _ConvNd(layers.Layer):
             raise TypeError(
                 "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
             )
+
+        valid_format = {'NHWC', 'NCHW', 'NDHWC', 'NCDHW', 'NLC', 'NCL'}
+        if data_format not in valid_format:
+            raise ValueError(
+                "data_format must be one of {}, but got data_format='{}'".
+                format(valid_format, data_format))
 
         channel_last = (data_format == "NHWC") or (data_format == "NDHWC") or (
             data_format == "NLC")
@@ -637,6 +644,10 @@ class Conv2D(_ConvNd):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format)
+
+        if (core.is_compiled_with_cuda() and get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+            self._use_cudnn = False
 
     def forward(self, x):
         if self._padding_mode != 'zeros':

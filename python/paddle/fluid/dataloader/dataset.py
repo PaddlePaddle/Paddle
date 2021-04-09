@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
+import paddle
 from .. import framework
-import paddle.dataset.common
 
 __all__ = [
     "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
