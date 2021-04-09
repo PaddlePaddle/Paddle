@@ -1370,7 +1370,7 @@ class Layer(core.Layer):
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
-        Cast the parameters and buffers of Layer by the give place, dtype and blocking.
+        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
         Parameters:
             device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device of the Layer which want to be stored. 
