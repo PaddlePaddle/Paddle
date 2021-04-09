@@ -20,7 +20,6 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, check_shape
 from ..fluid.layers import utils
 import paddle
-import logging
 
 __all__ = [
     'bernoulli',
@@ -136,8 +135,9 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    if core.is_compiled_with_rocm():
-        logging.warning('This api is not support in ROCM platform.')
+    assert core.is_compiled_with_rocm() == false, (
+        "multinomial op is not supported on ROCM yet.")
+
     if in_dygraph_mode():
         return core.ops.multinomial(x, 'num_samples', num_samples,
                                     'replacement', replacement)
