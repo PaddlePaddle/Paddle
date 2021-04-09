@@ -24,7 +24,7 @@ class PyLayerContext(object):
 
     def save_for_backward(self, *tensors):
         """
-        Saves given tensors that backward need. Use `saved_tensor` in the `backward` to get the saved tensors.
+        Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
         
         .. note::
             This API should be called at most once, and only inside `forward`. 
@@ -40,11 +40,11 @@ class PyLayerContext(object):
 
     def saved_tensor(self):
         """
-        Get the tensors stored by `save_for_backward`.
+        Get the tensors stored by ``save_for_backward``.
 
         Returns:
             list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
-                then return these tensors, otherwise return None.
+            then return these tensors, otherwise return None.
                 
         """
 
@@ -85,59 +85,59 @@ class LayerMeta(type):
 class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
     """
     Build a custom `Layer` by creating subclasses. Subclasses need to follow the following rules:
-        1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
-            Their first argument should be a context and `None` can be included in the returned result.
-        2. Input of backward contains a context as the first argument, and the rest arguments are the 
-            gradient of forward's output tensors. so the number of backward's input tensors equal to 
-            the number of forward output tensors. If you need the forward's inputs or outputs in `backward`, 
-            you can use `save_for_backward` to store the required tensors, and then use them in the backward.
-        3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
-            Output tensors of backward are the gradient of forward's input tensors, 
-            so the number of backward's output tensors equal to the number of forward input tensors.
+    1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
+    Their first argument should be a context and `None` can not be included in the returned result.
+    2. Input of backward contains a context as the first argument, and the rest arguments are the 
+    gradient of forward's output tensors. so the number of backward's input tensors equal to 
+    the number of forward output tensors. If you need the forward's inputs or outputs in `backward`, 
+    you can use `save_for_backward` to store the required tensors, and then use them in the backward.
+    3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
+    Output tensors of backward are the gradient of forward's input tensors, 
+    so the number of backward's output tensors equal to the number of forward input tensors.
     
 
     Examples:
-            .. code-block:: python
+        .. code-block:: python
 
-                import paddle
-                from paddle.autograd import PyLayer
+            import paddle
+            from paddle.autograd import PyLayer
 
-                # Inherit from PyLayer
-                class cus_tanh(PyLayer):
-                    @staticmethod
-                    def forward(ctx, x, func1, func2=paddle.square):
-                        # ctx is a context object that store some objects for backward.
-                        ctx.func = func2
-                        y = func1(x)
-                        # Pass tensors to backward.
-                        ctx.save_for_backward(y)
-                        return y
+            # Inherit from PyLayer
+            class cus_tanh(PyLayer):
+                @staticmethod
+                def forward(ctx, x, func1, func2=paddle.square):
+                    # ctx is a context object that store some objects for backward.
+                    ctx.func = func2
+                    y = func1(x)
+                    # Pass tensors to backward.
+                    ctx.save_for_backward(y)
+                    return y
 
-                    @staticmethod
-                    # forward has only one output, so there is only one gradient in the input of backward.
-                    def backward(ctx, dy):
-                        # Get the tensors passed by forward.
-                        y, = ctx.saved_tensor()
-                        grad = dy * (1 - ctx.func(y))
-                        # forward has only one input, so only one gradient tensor is returned.
-                        return grad
+                @staticmethod
+                # forward has only one output, so there is only one gradient in the input of backward.
+                def backward(ctx, dy):
+                    # Get the tensors passed by forward.
+                    y, = ctx.saved_tensor()
+                    grad = dy * (1 - ctx.func(y))
+                    # forward has only one input, so only one gradient tensor is returned.
+                    return grad
 
 
-                data = paddle.randn([2, 3], dtype="float64")
-                data.stop_gradient = False
-                z = cus_tanh.apply(data, func1=paddle.tanh)
-                z.mean().backward()
+            data = paddle.randn([2, 3], dtype="float64")
+            data.stop_gradient = False
+            z = cus_tanh.apply(data, func1=paddle.tanh)
+            z.mean().backward()
 
-                print(data.grad)
+            print(data.grad)
 
     """
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
         raise NotImplementedError(
-            "You must implement the forward function for custom layer.")
+            "You must implement the forward function for PyLayer.")
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
         raise NotImplementedError(
-            "You must implement the backward function for custom layer.")
+            "You must implement the backward function for PyLayer.")
