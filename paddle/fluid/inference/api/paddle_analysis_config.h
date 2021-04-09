@@ -177,7 +177,10 @@ struct AnalysisConfig {
   ///
   void DisableGpu();
 
-  void EnableXpu(int l3_workspace_size = 0xfffc00);
+  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
+                 bool autotune = true, const std::string& autotune_file = "",
+                 const std::string& precision = "int16",
+                 bool adaptive_seqlen = false);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -587,6 +590,11 @@ struct AnalysisConfig {
   bool thread_local_stream_{false};
   bool use_xpu_{false};
   int xpu_l3_workspace_size_;
+  bool xpu_locked_;
+  bool xpu_autotune_;
+  std::string xpu_autotune_file_;
+  std::string xpu_precision_;
+  bool xpu_adaptive_seqlen_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};
