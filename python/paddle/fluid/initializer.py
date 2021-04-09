@@ -153,7 +153,7 @@ class ConstantInitializer(Initializer):
             out_var = var
 
         # Initialization Ops should be prepended and not appended
-        op = block._prepend_op(
+        op = block.append_op(
             type="fill_constant",
             outputs={"Out": out_var},
             attrs={
@@ -259,7 +259,7 @@ class UniformInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        op = block._prepend_op(
+        op = block.append_op(
             type="uniform_random",
             inputs={},
             outputs={"Out": out_var},
@@ -350,7 +350,7 @@ class NormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        op = block._prepend_op(
+        op = block.append_op(
             type="gaussian_random",
             outputs={"Out": out_var},
             attrs={
@@ -434,7 +434,7 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        op = block._prepend_op(
+        op = block.append_op(
             type="truncated_gaussian_random",
             outputs={"Out": out_var},
             attrs={
@@ -554,7 +554,7 @@ class XavierInitializer(Initializer):
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
-            op = block._prepend_op(
+            op = block.append_op(
                 type="uniform_random",
                 inputs={},
                 outputs={"Out": out_var},
@@ -569,7 +569,7 @@ class XavierInitializer(Initializer):
 
         else:
             std = np.sqrt(2.0 / float(fan_in + fan_out))
-            op = block._prepend_op(
+            op = block.append_op(
                 type="gaussian_random",
                 outputs={"Out": out_var},
                 attrs={
@@ -685,7 +685,7 @@ class MSRAInitializer(Initializer):
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in))
-            op = block._prepend_op(
+            op = block.append_op(
                 type="uniform_random",
                 inputs={},
                 outputs={"Out": out_var},
@@ -700,7 +700,7 @@ class MSRAInitializer(Initializer):
 
         else:
             std = np.sqrt(2.0 / float(fan_in))
-            op = block._prepend_op(
+            op = block.append_op(
                 type="gaussian_random",
                 outputs={"Out": out_var},
                 attrs={
@@ -925,7 +925,7 @@ class NumpyArrayInitializer(Initializer):
         if self._value.size > 1024 * 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-        op = block._prepend_op(
+        op = block.append_op(
             type='assign_value',
             outputs={'Out': out_var},
             attrs={
