@@ -180,7 +180,7 @@ class PyFuncOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(!ctx->IsRuntime(), true,
                       platform::errors::InvalidArgument(
-                          "Infer shape cannot be called in runtime."));
+                          "Shape inference cannot be called at run time."));
   }
 };
 
