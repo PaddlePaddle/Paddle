@@ -174,6 +174,11 @@ class Conv2D(layers.Layer):
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
         super(Conv2D, self).__init__()
+
+        if (core.is_compiled_with_cuda() and paddle.fluid.get_flags(
+                "FLAGS_conv2d_disable_cudnn")["FLAGS_conv2d_disable_cudnn"]):
+            use_cudnn = False
+
         self._num_channels = num_channels
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')

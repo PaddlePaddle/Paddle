@@ -768,7 +768,7 @@ class TheOnePSRuntime(RuntimeBase):
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
 
-        debug = bool(os.getenv("PSERVER_DEBUG", "0"))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
 

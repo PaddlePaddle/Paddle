@@ -61,8 +61,7 @@ class CommonSparseTable : public SparseTable {
   int32_t save(const std::string& path, const std::string& param);
 
   virtual std::pair<int64_t, int64_t> print_table_stat();
-  virtual int32_t pull_sparse(float* pull_values, const uint64_t* keys,
-                              size_t num);
+  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
 
   virtual int32_t push_sparse(const uint64_t* keys, const float* values,
                               size_t num);

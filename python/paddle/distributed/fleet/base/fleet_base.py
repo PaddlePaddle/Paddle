@@ -289,6 +289,18 @@ class Fleet(object):
         """
         return self._role_maker._worker_num()
 
+    def node_num(self):
+        return self._role_maker._get_node_num()
+
+    def local_rank(self):
+        return self._role_maker._get_local_rank()
+
+    def local_device_ids(self):
+        return self._role_maker._get_local_device_ids()
+
+    def world_device_ids(self):
+        return self._role_maker._get_world_device_ids()
+
     def is_worker(self):
         """
         Check whether the node is an instance of worker.
@@ -628,12 +640,13 @@ class Fleet(object):
         self.user_defined_optimizer = optimizer
 
         if strategy is not None:
-            warnings.warn(
-                "It is recommended to use DistributedStrategy "
-                "in fleet.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
-                "which will take effect in distributed training.")
+            if self._is_collective:
+                warnings.warn(
+                    "It is recommended to use DistributedStrategy "
+                    "in fleet.init(). The strategy here is only for compatibility. "
+                    "If the strategy in fleet.distributed_optimizer() is "
+                    "not None, then it will overwrite the DistributedStrategy in fleet.init(), "
+                    "which will take effect in distributed training.")
             self._user_defined_strategy = copy.deepcopy(strategy)
 
         self._context = {}
@@ -705,7 +718,9 @@ class Fleet(object):
             model,
             comm_buffer_size=self._user_defined_strategy.fuse_grad_size_in_MB,
             last_comm_buffer_size=self._user_defined_strategy.
-            last_comm_group_size_MB)
+            last_comm_group_size_MB,
+            find_unused_parameters=self._user_defined_strategy.
+            find_unused_parameters)
         return self.model
 
     @dygraph_only

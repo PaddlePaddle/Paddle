@@ -108,7 +108,9 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(), 1,
                       platform::errors::InvalidArgument(
-                          "Number of Inputs(Out@Grad) must be larger than 1"));
+                          "Number of Inputs(Out@Grad) should be larger than 1."
+                          "But received Inputs(Out@Grad)' size = %d .",
+                          ctx->Inputs(framework::GradVarName("Out")).size()));
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
