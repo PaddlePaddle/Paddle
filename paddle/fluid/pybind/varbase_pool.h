@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/imperative/tracer.h"
-#ifndef _WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -76,7 +76,7 @@ class VarBasePool {
               new imperative::VarBase(tracer->GenerateUniqueName()));
         }
       }
-#ifndef _WIN32
+#ifdef _WIN32
       Sleep(1);
 #else
       usleep(1000);
