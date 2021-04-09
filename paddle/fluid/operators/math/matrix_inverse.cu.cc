@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Eigen/Core"
-#include "Eigen/LU"
 #include "paddle/fluid/operators/math/blas.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/operators/math/matrix_inverse.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -26,10 +27,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+#ifndef PADDLE_WITH_HIP
 template <typename DeviceContext, typename T>
 class MatrixInverseFunctor;
 
-#ifdef PADDLE_WITH_CUDA
 template <typename T>
 class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
  public:
@@ -113,40 +114,6 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
                             "Please check the matrix value and change it to a "
                             "non-singular matrix",
                             i, info[i], info[i]));
-    }
-  }
-};
-#endif
-#ifdef PADDLE_WITH_HIP
-template <typename T>
-class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
-  using Matrix =
-      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-  using EigenMatrixMap = Eigen::Map<Matrix>;
-  using ConstEigenMatrixMap = Eigen::Map<const Matrix>;
-
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& a, framework::Tensor* a_inv) {
-    const auto& mat_dims = a.dims();
-    const int rank = mat_dims.size();
-    int n = mat_dims[rank - 1];
-    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
-
-    const T* a_ptr = a.data<T>();
-    T* a_inv_ptr = a_inv->mutable_data<T>(context.GetPlace());
-
-    for (int i = 0; i < batch_size; ++i) {
-      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
-      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
-      Eigen::PartialPivLU<Matrix> lu;
-      lu.compute(mat);
-
-      const T min_abs_pivot = lu.matrixLU().diagonal().cwiseAbs().minCoeff();
-      PADDLE_ENFORCE_GT(
-          min_abs_pivot, static_cast<T>(0),
-          platform::errors::InvalidArgument("Input is not invertible."));
-      mat_inv.noalias() = lu.inverse();
     }
   }
 };
