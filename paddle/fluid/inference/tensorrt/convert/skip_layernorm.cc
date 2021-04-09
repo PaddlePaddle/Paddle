@@ -50,20 +50,24 @@ class SkipLayerNormOpConverter : public OpConverter {
     auto* scale = get_persistable_data("Scale", &scale_dims);
     int bias_size = framework::product(bias_dims);
     int scale_size = framework::product(scale_dims);
+    bool enable_int8 = op_desc.HasAttr("enable_int8"); //true; //false;
+    LOG(ERROR) << "skip layernorm int8: " << enable_int8;
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomSkipLayerNormPluginDynamic", "2");
-            //"CustomSkipLayerNormPluginDynamic", "3");
         assert(creator != nullptr);
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
-        type = 2;
         int ld = input1->getDimensions().d[2];  // hidden dimension
         assert(ld > 0);
+        if (enable_int8) {
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
+          //type = static_cast<int>(nvinfer1::DataType::kINT8);
+        }
 
         const std::vector<nvinfer1::PluginField> fields{
             {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
@@ -86,16 +90,6 @@ class SkipLayerNormOpConverter : public OpConverter {
 
         assert(plugin_layer != nullptr);
         layer = plugin_layer;
-        //auto output_name = op_desc.Output("Out")[0];
-        //engine_->SetTensorDynamicRange(layer->getInput(0), 1.0);
-        //engine_->SetTensorDynamicRange(layer->getInput(1), 1.0);
-
-        //layer->getOutput(0)->setName(output_name.c_str());
-        //layer->setName(
-        //("skip_layernorm (Output: " + output_name + ")").c_str());
-        //LOG(ERROR) << "skip_layernorm trt layer name: " << layer->getName() << "; nbDims: " << layer->getOutput(0)->getDimensions().nbDims;
-
-        //engine_->SetTensorDynamicRange(layer->getOutput(0), 1.0);
       } else {
         float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
         bool with_fp16 =

@@ -132,6 +132,7 @@ class OpConverter {
     (*it)(op, scope, test_mode);
 
     bool has_out_scale = op_desc.HasAttr("out_threshold");
+    LOG(ERROR) << "---------------------- op_convert -------------------: " << op_desc.Type() << " "<< has_out_scale;
     if (has_out_scale) {
       float out_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));

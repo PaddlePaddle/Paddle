@@ -93,8 +93,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     LOG(ERROR) << "dynamic shape: " << engine_->with_dynamic_shape() << " with oss: " << engine_->use_oss();
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
-        //int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
-        int output_fp16 = 1;
+        int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
+        output_fp16 = 1;
         int mha_type_id = 2;
         PADDLE_ENFORCE_EQ(
             output_fp16, 1,

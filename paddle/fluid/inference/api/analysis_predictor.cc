@@ -1073,7 +1073,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #endif
   if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./timeline");
+                              "./profile.log");
   }
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);

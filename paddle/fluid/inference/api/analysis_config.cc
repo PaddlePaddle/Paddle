@@ -331,11 +331,7 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
 }
 
-void AnalysisConfig::EnableTensorRtOSS() { 
-  //LOG(ERROR) << "EnableTensorRtOSS: " << trt_use_oss_;
-  trt_use_oss_ = true; 
-  //LOG(ERROR) << "EnableTensorRtOSS: " << trt_use_oss_;
-}
+void AnalysisConfig::EnableTensorRtOSS() { trt_use_oss_ = true; }
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {

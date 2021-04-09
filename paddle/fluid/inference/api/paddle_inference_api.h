@@ -43,6 +43,9 @@ limitations under the License. */
 
 namespace paddle_infer {
 
+void DisableProfiler();
+void ResetProfiler();
+
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 
