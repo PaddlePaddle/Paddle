@@ -1358,11 +1358,12 @@ class Layer(core.Layer):
 
                 if param.grad is not None:
                     with no_grad():
-                        grad_applied = func(param.grad, place, dtype, blocking)
+                        grad_applied = func(param._grad_ivar(), place, dtype,
+                                            blocking)
 
-                        assert param.grad.is_leaf
-                        grad_applied.stop_gradient = param.grad.stop_gradient
-                        self._parameters[key].grad = grad_applied
+                        grad_applied.stop_gradient = param._grad_ivar(
+                        ).stop_gradient
+                        self._parameters[key]._set_grad_ivar(grad_applied)
 
         for key, buf in self._buffers.items():
             self._buffers[key] = func(buf, place, dtype, blocking)
@@ -1376,7 +1377,7 @@ class Layer(core.Layer):
             If None, the place is the same with the origin Tensor. If place is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
             index of the GPUs or XPUs. Default: None. 
             
-            dtype(str|core.VarDesc.VarType|None, optional): the type of the data. If None, the dtype is the same with the origin Tensor. Default: None.
+            dtype(str|core.VarDesc.VarType|None, optional): The type of the data. If None, the dtype is the same with the origin Tensor. Default: None.
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be 
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
@@ -1402,7 +1403,7 @@ class Layer(core.Layer):
                 #       [[-0.32770029,  0.38653070],
                 #        [ 0.46030545,  0.08158520]])
 
-                linear.to(place=paddle.CPUPlace())
+                linear.to(place='cpu')
                 linear.weight
                 #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
                 #       [[-0.32770029,  0.38653070],
