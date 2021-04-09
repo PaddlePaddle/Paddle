@@ -69,7 +69,7 @@ class Sequential(Layer):
     def __getitem__(self, name):
         if isinstance(name, slice):
             return self.__class__(*(list(self._sub_layers.values())[name]))
-        else:
+        elif isinstance(name, int):
             if name >= len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
             elif name < 0 and name >= -len(self._sub_layers):
@@ -77,6 +77,13 @@ class Sequential(Layer):
             elif name < -len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
             return self._sub_layers[str(name)]
+        elif isinstance(name, str):
+            if not name in self._sub_layers:
+                raise KeyError('key {} is not found'.format(name))
+            return self._sub_layers[name]
+        else:
+            raise KeyError('key {} should be int, str or slice, but none of it'.
+                           format(name))
 
     def __setitem__(self, name, layer):
         assert isinstance(layer, Layer)
