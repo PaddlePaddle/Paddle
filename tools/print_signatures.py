@@ -76,7 +76,6 @@ def format_spec(spec):
 def queue_dict(member, cur_name):
     if cur_name in omitted_list:
         return
-
     doc_md5 = md5(member.__doc__)
 
     if inspect.isclass(member):
@@ -108,7 +107,7 @@ def visit_member(parent_name, member, member_name=None):
         for name, value in inspect.getmembers(member):
             if hasattr(value, '__name__') and (not name.startswith("_") or
                                                name == "__init__"):
-                visit_member(cur_name, value)
+                visit_member(cur_name, value, name)
     elif inspect.ismethoddescriptor(member):
         return
     elif inspect.isbuiltin(member):
