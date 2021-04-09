@@ -196,6 +196,85 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
 }
 #endif
 
+#ifdef PADDLE_WITH_ASCEND_CL
+template <>
+void Copy<platform::NPUPlace, platform::CPUPlace>(platform::NPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::CPUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  aclrtStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetNPUDeviceId(dst_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
+  if (stream) {
+    platform::RecordEvent record_event("NpuMemcpyAsync:CPU->NPU");
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+  } else {
+    platform::RecordEvent record_event("NpuMemcpySync:CPU->NPU");
+    platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_HOST_TO_DEVICE);
+  }
+}
+
+template <>
+void Copy<platform::CPUPlace, platform::NPUPlace>(platform::CPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::NPUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  aclrtStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetNPUDeviceId(src_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
+  if (stream) {
+    platform::RecordEvent record_event("NpuMemcpyAsync:NPU->CPU");
+    platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST, stream);
+  } else {
+    platform::RecordEvent record_event("GpuMemcpySync:NPU->CPU");
+    platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_HOST);
+  }
+}
+
+template <>
+void Copy<platform::NPUPlace, platform::NPUPlace>(platform::NPUPlace dst_place,
+                                                  void* dst,
+                                                  platform::NPUPlace src_place,
+                                                  const void* src, size_t num,
+                                                  aclrtStream stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by stream(" << stream << ")";
+  if (dst_place == src_place) {
+    platform::SetNPUDeviceId(src_place.device);
+    if (stream) {
+      platform::RecordEvent record_event("NpuMemcpyAsync(same_npu):NPU->NPU");
+      platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
+                               stream);
+    } else {
+      platform::RecordEvent record_event("NpuMemcpySync(same_npu):NPU->NPU");
+      platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);
+    }
+  } else {
+    if (!platform::NPUCanAccessPeer(dst_place.device, dst_place.device)) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Peer access between NPU places is not allowed."));
+    }
+    if (stream) {
+      // TODO(zhiqiu): support peer access?
+      platform::RecordEvent record_event("NpuMemcpyPeerAsync:NPU->NPU");
+      platform::NPUMemcpyAsync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE,
+                               stream);
+    } else {
+      platform::RecordEvent record_event("NpuMemcpyPeerSync:NPU->NPU");
+      platform::NPUMemcpySync(dst, src, num, ACL_MEMCPY_DEVICE_TO_DEVICE);
+    }
+  }
+}
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 

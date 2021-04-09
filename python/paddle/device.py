@@ -32,10 +32,26 @@ __all__ = [
     #            'cuda_places',
     #            'CUDAPinnedPlace',
     #            'CUDAPlace',
-    'is_compiled_with_cuda'
+    'is_compiled_with_cuda',
+    'is_compiled_with_npu'
 ]
 
 _cudnn_version = None
+
+
+def is_compiled_with_npu():
+    """
+    Whether this whl package can be used to run the model on NPU.
+
+    Returns (bool): `True` if NPU is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_npu = paddle.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def is_compiled_with_xpu():
@@ -165,6 +181,7 @@ def set_device(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
+
     framework._set_expected_place(place)
     return place
 
