@@ -24,7 +24,7 @@ class PyLayerContext(object):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
             from paddle.autograd import PyLayer
 
@@ -204,8 +204,8 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
-        It is to be overloaded by subclasses.It must accept a object of `PyLayerContext` as 
-        the first argument, followed by any number of arguments (tensors or other types).
+        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as 
+        the first argument, followed by any number of arguments (tensors or other types). 
         `None` can not be included in the returned result.
 
         Args:
@@ -241,7 +241,7 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
     @staticmethod
     def backward(ctx, *args, **kwargs):
         """
-        This is a function to calculate the gradient. It is to be overloaded by subclasses.
+        This is a function to calculate the gradient. It is to be overloaded by subclasses. 
         It must accept a object of `PyLayerContext` as the first argument, and the rest 
         arguments are the gradient of forward's output tensors. Output tensors of backward 
         are the gradient of forward's input tensors.
