@@ -367,29 +367,23 @@ endif()
 ##### 2.0 New custom op extension mechanism related #####
 
 # if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
-set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
-
-set(PADDLE_CUSTOM_OP_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
-set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
-
-cc_library(paddle_custom_op_shared
-    SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
-
-get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
-target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
-
-if (LINUX)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
-      CACHE INTERNAL "Paddle custom op lib")
-endif()
-
 if (WIN32)
+  set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
+
+  set(PADDLE_CUSTOM_OP_SRCS
+      ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
+      ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
+  set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
+
+  cc_library(paddle_custom_op_shared
+      SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
+
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
+  target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
+
   if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
   else()
@@ -401,10 +395,4 @@ if (WIN32)
   set(PADDLE_CUSTOM_OP_SHARED_LIB
       ${paddle_custom_op_lib_path}/paddle_custom_op.dll
       CACHE INTERNAL "Paddle custom op dll")
-endif()
-
-if(APPLE)
-  set(PADDLE_CUSTOM_OP_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
-      CACHE INTERNAL "Paddle custom op lib")
 endif()

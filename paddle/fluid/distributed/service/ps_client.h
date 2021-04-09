@@ -24,7 +24,7 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 
 namespace paddle {
 namespace distributed {
@@ -112,10 +112,11 @@ class PSClient {
   // future结束前keys和values缓冲区不能再次使用
   // 整合多个线程请求的keys，聚集并分散发送到server
   // 返回结果后，遍历buffer并对values赋值
+  // is_training 用于区分请求是训练/预测，server端对于特征和准入会有不同的处理.
   virtual std::future<int32_t> pull_sparse(float **select_values,
                                            size_t table_id,
-                                           const uint64_t *keys,
-                                           size_t num) = 0;
+                                           const uint64_t *keys, size_t num,
+                                           bool is_training) = 0;
 
   virtual std::future<int32_t> print_table_stat(uint32_t table_id) = 0;
 
