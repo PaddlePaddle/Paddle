@@ -37,23 +37,15 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
+#ifdef PADDLE_WITH_CUDA
+#ifdef __NVCC__
 
 template <typename T>
-inline int VectorizedSize_V2(const T *pointer) {
+inline int SameDimsVectorizedSize(const T *pointer) {
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec2 = std::alignment_of<AlignedVector<T, 2>>::value;  // NOLINT
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  constexpr int vec8 = std::alignment_of<AlignedVector<T, 8>>::value;  // NOLINT
-  if (address % vec8 == 0) {
-    return 8;
-  } else if (address % vec4 == 0) {
-    return 4;
-  } else if (address % vec2 == 0) {
-    return 2;
+  int vec_size = sizeof(float4) / sizeof(T);
+  if (address % vec_size == 0) {
+    return vec_size;
   }
   return 1;
 }
@@ -74,19 +66,110 @@ struct SameDimsData {
   }
 
   int GetVectorizedSize() {
-    int vec_size = 1;
-    vec_size = std::min<int>(vec_size, VectorizedSize_V2<T>(out));
-    vec_size = std::min<int>(vec_size, VectorizedSize_V2<T>(in0));
+    int vec_size = 8;
+    vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(out));
+    vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(in0));
     if (in1 != nullptr) {
-      vec_size = std::min<int>(vec_size, VectorizedSize_V2<T>(in1));
+      vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(in1));
     }
     return vec_size;
   }
 };
 
+template <int Vec_size, typename T, typename Functor>
+__device__ void VectorizedKernelHelper(SameDimsData<T> data, int size,
+                                       Functor func, int tid) {
+  using VecType = float4;
+  const VecType *x = reinterpret_cast<const VecType *>(data.in0);
+  const VecType *y = reinterpret_cast<const VecType *>(data.in1);
+  VecType *z = reinterpret_cast<VecType *>(data.out);
+  VecType x_vec, y_vec, z_vec;
+
+  T *x_slr = reinterpret_cast<T *>(&x_vec);
+  T *y_slr = reinterpret_cast<T *>(&y_vec);
+  T *z_slr = reinterpret_cast<T *>(&z_vec);
+
+  x_vec = x[tid];
+  y_vec = y[tid];
+
+#pragma unroll
+  for (int i = 0; i < Vec_size; ++i) {
+    z_slr[i] = x_slr[i] + y_slr[i];
+  }
+
+  z[tid] = z_vec;
+}
+
+template <typename T, typename Functor>
+__device__ void ScalarKernelHelper(SameDimsData<T> data, int size, Functor func,
+                                   int start, int remain) {
+  for (int i = 0; i < remain; ++i) {
+    T x = (data.in0)[start + i];
+    T y = (data.in1)[start + i];
+    (data.out)[start + i] = x + y;
+  }
+}
+
+template <int Vec_size, typename T, typename Functor>
+__global__ void VectorizedSameDimsKernel(SameDimsData<T> data, int size,
+                                         Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int remain = size - Vec_size * tid;
+  remain = remain > 0 ? remain : 0;
+  if (remain >= Vec_size) {
+    VectorizedKernelHelper<Vec_size>(data, size, func, tid);
+  } else {
+    ScalarKernelHelper(data, size, func, tid * Vec_size, remain);
+  }
+}
+
+template <typename T, typename Functor>
+__global__ void ScalarSameDimsKernel(SameDimsData<T> data, int size,
+                                     Functor func) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  ScalarKernelHelper(data, size, func, tid, 1);
+}
+
 template <typename T, typename Functor>
 void same_dims_launch_kernel(const framework::ExecutionContext &ctx,
                              SameDimsData<T> data, int64_t size, Functor func) {
+  // calculate the max vec_size for all inputs and outputs
+  int vec_size = data.GetVectorizedSize();
+  int block_size = PADDLE_CUDA_THREAD_SIZE;
+  int grid_size =
+      ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
+  printf("===============\n");
+  printf("size: %d\n", size);
+  printf("vec_size: %d\n", vec_size);
+  printf("block_size: %d\n", block_size);
+  printf("grid_size: %d\n", grid_size);
+  printf("===============\n");
+  // cuda kernel
+  auto stream =
+      ctx.template device_context<platform::CUDADeviceContext>().stream();
+  switch (vec_size) {
+    case 8:
+      VectorizedSameDimsKernel<8><<<grid_size, block_size, 0, stream>>>(
+          data, size, func);
+      break;
+    case 4:
+      VectorizedSameDimsKernel<4><<<grid_size, block_size, 0, stream>>>(
+          data, size, func);
+      break;
+    case 2:
+      VectorizedSameDimsKernel<2><<<grid_size, block_size, 0, stream>>>(
+          data, size, func);
+      break;
+    case 1:
+      ScalarSameDimsKernel<<<grid_size, block_size, 0, stream>>>(data, size,
+                                                                 func);
+      break;
+    default:
+      VLOG(3) << "Unsupported vectorized size!";
+  }
 }
+
+#endif
+#endif
 }  // namespace operators
 }  // namespace paddle

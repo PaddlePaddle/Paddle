@@ -74,6 +74,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
         std::is_same<DeviceContext, platform::CUDADeviceContext>::value;
     if (dims_equal) {
       if (is_cuda) {
+#ifdef PADDLE_WITH_CUDA
+#ifdef __NVCC__
         // enter same_dims_launch_kernel
         // output_num default 1
         // for binary op, input_num is 2
@@ -82,6 +84,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
         auto data = SameDimsData<T>(z->data<T>(), x->data<T>(), y->data<T>());
         same_dims_launch_kernel<T, AddFunctor<T>>(ctx, data, size,
                                                   AddFunctor<T>());
+#endif
+#endif
       } else {
         SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
         same_dims_add(ctx, x, y, z);
@@ -148,6 +152,11 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
 
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
+
+template <typename T, int Size>
+struct alignas(sizeof(T) * Size) AlignedVector {
+  T val[Size];
+};
 
 template <typename T>
 inline int VectorizedSize(const T *pointer) {
