@@ -33,6 +33,8 @@ import os
 import errno
 from test_static_save_load import *
 
+paddle.enable_static()
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
