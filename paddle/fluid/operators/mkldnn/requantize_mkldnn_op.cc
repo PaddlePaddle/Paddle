@@ -137,7 +137,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    dnnl::stream astream(engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
@@ -156,4 +156,5 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>);
+                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>,
+                   ops::ReQuantOpKernel<paddle::platform::bfloat16>);

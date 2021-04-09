@@ -34,7 +34,11 @@ proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
 
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
-nv_test(dim_test SRCS dim_test.cu DEPS ddim)
+if(WITH_GPU)
+  nv_test(dim_test SRCS dim_test.cu DEPS ddim)
+elseif(WITH_ROCM)
+  hip_test(dim_test SRCS dim_test.cu DEPS ddim)
+endif()
 cc_test(unroll_array_ops_test SRCS unroll_array_ops_test.cc)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
@@ -46,6 +50,8 @@ if(WITH_GPU)
   else()
     nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
   endif(WIN32)
+elseif(WITH_ROCM)
+  hip_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
 else()
   cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
 endif()
@@ -53,6 +59,8 @@ endif()
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 if(WITH_GPU)
   nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor dlpack_tensor)
+elseif(WITH_ROCM)
+  hip_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor dlpack_tensor)
 else()
   cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
@@ -63,13 +71,20 @@ cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 if(WITH_GPU)
   nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+elseif(WITH_ROCM)
+  hip_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
-nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+
+if(WITH_GPU)
+  nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+elseif(WITH_ROCM)
+  hip_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+endif()
 
 cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
@@ -94,8 +109,13 @@ cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
-nv_test(data_device_transform_test SRCS data_device_transform_test.cu
+if(WITH_GPU)
+  nv_test(data_device_transform_test SRCS data_device_transform_test.cu
         DEPS operator op_registry device_context math_function scope)
+elseif(WITH_ROCM)
+  hip_test(data_device_transform_test SRCS data_device_transform_test.cu
+        DEPS operator op_registry device_context math_function scope)
+endif()
 
 if(WITH_GPU)
   if (WIN32)
@@ -108,6 +128,9 @@ if(WITH_GPU)
       nv_library(data_type_transform SRCS data_type_transform.cu DEPS tensor)
   endif(WIN32)
   nv_test(data_type_transform_test SRCS data_type_transform_test.cc data_type_transform_test.cu DEPS data_type_transform)
+elseif(WITH_ROCM)
+  hip_library(data_type_transform SRCS data_type_transform.cu DEPS tensor)
+  hip_test(data_type_transform_test SRCS data_type_transform_test.cc data_type_transform_test.cu DEPS data_type_transform)
 else()
   cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
   cc_test(data_type_transform_test SRCS data_type_transform_test.cc DEPS data_type_transform)
@@ -156,8 +179,11 @@ cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator 
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
-
-nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
+if(WITH_GPU)
+  nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
+elseif(WITH_ROCM)
+  hip_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
+endif()
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
@@ -320,35 +346,65 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+
+cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
+cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
-    DEPS ${FLUID_FRAMEWORK_MODULES})
+
+if(WITH_TESTING AND TEST selected_rows_test)
+  set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
+endif()
+
+##### 2.0 New custom op extension mechanism related #####
+
+# if not deps `layer`, will cause: undefined symbol: _ZN6paddle10imperative7VarBase9name_set_
+set(PADDLE_CUSTOM_OP_MODULES custom_tensor op_meta_info custom_operator layer)
+
+set(PADDLE_CUSTOM_OP_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/custom_operator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_tensor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../extension/src/ext_op_meta_info.cc
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc)
+set(PADDLE_CUSTOM_OP_SRCS ${PADDLE_CUSTOM_OP_SRCS} PARENT_SCOPE)
+
+cc_library(paddle_custom_op_shared
+    SHARED SRCS ${PADDLE_CUSTOM_OP_SRCS} DEPS ${PADDLE_CUSTOM_OP_MODULES})
+
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
-target_link_libraries(paddle_framework_shared ${os_dependency_modules})
+set_target_properties(paddle_custom_op_shared PROPERTIES OUTPUT_NAME paddle_custom_op)
+target_link_libraries(paddle_custom_op_shared ${os_dependency_modules})
 
 if (LINUX)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.so
-      CACHE INTERNAL "Fluid framework lib")
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_custom_op.so
+      CACHE INTERNAL "Paddle custom op lib")
 endif()
 
 if (WIN32)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dll
-      CACHE INTERNAL "Fluid framework lib")
+  if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR})
+  else()
+    set(paddle_custom_op_lib_path ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+  endif()
+  set(PADDLE_CUSTOM_OP_IMPORT_LIB
+      ${paddle_custom_op_lib_path}/paddle_custom_op.lib
+      CACHE INTERNAL "Paddle custom op import lib")
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${paddle_custom_op_lib_path}/paddle_custom_op.dll
+      CACHE INTERNAL "Paddle custom op dll")
 endif()
 
 if(APPLE)
-  set(FLUID_FRAMEWORK_SHARED_LIB
-      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
-      CACHE INTERNAL "Fluid framework lib")
-endif()
-if(WITH_TESTING AND TEST selected_rows_test)
-  set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
+  set(PADDLE_CUSTOM_OP_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/paddle_custom_op.dylib
+      CACHE INTERNAL "Paddle custom op lib")
 endif()

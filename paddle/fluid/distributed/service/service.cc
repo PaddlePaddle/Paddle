@@ -47,7 +47,7 @@ paddle::distributed::PSParameter load_from_prototxt(
 }
 
 void PSCore::init_gflag(const std::string& gflags) {
-  LOG(INFO) << "Init With Gflags:" << gflags;
+  VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.size() < 1) {
     flags.push_back("-max_body_size=314217728");
@@ -69,11 +69,13 @@ void PSCore::init_gflag(const std::string& gflags) {
 int PSCore::init_server(
     const std::string& dist_desc,
     const std::vector<std::string>* host_sign_list, int node_num, int index,
+    int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   init_gflag(_ps_param.init_gflags());
   _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.set_ps_servers(host_sign_list, node_num);
+  _ps_env.set_trainers(trainers);
   int ret = 0;
   _server_ptr = std::shared_ptr<paddle::distributed::PSServer>(
       paddle::distributed::PSServerFactory::create(_ps_param));

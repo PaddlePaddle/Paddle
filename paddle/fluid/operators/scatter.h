@@ -102,9 +102,13 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -146,9 +150,13 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
 
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(src_dims[i], dst_dims[i],
-                      platform::errors::InvalidArgument(
-                          "src shape and dst shape should match"));
+    PADDLE_ENFORCE_EQ(
+        src_dims[i], dst_dims[i],
+        platform::errors::InvalidArgument(
+            "The dimensions of the source tensor and target tensor should"
+            " match, but received source tensor's %d-th dimension is %d,"
+            "target tensor's %d-th dimension is %d.",
+            i, src_dims[i], i, dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -168,6 +176,24 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
                                      output, i, index_, slice_size,
                                      slice_bytes);
+  }
+}
+
+// The function is only for scatter grad x,
+// however update grad use gather
+template <typename T, typename IndexT = int>
+void CPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
+                        Tensor* output) {
+  int index_size = index.dims()[0];
+  auto dst_dims = output->dims();
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+  size_t slice_size = 1;
+  for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
+  const size_t slice_bytes = slice_size * sizeof(T);
+  for (int i = 0; i < index_size; ++i) {
+    const IndexT& index_ = p_index[i];
+    memset(p_output + slice_size * index_, 0, slice_bytes);
   }
 }
 

@@ -15,27 +15,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include <glog/logging.h>
-
-#include <algorithm>
 #include <sstream>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+}  // namespace framework
+}  // namespace paddle
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
@@ -48,9 +47,6 @@ DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
-DEFINE_bool(fast_check_nan_inf, false,
-            "Fast checking NAN/INF after each operation. It will be a little"
-            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -194,7 +190,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CUDA support.",
@@ -1040,21 +1036,23 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                               op_type, name));
 }
 
-bool OperatorWithKernel::SupportsMKLDNN() const {
+bool OperatorWithKernel::SupportsMKLDNN(
+    const proto::VarType::Type data_type) const {
   auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
   return std::any_of(op_kernels.begin(), op_kernels.end(),
-                     [](OpKernelMap::const_reference kern_pair) {
+                     [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
                               kern_pair.first.library_type_ ==
-                                  LibraryType::kMKLDNN;
+                                  LibraryType::kMKLDNN &&
+                              kern_pair.first.data_type_ == data_type;
                      });
 }
 
-bool OperatorWithKernel::CanMKLDNNBeUsed(
-    const framework::ExecutionContext& ctx) const {
+bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                                         proto::VarType::Type data_type) const {
   bool use_mkldnn_ctx =
       ctx.Attr<bool>("use_mkldnn") && platform::is_cpu_place(ctx.GetPlace());
-  return use_mkldnn_ctx && this->SupportsMKLDNN();
+  return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -1166,25 +1164,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
 #endif
-  }
-
-  if (FLAGS_fast_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      // only check inserted vars,
-      // please see executor.py for details of fast_check_nan_inf
-      if (vname.rfind("debug_var") == 0) {
-        VLOG(3) << "debugging nan/inf in var " << vname;
-
-        auto* var = exec_scope.FindVar(vname);
-        if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-        } else if (var->IsType<framework::SelectedRows>()) {
-          CheckTensorNANOrInf(type_, vname,
-                              var->Get<framework::SelectedRows>().value());
-        }
-      }
-    }
+#if defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetLastError());
+    VLOG(4) << "Operator(" << Type() << "): context wait and get last error";
+#endif
   }
 
   if (FLAGS_check_nan_inf) {

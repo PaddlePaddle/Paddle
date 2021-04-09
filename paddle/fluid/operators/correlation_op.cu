@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+// HIP not supported yet
+
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -23,7 +26,6 @@ namespace operators {
 #define FULL_MASK 0xffffffff
 
 using framework::Tensor;
-using DataLayout = framework::DataLayout;
 
 template <typename T>
 __forceinline__ __device__ T warpReduceSum(T val) {
@@ -481,3 +483,5 @@ REGISTER_OP_CUDA_KERNEL(correlation, ops::CorrelationCUDAKernel<float>,
                         ops::CorrelationCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(correlation_grad, ops::CorrelationCUDAGradKernel<float>,
                         ops::CorrelationCUDAGradKernel<double>);
+
+#endif  // not PADDLE_WITH_HIP

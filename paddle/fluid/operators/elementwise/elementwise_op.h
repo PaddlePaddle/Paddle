@@ -110,7 +110,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -276,12 +276,15 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     // If broadcasting is needed, use native implementation
-    auto CanMKLDNNElementwiseAddGradBeUsed = [&]() {
-      return (ctx.Input<Tensor>("X")->dims() == ctx.Input<Tensor>("Y")->dims());
+    auto CanMKLDNNElementwiseGradBeUsed = [&]() {
+      auto dx_dims = ctx.Input<Tensor>("X")->dims();
+      auto dy_dims = ctx.Input<Tensor>("Y")->dims();
+      // No broadcast or broadcasting of data on inner dims is supported
+      return (dx_dims[dx_dims.size() - 1] == dy_dims[dy_dims.size() - 1]);
     };
 
-    if (this->CanMKLDNNBeUsed(ctx) && (ctx.Type() != "elementwise_add_grad" ||
-                                       CanMKLDNNElementwiseAddGradBeUsed())) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        CanMKLDNNElementwiseGradBeUsed()) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -331,7 +334,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -384,7 +387,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
     }
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

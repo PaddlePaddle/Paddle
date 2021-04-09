@@ -48,6 +48,18 @@ struct select {
   using type = eval_if_t<Head::value, Head, select<Tail...>>;
 };
 
+template <typename T>
+struct select<T> {
+  using type = T;
+};
+
+template <bool B, typename T>
+struct select<cond<B, T>> {
+  // last one had better be true!
+  static_assert(B, "No match select type!");
+  using type = T;
+};
+
 template <typename Head, typename... Tail>
 using select_t = typename select<Head, Tail...>::type;
 
@@ -62,6 +74,16 @@ using Complex = typename std::enable_if<!std::is_same<T, RealT>::value>::type;
 // There are no NoComplex cases now, implement later if needed
 template <typename T, typename RealT>
 using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
+
+template <typename T>
+using EnableComplex =
+    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
+                            std::is_same<T, platform::complex128>::value>::type;
+
+template <typename T>
+using DisableComplex = typename std::enable_if<
+    !std::is_same<T, platform::complex64>::value &&
+    !std::is_same<T, platform::complex128>::value>::type;
 
 template <typename T, typename Enable = void>
 struct RealFunctor;
@@ -100,6 +122,161 @@ struct ImagFunctor<T, Complex<T, Real<T>>> {
 };
 
 template <typename T, typename Enable = void>
+struct AbsFunctor;
+
+template <typename T>
+struct AbsFunctor<T, Complex<T, Real<T>>> {
+  AbsFunctor(const T* input, Real<T>* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = abs(input_[idx]);
+  }
+
+  const T* input_;
+  Real<T>* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct AbsFunctor<T, NoComplex<T, Real<T>>> {
+  AbsFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = std::abs(input_[idx]);
+  }
+
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct AbsGradFunctor {
+  AbsGradFunctor(const math::Real<T>* dout, const T* x, T* output,
+                 int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == T(0)) {
+      output_[idx] = T(0);
+    } else {
+      output_[idx] = T(dout_[idx]) * (x_[idx] / T(std::abs(x_[idx])));
+    }
+  }
+
+  const math::Real<T>* dout_;
+  const T* x_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <>
+struct AbsGradFunctor<paddle::platform::complex64> {
+  AbsGradFunctor(const float* dout, const paddle::platform::complex64* x,
+                 paddle::platform::complex64* output, int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::complex64(0)) {
+      output_[idx] = paddle::platform::complex64(0);
+    } else {
+      output_[idx] = paddle::platform::complex64(dout_[idx]) *
+                     (x_[idx] / paddle::platform::complex64(abs(x_[idx])));
+    }
+  }
+
+  const float* dout_;
+  const paddle::platform::complex64* x_;
+  paddle::platform::complex64* output_;
+  int64_t numel_;
+};
+
+template <>
+struct AbsGradFunctor<paddle::platform::complex128> {
+  AbsGradFunctor(const double* dout, const paddle::platform::complex128* x,
+                 paddle::platform::complex128* output, int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::complex128(0)) {
+      output_[idx] = paddle::platform::complex128(0);
+    } else {
+      output_[idx] = paddle::platform::complex128(dout_[idx]) *
+                     (x_[idx] / paddle::platform::complex128(abs(x_[idx])));
+    }
+  }
+
+  const double* dout_;
+  const paddle::platform::complex128* x_;
+  paddle::platform::complex128* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct AbsGradGradFunctor {
+  AbsGradGradFunctor(const T* ddx, const T* x, T* output, int64_t numel)
+      : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == T(0)) {
+      output_[idx] = T(0);
+    } else {
+      output_[idx] = T(ddx_[idx]) * x_[idx] / T(std::abs(x_[idx]));
+    }
+  }
+
+  const T* ddx_;
+  const T* x_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <>
+struct AbsGradGradFunctor<paddle::platform::complex128> {
+  AbsGradGradFunctor(const paddle::platform::complex128* ddx,
+                     const paddle::platform::complex128* x,
+                     paddle::platform::complex128* output, int64_t numel)
+      : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::complex128(0)) {
+      output_[idx] = paddle::platform::complex128(0);
+    } else {
+      output_[idx] = paddle::platform::complex128(ddx_[idx]) * x_[idx] /
+                     paddle::platform::complex128(abs(x_[idx]));
+    }
+  }
+
+  const paddle::platform::complex128* ddx_;
+  const paddle::platform::complex128* x_;
+  paddle::platform::complex128* output_;
+  int64_t numel_;
+};
+
+template <>
+struct AbsGradGradFunctor<paddle::platform::complex64> {
+  AbsGradGradFunctor(const paddle::platform::complex64* ddx,
+                     const paddle::platform::complex64* x,
+                     paddle::platform::complex64* output, int64_t numel)
+      : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == paddle::platform::complex64(0)) {
+      output_[idx] = paddle::platform::complex64(0);
+    } else {
+      output_[idx] = paddle::platform::complex64(ddx_[idx]) * x_[idx] /
+                     paddle::platform::complex64(abs(x_[idx]));
+    }
+  }
+
+  const paddle::platform::complex64* ddx_;
+  const paddle::platform::complex64* x_;
+  paddle::platform::complex64* output_;
+  int64_t numel_;
+};
+template <typename T, typename Enable = void>
 struct RealToComplexFunctor;
 
 template <typename T>
@@ -134,16 +311,6 @@ struct ImagToComplexFunctor<T, Complex<T, Real<T>>> {
   T* output_;
   int64_t numel_;
 };
-
-template <typename T>
-using EnableComplex =
-    typename std::enable_if<std::is_same<T, platform::complex64>::value ||
-                            std::is_same<T, platform::complex128>::value>::type;
-
-template <typename T>
-using DisableComplex = typename std::enable_if<
-    !std::is_same<T, platform::complex64>::value &&
-    !std::is_same<T, platform::complex128>::value>::type;
 
 template <typename T, typename Enable = void>
 struct ConjFunctor;

@@ -88,6 +88,21 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 "custom_white_list": ['softmax'],
                 "custom_black_list": ['tanh'],
             }
+        elif name == 'pure_fp16':
+            strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "decr_every_n_nan_or_inf": 2,
+                "incr_every_n_steps": 1000,
+                "incr_ratio": 2.0,
+                "use_dynamic_loss_scaling": True,
+                "decr_ratio": 0.5,
+                "custom_white_list": ['softmax'],
+                "custom_black_list": ['tanh'],
+                "use_pure_fp16": True,
+                "use_fp16_guard": False,
+            }
+
         elif name == 'dgc':
             strategy.dgc = True
             strategy.dgc_configs = {
@@ -131,7 +146,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
         elif name == "sharding":
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
         elif name == "recompute-offload":
             strategy.recompute = True
             strategy.recompute_configs = {

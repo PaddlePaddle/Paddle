@@ -22,11 +22,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-SplitPlugin* CreateSplitPluginDeserialize(const void* buffer, size_t length) {
-  return new SplitPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("split_plugin", CreateSplitPluginDeserialize);
-
 template <typename T>
 __device__ int upper_bound(T const* vals, int n, T const& key) {
   int i = 0;
@@ -62,6 +57,16 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
   return output_dims;
 }
 
+void SplitPlugin::shareData(const SplitPlugin* another) {
+  outer_rows_ = another->outer_rows_;
+  inner_cols_ = another->inner_cols_;
+  same_shape_ = another->same_shape_;
+  axis_shape_ = another->axis_shape_;
+  d_segment_offsets_ = another->d_segment_offsets_;
+  segment_offsets_ = another->segment_offsets_;
+  d_output_ptrs_.resize(another->d_output_ptrs_.size(), nullptr);
+}
+
 int SplitPlugin::initialize() {
   PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
                     platform::errors::InvalidArgument(
@@ -92,6 +97,9 @@ int SplitPlugin::initialize() {
   d_output_ptrs_.resize(this->getNbOutputs(), nullptr);
   return 0;
 }
+
+// nothing to release according to initialize
+void SplitPlugin::terminate() {}
 
 // The following part of the code refers to onnx-tensorrt
 // https://github.com/onnx/onnx-tensorrt/blob/master/Split.cu

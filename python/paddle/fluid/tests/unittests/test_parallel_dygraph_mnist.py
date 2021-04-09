@@ -41,24 +41,62 @@ class TestParallelDygraphMnist(TestDistBase):
                 log_name=flag_name)
 
 
+#TODO(liuyuhui): Multi-Card Baidu Kunlun XPU training exist accuracy problems
+#it is difficult to find out immediately where the problem is, 
+#and we will work with frameworkers' help to fix it. 
+class TestParallelDygraphMnistXPU(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._bkcl_mode = True
+        self._dygraph = True
+        self._enforce_place = "XPU"
+
+    def test_mnist_xpu(self):
+        if fluid.core.is_compiled_with_xpu():
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-4,
+                check_error_log=True,
+                log_name=flag_name)
+
+
 class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
     def test_mnist_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
-class TestFleetDygraphMnist(TestDistBase):
+class TestParallelDygraphMnistAccGrad(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
-        self._gpu_fleet_api = True
+        self._use_fleet_api = True
+        self._accumulate_gradient = True
+        self._find_unused_parameters = False
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_mnist.py",
                 delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
+
+
+class TestFleetDygraphMnistXPU(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._bkcl_mode = True
+        self._dygraph = True
+        self._enforce_place = "XPU"
+        self._use_fleet_api = True
+
+    def test_mnist(self):
+        if fluid.core.is_compiled_with_xpu():
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-4,
                 check_error_log=True,
                 log_name=flag_name)
 

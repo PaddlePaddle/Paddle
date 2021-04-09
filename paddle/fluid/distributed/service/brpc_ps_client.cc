@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
-#include "Eigen/Dense"
 
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
-#include "paddle/fluid/distributed/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/string_helper.h"
 
 const static int max_port = 65535;
 
@@ -62,9 +57,6 @@ namespace framework {
 class Scope;
 class Variable;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -134,8 +126,15 @@ int32_t BrpcPsClient::create_client2client_connection(
     server_ip_port.append(std::to_string(client_list[i].port));
     _client_channels[i].reset(new brpc::Channel());
     if (_client_channels[i]->Init(server_ip_port.c_str(), "", &options) != 0) {
-      LOG(ERROR) << "psclient connect to client:" << server_ip_port
-                 << " Failed!";
+      VLOG(0) << "BrpcPSClient connect to Client:" << server_ip_port
+              << " Failed! Try again.";
+      std::string int_ip_port =
+          GetIntTypeEndpoint(client_list[i].ip, client_list[i].port);
+      if (_client_channels[i]->Init(int_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "BrpcPSClient connect to Client:" << int_ip_port
+                   << " Failed!";
+        return -1;
+      }
     }
     os << server_ip_port << ",";
   }
@@ -168,9 +167,16 @@ int32_t BrpcPsClient::initialize() {
       _server_channels[i][j].reset(new brpc::Channel());
       if (_server_channels[i][j]->Init(server_ip_port.c_str(), "", &options) !=
           0) {
-        LOG(ERROR) << "psclient connect to server:" << server_ip_port
-                   << " Failed!";
-        return -1;
+        VLOG(0) << "BrpcPSclient connect to Server:" << server_ip_port
+                << " Failed! Try again.";
+        std::string int_ip_port =
+            GetIntTypeEndpoint(server_list[i].ip, server_list[i].port);
+        if (_server_channels[i][j]->Init(int_ip_port.c_str(), "", &options) !=
+            0) {
+          LOG(ERROR) << "BrpcPSclient connect to Server:" << int_ip_port
+                     << " Failed!";
+          return -1;
+        }
       }
     }
     os << server_ip_port << ",";
@@ -339,8 +345,9 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
   return fut;
 }
 
-std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id) {
-  return send_cmd(table_id, PS_SHRINK_TABLE, {std::string("1")});
+std::future<int32_t> BrpcPsClient::shrink(uint32_t table_id,
+                                          const std::string threshold) {
+  return send_cmd(table_id, PS_SHRINK_TABLE, {threshold});
 }
 
 std::future<int32_t> BrpcPsClient::load(const std::string &epoch,
@@ -761,8 +768,8 @@ std::future<int32_t> BrpcPsClient::push_global_step(int table_id,
 
 std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
                                                size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num) {
+                                               const uint64_t *keys, size_t num,
+                                               bool is_training) {
   size_t request_call_num = _server_channels.size();
 
   auto shard_sorted_kvs = std::make_shared<
@@ -830,15 +837,26 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
     uint32_t kv_request_count = 0;
     size_t sorted_kv_size = sorted_kvs.size();
     auto &request_buffer = closure->cntl(i)->request_attachment();
+
+    request_buffer.append((void *)&is_training, sizeof(bool));
+    std::vector<uint32_t> keys_counter;
+    keys_counter.reserve(sorted_kv_size);
+
     for (size_t kv_idx = 0; kv_idx < sorted_kv_size; ++kv_idx) {
       ++kv_request_count;
+      uint32_t keys = 1;
       last_key = sorted_kvs[kv_idx].first;
       request_buffer.append((void *)&last_key, sizeof(uint64_t));
       while (kv_idx < sorted_kv_size - 1 &&
              last_key == sorted_kvs[kv_idx + 1].first) {
         ++kv_idx;
+        ++keys;
       }
+      keys_counter.push_back(keys);
     }
+
+    request_buffer.append((void *)keys_counter.data(),
+                          sizeof(uint32_t) * keys_counter.size());
 
     if (kv_request_count == 0) {
       closure->Run();
@@ -949,7 +967,7 @@ int32_t BrpcPsClient::recv_and_save_table(const uint64_t table_id,
   }
 
   auto status = pull_sparse((float **)save_vec.data(), table_id,
-                            save_key.data(), save_key.size());
+                            save_key.data(), save_key.size(), true);
   status.wait();
 
   // create lod tensor

@@ -184,7 +184,7 @@ class Adamax(Optimizer):
         """
         assert isinstance(block, framework.Block)
         for param, grad in parameters_and_grads:
-            if grad is None or param.trainable is False:
+            if grad is None or param.stop_gradient is True:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope('adamax'):

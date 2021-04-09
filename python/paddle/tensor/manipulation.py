@@ -212,7 +212,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     Args:
         x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
-                      float64, int8, int32, int64.
+                      float64, int8, int32, int64, uint8.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
@@ -249,7 +249,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+        'flatten')
     helper = LayerHelper('flatten', **locals())
 
     x_dim = len(x.shape)
@@ -1448,7 +1449,7 @@ def expand(x, shape, name=None):
         attrs_expand_shape = []
         for idx, shape in enumerate(list_expand_shape):
             if isinstance(shape, Variable):
-                attrs_expand_shape.append(-1)
+                attrs_expand_shape.append(-2)
             else:
                 attrs_expand_shape.append(shape)
                 assert shape > 0 or shape == -1, (

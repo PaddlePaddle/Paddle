@@ -14,10 +14,7 @@
 
 #include "paddle/fluid/framework/save_load_util.h"
 
-#include <algorithm>
 #include <fstream>
-#include <iostream>
-#include <memory>
 
 #include "paddle/fluid/imperative/layer.h"
 
@@ -300,7 +297,7 @@ bool SaveTensorToDisk(const std::string& file_name,
         tensor->numel() * framework::SizeOfType(tensor->type());
     auto* data_ptr = tensor->data<void>();
     if (platform::is_gpu_place(tensor->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       data_ptr = temp.data<void>();

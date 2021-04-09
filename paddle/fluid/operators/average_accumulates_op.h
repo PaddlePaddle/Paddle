@@ -23,10 +23,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext>
 void GetAccumulators(const framework::ExecutionContext& ctx,
                      int64_t* num_updates, int64_t* num_accumulates,
@@ -67,18 +63,18 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     auto* in_sum_1 = ctx.Input<Tensor>("in_sum_1");
     auto* in_sum_2 = ctx.Input<Tensor>("in_sum_2");
     auto* in_sum_3 = ctx.Input<Tensor>("in_sum_3");
-    auto param_tensor = EigenVector<T>::Flatten(*param);
-    auto in_sum_1_tensor = EigenVector<T>::Flatten(*in_sum_1);
-    auto in_sum_2_tensor = EigenVector<T>::Flatten(*in_sum_2);
-    auto in_sum_3_tensor = EigenVector<T>::Flatten(*in_sum_3);
+    auto param_tensor = framework::EigenVector<T>::Flatten(*param);
+    auto in_sum_1_tensor = framework::EigenVector<T>::Flatten(*in_sum_1);
+    auto in_sum_2_tensor = framework::EigenVector<T>::Flatten(*in_sum_2);
+    auto in_sum_3_tensor = framework::EigenVector<T>::Flatten(*in_sum_3);
 
     // Get outputs
     auto* out_sum_1 = ctx.Output<Tensor>("out_sum_1");
     auto* out_sum_2 = ctx.Output<Tensor>("out_sum_2");
     auto* out_sum_3 = ctx.Output<Tensor>("out_sum_3");
-    auto out_sum_1_tensor = EigenVector<T>::Flatten(*out_sum_1);
-    auto out_sum_2_tensor = EigenVector<T>::Flatten(*out_sum_2);
-    auto out_sum_3_tensor = EigenVector<T>::Flatten(*out_sum_3);
+    auto out_sum_1_tensor = framework::EigenVector<T>::Flatten(*out_sum_1);
+    auto out_sum_2_tensor = framework::EigenVector<T>::Flatten(*out_sum_2);
+    auto out_sum_3_tensor = framework::EigenVector<T>::Flatten(*out_sum_3);
 
     // Compute
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();

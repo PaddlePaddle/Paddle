@@ -12,11 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda_runtime.h>
 #include <paddle/fluid/platform/device_context.h>
 #include <algorithm>
-#include <cub/cub.cuh>  // NOLINT
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
@@ -39,7 +36,11 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
         in_embs_(framework::proto::VarType::INT64);
     framework::DDim in_dim{input_num};
     int device_id;
+#ifdef PADDLE_WITH_HIP
+    hipGetDevice(&device_id);
+#else
     cudaGetDevice(&device_id);
+#endif
     in_ids_.Resize(in_dim);
     in_embs_.Resize(in_dim);
     int64_t *in_ids_d =
@@ -52,11 +53,17 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
       in1s.push_back(reinterpret_cast<uintptr_t>(ids[i]->data<int64_t>()));
       in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
     }
-
+#ifdef PADDLE_WITH_HIP
+    hipMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
+                   hipMemcpyHostToDevice, device_ctx.stream());
+    hipMemcpyAsync(in_embs_d, in2s.data(), sizeof(int64_t) * input_num,
+                   hipMemcpyHostToDevice, device_ctx.stream());
+#else
     cudaMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
                     cudaMemcpyHostToDevice, device_ctx.stream());
     cudaMemcpyAsync(in_embs_d, in2s.data(), sizeof(int64_t) * input_num,
                     cudaMemcpyHostToDevice, device_ctx.stream());
+#endif
 
     auto *bias = context.Input<framework::Tensor>("Bias");
     auto *scale = context.Input<framework::Tensor>("Scale");

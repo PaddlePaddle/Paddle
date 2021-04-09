@@ -15,7 +15,6 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -68,7 +67,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
-    mkldnn::stream astream(mkldnn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC_0, *src_x_memory},

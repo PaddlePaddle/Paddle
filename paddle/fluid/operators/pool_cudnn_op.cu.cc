@@ -16,7 +16,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/pool_op.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -122,7 +129,32 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       out_dims_vec[3] = output->dims()[2];
       out_dims_vec[4] = output->dims()[3];
       transformed_output.Resize(framework::make_ddim(out_dims_vec));
+#ifdef PADDLE_WITH_HIP
+      // MIOPEN not support NHWC data layout
+    } else if (data_format == str_NHWC) {
+      layout = DataLayout::kNCHW;
+      auto &dev_ctx =
+          ctx.template device_context<paddle::platform::CUDADeviceContext>();
+      std::vector<int> axis{0, 3, 1, 2};
 
+      transformed_input.Resize(input->dims());
+      auto in_dims_vec = framework::vectorize(input->dims());
+      in_dims_vec[1] = input->dims()[3];
+      in_dims_vec[2] = input->dims()[1];
+      in_dims_vec[3] = input->dims()[2];
+      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.mutable_data(ctx.GetPlace(), input->type());
+
+      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
+      trans(dev_ctx, *input, &transformed_input, axis);
+
+      transformed_output.Resize(output->dims());
+      auto out_dims_vec = framework::vectorize(output->dims());
+      out_dims_vec[1] = output->dims()[3];
+      out_dims_vec[2] = output->dims()[1];
+      out_dims_vec[3] = output->dims()[2];
+      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+#endif
     } else {
       layout = getLayoutFromStr(data_format);
       transformed_input = *input;
@@ -138,11 +170,17 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
 
+#ifdef PADDLE_WITH_HIP
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+        layout, framework::vectorize<int>(transformed_input.dims()));
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+        layout, framework::vectorize<int>(transformed_output.dims()));
+#else
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_output.dims()));
-
+#endif
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
       pooling_mode = PoolingMode::kMaximum;
@@ -151,17 +189,36 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
                                : PoolingMode::kAverageInclusive;
     }
 
+#ifdef PADDLE_WITH_HIP
+    miopenPoolingDescriptor_t cudnn_pool_desc =
+        pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
+#else
     cudnnPoolingDescriptor_t cudnn_pool_desc =
         pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
+#endif
 
     // ------------------- cudnn pool algorithm ---------------------
     auto handle = ctx.cuda_device_context().cudnn_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
 
+#ifdef PADDLE_WITH_HIP
+    char *pool_workspace;
+    size_t pool_worksize = 0;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::miopenPoolingGetWorkSpaceSizeV2(
+            cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenPoolingForward(
+        handle, cudnn_pool_desc, &alpha, cudnn_input_desc,
+        tranformed_input_data, &beta, cudnn_output_desc, tranformed_output_data,
+        false, pool_workspace, pool_worksize));
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(pool_workspace));
+#else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc,
         tranformed_input_data, &beta, cudnn_output_desc,
         tranformed_output_data));
+#endif
     // add
     if (data_format == str_NDHWC) {
       auto &dev_ctx =
@@ -170,6 +227,16 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v2;
       trans5_v2(dev_ctx, transformed_output, output, axis);
     }
+#ifdef PADDLE_WITH_HIP
+    // MIOPEN not support NHWC data layout
+    if (data_format == str_NHWC) {
+      auto &dev_ctx =
+          ctx.template device_context<paddle::platform::CUDADeviceContext>();
+      std::vector<int> axis{0, 2, 3, 1};
+      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans;
+      trans(dev_ctx, transformed_output, output, axis);
+    }
+#endif
   }
 };
 
@@ -198,6 +265,34 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     bool global_pooling = ctx.Attr<bool>("global_pooling");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+#ifdef PADDLE_WITH_HIP
+    if (pooling_type == "max") {
+      using OpKernelMap = paddle::framework::OperatorWithKernel::OpKernelMap;
+      using OpKernelFunc = paddle::framework::OperatorWithKernel::OpKernelFunc;
+      auto &all_op_kernels =
+          paddle::framework::OperatorWithKernel::AllOpKernels();
+      std::string op_type = "pool2d_grad";
+      auto kernels_iter = all_op_kernels.find(op_type);
+      PADDLE_ENFORCE_NE(
+          kernels_iter, all_op_kernels.end(),
+          platform::errors::Unavailable(
+              "There are no kernels which are registered in the %s operator.",
+              op_type));
+      OpKernelMap &kernels = kernels_iter->second;
+      paddle::framework::OpKernelType expected_kernel_key(
+          paddle::framework::ToDataType(typeid(T)), ctx.GetPlace());
+      auto kernel_iter = kernels.find(expected_kernel_key);
+      PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                        platform::errors::NotFound(
+                            "Operator (%s) does not have kernel for %s.",
+                            op_type, KernelTypeToString(expected_kernel_key)));
+      std::unique_ptr<OpKernelFunc> kernel_func_(
+          new OpKernelFunc(kernel_iter->second));
+      (*kernel_func_)(ctx);
+      return;
+    }
+#endif
 
     // update paddings
     auto in_x_dims = input->dims();
@@ -272,6 +367,49 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       // input grad
       transformed_input_grad.Resize(framework::make_ddim(in_dims_vec));
 
+#ifdef PADDLE_WITH_HIP
+      // MIOPEN not support NHWC data layout
+    } else if (data_format == str_NHWC) {
+      layout = DataLayout::kNCHW;
+      auto &dev_ctx =
+          ctx.template device_context<paddle::platform::CUDADeviceContext>();
+      std::vector<int> axis{0, 3, 1, 2};
+
+      // input
+      transformed_input.Resize(input->dims());
+      auto in_dims_vec = framework::vectorize(input->dims());
+      in_dims_vec[1] = input->dims()[3];
+      in_dims_vec[2] = input->dims()[1];
+      in_dims_vec[3] = input->dims()[2];
+      transformed_input.Resize(framework::make_ddim(in_dims_vec));
+      transformed_input.mutable_data(ctx.GetPlace(), input->type());
+
+      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4;
+      trans4(dev_ctx, *input, &transformed_input, axis);
+
+      // output
+      transformed_output.Resize(output->dims());
+      auto out_dims_vec = framework::vectorize(output->dims());
+      out_dims_vec[1] = output->dims()[3];
+      out_dims_vec[2] = output->dims()[1];
+      out_dims_vec[3] = output->dims()[2];
+      transformed_output.Resize(framework::make_ddim(out_dims_vec));
+
+      transformed_output.mutable_data(ctx.GetPlace(), output->type());
+
+      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v2;
+      trans4_v2(dev_ctx, *output, &transformed_output, axis);
+
+      // output grad
+      transformed_output_grad.Resize(framework::make_ddim(out_dims_vec));
+      transformed_output_grad.mutable_data(ctx.GetPlace(), output_grad->type());
+
+      math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v3;
+      trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
+
+      // input grad
+      transformed_input_grad.Resize(framework::make_ddim(in_dims_vec));
+#endif
     } else {
       layout = getLayoutFromStr(data_format);
       transformed_input = *input;
@@ -289,11 +427,17 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor output_desc;
     ScopedPoolingDescriptor pool_desc;
 
+#ifdef PADDLE_WITH_HIP
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+        layout, framework::vectorize<int>(transformed_input.dims()));
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+        layout, framework::vectorize<int>(transformed_output.dims()));
+#else
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize<int>(transformed_output.dims()));
-
+#endif
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
       if (FLAGS_cudnn_deterministic) {
@@ -306,8 +450,13 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
                                : PoolingMode::kAverageInclusive;
     }
 
+#ifdef PADDLE_WITH_HIP
+    miopenPoolingDescriptor_t cudnn_pool_desc =
+        pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
+#else
     cudnnPoolingDescriptor_t cudnn_pool_desc =
         pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
+#endif
 
     // ------------------- cudnn pool algorithm ---------------------
     auto handle = ctx.cuda_device_context().cudnn_handle();
@@ -315,11 +464,25 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     if (input_grad) {
       T *input_grad_data = transformed_input_grad.mutable_data<T>(
           transformed_input_grad.dims(), ctx.GetPlace());
-      // Because beta is zero, it is unnecessary to reset input_grad.
+// Because beta is zero, it is unnecessary to reset input_grad.
+#ifdef PADDLE_WITH_HIP
+      char *pool_workspace;
+      size_t pool_worksize = 0;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::miopenPoolingGetWorkSpaceSizeV2(
+              cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenPoolingBackward(
+          handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
+          cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
+          &beta, cudnn_input_desc, input_grad_data, pool_workspace));
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipFree(pool_workspace));
+#else
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));
+#endif
 
       if (data_format == str_NDHWC) {
         auto &dev_ctx =
@@ -328,6 +491,16 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
         math::Transpose<paddle::platform::CUDADeviceContext, T, 5> trans5_v4;
         trans5_v4(dev_ctx, transformed_input_grad, input_grad, axis);
       }
+#ifdef PADDLE_WITH_HIP
+      // MIOPEN not support NHWC data layout
+      if (data_format == str_NHWC) {
+        auto &dev_ctx =
+            ctx.template device_context<paddle::platform::CUDADeviceContext>();
+        std::vector<int> axis{0, 2, 3, 1};
+        math::Transpose<paddle::platform::CUDADeviceContext, T, 4> trans4_v4;
+        trans4_v4(dev_ctx, transformed_input_grad, input_grad, axis);
+      }
+#endif
     }
   }
 };
@@ -338,6 +511,21 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+#ifdef PADDLE_WITH_HIP
+// MIOPEN do not support double
+REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
+                   ops::PoolCUDNNGradOpKernel<float>,
+                   ops::PoolCUDNNGradOpKernel<plat::float16>);
+
+REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
+                   ops::PoolCUDNNGradOpKernel<float>);
+#else
 REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>,
@@ -354,3 +542,4 @@ REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
 REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>);
+#endif
