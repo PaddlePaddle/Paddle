@@ -131,6 +131,44 @@ class CPyLayer(object):
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
+        """
+        After building the custom PyLayer, run it through the ``apply``.
+
+        Args:
+            *args(tuple): input of PyLayer.
+            **kwargs(dict): input of PyLayer.
+
+        Returns:
+            tensors or other types : output of PyLayer.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x, func1, func2=paddle.square):
+                        ctx.func = func2
+                        y = func1(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - ctx.func(y))
+                        return grad
+
+
+                data = paddle.randn([2, 3], dtype="float64")
+                data.stop_gradient = False
+                # run custom Layer.
+                z = cus_tanh.apply(data, func1=paddle.tanh)
+        """
         place = paddle.fluid.framework._current_expected_place()
         with paddle.fluid.dygraph.no_grad():
             return core.PyLayer_apply(place, cls, *args, **kwargs)
