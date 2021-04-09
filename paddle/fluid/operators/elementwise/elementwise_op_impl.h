@@ -44,7 +44,7 @@ template <typename T>
 inline int SameDimsVectorizedSize(const T *pointer) {
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
   int vec_size = sizeof(float4) / sizeof(T);
-  if (address % vec_size == 0) {
+  if (address % sizeof(float4) == 0) {
     return vec_size;
   }
   return 1;
@@ -94,7 +94,7 @@ __device__ void VectorizedKernelHelper(SameDimsData<T> data, int size,
 
 #pragma unroll
   for (int i = 0; i < Vec_size; ++i) {
-    z_slr[i] = x_slr[i] + y_slr[i];
+    z_slr[i] = func(x_slr[i], y_slr[i]);
   }
 
   z[tid] = z_vec;
@@ -106,7 +106,7 @@ __device__ void ScalarKernelHelper(SameDimsData<T> data, int size, Functor func,
   for (int i = 0; i < remain; ++i) {
     T x = (data.in0)[start + i];
     T y = (data.in1)[start + i];
-    (data.out)[start + i] = x + y;
+    (data.out)[start + i] = func(x, y);
   }
 }
 
