@@ -450,14 +450,14 @@ void GradientAccumulator::CallGradientHooks() {
       platform::errors::PreconditionNotMet("Leaf Tensor's inner var "
                                            "is not initialized when "
                                            "call gradient hook."));
-  if (var_->HasHook()) {
-    VLOG(3) << "Call " << var_->GetHooks().size()
+  if (var_->HasVariableWrapperHook()) {
+    VLOG(3) << "Call " << var_->GetVariableWrapperHooks().size()
             << " hooks of leaf gradient accumulator's inner var `"
             << var_->Name() << "`.";
     auto tmp_var = inner_var_;
     VLOG(3) << "Input var " << var_->Name() << "'s hook size - "
-            << var_->GetHooks().size();
-    for (const auto& hook_pair : var_->GetHooks()) {
+            << var_->GetVariableWrapperHooks().size();
+    for (const auto& hook_pair : var_->GetVariableWrapperHooks()) {
       tmp_var = (*hook_pair.second)(tmp_var);
     }
     inner_var_ = tmp_var;
@@ -478,10 +478,10 @@ void GradientAccumulator::CallReduceHooks() {
                         "Only can call reduce hooks after the "
                         "gradient accumulation is completed in "
                         "current batch or across batchs."));
-  if (var_->HasMutableHook()) {
-    for (const auto& hook : var_->GetMutableHooks()) {
+  if (var_->HasVoidHook()) {
+    for (const auto& hook : var_->GetVoidHooks()) {
       VLOG(3) << "call gradient accumulator backward hooks.";
-      (*hook)(var_);
+      (*hook)();
     }
   }
 }

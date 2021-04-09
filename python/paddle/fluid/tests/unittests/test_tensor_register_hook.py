@@ -409,5 +409,54 @@ class TestTensorRegisterHook(unittest.TestCase):
                 x.register_hook(lambda grad: grad * 2)
 
 
+HOOK_INIT_VALUE = 10
+HOOK_IS_CALLED = False
+
+
+def global_void_hook():
+    global HOOK_INIT_VALUE
+    global HOOK_IS_CALLED
+    HOOK_INIT_VALUE *= 2
+    HOOK_IS_CALLED = True
+
+
+class TestTensorRegisterBackwardHook(unittest.TestCase):
+    def setUp(self):
+        self.devices = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.devices.append("gpu")
+
+    def test_register_backward_hook(self):
+        global HOOK_INIT_VALUE
+        global HOOK_IS_CALLED
+        for device in self.devices:
+            x = paddle.to_tensor(5., stop_gradient=False)
+            x._register_backward_hook(global_void_hook)
+            for i in range(5):
+                y = paddle.pow(x, 4.0)
+                y.backward()
+
+            self.assertEqual(HOOK_INIT_VALUE, 320)
+            self.assertTrue(HOOK_IS_CALLED)
+
+            # reset initial value
+            HOOK_INIT_VALUE = 10
+            HOOK_IS_CALLED = False
+
+    def test_register_backward_hook_for_interior_var(self):
+        x = paddle.to_tensor(5., stop_gradient=False)
+        y = paddle.pow(x, 4.0)
+
+        with self.assertRaises(ValueError):
+            y._register_backward_hook(global_void_hook)
+
+    def test_register_backward_hook_for_var_without_gradient(self):
+        x = paddle.to_tensor(5.)
+        y = paddle.pow(x, 4.0)
+
+        with self.assertRaises(ValueError):
+            x._register_backward_hook(global_void_hook)
+
+
 if __name__ == '__main__':
     unittest.main()
