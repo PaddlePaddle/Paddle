@@ -18,7 +18,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
@@ -158,11 +158,10 @@ class PtbModel(fluid.Layer):
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
-        self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            num_embeddings=vocab_size,
+            embedding_dim=hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
@@ -186,6 +185,8 @@ class PtbModel(fluid.Layer):
         init_c = fluid.layers.reshape(
             init_cell, shape=[self.num_layers, -1, self.hidden_size])
 
+        # NPU 'tok_k' kernel only support `int32` dtype, so cast `input` from `int64` to `int32`.
+        input = fluid.layers.cast(input, "int32")
         x_emb = self.embedding(input)
         x_emb = fluid.layers.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size])
@@ -742,8 +743,6 @@ class TestVariableInit(unittest.TestCase):
                 place = paddle.fluid.CPUPlace()
             elif p.is_cuda_pinned_place():
                 place = paddle.fluid.CUDAPinnedPlace()
-            elif p.is_npu_place():
-                place = paddle.NPUPlace(0)
             else:
                 p = paddle.fluid.core.Place()
                 p.set_place(t._place())
@@ -1191,6 +1190,9 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
 
 
 class TestProgramStateOldSave(unittest.TestCase):
+    def setUp(self):
+        self.test_dygraph = True
+
     def set_place(self):
         return fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0)
@@ -1322,7 +1324,7 @@ class TestProgramStateOldSave(unittest.TestCase):
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
-        if not core.is_compiled_with_npu():
+        if self.test_dygraph:
             # make sure `load_program_state` can be used in dynamic graph mode
             with fluid.dygraph.guard(place):
                 load_state = fluid.load_program_state("test_program_1")
@@ -1336,39 +1338,6 @@ class TestProgramStateOldSave(unittest.TestCase):
                                  .get_tensor())
                 base_t = base_map[var.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
-
-
-class TestStaticSaveLoadLargeParameters(unittest.TestCase):
-    def test_large_parameters_static_save(self):
-        # enable static mode
-        paddle.enable_static()
-        LARGE_PARAM = 2**26
-        with new_program_scope():
-            # create network
-            x = paddle.static.data(
-                name="static_save_load_large_x",
-                shape=[None, 10],
-                dtype='float32')
-            z = paddle.static.nn.fc(x, LARGE_PARAM)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            prog = paddle.static.default_main_program()
-
-            inputs = np.random.randn(1, 10).astype("float32")
-            result_z = exe.run(program=prog,
-                               feed={"static_save_load_large_x": inputs},
-                               fetch_list=[z.name])
-            path = "test_static_save_load_large_param/static_save"
-            paddle.fluid.save(prog, path)
-
-            paddle.fluid.load(prog, path)
-            result_load = exe.run(program=prog,
-                                  feed={"static_save_load_large_x": inputs},
-                                  fetch_list=[z.name])
-            # compare results before and after saving
-            self.assertTrue(
-                np.sum(np.abs(result_z[0] - result_load[0])) < 1e-15)
 
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):
