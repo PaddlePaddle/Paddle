@@ -20,13 +20,15 @@ def get_prec_ut_list(all_test_cases,prec_test_cases):
     """Select the ut that needs to be executed"""
     all_test_cases_list = all_test_cases.strip().split("\n")
     prec_test_cases_list = prec_test_cases.strip().split("\n")
+    all_test_cases_list_new = [item.rstrip() for item in all_test_cases_list]
+    prec_test_cases_list_new = [item.rstrip() for item in prec_test_cases_list]
 
     if len(prec_test_cases) == 0:
         return "\n".join(all_test_cases_list)
 
     case_to_run = ['test_prec_ut']
-    for case in all_test_cases_list:
-        if case in prec_test_cases_list:
+    for case in all_test_cases_list_new:
+        if case in prec_test_cases_list_new:
             case_to_run.append(case)
         else:
             print("{} won't run in PRECISION_TEST mode.".format(case))
