@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/operators/save_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -27,4 +26,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::SaveOpKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::SaveOpKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);
-#endif

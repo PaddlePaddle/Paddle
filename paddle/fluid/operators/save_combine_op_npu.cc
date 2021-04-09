@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/operators/save_combine_op.h"
 
 namespace ops = paddle::operators;
@@ -23,4 +22,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::SaveCombineOpKernel<paddle::platform::NPUDeviceContext, double>,
     ops::SaveCombineOpKernel<paddle::platform::NPUDeviceContext, int>,
     ops::SaveCombineOpKernel<paddle::platform::NPUDeviceContext, int64_t>);
-#endif
