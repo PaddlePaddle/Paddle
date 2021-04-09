@@ -24,7 +24,7 @@
 #include "paddle/fluid/distributed/service/env.h"
 #include "paddle/fluid/distributed/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/table/accessor.h"
-#include "paddle/fluid/distributed/table/graph_node.h"
+#include "paddle/fluid/distributed/table/graph/graph_node.h"
 
 namespace paddle {
 namespace distributed {

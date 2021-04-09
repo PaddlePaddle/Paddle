@@ -37,6 +37,14 @@ else
     disable_ut_quickly=''
 fi
 
+# check added ut
+set +e
+cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
+bash $PADDLE_ROOT/tools/check_added_ut_win.sh
+rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
+set -e
+
+
 # /*==================Fixed Disabled Windows unittests==============================*/
 # TODO: fix these unittest that is bound to fail
 diable_wingpu_test="^lite_mul_model_test$|\
@@ -366,6 +374,16 @@ function show_ut_retry_result() {
 set +e
 
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
+    if [ -f "$PADDLE_ROOT/added_ut" ];then
+        added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
+        ctest -R "(${added_uts})" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+        if [ "$added_ut_error" != 0 ];then
+            echo "========================================"
+            echo "Added UT should pass three additional executions"
+            echo "========================================"
+            exit 8;
+        fi
+    fi
     run_unittest_gpu $cpu_parallel_job 12
     run_unittest_gpu $tetrad_parallel_job 4
     run_unittest_gpu $two_parallel_job 2
