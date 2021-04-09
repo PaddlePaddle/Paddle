@@ -19,6 +19,28 @@ __all__ = ['PyLayer', 'PyLayerContext']
 
 
 class PyLayerContext(object):
+    """
+    The object of this class is a context that is used in PyLayer to enhance the function.
+
+    Examples:
+        .. code-block:: python
+
+            class cus_tanh(PyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    # ctx is a object of PyLayerContext.
+                    y = paddle.tanh(x)
+                    ctx.save_for_backward(y)
+                    return y
+
+                @staticmethod
+                def backward(ctx, dy):
+                    # ctx is a object of PyLayerContext.
+                    y, = ctx.saved_tensor()
+                    grad = dy * (1 - paddle.square(y))
+                    return grad
+    """
+
     def __init__(self):
         self.container = None
 
@@ -75,7 +97,6 @@ class PyLayerContext(object):
                 from paddle.autograd import PyLayer
 
                 class cus_tanh(PyLayer):
-                    class cus_tanh(PyLayer):
                     @staticmethod
                     def forward(ctx, x):
                         # ctx is a context object that store some objects for backward.
@@ -179,10 +200,76 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
+        """
+        It is to be overloaded by subclasses.It must accept a object of `PyLayerContext` as 
+        the first argument, followed by any number of arguments (tensors or other types).
+        `None` can not be included in the returned result.
+
+        Args:
+            tensors or other types: input of PyLayer.
+
+        Returns:
+            tensors or other types: output of PyLayer.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+        """
         raise NotImplementedError(
             "You must implement the forward function for PyLayer.")
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
+        """
+        This is a function to calculate the gradient. It is to be overloaded by subclasses.
+        It must accept a object of `PyLayerContext` as the first argument, and the rest 
+        arguments are the gradient of forward's output tensors. Output tensors of backward 
+        are the gradient of forward's input tensors.
+
+        Args:
+            Tensor or list of Tensors: The gradient of forward's output tensor(s).
+
+        Returns:
+            Tensor or list of Tensors: The gradient of forward's input tensor(s).
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+        """
+
         raise NotImplementedError(
             "You must implement the backward function for PyLayer.")

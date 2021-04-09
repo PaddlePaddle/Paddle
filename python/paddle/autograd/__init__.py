@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.dygraph.base import grad  #DEFINE_ALIAS 
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 
 from . import backward_mode
 from .backward_mode import backward
