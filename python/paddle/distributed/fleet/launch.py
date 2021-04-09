@@ -241,10 +241,10 @@ def launch_collective(args):
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
         cluster, pod = ascend_utils.get_cloud_cluster(
-                rank_table_file=os.getenv("RANK_TABLE_FILE", None), 
-                device_mode=device_mode,
-                devices_per_proc=devices_per_proc,
-                start_port=start_port)
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            devices_per_proc=devices_per_proc,
+            start_port=start_port)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
