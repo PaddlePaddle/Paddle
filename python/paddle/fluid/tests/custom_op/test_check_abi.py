@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,8 @@ class TestCheckCompiler(TestABIBase):
             compiler = 'g++'
         elif utils.IS_WINDOWS:
             compiler = 'cl'
+        else:
+            compiler = 'clang'
 
         # Linux: all CI gcc version > 5.4.0
         # Windows: all CI MSVC version > 19.00.24215
@@ -71,7 +73,7 @@ class TestCheckCompiler(TestABIBase):
             self.assertTrue(
                 "Compiler Compatibility WARNING" in str(error[0].message))
 
-    def test_exception(self):
+    def test_exception_linux(self):
         # clear environ
         self.del_environ()
         compiler = 'python'  # fake command
@@ -91,6 +93,28 @@ class TestCheckCompiler(TestABIBase):
                 self.assertTrue(len(error) == 1)
                 self.assertTrue("Failed to check compiler version for" in
                                 str(error[0].message))
+
+            # restore
+            utils._expected_compiler_current_platform = raw_func
+
+    def test_exception_mac(self):
+        # clear environ
+        self.del_environ()
+        compiler = 'python'  # fake command
+        if utils.OS_NAME.startswith('darwin'):
+
+            def fake():
+                return [compiler]
+
+            # mock a fake function
+            raw_func = utils._expected_compiler_current_platform
+            utils._expected_compiler_current_platform = fake
+            with warnings.catch_warnings(record=True) as error:
+                flag = utils.check_abi_compatibility(compiler, verbose=True)
+                # check return True
+                self.assertTrue(flag)
+                # check ABI Compatibility without WARNING
+                self.assertTrue(len(error) == 0)
 
             # restore
             utils._expected_compiler_current_platform = raw_func

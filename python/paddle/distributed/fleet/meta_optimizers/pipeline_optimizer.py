@@ -45,9 +45,14 @@ class PipelineOptimizer(MetaOptimizerBase):
             'accumulate_steps']
         self.schedule_mode = user_defined_strategy.pipeline_configs[
             'schedule_mode']
+        self.use_sharding = user_defined_strategy.sharding
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
+            return False
+
+        # FIXME revise for hybrid parallelism
+        if self.use_sharding:
             return False
 
         if self.user_defined_strategy.pipeline == True:
