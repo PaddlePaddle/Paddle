@@ -209,10 +209,11 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
         `None` can not be included in the returned result.
 
         Args:
-            tensors or other types: input of PyLayer.
+            *args(tuple): input of PyLayer.
+            **kwargs(dict): input of PyLayer.
 
         Returns:
-            tensors or other types: output of PyLayer.
+            tensors or other types : output of PyLayer.
         
         Examples:
             .. code-block:: python
@@ -247,7 +248,8 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
         are the gradient of forward's input tensors.
 
         Args:
-            Tensor or list of Tensors: The gradient of forward's output tensor(s).
+            *args(tuple): The gradient of forward's output tensor(s).
+            **kwargs(dict): The gradient of forward's output tensor(s).
 
         Returns:
             Tensor or list of Tensors: The gradient of forward's input tensor(s).
