@@ -509,33 +509,33 @@ def save(layer, path, input_spec=None, **configs):
     Saves input Layer as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
 
-    It will save the translated program and all related persistable 
+    It will save the translated program and all related persistable
     variables of input Layer to given ``path`` .
-    
-    ``path`` is the prefix of saved objects, and the saved translated program file 
+
+    ``path`` is the prefix of saved objects, and the saved translated program file
     suffix is ``.pdmodel`` , the saved persistable variables file suffix is ``.pdiparams`` ,
-    and here also saved some additional variable description information to a file,  
+    and here also saved some additional variable description information to a file,
     its suffix is ``.pdiparams.info``, these additional information is used in fine-tuning.
 
     The saved model can be loaded by follow APIs:
-      - ``paddle.jit.load`` 
-      - ``paddle.static.load_inference_model`` 
+      - ``paddle.jit.load``
+      - ``paddle.static.load_inference_model``
       - Other C++ inference APIs
 
     Args:
         layer (Layer): The Layer to be saved.
         path (str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward 
-            method, which can be described by InputSpec or example Tensor. If None, all input variables of 
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model's forward
+            method, which can be described by InputSpec or example Tensor. If None, all input variables of
             the original Layer's forward method would be the inputs of the saved model. Default None.
-        **configs (dict, optional): Other save configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): Other save configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
             (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
-            By default, all return variables of original Layer's forward method are kept as the 
-            output of the saved model. If the provided ``output_spec`` list is not all output variables, 
-            the saved model will be pruned according to the given ``output_spec`` list. 
+            By default, all return variables of original Layer's forward method are kept as the
+            output of the saved model. If the provided ``output_spec`` list is not all output variables,
+            the saved model will be pruned according to the given ``output_spec`` list.
 
     Returns:
         None
@@ -793,8 +793,8 @@ def load(path, **configs):
     """
     :api_attr: imperative
 
-    Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or 
-    paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``, 
+    Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or
+    paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
     then performing inference or fine-tune training.
 
     .. note::
@@ -807,14 +807,14 @@ def load(path, **configs):
 
     Args:
         path (str): The path prefix to load model. The format is ``dirname/file_prefix`` or ``file_prefix`` .
-        **configs (dict, optional): Other load configuration options for compatibility. We do not 
-            recommend using these configurations, they may be removed in the future. If not necessary, 
+        **configs (dict, optional): Other load configuration options for compatibility. We do not
+            recommend using these configurations, they may be removed in the future. If not necessary,
             DO NOT use them. Default None.
             The following options are currently supported:
-            (1) model_filename (str): The inference model file name of the paddle 1.x 
-            ``save_inference_model`` save format. Default file name is :code:`__model__` . 
-            (2) params_filename (str): The persistable variables file name of the paddle 1.x 
-            ``save_inference_model`` save format. No default file name, save variables separately 
+            (1) model_filename (str): The inference model file name of the paddle 1.x
+            ``save_inference_model`` save format. Default file name is :code:`__model__` .
+            (2) params_filename (str): The persistable variables file name of the paddle 1.x
+            ``save_inference_model`` save format. No default file name, save variables separately
             by default.
 
 
@@ -960,7 +960,7 @@ def load(path, **configs):
             loader = paddle.io.DataLoader(dataset,
                 feed_list=[image, label],
                 places=place,
-                batch_size=BATCH_SIZE, 
+                batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
                 num_workers=2)
@@ -969,7 +969,7 @@ def load(path, **configs):
             for data in loader():
                 exe.run(
                     static.default_main_program(),
-                    feed=data, 
+                    feed=data,
                     fetch_list=[avg_loss])
 
             model_path = "fc.example.model"
@@ -1052,7 +1052,7 @@ def _trace(layer,
 class TracedLayer(object):
     """
     :api_attr: imperative
-    
+
     TracedLayer is used to convert a forward dygraph model to a static
     graph model. This is mainly used to save the dygraph model for online
     inference using C++. Besides, users can also do inference in Python
@@ -1132,7 +1132,7 @@ class TracedLayer(object):
                     def forward(self, input):
                         return self._fc(input)
 
-                
+
                 layer = ExampleLayer()
                 in_var = paddle.uniform(shape=[2, 3], dtype='float32')
                 out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
@@ -1244,13 +1244,16 @@ class TracedLayer(object):
             return self._run(self._build_feed(inputs))
 
     @switch_to_static_graph
-    def save_inference_model(self, dirname, feed=None, fetch=None):
+    def save_inference_model(self, path, feed=None, fetch=None):
         """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
 
+        ``path`` is the prefix of saved objects, and the saved translated program file
+        suffix is ``.pdmodel`` , the saved persistable variables file suffix is ``.pdiparams`` .
+
         Args:
-            dirname (str): the directory to save the inference model.
+            path(str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
             feed (list[int], optional): the input variable indices of the saved
                 inference model. If None, all input variables of the
                 TracedLayer object would be the inputs of the saved inference
@@ -1294,7 +1297,7 @@ class TracedLayer(object):
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)
         """
-        check_type(dirname, "dirname", str,
+        check_type(path, "path", str,
                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
         check_type(feed, "feed", (type(None), list),
                    "fluid.dygraph.jit.TracedLayer.save_inference_model")
@@ -1308,6 +1311,18 @@ class TracedLayer(object):
             for f in fetch:
                 check_type(f, "each element of fetch", int,
                            "fluid.dygraph.jit.TracedLayer.save_inference_model")
+
+        # path check
+        file_prefix = os.path.basename(path)
+        if file_prefix == "":
+            raise ValueError(
+                "The input path MUST be format of dirname/file_prefix "
+                "[dirname\\file_prefix in Windows system], but received "
+                "file_prefix is empty string.")
+
+        dirname = os.path.dirname(path)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname)
 
         from paddle.fluid.io import save_inference_model
 
@@ -1326,9 +1341,14 @@ class TracedLayer(object):
                 assert target_var is not None, "{} cannot be found".format(name)
                 target_vars.append(target_var)
 
+            model_filename = file_prefix + INFER_MODEL_SUFFIX
+            params_filename = file_prefix + INFER_PARAMS_SUFFIX
+
             save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
                 target_vars=target_vars,
                 executor=self._exe,
-                main_program=self._program.clone())
+                main_program=self._program.clone(),
+                model_filename=model_filename,
+                params_filename=params_filename)
