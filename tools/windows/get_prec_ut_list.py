@@ -16,7 +16,7 @@
 import sys
 
 
-def get_prec_ut_list(all_test_cases,prec_test_cases):
+def get_prec_ut_list(all_test_cases, prec_test_cases):
     """Select the ut that needs to be executed"""
     all_test_cases_list = all_test_cases.strip().split("\n")
     prec_test_cases_list = prec_test_cases.strip().split("\n")
@@ -37,7 +37,6 @@ def get_prec_ut_list(all_test_cases,prec_test_cases):
 
 
 if __name__ == '__main__':
-    
     all_test_cases = sys.argv[1]
     prec_test_cases = sys.argv[2]
-    get_prec_ut_list(all_test_cases,prec_test_cases)
+    get_prec_ut_list(all_test_cases, prec_test_cases)
