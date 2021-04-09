@@ -34,6 +34,28 @@ class PyLayerContext(object):
 
         Returns:
             None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        # ctx is a context object that store some objects for backward.
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
 
         """
         self.container = tensors
@@ -45,7 +67,29 @@ class PyLayerContext(object):
         Returns:
             list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
             then return these tensors, otherwise return None.
-                
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        # ctx is a context object that store some objects for backward.
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
         """
 
         return self.container
@@ -94,6 +138,7 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
     3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
     Output tensors of backward are the gradient of forward's input tensors, 
     so the number of backward's output tensors equal to the number of forward input tensors.
+    After building the custom Layer, run it through the `apply` method.
     
 
     Examples:
