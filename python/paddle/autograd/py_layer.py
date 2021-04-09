@@ -24,6 +24,9 @@ class PyLayerContext(object):
 
     Examples:
         .. code-block:: python
+        
+            import paddle
+            from paddle.autograd import PyLayer
 
             class cus_tanh(PyLayer):
                 @staticmethod
