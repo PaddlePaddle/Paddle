@@ -80,7 +80,6 @@ class _DataLoaderIterBase(object):
                 self._sampler_iter = iter(
                     _InfiniteIterableSampler(self._dataset, 1))
             self._collate_fn = loader.collate_fn or default_convert_fn
-            print('test')
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data
