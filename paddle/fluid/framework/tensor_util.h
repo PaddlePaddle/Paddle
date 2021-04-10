@@ -157,6 +157,14 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  else if (platform::is_npu_place(dst_place)) {  // NOLINT
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr, src_place,
+        src_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+  }
+#endif
 }
 
 template <typename T>
@@ -192,6 +200,14 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
         dst_place, dst_ptr, BOOST_GET_CONST(platform::CUDAPlace, src.place()),
         src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
+  else if (platform::is_npu_place(src.place())) {  // NOLINT
+    memory::Copy(
+        dst_place, dst_ptr, BOOST_GET_CONST(platform::NPUPlace, src.place()),
+        src_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
 }

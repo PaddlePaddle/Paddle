@@ -86,8 +86,9 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
   PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamCreate(&stream_));
 #else
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+  callback_manager_.reset(
+      new platform::StreamCallbackManager<gpuStream_t>(stream_));
 #endif
-  callback_manager_.reset(new platform::StreamCallbackManager(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
