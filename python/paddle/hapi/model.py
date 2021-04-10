@@ -455,6 +455,7 @@ class StaticGraphAdapter(object):
                 pruned_fetch_idx_name_map[i] = fetch_var.name
             else:
                 pruned_fetch_list.append(fetch_var)
+
         rets = self._executor.run(compiled_prog,
                                   feed=feed,
                                   fetch_list=pruned_fetch_list,
@@ -624,8 +625,9 @@ class StaticGraphAdapter(object):
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
-        self.model._optimizer.amp_init(
-            place) if self._amp_level == "O2" and mode == 'train' else None
+        if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        ) and self._nranks <= 1:
+            self.model._optimizer.amp_init(place)
 
         if self._nranks < 2:
             compiled_prog = fluid.CompiledProgram(prog)
@@ -681,10 +683,10 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        scaler = paddle.amp.GradScaler(**self._amp_configs)
+        if self._amp_level != "O0":
+            scaler = paddle.amp.GradScaler(**self._amp_configs)
         with paddle.amp.auto_cast(
-                enable=False if self._amp_level == 'O0' else True,
-                **self._amp_custom_lists):
+                enable=self._amp_level != 'O0', **self._amp_custom_lists):
             if self._nranks > 1:
                 outputs = self.ddp_model.forward(
                     * [to_variable(x) for x in inputs])
@@ -1301,7 +1303,7 @@ class Model(object):
         self._adapter._amp_configs = amp_configs if amp_configs else {}
         self._adapter._amp_custom_lists = {}
 
-        # check and get amp level
+        # check input of amp level
         if not amp_configs:
             self._adapter._amp_level = 'O0'
             return
@@ -1333,6 +1335,26 @@ class Model(object):
                     self._adapter._amp_custom_lists[
                         param_name] = amp_configs.pop(param_name)
 
+        def _check_amp_configs():
+            accepted_param_set = {
+                'init_loss_scaling', 'incr_ratio', 'decr_ratio',
+                'incr_every_n_steps', 'decr_every_n_nan_or_inf',
+                'use_dynamic_loss_scaling', 'use_fp16_guard', 'use_pure_fp16'
+            }
+            amp_configs_set = set(self._adapter._amp_configs.keys())
+            if amp_configs_set - accepted_param_set:
+                raise ValueError(
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by low-level mixed precision APIs, "
+                    "but {} could not be recognized.".format(
+                        tuple(amp_configs_set - accepted_param_set)))
+            if in_dygraph_mode(
+            ) and amp_configs_set - {'use_fp16_guard', 'use_pure_fp16'}:
+                raise ValueError(
+                    "'use_pure_fp16' or 'use_fp16_guard' is supported in dygraph only now."
+                )
+
+        _check_amp_configs()
+
     def prepare(self, optimizer=None, loss=None, metrics=None,
                 amp_configs=None):
         """
@@ -1349,7 +1371,7 @@ class Model(object):
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
             amp_configs (dict|None): AMP configurations. If AMP or pure
-                float16 training is used, the key 'level' of `amp_configs`
+                float16 training is used, the key 'level' of 'amp_configs'
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
                 value of 'level' defaults to 'O0', which means training without
                 using AMP or pure float training. In addition to 'level',
@@ -1357,10 +1379,13 @@ class Model(object):
                 API. The supported keys are: 'init_loss_scaling', 'incr_ratio',
                 'decr_ratio', 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'custom_white_list',
-                'custom_black_list' and 'custom_black_varnames', and
-                'custom_black_varnames' is only supported in static mode. It
-                could be None if default parameters are chosen or AMP is not
-                used. Default: None.
+                'custom_black_list', and 'custom_black_varnames',
+                'use_pure_fp16' or 'use_fp16_guard' is only supported in static
+                mode. Users could refer to low-level API documentations
+                :ref:`auto_cast <_api_paddle_amp_auto_cast>` and
+                :ref:`GradScaler_api_paddle_amp_GradScaler>` for details.
+                'amp_configs' could be None if default parameters are chosen or
+                AMP is not used. Default: None.
         Returns:
             None
         """
