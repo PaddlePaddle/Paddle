@@ -1367,7 +1367,7 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
     final_graphs = *async_graphs;
   } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
-#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
     bool is_inference = details::IsDataParallelInferenceGraph(*graph);
