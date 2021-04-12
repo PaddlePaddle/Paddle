@@ -16,19 +16,18 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/range_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/range_op.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
-
 
 template <typename DeviceContext, typename T>
 class RangeNPUKernel : public framework::OpKernel<T> {
@@ -40,11 +39,23 @@ class RangeNPUKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     framework::Tensor n;
-    framework::TensorCopySync(*start_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *start_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T start = n.data<T>()[0];
-    framework::TensorCopySync(*end_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *end_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T end = n.data<T>()[0];
-    framework::TensorCopySync(*step_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(
+        *step_t, platform::CPUPlace(),
+        context.template device_context<platform::DeviceContext>(), &n);
+    context.template device_context<paddle::platform::NPUDeviceContext>()
+        .Wait();
     T step = n.data<T>()[0];
 
     int64_t size = 0;
@@ -70,8 +81,7 @@ class RangeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    range,
-    ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    range, ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::RangeNPUKernel<paddle::platform::NPUDeviceContext, double>)
 

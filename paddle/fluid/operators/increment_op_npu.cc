@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "paddle/fluid/operators/increment_op.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +29,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-
 template <typename DeviceContext, typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
@@ -41,28 +39,21 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     out_tensor->mutable_data<T>(context.GetPlace());
 
     Tensor step_tensor(x_tensor->type());
-    std::vector<T> step_vec;
-    step_vec.push_back(static_cast<T>(step));
-    framework::TensorFromVector(
-                     step_vec,
-                     context.device_context(),
-                     &step_tensor);
+    step_tensor.mutable_data<T>({1}, context.GetPlace());
+    FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
-    auto runner = NpuOpRunner("Add",
-                              {*x_tensor, step_tensor},
-                              {*out_tensor},
-                              {});
+    auto runner =
+        NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
 
     auto stream =
-      context.template device_context<paddle::platform::NPUDeviceContext>()
-                .stream();
+        context.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     runner.Run(stream);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
-
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
@@ -73,5 +64,5 @@ REGISTER_OP_NPU_KERNEL(
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
-
+    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext,
+                              plat::float16>)

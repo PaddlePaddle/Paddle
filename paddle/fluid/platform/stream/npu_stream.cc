@@ -46,7 +46,6 @@ void NPUStream::Wait() const {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream_));
 }
 
-
 }  // namespace stream
 }  // namespace platform
 }  // namespace paddle
