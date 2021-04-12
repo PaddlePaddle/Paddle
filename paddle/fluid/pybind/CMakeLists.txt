@@ -1,8 +1,16 @@
+# Adapt to custom op mechanism: Include the header files related to the data type
+# to avoid exposing the path of the underlying file
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator)
 
+if (WITH_PSCORE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
+  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+endif()
 if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
@@ -101,14 +109,19 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+      set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
+    else()
+      set(op_function_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+    endif()
     file(WRITE ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat ""
     "set build_times=1\n"
     ":retry\n"
     "ECHO op_function_generator run %build_times% time\n"
-    "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator ${impl_file}\n"
+    "${op_function_generator_path}/op_function_generator ${impl_file}\n"
     "if %ERRORLEVEL% NEQ 0 (\n"
     "    set /a build_times=%build_times%+1\n"
-    "    if %build_times% GTR 100 (\n"
+    "    if %build_times% GTR 5 (\n"
     "        exit /b 1\n"
     "    ) else (\n"
     "        goto :retry\n"
@@ -123,19 +136,19 @@ if(WITH_PYTHON)
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator
             PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${op_function_generator_path}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${op_function_generator_path}
           )
     else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
       add_custom_command(TARGET op_function_generator
             PRE_LINK
-            COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_function_generator_path}
           )
     endif()
     if(WITH_MKLDNN)
       add_custom_command(TARGET op_function_generator
           PRE_LINK
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+          COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_function_generator_path}
           )
     endif()
   else(WIN32)

@@ -57,44 +57,59 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
 
   PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_,
                     platform::errors::InvalidArgument(
-                        "Shape mistake in matmul_v2_op xdims = %s ydims = %s",
-                        x_dims.to_str(), y_dims.to_str()));
+                        "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
+                        "x_trans = %d y_trans = %d",
+                        x_dims.to_str(), y_dims.to_str(), mat_dim_a.trans_,
+                        mat_dim_b.trans_));
   PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
                     platform::errors::InvalidArgument(
-                        "Shape mistake in matmul_v2_op xdims = %s ydims = %s",
-                        x_dims.to_str(), y_dims.to_str()));
+                        "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
+                        "x_trans = %d y_trans = %d",
+                        x_dims.to_str(), y_dims.to_str(), mat_dim_a.trans_,
+                        mat_dim_b.trans_));
 
-  float* data_c = out->data<T>();
+  T* data_c = out->data<T>();
   int m = mat_dim_a.height_;
   int n = mat_dim_b.width_;
   int k = mat_dim_a.width_;
   int batch_size = mat_dim_a.batch_size_;
-
-  if (batch_size == 0) {
-    int r = xpu::fc<float, float, float, FCT>(
-        dev_ctx.x_context(), x->data<T>(), y->data<T>(), data_c, m, n, k,
-        mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                          XPUAPIErrorMsg[r]));
+  if (batch_size <= 1) {
+    int r = 0;
+    r = xpu::fc<T, T, T, FCT>(dev_ctx.x_context(), x->data<T>(), y->data<T>(),
+                              data_c, m, n, k, mat_dim_a.trans_,
+                              mat_dim_b.trans_, nullptr, nullptr, nullptr);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU fc_fusion kernel return wrong value[%d %s] , m = %d, n = "
+            "%d, "
+            "k = %d, a_tr = %d, b_tr = %d",
+            r, XPUAPIErrorMsg[r], m, n, k, mat_dim_a.trans_, mat_dim_b.trans_));
   } else {
     // batch matmul
-    int x_stride = mat_dim_a.stride_;
-    int y_stride = mat_dim_b.stride_;
-    int out_stride = m * n;
-    for (int i = 0; i < batch_size; ++i) {
-      const float* x_data = x->data<T>() + x_stride * i;
-      const float* y_data = y->data<T>() + y_stride * i;
-      float* out_data = data_c + out_stride * i;
-      int r = xpu::fc<float, float, float, FCT>(
-          dev_ctx.x_context(), x_data, y_data, out_data, m, n, k,
-          mat_dim_a.trans_, mat_dim_b.trans_, nullptr, nullptr, nullptr);
-      PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                        platform::errors::External(
-                            "XPU fc_fusion kernel return wrong value[%d %s]", r,
-                            XPUAPIErrorMsg[r]));
-    }
+    int r = xpu::fc_batched<T, T, T, FCT>(
+        dev_ctx.x_context(),                       // Context* ctx,
+        batch_size,                                // int batch_size,
+        mat_dim_a.trans_,                          // bool x_trans,
+        mat_dim_b.trans_,                          // bool w_trans,
+        m,                                         // int m,
+        n,                                         // int n,
+        k,                                         // int k,
+        1.0,                                       // float alpha,
+        reinterpret_cast<const T*>(x->data<T>()),  // const TX* x,
+        mat_dim_a.stride_,                         // int stride_a,
+        reinterpret_cast<const T*>(y->data<T>()),  // const TW* w,
+        mat_dim_b.stride_,                         // int stride_b,
+        0.0,                                       // float beta,
+        reinterpret_cast<T*>(data_c),              // TY* y,
+        m * n,                                     // int stride_c,
+        nullptr,                                   // const float* x_maxptr,
+        nullptr);                                  // const float* w_maxptr
+
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU fc_batched kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 }
 
@@ -133,7 +148,7 @@ static framework::Tensor XPUFoldHeadAndLastDims(
   std::vector<int> axis_host = {1, 0, 2};
 
   int r = xpu::transpose(context.x_context(), input.data<T>(), output.data<T>(),
-                         in_shape_host.data(), axis_host.data(), /*ndims=*/3);
+                         in_shape_host, axis_host);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "XPU transpose kernel return wrong value[%d %s]", r,
@@ -197,6 +212,7 @@ class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
     auto* dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
     ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
+
     framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();

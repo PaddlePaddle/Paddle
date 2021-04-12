@@ -91,6 +91,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const framework::AttributeMap& attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
+
   framework::RuntimeContext ctx({}, {});
 
 #ifdef PADDLE_WITH_MKLDNN

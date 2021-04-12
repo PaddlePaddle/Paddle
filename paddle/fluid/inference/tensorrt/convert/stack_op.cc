@@ -59,7 +59,7 @@ class StackOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::StackPluginDynamic* plugin =
           new plugin::StackPluginDynamic(axis, input_num, with_fp16);
-      layer = engine_->AddPluginV2(inputs, input_num, plugin);
+      layer = engine_->AddDynamicPlugin(inputs, input_num, plugin);
       assert(layer != nullptr);
 #else
       PADDLE_THROW(platform::errors::Fatal(

@@ -222,7 +222,7 @@ if(WITH_MKLDNN)
 endif()
 
 include(external/protobuf)  	# find first, then download, build, install protobuf
-if(NOT PROTOBUF_FOUND OR WIN32)
+if(TARGET extern_protobuf)
     list(APPEND third_party_deps extern_protobuf)
 endif()
 
@@ -274,10 +274,15 @@ if(WITH_BOX_PS)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
-if(WITH_ASCEND)
+if(WITH_ASCEND OR WITH_ASCEND_CL)
     include(external/ascend)
-    list(APPEND third_party_deps extern_ascend)
-endif (WITH_ASCEND)
+    if(WITH_ASCEND)
+        list(APPEND third_party_deps extern_ascend)
+    endif()
+    if(WITH_ASCEND_CL)
+        list(APPEND third_party_deps extern_ascend_cl)
+    endif()
+endif ()
 
 if (WITH_PSCORE)
     include(external/snappy)
@@ -317,6 +322,8 @@ endif (WITH_LITE)
 
 if (WITH_CRYPTO)
     include(external/cryptopp)   # download, build, install cryptopp
+    list(APPEND third_party_deps extern_cryptopp)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
 endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

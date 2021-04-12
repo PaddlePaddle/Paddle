@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -84,6 +85,11 @@ class MKLDNNHandlerT {
         output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
                                             "@dst_mem_p");
+  }
+
+  template <typename T_out = T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemory(void) {
+    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), "@dstt_mem_p");
   }
 
   template <typename T_out = T>
@@ -560,7 +566,10 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 
       const auto src_x_tz = framework::vectorize(x->dims());
       const auto src_y_tz = framework::vectorize(y->dims());
-      const auto dst_tz = framework::vectorize(z->dims());
+      // if output tensor(z) is nullptr then we are computing into oneDNN
+      // managed buffer
+      const auto dst_tz =
+          (z == nullptr) ? src_x_tz : framework::vectorize(z->dims());
 
       const auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
@@ -618,6 +627,49 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
                           {scale_1});
     return attributes;
+  }
+};
+
+template <typename T>
+class ReductionMKLDNNHandler
+    : public platform::MKLDNNHandlerT<T, dnnl::reduction> {
+ public:
+  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
+                         const float eps, const MKLDNNDeviceContext& dev_ctx,
+                         const mkldnn::engine engine, platform::Place cpu_place,
+                         const Tensor* x, const Tensor* y,
+                         const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::reduction>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+                                uniq_name,
+                                (std::to_string(static_cast<int>(algo))))) {
+    if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(
+          x->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+      PADDLE_ENFORCE_NE(
+          x->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+
+      const auto src_tz = framework::vectorize(x->dims());
+      const auto dst_tz = framework::vectorize(y->dims());
+
+      // For oneDNN dimensionality should match so we need to
+      // extend Y tensor dims with values of 1 (before and after pattern)
+      int j = 0;
+      std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
+      for (size_t i = 0; i < src_tz.size(); ++i) {
+        dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+      }
+
+      const auto src_md = dnnl::memory::desc(
+          src_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      const auto dst_md = memory::desc(
+          dst_tz_ex, platform::MKLDNNGetDataType<T>(), x->format());
+
+      this->AcquireForwardPrimitiveDescriptor(algo, src_md, dst_md, p, eps);
+    }
   }
 };
 

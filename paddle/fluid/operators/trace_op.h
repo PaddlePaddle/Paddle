@@ -145,7 +145,7 @@ framework::Tensor Diagonal(const framework::ExecutionContext& context,
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
     thrust::device_vector<int64_t> diag_vec(vectorize(dig_stride));
     const int64_t* diag_arr = thrust::raw_pointer_cast(diag_vec.data());
     thrust::device_vector<int64_t> ret_vec(ret_strides);
@@ -238,7 +238,7 @@ class TraceGradKernel : public framework::OpKernel<T> {
     int64_t diag_size = len2 < len1 ? len2 : len1;
     int64_t pos = std::abs(offset) * offset_stride;
     if (diag_size > 0) {
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
       thrust::device_vector<int64_t> output_vec(vectorize(output_stride));
       const int64_t* output_arr = thrust::raw_pointer_cast(output_vec.data());
       thrust::device_vector<int64_t> input_vec(vectorize(input_stride));
