@@ -90,14 +90,14 @@ class SliceOpConverter : public OpConverter {
         // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
         plugin::SpecialSlicePluginDynamic* plugin =
             new plugin::SpecialSlicePluginDynamic();
-        layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
-                                     plugin);
+        layer = engine_->AddDynamicPlugin(plugin_inputs.data(),
+                                          plugin_inputs.size(), plugin);
       } else {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
         plugin::SlicePluginDynamic* plugin =
             new plugin::SlicePluginDynamic(starts, ends, axes, with_fp16);
-        layer = engine_->AddPluginV2(&input, 1, plugin);
+        layer = engine_->AddDynamicPlugin(&input, 1, plugin);
       }
 #else
       PADDLE_THROW(platform::errors::Fatal(

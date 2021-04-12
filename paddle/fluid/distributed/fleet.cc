@@ -243,9 +243,13 @@ void FleetWrapper::PullSparseVarsSync(
   }
 }
 
+// is_training is true means training, false means inference, the behavior is
+// different on pserver
+
 void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
+                                          bool is_training,
                                           std::vector<const LoDTensor*>* inputs,
                                           std::vector<LoDTensor*>* outputs) {
   std::vector<uint64_t> fea_keys;
@@ -284,7 +288,8 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   }
   auto* communicator = Communicator::GetInstance();
   auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), true);
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(),
+      is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {

@@ -501,7 +501,12 @@ class TestParallelDyGraphRunnerBase(object):
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
-                model = dygraph.parallel.DataParallel(model, strategy)
+                if not args.find_unused_parameters:
+                    model = dygraph.parallel.DataParallel(
+                        model, strategy, find_unused_parameters=False)
+                else:
+                    model = dygraph.parallel.DataParallel(
+                        model, strategy, find_unused_parameters=True)
                 print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = []
             print_to_err(type(self).__name__, "begin to run dygraph training")
@@ -574,9 +579,14 @@ class TestParallelDyGraphRunnerBase(object):
         # get trainer id
         args.trainer_id = paddle.distributed.get_rank()
 
+        # set strategy
+        strategy = fleet.DistributedStrategy()
+        if not args.find_unused_parameters:
+            strategy.find_unused_parameters = False
+
         # 3. init parallel env
         if args.update_method == "nccl2" or "bkcl":
-            fleet.init(is_collective=True)
+            fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
@@ -628,6 +638,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
+    parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
@@ -726,6 +737,7 @@ class TestDistBase(unittest.TestCase):
         self._save_model = False
         self._fuse_all_reduce = None
         self._accumulate_gradient = False
+        self._find_unused_parameters = True
         self._setup_config()
 
         global DIST_UT_PORT
@@ -851,6 +863,9 @@ class TestDistBase(unittest.TestCase):
 
         if self._accumulate_gradient:
             cmd += " --accumulate_gradient"
+
+        if self._find_unused_parameters:
+            cmd += " --find_unused_parameters"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -1021,6 +1036,9 @@ class TestDistBase(unittest.TestCase):
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
 
+        if self._find_unused_parameters:
+            tr_cmd += " --find_unused_parameters"
+
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
@@ -1107,6 +1125,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
+
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):

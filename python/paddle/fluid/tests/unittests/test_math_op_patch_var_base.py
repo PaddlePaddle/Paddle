@@ -354,8 +354,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
                               [1.30058, 1.0688717, 1.4928783],
                               [1.0958099, 1.3724753, 1.8926544]])
         d = d.matmul(d.t())
-        self.assertTrue(
-            np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy()))
+        # ROCM not support cholesky
+        if not fluid.core.is_compiled_with_rocm():
+            self.assertTrue(
+                np.array_equal(d.cholesky().numpy(), paddle.cholesky(d).numpy(
+                )))
 
         self.assertTrue(
             np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))
