@@ -132,7 +132,6 @@ class OpConverter {
     (*it)(op, scope, test_mode);
 
     bool has_out_scale = op_desc.HasAttr("out_threshold");
-    LOG(ERROR) << "---------------------- op_convert -------------------: " << op_desc.Type() << " "<< has_out_scale;
     if (has_out_scale) {
       float out_scale =
           BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -195,7 +194,6 @@ class OpConverter {
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
         if (ranks == 0) {
-          //LOG(ERROR) << "set dynamic shape = false: " << input.c_str() << "; shape: " << min_input_shape.size();
           all_dynamic_shape_set = false;
           LOG(INFO) << "trt input [" << input.c_str()
                     << "] dynamic shape info not set, please check and retry.";

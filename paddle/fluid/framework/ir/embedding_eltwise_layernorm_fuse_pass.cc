@@ -291,6 +291,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope
     new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
     new_op_desc.SetAttr("epsilon",
                         end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
+
+    if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
+      new_op_desc.SetAttr("enable_int8", true);
+    }
     auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
 
     for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {

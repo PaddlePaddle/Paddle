@@ -89,13 +89,18 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     int64_t bias_size = framework::product(bias_dims);
     int64_t scale_size = framework::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
+    LOG(ERROR) << "emb layer has int8: " << enable_int8;
+
 
     LOG(ERROR) << "dynamic shape: " << engine_->with_dynamic_shape() << " with oss: " << engine_->use_oss();
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
-        output_fp16 = 1;
-        int mha_type_id = 2;
+        if (enable_int8) {
+          output_fp16 = 1;
+        }
+        //int mha_type_id = 2;
         PADDLE_ENFORCE_EQ(
             output_fp16, 1,
             platform::errors::InvalidArgument(
@@ -119,7 +124,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
              nvinfer1::PluginFieldType::kFLOAT32,
              static_cast<int32_t>(emb_sizes[1])},
             {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
-            {"mha_type_id", &mha_type_id, nvinfer1::PluginFieldType::kINT32, 1},
+            //{"mha_type_id", &mha_type_id, nvinfer1::PluginFieldType::kINT32, 1},
         };
 
         // remember to free

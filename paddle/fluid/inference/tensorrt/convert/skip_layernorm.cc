@@ -50,7 +50,7 @@ class SkipLayerNormOpConverter : public OpConverter {
     auto* scale = get_persistable_data("Scale", &scale_dims);
     int bias_size = framework::product(bias_dims);
     int scale_size = framework::product(scale_dims);
-    bool enable_int8 = op_desc.HasAttr("enable_int8"); //true; //false;
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
     LOG(ERROR) << "skip layernorm int8: " << enable_int8;
 
     nvinfer1::ILayer* layer = nullptr;

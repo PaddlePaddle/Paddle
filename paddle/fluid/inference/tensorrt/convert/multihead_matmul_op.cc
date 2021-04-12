@@ -160,8 +160,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                         : nvinfer1::DataType::kFLOAT);
         bool has_mask = true;
         if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kINT8);
-          //type = static_cast<int>(nvinfer1::DataType::kHALF);
+          //type = static_cast<int>(nvinfer1::DataType::kINT8);
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
         }
         int var_seqlen = 1;
         LOG(ERROR) << "dq_probs: " << dp_probs;

@@ -155,15 +155,13 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     OpDesc new_desc;
     new_desc.SetType("skip_layernorm");
 
-    new_desc.SetAttr("enable_int8", layer_norm->Op()->HasAttr("out_threshold"));
-
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
-    if (layer_norm->Op()->HasAttr("out_threshold")) {
+    if (elementwise->Op()->HasAttr("out_threshold")) {
       new_desc.SetAttr("enable_int8", true);
     }
 
