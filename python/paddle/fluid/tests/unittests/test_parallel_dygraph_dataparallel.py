@@ -18,7 +18,7 @@ import unittest
 import time
 import paddle.fluid as fluid
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, get_gpus, start_local_trainers
+from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, start_local_trainers
 
 
 def get_cluster_from_args(selected_gpus):
@@ -39,6 +39,11 @@ def get_cluster_from_args(selected_gpus):
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
     return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
+
+
+def get_gpus(selected_gpus):
+    selected_gpus = [x.strip() for x in selected_gpus.split(',')]
+    return selected_gpus
 
 
 class TestMultipleGpus(unittest.TestCase):
