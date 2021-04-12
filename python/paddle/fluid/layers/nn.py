@@ -487,6 +487,9 @@ def embedding(input,
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')
     """
+    remote_prefetch = True if is_sparse else False
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
     if in_dygraph_mode():
         return core.ops.lookup_table(
             input, w, "is_sparse", is_sparse, "is_distributed", is_distributed,
@@ -503,13 +506,9 @@ def embedding(input,
             "is_distributed is go out of use, `fluid.contrib.layers.sparse_embedding` is your needed"
         )
 
-    remote_prefetch = True if is_sparse else False
-
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_variable_for_type_inference(dtype)
-    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-        size[0] + padding_idx)
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
@@ -931,6 +930,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
            crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
                      param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
+    helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     if in_dygraph_mode():
         if length:
@@ -939,7 +939,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
             return core.ops.crf_decoding([input], transition, label)
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'crf_decoding')
-    helper = LayerHelper('crf_decoding', **locals())
+
     viterbi_path = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
     inputs = {"Emission": [input], "Transition": transition, "Label": label}
