@@ -25,13 +25,14 @@ import gradient_checker
 
 from decorator_helper import prog_scope
 
+paddle.enable_static()
 
 class TestConvDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]
         eps = 0.005
-        dtype = np.float32
+        dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d(x, 2, 1, groups=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -44,7 +45,6 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
-        paddle.enable_static()
         places = [fluid.CPUPlace()]
         places = []
 
@@ -52,7 +52,6 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
-        paddle.disable_static()
 
 if __name__ == "__main__":
     unittest.main()
