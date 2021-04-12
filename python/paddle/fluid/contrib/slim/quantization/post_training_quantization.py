@@ -280,7 +280,7 @@ class PostTrainingQuantization(object):
             "cannot be None in the same time."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
-            "The algo should be KL, hist, abs_max or min_max."
+            "The algo should be KL, hist, mse, avg, abs_max or min_max."
         assert activation_quantize_type in self._support_activation_quantize_type, \
             "The activation_quantize_type ({}) should in ({}).".format(
             activation_quantize_type, self._support_activation_quantize_type)
