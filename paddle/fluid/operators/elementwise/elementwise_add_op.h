@@ -38,6 +38,13 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
+template <typename T, class Enable = void>
+struct MyAddFunctor {
+  inline HOSTDEVICE void operator()(T args[]) const {
+    args[0] = args[1] + args[2];
+  }
+};
+
 template <typename DeviceContext, typename T>
 void default_elementwise_add(const framework::ExecutionContext &ctx,
                              const framework::Tensor *x,
@@ -79,11 +86,12 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
         // enter same_dims_launch_kernel
         // output_num default 1
         // for binary op, input_num is 2
-        // for activation op, input_num is 1
+        // for unary op, input_num is 1
         auto size = x->numel();
-        auto data = SameDimsData<T>(z->data<T>(), x->data<T>(), y->data<T>());
-        same_dims_launch_kernel<T, AddFunctor<T>>(ctx, data, size,
-                                                  AddFunctor<T>());
+        auto data =
+            SameDimsData<T, BINARY>(z->data<T>(), x->data<T>(), y->data<T>());
+        same_dims_launch_kernel<T, MyAddFunctor<T>, BINARY>(ctx, data, size,
+                                                            MyAddFunctor<T>());
 #endif
 #endif
       } else {

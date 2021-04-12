@@ -40,6 +40,11 @@ namespace operators {
 #ifdef PADDLE_WITH_CUDA
 #ifdef __NVCC__
 
+enum ELEMENTWISE_TYPE {
+  UNARY = 1,
+  BINARY = 2,
+};
+
 template <typename T>
 inline int SameDimsVectorizedSize(const T *pointer) {
   uint64_t address = reinterpret_cast<uint64_t>(pointer);
@@ -50,69 +55,91 @@ inline int SameDimsVectorizedSize(const T *pointer) {
   return 1;
 }
 
-template <typename T>
+template <typename T, ELEMENTWISE_TYPE N>
 struct SameDimsData {
+  using VecType = float4;
   T *out = nullptr;
   const T *in0 = nullptr;
   const T *in1 = nullptr;
-  int data_num = 3;
-  bool is_binary = true;
   SameDimsData(T *out, const T *in0, const T *in1 = nullptr)
-      : out(out), in0(in0), in1(in1) {
-    if (in1 == nullptr) {
-      is_binary = false;
-      data_num--;
+      : out(out), in0(in0), in1(in1) {}
+
+  void get_vectorized_size(int *vec_size) const {
+    *vec_size = std::min<int>(*vec_size, SameDimsVectorizedSize<T>(out));
+    *vec_size = std::min<int>(*vec_size, SameDimsVectorizedSize<T>(in0));
+    if (N == BINARY) {
+      *vec_size = std::min<int>(*vec_size, SameDimsVectorizedSize<T>(in1));
     }
   }
 
-  int GetVectorizedSize() {
-    int vec_size = 8;
-    vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(out));
-    vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(in0));
-    if (in1 != nullptr) {
-      vec_size = std::min<int>(vec_size, SameDimsVectorizedSize<T>(in1));
+  inline __device__ void load_vector(VecType args[], int tid) const {
+    const VecType *x_vec = reinterpret_cast<const VecType *>(in0);
+    args[1] = x_vec[tid];
+    if (N == BINARY) {
+      const VecType *y_vec = reinterpret_cast<const VecType *>(in1);
+      args[2] = y_vec[tid];
     }
-    return vec_size;
   }
+
+  inline __device__ void load_scalar(T args[], int tid) const {
+    args[1] = in0[tid];
+    if (N == BINARY) {
+      args[2] = in1[tid];
+    }
+  }
+
+  inline __device__ void store_vector(VecType res, int tid) const {
+    VecType *out_vec = reinterpret_cast<VecType *>(out);
+    out_vec[tid] = res;
+  }
+
+  inline __device__ void store_scalar(T res, int tid) const { out[tid] = res; }
 };
 
-template <int Vec_size, typename T, typename Functor>
-__device__ void VectorizedKernelHelper(SameDimsData<T> data, int size,
+template <int Vec_size, typename T, typename Functor, ELEMENTWISE_TYPE N>
+__device__ void VectorizedKernelHelper(const SameDimsData<T, N> &data, int size,
                                        Functor func, int tid) {
   using VecType = float4;
-  const VecType *x = reinterpret_cast<const VecType *>(data.in0);
-  const VecType *y = reinterpret_cast<const VecType *>(data.in1);
-  VecType *z = reinterpret_cast<VecType *>(data.out);
-  VecType x_vec, y_vec, z_vec;
+  VecType args_vec[3];
+  T *args_ptr[3];
+#pragma unroll
+  for (int i = 0; i < 3; ++i) {
+    args_ptr[i] = reinterpret_cast<T *>(&(args_vec[i]));
+  }
 
-  T *x_slr = reinterpret_cast<T *>(&x_vec);
-  T *y_slr = reinterpret_cast<T *>(&y_vec);
-  T *z_slr = reinterpret_cast<T *>(&z_vec);
+  // load
+  data.load_vector(args_vec, tid);
 
-  x_vec = x[tid];
-  y_vec = y[tid];
-
+// compute
 #pragma unroll
   for (int i = 0; i < Vec_size; ++i) {
-    z_slr[i] = func(x_slr[i], y_slr[i]);
+    T args[3] = {args_ptr[0][i], args_ptr[1][i], args_ptr[2][i]};
+    func(args);
   }
 
-  z[tid] = z_vec;
+  // store
+  data.store_vector(args_vec[0], tid);
 }
 
-template <typename T, typename Functor>
-__device__ void ScalarKernelHelper(SameDimsData<T> data, int size, Functor func,
-                                   int start, int remain) {
+template <typename T, typename Functor, ELEMENTWISE_TYPE N>
+__device__ void ScalarKernelHelper(const SameDimsData<T, N> &data, int size,
+                                   Functor func, int start, int remain) {
+  T args[3];
+
   for (int i = 0; i < remain; ++i) {
-    T x = (data.in0)[start + i];
-    T y = (data.in1)[start + i];
-    (data.out)[start + i] = func(x, y);
+    int tid = start + i;
+    // load
+    data.load_scalar(args, tid);
+    // compute
+    func(args);
+    // store
+    data.store_scalar(args[0], tid);
   }
 }
 
-template <int Vec_size, typename T, typename Functor>
-__global__ void VectorizedSameDimsKernel(SameDimsData<T> data, int size,
-                                         Functor func) {
+template <int Vec_size, typename T, typename Functor, ELEMENTWISE_TYPE N>
+__global__ void VectorizedSameDimsKernel(const SameDimsData<T, N> &data,
+                                         int size, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int remain = size - Vec_size * tid;
   remain = remain > 0 ? remain : 0;
@@ -123,22 +150,25 @@ __global__ void VectorizedSameDimsKernel(SameDimsData<T> data, int size,
   }
 }
 
-template <typename T, typename Functor>
-__global__ void ScalarSameDimsKernel(SameDimsData<T> data, int size,
+template <typename T, typename Functor, ELEMENTWISE_TYPE N>
+__global__ void ScalarSameDimsKernel(const SameDimsData<T, N> &data, int size,
                                      Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   ScalarKernelHelper(data, size, func, tid, 1);
 }
 
-template <typename T, typename Functor>
+template <typename T, typename Functor, ELEMENTWISE_TYPE N>
 void same_dims_launch_kernel(const framework::ExecutionContext &ctx,
-                             SameDimsData<T> data, int64_t size, Functor func) {
+                             const SameDimsData<T, N> &data, int64_t size,
+                             Functor func) {
   // calculate the max vec_size for all inputs and outputs
-  int vec_size = data.GetVectorizedSize();
+  int vec_size = 1;
+  data.get_vectorized_size(&vec_size);
   int block_size = PADDLE_CUDA_THREAD_SIZE;
   int grid_size =
       ((size + vec_size - 1) / vec_size + block_size - 1) / block_size;
   printf("===============\n");
+  printf("%d\n", N);
   printf("size: %d\n", size);
   printf("vec_size: %d\n", vec_size);
   printf("block_size: %d\n", block_size);
