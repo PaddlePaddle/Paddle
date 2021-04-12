@@ -122,6 +122,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
 
     Returns:
         result: True or False
+        name(str): the name of the API.
+        msg(str): messages
     """
     global GPU_ID, RUN_ON_DEVICE, SAMPLECODE_TEMPDIR
 
@@ -197,7 +199,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
 
         tfname = os.path.join(SAMPLECODE_TEMPDIR, '{}_example{}'.format(
-            name, '.py' if len(sampcd_begins) > 1 else '_{}.py'.format(y)))
+            name, '.py' if len(sampcd_begins) == 1 else '_{}.py'.format(y)))
         logging.info('running %s', tfname)
         with open(tfname, 'w') as tempf:
             tempf.write(sampcd)
@@ -302,6 +304,7 @@ def srccoms_extract(srcfile, wlist, methods):
 
     Returns:
         result: True or False
+        error_methods: the methods that failed.
     """
 
     process_result = True

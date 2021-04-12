@@ -65,14 +65,18 @@ class Test_sampcd_extract_and_run(unittest.TestCase):
                 print(1+1)
         """
         funcname = 'one_plus_one'
-        self.assertTrue(sampcd_extract_and_run(comments, funcname))
+        res, name, msg = sampcd_extract_and_run(comments, funcname)
+        self.assertTrue(res)
+        self.assertEqual(funcname, name)
 
     def test_run_a_def_no_code(self):
         comments = """
         placeholder
         """
         funcname = 'one_plus_one'
-        self.assertFalse(sampcd_extract_and_run(comments, funcname))
+        res, name, msg = sampcd_extract_and_run(comments, funcname)
+        self.assertFalse(res)
+        self.assertEqual(funcname, name)
 
     def test_run_a_def_raise_expection(self):
         comments = """
@@ -82,7 +86,9 @@ class Test_sampcd_extract_and_run(unittest.TestCase):
                 print(1/0)
         """
         funcname = 'one_plus_one'
-        self.assertFalse(sampcd_extract_and_run(comments, funcname))
+        res, name, msg = sampcd_extract_and_run(comments, funcname)
+        self.assertFalse(res)
+        self.assertEqual(funcname, name)
 
 
 class Test_single_defcom_extract(unittest.TestCase):
@@ -329,19 +335,23 @@ add_sample_code(globals()["two_plus_two"], """
         utsp = importlib.import_module('ops')
         print('testing srccoms_extract from ops.py')
         methods = ['one_plus_one', 'two_plus_two', 'exp']
-        os.remove("samplecode_temp/" "one_plus_one_example.py")
+        # os.remove("samplecode_temp/" "one_plus_one_example.py")
         self.assertFalse(
             os.path.exists("samplecode_temp/"
                            "one_plus_one_example.py"))
         with open(pyfilename, 'r') as pyfile:
-            self.assertTrue(srccoms_extract(pyfile, [], methods))
+            res, error_methods = srccoms_extract(pyfile, [], methods)
+            self.assertTrue(res)
         self.assertTrue(
             os.path.exists("samplecode_temp/"
                            "one_plus_one_example.py"))
+        os.remove("samplecode_temp/" "one_plus_one_example.py")
         self.assertTrue(
             os.path.exists("samplecode_temp/"
                            "two_plus_two_example.py"))
+        os.remove("samplecode_temp/" "two_plus_two_example.py")
         self.assertTrue(os.path.exists("samplecode_temp/" "exp_example.py"))
+        os.remove("samplecode_temp/" "exp_example.py")
 
     def test_from_not_ops_py(self):
         filecont = '''
@@ -366,10 +376,12 @@ def one_plus_one():
         utsp = importlib.import_module('opo')
         methods = ['one_plus_one']
         with open(pyfilename, 'r') as pyfile:
-            self.assertTrue(srccoms_extract(pyfile, [], methods))
+            res, error_methods = srccoms_extract(pyfile, [], methods)
+            self.assertTrue(res)
         self.assertTrue(
             os.path.exists("samplecode_temp/"
                            "one_plus_one_example.py"))
+        os.remove("samplecode_temp/" "one_plus_one_example.py")
 
     def test_with_empty_wlist(self):
         """
@@ -410,10 +422,12 @@ def three_plus_three():
         utsp = importlib.import_module('three_and_four')
         methods = ['four_plus_four', 'three_plus_three']
         with open(pyfilename, 'r') as pyfile:
-            self.assertTrue(
-                srccoms_extract(pyfile, ['three_plus_three'], methods))
+            res, error_methods = srccoms_extract(pyfile, ['three_plus_three'],
+                                                 methods)
+            self.assertTrue(res)
         self.assertTrue(
             os.path.exists("samplecode_temp/four_plus_four_example.py"))
+        os.remove("samplecode_temp/" "four_plus_four_example.py")
         self.assertFalse(
             os.path.exists("samplecode_temp/three_plus_three_example.py"))
 
