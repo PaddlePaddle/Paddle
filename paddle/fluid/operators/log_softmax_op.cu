@@ -65,11 +65,6 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
   int batch_id = blockDim.y * blockIdx.x + threadIdx.y;
 
-  // set effective_warp_id as 1 when warps do effective work,
-  // when warps do ineffective work, effective_warp_id remains unchanged.
-  int effective_warp_id = batch_size - batch_id;
-  if (effective_warp_id > 1) effective_warp_id = 1;
-
   int thread_in_warp_idx = threadIdx.x;
 
   // 1.read data from global memory to registers
@@ -77,7 +72,7 @@ __global__ void ComputeLogSoftmaxForwardInWarp(T *dst, const T *src,
   // set effective_element_count as the num of elements when warps do effective
   // work
   // set effective_element_count as 0, when warps do ineffective work
-  int effective_element_count = (effective_warp_id <= 0) ? 0 : element_count;
+  int effective_element_count = (batch_id < batch_size) ? element_count : 0;
   for (int it = 0; it < warp_iter; ++it) {
     int element_index = thread_in_warp_idx + it * kernel_warp_size;
     if (element_index < effective_element_count) {
@@ -200,17 +195,12 @@ __global__ void ComputeLogSoftmaxBackwardInWarp(const T *output,
   constexpr int warp_iter = near_greater_power_of_two / kernel_warp_size;
   int batch_id = blockDim.y * blockIdx.x + threadIdx.y;
 
-  // set effective_warp_id as 1 when warps do effective work,
-  // when warps do ineffective work, effective_warp_id remains unchanged.
-  int effective_warp_id = batch_size - batch_id;
-  if (effective_warp_id > 1) effective_warp_id = 1;
-
   int thread_in_warp_idx = threadIdx.x % kernel_warp_size;
 
   // 1.read data from global memory to registers
   AccT output_register[warp_iter];
   AccT grad_output_register[warp_iter];
-  int effective_element_count = (effective_warp_id <= 0) ? 0 : element_count;
+  int effective_element_count = (batch_id < batch_size) ? element_count : 0;
   for (int iter = 0; iter < warp_iter; ++iter) {
     int element_index = thread_in_warp_idx + iter * kernel_warp_size;
     if (element_index < effective_element_count) {
