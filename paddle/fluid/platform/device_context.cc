@@ -254,9 +254,12 @@ NPUDeviceContext::~NPUDeviceContext() {
 
 void NPUDeviceContext::Wait() const {
   platform::RecordEvent record_event("NPUDeviceContext/wait");
-  NPUDeviceGuard guard(place_.device);
+  // NOTE(zhiqiu): Better to guard place before call acl API.
+  // But for better performance, we disbale it and we think it is
+  // ok to do this since stream_ has target device.
+  // NPUDeviceGuard guard(place_.device);
   VLOG(4) << "NPU context Wait";
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeDevice());
+  stream_->Wait();
 }
 
 aclrtStream NPUDeviceContext::stream() const { return stream_->raw_stream(); }
