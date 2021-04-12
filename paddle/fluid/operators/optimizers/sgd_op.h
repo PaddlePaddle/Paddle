@@ -36,6 +36,7 @@ template <typename T>
 struct sgd_dense_param_kernel<
     T, framework::VarTypeTrait<framework::LoDTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -61,6 +62,7 @@ template <typename T>
 struct sgd_dense_param_kernel<
     T, framework::VarTypeTrait<framework::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -93,6 +95,7 @@ template <>
 struct sgd_dense_param_kernel<
     platform::bfloat16, framework::VarTypeTrait<framework::LoDTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -113,6 +116,7 @@ template <>
 struct sgd_dense_param_kernel<
     platform::bfloat16, framework::VarTypeTrait<framework::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
     const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
@@ -120,7 +124,8 @@ struct sgd_dense_param_kernel<
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
     const auto grad_height = grad->height();
-    const auto grad_width = grad_value.numel() / grad_height;
+    const int64_t grad_val_height = static_cast<int64_t>(grad_rows.size());
+    const auto grad_width = grad_value.numel() / grad_val_height;
 
     const auto *grad_data = grad_value.data<platform::bfloat16>();
     auto *out_data = param_out->data<platform::bfloat16>();
@@ -133,9 +138,9 @@ struct sgd_dense_param_kernel<
               "Grad rows index value should be less than grad height."
               "Got [%s], but expected less than [%s]",
               grad_rows[i], grad_height));
+      const int64_t row = grad_rows[i];
       for (int64_t j = 0; j < grad_width; ++j) {
-        out_data[grad_rows[i] * grad_width + j] -=
-            lr[0] * grad_data[i * grad_width + j];
+        out_data[row * grad_width + j] -= lr[0] * grad_data[i * grad_width + j];
       }
     }
   }
