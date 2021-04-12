@@ -183,9 +183,9 @@ int32_t PsLocalClient::initialize() {
     uint32_t data_num = regions[i].size / sizeof(float);
     PADDLE_ENFORCE_LE(
         offset + data_num, data_size,
-        platform::errors::PreconditionNotMet("invalid dense size, cur pos[%d]"
-                                                 << " data_num[%d] size[%d]",
-                                             offset, data_num, data_size));
+        platform::errors::PreconditionNotMet(
+            "invalid dense size, cur pos[%d] data_num[%d] size[%d]", offset,
+            data_num, data_size));
     memcpy(region_buffer.data() + offset, regions[i].data, regions[i].size);
     offset += data_num;
   }
