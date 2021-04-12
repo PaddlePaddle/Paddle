@@ -1973,6 +1973,10 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
+        elif p.is_npu_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.NPUPlace(p.npu_device_id())
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -2115,8 +2119,8 @@ def load_program_state(model_path, var_list=None):
                     error_str = "Failed to load model/variables `%s`, please make sure " \
                                 "model/variables file is saved with the following APIs: " \
                                 "save_params, save_persistables, save_vars."
-                    filenames = [var.name for var in vars
-                                 ] if filename is None else filename
+                    filenames = [var.name for var in
+                                 vars] if filename is None else filename
                     if raise_error:
                         raise RuntimeError(error_str % filenames)
                     else:
@@ -2256,6 +2260,10 @@ def set_program_state(program, state_dict):
                 p = paddle.fluid.core.Place()
                 p.set_place(ten_place)
                 py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
+            elif ten_place.is_npu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.NPUPlace(p.npu_device_id())
 
             ten.set(new_para_np, py_place)
 

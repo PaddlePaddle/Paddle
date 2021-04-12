@@ -36,7 +36,7 @@ class TestAssign(OpTest):
         self.op_type = "assign"
         self.init_dtype()
 
-        x = np.rand.random([3,3])
+        x = np.random.random([3, 3]).astype(self.dtype)
         self.inputs = {'X': x}
 
         self.attrs = {}
@@ -46,7 +46,7 @@ class TestAssign(OpTest):
         self.__class__.use_npu = True
 
     def init_dtype(self):
-        self.dtype = np.int64
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
@@ -54,4 +54,3 @@ class TestAssign(OpTest):
 
 if __name__ == '__main__':
     unittest.main()
-
