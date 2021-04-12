@@ -121,7 +121,9 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     """
 
     print('_compute_numerical_jacobian')
+    print('len(x): ', len(x))
     print('x: ', x)
+    print('len(y): ', len(y))
     print('y: ', y)
 
     if not isinstance(x, fluid.framework.Variable):
@@ -158,6 +160,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         for j in six.moves.xrange(len(y)):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
 
+    print('len(jacobian): ', len(jacobian))
     print('jacobian: ', jacobian)
 
     return jacobian
@@ -182,7 +185,9 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     """
     
     print('_compute_analytical_jacobian')
+    print('len(x): ', len(x))
     print('x: ', x)
+    print('len(y): ', len(y))
     print('y: ', y)
 
     if not isinstance(y, fluid.framework.Variable):
@@ -228,6 +233,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
 
         _set_item(dy_t, i, 0, np_type)
 
+    print('len(jacobian): ', len(jacobian))
     print('jacobian: ', jacobian)
 
     return jacobian
@@ -262,8 +268,11 @@ def grad_check(x,
         True if all differences satisfy numpy.allclose condition.
     """
 
+    print('len(x): ', len(x))
     print('x: ', x)
+    print('len(y): ', len(y))
     print('y: ', y)
+    print('len(x_init): ', len(x_init))
     print('x_init: ', x_init)
 
     def fail_test(msg):
@@ -298,6 +307,7 @@ def grad_check(x,
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
+        print('len(feeds): ', len(feeds))
         print('feeds: ', feeds)
         exe.run(program, feed=feeds, scope=scope)
 
@@ -306,6 +316,8 @@ def grad_check(x,
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
         for xi in x
     ]
+
+    print('len(numerical): ', len(numerical))
     print('numerical: ', numerical)
 
     # [y_idx, x_idx]
@@ -328,11 +340,14 @@ def grad_check(x,
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
+    print('len(analytical): ', len(analytical))
     print('analytical: ', analytical)
 
     for i, (x_idx,
             y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
+
         print('i: %s, x_idx: %s, y_idx: %s' % (i, x_idx, y_idx))
+
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         # if not np.allclose(a, n, rtol, atol):
@@ -406,15 +421,21 @@ def double_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
         ]
 
+    print('len(x): ', len(x))
     print('x: ', x)
+    print('len(y): ', len(y))
     print('y: ', y)
+    print('len(y_grads): ', len(y_grads))
     print('y_grads: ', y_grads)
+    print('len(x_init): ', len(x_init))
     print('x_init: ', x_init)
+    print('len(y_grads_init): ', len(y_grads_init))
     print('y_grads_init: ', y_grads_init)
 
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
 
+    print('len(target_grads): ', len(target_grads))
     print('target_grads: ', target_grads)
 
     # y_grads are the input of first-order backward,
