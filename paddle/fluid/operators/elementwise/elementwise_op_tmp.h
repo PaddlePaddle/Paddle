@@ -319,10 +319,9 @@ struct TensorLoader {
       in_data[j] = (*ins)[j].data();
 
       if ((*ins)[j]->dims() == out->dims()) {
-        // constexpr vec_size = 8;
-        // auto load_vector = LoadVector<T>(vec_size);
-        // Funcp[j] = load_vector<T>.load();
-        // ;
+        constexpr vec_size = 8;
+        auto load_vector = LoadVector<T>(vec_size);
+        Funcp[j] = load_vector<T>.load();
       } else {
         auto load_scalar = LoadScalar<offset_pre_t, nDims>(*offset_pre, j);
         Funcp[j] = (load_scalar<T>).load();
