@@ -37,7 +37,7 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
 
-    def test_communicator_async(self):
+    def test_communicator_ps_gpu(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["POD_IP"] = "127.0.0.1"
