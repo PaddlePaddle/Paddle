@@ -690,6 +690,9 @@ class Transpose(BaseTransform):
         self.order = order
 
     def _apply_image(self, img):
+        if F._is_tensor_image(img):
+            return img.transpose(self.order)
+
         if F._is_pil_image(img):
             img = np.asarray(img)
 
