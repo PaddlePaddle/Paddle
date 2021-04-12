@@ -108,7 +108,9 @@ int32_t PsLocalClient::initialize() {
   size_t region_data_idx = 0;
   size_t shard_data_size = num_per_shard;
   size_t shard_buffer_remain = shard_data_size * sizeof(float);
-  CHECK(shard_buffer_remain == region_buffer.size() * sizeof(float));
+  PADDLE_ENFORCE_EQ(
+      shard_buffer_remain, region_buffer.size() * sizeof(float),
+      platform::errors::PreconditionNotMet("pull dense size error."));
   size_t index = 0;
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
@@ -179,9 +181,11 @@ int32_t PsLocalClient::initialize() {
   size_t data_size = region_buffer.size();
   for (size_t i = 0, offset = 0; i < region_num; ++i) {
     uint32_t data_num = regions[i].size / sizeof(float);
-    CHECK(offset + data_num <= data_size)
-        << "invalid dense size, cur pos[" << offset << "]"
-        << " data_num[" << data_num << "] size[" << data_size << "]";
+    PADDLE_ENFORCE_LE(
+        offset + data_num, data_size,
+        platform::errors::PreconditionNotMet("invalid dense size, cur pos[%d]"
+                                                 << " data_num[%d] size[%d]",
+                                             offset, data_num, data_size));
     memcpy(region_buffer.data() + offset, regions[i].data, regions[i].size);
     offset += data_num;
   }

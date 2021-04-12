@@ -122,7 +122,7 @@ class PSClient {
                                                  size_t table_id,
                                                  const uint64_t *keys,
                                                  size_t num) {
-    LOG(FATAL) << "Did not implement";
+    VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);
@@ -161,7 +161,7 @@ class PSClient {
   virtual std::future<int32_t> send_client2client_msg(int msg_type,
                                                       int to_client_id,
                                                       const std::string &msg) {
-    LOG(FATAL) << "Did not implement";
+    VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);
