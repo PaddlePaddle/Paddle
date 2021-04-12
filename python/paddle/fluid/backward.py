@@ -233,6 +233,8 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
+            if desc.has_attr('op_device'):
+                new_op_desc._set_attr('op_device', desc.attr('op_device'))
             result_descs.append(new_op_desc)
     return result_descs
 
@@ -252,6 +254,8 @@ def _add_descs_to_block(descs, block):
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
+        if desc.has_attr('op_device'):
+            new_op_desc._set_attr('op_device', desc.attr('op_device'))
         result_descs.append(new_op_desc)
     return result_descs
 
@@ -843,6 +847,7 @@ def _append_backward_ops_with_checkpoints_(
     vars_in_memory = vars_should_be_hold + checkpoints_name
 
     max_calculated_op_position = len(ops)
+    device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
     if recompute_segments == []:
         gap_ops = ops[0:max_calculated_op_position]
         for op in reversed(gap_ops):
@@ -852,6 +857,11 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
@@ -866,6 +876,11 @@ def _append_backward_ops_with_checkpoints_(
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            # Set device for grad_op according to forward Op
+            if op.desc.has_attr(device_attr_name):
+                op_device = op.desc.attr(device_attr_name)
+                for op_desc in grad_op_desc:
+                    op_desc._set_attr(device_attr_name, op_device)
             added_descs = _add_descs_to_block(grad_op_desc, local_block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)

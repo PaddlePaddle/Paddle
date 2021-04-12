@@ -25,6 +25,13 @@ def download_file():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+    try:
+        import paddle.fluid.core as core
+        if core.is_compiled_with_rocm():
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_rocm_ci')
+    except:
+        pass
     f = requests.get(url)
     data = f.text
     status_code = f.status_code

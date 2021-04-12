@@ -102,6 +102,7 @@ static int GetCUDADeviceCountImpl() {
 }
 
 int GetCUDADeviceCount() {
+  // cache the count
   static auto dev_cnt = GetCUDADeviceCountImpl();
   return dev_cnt;
 }

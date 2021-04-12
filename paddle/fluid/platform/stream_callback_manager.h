@@ -37,9 +37,10 @@ namespace platform {
 
 // NOTE(zjl): clean StreamCallbackManager to make compilation faster
 // Make StreamCallbackManager thread-safe
+template <typename Stream>
 class StreamCallbackManager {
  public:
-  explicit StreamCallbackManager(const gpuStream_t stream);
+  explicit StreamCallbackManager(const Stream stream);
 
   ~StreamCallbackManager() = default;
 
@@ -48,7 +49,7 @@ class StreamCallbackManager {
   void Wait() const;
 
  private:
-  const gpuStream_t stream_;
+  const Stream stream_;
   mutable ::ThreadPool thread_pool_;
   mutable std::mutex mtx_;
   mutable std::future<void> last_future_;
