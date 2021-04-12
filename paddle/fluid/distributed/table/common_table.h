@@ -55,12 +55,13 @@ struct ReservoirValue {
   }
 
   void avg() {
+    if (counter == 0) return;
     auto scale = 1 / static_cast<T>(counter);
     GetBlas<T>().SCAL(values.size(), scale, values.data());
   }
 
   void reset() {
-    values.resize(dim, 0);
+    std::fill(values.begin(), values.end(), 0);
     counter = 0;
   }
 };
@@ -97,8 +98,8 @@ class DenseTable : public Table {
   virtual ~DenseTable() {}
 
   virtual void *get_shard(size_t shard_idx) { return 0; }
-  int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+  int32_t pull_sparse(float *values,
+                      const PullSparseValue &pull_value) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
@@ -108,7 +109,7 @@ class DenseTable : public Table {
   int32_t push_dense_param(const float *values, size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
+  int32_t shrink(const std::string &param) override { return 0; }
 };
 
 class BarrierTable : public Table {
@@ -122,8 +123,8 @@ class BarrierTable : public Table {
 
   int32_t push_dense(const float *values, size_t num) override { return 0; }
 
-  int32_t pull_sparse(float *values, const uint64_t *keys,
-                      size_t num) override {
+  int32_t pull_sparse(float *values,
+                      const PullSparseValue &pull_value) override {
     return 0;
   }
   int32_t push_sparse(const uint64_t *keys, const float *values,
@@ -133,16 +134,16 @@ class BarrierTable : public Table {
   int32_t push_dense_param(const float *values, size_t num) override {
     return 0;
   }
-  int32_t shrink() override { return 0; }
-  virtual void clear(){};
-  virtual int32_t flush() { return 0; };
+  int32_t shrink(const std::string &param) override { return 0; }
+  virtual void clear() {}
+  virtual int32_t flush() { return 0; }
   virtual int32_t load(const std::string &path, const std::string &param) {
     return 0;
   }
   virtual int32_t save(const std::string &path, const std::string &param) {
     return 0;
   }
-  virtual int32_t initialize_shard() { return 0; };
+  virtual int32_t initialize_shard() { return 0; }
 
   virtual int32_t initialize() override;
   // only for barrier

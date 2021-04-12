@@ -304,6 +304,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_XPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
 
+#define REGISTER_OP_NPU_KERNEL(op_type, ...) \
+  REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
+
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -369,7 +372,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \

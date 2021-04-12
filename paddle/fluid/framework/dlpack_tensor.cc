@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include <unordered_map>
 #include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
@@ -83,8 +82,13 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
+  inline ::DLContext operator()(const platform::NPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::NPUPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLGPU;
     ctx.device_id = place.device;
@@ -96,7 +100,7 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
   }
 
   inline ::DLContext operator()(const platform::CUDAPinnedPlace &place) const {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLContext ctx;
     ctx.device_type = kDLCPUPinned;
     ctx.device_id = 0;

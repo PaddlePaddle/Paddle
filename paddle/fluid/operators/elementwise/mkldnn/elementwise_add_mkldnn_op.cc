@@ -48,7 +48,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type, dev_ctx,
                                            onednn_engine, key);
 
-    mkldnn::stream astream(onednn_engine);
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
 
@@ -61,17 +61,43 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                            platform::EventRole::kUniqueOp);
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
+
+      dx->set_layout(DataLayout::kMKLDNN);
+      dx->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
     }
 
     if (dy) {
-      auto reorder_dst_memory_p =
-          handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
-      auto reorder_p =
-          handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
-      reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-      astream.wait();
+      // Direct copy
+      if (dout->dims() == dy->dims()) {
+        auto reorder_dst_memory_p =
+            handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
+        auto reorder_p =
+            handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+        platform::RecordEvent record_reorder("int_reorder",
+                                             platform::EventRole::kUniqueOp);
+        reorder_p->execute(astream, *reorder_src_memory_p,
+                           *reorder_dst_memory_p);
+        astream.wait();
+
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+      } else {
+        // Broadcasting
+        platform::ReductionMKLDNNHandler<T> handler_sum(
+            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
+            ctx.GetPlace(), dout, dy,
+            ctx.InputName(framework::GradVarName("Out")));
+        auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
+        auto reduction_p = handler_sum.AcquireForwardPrimitive();
+        reduction_p->execute(astream, {{DNNL_ARG_SRC, *reorder_src_memory_p},
+                                       {DNNL_ARG_DST, *dy_memory_p}});
+        astream.wait();
+
+        dy->set_layout(DataLayout::kMKLDNN);
+        dy->set_format(
+            platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
+                paddle::framework::vectorize<int64_t>(dy->dims()))));
+      }
     }
   }
 };
@@ -90,4 +116,5 @@ REGISTER_OP_KERNEL(
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_add>)
 
 REGISTER_OP_KERNEL(elementwise_add_grad, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::EltwiseAddMKLDNNGradKernel<paddle::platform::bfloat16>,
                    ops::EltwiseAddMKLDNNGradKernel<float>)

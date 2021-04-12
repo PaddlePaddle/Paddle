@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include <unordered_map>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

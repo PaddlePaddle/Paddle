@@ -47,19 +47,6 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
                           "size is %d.",
                           axis, ins[0]->dims().size()));
 
-    auto place = ctx.GetPlace();
-    out->mutable_data<T>(place);
-    std::vector<int> choose_idx;
-    int n = 0;
-    for (unsigned int i = 0; i < ins.size(); ++i) {
-      if (ins[i] && ins[i]->numel() > 0) {
-        choose_idx.push_back(i);
-        n++;
-      }
-    }
-    PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument("No tensor need concat?"));
-
     // If axis is 0, the lod of the output is not the same as inputs.
     if (axis == 0 && ins[0]->lod().size() > 0) {
       size_t lod_size_0 = ins[0]->lod().size();
@@ -87,30 +74,32 @@ class ConcatXPUKernel : public framework::OpKernel<T> {
         }
       }
     }
-
-    auto input_dims = ins[0]->dims();
-    std::vector<std::vector<int>> xdims_list(n);
-    for (int i = 0; i < n; ++i) {
-      std::vector<int> tmp_dims(input_dims.size());
-      for (int j = 0; j < input_dims.size(); ++j) {
-        tmp_dims[j] = ins[i]->dims()[j];
-      }
-      xdims_list[i] = tmp_dims;
-    }
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto place = ctx.GetPlace();
+    out->mutable_data<T>(place);
+    std::vector<std::vector<int>> xdims_list;
     std::vector<const T*> ptrs;
-    for (int i = 0; i < n; ++i) {
-      ptrs.push_back(ins[choose_idx[i]]->data<T>());
+    for (unsigned int i = 0; i < ins.size(); ++i) {
+      if (ins[i] && ins[i]->numel() > 0) {
+        ptrs.push_back(ins[i]->data<T>());
+        int size = ins[i]->dims().size();
+        std::vector<int> tmp_dims(size);
+        for (int j = 0; j < size; ++j) {
+          tmp_dims[j] = ins[i]->dims()[j];
+        }
+        xdims_list.push_back(tmp_dims);
+      }
     }
+
+    PADDLE_ENFORCE_GT(xdims_list.size(), 0, platform::errors::InvalidArgument(
+                                                "No tensor need concat"));
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
     int r = xpu::concat<T>(dev_ctx.x_context(), ptrs, out->data<T>(),
                            xdims_list, axis);
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External(
-            "XPU API return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                      platform::errors::External(
+                          "XPU concat kernel return wrong value[%d %s]", r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 
@@ -143,16 +132,14 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
     // get output tensor that the name is not kEmptyVarName
-    std::vector<framework::Tensor*> outputs;
-    std::vector<int> choose_idx;
-    int n = 0;
+    std::vector<T*> ptrs(outs.size());
     for (size_t j = 0; j < outs.size(); ++j) {
       if (out_var_names[j] != framework::kEmptyVarName &&
           outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
-        outputs.push_back(outs[j]);
-        choose_idx.push_back(j);
-        n++;
+        ptrs[j] = outs[j]->data<T>();
+      } else {
+        ptrs[j] = nullptr;
       }
     }
     PADDLE_ENFORCE_GE(axis, 0, platform::errors::InvalidArgument(
@@ -168,10 +155,10 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
             axis, out_grad->dims().size()));
 
     auto input_dims = ins[0]->dims();
-    std::vector<int> split_list(n);
+    std::vector<int> split_list(ins.size());
     std::vector<int> xdims_list(input_dims.size());
     int total_length = 0;
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < ins.size(); ++i) {
       split_list[i] = ins[i]->dims()[axis];
       total_length += ins[i]->dims()[axis];
     }
@@ -182,11 +169,6 @@ class ConcatGradXPUKernel : public framework::OpKernel<T> {
       xdims_list[i] = input_dims[i];
     }
     xdims_list[axis] = total_length;
-
-    std::vector<T*> ptrs(n);
-    for (int i = 0; i < n; ++i) {
-      ptrs[i] = outputs[i]->data<T>();
-    }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r = xpu::split<T>(dev_ctx.x_context(), out_grad->data<T>(), ptrs,

@@ -12,9 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/fluid/operators/group_norm_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -166,7 +174,11 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
                                                    : x_dims[1] * x_dims[2]);
 
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
@@ -217,10 +229,10 @@ __global__ void GroupNormBackwardGetMeanAndVar(
     d_bias_data += dval;
     d_scale_data += val * dval;
   }
-  CudaAtomicAddWithWarp(&d_mean[bid * groups + gid], d_mean_data);
-  CudaAtomicAddWithWarp(&d_var[bid * groups + gid], d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&d_scale[ccid], d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&d_bias[ccid], d_bias_data);
+  CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
+  CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
+  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 }
 
 template <typename T, int flags>
@@ -340,7 +352,11 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
                                                    : x_dims[1] * x_dims[2]);
 
+#ifdef __HIPCC__
+    int block_size = std::max(std::min(256, imsize), 64);
+#else
     int block_size = std::min(1024, imsize);
+#endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     int flags =

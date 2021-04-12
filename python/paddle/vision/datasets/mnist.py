@@ -33,11 +33,11 @@ class MNIST(Dataset):
 
     Args:
         image_path(str): path to image file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
         label_path(str): path to label file, can be set None if
-            :attr:`download` is True. Default None
+            :attr:`download` is True. Default None, default data path: ~/.cache/paddle/dataset/mnist
         mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): whether to download dataset automatically if
+        download(bool): download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
         backend(str, optional): Specifies which type of image to be returned: 
             PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 

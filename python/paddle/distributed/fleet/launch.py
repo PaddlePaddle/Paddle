@@ -73,6 +73,7 @@ from paddle.distributed.fleet import launch_utils
 # TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
+import paddle.distributed.fleet.ascend_utils as ascend_utils
 
 
 def _print_arguments(args):
@@ -109,15 +110,40 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         " bound to one or average number of gpus.")
 
     base_group.add_argument(
-        "--gpus",
+        "--run_mode",
+        type=str,
+        default="collective",
+        help="run mode of job, can be:collective/ps/ps-heter")
+
+    base_group.add_argument(
+        "--ascend_npus",
         type=str,
         default=None,
-        help="It's for gpu training."
+        help="It's for ascend npu training."
         "For example:"
-        "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
+        "--ascend_npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
     )
 
-    base_group.add_argument("--selected_gpus", dest="gpus")
+    if fluid.core.is_compiled_with_cuda():
+        base_group.add_argument(
+            "--gpus",
+            type=str,
+            default=None,
+            help="It's for gpu training."
+            "For example:"
+            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
+        )
+        base_group.add_argument("--selected_gpus", dest="gpus")
+
+    if fluid.core.is_compiled_with_xpu():
+        base_group.add_argument(
+            "--xpus",
+            type=str,
+            default=None,
+            help="It's for xpu training. For example: "
+            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
+        )
+        base_group.add_argument("--selected_xpus", dest="xpus")
 
     base_group.add_argument(
         "training_script",
@@ -212,6 +238,13 @@ def launch_collective(args):
         cluster, pod = cloud_utils.get_cloud_cluster(
             args.ips, device_mode, devices_per_proc, start_port)
         logger.debug("get cluster from cloud:{}".format(cluster))
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        # for ascend
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            devices_per_proc=devices_per_proc,
+            start_port=start_port)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
@@ -232,6 +265,9 @@ def launch_collective(args):
         training_script_args=args.training_script_args,
         log_dir=args.log_dir,
         envs=global_envs)
+
+    for idx, proc in enumerate(procs):
+        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -266,6 +302,16 @@ def launch_ps(args, distribute_mode):
 
 
 def which_distributed_mode(args):
+    if args.run_mode is not None:
+        assert args.run_mode in ["collective", "ps", "ps-heter"]
+
+    if args.run_mode == "collective":
+        return DistributeMode.COLLECTIVE
+    elif args.run_mode == "ps":
+        return DistributeMode.PS
+    elif args.run_mode == "ps-heter":
+        return DistributeMode.PS_HETER
+
     ps_args = [
         '--worker_num', '--server_num', '--heter_worker_num', '--servers',
         '--workers', '--heter_workers', '--http_port'
@@ -288,32 +334,37 @@ def which_distributed_mode(args):
         )
 
     if fluid.core.is_compiled_with_cuda():
-        cuda_device_num = fluid.core.get_cuda_device_count()
+        accelerators = fluid.core.get_cuda_device_count()
+    elif fluid.core.is_compiled_with_ascend():
+        accelerators = fluid.core.NPUDevice.get_device_count()
+    elif fluid.core.is_compiled_with_xpu():
+        accelerators = fluid.core.get_xpu_device_count()
     else:
-        cuda_device_num = 0
+        accelerators = 0
 
     if len(has_ps_args) > 0:
         logger.info(
-            "Run parameter-sever mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+            "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}".
+            format(has_ps_args, accelerators))
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
         if len(has_ps_heter_args) > 0:
             return DistributeMode.PS_HETER
         else:
             return DistributeMode.PS
     elif len(has_collective_args) > 0:
-        logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
-                    format(has_collective_args, cuda_device_num))
+        logger.info("Run collective mode. gpu arguments:{}, cuda count:{}".
+                    format(has_collective_args, accelerators))
         return DistributeMode.COLLECTIVE
     else:
-        if not fluid.core.is_compiled_with_cuda():
+        if not fluid.core.is_compiled_with_cuda(
+        ) and not fluid.core.is_compiled_with_xpu():
             logger.warning(
-                "Not found distinct arguments and not compiled with cuda. Default use ps mode"
+                "Not found distinct arguments and not compiled with cuda or xpu. Default use ps mode"
             )
             return DistributeMode.PS
         else:
             logger.warning(
-                "Not found distinct arguments and compiled with cuda. Default use collective mode"
+                "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"
             )
             return DistributeMode.COLLECTIVE
 

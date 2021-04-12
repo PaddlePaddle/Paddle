@@ -13,10 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
-#include <string>
-#include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {

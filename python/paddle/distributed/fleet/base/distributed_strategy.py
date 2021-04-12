@@ -49,6 +49,9 @@ def assign_configs_value(msg, config):
     for key in config:
         for f in fields:
             if key == f.name:
+                # LABEL_OPTIONAL = 1
+                # LABEL_REPEATED = 3
+                # LABEL_REQUIRED = 2
                 if f.label == 3:
                     getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
@@ -115,6 +118,22 @@ class DistributedStrategy(object):
 
         """
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
+
+        # Set the default values of the following flags to the ones set by users
+        key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
+        if core.globals().is_public(key):
+            self.strategy.cudnn_batchnorm_spatial_persistent = bool(
+                core.globals()[key])
+        key = 'FLAGS_conv_workspace_size_limit'
+        if core.globals().is_public(key):
+            self.strategy.conv_workspace_size_limit = int(core.globals()[key])
+        key = 'FLAGS_cudnn_exhaustive_search'
+        if core.globals().is_public(key):
+            self.strategy.cudnn_exhaustive_search = bool(core.globals()[key])
+        key = 'FLAGS_sync_nccl_allreduce'
+        if core.globals().is_public(key):
+            self.strategy.sync_nccl_allreduce = bool(core.globals()[key])
+
         self.__lock_attr = True
 
     def __setattr__(self, key, value):
@@ -366,7 +385,14 @@ class DistributedStrategy(object):
 
             custom_black_list(list[str]): Users' custom black list which forbidden execution fp16.
 
-        Examples:
+            custom_black_varnames(list[str]): Users' custom black varibles' names.
+
+            use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
+
+            use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
+                   Default True. Only takes effect when `use_pure_fp16` is turned on.
+
+        Examples 1:
 
           .. code-block:: python
 
@@ -376,6 +402,19 @@ class DistributedStrategy(object):
             strategy.amp_configs = {
                 "init_loss_scaling": 32768,
                 "custom_white_list": ['conv2d']}
+
+        Examples 2:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.amp = True
+            # pure fp16
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "use_pure_fp16": True
+            }
         """
         return get_msg_dict(self.strategy.amp_configs)
 
@@ -580,6 +619,34 @@ class DistributedStrategy(object):
             self.strategy.last_comm_group_size_MB = value
         else:
             raise ValueError("last_comm_group_size_MB should be greater than 0")
+
+    @property
+    def find_unused_parameters(self):
+        """
+        Indicating whether we are using find_unused_parameters to 
+        find unused parameters in DataParallel.
+
+        Default value: True
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.find_unused_parameters = True
+        """
+
+        return self.strategy.find_unused_parameters
+
+    @find_unused_parameters.setter
+    @is_strict_auto
+    def find_unused_parameters(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.find_unused_parameters = flag
+        else:
+            print(
+                "WARNING: find_unused_parameters should have value of bool type")
 
     @property
     def _fuse_grad_size_in_TFLOPS(self):

@@ -13,15 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/fleet.h"
-#include <algorithm>
-#include <utility>
 #include "paddle/fluid/distributed/service/communicator.h"
 #include "paddle/fluid/distributed/table/table.h"
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace distributed {
@@ -55,14 +48,14 @@ void FleetWrapper::LoadSparseOnServer(const std::string& path,
 
 void FleetWrapper::InitServer(
     const std::string& dist_desc,
-    const std::vector<std::string>& host_sign_list, int index,
+    const std::vector<std::string>& host_sign_list, int index, int trainers,
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
         new paddle::distributed::PSCore());
     pserver_ptr_->init_server(dist_desc, &host_sign_list, host_sign_list.size(),
-                              index, server_sub_program);
+                              index, trainers, server_sub_program);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
@@ -153,41 +146,6 @@ void FleetWrapper::CreateClient2ClientConnection() {
       client2client_max_retry_);
 }
 
-std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
-  fea_keys->clear();
-  fea_keys->resize(0);
-  fea_keys->reserve(MAX_FEASIGN_NUM);
-  for (auto name : var_names) {
-    Variable* var = scope.FindVar(name);
-    if (var == nullptr) {
-      continue;
-    }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
-    int64_t* ids = tensor->data<int64_t>();
-    size_t len = tensor->numel();
-    for (auto i = 0u; i < len; ++i) {
-      if (ids[i] == 0u) {
-        continue;
-      }
-      fea_keys->push_back(static_cast<uint64_t>(ids[i]));
-    }
-  }
-  fea_values->resize(fea_keys->size() + 1);
-  for (auto& t : *fea_values) {
-    t.resize(fea_value_dim);
-  }
-  std::vector<float*> pull_result_ptr;
-  for (auto& t : *fea_values) {
-    pull_result_ptr.push_back(t.data());
-  }
-  return pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
-}
-
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
@@ -231,8 +189,10 @@ void FleetWrapper::PullSparseVarsSync(
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
+  bool training = true;
   auto status = pserver_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size(),
+      training);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -245,9 +205,13 @@ void FleetWrapper::PullSparseVarsSync(
   }
 }
 
+// is_training is true means training, false means inference, the behavior is
+// different on pserver
+
 void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           uint64_t padding_id,
                                           platform::Place place,
+                                          bool is_training,
                                           std::vector<const LoDTensor*>* inputs,
                                           std::vector<LoDTensor*>* outputs) {
   std::vector<uint64_t> fea_keys;
@@ -286,7 +250,8 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
   }
   auto* communicator = Communicator::GetInstance();
   auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(),
+      is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -479,9 +444,15 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   }
 }
 
-void FleetWrapper::ShrinkSparseTable(int table_id) {
-  auto ret = pserver_ptr_->_worker_ptr->shrink(table_id);
+void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret =
+      communicator->_worker_ptr->shrink(table_id, std::to_string(threshold));
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "shrink sparse table stat failed";
+  }
 }
 
 void FleetWrapper::ClearModel() {
@@ -502,7 +473,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
     if (name.find("batch_sum") != std::string::npos) {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      VLOG(0) << "prepare shrink dense batch_sum";
+      VLOG(3) << "prepare shrink dense batch_sum";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
 

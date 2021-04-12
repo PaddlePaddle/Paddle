@@ -126,6 +126,10 @@ class ProgramDeps(object):
 
     def should_remove_op(self, op_idx):
         op = self._block.ops[op_idx]
+        # TODO (JZ-LIANG) revise this for uniform mixed parallelism
+        # remove check_finite_and_unscale op if its input 'X' is empty
+        if op.type == 'check_finite_and_unscale' and len(op.input('X')) == 0:
+            return True
         for output_name in op.desc.output_arg_names():
             if output_name not in self._should_removed_var:
                 return False

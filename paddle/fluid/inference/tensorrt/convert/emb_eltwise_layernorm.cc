@@ -169,7 +169,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
             input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
             eps, with_fp16);
-        layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+        layer = engine_->AddDynamicPlugin(input_ids.data(), input_num, plugin);
         auto output_name = op_desc.Output("Out")[0];
         RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
                                  test_mode);

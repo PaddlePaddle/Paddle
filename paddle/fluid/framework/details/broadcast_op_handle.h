@@ -34,7 +34,7 @@ class Node;
 }  // namespace ir
 }  // namespace framework
 namespace platform {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 struct NCCLContextMap;
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -43,7 +43,7 @@ struct BKCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/bkcl_helper.h"
@@ -55,7 +55,7 @@ namespace details {
 
 struct BroadcastOpHandle : public OpHandleBase {
  public:
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
@@ -106,7 +106,7 @@ struct BroadcastOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
 #elif defined(PADDLE_WITH_XPU_BKCL)
   const platform::BKCLContextMap *bkcl_ctxs_;

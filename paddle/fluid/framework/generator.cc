@@ -15,23 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
-
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   static int64_t num_cuda_devices = -1;
   static std::once_flag num_devices_init_flag;
@@ -163,7 +157,7 @@ uint64_t Generator::Random64() {
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
     uint64_t increament_offset) {
   uint64_t cur_offset = this->state_.thread_offset;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
 
   this->state_.thread_offset += increament_offset;

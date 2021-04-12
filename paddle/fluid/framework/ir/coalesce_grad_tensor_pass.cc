@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
-#include <algorithm>
-#include <map>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class ProgramDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
 
 DEFINE_double(fuse_parameter_memory_size, -1.0,  // MBytes
               "fuse_parameter_memory_size is up limited memory size(MB)"

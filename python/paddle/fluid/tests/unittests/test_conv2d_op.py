@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -127,6 +128,8 @@ def create_test_cudnn_class(parent):
     class TestCUDNNCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNN")
     TestCUDNNCase.__name__ = cls_name
@@ -184,6 +187,8 @@ def create_test_cudnn_channel_last_class(parent):
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -263,6 +268,8 @@ def create_test_cudnn_padding_SAME_class(parent):
     class TestCUDNNPaddingSMAECase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -279,6 +286,8 @@ def create_test_cudnn_padding_VALID_class(parent):
     class TestCUDNNPaddingVALIDCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
+            self.dtype = np.float32 if core.is_compiled_with_rocm(
+            ) else np.float64
 
         def init_paddings(self):
             self.pad = [1, 1]
@@ -691,6 +700,7 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
 
 class TestConv2DOpError(unittest.TestCase):
@@ -1326,6 +1336,16 @@ class TestConv2DAPI(unittest.TestCase):
             groups=1,
             data_format="NCHW")
 
+    def test_depthwise_conv2d(self):
+        x_var = paddle.uniform((2, 8, 8, 4), dtype='float32', min=-1., max=1.)
+        conv = paddle.nn.Conv2D(
+            in_channels=4,
+            out_channels=4,
+            kernel_size=(3, 3),
+            groups=4,
+            data_format='NHWC')
+        y_var = conv(x_var)
+
 
 class TestConv2DAPI_Error(unittest.TestCase):
     def test_api(self):
@@ -1443,6 +1463,66 @@ class TestConv2DAPI_Error(unittest.TestCase):
                 data_format="NHWC")
 
         self.assertRaises(ValueError, run_7)
+
+
+# --------- test environment variable ------
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or core.is_compiled_with_rocm()),
+    "core is not compiled with CUDA or ROCM")
+class TestConv2DEnviron(unittest.TestCase):
+    def run1(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            inputs = fluid.layers.data(
+                shape=[2, 3, 5, 5],
+                append_batch_size=False,
+                name="inputs",
+                dtype="float32")
+            result = fluid.layers.conv2d(
+                input=inputs,
+                num_filters=4,
+                filter_size=[3, 3],
+                stride=[1, 1],
+                padding=0,
+                dilation=[1, 1],
+                groups=1,
+                data_format="NCHW")
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"inputs": self.input_np},
+                              fetch_list=[result])
+
+    def run2(self, place):
+        with fluid.dygraph.guard(place):
+            inputs = fluid.dygraph.to_variable(self.input_np)
+            conv = paddle.nn.Conv2D(
+                in_channels=3,
+                out_channels=4,
+                kernel_size=(3, 3),
+                data_format="NCHW")
+            result = conv(inputs)
+
+    def run3(self, place):
+        with fluid.dygraph.guard(place):
+            inputs = fluid.dygraph.to_variable(self.input_np)
+            conv = paddle.fluid.dygraph.nn.Conv2D(
+                num_channels=3,
+                num_filters=4,
+                filter_size=(3, 3), )
+            result = conv(inputs)
+
+    def run_all(self, place):
+        self.run1(place)
+        self.run2(place)
+        self.run3(place)
+
+    def test_environ(self):
+        self.input_np = np.random.random([2, 3, 5, 5]).astype("float32")
+        for place in [paddle.CPUPlace(), paddle.CUDAPlace(0)]:
+            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': False})
+            self.run_all(place)
+            fluid.set_flags({'FLAGS_conv2d_disable_cudnn': True})
+            self.run_all(place)
 
 
 if __name__ == '__main__':
