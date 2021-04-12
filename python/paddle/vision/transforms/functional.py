@@ -135,13 +135,16 @@ def resize(img, size, interpolation='bilinear'):
             converted_img = F.resize(fake_img, (200, 150))
             print(converted_img.size)
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.resize(img, size, interpolation)
+    elif _is_tensor_image(img):
+        return F_t.resize(img, size, interpolation)
     else:
         return F_cv2.resize(img, size, interpolation)
 
@@ -236,13 +239,16 @@ def crop(img, top, left, height, width):
             print(cropped_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.crop(img, top, left, height, width)
+    elif _is_tensor_image(img):
+        return F_t.crop(img, top, left, height, width)
     else:
         return F_cv2.crop(img, top, left, height, width)
 
@@ -307,13 +313,16 @@ def hflip(img):
             print(flpped_img.size)
 
     """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.hflip(img)
+    elif _is_tensor_image(img):
+        return F_t.hflip(img)
     else:
         return F_cv2.hflip(img)
 
