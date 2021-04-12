@@ -487,7 +487,10 @@ def embedding(input,
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')
     """
-
+    if in_dygraph_mode():
+        return core.ops.lookup_table(
+            input, w, "is_sparse", is_sparse, "is_distributed", is_distributed,
+            "remote_prefetch", remote_prefetch, "padding_idx", padding_idx)
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'],
                              'fluid.layers.embedding')
@@ -563,10 +566,22 @@ def _pull_sparse(input,
           emb = fluid.layers.nn._pull_sparse(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
-    helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
-    outs = [helper.create_variable_for_type_inference(dtype)]
     input_names = [i.name for i in inputs]
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+
+    if in_dygraph_mode():
+        return core.ops.pull_sparse(
+            inputs, w, "EmbeddingDim", size, "TableId", table_id,
+            "AccessorClass", accessor_class, "CtrLabelName", ctr_label_name,
+            "PaddingId", padding_id, "ScaleSparseGrad", scale_sparse_grad,
+            "InputNames", input_names, "is_distributed", True)
+
+    helper = LayerHelper(name, **locals())
+    outs = [helper.create_variable_for_type_inference(dtype)]
+
     attrs = {
         'EmbeddingDim': size,
         'TableId': table_id,
@@ -578,9 +593,6 @@ def _pull_sparse(input,
         # this is only for compatible with embedding op
         'is_distributed': True
     }
-    # this is only for compatible with embedding op
-    w, _ = helper.create_or_get_global_variable(
-        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse',
         inputs={'Ids': inputs,
@@ -634,10 +646,21 @@ def _pull_sparse_v2(input,
           emb = fluid.layers.nn._pull_sparse_v2(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
-    helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
-    outs = [helper.create_variable_for_type_inference(dtype)]
     input_names = [i.name for i in inputs]
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    if in_dygraph_mode():
+        return core.ops.pull_sparse_v2(
+            inputs, w, "EmbeddingDim", size, "TableId", table_id,
+            "AccessorClass", accessor_class, "CtrLabelName", ctr_label_name,
+            "PaddingId", padding_id, "ScaleSparseGrad", scale_sparse_grad,
+            "InputNames", input_names, "is_distributed", True)
+
+    helper = LayerHelper(name, **locals())
+    outs = [helper.create_variable_for_type_inference(dtype)]
+
     attrs = {
         'EmbeddingDim': size,
         'TableId': table_id,
@@ -649,9 +672,6 @@ def _pull_sparse_v2(input,
         # this is only for compatible with embedding op
         'is_distributed': True
     }
-    # this is only for compatible with embedding op
-    w, _ = helper.create_or_get_global_variable(
-        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse_v2',
         inputs={'Ids': inputs,
@@ -694,19 +714,23 @@ def _pull_box_sparse(input,
           data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
           emb = fluid.layers.pull_box_sparse(input=data, size=[11])
     """
+    inputs = helper.multiple_input()
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=[size], dtype=dtype, is_bias=False)
+    if in_dygraph_mode():
+        return core.ops.pull_box_sparse(inputs, w, "size", size,
+                                        "is_distributed", is_distributed,
+                                        "is_sparse", is_sparse)
     helper = LayerHelper('pull_box_sparse', **locals())
     if dtype != 'float32':
         raise ValueError(
             "BoxPS only support float type embedding now, and your type is: " +
             dtype)
     helper.input_dtype()
-    inputs = helper.multiple_input()
     outs = [
         helper.create_variable_for_type_inference(dtype)
         for i in range(len(inputs))
     ]
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=[size], dtype=dtype, is_bias=False)
     helper.append_op(
         type='pull_box_sparse',
         inputs={'Ids': inputs,
@@ -812,11 +836,6 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             print(transition)
 
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'linear_chain_crf')
-    check_variable_and_dtype(label, 'label', ['int64'], 'linear_chain_crf')
-    helper = LayerHelper('linear_chain_crf', **locals())
-    size = input.shape[2] if length else input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
@@ -829,6 +848,17 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+
+    if in_dygraph_mode():
+        return core.ops.linear_chain_crf(
+            [input], transition, [label], "Alpha", [alpha], "EmissionExps",
+            [emission_exps], "TransitionExps", transition_exps, "LogLikelihood",
+            log_likelihood)
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'linear_chain_crf')
+    check_variable_and_dtype(label, 'label', ['int64'], 'linear_chain_crf')
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[2] if length else input.shape[1]
     this_inputs = {
         "Emission": [input],
         "Transition": transition,
@@ -900,10 +930,15 @@ def crf_decoding(input, param_attr, label=None, length=None):
            crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
                      param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
+    transition = helper.get_parameter(param_attr.name)
+    if in_dygraph_mode():
+        if length:
+            return core.ops.crf_decoding([input], transition, label, length)
+        else:
+            return core.ops.crf_decoding([input], transition, label)
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'crf_decoding')
     helper = LayerHelper('crf_decoding', **locals())
-    transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
     inputs = {"Emission": [input], "Transition": transition, "Label": label}
@@ -11279,6 +11314,8 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
+    if in_dygraph_mode():
+        return core.ops.shape(input)
     check_variable_and_dtype(
         input, 'input',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'shape')
