@@ -55,7 +55,7 @@ def _set_variable_data(scope, place, var_name, np_value):
     Set the value of var node by name, if the node exits,
     '''
     assert isinstance(np_value, np.ndarray), \
-        'The type of value should be numpy array.'
+       'The type of value should be numpy array.'
     var_node = scope.find_var(var_name)
     if var_node != None:
         tensor = var_node.get_tensor()

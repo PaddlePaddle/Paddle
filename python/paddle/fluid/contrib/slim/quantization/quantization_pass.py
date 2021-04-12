@@ -1087,7 +1087,7 @@ class QuantizationFreezePass(object):
             place(fluid.CPUPlace|fluid.CUDAPlace|str): place is used to restore the weight tensors.
                 If it's string, It can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
             bias_correct(bool): whether use bias correction for post-training quantization.
-                https://arxiv.org/abs/1810.05723.
+                 https://arxiv.org/abs/1810.05723.
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
