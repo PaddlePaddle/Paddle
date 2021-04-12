@@ -13,17 +13,24 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/table/common_sparse_table.h"
-#include <algorithm>
-#include <sstream>
-#include "paddle/fluid/distributed/common/utils.h"
-#include "paddle/fluid/distributed/table/depends/large_scale_kv.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
 
-#define PSERVER_SAVE_SUFFIX "_txt"
+#include <sstream>
+
+#include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace distributed {
+class ValueBlock;
+}  // namespace distributed
+}  // namespace paddle
+
+#define PSERVER_SAVE_SUFFIX "_txt"
+
+namespace paddle {
+namespace distributed {
+
+enum SaveMode { all, base, delta };
 
 struct Meta {
   std::string param;
@@ -94,12 +101,9 @@ struct Meta {
 
 void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
                   std::vector<std::vector<float>>* values) {
-  PADDLE_ENFORCE_EQ(columns.size(), 2,
-                    paddle::platform::errors::InvalidArgument(
-                        "The data format does not meet the requirements. It "
-                        "should look like feasign_id \t params."));
-
-  auto load_values = paddle::string::split_string<std::string>(columns[1], ",");
+  auto colunmn_size = columns.size();
+  auto load_values =
+      paddle::string::split_string<std::string>(columns[colunmn_size - 1], ",");
   values->reserve(meta.names.size());
 
   int offset = 0;
@@ -121,11 +125,18 @@ void ProcessALine(const std::vector<std::string>& columns, const Meta& meta,
 
 int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
                    const int mode) {
+  int64_t not_save_num = 0;
   for (auto value : block->values_) {
+    if (mode == SaveMode::delta && !value.second->need_save_) {
+      not_save_num++;
+      continue;
+    }
+
     auto* vs = value.second->data_.data();
     std::stringstream ss;
     auto id = value.first;
-    ss << id << "\t";
+    ss << id << "\t" << value.second->count_ << "\t"
+       << value.second->unseen_days_ << "\t" << value.second->is_entry_ << "\t";
 
     for (int i = 0; i < block->value_length_; i++) {
       ss << vs[i];
@@ -135,9 +146,13 @@ int64_t SaveToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
     ss << "\n";
 
     os->write(ss.str().c_str(), sizeof(char) * ss.str().size());
+
+    if (mode == SaveMode::base || mode == SaveMode::delta) {
+      value.second->need_save_ = false;
+    }
   }
 
-  return block->values_.size();
+  return block->values_.size() - not_save_num;
 }
 
 int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
@@ -155,7 +170,7 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
     auto id = std::stoull(values[0]);
 
     if (id % pserver_num != pserver_id) {
-      VLOG(0) << "will not load " << values[0] << " from " << valuepath
+      VLOG(3) << "will not load " << values[0] << " from " << valuepath
               << ", please check id distribution";
       continue;
     }
@@ -165,8 +180,21 @@ int64_t LoadFromText(const std::string& valuepath, const std::string& metapath,
 
     std::vector<std::vector<float>> kvalues;
     ProcessALine(values, meta, &kvalues);
-    // warning: need fix
-    block->Init(id);
+
+    block->Init(id, false);
+
+    auto value_instant = block->GetValue(id);
+    if (values.size() == 5) {
+      value_instant->count_ = std::stoi(values[1]);
+      value_instant->unseen_days_ = std::stoi(values[2]);
+      value_instant->is_entry_ = static_cast<bool>(std::stoi(values[3]));
+    }
+
+    std::vector<float*> block_values = block->Get(id, meta.names, meta.dims);
+    auto blas = GetBlas<float>();
+    for (int x = 0; x < meta.names.size(); ++x) {
+      blas.VCOPY(meta.dims[x], kvalues[x].data(), block_values[x]);
+    }
   }
 
   return 0;
@@ -214,18 +242,18 @@ int32_t CommonSparseTable::initialize() {
 int32_t CommonSparseTable::initialize_recorder() { return 0; }
 
 int32_t CommonSparseTable::initialize_value() {
+  auto common = _config.common();
   shard_values_.reserve(task_pool_size_);
 
   for (int x = 0; x < task_pool_size_; ++x) {
-    auto shard =
-        std::make_shared<ValueBlock>(value_names_, value_dims_, value_offsets_,
-                                     value_idx_, initializer_attrs_, "none");
+    auto shard = std::make_shared<ValueBlock>(
+        value_names_, value_dims_, value_offsets_, value_idx_,
+        initializer_attrs_, common.entry());
 
     shard_values_.emplace_back(shard);
   }
 
   auto accessor = _config.accessor();
-
   std::vector<uint64_t> feasigns;
 
   for (size_t x = 0; x < accessor.fea_dim(); ++x) {
@@ -234,7 +262,7 @@ int32_t CommonSparseTable::initialize_value() {
     }
   }
 
-  VLOG(0) << "has " << feasigns.size() << " ids need to be pre inited";
+  VLOG(3) << "has " << feasigns.size() << " ids need to be pre inited";
 
   auto buckets = bucket(feasigns.size(), 10);
   for (int x = 0; x < 10; ++x) {
@@ -242,9 +270,14 @@ int32_t CommonSparseTable::initialize_value() {
     std::vector<uint64_t> ids(bucket_feasigns);
     std::copy(feasigns.begin() + buckets[x], feasigns.begin() + buckets[x + 1],
               ids.begin());
+
+    std::vector<uint32_t> fres;
+    fres.resize(ids.size(), 1);
+
+    auto pull_value = PullSparseValue(ids, fres, param_dim_);
     std::vector<float> pulls;
     pulls.resize(bucket_feasigns * param_dim_);
-    pull_sparse(pulls.data(), ids.data(), bucket_feasigns);
+    pull_sparse(pulls.data(), pull_value);
   }
 
   return 0;
@@ -266,10 +299,10 @@ int32_t CommonSparseTable::initialize_optimizer() {
     optimizer_ = std::make_shared<SSUM>(value_names_, value_dims_,
                                         value_offsets_, value_idx_);
   } else {
-    VLOG(0) << "init optimizer failed";
+    VLOG(3) << "init optimizer failed";
   }
 
-  VLOG(0) << "init optimizer " << name << " done";
+  VLOG(3) << "init optimizer " << name << " done";
   return 0;
 }
 
@@ -282,7 +315,7 @@ int32_t CommonSparseTable::set_global_lr(float* lr) {
 int32_t CommonSparseTable::load(const std::string& path,
                                 const std::string& param) {
   rwlock_->WRLock();
-  VLOG(0) << "sparse table load with " << path << " with meta " << param;
+  VLOG(3) << "sparse table load with " << path << " with meta " << param;
   LoadFromText(path, param, _shard_idx, _shard_num, task_pool_size_,
                &shard_values_);
   rwlock_->UNLock();
@@ -293,7 +326,7 @@ int32_t CommonSparseTable::save(const std::string& dirname,
                                 const std::string& param) {
   rwlock_->WRLock();
   int mode = std::stoi(param);
-  VLOG(0) << "sparse table save: " << dirname << " mode: " << mode;
+  VLOG(3) << "sparse table save: " << dirname << " mode: " << mode;
 
   auto varname = _config.common().table_name();
   std::string var_store =
@@ -370,32 +403,36 @@ int32_t CommonSparseTable::pour() {
   return 0;
 }
 
-int32_t CommonSparseTable::pull_sparse(float* pull_values, const uint64_t* keys,
-                                       size_t num) {
+int32_t CommonSparseTable::pull_sparse(float* pull_values,
+                                       const PullSparseValue& pull_value) {
   rwlock_->RDLock();
 
-  std::vector<std::vector<uint64_t>> offset_bucket;
-  offset_bucket.resize(task_pool_size_);
+  auto shard_num = task_pool_size_;
+  std::vector<std::future<int>> tasks(shard_num);
 
-  for (int x = 0; x < num; ++x) {
-    auto y = keys[x] % task_pool_size_;
-    offset_bucket[y].push_back(x);
-  }
-
-  std::vector<std::future<int>> tasks(task_pool_size_);
-
-  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
-        [this, shard_id, &keys, &offset_bucket, &pull_values]() -> int {
+        [this, shard_id, shard_num, &pull_value, &pull_values]() -> int {
           auto& block = shard_values_[shard_id];
-          auto& offsets = offset_bucket[shard_id];
 
-          for (int i = 0; i < offsets.size(); ++i) {
-            auto offset = offsets[i];
-            auto id = keys[offset];
-            auto* value = block->InitFromInitializer(id);
-            std::copy_n(value + param_offset_, param_dim_,
-                        pull_values + param_dim_ * offset);
+          std::vector<int> offsets;
+          pull_value.Fission(shard_id, shard_num, &offsets);
+
+          if (pull_value.is_training_) {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto frequencie = pull_value.frequencies_[offset];
+              auto* value = block->Init(feasign, true, frequencie);
+              std::copy_n(value + param_offset_, param_dim_,
+                          pull_values + param_dim_ * offset);
+            }
+          } else {
+            for (auto& offset : offsets) {
+              auto feasign = pull_value.feasigns_[offset];
+              auto* value = block->Init(feasign, false);
+              std::copy_n(value + param_offset_, param_dim_,
+                          pull_values + param_dim_ * offset);
+            }
           }
 
           return 0;
@@ -488,9 +525,10 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
-            auto* value = block->InitFromInitializer(id);
+            auto* value = block->Init(id, false);
             std::copy_n(values + param_dim_ * offset, param_dim_,
                         value + param_offset_);
+            block->SetEntry(id, true);
           }
           return 0;
         });
@@ -505,10 +543,20 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
 
 int32_t CommonSparseTable::flush() { return 0; }
 
-int32_t CommonSparseTable::shrink() {
-  VLOG(0) << "shrink coming soon";
+int32_t CommonSparseTable::shrink(const std::string& param) {
+  rwlock_->WRLock();
+  int threshold = std::stoi(param);
+  VLOG(3) << "sparse table shrink: " << threshold;
+
+  for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
+    // shrink
+    VLOG(4) << shard_id << " " << task_pool_size_ << " begin shrink";
+    shard_values_[shard_id]->Shrink(threshold);
+  }
+  rwlock_->UNLock();
   return 0;
 }
+
 void CommonSparseTable::clear() { VLOG(0) << "clear coming soon"; }
 
 }  // namespace distributed

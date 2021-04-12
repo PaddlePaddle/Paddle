@@ -129,6 +129,9 @@ class StrategyCompiler(StrategyCompilerBase):
         self._meta_optimizer_candidates = []
         self._graph_optimizer_candidates = []
 
+    def _get_applied_meta_optimizer(self):
+        return self._meta_optimizers
+
     def _get_applied_meta_list(self):
         return [type(opt).__name__ for opt in self._meta_optimizers]
 

@@ -97,7 +97,7 @@ def train(use_pure_fp16=True, use_nesterov=False, use_adam=False):
         test_program = train_program.clone(for_test=True)
 
         if use_adam:
-            optimizer = paddle.optimizer.Adam(
+            optimizer = paddle.optimizer.AdamW(
                 learning_rate=0.001,
                 epsilon=1e-8,
                 weight_decay=0.0,
@@ -258,7 +258,8 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         cast_model_to_fp16(main_prog, use_fp16_guard=False)
 
     def test_non_iterable_dataloader(self):
-        self.decorate_with_data_loader()
+        if fluid.core.is_compiled_with_cuda():
+            self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

@@ -4,10 +4,10 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(CheckCompilerCXX11Flag)
+function(CheckCompilerCXX14Flag)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 4.8)
-            message(FATAL_ERROR "Unsupported GCC version. GCC >= 4.8 required.")
+        if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.4)
+            message(FATAL_ERROR "Unsupported GCC version. GCC >= 5.4 required.")
         elseif(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.2)
             message(WARNING "Found GCC ${CMAKE_CXX_COMPILER_VERSION} which is too high, recommended to use GCC 8.2")
         endif()
@@ -20,23 +20,15 @@ function(CheckCompilerCXX11Flag)
                 message(FATAL_ERROR "Unsupported AppleClang version. AppleClang >= 5.1 required.")
             endif()
         else()
-            if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.3)
-                message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.3 required.")
+            if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
+                message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.4 required.")
             endif()
         endif()
     endif()
 endfunction()
 
-CheckCompilerCXX11Flag()
-if (WITH_GPU)
-    if (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-    else()
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    endif()
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-endif()
+CheckCompilerCXX14Flag()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -155,7 +147,7 @@ set(COMMON_FLAGS
 )
 
 if(NOT APPLE)
-    if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM_PLATFORM AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 7.3))
+    if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2
@@ -213,5 +205,17 @@ foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
+if(WITH_GPU)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
+endif()
+
+if(WITH_ROCM)
+    set(HIP_HIPCC_FLAGS "${HIP_HIPCC_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
+endif()
+
+ # Disable -Werror, otherwise the compile will fail for rocblas_gemm_ex
+if(WITH_ROCM)
+    string (REPLACE "-Werror" "-Wno-error" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string (REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+endif()
 

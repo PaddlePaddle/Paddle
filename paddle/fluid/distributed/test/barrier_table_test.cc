@@ -13,12 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ThreadPool.h>
-
-#include <unistd.h>
-#include <string>
-#include <thread>  // NOLINT
-
-#include "google/protobuf/text_format.h"
+#include <unordered_map>
+#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/table/common_table.h"

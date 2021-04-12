@@ -13,12 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+
 #include <algorithm>
-#include <list>
-#include <map>
-#include <memory>
 #include <mutex>  // NOLINT
-#include <unordered_map>
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
 DEFINE_bool(free_idle_chunk, false,

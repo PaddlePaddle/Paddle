@@ -66,12 +66,13 @@ DECLARE_bool(benchmark);
 DECLARE_int32(inner_op_parallelism);
 DECLARE_int32(max_inplace_grad_add);
 DECLARE_string(tracer_profile_fname);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cudnn
 DECLARE_uint64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 DECLARE_bool(cudnn_deterministic);
 DECLARE_bool(cudnn_exhaustive_search);
+DECLARE_bool(conv2d_disable_cudnn);
 // data processing
 DECLARE_bool(enable_cublas_tensor_op_math);
 // device management
@@ -87,6 +88,17 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 // others
 DECLARE_bool(sync_nccl_allreduce);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+// device management
+DECLARE_string(selected_xpus);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+// device management
+DECLARE_string(selected_npus);
+#endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 DECLARE_int32(rpc_send_thread_num);
 DECLARE_int32(rpc_get_thread_num);
@@ -354,7 +366,7 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
       FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
       FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
@@ -363,8 +375,17 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_fraction_of_cuda_pinned_memory_to_use,
       FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
       FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
-      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
+      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce,
+      FLAGS_conv2d_disable_cudnn);
 #endif
+#ifdef PADDLE_WITH_XPU
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_xpus);
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_npus);
+#endif
+
 #ifdef PADDLE_WITH_DITRIBUTE
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
                              FLAGS_rpc_get_thread_num,

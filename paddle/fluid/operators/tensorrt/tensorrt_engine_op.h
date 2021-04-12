@@ -89,6 +89,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
+  std::string calibration_engine_key_;
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
@@ -109,6 +110,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
+    calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
 
     auto params = Attr<std::vector<std::string>>("parameters");
@@ -172,9 +174,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "Paddle TRT int8...";
 
     int runtime_batch = 1;
-    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
+    if (!Singleton<TRTCalibratorEngineManager>::Global().Has(
+            calibration_engine_key_)) {
       TRTCalibratorEngine *calib_res =
-          Singleton<TRTCalibratorEngineManager>::Global().Create(engine_key_);
+          Singleton<TRTCalibratorEngineManager>::Global().Create(
+              calibration_engine_key_);
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
@@ -185,7 +189,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
-          calib_buffers, runtime_batch, engine_key_, dev_place));
+          calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
@@ -198,7 +202,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     TRTInt8Calibrator *temp_calibrator =
         Singleton<TRTCalibratorEngineManager>::Global()
-            .Get(engine_key_)
+            .Get(calibration_engine_key_)
             ->calib_.get();
     std::unordered_map<std::string, void *> calib_data;
 

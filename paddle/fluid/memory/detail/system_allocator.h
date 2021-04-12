@@ -41,7 +41,7 @@ class CPUAllocator : public SystemAllocator {
   virtual bool UseGpu() const;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class GPUAllocator : public SystemAllocator {
  public:
   explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
@@ -63,6 +63,22 @@ class CUDAPinnedAllocator : public SystemAllocator {
 
  private:
   size_t cuda_pinnd_alloc_size_ = 0;
+};
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+
+class NPUAllocator : public SystemAllocator {
+ public:
+  explicit NPUAllocator(int npu_id) : npu_id_(npu_id) {}
+
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t npu_alloc_size_ = 0;
+  int npu_id_;
 };
 #endif
 

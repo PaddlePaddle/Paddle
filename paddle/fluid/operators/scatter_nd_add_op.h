@@ -71,8 +71,7 @@ class ScatterNdAddGradientOpKernel : public framework::OpKernel<T> {
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     if (dX) {
-      // In place gradient: dX = dO
-      framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
+      framework::TensorCopy(*dOut, ctx.GetPlace(), dX);
     }
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());

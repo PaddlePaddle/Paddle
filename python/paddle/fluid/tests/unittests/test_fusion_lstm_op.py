@@ -58,6 +58,7 @@ class TestFusionLSTMOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.use_mkldnn = False
         self.set_conf()
 
         T = sum(self.lod[0])
@@ -110,7 +111,8 @@ class TestFusionLSTMOp(OpTest):
             'is_reverse': self.is_reverse,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
-            'candidate_activation': self.act_cand
+            'candidate_activation': self.act_cand,
+            'use_mkldnn': self.use_mkldnn
         }
 
     def test_check_output(self):
@@ -191,4 +193,6 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

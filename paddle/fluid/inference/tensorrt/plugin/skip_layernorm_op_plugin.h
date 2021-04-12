@@ -104,13 +104,14 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
                                        int nb_inputs) const override;
 
   void destroy() override { delete this; }
+  void terminate() override;
 
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
 
-  float* bias_gpu_;
-  float* scale_gpu_;
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
 
   int bias_size_;
   int scale_size_;
@@ -118,9 +119,9 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
 };
 
-class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
+class SkipLayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  SkipLayerNormPluginV2Creator() {}
+  SkipLayerNormPluginDynamicCreator() {}
   const char* getPluginName() const override { return "skip_layernorm_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -155,7 +156,7 @@ class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

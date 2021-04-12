@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,7 +109,6 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
         .. code-block:: python
             import paddle
-            paddle.disable_static()
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
@@ -142,85 +142,249 @@ class BCEWithLogitsLoss(fluid.dygraph.Layer):
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     r"""
-    This operator implements the cross entropy loss function with softmax. This function 
+    By default, this operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
-    to provide a more numerically stable gradient.
+    to provide a more numerically stable computing.
 
-    Because this operator performs a softmax on logits internally, it expects
-    unscaled logits. This operator should not be used with the output of
-    softmax operator since that would produce incorrect results.
+    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
-    expects mutually exclusive hard labels, each sample in a batch is in exactly 
-    one class with a probability of 1.0. Each sample in the batch will have a 
-    single label.
+    By default, this operator will calculate the mean of the result, and you can also affect 
+    the default behavior by using the reduction parameter. Please refer to the part of 
+    parameters for details.
 
-    The equation is as follows:
+    This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels 
+    mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
-    1) Hard label (one-hot label, so every sample has exactly one class)
+    The calculation of this operator includes the following two steps.
 
-    .. math::
+    -  **I.softmax cross entropy** 
 
-        loss_j =  -\\text{logits}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
+        1. Hard label (each sample can only be assigned into one category)
 
-    2) Soft label (each sample can have a distribution over all classes)
+        1.1. when use_softmax=True
 
-    .. math::
+            .. math::
+              \\loss_j=-\text{logits}_{label_j}+\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right) , j = 1,...,N
 
-        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
+            where, N is the number of samples and C is the number of categories.
 
+        1.2. when use_softmax=False
+
+            .. math::
+              \\loss_j=-\log\left({P}_{label_j}\right) , j = 1,...,N
+
+            where, N is the number of samples and C is the number of categories, P is input(the output of softmax).
+
+
+        2. Soft label (each sample is assigned to multiple categories with a certain probability, and the probability sum is 1).
+
+        2.1. when use_softmax=True
+
+            .. math::
+              \\loss_j=-\sum_{i=0}^{C}\text{label}_i\left(\text{logits}_i-\log\left(\sum_{i=0}^{C}\exp(\text{logits}_i)\right)\right) , j = 1,...,N
+
+            where, N is the number of samples and C is the number of categories.
+
+        2.2. when use_softmax=False
+
+            .. math::
+              \\loss_j=-\sum_{j=0}^{C}\left({label}_j*\log\left({P}_{label_j}\right)\right) , j = 1,...,N
+
+            where, N is the number of samples and C is the number of categories, P is input(the output of softmax).
+
+
+
+    -  **II.Weight and reduction processing** 
+
+        1. Weight
+
+            If the ``weight`` parameter is ``None`` , go to the next step directly.
+
+            If the ``weight`` parameter is not ``None`` , the cross entropy of each sample is weighted by weight
+            according to soft_label = False or True as follows.
+
+            1.1. Hard labels (soft_label = False)
+
+            .. math::
+                \\loss_j=loss_j*weight[label_j] 
+
+
+            1.2. Soft labels (soft_label = True)
+
+             .. math::
+                \\loss_j=loss_j*\sum_{i}\left(weight[label_i]*logits_i\right)
+
+        2. reduction
+
+            2.1 if the ``reduction`` parameter is ``none`` 
+
+            Return the previous result directly
+
+            2.2 if the ``reduction`` parameter is ``sum`` 
+
+            Return the sum of the previous results
+
+            .. math::
+               \\loss=\sum_{j}loss_j
+
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
+            the ``weight`` parameter as follows. 
+
+            2.3.1. If the  ``weight``  parameter is ``None`` 
+
+            Return the average value of the previous results
+
+             .. math::
+                \\loss=\sum_{j}loss_j/N
+
+            where, N is the number of samples and C is the number of categories.
+
+            2.3.2. If the 'weight' parameter is not 'None', the weighted average value of the previous result will be returned
+
+            1. Hard labels (soft_label = False)
+
+             .. math::
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
+
+            2. Soft labels (soft_label = True)
+
+             .. math::
+                \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
  
-    It is useful when training a classification problem with ``C`` classes.
-
-
+ 
     Parameters:
-        input (Tensor): Input tensor, the data type is float32, float64. Shape is
-	    (N, C), where C is number of classes, and if shape is more than 2D, this
-	    is (N, C, D1, D2,..., Dk), k >= 1.
-        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each
-	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
-	    (N, D1, D2,..., Dk), k >= 1.
-        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
-            to each class and the shape is (C). It has the same dimensions as class
-	    number and the data type is float32, float64. Default is ``'None'``.
-        reduction (str, optional): Indicate how to average the loss by batch_size,
+
+        - **weight** (Tensor, optional)
+
+            a manual rescaling weight given to each class. 
+            If given, has to be a Tensor of size C and the data type is float32, float64. 
+            Default is ``'None'`` .
+
+        - **ignore_index** (int64, optional)
+
+            Specifies a target value that is ignored
+            and does not contribute to the loss. A negative value means that no label 
+            value needs to be ignored. Only valid when soft_label = False.  
+            Default is ``-100`` .
+
+        - **reduction** (str, optional)
+
+            Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        ignore_index (int64, optional): Specifies a target value that is ignored
-            and does not contribute to the input gradient. Default is ``-100``.
-        soft_label (bool): indicate whether label is soft. Default False, meaning that
-                the label is hard. If soft_label=True, the label is soft.
-        axis (int, optional): The index of dimension to perform softmax calculations. It 
-                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
-                              is the rank of input :attr:`logits`. Default: -1.
+
+        - **soft_label** (bool, optional)
+
+            Indicate whether label is soft. 
+            If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
+            Default is ``False``.
+
+        - **axis** (int, optional)
+
+            The index of dimension to perform softmax calculations. 
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number 
+            of dimensions of input :attr:`input`. 
+            Default is ``-1`` .
+
+        - **use_softmax** (bool, optional)
+
+            Indicate whether compute softmax before cross_entropy.
+            Default is ``True``.
+
+        - **name** (str，optional)
+
+            The name of the operator. Default is ``None`` .
+            For more information, please refer to :ref:`api_guide_Name` .
 
 
-    Returns:
-        Tensor. The tensor storing the cross_entropy_loss of input and label.
+    Shape:
 
+        - **input** (Tensor)
 
-    Examples:
+            Input tensor, the data type is float32, float64. Shape is
+	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+
+            Note: 
+
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
+                output of softmax operator, which will produce incorrect results.
+
+                2. when use_softmax=False, it expects the output of softmax operator.
+ 
+
+        - **label** (Tensor)
+
+            1. If soft_label=False，the shape is 
+            :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
+            the data type is int32, int64, float32, float64, where each value is [0, C-1].
+
+            2. If soft_label=True, the shape and data type should be same with ``input`` , 
+            and the sum of the labels for each sample should be 1.
+ 
+        - **output** (Tensor)
+
+            Return the softmax cross_entropy loss of ``input`` and ``label``.
+
+            The data type is the same as input.
+
+            If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the dimension of return value is ``1``.
+
+            If :attr:`reduction` is ``'none'``:
+
+            1. If soft_label = False, the dimension of return value is the same with ``label`` . 
+
+            2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
+
+     Example1(hard labels):
+
         .. code-block:: python
             
             import paddle
-            import numpy as np
+            paddle.seed(99999)
+            N=100
+            C=200
+            reduction='mean'
+            input =  paddle.rand([N, C], dtype='float64')  
+            label =  paddle.randint(0, C, shape=[N], dtype='int64')
+            weight = paddle.rand([C], dtype='float64') 
+            
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=weight, reduction=reduction)
+            dy_ret = cross_entropy_loss(
+                                       input,
+                                       label)
+            print(dy_ret.numpy()) #[5.41993642]
 
-            input_data = paddle.uniform([5, 100], dtype="float64")
-            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
-            weight_data = np.random.random([100]).astype("float64")
-            input =  paddle.to_tensor(input_data)
-            label =  paddle.to_tensor(label_data)
-            weight = paddle.to_tensor(weight_data)
-            ce_loss = paddle.nn.CrossEntropyLoss(weight=weight, reduction='mean')
-            output = ce_loss(input, label)
-            print(output)
-            # [4.84496039]
+
+    Example2(soft labels):
+
+        .. code-block:: python
+            
+            import paddle
+            paddle.seed(99999)
+            axis = -1
+            ignore_index = -100
+            N = 4
+            C = 3
+            shape = [N, C]
+            reduction='mean'
+            weight = None
+            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            paddle_loss_mean = paddle.nn.functional.cross_entropy(
+                                                                  logits,  
+                                                                  labels, 
+                                                                  soft_label=True, 
+                                                                  axis=axis,
+                                                                  weight=weight,
+                                                                  reduction=reduction)
+            print(paddle_loss_mean.numpy()) #[1.12908343]
+
     """
 
     def __init__(self,
@@ -229,6 +393,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                  reduction='mean',
                  soft_label=False,
                  axis=-1,
+                 use_softmax=True,
                  name=None):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
@@ -236,6 +401,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         self.ignore_index = ignore_index
         self.soft_label = soft_label
         self.axis = axis
+        self.use_softmax = use_softmax
         self.name = name
 
     def forward(self, input, label):
@@ -247,6 +413,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             reduction=self.reduction,
             soft_label=self.soft_label,
             axis=self.axis,
+            use_softmax=self.use_softmax,
             name=self.name)
 
         return ret

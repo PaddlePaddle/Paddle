@@ -20,6 +20,7 @@ import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
+@unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
 class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "sync"
