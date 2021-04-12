@@ -59,7 +59,7 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             paddle.enable_static() if not dynamic else None
             device = paddle.set_device('gpu')
             net = LeNet()
-            mnist_data = MnistDataset(mode='train', sample_num=2048)
+            mnist_data = MnistDataset(mode='train', sample_num=32)
             inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
             label = InputSpec([None, 1], "int64", "y")
             model = Model(net, inputs, label)
@@ -70,10 +70,10 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 optimizer=optim,
                 loss=CrossEntropyLoss(reduction="sum"),
                 amp_configs=amp_configs)
-            model.fit(mnist_data, batch_size=64, verbose=0)
-            paddle.disable_static() if not dynamic else None
+            model.fit(mnist_data, batch_size=32, verbose=0)
 
     def test_check_input_error(self):
+        paddle.disable_static()
         amp_configs_list = [{
             "level": "O3"
         }, {
@@ -89,22 +89,16 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             self.skipTest('module not tested when ONLY_CPU compling')
         device = paddle.set_device('gpu')
         net = LeNet()
-        mnist_data = MnistDataset(mode='train', sample_num=32)
-        inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
-        label = InputSpec([None, 1], "int64", "y")
-        model = Model(net, inputs, label)
+        model = Model(net)
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=model.parameters())
+        loss = CrossEntropyLoss(reduction="sum")
         with self.assertRaises(ValueError):
             for i in range(len(amp_configs_list) - 1):
                 model.prepare(
-                    optimizer=optim,
-                    loss=CrossEntropyLoss(reduction="sum"),
-                    amp_configs=amp_configs_list[i])
+                    optimizer=optim, loss=loss, amp_configs=amp_configs_list[i])
         model.prepare(
-            optimizer=optim,
-            loss=CrossEntropyLoss(reduction="sum"),
-            amp_configs=amp_configs_list[3])
+            optimizer=optim, loss=loss, amp_configs=amp_configs_list[-1])
 
 
 if __name__ == '__main__':

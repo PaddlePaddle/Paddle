@@ -885,6 +885,7 @@ class Model(object):
 
 
     Examples:
+        1. A common example
         .. code-block:: python
 
           import paddle
@@ -908,16 +909,45 @@ class Model(object):
           optim = paddle.optimizer.SGD(learning_rate=1e-3,
               parameters=model.parameters())
 
-          amp_configs = {'level': 'O0'}
           model.prepare(optim,
                         paddle.nn.CrossEntropyLoss(),
-                        paddle.metric.Accuracy(),
-                        amp_configs=amp_configs)
+                        paddle.metric.Accuracy())
           
           transform = T.Compose([
               T.Transpose(),
               T.Normalize([127.5], [127.5])
           ])
+          data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+          model.fit(data, epochs=2, batch_size=32, verbose=1)
+
+
+        2. An example using mixed precision training.
+        .. code-block:: python
+
+          import paddle
+          import paddle.nn as nn
+          import paddle.vision.transforms as T
+
+          # mixed precision training is only support on GPU now.
+          device = paddle.set_device('gpu')
+
+          net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
+                              nn.Linear(200, 10))
+
+          model = paddle.Model(net)
+          optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+
+          amp_configs = {
+              "level": "O1",
+              "custom_black_list": {'conv2d'},
+              "use_dynamic_loss_scaling": True
+          }
+          model.prepare(optim,
+              paddle.nn.CrossEntropyLoss(),
+              paddle.metric.Accuracy(),
+              amp_configs=amp_configs)
+
+          transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
           data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
           model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
@@ -1344,11 +1374,11 @@ class Model(object):
             amp_configs_set = set(self._adapter._amp_configs.keys())
             if amp_configs_set - accepted_param_set:
                 raise ValueError(
-                    "Except for 'level', the keys of 'amp_configs' must be accepted by low-level mixed precision APIs, "
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, "
                     "but {} could not be recognized.".format(
                         tuple(amp_configs_set - accepted_param_set)))
             if in_dygraph_mode(
-            ) and amp_configs_set - {'use_fp16_guard', 'use_pure_fp16'}:
+            ) and amp_configs_set & {'use_fp16_guard', 'use_pure_fp16'}:
                 raise ValueError(
                     "'use_pure_fp16' or 'use_fp16_guard' is supported in dygraph only now."
                 )
@@ -1375,15 +1405,15 @@ class Model(object):
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
                 value of 'level' defaults to 'O0', which means training without
                 using AMP or pure float training. In addition to 'level',
-                users could pass in more parameters consistent with low-level
-                API. The supported keys are: 'init_loss_scaling', 'incr_ratio',
-                'decr_ratio', 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
-                'use_dynamic_loss_scaling', 'custom_white_list',
-                'custom_black_list', and 'custom_black_varnames',
-                'use_pure_fp16' or 'use_fp16_guard' is only supported in static
-                mode. Users could refer to low-level API documentations
-                :ref:`auto_cast <_api_paddle_amp_auto_cast>` and
-                :ref:`GradScaler_api_paddle_amp_GradScaler>` for details.
+                users could pass in more parameters consistent with mixed
+                precision API. The supported keys are: 'init_loss_scaling',
+                'incr_ratio', 'decr_ratio', 'incr_every_n_steps',
+                'decr_every_n_nan_or_inf', 'use_dynamic_loss_scaling',
+                'custom_white_list', 'custom_black_list', and
+                'custom_black_varnames', 'use_pure_fp16' or 'use_fp16_guard'
+                is only supported in static mode. Users could refer to mixed
+                precision API documentations :ref:`_api_paddle_amp_auto_cast`
+                and :ref:`_api_paddle_amp_GradScaler` for details.
                 'amp_configs' could be None if default parameters are chosen or
                 AMP is not used. Default: None.
         Returns:
