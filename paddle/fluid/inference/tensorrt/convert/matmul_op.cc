@@ -42,12 +42,6 @@ class MatMulOpConverter : public OpConverter {
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
 
-    if (op_desc.HasAttr("out_threshold")) {
-      float out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-      engine_->SetTensorDynamicRange(input1, out_scale);
-      engine_->SetTensorDynamicRange(input2, out_scale);
-    }
-
     bool transpose_X = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
     bool transpose_Y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
 

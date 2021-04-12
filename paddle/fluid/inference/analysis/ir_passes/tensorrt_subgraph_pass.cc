@@ -36,7 +36,6 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  VLOG(3) << "TensorRtSubgraphPass - enable_int8: " << enable_int8 << "; use_calib_mode: " << use_calib_mode << "; with_dynamic_shape: "<< with_dynamic_shape;
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(),
@@ -45,10 +44,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
-    bool ret = tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
+    return tensorrt::OpTeller::Global().Tell(node, no_calib_int8,
                                              with_dynamic_shape);
-    //LOG(ERROR) << node->Op()->Type().c_str() << " tell: " << ret;
-    return ret;
   };
 
   framework::ir::SubGraphFuser fuser(
@@ -169,10 +166,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  for (auto name : input_names) {
-    VLOG(3) << "input: " << name;
-  }
-
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
   std::vector<int> origin_output_dims;
@@ -194,7 +187,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   bool enable_fp16 = false;
   if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
-  LOG(ERROR) << "tensorrt use int8: " << enable_int8;
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
   auto min_input_shape =
@@ -293,7 +285,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
   op_desc->SetAttr("predictor_id", predictor_id);
-  LOG(ERROR) << "op type: " << op_desc->Type() << " int 8: " << op_desc->HasAttr("enable_int8");
 
   std::string trt_engine_serialized_data = "";
   op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);

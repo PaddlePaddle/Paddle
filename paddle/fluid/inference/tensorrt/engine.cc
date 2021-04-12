@@ -163,7 +163,6 @@ void TensorRTEngine::FreezeNetwork() {
       // This step has no effect if this layer is fused during TRT optimization.
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
-        //LOG(ERROR) << "layer: " << layer->getName();
         if (!is_layer_int8(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
         }
@@ -200,7 +199,6 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  LOG(ERROR) << "with_dynamic_shape_: " << with_dynamic_shape_ << "; enable_int8: " << enable_int8;
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";

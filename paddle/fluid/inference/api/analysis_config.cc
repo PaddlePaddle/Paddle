@@ -318,7 +318,6 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   max_input_shape_ = max_input_shape;
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
-  LOG(ERROR) << "disable_trt_plugin_fp16_: " << disable_trt_plugin_fp16_;
 }
 
 void AnalysisConfig::EnableTensorRtDLA(int dla_core) {

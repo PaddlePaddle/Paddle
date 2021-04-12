@@ -90,10 +90,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     int64_t scale_size = framework::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
-    LOG(ERROR) << "emb layer has int8: " << enable_int8;
 
-
-    LOG(ERROR) << "dynamic shape: " << engine_->with_dynamic_shape() << " with oss: " << engine_->use_oss();
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
         int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
@@ -145,7 +142,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         plugin_inputs.emplace_back(engine_->GetITensor(
             engine_->network()->getInput(2)->getName()));  // cu_seqlens,
                                                            // eval_placeholder_2
-        VLOG(3) << "engine_->network() number of inputs: " << engine_->network()->getNbInputs();
         auto max_seqlen_tensor =
             engine_->GetITensor(engine_->network()->getInput(3)->getName());
         auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
@@ -171,7 +167,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
-        VLOG(4) << "emb_eltwise_layernorm trt layer name: " << layer->getName() << "; nbDims: " << layer->getOutput(0)->getDimensions().nbDims;
       } else {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
