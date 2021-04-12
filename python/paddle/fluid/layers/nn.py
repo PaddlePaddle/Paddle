@@ -836,6 +836,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             print(transition)
 
     """
+    helper = LayerHelper('linear_chain_crf', **locals())
+    size = input.shape[2] if length else input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
@@ -857,8 +859,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'linear_chain_crf')
     check_variable_and_dtype(label, 'label', ['int64'], 'linear_chain_crf')
-    helper = LayerHelper('linear_chain_crf', **locals())
-    size = input.shape[2] if length else input.shape[1]
+
     this_inputs = {
         "Emission": [input],
         "Transition": transition,
