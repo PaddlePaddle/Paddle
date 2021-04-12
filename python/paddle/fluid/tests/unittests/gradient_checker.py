@@ -352,14 +352,14 @@ def grad_check(x,
 
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
-        # if not np.allclose(a, n, rtol, atol):
-        if True:
+        if not np.allclose(a, n, rtol, atol):
+        # if True:
             msg = 'Jacobian mismatch for output %s ' \
                   'with respect to input %s on %s,\n' \
                   'numerical:%s\nanalytical:%s\n' \
                   % (y[y_idx].name, x[x_idx].name, str(place), n, a)
-            # return fail_test(msg)
-            print(msg)
+            return fail_test(msg)
+            # print(msg)
     return True
 
 
