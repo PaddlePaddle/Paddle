@@ -121,9 +121,9 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     """
 
     print('_compute_numerical_jacobian')
-    print('len(x): ', len(x))
+    # print('len(x): ', len(x))
     print('x: ', x)
-    print('len(y): ', len(y))
+    # print('len(y): ', len(y))
     print('y: ', y)
 
     if not isinstance(x, fluid.framework.Variable):
@@ -185,9 +185,9 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     """
     
     print('_compute_analytical_jacobian')
-    print('len(x): ', len(x))
+    # print('len(x): ', len(x))
     print('x: ', x)
-    print('len(y): ', len(y))
+    # print('len(y): ', len(y))
     print('y: ', y)
 
     if not isinstance(y, fluid.framework.Variable):
@@ -267,6 +267,8 @@ def grad_check(x,
     Returns:
         True if all differences satisfy numpy.allclose condition.
     """
+
+    print('grad_check')
 
     print('len(x): ', len(x))
     print('x: ', x)
@@ -391,6 +393,9 @@ def double_grad_check(x,
     Returns:
         True if all differences satisfy numpy.allclose condition.
     """
+
+    print('double_grad_check')
+
     # check input arguments
     x = _as_list(x)
     for v in x:
