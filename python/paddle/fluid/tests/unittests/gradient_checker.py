@@ -248,6 +248,10 @@ def grad_check(x,
         True if all differences satisfy numpy.allclose condition.
     """
 
+    print('x: ', x)
+    print('y: ', y)
+    print('x_init: ', x_init)
+
     def fail_test(msg):
         if raise_exception:
             raise RuntimeError(msg)
@@ -280,6 +284,7 @@ def grad_check(x,
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
+        print('feeds: ', feeds)
         exe.run(program, feed=feeds, scope=scope)
 
     # [x_idx, y_idx]
@@ -287,6 +292,7 @@ def grad_check(x,
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
         for xi in x
     ]
+    print('numerical: ', numerical)
 
     # [y_idx, x_idx]
     analytical = []
@@ -307,6 +313,8 @@ def grad_check(x,
 
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
+
+    print('analytical: ', analytical)
 
     for i, (x_idx,
             y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
@@ -381,8 +389,16 @@ def double_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
         ]
 
+    print('x: ', x)
+    print('y: ', y)
+    print('y_grads: ', y_grads)
+    print('x_init: ', x_init)
+    print('y_grads_init: ', y_grads_init)
+
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
+
+    print('target_grads: ', target_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
