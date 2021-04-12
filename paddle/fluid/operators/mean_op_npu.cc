@@ -10,9 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mean_op.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -26,34 +25,27 @@ class MeanNPUKernel : public framework::OpKernel<T> {
 
     std::vector<int> axes;
 
-    framework::NPUAttributeMap attr_input = {
-                  {"keep_dims", false},
-                  {"axes", axes}};
+    framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                             {"axes", axes}};
 
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("ReduceMeanD",
-                              {*x},
-                              {*out},
-                              attr_input);
+    auto runner = NpuOpRunner("ReduceMeanD", {*x}, {*out}, attr_input);
 
     auto stream =
-      ctx.template device_context<
-                     paddle::platform::NPUDeviceContext>()
-                .stream();
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     runner.Run(stream);
   }
 };
-
 
 template <typename DeviceContext, typename T>
 class MeanGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto stream =
-      context.template device_context<
-                          paddle::platform::NPUDeviceContext>()
-                          .stream();
+        context.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
     auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
 
@@ -77,9 +69,8 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     std::vector<float> mean_vec;
-    mean_vec.push_back(1.0/static_cast<float>(IG->numel()));
-    framework::TensorFromVector(mean_vec,
-                                context.device_context(),
+    mean_vec.push_back(1.0 / static_cast<float>(IG->numel()));
+    framework::TensorFromVector(mean_vec, context.device_context(),
                                 &mean_tensor);
 
     // means mul ones
@@ -95,23 +86,19 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    mean,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
-
 REGISTER_OP_NPU_KERNEL(
-    mean_grad,
-    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean_grad, ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)

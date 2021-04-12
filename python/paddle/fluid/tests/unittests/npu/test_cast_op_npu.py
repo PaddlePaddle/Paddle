@@ -50,6 +50,7 @@ class TestCast1(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+
 class TestCast2(OpTest):
     def setUp(self):
         self.set_npu()
@@ -70,6 +71,7 @@ class TestCast2(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+
 
 if __name__ == '__main__':
     unittest.main()

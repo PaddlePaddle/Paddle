@@ -16,9 +16,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/scatter_op.h"
 #include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/scatter_op.h"
 
 namespace paddle {
 namespace operators {
@@ -29,14 +29,13 @@ template <typename DeviceContext, typename T>
 class ScatterNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-
     auto* x = ctx.Input<Tensor>("X");
     auto* index = ctx.Input<Tensor>("Ids");
     auto* updates = ctx.Input<Tensor>("Updates");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
     auto* out = ctx.Output<Tensor>("Out");
-    
+
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
@@ -53,13 +52,14 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    if (overwrite){
-        auto runner_update = NpuOpRunner("TensorScatterUpdate", {*x, *index, *updates}, {*out}, {});
-        runner_update.Run(stream);
-    }
-    else{
-        auto runner_add = NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
-        runner_add.Run(stream);
+    if (overwrite) {
+      auto runner_update = NpuOpRunner("TensorScatterUpdate",
+                                       {*x, *index, *updates}, {*out}, {});
+      runner_update.Run(stream);
+    } else {
+      auto runner_add =
+          NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*out}, {});
+      runner_add.Run(stream);
     }
   }
 };
@@ -69,8 +69,7 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    scatter,
-    ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    scatter, ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ScatterNPUKernel<paddle::platform::NPUDeviceContext,
-    paddle::platform::float16>);
+                          paddle::platform::float16>);
 #endif

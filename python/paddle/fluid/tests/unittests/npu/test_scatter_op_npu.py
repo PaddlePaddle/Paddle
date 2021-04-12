@@ -57,7 +57,7 @@ class TestCast2(OpTest):
         self.set_npu()
         self.op_type = "scatter"
         self.place = paddle.NPUPlace(0)
-       
+
         ref_np = np.ones((3, 2)).astype("int32")
         index_np = np.array([1]).astype("int32")
         updates_np = np.zeros((1, 2)).astype("int32")
@@ -74,12 +74,13 @@ class TestCast2(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
 
+
 class TestCast3(OpTest):
     def setUp(self):
         self.set_npu()
         self.op_type = "scatter"
         self.place = paddle.NPUPlace(0)
-       
+
         ref_np = np.ones((3, 2)).astype("float32")
         index_np = np.array([1]).astype("int32")
         updates_np = np.random.random((1, 2)).astype("float32")
@@ -119,6 +120,7 @@ class TestCast4(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+
 
 if __name__ == '__main__':
     unittest.main()

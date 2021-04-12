@@ -56,10 +56,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
-  auto op = f::OpRegistry::CreateOp(op_type,
-                    {{"X", {"X"}}},
-                    {{"Out", {"Out"}}},
-                    {});
+  auto op =
+      f::OpRegistry::CreateOp(op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, {});
 
   op->Run(*scope, place);
 
@@ -75,11 +73,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   EXPECT_EQ(out_vec[3], static_cast<T>(4.0));
 }
 
-
 TEST(assign, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "assign");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "assign");
 }
-
-

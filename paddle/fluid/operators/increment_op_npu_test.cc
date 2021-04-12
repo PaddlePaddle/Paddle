@@ -54,10 +54,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   auto out = scope->Var("Out");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
-  f::AttributeMap attr_input = { {"step", static_cast<float>(2.0)} };
+  f::AttributeMap attr_input = {{"step", static_cast<float>(2.0)}};
   auto op = f::OpRegistry::CreateOp("increment", {{"X", {"X"}}},
-                                                 {{"Out", {"Out"}}},
-                                                 attr_input);
+                                    {{"Out", {"Out"}}}, attr_input);
 
   op->Run(*scope, place);
 
@@ -70,16 +69,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
   EXPECT_EQ(out_vec[0], static_cast<T>(3.0));
 }
 
-
 TEST(increment, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "increment");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "increment");
 }
 
 TEST(increment, NPU_fp64) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx, "increment");
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx, "increment");
 }
-

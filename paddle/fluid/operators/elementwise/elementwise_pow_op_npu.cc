@@ -55,4 +55,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ElementwisePowNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ElementwisePowNPUKernel<paddle::platform::NPUDeviceContext,
                                  paddle::platform::float16>);
-

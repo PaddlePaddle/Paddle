@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/sum_op.h"
 
 namespace paddle {
 namespace operators {
@@ -28,7 +28,6 @@ template <typename DeviceContext, typename T>
 class SumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-
     auto x = ctx.MultiInput<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -41,15 +40,15 @@ class SumNPUKernel : public framework::OpKernel<T> {
                           "The size of Input(x) list must larger or equal 2"));
 
     auto stream =
-              ctx.template device_context<paddle::platform::NPUDeviceContext>()
-                      .stream();
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
 
     auto runner = NpuOpRunner("Add", {*x[0], *x[1]}, {*out}, {});
 
     runner.Run(stream);
     for (int i = 2; i < n; i++) {
-        runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
-        runner.Run(stream);
+      runner = NpuOpRunner("Add", {*out, *x[i]}, {*out}, {});
+      runner.Run(stream);
     }
   }
 };
@@ -60,8 +59,6 @@ class SumNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    sum,
-    ops::SumNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    sum, ops::SumNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::SumNPUKernel<paddle::platform::NPUDeviceContext,
-                       paddle::platform::float16>);
-
+                      paddle::platform::float16>);

@@ -36,7 +36,7 @@ class TestAssign(OpTest):
         self.op_type = "assign"
         self.init_dtype()
 
-        x = np.rand.random([3,3])
+        x = np.rand.random([3, 3])
         self.inputs = {'X': x}
 
         self.attrs = {}
@@ -54,4 +54,3 @@ class TestAssign(OpTest):
 
 if __name__ == '__main__':
     unittest.main()
-

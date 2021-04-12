@@ -41,11 +41,12 @@ class TestTopk(OpTest):
                       [0.96527182, 0.34851612, 0.12959783]]).astype(self.dtype)
 
         self.inputs = {'X': x}
-        np_out = np.array([[0.88745828], [0.82196718], [0.96527182]]).astype(self.dtype)
+        np_out = np.array(
+            [[0.88745828], [0.82196718], [0.96527182]]).astype(self.dtype)
         np_indices = np.array([[1], [0], [0]])
 
         self.attrs = {'k': 1, "axis": -1}
-        self.outputs = {'Out': np_out, 'Indices':np_indices}
+        self.outputs = {'Out': np_out, 'Indices': np_indices}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -72,11 +73,12 @@ class TestTopkV2(OpTest):
                       [0.96527182, 0.34851612, 0.12959783]]).astype(self.dtype)
 
         self.inputs = {'X': x}
-        np_out = np.array([[0.88745828, 0.78104149], [0.82196718, 0.48763277], [0.96527182, 0.34851612]]).astype(self.dtype)
+        np_out = np.array([[0.88745828, 0.78104149], [0.82196718, 0.48763277],
+                           [0.96527182, 0.34851612]]).astype(self.dtype)
         np_indices = np.array([[1, 0], [0, 1], [0, 1]])
 
         self.attrs = {'k': 2, "axis": -1}
-        self.outputs = {'Out': np_out, 'Indices':np_indices}
+        self.outputs = {'Out': np_out, 'Indices': np_indices}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -91,5 +93,3 @@ class TestTopkV2(OpTest):
 
 if __name__ == '__main__':
     unittest.main()
-
-

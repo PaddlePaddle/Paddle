@@ -55,4 +55,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ElementwiseMaxNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::ElementwiseMaxNPUKernel<paddle::platform::NPUDeviceContext,
                                  paddle::platform::float16>);
-

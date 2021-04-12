@@ -59,8 +59,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   auto place = ctx.GetPlace();
 
-  auto op = f::OpRegistry::CreateOp("gelu", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("gelu", {{"X", {"X"}}}, {{"Out", {"Out"}}},
+                                    attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -76,8 +76,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   gettimeofday(&end, NULL);
-  int micros = (((end.tv_sec - start.tv_sec) * 1000000) +
-                  end.tv_usec) - (start.tv_usec);
+  int micros =
+      (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   printf("used time: %d\n", micros / 100);
 
   // eval value
@@ -124,8 +124,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   auto place = ctx.GetPlace();
 
   auto op = f::OpRegistry::CreateOp("gelu_grad",
-    {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}},
-    {{"X@GRAD", {"DX"}}}, attrs);
+                                    {{"Out@GRAD", {"DOut"}}, {"X", {"X"}}},
+                                    {{"X@GRAD", {"DX"}}}, attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -141,8 +141,8 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   gettimeofday(&end, NULL);
-  int micros = (((end.tv_sec - start.tv_sec) * 1000000) +
-                  end.tv_usec) - (start.tv_usec);
+  int micros =
+      (((end.tv_sec - start.tv_sec) * 1000000) + end.tv_usec) - (start.tv_usec);
   printf("used time: %d\n", micros / 100);
 
   // eval value
@@ -156,14 +156,13 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx) {
 }
 
 TEST(gelu, NPU_fp32) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    Compare<float>(&scope, ctx);
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  Compare<float>(&scope, ctx);
 }
 
 TEST(gelu_grad, NPU) {
-    f::Scope scope;
-    p::NPUDeviceContext ctx(p::NPUPlace(0));
-    CompareGrad<float>(&scope, ctx);
+  f::Scope scope;
+  p::NPUDeviceContext ctx(p::NPUPlace(0));
+  CompareGrad<float>(&scope, ctx);
 }
-

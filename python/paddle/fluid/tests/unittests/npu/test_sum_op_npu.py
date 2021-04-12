@@ -44,10 +44,10 @@ class TestSum1(OpTest):
         self.outputs = {'Out': y}
 
         self.attrs = {'use_mkldnn': False}
-    
+
     def init_dtype(self):
         self.dtype = np.float32
-    
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -71,15 +71,16 @@ class TestSum2(OpTest):
         self.outputs = {'Out': y}
 
         self.attrs = {'use_mkldnn': False}
-    
+
     def init_dtype(self):
         self.dtype = np.float16
-    
+
     def set_npu(self):
         self.__class__.use_npu = True
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_dygraph=False)
+
 
 if __name__ == '__main__':
     unittest.main()

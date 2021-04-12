@@ -53,7 +53,8 @@ class TestMean(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_dygraph=False)
 
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
@@ -83,7 +84,5 @@ class TestMeanFP16(OpTest):
         self.check_output_with_place(self.place, check_dygraph=False)
 
 
-
 if __name__ == '__main__':
     unittest.main()
-

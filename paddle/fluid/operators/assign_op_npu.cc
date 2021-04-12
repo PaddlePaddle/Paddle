@@ -15,8 +15,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
@@ -45,8 +45,8 @@ class AssignNPUKernel : public framework::OpKernel<T> {
 
     auto runner = NpuOpRunner("Assign", {*out, *x}, {*out}, {});
     auto stream =
-      ctx.template device_context<paddle::platform::NPUDeviceContext>()
-                .stream();
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
     runner.Run(stream);
   }
 };
@@ -57,8 +57,7 @@ class AssignNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(assign,
-    ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
+REGISTER_OP_NPU_KERNEL(
+    assign, ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AssignNPUKernel<paddle::platform::NPUDeviceContext, double>)
-

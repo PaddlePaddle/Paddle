@@ -77,13 +77,12 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    gelu,
-    ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    gelu, ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GeluNPUKernel<paddle::platform::NPUDeviceContext,
-    paddle::platform::float16>);
+                       paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     gelu_grad,
     ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GeluGradNPUKernel<paddle::platform::NPUDeviceContext,
-    paddle::platform::float16>);
+                           paddle::platform::float16>);

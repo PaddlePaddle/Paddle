@@ -16,15 +16,14 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/unsqueeze_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/operators/unsqueeze_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze,
-    ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
+    unsqueeze, ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, double>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -32,8 +31,7 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    unsqueeze2,
-    ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
+    unsqueeze2, ops::UnsqueezeKernel<plat::NPUDeviceContext, float>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, double>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -41,4 +39,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int64_t>);
 #endif
-
