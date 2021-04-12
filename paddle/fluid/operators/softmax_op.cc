@@ -83,7 +83,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifndef PADDLE_WITH_ASCEND_CL
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
