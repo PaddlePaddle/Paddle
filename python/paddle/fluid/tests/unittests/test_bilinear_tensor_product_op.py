@@ -42,11 +42,12 @@ class TestBilinearTensorProductOp(OpTest):
         size0 = 5
         size1 = 4
         size2 = 5
-        a = np.random.random((batch_size, size0)).astype("float64")
-        b = np.random.random((batch_size, size1)).astype("float64")
-        w = np.random.random((size2, size0, size1)).astype("float64")
-        bias = np.random.random((1, size2)).astype("float64")
-        output = np.zeros((batch_size, size2)).astype("float64")
+        dtype = "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+        a = np.random.random((batch_size, size0)).astype(dtype)
+        b = np.random.random((batch_size, size1)).astype(dtype)
+        w = np.random.random((size2, size0, size1)).astype(dtype)
+        bias = np.random.random((1, size2)).astype(dtype)
+        output = np.zeros((batch_size, size2)).astype(dtype)
         for i in range(size2):
             w_i = w[i, :, :]
             output[:, i] = np.sum(np.matmul(a, w_i) * b, axis=1)

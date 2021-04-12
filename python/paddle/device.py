@@ -39,9 +39,11 @@ __all__ = [
 _cudnn_version = None
 
 
+# TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
+# for consistent.
 def is_compiled_with_npu():
     """
-    Whether this whl package can be used to run the model on NPU.
+    Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
 
     Returns (bool): `True` if NPU is supported, otherwise `False`.
 
