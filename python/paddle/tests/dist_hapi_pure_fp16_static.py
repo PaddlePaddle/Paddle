@@ -25,27 +25,7 @@ from paddle import fluid
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-
-
-class MnistDataset(MNIST):
-    def __init__(self, mode, return_label=True, sample_num=None):
-        super(MnistDataset, self).__init__(mode=mode)
-        self.return_label = return_label
-        if sample_num:
-            self.images = self.images[:sample_num]
-            self.labels = self.labels[:sample_num]
-
-    def __getitem__(self, idx):
-        img, label = self.images[idx], self.labels[idx]
-        img = np.reshape(img, [1, 28, 28])
-        if self.return_label:
-            return img, np.array(self.labels[idx]).astype('int64')
-        return img,
-
-    def __len__(self):
-        return len(self.images)
 
 
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
@@ -58,7 +38,6 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
         device = paddle.set_device('gpu')
         net = LeNet()
         amp_level = "O2"
-        mnist_data = MnistDataset(mode='train', sample_num=2048)
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
         label = InputSpec([None, 1], "int64", "y")
         model = Model(net, inputs, label)
@@ -71,7 +50,6 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
             optimizer=optim,
             loss=CrossEntropyLoss(reduction="sum"),
             amp_configs=amp_configs)
-        model.fit(mnist_data, batch_size=64, verbose=0)
 
 
 if __name__ == '__main__':

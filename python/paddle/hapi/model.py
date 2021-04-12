@@ -255,6 +255,7 @@ class StaticGraphAdapter(object):
         self._amp_level = "O0"
         self._amp_configs = {}
         self._amp_custom_lists = {}
+        self._use_fp16_guard = True
 
     @property
     def mode(self):
@@ -569,18 +570,12 @@ class StaticGraphAdapter(object):
                     amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                         **self.
                         _amp_custom_lists) if self._amp_custom_lists else None
-                    use_fp16_guard = self._amp_configs.pop(
-                        'use_fp16_guard'
-                    ) if 'use_fp16_guard' in self._amp_configs else True
-                    self._amp_configs.pop(
-                        'use_pure_fp16'
-                    ) if 'use_pure_fp16' in self._amp_configs else None
 
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
                         use_pure_fp16=self._amp_level == "O2",
-                        use_fp16_guard=use_fp16_guard,
+                        use_fp16_guard=self._use_fp16_guard,
                         **self._amp_configs)
 
                 self.model._optimizer.minimize(self._loss_endpoint)
@@ -654,6 +649,8 @@ class DynamicGraphAdapter(object):
         self._amp_level = "O0"
         self._amp_configs = {}
         self._amp_custom_lists = {}
+        self._use_fp16_guard = True
+
         if self._nranks > 1:
             dist.init_parallel_env()
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
@@ -886,6 +883,7 @@ class Model(object):
 
     Examples:
         1. A common example
+
         .. code-block:: python
 
           import paddle
@@ -922,34 +920,40 @@ class Model(object):
 
 
         2. An example using mixed precision training.
+
         .. code-block:: python
 
           import paddle
           import paddle.nn as nn
           import paddle.vision.transforms as T
 
+          def run_example_code():
+            device = paddle.set_device('gpu')
+
+            net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
+                                nn.Linear(200, 10))
+
+            model = paddle.Model(net)
+            optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+
+            amp_configs = {
+                "level": "O1",
+                "custom_white_list": {'conv2d'},
+                "use_dynamic_loss_scaling": True
+            }
+            model.prepare(optim,
+                paddle.nn.CrossEntropyLoss(),
+                paddle.metric.Accuracy(),
+                amp_configs=amp_configs)
+
+            transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
+            data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            model.fit(data, epochs=2, batch_size=32, verbose=1)
+
           # mixed precision training is only support on GPU now.
-          device = paddle.set_device('gpu')
+          if paddle.is_compiled_with_cuda():
+            run_example_code()
 
-          net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
-                              nn.Linear(200, 10))
-
-          model = paddle.Model(net)
-          optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
-
-          amp_configs = {
-              "level": "O1",
-              "custom_black_list": {'conv2d'},
-              "use_dynamic_loss_scaling": True
-          }
-          model.prepare(optim,
-              paddle.nn.CrossEntropyLoss(),
-              paddle.metric.Accuracy(),
-              amp_configs=amp_configs)
-
-          transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
-          data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
-          model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
     def __init__(self, network, inputs=None, labels=None):
@@ -1330,12 +1334,18 @@ class Model(object):
         return self._adapter.parameters()
 
     def _prepare_amp(self, amp_configs):
-        self._adapter._amp_configs = amp_configs if amp_configs else {}
         self._adapter._amp_custom_lists = {}
+        self._adapter._amp_configs = {}
 
-        # check input of amp level
+        # check and get level of mixed precision training
         if not amp_configs:
             self._adapter._amp_level = 'O0'
+            return
+        elif isinstance(amp_configs, str):
+            if amp_configs not in ('O0', 'O1', 'O2'):
+                raise ValueError(
+                    "The level of amp_configs should be 'O0', 'O1' or 'O2'.")
+            self._adapter._amp_level = amp_configs
             return
         else:
             if 'level' not in amp_configs:
@@ -1344,7 +1354,7 @@ class Model(object):
                 raise ValueError(
                     "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
             else:
-                self._adapter._amp_level = amp_configs.pop('level')
+                self._adapter._amp_level = amp_configs['level']
 
         # pure float16 training has some restricts now
         if self._adapter._amp_level == "O2":
@@ -1352,38 +1362,50 @@ class Model(object):
                 warnings.warn("Pure float16 training is not supported in dygraph mode now, "\
                     "and it will be supported in future version.")
             else:
-                # grad clip is not supported in pure fp16 training now.
+                # grad clip is not supported in pure fp16 training now
                 assert self._optimizer._grad_clip is None, \
                     "Grad clip is not supported in pure float16 training now, and it will be supported in future version."
 
-        if self._adapter._amp_level != 'O0' and self._adapter._amp_configs:
+        amp_config_key_set = set(amp_configs.keys()) - {'level'}
+
+        # construct amp_custom_lists
+        if self._adapter._amp_level != 'O0' and amp_config_key_set:
             for param_name in [
                     'custom_white_list', 'custom_black_list',
                     'custom_black_varnames'
             ]:
-                if param_name in self._adapter._amp_configs:
-                    self._adapter._amp_custom_lists[
-                        param_name] = amp_configs.pop(param_name)
+                if param_name in amp_config_key_set:
+                    self._adapter._amp_custom_lists[param_name] = amp_configs[
+                        param_name]
+                    amp_config_key_set -= {param_name}
 
-        def _check_amp_configs():
+        def _check_amp_configs(amp_config_key_set):
             accepted_param_set = {
                 'init_loss_scaling', 'incr_ratio', 'decr_ratio',
                 'incr_every_n_steps', 'decr_every_n_nan_or_inf',
                 'use_dynamic_loss_scaling', 'use_fp16_guard', 'use_pure_fp16'
             }
-            amp_configs_set = set(self._adapter._amp_configs.keys())
-            if amp_configs_set - accepted_param_set:
+            if amp_config_key_set - accepted_param_set:
                 raise ValueError(
                     "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, "
                     "but {} could not be recognized.".format(
-                        tuple(amp_configs_set - accepted_param_set)))
-            if in_dygraph_mode(
-            ) and amp_configs_set & {'use_fp16_guard', 'use_pure_fp16'}:
-                raise ValueError(
-                    "'use_pure_fp16' or 'use_fp16_guard' is supported in dygraph only now."
-                )
+                        tuple(amp_config_key_set - accepted_param_set)))
 
-        _check_amp_configs()
+            if amp_config_key_set & {'use_fp16_guard', 'use_pure_fp16'}:
+                if in_dygraph_mode():
+                    raise ValueError(
+                        "'use_pure_fp16' or 'use_fp16_guard' is supported in dygraph only."
+                    )
+                self._adapter._use_fp16_guard = amp_configs[
+                    'use_fp16_guard'] if 'use_fp16_guard' in amp_config_key_set else True
+                amp_config_key_set -= {'use_fp16_guard', 'use_pure_fp16'}
+
+            amp_config_key_set &= accepted_param_set
+            return amp_config_key_set
+
+        amp_configs_set = _check_amp_configs(amp_config_key_set)
+        for key in amp_configs_set:
+            self._adapter._amp_configs[key] = amp_configs[key]
 
     def prepare(self, optimizer=None, loss=None, metrics=None,
                 amp_configs=None):
@@ -1400,7 +1422,7 @@ class Model(object):
                 It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
-            amp_configs (dict|None): AMP configurations. If AMP or pure
+            amp_configs (str|dict|None): AMP configurations. If AMP or pure
                 float16 training is used, the key 'level' of 'amp_configs'
                 should be set to 'O1' or 'O2' respectively. Otherwise, the
                 value of 'level' defaults to 'O0', which means training without
@@ -1412,10 +1434,11 @@ class Model(object):
                 'custom_white_list', 'custom_black_list', and
                 'custom_black_varnames', 'use_pure_fp16' or 'use_fp16_guard'
                 is only supported in static mode. Users could refer to mixed
-                precision API documentations :ref:`_api_paddle_amp_auto_cast`
-                and :ref:`_api_paddle_amp_GradScaler` for details.
-                'amp_configs' could be None if default parameters are chosen or
-                AMP is not used. Default: None.
+                precision API documentations :ref:`api_paddle_amp_auto_cast`
+                and :ref:`api_paddle_amp_GradScaler` for details. For
+                convenience, 'amp_configs' could be set to 'O1' or 'O2' if no
+                more parameters are needed. 'amp_configs' could be None if
+                default parameters are chosen or AMP is not used.Default: None.
         Returns:
             None
         """

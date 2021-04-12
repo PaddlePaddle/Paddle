@@ -25,27 +25,7 @@ from paddle import fluid
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-
-
-class MnistDataset(MNIST):
-    def __init__(self, mode, return_label=True, sample_num=None):
-        super(MnistDataset, self).__init__(mode=mode)
-        self.return_label = return_label
-        if sample_num:
-            self.images = self.images[:sample_num]
-            self.labels = self.labels[:sample_num]
-
-    def __getitem__(self, idx):
-        img, label = self.images[idx], self.labels[idx]
-        img = np.reshape(img, [1, 28, 28])
-        if self.return_label:
-            return img, np.array(self.labels[idx]).astype('int64')
-        return img,
-
-    def __len__(self):
-        return len(self.images)
 
 
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
@@ -59,7 +39,6 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             paddle.enable_static() if not dynamic else None
             device = paddle.set_device('gpu')
             net = LeNet()
-            mnist_data = MnistDataset(mode='train', sample_num=32)
             inputs = InputSpec([None, 1, 28, 28], "float32", 'x')
             label = InputSpec([None, 1], "int64", "y")
             model = Model(net, inputs, label)
@@ -70,21 +49,23 @@ class TestDistTraningUsingAMP(unittest.TestCase):
                 optimizer=optim,
                 loss=CrossEntropyLoss(reduction="sum"),
                 amp_configs=amp_configs)
-            model.fit(mnist_data, batch_size=32, verbose=0)
 
     def test_check_input_error(self):
         paddle.disable_static()
-        amp_configs_list = [{
-            "level": "O3"
-        }, {
-            "level": "O1",
-            "test": 0
-        }, {
-            "level": "O1",
-            "use_fp16_guard": True
-        }, {
-            "level": "O2"
-        }]
+        amp_configs_list = [
+            {
+                "level": "O3"
+            },
+            {
+                "level": "O1",
+                "test": 0
+            },
+            {
+                "level": "O1",
+                "use_fp16_guard": True
+            },
+            "O3",
+        ]
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
         device = paddle.set_device('gpu')
@@ -94,11 +75,10 @@ class TestDistTraningUsingAMP(unittest.TestCase):
             learning_rate=0.001, parameters=model.parameters())
         loss = CrossEntropyLoss(reduction="sum")
         with self.assertRaises(ValueError):
-            for i in range(len(amp_configs_list) - 1):
+            for i in range(len(amp_configs_list)):
                 model.prepare(
                     optimizer=optim, loss=loss, amp_configs=amp_configs_list[i])
-        model.prepare(
-            optimizer=optim, loss=loss, amp_configs=amp_configs_list[-1])
+        model.prepare(optimizer=optim, loss=loss, amp_configs="O2")
 
 
 if __name__ == '__main__':
