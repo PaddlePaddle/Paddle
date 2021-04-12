@@ -25,17 +25,17 @@ import paddle
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSGDOpBF16(OpTest):
     def setUp(self):
-        self.op_type = "sgd"
+        self.op_type = 'sgd'
         self.dtype = np.uint16
         self.conf()
-        w = np.random.random((self.h, self.w)).astype("float32")
+        w = np.random.random((self.h, self.w)).astype('float32')
         w_bf16 = convert_float_to_uint16(w)
-        g = np.random.random((self.h, self.w)).astype("float32")
+        g = np.random.random((self.h, self.w)).astype('float32')
         g_bf16 = convert_float_to_uint16(g)
-        lr = np.array([0.1]).astype("float32")
+        lr = np.array([0.1]).astype('float32')
         lr_bf16 = convert_float_to_uint16(lr)
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
@@ -50,7 +50,7 @@ class TestSGDOpBF16(OpTest):
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSGDOpCase8XBF16(TestSGDOpBF16):
     def conf(self):
         self.h = 10
@@ -76,7 +76,8 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         grad_selected_rows = scope.var('Grad').get_selected_rows()
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
-        grad_array = np.random.random((len(rows), row_numel)).astype("float32")
+        # grad_array = np.random.random((len(rows), row_numel)).astype('float32')
+        grad_array = np.full((len(rows), row_numel), 2, np.float32)
         np_array_bf16 = convert_float_to_uint16(grad_array)
 
         grad_tensor = grad_selected_rows.get_tensor()
@@ -86,7 +87,8 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
     def create_dense_param_var(self, scope, place, height, width):
         param_tensor = scope.var('Param').get_tensor()
-        param_array = np.random.random((height, width)).astype("float32")
+        # param_array = np.random.random((height, width)).astype('float32')
+        param_array = np.full((height, width), 5, np.float32)
         param_array_bf16 = convert_float_to_uint16(param_array)
         param_tensor.set(param_array_bf16, place)
 
@@ -97,7 +99,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         param_selected_rows.set_height(height)
         param_selected_rows.set_rows(rows)
         param_selected_rows.sync_index()
-        param_array = np.random.random((len(rows), row_numel)).astype("float32")
+        param_array = np.random.random((len(rows), row_numel)).astype('float32')
         np_array_bf16 = convert_float_to_uint16(param_array)
 
         param_tensor = param_selected_rows.get_tensor()
@@ -107,8 +109,9 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
     def create_dense_lr_var(self, scope, place):
         lr_tensor = scope.var('LearningRate').get_tensor()
-        lr_value = np.random.uniform()
-        lr_array = np.full((1), lr_value).astype("float32")
+        # lr_value = np.random.uniform()
+        lr_value = 2
+        lr_array = np.full((1), lr_value, np.float32)
         lr_array_bf16 = convert_float_to_uint16(lr_array)
         lr_tensor.set(lr_array_bf16, place)
 
@@ -116,7 +119,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
     def setUp(self):
         self.setup_params()
@@ -136,7 +139,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
         _, lr_value = self.create_dense_lr_var(scope, place)
 
         sgd_op = Operator(
-            "sgd",
+            'sgd',
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
@@ -150,7 +153,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSparseGradSGDOpBF16Case2(TestSparseGradSGDOpBF16):
     def setup_params(self):
         self.grad_height = 14
@@ -159,7 +162,7 @@ class TestSparseGradSGDOpBF16Case2(TestSparseGradSGDOpBF16):
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
     def setUp(self):
         self.setup_params()
@@ -181,7 +184,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
         _, lr_value = self.create_dense_lr_var(scope, place)
 
         sgd_op = Operator(
-            "sgd",
+            'sgd',
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
@@ -195,7 +198,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+                 'place does not support BF16 evaluation')
 class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
     def setup_params(self):
         self.grad_height = 14
@@ -204,6 +207,6 @@ class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
         self.param_rows = [a for a in range(self.grad_height)]
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
