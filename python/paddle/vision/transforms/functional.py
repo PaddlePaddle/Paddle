@@ -278,13 +278,16 @@ def center_crop(img, output_size):
             cropped_img = F.center_crop(fake_img, (150, 100))
             print(cropped_img.size)
         """
-    if not (_is_pil_image(img) or _is_numpy_image(img)):
+    if not (_is_pil_image(img) or _is_numpy_image(img) or
+            _is_tensor_image(img)):
         raise TypeError(
-            'img should be PIL Image or ndarray with dim=[2 or 3]. Got {}'.
+            'img should be PIL Image or Tensor Image or ndarray with dim=[2 or 3]. Got {}'.
             format(type(img)))
 
     if _is_pil_image(img):
         return F_pil.center_crop(img, output_size)
+    elif _is_tensor_image(img):
+        return F_t.center_crop(img, output_size)
     else:
         return F_cv2.center_crop(img, output_size)
 
