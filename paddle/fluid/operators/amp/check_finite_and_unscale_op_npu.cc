@@ -44,10 +44,7 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
     // step1: inverse scale(RealDiv)
     Tensor const_tensor;
     const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    TensorFromVector(std::vector<T>{static_cast<T>(1.0)}, ctx.device_context(),
-                     &const_tensor);
-
-    ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
 
     // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
@@ -105,7 +102,11 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       bool* is_found_inf =
           found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
       *is_found_inf = true;
-      framework::TensorCopySync(found_inf_tensor, ctx.GetPlace(), found_inf);
+
+      framework::TensorCopy(
+          found_inf_tensor, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), found_inf);
+      ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
     }
   }
 };
