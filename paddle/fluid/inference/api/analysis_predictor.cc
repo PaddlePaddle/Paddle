@@ -1017,8 +1017,8 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+      std::string engine_name = BOOST_GET_CONST(
+          std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
@@ -1191,6 +1191,13 @@ USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 USE_TRT_CONVERTER(stack);
 USE_TRT_CONVERTER(clip);
+USE_TRT_CONVERTER(gather);
+USE_TRT_CONVERTER(anchor_generator);
+USE_TRT_CONVERTER(yolo_box);
+USE_TRT_CONVERTER(roi_align);
+USE_TRT_CONVERTER(affine_channel);
+USE_TRT_CONVERTER(multiclass_nms);
+USE_TRT_CONVERTER(nearest_interp);
 #endif
 
 namespace paddle_infer {

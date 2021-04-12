@@ -103,6 +103,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "merge_lod_tensor",
                                         "equal",
                                         "sequence_pool",
+                                        "recurrent",
                                         "lod_reset"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());

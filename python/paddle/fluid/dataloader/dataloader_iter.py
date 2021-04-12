@@ -35,180 +35,15 @@ else:
 import paddle
 from .. import core, layers
 from ..framework import in_dygraph_mode
-from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
+from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
+from .collate import default_collate_fn, default_convert_fn
+from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
+        _DatasetKind, _IterableDatasetStopIteration, _WorkerException
+from .flat import _flatten_batch, _restore_batch
 
 __all__ = ['get_worker_info']
-
-# multi-process worker check indices queue interval, avoid
-# hanging in subprocess data loading
-MP_INDICES_CHECK_INTERVAL = 5
-
-_IterableDatasetStopIteration = namedtuple('_IterableDatasetStopIteration',
-                                           ['worker_id'])
-
-
-def default_collate_fn(batch):
-    """
-    Default batch collating function for :code:`fluid.io.DataLoader`,
-    batch should be a list of samples, and each sample should be a list
-    of fields as follows:
-    
-    [[filed1, filed2, ...], [filed1, filed2, ...], ...]
-    
-    This default collate function zipped each filed together and stack
-    each filed as the batch field as follows:
-
-    [batch_filed1, batch_filed2, ...]
-
-    Args:  
-        batch(list of list of numpy array): the batch data, each fields
-              should be a numpy array, each sample should be a list of
-              fileds, and batch should be a list of sample.
-    
-    Returns:
-        a list of numpy array: collated batch
-    """
-    sample = batch[0]
-    # dataset has only 1 field
-    if isinstance(sample, np.ndarray):
-        return [np.stack(batch, axis=0)]
-
-    # batch each field
-    slots = []
-    for items in batch:
-        for i, item in enumerate(items):
-            if len(slots) < len(items):
-                slots.append([item])
-            else:
-                slots[i].append(item)
-
-    outputs = []
-    for slot in slots:
-        if isinstance(slot[0], (np.ndarray, np.bool, numbers.Number)):
-            tmp = np.stack(slot, axis=0)
-            outputs.append(tmp)
-        elif isinstance(slot[0], paddle.Tensor):
-            tmp = layers.stack(slot, axis=0)
-            outputs.append(tmp)
-        else:
-            raise RuntimeError("Unknown data type {}".format(type(slot[0])))
-    return outputs
-
-
-class _DatasetKind(object):
-    MAP = 0
-    ITER = 1
-
-    @staticmethod
-    def create_fetcher(kind, dataset, auto_collate_batch, collate_fn,
-                       drop_last):
-        if kind == _DatasetKind.MAP:
-            return _MapDatasetFetcher(dataset, auto_collate_batch, collate_fn,
-                                      drop_last)
-        elif kind == _DatasetKind.ITER:
-            return _IterableDatasetFetcher(dataset, auto_collate_batch,
-                                           collate_fn, drop_last)
-        else:
-            raise NotImplementedError("unknown Dataset kind {}".format(kind))
-
-
-class ParentWatchDog(object):
-    def __init__(self):
-        self._parent_pid = os.getppid()
-        self._parent_alive = True
-
-    def is_alive(self):
-        if self._parent_alive:
-            self._parent_alive = os.getppid() == self._parent_pid
-        return self._parent_alive
-
-
-# worker information for each workers, used for splitting data copy
-# for IteratorDataset in worker processes.
-_worker_info = None
-
-
-def get_worker_info():
-    """
-    Get DataLoader worker process information function, this function is
-    used to split data copy in worker process for IterableDataset
-    (see :code:`paddle.io.IterableDataset`), worker information contains
-    following fields:
-
-    :attr:`num_workers`: total worker process number, see `paddle.io.DataLoader`
-
-    :attr:`id`: the worker processs id, count from 0 to :attr:`num_workers - 1`
-
-    :attr:`dataset`: the dataset object in this worker process
-
-    Returns:
-        WorkerInfo: an instance of WorkerInfo which contains fields above.
-
-    .. note::
-        For mode usage and exampls, please see :code:`paddle.io.IterableDataset`
-
-    Example:
-
-        .. code-block:: python
-
-            import math
-            import paddle
-            import numpy as np
-            from paddle.io import IterableDataset, DataLoader, get_worker_info
-
-            class SplitedIterableDataset(IterableDataset):
-                def __init__(self, start, end):
-                    self.start = start
-                    self.end = end
-
-                def __iter__(self):
-                    worker_info = get_worker_info()
-                    if worker_info is None:
-                        iter_start = self.start
-                        iter_end = self.end
-                    else:
-                        per_worker = int(
-                            math.ceil((self.end - self.start) / float(
-                                worker_info.num_workers)))
-                        worker_id = worker_info.id
-                        iter_start = self.start + worker_id * per_worker
-                        iter_end = min(iter_start + per_worker, self.end)
-
-                    for i in range(iter_start, iter_end):
-                        yield np.array([i])
-
-            place = paddle.CPUPlace()
-            dataset = SplitedIterableDataset(start=2, end=9)
-            dataloader = DataLoader(
-                dataset,
-                places=place,
-                num_workers=2,
-                batch_size=1,
-                drop_last=True)
-
-            for data in dataloader:
-                print(data)
-            # outputs: [2, 5, 3, 6, 4, 7]
-
-    """
-    return _worker_info
-
-
-class WorkerInfo(object):
-    __initialized = False
-
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        self.__initialized = True
-
-    def __setattr__(self, key, val):
-        if self.__initialized:
-            raise RuntimeError("Cannot assign attributes to {} objects".format(
-                self.__class__.__name__))
-        return super(WorkerInfo, self).__setattr__(key, val)
 
 
 class _DataLoaderIterBase(object):
@@ -230,7 +65,7 @@ class _DataLoaderIterBase(object):
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
         self._use_shared_memory = loader.use_shared_memory
-        self._timeout = loader.timeout if loader.timeout > 0 else MP_INDICES_CHECK_INTERVAL
+        self._timeout = loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
         self._dataset_kind = loader.dataset_kind
         self._pin_memory = loader.pin_memory
@@ -244,7 +79,7 @@ class _DataLoaderIterBase(object):
             else:
                 self._sampler_iter = iter(
                     _InfiniteIterableSampler(self._dataset, 1))
-            self._collate_fn = loader.collate_fn
+            self._collate_fn = loader.collate_fn or default_convert_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
         # to put mini-batch data to self._blocking_queue, mini-batch data
@@ -274,6 +109,14 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._dataset_fetcher = _DatasetKind.create_fetcher(
             self._dataset_kind, self._dataset, self._auto_collate_batch,
             self._collate_fn, True)
+
+        # NOTE: _structrue_infos used to record the data structure of
+        # batch to restore batch structure after reading Tensor
+        # from blocking_queue in single-process mode. Note that
+        # only single process is used in single-process mode, we
+        # can record the data structure sequencely in a list without
+        # recording the send and recv index
+        self._structure_infos = []
 
         # NOTE: len(self._places) batch data compose as an output
         # iteration, set blocking_queue can cache 2 iteration datas
@@ -316,16 +159,16 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # read data from dataset in mini-batch
                 batch = self._dataset_fetcher.fetch(indices)
 
+                # flat batch and record structure infos
+                batch, structure = _flatten_batch(batch)
+                self._structure_infos.append(structure)
+
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
                 for slot in batch:
-                    if not isinstance(slot, core.LoDTensor):
-                        # FIXME(dkp): blocking_queue only support
-                        #             core.LoDTensorArray as input now, read
-                        #             numpy data into a LoDTensorArray here,
-                        #             should support paddle.Tensor list later
-                        if isinstance(slot, paddle.Tensor):
-                            slot = slot.numpy()
+                    if isinstance(slot, paddle.Tensor):
+                        slot = slot.value().get_tensor()
+                    elif not isinstance(slot, core.LoDTensor):
                         tmp = core.LoDTensor()
                         tmp.set(slot, core.CPUPlace())
                         slot = tmp
@@ -348,20 +191,29 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def __next__(self):
         try:
             if in_dygraph_mode():
-                return self._reader.read_next_var_list()
+                data = self._reader.read_next_var_list()
+                data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
+                    data = self._reader.read_next_list()
+                    data = [
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
+                    ]
+                    self._structure_infos = self._structure_infos[len(
+                        self._places):]
                     # static graph organized data on multi-device with list, if
                     # place number is 1, there is only 1 device, extra the data
                     # from list for devices to be compatible with dygraph mode
                     if len(self._places) == 1:
-                        return self._reader.read_next_list()[0]
-                    else:
-                        return self._reader.read_next_list()
+                        data = data[0]
                 else:
-                    return self._reader.read_next()
+                    data = self._reader.read_next()
+
+            return data
         except StopIteration:
-            self._reader.reset()
+            self._reader.shutdown()
             six.reraise(*sys.exc_info())
 
     # python2 compatibility
@@ -373,97 +225,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # need to release thread resources on unexpected exit
         if self._blocking_queue:
             self._blocking_queue.close()
-
-
-# NOTE(chenweihang): _worker_loop must be top level method to be pickled
-def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
-                 auto_collate_batch, collate_fn, init_fn, worker_id,
-                 num_workers, use_shared_memory):
-    try:
-        # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
-        # some shared memory objects may have been applied for but have not yet
-        # been put into the inter-process Queue. This part of the object needs
-        # to be cleaned up when the process ends.
-        CleanupFuncRegistrar.register(_cleanup_mmap)
-
-        # set signal handler
-        core._set_process_signal_handler()
-
-        global _worker_info
-        _worker_info = WorkerInfo(
-            id=worker_id, num_workers=num_workers, dataset=dataset)
-
-        init_exception = None
-        try:
-            if init_fn is not None:
-                init_fn(worker_id)
-            fetcher = _DatasetKind.create_fetcher(
-                dataset_kind, dataset, auto_collate_batch, collate_fn, True)
-        except:
-            init_exception = Exception("init_fn failed in worker {}: " \
-                                    "{}".format(worker_id, sys.exc_info()))
-
-        iterator_drained = False
-        parent_watch_dog = ParentWatchDog()
-
-        while parent_watch_dog.is_alive():
-            try:
-                data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
-            except queue.Empty:
-                continue
-
-            # None as poison piil, so worker event should be set
-            if data is None:
-                assert done_event.is_set() or iterator_drained, \
-                        "get None when worker done_event set"
-                break
-            # If worker done event is set but get still get data in
-            # indices_queue, remaining data should be get and skipped.
-            if done_event.is_set() or iterator_drained:
-                continue
-
-            idx, indices = data
-            try:
-                if init_exception is not None:
-                    batch = init_exception
-                    init_exception = None
-                else:
-                    batch = fetcher.fetch(indices)
-            except Exception as e:
-                if isinstance(
-                        e, StopIteration) and dataset_kind == _DatasetKind.ITER:
-                    out_queue.put(_IterableDatasetStopIteration(worker_id))
-                    iterator_drained = True
-                else:
-                    out_queue.put((idx, e))
-            else:
-                if use_shared_memory:
-                    # FIXME(dkp): _convert_to_tensor_list only support np.array
-                    #             list now, should support paddle.Tensor list
-                    new_batch = []
-                    for sample in batch:
-                        new_sample = []
-                        for s in sample:
-                            if isinstance(s, paddle.Tensor):
-                                new_sample.append(s.numpy())
-                            else:
-                                new_sample.append(s)
-                        new_batch.append(new_sample)
-                    batch = new_batch
-
-                    tensor_list = core._convert_to_tensor_list(batch)
-                    out_queue.put((idx, tensor_list))
-                    core._remove_tensor_list_mmap_fds(tensor_list)
-                else:
-                    out_queue.put((idx, batch))
-    except KeyboardInterrupt:
-        # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
-        pass
-    except:
-        six.reraise(*sys.exc_info())
-    finally:
-        if use_shared_memory:
-            _cleanup_mmap()
 
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
@@ -483,6 +244,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._rcvd_idx = 0
         self._batches_outstanding = 0
         self._task_infos = {}
+        self._structure_infos = []
 
         # indices outstand as _outstanding_capacity at first, and
         # blocking_queue capacity is also _outstanding_capacity.
@@ -617,8 +379,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             if not self._thread_done_event.is_set():
                 if batch is None:
                     self._exit_thread_expectedly()
-                elif isinstance(batch, Exception):
-                    self._exit_thread_unexpectedly()
                 else:
                     try:
                         # pack as LoDTensorArray
@@ -630,7 +390,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
                             for slot in batch:
-                                if not isinstance(slot, core.LoDTensor):
+                                if isinstance(slot, paddle.Tensor):
+                                    slot = slot.value().get_tensor()
+                                elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
                                     tmp.set(slot, core.CPUPlace())
                                     slot = tmp
@@ -654,8 +416,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # batch indices and increase _rcvd_idx
             if self._dataset_kind == _DatasetKind.ITER:
                 while self._rcvd_idx < self._send_idx:
+                    sys.stdout.flush()
                     info = self._task_infos[self._rcvd_idx]
-                    if len(info) == 2 or self._worker_status[info[0]]:
+                    if len(info) == 3 or self._worker_status[info[0]]:
                         break
                     del self._task_infos[self._rcvd_idx]
                     self._rcvd_idx += 1
@@ -669,13 +432,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
             if self._rcvd_idx in self._task_infos and \
-                    len(self._task_infos[self._rcvd_idx]) == 2:
-                return self._task_infos.pop(self._rcvd_idx)[1]
+                    len(self._task_infos[self._rcvd_idx]) == 3:
+                info = self._task_infos.pop(self._rcvd_idx)
+                self._structure_infos.append(info[2])
+                return info[1]
 
             try:
                 # [ avoid hang ]: main process may blocking at _reader.read_next when
                 # KeyboardInterrupt, we do following tradeoff:
-                # 1. get data with timeout, MP_INDICES_CHECK_INTERVAL(5s) as timeout
+                # 1. get data with timeout, MP_STATUS_CHECK_INTERVAL(5s) as timeout
                 #    default, if KeyboardInterrupt blocking, failed workers will be
                 #    checked and raise RuntimeError to quit DataLoader in timeout
                 #    exception handling.
@@ -721,12 +486,17 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._try_put_indices()
                     continue
 
-                idx, batch = data
+                idx, batch, structure = data
+                if isinstance(batch, _WorkerException):
+                    self._exit_thread_unexpectedly()
+                    batch.reraise()
+
                 if idx == self._rcvd_idx:
                     del self._task_infos[idx]
+                    self._structure_infos.append(structure)
                     return batch
                 else:
-                    self._task_infos[idx] += (batch, )
+                    self._task_infos[idx] += (batch, structure)
                     continue
 
     def _try_put_indices(self):
@@ -777,9 +547,17 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
             if in_dygraph_mode():
                 data = self._reader.read_next_var_list()
+                data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    data = [
+                        _restore_batch(d, s)
+                        for d, s in zip(data, self._structure_infos[:len(
+                            self._places)])
+                    ]
+                    self._structure_infos = self._structure_infos[len(
+                        self._places):]
                     # static graph organized data on multi-device with list, if
                     # place number is 1, there is only 1 device, extra the data
                     # from list for devices to be compatible with dygraph mode
@@ -790,7 +568,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._on_output_batch()
             return data
         except StopIteration:
-            self._reader.reset()
+            self._reader.shutdown()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
 

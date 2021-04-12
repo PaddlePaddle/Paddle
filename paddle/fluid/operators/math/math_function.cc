@@ -51,6 +51,7 @@ template struct SetConstant<platform::CPUDeviceContext, platform::complex128>;
 template struct SetConstant<platform::XPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::XPUDeviceContext, float>;
 template struct SetConstant<platform::XPUDeviceContext, double>;
+template struct SetConstant<platform::XPUDeviceContext, uint8_t>;
 template struct SetConstant<platform::XPUDeviceContext, int>;
 template struct SetConstant<platform::XPUDeviceContext, int64_t>;
 template struct SetConstant<platform::XPUDeviceContext, bool>;
@@ -146,6 +147,13 @@ void set_constant_with_place<platform::XPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+}
+
+template <>
+void set_constant_with_place<platform::NPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("NPUPlace is not supported"));
 }
 
 template <>

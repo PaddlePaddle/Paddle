@@ -50,6 +50,38 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
 
+    def pp_net(self, main_prog, startup_prog, pp_degree=2):
+        def fc_block(input_x):
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            fc_3 = paddle.fluid.layers.fc(input=fc_2, size=64, act='tanh')
+            return fc_3
+
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.unique_name.guard():
+                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role)
+                with fluid.device_guard("gpu:0"):
+                    input_x = paddle.fluid.layers.data(
+                        name="x", shape=[32], dtype='float32')
+                    input_y = paddle.fluid.layers.data(
+                        name="y", shape=[1], dtype='int64')
+
+                for stage_idx in range(pp_degree):
+                    with fluid.device_guard("gpu:" + str(stage_idx)):
+                        input_x = fc_block(input_x)
+
+                with fluid.device_guard("gpu:" + str(pp_degree - 1)):
+                    prediction = paddle.fluid.layers.fc(input=[input_x],
+                                                        size=2,
+                                                        act='softmax')
+                    cost = paddle.fluid.layers.cross_entropy(
+                        input=prediction, label=input_y)
+                    avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        return avg_cost, strategy
+
     def optimizer(self,
                   loss,
                   strategy,
@@ -146,7 +178,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             strategy.gradient_merge_configs = {"k_steps": 2, "avg": True}
         elif name == "sharding":
             strategy.sharding = True
-            strategy.sharding_configs = {"fuse_broadcast_MB": 0.2}
+            strategy.sharding_configs = {
+                "sharding_segment_strategy": "segment_broadcast_MB",
+                "segment_broadcast_MB": 0.2,
+                "sharding_degree": 2,
+            }
         elif name == "recompute-offload":
             strategy.recompute = True
             strategy.recompute_configs = {

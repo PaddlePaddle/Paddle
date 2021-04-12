@@ -162,7 +162,6 @@ function compile_install_paddlepaddle {
   export BUILD_TYPE=Release
   export CUDA_ARCH_NAME=Auto
   export WITH_DISTRIBUTE=OFF
-  export PYTHON_ABI=cp37-cp37m
   export CMAKE_BUILD_TYPE=Release
   [ -d build ] && rm -rf build
   bash paddle/scripts/paddle_build.sh build $(nproc)
@@ -187,7 +186,7 @@ function run_op_benchmark_test {
   done
   # install tensorflow for testing accuary
   pip install tensorflow==2.3.0 tensorflow-probability
-  for branch_name in "develop" "test_pr"
+  for branch_name in "develop" "test"
   do
     git checkout $branch_name
     [ $? -ne 0 ] && LOG "[FATAL] Missing branch ${branch_name}." && exit 7
@@ -263,7 +262,7 @@ function summary_problems {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (GaoWei8(Recommend), Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
     exit $exit_code
   fi
 }
