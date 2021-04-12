@@ -18,8 +18,19 @@ import math
 import numbers
 
 import paddle
+import paddle.nn.functional as F
+
 from paddle.nn.functional import affine_grid, grid_sample
 from paddle.nn.functional import pad as paddle_pad
+
+import sys
+
+if sys.version_info < (3, 3):
+    Sequence = collections.Sequence
+    Iterable = collections.Iterable
+else:
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
 
 
 def _assert_image_tensor(img, data_format):
@@ -480,5 +491,56 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
         mode=padding_mode,
         value=float(fill),
         data_format='N' + data_format)
+
+    return img.squeeze(0)
+
+
+def resize(img, size, interpolation='bilinear', data_format='CHW'):
+    """
+    Resizes the image to given size
+
+    Args:
+        input (paddle.Tensor): Image to be resized.
+        size (int|list|tuple): Target size of input data, with (height, width) shape.
+        interpolation (int|str, optional): Interpolation method. when use paddle backend, 
+            support method are as following: 
+            - "nearest"  
+            - "bilinear"
+            - "bicubic"
+            - "trilinear"
+            - "area"
+            - "linear"
+        data_format (str, optional): paddle.Tensor format
+            - 'CHW'
+            - 'HWC'
+    Returns:
+        paddle.Tensor: Resized image.
+
+    """
+    _assert_image_tensor(img, data_format)
+
+    if not (isinstance(size, int) or
+            (isinstance(size, Iterable) and len(size) == 2)):
+        raise TypeError('Got inappropriate size arg: {}'.format(size))
+
+    if isinstance(size, int):
+        w, h = img.size
+        if (w <= h and w == size) or (h <= w and h == size):
+            return img
+        if w < h:
+            ow = size
+            oh = int(size * h / w)
+        else:
+            oh = size
+            ow = int(size * w / h)
+    else:
+        oh, ow = size
+
+    img = img.unsqueeze(0)
+    img = F.interpolate(
+        img,
+        size=(oh, ow),
+        mode=interpolation.lower(),
+        data_format='N' + data_format.upper())
 
     return img.squeeze(0)
