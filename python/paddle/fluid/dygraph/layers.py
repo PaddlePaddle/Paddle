@@ -1373,7 +1373,7 @@ class Layer(core.Layer):
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
         Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional): The device of the Layer which want to be stored. 
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored. 
             If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
             index of the GPUs or XPUs. Default: None. 
             
