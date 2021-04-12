@@ -91,7 +91,6 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
                           slot_lengths, hidden_size, 0, batch_size);
 #endif
 #ifdef PADDLE_WITH_HETERPS
->>>>>>> upstream/develop
   auto hidden_size = ctx.Attr<int>("size");
   auto gpu_ps_ptr = paddle::framework::PSGPUWrapper::GetInstance();
   gpu_ps_ptr->PushSparseGrad(ctx.GetPlace(), 0, all_keys, all_grad_values,

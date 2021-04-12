@@ -43,10 +43,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         trainer_endpoints = ''
         current_endpoint = ''
         num_trainers = 0
-        if os.getenv('PADDLE_TRAINER_ENDPOINTS') and os.getenv(
-                'PADDLE_CURRENT_ENDPOINT'):
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS'):
             trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
-            current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
+            current_endpoint = trainer_endpoints.split(',')[trainer_id]
             num_trainers = len(trainer_endpoints.split(','))
 
         return {
