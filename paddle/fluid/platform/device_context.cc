@@ -255,7 +255,7 @@ NPUDeviceContext::~NPUDeviceContext() {
 
 void NPUDeviceContext::Wait() const {
   platform::RecordEvent record_event("NPUDeviceContext/wait");
-  VLOG(4) << "NPU context Wait";
+  VLOG(4) << "NPU context(" << this << ")  Wait";
   stream_->Wait();
 }
 
