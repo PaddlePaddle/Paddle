@@ -32,10 +32,28 @@ __all__ = [
     #            'cuda_places',
     #            'CUDAPinnedPlace',
     #            'CUDAPlace',
-    'is_compiled_with_cuda'
+    'is_compiled_with_cuda',
+    'is_compiled_with_npu'
 ]
 
 _cudnn_version = None
+
+
+# TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
+# for consistent.
+def is_compiled_with_npu():
+    """
+    Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
+
+    Returns (bool): `True` if NPU is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_npu = paddle.is_compiled_with_npu()
+    """
+    return core.is_compiled_with_npu()
 
 
 def is_compiled_with_xpu():
@@ -165,6 +183,7 @@ def set_device(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
+
     framework._set_expected_place(place)
     return place
 

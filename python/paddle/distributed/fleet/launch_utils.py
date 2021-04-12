@@ -593,8 +593,8 @@ def get_ascend_npus(npus):
     if npus is None:
         count = fluid.core.NPUDevice.get_device_count()
         if count <= 0:
-            return ret
-        ret = [x for x in range(count)]
+            return None
+        ret = [str(x) for x in range(count)]
     else:
         ret = [x.strip() for x in npus.split(',')]
     return ret

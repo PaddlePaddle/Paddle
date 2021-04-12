@@ -49,8 +49,8 @@ bool CUDAStream::Init(const Place& place, const Priority& priority) {
         cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0));
 #endif
   }
-  callback_manager_.reset(new StreamCallbackManager(stream_));
-  VLOG(3) << "CUDAStream Init stream: " << stream_
+  callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  VLOG(3) << "GPUStream Init stream: " << stream_
           << ", priority: " << static_cast<int>(priority);
   return true;
 }

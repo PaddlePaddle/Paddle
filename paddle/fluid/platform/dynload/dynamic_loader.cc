@@ -414,12 +414,7 @@ void* GetMKLMLDsoHandle() {
 }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
-#if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "Create custom cpp op outside framework do not support Apple."));
-#else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
-#endif
 }
 
 void* GetNvtxDsoHandle() {

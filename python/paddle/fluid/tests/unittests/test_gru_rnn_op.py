@@ -44,8 +44,9 @@ class TestGRUOp(OpTest):
 
     def setUp(self):
         self.op_type = "rnn"
-        self.dtype = "float64"
-        self.sequence_length = np.array(
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+        self.sequence_length = None if core.is_compiled_with_rocm(
+        ) else np.array(
             [12, 11, 10, 9, 8, 7, 6, 5], dtype=np.int32)
         self.num_layers = 1
         self.is_bidirec = False
@@ -82,6 +83,24 @@ class TestGRUOp(OpTest):
         flat_w = get_params_for_net(rnn1)
 
         output, last_hidden = rnn1(input, sequence_length=self.sequence_length)
+
+        if core.is_compiled_with_rocm():
+
+            def rocm_rnn_get_place():
+                places = [core.CUDAPlace(0)]
+                return places
+
+            self._get_places = rocm_rnn_get_place
+
+            if self.is_bidirec:
+                for i in range(0, len(flat_w), 4):
+                    flat_w[i + 1], flat_w[i + 2] = flat_w[i + 2], flat_w[i + 1]
+
+            for i in range(len(flat_w)):
+                w = np.split(flat_w[i][1], 3, 0)
+                w = [w[1], w[0], w[2]]
+                w = np.concatenate(w)
+                flat_w[i] = (flat_w[i][0], w)
 
         init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
                            self.hidden_size)).astype(self.dtype)
