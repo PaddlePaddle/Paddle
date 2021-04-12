@@ -25,6 +25,11 @@ import gradient_checker
 
 from decorator_helper import prog_scope
 
+paddle.enable_static()
+SEED = 2021
+np.random.seed(SEED)
+paddle.seed(SEED)
+
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
