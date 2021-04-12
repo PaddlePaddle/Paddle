@@ -231,9 +231,9 @@ if [ ${WITH_GPU:-OFF} == "ON" ];then
 
     set +e
     if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
-        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" "$precision_cases" )
+        UT_list_res=$(python ${PADDLE_ROOT}/tools/windows/get_prec_ut_list.py "$UT_list" )
         UT_list_prec=$(echo "${UT_list_res}" | grep -v 'PRECISION_TEST')
-        UT_list_prec_info=$(echo "${UT_list_res}" | grep 'PRECISION_TEST')
+        echo "${UT_list_res}" | grep 'PRECISION_TEST'
         UT_list=$UT_list_prec
     fi
     set -e
