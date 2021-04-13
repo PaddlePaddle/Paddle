@@ -699,24 +699,51 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f;
+#ifdef PADDLE_WITH_HIP
+    // MIOPEN ONLY support beta to be 0.0f
+    ScalingParamType<T> beta = 0.0f;
+#else
     ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+#endif
     VLOG(4) << "Conv_grad: use_addto = " << ctx.Attr<bool>("use_addto");
 
     if (input_grad) {
 // When beta is 0, it is unnecessary to reset input_grad.
 // When beta is 1, the output cannot be reset since addt strategy used.
 #ifdef PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
-          [&](void* cudnn_workspace_ptr) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                platform::dynload::miopenConvolutionBackwardData(
-                    handle, &alpha, args1.odesc.desc(), output_grad_data,
-                    args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
-                    data_algo, &beta, args1.idesc.desc(),
-                    transformed_input_grad_data, cudnn_workspace_ptr,
-                    workspace_size));
-          },
-          workspace_size);
+      if (ctx.Attr<bool>("use_addto")) {
+        Tensor temp_tensor(transformed_input_grad.type());
+        temp_tensor.Resize(transformed_input_grad.dims());
+        T* temp_tensor_data = temp_tensor.mutable_data<T>(ctx.GetPlace());
+        workspace_handle.RunFunc(
+            [&](void* cudnn_workspace_ptr) {
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::miopenConvolutionBackwardData(
+                      handle, &alpha, args1.odesc.desc(), output_grad_data,
+                      args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
+                      data_algo, &beta, args1.idesc.desc(), temp_tensor_data,
+                      cudnn_workspace_ptr, workspace_size));
+            },
+            workspace_size);
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenOpTensor(
+            handle, miopenTensorOpAdd, &alpha, args1.idesc.desc(),
+            transformed_input_grad_data, &alpha, args1.idesc.desc(),
+            temp_tensor_data, &beta, args1.idesc.desc(),
+            transformed_input_grad_data));
+      } else {
+        workspace_handle.RunFunc(
+            [&](void* cudnn_workspace_ptr) {
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::miopenConvolutionBackwardData(
+                      handle, &alpha, args1.odesc.desc(), output_grad_data,
+                      args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
+                      data_algo, &beta, args1.idesc.desc(),
+                      transformed_input_grad_data, cudnn_workspace_ptr,
+                      workspace_size));
+            },
+            workspace_size);
+      }
+
 #else
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
