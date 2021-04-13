@@ -167,8 +167,41 @@ void TensorFromVector(const std::vector<T>& src,
   // Since vector is on cpu, I think this function should be a "sync" operation,
   // so pass nullptr as stream to  memory::Copy().
   else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 src_place, src_ptr, size, nullptr);
+    //    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+    //                 src_place, src_ptr, size, nullptr);
+
+    //  1. vector -> cpu tensor
+    Tensor npu_pinned_tensor(dst->type());
+    platform::NPUPinnedPlace npu_pinned_place;
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data<T>(dst->dims(), npu_pinned_place);
+
+    // cpu -> npu_pinned_place
+    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
+
+    //  2. copy cpu tensor -> npu tensor
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+        npu_pinned_place, npu_pinned_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+
+    //  3. 标记 event
+    int dev_idx = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+    auto event = platform::NpuEventResourcePool::Instance().New(dev_idx);
+
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtRecordEvent(
+        event.get(),
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream()));
+
+    //  -----end
+    //    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+    //                 src_place, src_ptr, size,
+    //                 reinterpret_cast<const
+    //                 platform::NPUDeviceContext&>(ctx).stream());
+    //    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(
+    //            reinterpret_cast<const
+    //            platform::NPUDeviceContext&>(ctx).stream()
+    //    ));
   }
 #endif
 }

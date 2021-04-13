@@ -85,6 +85,25 @@ struct NPUPlace {
   int device;
 };
 
+struct NPUPinnedPlace {
+  NPUPinnedPlace() : NPUPinnedPlace(0) {}
+  explicit NPUPinnedPlace(int d) : device(d) {}
+
+  inline int GetDeviceId() const { return device; }
+  // needed for variant equality comparison
+  inline bool operator==(const NPUPinnedPlace &o) const {
+    return device == o.device;
+  }
+  inline bool operator!=(const NPUPinnedPlace &o) const {
+    return !(*this == o);
+  }
+  inline bool operator<(const NPUPinnedPlace &o) const {
+    return device < o.device;
+  }
+
+  int device;
+};
+
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const XPUPlace &) const { return false; }
