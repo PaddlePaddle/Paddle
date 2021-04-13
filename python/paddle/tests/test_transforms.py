@@ -85,6 +85,18 @@ class TestTransformsCV2(unittest.TestCase):
 
         self.do_transform(trans)
 
+    def test_trans_tensor(self):
+        normalize = transforms.Normalize(mean=[0., 0., 0.], std=[1., 1., 1.])
+
+        trans = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            normalize,
+        ])
+
+        self.do_transform(trans)
+
     def test_normalize(self):
         normalize = transforms.Normalize(mean=0.5, std=0.5)
         trans = transforms.Compose([transforms.Transpose(), normalize])
@@ -364,21 +376,28 @@ class TestFunctional(unittest.TestCase):
     def test_center_crop(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img)
 
         np_cropped_img = F.center_crop(np_img, 4)
         pil_cropped_img = F.center_crop(pil_img, 4)
+        tensor_cropped_img = F.center_crop(tensor_img, 4)
 
         np.testing.assert_almost_equal(np_cropped_img,
                                        np.array(pil_cropped_img))
+        np.testing.assert_almost_equal(
+            np_cropped_img, tensor_cropped_img.numpy().transpose(1, 2, 0))
 
     def test_pad(self):
         np_img = (np.random.rand(28, 24, 3)).astype('uint8')
         pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img)
 
         np_padded_img = F.pad(np_img, [1, 2], padding_mode='reflect')
         pil_padded_img = F.pad(pil_img, [1, 2], padding_mode='reflect')
-
+        tensor_padded_img = F.pad(tensor_img, [1, 2], padding_mode='reflect')
         np.testing.assert_almost_equal(np_padded_img, np.array(pil_padded_img))
+        np.testing.assert_almost_equal(
+            np_padded_img, tensor_padded_img.numpy().transpose(1, 2, 0))
 
         pil_p_img = pil_img.convert('P')
         pil_padded_img = F.pad(pil_p_img, [1, 2])
@@ -387,12 +406,16 @@ class TestFunctional(unittest.TestCase):
     def test_resize(self):
         np_img = (np.zeros([28, 24, 3])).astype('uint8')
         pil_img = Image.fromarray(np_img)
+        tensor_img = F.to_tensor(pil_img)
 
         np_reseized_img = F.resize(np_img, 40)
         pil_reseized_img = F.resize(pil_img, 40)
+        tensor_reseized_img = F.resize(tensor_img, 40)
 
         np.testing.assert_almost_equal(np_reseized_img,
                                        np.array(pil_reseized_img))
+        np.testing.assert_almost_equal(
+            np_reseized_img, tensor_reseized_img.numpy().transpose(1, 2, 0))
 
         gray_img = (np.zeros([28, 32])).astype('uint8')
         gray_resize_img = F.resize(gray_img, 40)
