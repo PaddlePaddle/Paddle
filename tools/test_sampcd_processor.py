@@ -162,10 +162,10 @@ class Test_get_api_md5(unittest.TestCase):
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
-                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
-                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
-                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
+                """paddle.one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55one'))""",
+                """paddle.two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55two'))""",
+                """paddle.three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6cthree'))""",
+                """paddle.four_plus_four (paddle.four_plus_four, ('document', 'ff0f188c95030158cc6398d2a6c5four'))""",
             ]))
 
     def tearDown(self):
@@ -174,11 +174,14 @@ class Test_get_api_md5(unittest.TestCase):
 
     def test_get_api_md5(self):
         res = get_api_md5('paddle/fluid/API_PR.spec')
-        self.assertEqual("'md5sum of one_plus_one'", res['one_plus_one'])
-        self.assertEqual("'md5sum of two_plus_two'", res['two_plus_two'])
-        self.assertEqual("'md5sum of three_plus_three'",
-                         res['three_plus_three'])
-        self.assertEqual("'md5sum of four_plus_four'", res['four_plus_four'])
+        self.assertEqual("ff0f188c95030158cc6398d2a6c55one",
+                         res['paddle.one_plus_one'])
+        self.assertEqual("ff0f188c95030158cc6398d2a6c55two",
+                         res['paddle.two_plus_two'])
+        self.assertEqual("ff0f188c95030158cc6398d2a6cthree",
+                         res['paddle.three_plus_three'])
+        self.assertEqual("ff0f188c95030158cc6398d2a6c5four",
+                         res['paddle.four_plus_four'])
 
 
 class Test_get_incrementapi(unittest.TestCase):
@@ -187,16 +190,16 @@ class Test_get_incrementapi(unittest.TestCase):
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec'))
         with open(self.api_pr_spec_filename, 'w') as f:
             f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
-                """two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of two_plus_two'))""",
-                """three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of three_plus_three'))""",
-                """four_plus_four (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of four_plus_four'))""",
+                """paddle.one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55one'))""",
+                """paddle.two_plus_two (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55two'))""",
+                """paddle.three_plus_three (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6cthree'))""",
+                """paddle.four_plus_four (paddle.four_plus_four, ('document', 'ff0f188c95030158cc6398d2a6c5four'))""",
             ]))
         self.api_dev_spec_filename = os.path.abspath(
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_DEV.spec'))
         with open(self.api_dev_spec_filename, 'w') as f:
             f.write("\n".join([
-                """one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'md5sum of one_plus_one'))""",
+                """paddle.one_plus_one (ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ('document', 'ff0f188c95030158cc6398d2a6c55one'))""",
             ]))
         self.api_diff_spec_filename = os.path.abspath(
             os.path.join(os.getcwd(), "dev_pr_diff_api.spec"))
@@ -210,9 +213,10 @@ class Test_get_incrementapi(unittest.TestCase):
         get_incrementapi()
         with open(self.api_diff_spec_filename, 'r') as f:
             lines = f.readlines()
-            self.assertCountEqual(
-                ["two_plus_two\n", "three_plus_three\n", "four_plus_four\n"],
-                lines)
+            self.assertCountEqual([
+                "paddle.two_plus_two\n", "paddle.three_plus_three\n",
+                "paddle.four_plus_four\n"
+            ], lines)
 
 
 class Test_get_wlist(unittest.TestCase):

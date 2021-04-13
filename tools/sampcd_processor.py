@@ -610,9 +610,13 @@ def get_api_md5(path):
     API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
                           path)
     pat = re.compile(r'\((paddle[^,]+)\W*document\W*([0-9a-z]{32})')
+    patArgSpec = re.compile(
+        r'^(paddle[^,]+)\s+\(ArgSpec.*document\W*([0-9a-z]{32})')
     with open(API_spec) as f:
         for line in f.readlines():
             mo = pat.search(line)
+            if not mo:
+                mo = patArgSpec.search(line)
             if mo:
                 api_md5[mo.group(1)] = mo.group(2)
     return api_md5
