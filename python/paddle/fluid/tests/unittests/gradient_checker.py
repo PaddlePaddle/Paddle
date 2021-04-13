@@ -26,6 +26,8 @@ import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
+numerical_idx = 0
+analytical_idx = 0
 
 def _product(t):
     if isinstance(t, int):
@@ -120,7 +122,10 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         "y_size" is the number of elements in each y_i.
     """
 
-    print('_compute_numerical_jacobian')
+    global numerical_idx
+    numerical_idx = numerical_idx + 1
+
+    print('_compute_numerical_jacobian: ', numerical_idx)
     # print('len(x): ', len(x))
     print('x: ', x)
     # print('len(y): ', len(y))
@@ -161,6 +166,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
 
     print('len(jacobian): ', len(jacobian))
+    # print('jacobian.shape: ', np.asarray(jacobian).shape)
     print('jacobian: ', jacobian)
 
     return jacobian
@@ -184,7 +190,9 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         "dy_size" is the number of elements in y.
     """
     
-    print('_compute_analytical_jacobian')
+    global analytical_idx
+    analytical_idx = analytical_idx + 1
+    print('_compute_analytical_jacobian: ', analytical_idx)
     # print('len(x): ', len(x))
     print('x: ', x)
     # print('len(y): ', len(y))
@@ -234,6 +242,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         _set_item(dy_t, i, 0, np_type)
 
     print('len(jacobian): ', len(jacobian))
+    # print('jacobian.shape: ', np.asarray(jacobian).shape)
     print('jacobian: ', jacobian)
 
     return jacobian
@@ -270,11 +279,14 @@ def grad_check(x,
 
     print('grad_check')
 
-    print('len(x): ', len(x))
+    print('x.length: ', len(x))
+    print('x.shape: ', np.asarray(x).shape)
     print('x: ', x)
-    print('len(y): ', len(y))
+    print('y.length: ', len(y))
+    print('y.shape: ', np.asarray(y).shape)
     print('y: ', y)
-    print('len(x_init): ', len(x_init))
+    print('x_init.length: ', len(x_init))
+    print('x_init.shape: ', np.asarray(x_init).shape)
     print('x_init: ', x_init)
 
     def fail_test(msg):
@@ -319,7 +331,8 @@ def grad_check(x,
         for xi in x
     ]
 
-    print('len(numerical): ', len(numerical))
+    print('numerical.length: ', len(numerical))
+    print('numerical.shape: ', np.asarray(numerical).shape)
     print('numerical: ', numerical)
 
     # [y_idx, x_idx]
@@ -342,7 +355,8 @@ def grad_check(x,
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
-    print('len(analytical): ', len(analytical))
+    print('analytical.length: ', len(analytical))
+    print('analytical.shape: ', np.asarray(analytical).shape)
     print('analytical: ', analytical)
 
     for i, (x_idx,
@@ -426,21 +440,27 @@ def double_grad_check(x,
             var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
         ]
 
-    print('len(x): ', len(x))
+    print('x.length: ', len(x))
+    print('x.shape: ', np.asarray(x).shape)
     print('x: ', x)
-    print('len(y): ', len(y))
+    print('y.length: ', len(y))
+    print('y.shape: ', np.asarray(y).shape)
     print('y: ', y)
-    print('len(y_grads): ', len(y_grads))
+    print('y_grads.length: ', len(y_grads))
+    print('y_grads.shape: ', np.asarray(y_grads).shape)
     print('y_grads: ', y_grads)
-    print('len(x_init): ', len(x_init))
+    print('x_init.length: ', len(x_init))
+    print('x_init.shape: ', np.asarray(x_init).shape)
     print('x_init: ', x_init)
-    print('len(y_grads_init): ', len(y_grads_init))
+    print('y_grads_init.length: ', len(y_grads_init))
+    print('y_grads_init.shape: ', np.asarray(y_grads_init).shape)
     print('y_grads_init: ', y_grads_init)
 
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
 
-    print('len(target_grads): ', len(target_grads))
+    print('target_grads.length: ', len(target_grads))
+    print('target_grads.shape: ', np.asarray(target_grads).shape)
     print('target_grads: ', target_grads)
 
     # y_grads are the input of first-order backward,
