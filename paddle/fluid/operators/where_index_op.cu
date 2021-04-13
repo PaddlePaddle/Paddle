@@ -12,8 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
+#include <algorithm>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/where_index_op.h"
@@ -43,6 +50,9 @@ __global__ void KeSetTrueIndex(int64_t *out_ptr, const T *cond_data,
   const int64_t tid = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (int64_t idx = tid; idx < numel; idx += gridDim.x * blockDim.x) {
+    // true_num_array is calculated by cub::InclusiveSum,
+    // and true_num_array if 1 or 0 before calculated,
+    // so we need substract 1 to get true index
     const int64_t true_index = true_num_array[idx] - 1;
     if (static_cast<bool>(cond_data[idx])) {
       int64_t rank_index = idx;
@@ -68,35 +78,39 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     auto dims = condition->dims();
     const int rank = dims.size();
 
-    auto d_tmp_mem = memory::Alloc(dev_ctx, (numel + rank) * sizeof(int64_t));
-    auto h_tmp_mem =
+    auto d_array_mem = memory::Alloc(dev_ctx, (numel + rank) * sizeof(int64_t));
+    auto h_array_mem =
         memory::Alloc(platform::CPUPlace(), (rank + 1) * sizeof(int64_t));
 
     // "stride_array" is an array and len(stride_array)==rank,
     // each element is the stride of each dimension(the length from i to i+1)
-    int64_t *d_stride_array = reinterpret_cast<int64_t *>(d_tmp_mem->ptr());
-    int64_t *d_true_num = d_stride_array + rank;
-    int64_t *h_stride_array = reinterpret_cast<int64_t *>(h_tmp_mem->ptr());
-    int64_t *h_num = h_stride_array + rank;
+    int64_t *d_stride_array = reinterpret_cast<int64_t *>(d_array_mem->ptr());
+    // "true_num_array" is an array and len(stride_array)==numel,
+    // at the beginning, set 1 if condition[i] == true else 0
+    // then calculate prefix sum by cub::InclusiveSum to get prefix true number
+    int64_t *d_true_num_array = d_stride_array + rank;
+    int64_t *h_stride_array = reinterpret_cast<int64_t *>(h_array_mem->ptr());
+    int64_t *h_total_true_num = h_stride_array + rank;
 
-    // calculate cub temp memory
-    size_t cub_tmp_size = 0;
-    cub::DeviceScan::InclusiveSum(nullptr, cub_tmp_size, d_true_num, d_true_num,
-                                  numel, dev_ctx.stream());
-    auto cub_tmp = memory::Alloc(dev_ctx, cub_tmp_size * sizeof(int64_t));
-    void *ptr_mem = cub_tmp->ptr();
+    // alloce cub memory
+    size_t cub_size = 0;
+    cub::DeviceScan::InclusiveSum(nullptr, cub_size, d_true_num_array,
+                                  d_true_num_array, numel, dev_ctx.stream());
+    auto cub_mem = memory::Alloc(dev_ctx, cub_size * sizeof(int64_t));
+    void *cub_data = cub_mem->ptr();
 
-    // set d_true_num[i]=1 if cond_data[i]=true
+    // set d_true_num_array[i]=1 if cond_data[i]=true else 0
     const int threads = std::min(numel, static_cast<int64_t>(128));
     const int64_t need_grids = (numel + threads - 1) / threads;
     const int grids = std::min(need_grids, static_cast<int64_t>(256));
-
     KeGetTrueNum<T><<<grids, threads, 0, dev_ctx.stream()>>>(cond_data, numel,
-                                                             d_true_num);
-    // calculate prefix sum
-    cub::DeviceScan::InclusiveSum(ptr_mem, cub_tmp_size, d_true_num, d_true_num,
-                                  numel, dev_ctx.stream());
-    // calculate stride
+                                                             d_true_num_array);
+
+    // calculate prefix sum, get the prefix true number
+    cub::DeviceScan::InclusiveSum(cub_data, cub_size, d_true_num_array,
+                                  d_true_num_array, numel, dev_ctx.stream());
+
+    // calculate each dimension's stride
     h_stride_array[rank - 1] = 1;
     for (int i = rank - 2; i >= 0; i--) {
       h_stride_array[i] = h_stride_array[i + 1] * dims[i + 1];
@@ -104,21 +118,25 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  d_stride_array, platform::CPUPlace(), h_stride_array,
                  rank * sizeof(int64_t), dev_ctx.stream());
+
     // get total ture number and set output size
-    memory::Copy(platform::CPUPlace(), h_num,
+    memory::Copy(platform::CPUPlace(), h_total_true_num,
                  BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_true_num + numel - 1, sizeof(int64_t), dev_ctx.stream());
+                 d_true_num_array + numel - 1, sizeof(int64_t),
+                 dev_ctx.stream());
     dev_ctx.Wait();
-    int64_t true_num = *h_num;
+
+    int64_t true_num = *h_total_true_num;
     out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
-    auto out_ptr = out->mutable_data<int64_t>(context.GetPlace());
+    auto out_data = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {
       return;
     }
-    // calculate output index
+
+    // using true_num_array and stride_array to calculate the output index
     KeSetTrueIndex<T><<<grids, threads, 0, dev_ctx.stream()>>>(
-        out_ptr, cond_data, numel, d_stride_array, rank, d_true_num);
+        out_data, cond_data, numel, d_stride_array, rank, d_true_num_array);
   }
 };
 
