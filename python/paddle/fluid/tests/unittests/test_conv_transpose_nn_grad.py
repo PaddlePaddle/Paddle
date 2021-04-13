@@ -71,9 +71,6 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         dtype = np.float64
         if core.is_compiled_with_rocm():
             dtype = np.float32
-        use_cudnn = True
-        if core.is_compiled_with_rocm():
-            use_cudnn = False
         x = layers.data('x', shape, False, dtype)
         y = layers.conv2d_transpose(
             input=x,
@@ -81,7 +78,7 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
             filter_size=1,
             padding=[1, 0, 0, 1],
             bias_attr=False,
-            use_cudnn=use_cudnn)
+            use_cudnn=True)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
