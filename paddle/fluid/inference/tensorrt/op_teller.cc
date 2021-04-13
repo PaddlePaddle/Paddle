@@ -169,7 +169,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "reduce_mean",
                                              "conv3d",
                                              "conv3d_transpose",
-                                             "pool3d"};
+                                             "pool3d",
+                                             "mish"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
