@@ -528,6 +528,8 @@ class MKLDNNDeviceContextThreadLocals {
     // Recently registered data_format. This is needed to
     // know for converting MKL-DNN Tensor to non MKL-DNN
     paddle::framework::DataLayout cur_paddle_data_layout;
+    std::string key_suffix;  // Key identifying current Executor
+    bool key_attach_thread_id = true;
 
     Body();
     void set_cur_mkldnn_session_id(size_t sid);
@@ -537,6 +539,10 @@ class MKLDNNDeviceContextThreadLocals {
     void set_cur_paddle_data_layout(framework::DataLayout dl);
     framework::DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
+    void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
+    const std::string& get_key_suffix(void) const { return key_suffix; }
+    void disable_tid_in_key(void) { key_attach_thread_id = false; }
+    bool is_tid_used_in_key(void) const { return key_attach_thread_id; }
   };
   MKLDNNDeviceContextThreadLocals() = default;
   MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
@@ -580,14 +586,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Remove all entries from the blob map
   void ResetBlobMap();
 
-  // Set a suffix to be added to key
-  void SetKeySuffix(const std::string& suffix) { key_suffix_ = suffix; }
-  const std::string& GetKeySuffix(void) const { return key_suffix_; }
-
-  // Disable adding  thread ID to the key
-  void DisableThreadInfoInKey(void) { key_attach_thread_id_ = false; }
-  bool IsThreadIdUsedInKey(void) const { return key_attach_thread_id_; }
-
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
@@ -609,8 +607,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
-  std::string key_suffix_;  // Key identifying current Executor
-  bool key_attach_thread_id_ = true;
 };
 #endif
 
