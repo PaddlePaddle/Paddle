@@ -106,8 +106,19 @@ class FcOpConverter : public OpConverter {
     auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
-      auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs,
-                                            n_output, weight.get(), bias.get());
+      nvinfer1::ILayer* fc_layer = nullptr;
+      if (enable_int8) {
+        CHECK(op_desc.HasAttr("out_threshold"));
+        float out_scale =
+            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+        nvinfer1::DimsHW nv_ksize(1, 1);
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
+                                        nv_ksize, weight.get(), bias.get());
+        engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+      } else {
+        fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs,
+                                        n_output, weight.get(), bias.get());
+      }
 
       auto output_name = op_desc.Output("Out").front();
       if (activation_type == "relu") {

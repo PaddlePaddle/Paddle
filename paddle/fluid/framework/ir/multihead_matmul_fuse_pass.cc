@@ -535,6 +535,67 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
 
+    auto* mul0_op_desc = mul0->Op();
+    auto* mul1_op_desc = mul1->Op();
+    auto* mul2_op_desc = mul2->Op();
+    if (mul0_op_desc->HasAttr("enable_int8")) {
+      multihead_op_desc.SetAttr("enable_int8",
+                                mul0_op_desc->GetAttr("enable_int8"));
+      // all mul op has same input.
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("X_scale"));
+      auto weight_scale0 = BOOST_GET_CONST(
+          std::vector<float>, mul0_op_desc->GetAttr("weight_scale"));
+      auto weight_scale1 = BOOST_GET_CONST(
+          std::vector<float>, mul1_op_desc->GetAttr("weight_scale"));
+      auto weight_scale2 = BOOST_GET_CONST(
+          std::vector<float>, mul2_op_desc->GetAttr("weight_scale"));
+      auto weight_max = std::max(weight_scale0, weight_scale1);
+      weight_max = std::max(weight_max, weight_scale2);
+      multihead_op_desc.SetAttr("weight_scale", weight_max);
+
+      if (mul0_op_desc->HasAttr("out_threshold")) {
+        auto out_scale0 =
+            BOOST_GET_CONST(float, mul0_op_desc->GetAttr("out_threshold"));
+        auto out_scale1 =
+            BOOST_GET_CONST(float, mul1_op_desc->GetAttr("out_threshold"));
+        auto out_scale2 =
+            BOOST_GET_CONST(float, mul2_op_desc->GetAttr("out_threshold"));
+        auto out_scale_max = std::max(out_scale0, out_scale1);
+        out_scale_max = std::max(out_scale_max, out_scale2);
+        multihead_op_desc.SetAttr("out_threshold", out_scale_max);
+      }
+    }
+
+    bool enable_int8 = mul0_op_desc->HasAttr("enable_int8");
+    if (enable_int8) {
+      multihead_op_desc.SetAttr("enable_int8", enable_int8);
+      // all mul op has same input.
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("X_scale"));
+      auto weight_scale0 = BOOST_GET_CONST(
+          std::vector<float>, mul0_op_desc->GetAttr("weight_scale"));
+      auto weight_scale1 = BOOST_GET_CONST(
+          std::vector<float>, mul1_op_desc->GetAttr("weight_scale"));
+      auto weight_scale2 = BOOST_GET_CONST(
+          std::vector<float>, mul2_op_desc->GetAttr("weight_scale"));
+      auto weight_max = std::max(weight_scale0, weight_scale1);
+      weight_max = std::max(weight_max, weight_scale2);
+      multihead_op_desc.SetAttr("weight_scale", weight_max);
+
+      if (mul0_op_desc->HasAttr("out_threshold")) {
+        auto out_scale0 =
+            BOOST_GET_CONST(float, mul0_op_desc->GetAttr("out_threshold"));
+        auto out_scale1 =
+            BOOST_GET_CONST(float, mul1_op_desc->GetAttr("out_threshold"));
+        auto out_scale2 =
+            BOOST_GET_CONST(float, mul2_op_desc->GetAttr("out_threshold"));
+        auto out_scale_max = std::max(out_scale0, out_scale1);
+        out_scale_max = std::max(out_scale_max, out_scale2);
+        multihead_op_desc.SetAttr("out_threshold", out_scale_max);
+      }
+    }
+
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
     IR_NODE_LINK_TO(input0, multihead);

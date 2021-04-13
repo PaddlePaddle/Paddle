@@ -40,8 +40,22 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* bias_v = scope.FindVar(bias_name);
     auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
 
-    float* weight_data =
-        engine_->GetWeightCPUData(weight_name, weight_t, false);
+    float* weight_data = nullptr;
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
+    float in_scale = 0.;
+
+    if (enable_int8) {
+      CHECK(op_desc.HasAttr("Input_scale"));
+      in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
+      auto weight_scale =
+          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
+      weight_data =
+          engine_->GetWeightCPUData(weight_name, weight_t, true, weight_scale);
+      engine_->SetTensorDynamicRange(input, in_scale);
+    } else {
+      weight_data = engine_->GetWeightCPUData(weight_name, weight_t, false);
+    }
+
     float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t, false);
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_t->numel());
@@ -117,8 +131,24 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
 
-        auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input,
-                                              n, weight, bias);
+        nvinfer1::ILayer* fc_layer = nullptr;
+        float dp_probs = 1.0 / 127.0;
+        if (enable_int8) {
+          nvinfer1::DimsHW nv_ksize(1, 1);
+          fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
+                                          nv_ksize, weight, bias);
+        } else {
+          fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
+                                          weight, bias);
+        }
+
+        if (enable_int8) {
+          CHECK(op_desc.HasAttr("out_threshold"));
+          float out_scale =
+              BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+          dp_probs = out_scale / 127.0;
+        }
 
         auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 
@@ -128,6 +158,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
+        if (enable_int8) {
+          type = static_cast<int>(nvinfer1::DataType::kHALF);
+        }
         bool has_mask = true;
         int var_seqlen = 1;
         const std::vector<nvinfer1::PluginField> fields{
@@ -136,7 +169,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
             {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
             {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32, 1},
-        };
+            { "dq_probs", &dp_probs, nvinfer1::PluginFieldType::kFLOAT32, 1 }};
         nvinfer1::PluginFieldCollection* plugin_collection =
             static_cast<nvinfer1::PluginFieldCollection*>(
                 malloc(sizeof(*plugin_collection) +
