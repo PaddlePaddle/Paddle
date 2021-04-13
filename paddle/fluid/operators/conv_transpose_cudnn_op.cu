@@ -1083,6 +1083,10 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       if (ddW) {
         for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
+          // MIOPEN ONLY support beta to be 0.0f
+          Tensor conv_x_ddw(dO->type());
+          conv_x_ddw.Resize(transformed_ddO_channel.dims());
+          T* conv_x_ddw_data = conv_x_ddw.mutable_data<T>(ctx.GetPlace());
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
                 PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -1091,10 +1095,15 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         x + i * group_offset_in, args2.wdesc.desc(),
                         ddw + i * group_offset_filter, args2.cdesc.desc(),
                         bwd_algo2, &beta, args2.idesc.desc(),
-                        transformed_ddy_channel + i * group_offset_out,
+                        conv_x_ddw_data + i * group_offset_out,
                         workspace_ptr, workspace_size));
               },
               workspace_size);
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::miopenOpTensor(
+            handle, miopenTensorOpAdd, &alpha, args2.idesc.desc(),
+            transformed_ddy_channel + i * group_offset_out, &alpha, args2.idesc.desc(),
+            conv_x_ddw_data + i * group_offset_out, &beta, args2.idesc.desc(),
+            transformed_ddy_channel + i * group_offset_out));
 #else   // PADDLE_WITH_HIP
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
