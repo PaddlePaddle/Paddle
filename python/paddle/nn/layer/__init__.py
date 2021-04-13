@@ -23,6 +23,7 @@ from . import rnn
 from . import vision
 from . import distance
 from . import transformer
+from . import container
 
 from .activation import *
 from .loss import *
@@ -99,3 +100,4 @@ from .norm import LocalResponseNorm  #DEFINE_ALIAS
 
 from .vision import PixelShuffle  #DEFINE_ALIAS
 from .distance import PairwiseDistance  #DEFINE_ALIAS
+from .container import LayerDict  #DEFINE_ALIAS

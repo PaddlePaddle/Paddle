@@ -587,7 +587,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
                       platform::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
-                          "but received X's shape: [%s],"
+                          "but received X's shape: [%s], "
                           "Y's shape: [%s].",
                           dim_x, dim_y));
 #endif

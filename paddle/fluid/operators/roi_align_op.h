@@ -226,10 +226,8 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
 
       T roi_width = roi_xmax - roi_xmin;
       T roi_height = roi_ymax - roi_ymin;
-      if (!aligned) {
-        roi_width = std::max(roi_width, static_cast<T>(1.));
-        roi_height = std::max(roi_height, static_cast<T>(1.));
-      }
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
 
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
@@ -362,11 +360,9 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
 
       T roi_width = roi_xmax - roi_xmin;
       T roi_height = roi_ymax - roi_ymin;
+      roi_width = std::max(roi_width, static_cast<T>(1.));
+      roi_height = std::max(roi_height, static_cast<T>(1.));
 
-      if (!aligned) {
-        roi_width = std::max(roi_width, static_cast<T>(1.));
-        roi_height = std::max(roi_height, static_cast<T>(1.));
-      }
       T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
       T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
       for (int c = 0; c < channels; ++c) {

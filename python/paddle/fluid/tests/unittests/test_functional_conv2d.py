@@ -442,5 +442,20 @@ class TestFunctionalConv2DErrorCase10(TestFunctionalConv2DError):
         self.data_format = "NHWC"
 
 
+class TestFunctionalConv2DErrorCase11(TestFunctionalConv2DError):
+    def setUp(self):
+        self.in_channels = 3
+        self.out_channels = 5
+        self.filter_shape = 3
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.no_bias = False
+        self.act = "sigmoid"
+        self.use_cudnn = False
+        self.data_format = "NHCW"
+
+
 if __name__ == "__main__":
     unittest.main()

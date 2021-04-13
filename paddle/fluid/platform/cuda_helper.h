@@ -25,10 +25,6 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 9000
-enum cublasMath_t { CUBLAS_DEFAULT_MATH = 0 };
-#endif
-
 namespace paddle {
 namespace platform {
 
@@ -76,10 +72,17 @@ namespace platform {
  *
 */
 
+#ifdef __HIPCC__
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                     \
+  int64_t __index__ = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x; \
+  for (index_type i = __index__; __index__ < (num);                   \
+       __index__ += hipBlockDim_x * hipGridDim_x, i = __index__)
+#else
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
+#endif
 
 #define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
 

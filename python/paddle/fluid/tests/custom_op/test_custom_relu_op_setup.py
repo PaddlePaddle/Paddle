@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,7 +26,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
-    t = paddle.to_tensor(np_x)
+    t = paddle.to_tensor(np_x, dtype=dtype)
     t.stop_gradient = False
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
@@ -171,7 +171,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         ]
 
         self.dtypes = ['float32', 'float64']
-        self.devices = ['cpu', 'gpu']
+        if paddle.is_compiled_with_cuda():
+            self.dtypes.append('float16')
+        self.devices = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            self.devices.append('gpu')
 
         # config seed
         SEED = 2021
@@ -181,6 +185,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static(custom_op, device, dtype, x)
@@ -194,6 +200,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_static_pe(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static_pe(custom_op, device, dtype, x)
@@ -207,6 +215,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
+                if device == 'cpu' and dtype == 'float16':
+                    continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out, x_grad = custom_relu_dynamic(custom_op, device, dtype,

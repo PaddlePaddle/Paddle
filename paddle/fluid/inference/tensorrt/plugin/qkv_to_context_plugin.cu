@@ -169,12 +169,10 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
           "it has (%d) inputs",
           nb_inputs));
   nvinfer1::DimsExprs ret;
-  ret.nbDims = 5;
+  ret.nbDims = 3;
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
   ret.d[2] = expr_builder.constant(head_size_ * head_number_);
-  ret.d[3] = expr_builder.constant(1);
-  ret.d[4] = expr_builder.constant(1);
   return ret;
 }
 
