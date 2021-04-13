@@ -159,6 +159,16 @@ DeviceContextPool::DeviceContextPool(
           "NPUPlace is not supported. Please "
           "re-compile with WITH_ASCEND_CL option."));
 #endif
+    } else if (platform::is_npu_pinned_place(p)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      EmplaceDeviceContext<NPUPinnedDeviceContext, NPUPinnedPlace>(
+          &device_contexts_, p);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "NPUPinnedPlace is not supported. Please re-compile with "
+          "WITH_ASCEND_CL "
+          "option."));
+#endif
     }
   }
 }
@@ -265,6 +275,22 @@ Place NPUDeviceContext::GetPlace() const { return place_; }
 aclrtContext* NPUDeviceContext::context() const {
   return const_cast<aclrtContext*>(&context_);
 }
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+NPUPinnedDeviceContext::NPUPinnedDeviceContext(NPUPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* NPUPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place NPUPinnedDeviceContext::GetPlace() const { return place_; }
+
 #endif
 
 #ifdef PADDLE_WITH_CUDA

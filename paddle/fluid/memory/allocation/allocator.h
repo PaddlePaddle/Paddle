@@ -121,6 +121,10 @@ class Allocation {
   inline void PopDecoratedAllocator() { decorated_allocators_.pop_back(); }
 
   inline Allocator* TopDecoratedAllocator() {
+    VLOG(4) << " --------- liym27: TopDecoratedAllocator : "
+               " decorated_allocators_.size() = "
+            << decorated_allocators_.size();
+
     return decorated_allocators_.back();
   }
 
