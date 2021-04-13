@@ -1213,6 +1213,7 @@ class Executor(object):
             # In distributed training, the compiled program is saved in Program._graph
             has_compiled_graph = isinstance(program._graph,
                                             compiler.CompiledProgram)
+
             if has_compiled_graph:
                 program._graph._compile(scope, self.place)
                 # _graph in program does not support inference since the _graph is optimized
