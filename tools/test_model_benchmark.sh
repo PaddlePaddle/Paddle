@@ -35,7 +35,6 @@ function prepare_data {
     if [ -d "benchmark_data" ];then 
         echo -e "benchmark_data exist!"
     else
-        #download data
         mkdir benchmark_data
         cd benchmark_data
         mkdir dataset
