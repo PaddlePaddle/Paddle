@@ -121,31 +121,15 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-
-    // we need to pre-allocate 512 Bytes before the data
-    // and 512 Bytes after the data, so the hccl allreduce
-    // can work. This is a must acooding to huawei peer.
-    #define PRE_MALLOC_SIZE_BYTES 512
-
     auto in = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     auto place = ctx.GetPlace();
-    hcclDataType_t dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
 
-    int64_t pre_tmp_size = PRE_MALLOC_SIZE_BYTES / sizeof(T);
-    int64_t tmp_numel = numel + pre_tmp_size * 2;
+    void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
+    void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
-    paddle::framework::LoDTensor tmp_in, tmp_out;
-    tmp_in.Resize({tmp_numel});
-    tmp_out.Resize({tmp_numel});
-    auto p_tmp_in = tmp_in.mutable_data<T>(place);  // allocate
-    auto p_tmp_out = tmp_out.mutable_data<T>(place);  // allocate
-
-    void* sendbuff = reinterpret_cast<void*>(tmp_in.data<T>() + pre_tmp_size);
-    void* recvbuff = reinterpret_cast<void*>(tmp_out.data<T>() + pre_tmp_size);
-
-    std::string tag = ctx.Attr<std::string>("tag");
     int ring_id = ctx.Attr<int>("ring_id");
     int root_id = ctx.Attr<int>("root_id");
     std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
@@ -161,33 +145,22 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
 
     int rank_id = comm->rank();
 
-    // we need to memset this memory firstly to avoid core by hccl
-    platform::NPUMemsetAsync(static_cast<void*>(p_tmp_in), 0, tmp_numel*sizeof(T), stream);
-    platform::NPUMemsetAsync(static_cast<void*>(p_tmp_out), 0, tmp_numel*sizeof(T), stream);
-
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
-
-    memory::Copy(npu_place, sendbuff,
-                 npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
-                 numel * sizeof(T),
-                 stream);
-
-    hcclRedOp_t hccl_red_type = HCCL_REP_OP_SUM;
+    HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
     switch (red_type) {
       case kRedSum:
-        hccl_red_type = HCCL_REP_OP_SUM;
+        hccl_red_type = HCCL_REDUCE_SUM;
         break;
 
       case kRedMax:
-        hccl_red_type = HCCL_REP_OP_MAX;
+        hccl_red_type = HCCL_REDUCE_MAX;
         break;
 
       case kRedMin:
-        hccl_red_type = HCCL_REP_OP_MIN;
+        hccl_red_type = HCCL_REDUCE_MIN;
         break;
 
       case kRedProd:
-        hccl_red_type = HCCL_REP_OP_PROD;
+        hccl_red_type = HCCL_REDUCE_PROD;
         break;
 
       default:
@@ -200,18 +173,14 @@ class CReduceOpASCENDKernel : public framework::OpKernel<T> {
       << "root_id: " << root_id
       << "dtype: " << dtype
       << "hccl_red_type: " << hccl_red_type
-      << ", group is: " << group
-      << ", tag is " << tag;
+      << ", group is: " << group;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_all_reduce(
-        tag.c_str(), sendbuff, recvbuff, numel, dtype, hccl_red_type, group.c_str(), (void*)stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+        sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(), (void*)stream));
 
-    if(rank_id == root_id){
-      memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
-                  npu_place, recvbuff,
-                  numel * sizeof(T),
-                  stream);
-    }else{
+
+    if(rank_id != root_id){
+      auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
       memory::Copy(npu_place, reinterpret_cast<void*>(out->data<T>()),
             npu_place, reinterpret_cast<void*>(const_cast<T*>(in->data<T>())),
             numel * sizeof(T),

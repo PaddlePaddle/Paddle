@@ -34,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
+#include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -45,7 +46,8 @@ namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
 USE_OP(c_reducescatter);
-USE_NO_KERNEL_OP(c_comm_init_hcom);
+USE_NO_KERNEL_OP(c_gen_hccl_id);
+USE_NO_KERNEL_OP(c_comm_init_hccl);
 USE_OP_DEVICE_KERNEL(c_reducescatter, NPU);
 
 DECLARE_string(selected_npus);
@@ -59,7 +61,7 @@ void PrintDebugInfo(const std::string preStr, const  std::vector<T> &data){
   VLOG(2) << preStr << ":" << std::endl <<debugstring;
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
+void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
 
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
@@ -70,22 +72,63 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx){
   << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
 
   std::vector<int> rank_ids{0, 1};
+  f::AttributeMap gen_hccl_id;
+
+
+  std::vector<std::string > endpointList={"127.0.0.1:6175", "127.0.0.1:6177"};
+  gen_hccl_id["rank"] = rank_id;
+  gen_hccl_id["endpoint"] = endpointList[rank_id];
+  std::vector<std::string> other_endpoints= {endpointList[rank_id == 0 ? 1 : 0]};
+  gen_hccl_id["other_endpoints"] = other_endpoints;
+
+  auto out = scope->Var("Out");
+  auto id = out->GetMutable<HcclRootInfo>();
+
+  VLOG(3) << "break";
+
+  auto comm_init_op =
+      f::OpRegistry::CreateOp("c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
+  VLOG(3) << "break";
+  auto place = ctx.GetPlace();
+  comm_init_op->Run(*scope, place);
+  ctx.Wait();
+
+  memcpy(hccl_id, id, 1024);
+}
+
+void Prepare(f::Scope* scope, const p::DeviceContext& ctx, HcclRootInfo* hccl_id){
+
+  auto x = scope->Var("X");
+  auto id = x->GetMutable<HcclRootInfo>();
+
+  memcpy(id, hccl_id, 1024);
+
+  int rank_id = atoi(getenv("RANK_ID"));
+  int device_id = atoi(getenv("DEVICE_ID"));
+
+  VLOG(2) << "rank_id = " << rank_id
+  << "; device_id = " << device_id
+  << "; rank_id = " << rank_id
+  << "; RANK_TABLE_FILE = " << atoi(getenv("DEVICE_ID"));
+
+  // std::vector<int> rank_ids{0, 1};
   f::AttributeMap comm_init_attrs;
   comm_init_attrs["ring_id"] = 0;
-  comm_init_attrs["nranks"] = 2;
+  comm_init_attrs["rank_ids"] = 2;
   comm_init_attrs["rank"] = rank_id;
   comm_init_attrs["device_id"] = device_id;
-  comm_init_attrs["rank_ids"] = rank_ids;
+  // comm_init_attrs["rank_ids"] = rank_ids;
   auto comm_init_op =
-      f::OpRegistry::CreateOp("c_comm_init_hcom", {}, {}, comm_init_attrs);
+      f::OpRegistry::CreateOp("c_comm_init_hccl", {{"X", {"X"}}}, {}, comm_init_attrs);
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
   ctx.Wait();
 }
 
+
 void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
-  auto x = scope->Var("X");
+  auto x = scope->Var("Data");
   auto tensor_x = x->GetMutable<f::LoDTensor>();
 
   std::vector<float> init;
@@ -103,7 +146,7 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   ctx.Wait();
 
   auto place = ctx.GetPlace();
-  auto out = scope->Var("Out");
+  auto out = scope->Var("OutData");
   auto tensor_out = out->GetMutable<f::LoDTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<float>(place);  // allocate
@@ -116,14 +159,14 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["ring_id"]=0;
   attrs["nranks"]=2;
 
-  auto op = f::OpRegistry::CreateOp("c_reducescatter", {{"X", {"X"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("c_reducescatter", {{"X", {"Data"}}},
+                              {{"Out", {"OutData"}}}, attrs);
 
   int iter_num = 10;
   for (int i = 0; i < iter_num; i ++) {
     op->Run(*scope, place);
+    ctx.Wait();
   }
-  ctx.Wait();
 
   std::vector<float> out_vec;
   TensorToVector(*tensor_out, ctx, &out_vec);
@@ -132,16 +175,18 @@ void TestHCCLReduceScatterOp(f::Scope* scope, const p::DeviceContext& ctx) {
   PrintDebugInfo("output data", out_vec);
   EXPECT_EQ(out_vec.size(), init.size() / 2);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    EXPECT_EQ(out_vec[i], iter_num + 1);
+    EXPECT_EQ(out_vec[i], 2.0);
   }
 }
 
 TEST(c_reducescatter, NPU) {
   f::Scope scope;
+  HcclRootInfo hccl_id;
 
   // only support one device, if more than one device, use first default
   p::NPUDeviceContext ctx(p::NPUPlace(atoi(FLAGS_selected_npus.c_str())));
 
-  Prepare(&scope, ctx);
+  PrepareUniqueId(&scope, ctx, &hccl_id);
+  Prepare(&scope, ctx, &hccl_id);
   TestHCCLReduceScatterOp(&scope, ctx);
 }

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -22,40 +23,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
-  for (size_t i = 0; i < nccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclGetUniqueId(&(*nccl_ids)[i]));
-  }
-}
+#ifdef PADDLE_WITH_ASCEND_CL
 
-static void CopyNCCLIDToVar(const std::vector<ncclUniqueId>& nccl_ids,
-                            std::function<std::string(size_t)> func,
-                            const framework::Scope& scope) {
-  for (size_t i = 0; i < nccl_ids.size(); ++i) {
-    std::string var_name = func(i);
-    auto var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
-    auto nccl_id = var->GetMutable<ncclUniqueId>();
-    memcpy(nccl_id, &nccl_ids[i], sizeof(ncclUniqueId));
-  }
-}
-
-class CGenNCCLIdOp : public framework::OperatorBase {
+class CGenHCCLIdOp : public framework::OperatorBase {
  public:
-  CGenNCCLIdOp(const std::string& type,
+  CGenHCCLIdOp(const std::string& type,
                const framework::VariableNameMap& inputs,
                const framework::VariableNameMap& outputs,
                const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorBase(type, inputs, outputs, attrs) {
+  }
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
@@ -66,47 +50,42 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
-    std::vector<ncclUniqueId> nccl_ids;
-    nccl_ids.resize(1);
-
     if (rank == 0) {
-      GenNCCLID(&nccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
+      SendBroadCastHCCLID(endpoint_list, 1, func, local_scope);
     } else {
       std::string endpoint = Attr<std::string>("endpoint");
-      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
-      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
+      RecvBroadCastHCCLID(endpoint, 1, func, local_scope);
     }
-
-    CopyNCCLIDToVar(nccl_ids, func, scope);
     scope.DeleteScope(&local_scope);
   }
 };
 
 #else
 
-class CGenNCCLIdOp : public framework::OperatorBase {
+class CGenHCCLIdOp : public framework::OperatorBase {
  public:
-  CGenNCCLIdOp(const std::string& type,
+  CGenHCCLIdOp(const std::string& type,
                const framework::VariableNameMap& inputs,
                const framework::VariableNameMap& outputs,
                const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const platform::Place& dev_place) const override {
+  }
 };
 
 #endif
 
-class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
+class CGenHCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a NCCL UniqueId instaces.");
+    VLOG(3) << "ele";
+    AddOutput("Out", "Raw variable contains a HCCL UniqueId instaces.");
     AddComment(R"DOC(
-CGenNCCLId operator
+CGenHCCLId operator
 
 For trainer 0: generate a new UniqueId and send it to all the other trainers.
 For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the server.
@@ -131,4 +110,4 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_gen_nccl_id, ops::CGenNCCLIdOp, ops::CGenNCCLIdOpMaker);
+REGISTER_OPERATOR(c_gen_hccl_id, ops::CGenHCCLIdOp, ops::CGenHCCLIdOpMaker);

@@ -34,6 +34,13 @@ class HCCLCommImpl : public HCCLComm {
     return BOOST_GET_CONST(NPUPlace, dev_ctx_->GetPlace()).device;
   }
 
+  ~HCCLCommImpl(){
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclCommDestroy(comm_));
+  }
+
+  void set_comm(HcclComm comm) { comm_ = comm; }
+  HcclComm comm() const override { return comm_; }
+
   aclrtStream stream() const override { return dev_ctx_->stream(); }
 
   void set_dev_ctx(std::unique_ptr<NPUDeviceContext>&& dev_ctx) {
@@ -45,46 +52,43 @@ class HCCLCommImpl : public HCCLComm {
   int ring_id_;
   int nranks_;
   int rank_;
+  HcclComm comm_;
   std::unique_ptr<NPUDeviceContext> dev_ctx_;
 };
 
-HCCLComm* HCCLCommContext::CreateHCCLComm(const std::vector<int>& world_rank_ids, int rank, int dev_id, int ring_id) {
+HCCLComm* HCCLCommContext::CreateHCCLComm(HcclRootInfo* hccl_id, int nranks,
+                                          int rank, int dev_id, int ring_id) {
+  PADDLE_ENFORCE_NOT_NULL(hccl_id,
+                          platform::errors::InvalidArgument(
+                              "The hccl unique id should not be null."));
   PADDLE_ENFORCE_GT(
-      world_rank_ids.size(), 1,
+      nranks, 1,
       platform::errors::InvalidArgument(
-          "Expected world_rank_ids.size() > 1. But received size is %d.", world_rank_ids.size()));
+          "Expected nranks > 1. But received nranks is %d.", nranks));
   PADDLE_ENFORCE_GE(rank, 0,
                     platform::errors::InvalidArgument(
                         "Expected rank >= 0. But received rank is %d.", rank));
   PADDLE_ENFORCE_LT(
-      rank, world_rank_ids.size(),
+      rank, nranks,
       platform::errors::InvalidArgument(
           "Expected rank < nranks. But received rank is %d, nranks is %d.",
-          rank, world_rank_ids.size()));
+          rank, nranks));
   PADDLE_ENFORCE_GE(
       dev_id, 0,
       platform::errors::InvalidArgument(
           "Expected dev_id >= 0. But received dev_id is %d.", dev_id));
-  PADDLE_ENFORCE_GE(
-      ring_id, 0,
-      platform::errors::InvalidArgument(
-          "Expected ring_id >= 0. But received ring_id is %d.", ring_id));
 
-  auto* comm_wrapper = AssignHCCLComm(world_rank_ids.size(), rank, dev_id, ring_id);
-
-  // HACK(sunpeng17): hcom API requires bind stream to a model
-  // but we don't need model in Paddle, so we feed stream pointer as model pointer
+  HcclComm comm;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(dev_id));
   PADDLE_ENFORCE_NPU_SUCCESS(
-      platform::dynload::hcom_bind_model(comm_wrapper->stream(),
-                                         comm_wrapper->stream()));
+      platform::dynload::HcclCommInitRootInfo(nranks, hccl_id, rank, &comm));
 
-  // Get world_rank_ids registered in gen_nccl_id op
-  std::string group_name = HCOM_GROUP_PREFIX + std::to_string(ring_id);
-  PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_create_group(
-      group_name.c_str(), world_rank_ids.size(), (unsigned int*)world_rank_ids.data()));
+ VLOG(1) << "initialized comm: " << &comm  << ", nranks: " << nranks << ", hccl_id: " << hccl_id << ", rank: " << rank;
+
+  auto* comm_wrapper = AssignHCCLComm(comm, nranks, rank, dev_id, ring_id);
 
   VLOG(1) << "hccl communicator of rank " << rank << " in ring " << ring_id
-          << " has been created on device " << dev_id << ", group name: " << group_name;
+          << " has been created on device " << dev_id << ", with comm: " << comm_wrapper->comm();
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { HCCLCommContext::Instance().ReleaseHCCLComms(); });
@@ -93,7 +97,8 @@ HCCLComm* HCCLCommContext::CreateHCCLComm(const std::vector<int>& world_rank_ids
   return comm_wrapper;
 }
 
-HCCLComm* HCCLCommContext::AssignHCCLComm(int nranks, int rank, int dev_id, int ring_id) {
+HCCLComm* HCCLCommContext::AssignHCCLComm(HcclComm comm, int nranks, int rank,
+                                          int dev_id, int ring_id) {
   std::unique_ptr<NPUDeviceContext> dev_ctx(
       new NPUDeviceContext(NPUPlace(dev_id)));
 
@@ -101,6 +106,7 @@ HCCLComm* HCCLCommContext::AssignHCCLComm(int nranks, int rank, int dev_id, int 
   c->set_ring_id(ring_id);
   c->set_nranks(nranks);
   c->set_rank(rank);
+  c->set_comm(comm);
   c->set_dev_ctx(std::move(dev_ctx));
 
   comm_map_mutex_.lock();
@@ -112,23 +118,14 @@ HCCLComm* HCCLCommContext::AssignHCCLComm(int nranks, int rank, int dev_id, int 
   dev2comm.emplace(dev_id, std::unique_ptr<HCCLComm>(c));
   comm_map_mutex_.unlock();
 
+  if (ring_id == 0) {
+    auto* dev_ctx = static_cast<platform::NPUDeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::NPUPlace(dev_id)));
+    dev_ctx->set_hccl_comm(comm);
+  }
+
   return comm_map_[ring_id][dev_id].get();
-}
-
-void HCCLCommContext::InitHcomWorldGroup() {
-  const char *rank_table_file = getenv(ENV_RANK_TABLE_FILE);
-  PADDLE_ENFORCE_NOT_NULL(
-      rank_table_file,
-      platform::errors::InvalidArgument("The RANK_TABLE_FILE environment variable should not be null."));
-
-  const char *rank_id = getenv(ENV_RANK_ID);
-  PADDLE_ENFORCE_NOT_NULL(
-      rank_id,
-      platform::errors::InvalidArgument("The RANK_ID environment variable should not be null."));
-
-  PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_init(rank_table_file, rank_id));
-  VLOG(3) << "Successfully initialized hcom. rank_table_file: "
-    << rank_table_file << ", rank_id " << rank_id;
 }
 
 void HCCLCommContext::ReleaseHCCLComms() {

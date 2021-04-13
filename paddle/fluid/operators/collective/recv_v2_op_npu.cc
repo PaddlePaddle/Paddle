@@ -27,32 +27,39 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = out->numel();
-    hcclDataType_t dtype = platform::ToHCCLDataType(out->type());
+    auto x = ctx.Output<framework::LoDTensor>("Out");
+    void *ptr = reinterpret_cast<void*>(const_cast<T*>(x->data<T>()));
+    int numel = x->numel();
+    HcclDataType dtype = platform::ToHCCLDataType(x->type());
 
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
+    auto comm = paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
 
     aclrtStream stream = nullptr;
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       stream = static_cast<platform::NPUDeviceContext*>(dev_ctx)->stream();
     } else {
       stream = comm->stream();
     }
-    std::string tag = std::to_string(ring_id) + "_" + std::to_string(comm->NextTagId());
-    std::string group = std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
-    int srcRank = ctx.Attr<int>("peer");
-    int srTag = ctx.Attr<int>("srTag");
-    VLOG(3) << "recv_v2_npu attr get";
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::hcom_receive(
-        tag.c_str(), reinterpret_cast<void*>(const_cast<T*>(out->data<T>())), (u64)numel, dtype, srcRank,
-          srTag, group.c_str(), stream));
-     VLOG(3) << "Source Rank: " << srcRank << " Invoke hcom receive. receiving ";
-    out->Resize(out->dims());
-    out->set_lod(out->lod());
+
+    int nranks = comm->nranks();
+    int peer = ctx.Attr<int>("peer");
+
+    PADDLE_ENFORCE_EQ(nranks, 2,
+                platform::errors::InvalidArgument(
+                    "The nranks must be 2, but (%d)",
+                      nranks));
+
+    int root = peer;
+
+    VLOG(3) << "begin hccl recv, parameter is: "<< "root " << root
+      << ", comm: " << comm->comm() << ", stream: " << stream;
+
+    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclBroadcast(ptr, numel,
+                                  dtype, (uint32_t)root, comm->comm(), stream));
+
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));
