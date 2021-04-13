@@ -912,12 +912,12 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
                 "The input 'scale_w' Tensor's value in Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
-       PADDLE_ENFORCE_EQ(
-           scale_h > 0, true,
-           platform::errors::InvalidArgument(
-               "The input 'scale_h' Tensor's value in Operator(interpolate) "
-               "should be greater than 0, but received value is %d.",
-               scale_h));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0, true,
+            platform::errors::InvalidArgument(
+                "The input 'scale_h' Tensor's value in Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
       }
     }
     if (scale_h > 0. && scale_w > 0.) {
