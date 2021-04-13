@@ -490,10 +490,6 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     T* input_grad_data = nullptr;
     T* filter_grad_data = nullptr;
-    // if (input_grad)
-    //   input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-    // if (filter_grad)
-    //   filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
 
     if (input_grad) {
       input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
